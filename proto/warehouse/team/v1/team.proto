@@ -1,0 +1,216 @@
+syntax = "proto3";
+
+package warehouse.team.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1;teamv1";
+
+// TeamService owns `teams` and `team_infos`.
+//
+// Its most important RPC is TeamByIds: it is how every OTHER service turns a team_id it stores
+// locally into a name and a type WITHOUT touching this service's database. Per-service
+// independence forbids a cross-service SQL join; this is the replacement.
+service TeamService {
+  rpc TeamCreate(TeamCreateRequest) returns (TeamCreateResponse);
+  rpc TeamUpdate(TeamUpdateRequest) returns (TeamUpdateResponse);
+  rpc TeamDelete(TeamDeleteRequest) returns (TeamDeleteResponse);
+  rpc TeamList(TeamListRequest) returns (TeamListResponse);
+  rpc TeamDetail(TeamDetailRequest) returns (TeamDetailResponse);
+
+  // TeamByIds bulk-resolves teams. Unknown and soft-deleted ids are OMITTED from the map —
+  // callers must check for presence, never index blindly.
+  rpc TeamByIds(TeamByIdsRequest) returns (TeamByIdsResponse);
+
+  rpc TeamInfoUpdate(TeamInfoUpdateRequest) returns (TeamInfoUpdateResponse);
+}
+
+// THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
+// Never redeclare it in another package.
+//
+// The numbers deliberately match no legacy numbering: nothing persists them (the column is
+// TEXT with a CHECK), so a raw int carried over from old code produces an obviously wrong
+// value rather than a plausible, silently-swapped one.
+enum TeamType {
+  TEAM_TYPE_UNSPECIFIED = 0;
+  TEAM_TYPE_ROOT = 1;
+  TEAM_TYPE_ADMIN = 2;
+  TEAM_TYPE_WAREHOUSE = 3;
+  TEAM_TYPE_SELLING = 4;
+}
+
+message TeamInfo {
+  uint64 team_id = 1;
+  string contact_number = 2;
+  string bank_type = 3;
+  string bank_owner_name = 4;
+  string bank_account_number = 5;
+
+  // Opaque ids owned by other services. Not validated here — no FK is possible across a
+  // service boundary. 0 = unset.
+  uint64 return_warehouse_id = 6;
+  uint64 return_user_id = 7;
+}
+
+message Team {
+  uint64 id = 1;
+  TeamType type = 2;
+  string name = 3;
+  string team_code = 4;
+  string description = 5;
+  bool deleted = 6;
+
+  // Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
+  TeamInfo info = 7;
+}
+
+message TeamCreateRequest {
+  // Unscoped on purpose: there is no team to scope to yet.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  TeamType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [
+      0,
+      1
+    ]
+  }];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 128
+  }];
+  string team_code = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 10
+  }];
+  string description = 4 [(buf.validate.field).string = {max_len: 300}];
+}
+
+message TeamCreateResponse {
+  Team team = 1;
+}
+
+message TeamUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_WAREHOUSE_OWNER
+    ]
+  };
+
+  // use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
+  // the two OWNER entries become dead letters — the policy would claim an owner may rename
+  // their team while the system silently required root/admin.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // Absent = leave alone. `type` and `team_code` are immutable after create.
+  optional string name = 2 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 128
+  }];
+  optional string description = 3 [(buf.validate.field).string = {max_len: 300}];
+}
+
+message TeamUpdateResponse {
+  Team team = 1;
+}
+
+message TeamDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message TeamDeleteResponse {}
+
+message TeamListRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  TeamType team_type = 2;
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message TeamListResponse {
+  repeated Team teams = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message TeamDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message TeamDetailResponse {
+  Team team = 1;
+}
+
+message TeamByIdsRequest {
+  // Deliberately UNSCOPED: this is a cross-team bulk lookup. Scoping it would defeat it.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message TeamByIdsResponse {
+  // Keyed by team id. Unknown AND soft-deleted ids are OMITTED — check presence, do not index
+  // blindly. The map is never nil, so ranging an empty result is safe.
+  map<uint64, Team> data = 1;
+}
+
+message TeamInfoUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // ALL optional — explicit presence. Absent = leave alone. Present = write it, including
+  // present-and-zero = clear. Without presence there is no way to say "don't touch this", and
+  // a contact-number-only update silently blanks the bank details.
+  optional string contact_number = 2 [(buf.validate.field).string.max_len = 40];
+  optional string bank_type = 3 [(buf.validate.field).string.max_len = 60];
+  optional string bank_owner_name = 4 [(buf.validate.field).string.max_len = 128];
+  optional string bank_account_number = 5 [(buf.validate.field).string.max_len = 60];
+  optional uint64 return_warehouse_id = 6; // present & 0 = clear to NULL
+  optional uint64 return_user_id = 7; // present & 0 = clear to NULL
+}
+
+message TeamInfoUpdateResponse {
+  TeamInfo info = 1;
+}

@@ -1,0 +1,106 @@
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"connectrpc.com/connect"
+	connectcors "connectrpc.com/cors"
+	"connectrpc.com/validate"
+	"github.com/rs/cors"
+
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/hello/v1/hellov1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/services/hello_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
+)
+
+// NewServeMux mounts every service handler.
+//
+// EVERY guarded handler gets the access interceptor. In the source, some services mounted no
+// interceptor at all, which quietly turned their declared request_policy options into
+// decoration — the policy was written down and never enforced. Mounting is not optional here.
+func NewServeMux(
+	authService *user_service.AuthService,
+	userService *user_service.Service,
+	teamService *team_service.Service,
+	helloService *hello_service.Service,
+	resolver access_interceptors.RoleResolver,
+	signer *san_auth.Signer,
+) (*http.ServeMux, error) {
+	// FAIL FAST on a malformed policy. A use_scope tag that is non-uint, nested, or duplicated
+	// is silent at runtime — it must stop the process, not serve traffic.
+	err := san_auth.ValidateDescriptors()
+	if err != nil {
+		return nil, err
+	}
+
+	// protovalidate runs BEFORE authorization, so a malformed request is rejected without ever
+	// reaching the role lookup.
+	validator := validate.NewInterceptor()
+
+	// ONE chain, built once, applied to EVERY guarded handler.
+	//
+	// Building it per-handler is how the source ended up with services that mounted no
+	// interceptor at all — their request_policy options were written down and never enforced.
+	opts := connect.WithInterceptors(
+		validator,
+		access_interceptors.NewInterceptor(signer, resolver),
+	)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mux.Handle(userv1connect.NewAuthServiceHandler(authService, opts))
+	mux.Handle(userv1connect.NewUserServiceHandler(userService, opts))
+	mux.Handle(teamv1connect.NewTeamServiceHandler(teamService, opts))
+
+	// Scaffold. Delete with hello_service.
+	mux.Handle(hellov1connect.NewHelloServiceHandler(helloService))
+
+	return mux, nil
+}
+
+func NewServer(cfg *Config, mux *http.ServeMux) *http.Server {
+	// The modern replacement for the deprecated x/net/http2/h2c: net/http has spoken
+	// unencrypted HTTP/2 natively since Go 1.24.
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
+	log.Printf("cors origins: %v", cfg.AllowedOrigins)
+
+	return &http.Server{
+		Addr:      cfg.Addr,
+		Handler:   withCORS(cfg, mux),
+		Protocols: protocols,
+	}
+}
+
+func withCORS(cfg *Config, handler http.Handler) http.Handler {
+	// connectcors.AllowedHeaders() covers only the CONNECT PROTOCOL headers
+	// (Content-Type, Connect-Protocol-Version, timeouts, …). It does NOT include Authorization
+	// — that is ours to add.
+	//
+	// Omitting it fails in a nasty, asymmetric way: Login carries no Authorization header, so it
+	// sails through, and EVERY authenticated call afterwards is killed by the browser at
+	// preflight — before the request ever reaches the server. Nothing appears in the server log.
+	// From the UI it looks like the API returned nothing.
+	allowedHeaders := append(connectcors.AllowedHeaders(), "Authorization")
+
+	middleware := cors.New(cors.Options{
+		AllowedOrigins: cfg.AllowedOrigins,
+		AllowedMethods: connectcors.AllowedMethods(),
+		AllowedHeaders: allowedHeaders,
+		ExposedHeaders: connectcors.ExposedHeaders(),
+	})
+
+	return middleware.Handler(handler)
+}

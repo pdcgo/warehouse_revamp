@@ -1,0 +1,28 @@
+version: v2
+
+clean: true
+
+plugins:
+  # ---- backend (Go) ----
+  # No include_imports: the Go code for buf.validate comes from its published Go module
+  # (buf.build/gen/go/...), which buf.build/go/protovalidate already depends on.
+  - remote: buf.build/protocolbuffers/go:v1.36.6
+    out: ../backend/gen
+    opt: paths=source_relative
+
+  - remote: buf.build/connectrpc/go:v1.18.1
+    out: ../backend/gen
+    opt: paths=source_relative
+
+  # ---- frontend (TypeScript) ----
+  # include_imports IS required here. protoc-gen-es emits a RELATIVE import for every
+  # dependency (e.g. ../../../buf/validate/validate_pb), so the imported schemas must be
+  # generated alongside ours or the TS build cannot resolve them. There is no npm package
+  # standing in for them the way there is on the Go side.
+  #
+  # protobuf-es v2 also emits the service descriptors, so connect-es v2 needs no separate
+  # plugin: the client is createClient(TeamService, transport).
+  - remote: buf.build/bufbuild/es:v2.2.5
+    out: ../frontend/src/gen
+    opt: target=ts
+    include_imports: true

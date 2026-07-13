@@ -1,0 +1,22 @@
+# graphify knowledge graph — generated, large (infra's graph.json is ~55MB), rebuildable
+graphify-out/
+
+# python venv that hosts the graphify CLI
+.venv/
+
+# backend
+backend/bin/
+backend/*.exe
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+
+# local postgres data (docker-compose bind mount)
+development_data/
+
+# env
+.env
+.env.local

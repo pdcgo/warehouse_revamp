@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: warehouse_revamp_postgres
+    restart: unless-stopped
+    environment:
+      # Development only — plain credentials on purpose. These match what
+      # `go run ./cmd/tool migrate` assumes for "Database Local", so a fresh checkout
+      # migrates with no configuration.
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      # 5433 on the host, not 5432: another project on this machine already runs a Postgres
+      # on 5432, and this system must not share its database.
+      - "5433:5432"
+    volumes:
+      - ./development_data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      # Without this, anything depending on postgres races the "database system is ready"
+      # log line — the server accepts connections briefly before it is actually usable.
+      test: ["CMD-SHELL", "pg_isready -U user -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Cache for backend/pkgs/san_caches. Run the cache conformance tests against it with:
+  #   REDIS_ADDR=localhost:6380 go test ./pkgs/san_caches/...
+  redis:
+    image: redis:7-alpine
+    container_name: warehouse_revamp_redis
+    restart: unless-stopped
+    ports:
+      # 6380, not 6379 — same reason as postgres on 5433: another project may already hold
+      # the default port, and we must not share its keyspace.
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Local Pub/Sub for backend/pkgs/event_source. Behind a profile because the image is large
+  # and most work needs no broker:
+  #   docker compose --profile pubsub up -d
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: warehouse_revamp_pubsub
+    profiles: ["pubsub"]
+    restart: unless-stopped
+    command: >
+      gcloud beta emulators pubsub start
+      --project=warehouse-revamp-local
+      --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"

@@ -1,0 +1,451 @@
+syntax = "proto3";
+
+package warehouse.user.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+import "warehouse/team/v1/team.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1;userv1";
+
+// AuthService is entirely public (allow_all) — it is what you call when you have no token yet.
+// Note this means NO identity reaches these handlers from the interceptor: Logout parses the
+// Authorization header itself.
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+}
+
+// UserService owns `users` and `user_team_roles`. It does NOT own teams — team names are
+// resolved through team_service.TeamByIds, never a join.
+service UserService {
+  // TeamAccessList — the session bootstrap: which teams am I in, and as what.
+  rpc TeamAccessList(TeamAccessListRequest) returns (TeamAccessListResponse);
+
+  // TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
+  rpc TeamUserUpdate(TeamUserUpdateRequest) returns (TeamUserUpdateResponse);
+
+  // RoleResolve is how OTHER services check a caller's role without reading this service's
+  // tables. It is the RPC behind the access interceptor's RPC role resolver.
+  rpc RoleResolve(RoleResolveRequest) returns (RoleResolveResponse);
+
+  // CreateUser creates a user and (optionally) makes them a member of a team, in one
+  // transaction.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // ResetPassword changes the CALLER'S OWN password. There is no user_id.
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+
+  // AdminResetPassword changes ANOTHER user's password. A different operation with a different
+  // policy — conflating the two is how the source produced its IDOR.
+  rpc AdminResetPassword(AdminResetPasswordRequest) returns (AdminResetPasswordResponse);
+
+  // UpdateProfile edits the CALLER'S OWN details. No user_id — same rule as ResetPassword.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+
+  // UpdateUser edits ANOTHER user's details. Root/admin only.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // SuspendUser blocks (or unblocks) an account.
+  rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse);
+
+  // DeleteUser removes an account and, by FK cascade, all of its memberships.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // UserList — paginated, team-scoped.
+  rpc UserList(UserListRequest) returns (UserListResponse);
+
+  // UserByIDs bulk-resolves users by id, for turning an id into a name.
+  rpc UserByIDs(UserByIDsRequest) returns (UserByIDsResponse);
+
+  // SearchUser finds users ACROSS teams — needed to add someone who is not in your team yet.
+  rpc SearchUser(SearchUserRequest) returns (SearchUserResponse);
+}
+
+// PublicUser is the shape shown to any authenticated caller: NO email, NO phone.
+//
+// The source returned the full record from UserByIDs and SearchUser under a mere
+// allow_only_authenticated policy, so any logged-in user could harvest every colleague's email
+// and phone number. A name and an id are all a picker needs.
+message PublicUser {
+  uint64 id = 1;
+  string username = 2;
+  string name = 3;
+}
+
+message UpdateProfileRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // NO user_id. The subject is the token holder — same rule as ResetPassword.
+  // Absent = leave alone.
+  optional string name = 1 [(buf.validate.field).string.max_len = 128];
+  optional string email = 2 [(buf.validate.field).string.max_len = 200];
+  optional string phone_number = 3 [(buf.validate.field).string.max_len = 40];
+}
+
+message UpdateProfileResponse {
+  User user = 1;
+}
+
+message UpdateUserRequest {
+  // Unscoped roles-policy = root/admin only, and it says so. A user is not a team-scoped
+  // object: they can belong to several teams, so "edit this user" is not a team operation.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  optional string name = 2 [(buf.validate.field).string.max_len = 128];
+  optional string email = 3 [(buf.validate.field).string.max_len = 200];
+  optional string phone_number = 4 [(buf.validate.field).string.max_len = 40];
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+message SuspendUserRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // false unsuspends. Suspension must be reversible — locking someone out by accident with no
+  // way back is its own outage.
+  bool suspended = 2;
+}
+
+message SuspendUserResponse {}
+
+message DeleteUserRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message DeleteUserResponse {}
+
+message UserListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // SCOPED, same double duty as CreateUser:
+  //   team_id > 0 -> the members of THAT team (the caller must hold a role in it)
+  //   team_id = 0 -> every user; an unset scope resolves to the root team, so root/admin only
+  uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
+
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message UserListResponse {
+  repeated User users = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message UserByIDsRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message UserByIDsResponse {
+  // Keyed by id; unknown ids are omitted. PublicUser, not User — no email, no phone.
+  map<uint64, PublicUser> data = 1;
+}
+
+message SearchUserRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // DELIBERATELY UNSCOPED and top-level.
+  //
+  // Unscoped because its whole purpose is finding people who are NOT in your team yet, so you
+  // can add them. Top-level because the interceptor only reads scope from top-level fields —
+  // in the source this field was NESTED, which silently made the RPC unscoped anyway. If it is
+  // going to be unscoped, say so out loud rather than by accident.
+  string q = 1 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 100
+  }];
+
+  uint32 limit = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 20
+  }];
+}
+
+message SearchUserResponse {
+  repeated PublicUser users = 1;
+}
+
+message User {
+  uint64 id = 1;
+  string username = 2;
+  string name = 3;
+  string email = 4;
+  string phone_number = 5;
+  bool is_suspended = 6;
+}
+
+message CreateUserRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // SCOPED, and the scope does double duty:
+  //
+  //   team_id > 0  -> create the user AND add them to THAT team. A team owner/admin may do this
+  //                   for their own team, because the interceptor checks their role in it.
+  //   team_id = 0  -> create a TEAMLESS user. An unset scope resolves to the root team, so this
+  //                   is automatically root/admin-only — no extra check needed.
+  //
+  // Both tables belong to user_service, so this is ONE real transaction, not a saga.
+  uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
+
+  string username = 2 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 100
+  }];
+  string password = 3 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 200
+  }];
+  string name = 4 [(buf.validate.field).string.max_len = 128];
+  string email = 5 [(buf.validate.field).string.max_len = 200];
+  string phone_number = 6 [(buf.validate.field).string.max_len = 40];
+
+  // The role to grant in team_id. Required when team_id > 0; ignored when it is 0.
+  warehouse.role_base.v1.Role role = 7;
+  string alias = 8 [(buf.validate.field).string.max_len = 60];
+}
+
+message CreateUserResponse {
+  User user = 1;
+}
+
+message ResetPasswordRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // THERE IS DELIBERATELY NO user_id.
+  //
+  // The subject of an identity operation is the TOKEN HOLDER. A user_id here would be a
+  // suggestion from the caller — which is exactly how the source let any logged-in user reset
+  // any other account's password.
+  string old_password = 1 [(buf.validate.field).string.min_len = 1];
+  string new_password = 2 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 200
+  }];
+}
+
+message ResetPasswordResponse {
+  // A fresh token. The caller's old one was issued BEFORE the reset, and a password change
+  // invalidates every token that predates it — including their own.
+  string token = 1;
+}
+
+message AdminResetPasswordRequest {
+  // An UNSCOPED roles-policy means root/admin only, and it says so. No team-level roles here:
+  // they would be dead letters (see CLAUDE.md).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  // An admin does NOT know the user's old password, so none is required. That is exactly why
+  // this is a SEPARATE RPC with a SEPARATE policy — one RPC meaning both "change my password"
+  // and "change anyone's password", gated as if it only meant the first, is the source's bug.
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+  string new_password = 2 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 200
+  }];
+}
+
+message AdminResetPasswordResponse {}
+
+// ---------------------------------------------------------------------------- auth
+
+message LoginRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string password = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string agent = 3 [(buf.validate.field).string.max_len = 100];
+  string agent_version = 4 [(buf.validate.field).string.max_len = 50];
+}
+
+message LoginResponse {
+  string token = 1;
+  warehouse.role_base.v1.Identity identity = 2;
+}
+
+message LogoutRequest {
+  // Public: it reads the Authorization header itself. Logging out with an expired token must
+  // still work.
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+}
+
+message LogoutResponse {}
+
+message CheckAccessRequest {
+  // Public: the token is in the BODY, not the header — this RPC exists to validate and renew a
+  // token the caller is not yet sure is good.
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string token = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 3000
+  }];
+
+  // Optional: when > 0, the response also carries the caller's role in that team.
+  uint64 team_id = 2;
+}
+
+message CheckAccessResponse {
+  warehouse.role_base.v1.Identity identity = 1;
+
+  // A freshly-signed token (sliding session). Empty when the token was not renewed.
+  string token = 2;
+
+  // The caller's role in the requested team_id, or ROLE_UNSPECIFIED.
+  warehouse.role_base.v1.Role role = 3;
+}
+
+// ---------------------------------------------------------------------------- user
+
+message TeamAccessItem {
+  uint64 team_id = 1;
+  warehouse.role_base.v1.Role role = 2;
+  string alias = 3;
+
+  // Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
+  // rather than failing, because a display-name lookup must never take down login.
+  string team_name = 4;
+  warehouse.team.v1.TeamType team_type = 5;
+}
+
+message TeamAccessListRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
+  // authenticated user could enumerate anyone else's teams and roles.
+  uint64 user_id = 1;
+}
+
+message TeamAccessListResponse {
+  repeated TeamAccessItem teams = 1;
+}
+
+message TeamUserUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  oneof action {
+    option (buf.validate.oneof).required = true;
+
+    AddTeamUser add = 2;
+    RemoveTeamUser remove = 3;
+  }
+}
+
+message AddTeamUser {
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+  warehouse.role_base.v1.Role role = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string alias = 3 [(buf.validate.field).string.max_len = 60];
+}
+
+message RemoveTeamUser {
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message TeamUserUpdateResponse {}
+
+message RoleResolveRequest {
+  // allow_only_authenticated, and DELIBERATELY NOT use_scope-tagged: this RPC is what the
+  // interceptor calls to resolve a scope. Tagging it would make the interceptor recurse into
+  // itself.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The team whose role is being asked about. The USER is always the bearer of the token —
+  // never a request field, or this becomes an authorization oracle.
+  uint64 team_id = 1;
+}
+
+message RoleResolveResponse {
+  // The caller's role in team_id (ROLE_UNSPECIFIED = not a member).
+  warehouse.role_base.v1.Role role = 1;
+
+  // The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMIN here is the global
+  // super-admin bypass. Returned in the same call so the interceptor needs only ONE round trip.
+  warehouse.role_base.v1.Role root_role = 2;
+
+  // Whether the account is suspended.
+  //
+  // The interceptor checks this on EVERY request. Without it, suspension only bites at login
+  // and at token renewal — so a suspended user's existing token would keep authorizing calls
+  // for up to the token's whole lifetime. A suspension that does not cut off live sessions is
+  // not a suspension.
+  bool suspended = 3;
+}

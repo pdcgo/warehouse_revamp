@@ -1,0 +1,18 @@
+version: v2
+
+modules:
+  - path: .
+
+# protovalidate supplies the (buf.validate.field) constraints.
+# This is a SCHEMA dependency: the contract still lives entirely in this one module,
+# and nothing of ours is published.
+deps:
+  - buf.build/bufbuild/protovalidate
+
+lint:
+  use:
+    - STANDARD
+
+breaking:
+  use:
+    - FILE

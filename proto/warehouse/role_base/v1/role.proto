@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package warehouse.role_base.v1;
+
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1;role_basev1";
+
+// The authorization contract of the entire system lives in these two options.
+//
+// A request message declares WHO may call the RPC it belongs to; one of its fields declares
+// WHICH TEAM the call is scoped to. The access interceptor (backend/pkgs/san_authz) reads both
+// by reflection at request time. There is no policy table and no policy registry — the ACL is
+// the .proto.
+//
+//   message TeamInfoUpdateRequest {
+//     option (warehouse.role_base.v1.request_policy) = {
+//       roles: [ROLE_ROOT, ROLE_ADMIN, ROLE_TEAM_OWNER]
+//     };
+//     uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
+//   }
+//
+// A message with NO request_policy is DENIED — deny by default.
+
+// Role numbers are PERSISTED (user_team_roles.role stores the raw enum number). Never
+// renumber, and never reuse a reserved number.
+enum Role {
+  // 7 was ROLE_WAREHOUSE_LEADER, replaced by ROLE_WAREHOUSE_ADMIN (9).
+  reserved 7;
+  reserved "ROLE_WAREHOUSE_LEADER";
+
+  ROLE_UNSPECIFIED = 0;
+  ROLE_ROOT = 1;
+  ROLE_ADMIN = 2;
+  ROLE_TEAM_OWNER = 3;
+  ROLE_TEAM_ADMIN = 4;
+  ROLE_TEAM_CUSTOMER_SERVICE = 5;
+  ROLE_WAREHOUSE_OWNER = 6;
+  ROLE_WAREHOUSE_STAFF = 8;
+  ROLE_WAREHOUSE_ADMIN = 9;
+  ROLE_SYSTEM = 10;
+}
+
+enum IdentityType {
+  IDENTITY_TYPE_UNSPECIFIED = 0;
+  IDENTITY_TYPE_SYSTEM = 1;
+  IDENTITY_TYPE_GENERAL_USER = 2;
+  IDENTITY_TYPE_EXTENSION = 3;
+}
+
+// Identity is what a token carries. It carries NO role: roles are read from the database on
+// every request (cached briefly), so revoking a role takes effect without reissuing tokens.
+message Identity {
+  // uint64, not uint32 — users.id is BIGSERIAL. The source used uint32 here, which silently
+  // truncates a large id into a DIFFERENT VALID user id rather than failing.
+  uint64 identity_id = 1;
+
+  IdentityType identity_type = 3;
+  string agent = 4;
+  string username = 5;
+  google.protobuf.Timestamp expired_at = 6;
+  string agent_version = 7;
+}
+
+// RequestPolicy is declared on a REQUEST MESSAGE (not on the rpc).
+message RequestPolicy {
+  // The caller must hold one of these roles IN the scoped team (the field tagged use_scope).
+  repeated Role roles = 1;
+
+  // Public. The token is never read; no identity reaches the handler.
+  bool allow_all = 3;
+
+  // Any valid token. If the message is team-scoped, the caller must also hold SOME role in
+  // that team.
+  bool allow_only_authenticated = 4;
+}
+
+extend google.protobuf.MessageOptions {
+  RequestPolicy request_policy = 50002;
+}
+
+// use_scope marks the field carrying the team id this call is scoped to. It must be a uint
+// field, at the TOP LEVEL of the request message, and at most one per message — all three are
+// asserted at startup, because each failure is silent otherwise.
+extend google.protobuf.FieldOptions {
+  bool use_scope = 50002;
+}

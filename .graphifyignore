@@ -1,0 +1,13 @@
+# graphify treats .json as CODE, so lockfiles/artifacts become real graph nodes.
+# Keep the corpus to things a human actually reasons about.
+
+# dependency lockfiles — enormous, zero design signal
+frontend/package-lock.json
+backend/go.sum
+
+# test + build artifacts
+frontend/test-results/
+frontend/dist/
+
+# the graph's own output
+graphify-out/

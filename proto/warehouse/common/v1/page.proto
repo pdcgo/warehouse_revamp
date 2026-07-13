@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package warehouse.common.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1;commonv1";
+
+message PageFilter {
+  uint32 page = 1 [(buf.validate.field).uint32.gte = 1];
+  uint32 limit = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 200
+  }];
+}
+
+message PageInfo {
+  uint32 current_page = 1;
+  uint32 total_page = 2;
+  uint64 total_items = 3;
+}

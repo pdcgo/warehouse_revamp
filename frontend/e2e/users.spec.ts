@@ -1,0 +1,203 @@
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+
+// A unique suffix per run: the e2e talks to a real, persistent database, so a fixed username
+// would collide with itself on the second run.
+const SUFFIX = Date.now().toString().slice(-6);
+const NEW_USER = `e2e${SUFFIX}`;
+
+// The password this user has at each stage. The tests run SERIALLY and deliberately carry state
+// forward — each one leaves the account in the state the next one expects.
+const NEW_PASSWORD = "e2epassword1"; // set by CreateUser
+const SELF_SET_PASSWORD = "changed-pass-1"; // set by the user themselves (ResetPassword)
+const ADMIN_SET_PASSWORD = "admin-set-pass-1"; // set by an admin (AdminResetPassword)
+
+// Switching accounts needs an explicit sign-out first: /login redirects an already-authenticated
+// visitor straight back into the app, so navigating there while signed in does nothing.
+async function login(page: Page, username: string, password: string) {
+  await page.goto("/");
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByTestId("current-user")).toHaveText(username);
+}
+
+// loginExpectingFailure drives the form without asserting success.
+async function loginExpectingFailure(page: Page, username: string, password: string) {
+  await page.goto("/");
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
+
+async function gotoUsers(page: Page) {
+  await page.getByRole("link", { name: "Users" }).click();
+  await expect(page.getByTestId("users-table")).toBeVisible();
+}
+
+test.describe.configure({ mode: "serial" });
+
+test("root can reach the Users screen", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await expect(page.getByTestId(`user-row-${ROOT_USERNAME}`)).toBeVisible();
+});
+
+test("CreateUser: a new user appears, and can immediately sign in", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId("open-create-user").click();
+  await page.getByTestId("new-username").fill(NEW_USER);
+  await page.getByTestId("new-password").fill(NEW_PASSWORD);
+  await page.getByTestId("new-name").fill("E2E User");
+  await page.getByTestId("submit-create-user").click();
+
+  // CreateUser writes the account AND the membership in one transaction, so the new user shows
+  // up in this team's list right away.
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
+
+  // And the account really works — not just a row in a table.
+  await login(page, NEW_USER, NEW_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
+test("UpdateUser: an admin edits another user's name", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId(`edit-${NEW_USER}`).click();
+  await page.getByTestId("edit-name").fill("Renamed By Admin");
+  await page.getByTestId("submit-edit-user").click();
+
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toContainText("Renamed By Admin");
+});
+
+test("ResetPassword: a user changes their OWN password and stays signed in", async ({ page }) => {
+  await login(page, NEW_USER, NEW_PASSWORD);
+
+  await page.getByRole("link", { name: "Profile" }).click();
+  await page.getByTestId("open-change-password").click();
+
+  await page.getByTestId("old-password").fill(NEW_PASSWORD);
+  await page.getByTestId("new-password-1").fill(SELF_SET_PASSWORD);
+  await page.getByTestId("new-password-2").fill(SELF_SET_PASSWORD);
+  await page.getByTestId("submit-change-password").click();
+
+  // The dialog must actually close. Asserting only that the page behind it still shows the
+  // username would pass even if the RPC failed and the dialog were sitting there with an error.
+  await expect(page.getByTestId("password-error")).toBeHidden();
+  await expect(page.getByTestId("submit-change-password")).toBeHidden();
+
+  // STILL SIGNED IN. A password change kills every token issued before it — including this
+  // browser's. The RPC hands back a fresh one and the client must store it, or the user would
+  // log themselves out by changing their password.
+  await expect(page.getByTestId("profile-username")).toContainText(NEW_USER);
+
+  await page.reload();
+  await expect(page.getByTestId("profile-username")).toContainText(NEW_USER);
+
+  // The old password is dead; the new one works.
+  await login(page, NEW_USER, SELF_SET_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
+test("AdminResetPassword: an admin sets a locked-out user's password", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId(`reset-password-${NEW_USER}`).click();
+  await page.getByTestId("admin-new-password-1").fill(ADMIN_SET_PASSWORD);
+  await page.getByTestId("admin-new-password-2").fill(ADMIN_SET_PASSWORD);
+  await page.getByTestId("submit-admin-reset").click();
+
+  await expect(page.getByTestId("admin-reset-error")).toBeHidden();
+  await expect(page.getByTestId("submit-admin-reset")).toBeHidden();
+
+  // The admin never knew the old password — that is the whole point of this being a separate
+  // RPC. The user's previous password is now dead, and the admin-set one works.
+  await loginExpectingFailure(page, NEW_USER, SELF_SET_PASSWORD);
+  await expect(page.getByTestId("login-error")).toBeVisible();
+
+  await login(page, NEW_USER, ADMIN_SET_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
+test("SuspendUser: suspending cuts the account off; restoring brings it back", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId(`suspend-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(page.getByTestId(`suspended-${NEW_USER}`)).toBeVisible();
+
+  // A suspended account cannot sign in. (The password is the one the admin set in the previous
+  // test — these run serially and the state carries forward on purpose.)
+  await loginExpectingFailure(page, NEW_USER, ADMIN_SET_PASSWORD);
+  await expect(page.getByTestId("login-error")).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+
+  // Restore.
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+  await page.getByTestId(`suspend-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId(`suspended-${NEW_USER}`)).toBeHidden();
+
+  await login(page, NEW_USER, ADMIN_SET_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
+test("TeamUserUpdate + SearchUser: remove a member, find them again, add them back", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  // Remove from the team. The ACCOUNT survives — only the membership goes.
+  await page.getByTestId(`remove-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+
+  // They still exist — visible to a global admin looking at every user.
+  await page.getByTestId("toggle-all-users").click();
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
+  await page.getByTestId("toggle-all-users").click();
+
+  // SearchUser is unscoped precisely so this works: finding someone who is NOT in your team.
+  await page.getByTestId("open-add-member").click();
+  await page.getByTestId("member-search").fill(NEW_USER);
+  await page.getByTestId(`member-option-${NEW_USER}`).click();
+  await page.getByTestId("submit-add-member").click();
+
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
+});
+
+test("DeleteUser: the account is gone for good", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId(`delete-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+
+  // Really gone — not just filtered out of this team's view.
+  await page.getByTestId("toggle-all-users").click();
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+});

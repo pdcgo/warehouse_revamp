@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package warehouse.event_base.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/event_base/v1;event_basev1";
+
+// MessageEventConfig declares, ON THE EVENT MESSAGE ITSELF, which Pub/Sub topic that event
+// belongs to. The topic therefore travels with the message: a publisher cannot send an event
+// to the wrong topic, because it never names one.
+message MessageEventConfig {
+  string event_topic = 1;
+}
+
+extend google.protobuf.MessageOptions {
+  MessageEventConfig event_config = 50001;
+}
+
+// HelloExampleEvent is scaffolding — it exists so the option plumbing can be tested end to
+// end. Delete it once a real domain event lands.
+message HelloExampleEvent {
+  option (event_config).event_topic = "hello-topic";
+
+  string name = 1;
+}
