@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Flex, Icon, Input, Popover, Portal, Stack, Text } from "@chakra-ui/react";
+import { Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "./TeamContext";
@@ -35,10 +35,9 @@ function typeLabel(type: TeamType | undefined): string {
   }
 }
 
-// TeamSwitcher is the sidebar's current-team control: a card showing the active team with a
-// colour keyed to its type, opening a searchable popup of every team the user belongs to. THE
-// CURRENT TEAM IS THE SCOPE, so switching it re-scopes the whole app. Collapsed, it shrinks to
-// just the colour chip.
+// TeamSwitcher is the sidebar's current-team control: a card showing the active team (colour keyed
+// to its type) that opens a CENTERED dialog to search and switch teams. THE CURRENT TEAM IS THE
+// SCOPE, so switching re-scopes the whole app. Collapsed, the trigger shrinks to just the colour chip.
 export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
   const { teams, current, selectTeam } = useTeam();
   const [open, setOpen] = useState(false);
@@ -50,25 +49,24 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
 
   const name = current?.teamName || (current ? `Team #${current.teamId}` : "Select a team");
 
-  // Match on the same label we render — the `Team #<id>` fallback is searchable too.
   const q = query.trim().toLowerCase();
   const filtered = teams.filter((team) =>
     (team.teamName || `Team #${team.teamId}`).toLowerCase().includes(q),
   );
 
   return (
-    <Popover.Root
+    <Dialog.Root
       open={open}
       onOpenChange={(e) => {
         setOpen(e.open);
-        // Start each open with a clean filter.
         if (e.open) {
           setQuery("");
         }
       }}
-      positioning={{ placement: "bottom-start" }}
+      placement="center"
+      size="sm"
     >
-      <Popover.Trigger asChild>
+      <Dialog.Trigger asChild>
         <Flex
           as="button"
           data-testid="team-switcher"
@@ -100,12 +98,17 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
             </>
           )}
         </Flex>
-      </Popover.Trigger>
+      </Dialog.Trigger>
 
       <Portal>
-        <Popover.Positioner>
-          <Popover.Content w="260px">
-            <Popover.Body p="2">
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>Switch Team</Dialog.Title>
+            </Dialog.Header>
+
+            <Dialog.Body>
               <Input
                 size="sm"
                 autoFocus
@@ -113,17 +116,23 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                 data-testid="team-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                mb="2"
+                mb="3"
               />
 
-              <Stack gap="0.5" maxH="240px" overflowY="auto">
+              <Stack gap="0.5" maxH="320px" overflowY="auto">
                 {filtered.map((team) => (
-                  <Button
+                  <Flex
+                    as="button"
                     key={team.teamId.toString()}
-                    variant="ghost"
-                    justifyContent="flex-start"
-                    w="full"
                     data-testid={`team-option-${team.teamId}`}
+                    align="center"
+                    gap="2.5"
+                    w="full"
+                    rounded="md"
+                    px="2.5"
+                    py="2"
+                    cursor="pointer"
+                    _hover={{ bg: "bg.muted" }}
                     onClick={() => {
                       selectTeam(team.teamId);
                       setOpen(false);
@@ -136,19 +145,23 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                     {current?.teamId === team.teamId && (
                       <Icon as={Check} boxSize="4" color="brand.fg" flexShrink={0} />
                     )}
-                  </Button>
+                  </Flex>
                 ))}
 
                 {filtered.length === 0 && (
-                  <Text fontSize="sm" color="fg.muted" px="2" py="1.5">
+                  <Text fontSize="sm" color="fg.muted" px="2.5" py="2">
                     No teams found.
                   </Text>
                 )}
               </Stack>
-            </Popover.Body>
-          </Popover.Content>
-        </Popover.Positioner>
+            </Dialog.Body>
+
+            <Dialog.CloseTrigger asChild>
+              <CloseButton size="sm" />
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
       </Portal>
-    </Popover.Root>
+    </Dialog.Root>
   );
 }
