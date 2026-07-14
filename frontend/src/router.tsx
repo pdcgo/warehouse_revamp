@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./auth/AuthGate";
 import { LoginPage } from "./auth/LoginPage";
+import { CategoriesPage } from "./categories/CategoriesPage";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./home/HomePage";
 import { ProductsPage } from "./products/ProductsPage";
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "teams", element: <TeamsPage /> },
+      { path: "categories", element: <CategoriesPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "profile", element: <ProfilePage /> },
