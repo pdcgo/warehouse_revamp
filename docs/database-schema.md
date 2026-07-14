@@ -145,14 +145,45 @@ erDiagram
 
 ---
 
+## document_service
+
+`backend/services/document_service/db_migrations/`
+
+```mermaid
+erDiagram
+    documents {
+        text        id            PK "uuid"
+        bigint      team_id       "owning team — opaque cross-service id (no FK)"
+        text        resource_type "CHECK in (general, profile_picture)"
+        text        object_key    "storage path (incoming/ → assets/ on confirm)"
+        text        mime_type
+        bigint      size_bytes
+        text        filename
+        bigint      created_by_id "uploader (best-effort audit)"
+        text        status        "CHECK in (pending, active)"
+        text        public_url    "public resource types only"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`documents`** — metadata for one stored file; the bytes live in object storage, not the DB.
+  Team-scoped (`team_id` opaque, no FK). `status` goes `pending` → `active` on ConfirmUpload, which
+  also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url` is set only for
+  public resource types (currently `profile_picture`).
+
+---
+
 ## Cross-service links (logical, not enforced)
 
 ```mermaid
 erDiagram
     teams ||--o{ user_team_roles : "team_id (opaque, via RPC)"
     teams ||--o{ products : "team_id (opaque, via RPC)"
+    teams ||--o{ documents : "team_id (opaque, via RPC)"
 ```
 
-`user_team_roles.team_id`, `products.team_id`, `team_infos.return_warehouse_id`, and
-`team_infos.return_user_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services
+`user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
+`team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
+services. They carry no database foreign key by design (HARD RULE 3 — services
 stay independent); the owning service resolves them over Connect RPC.

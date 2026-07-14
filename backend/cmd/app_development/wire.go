@@ -6,6 +6,7 @@ package main
 import (
 	"github.com/google/wire"
 
+	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
@@ -22,6 +23,7 @@ func InitializeApp() (*App, error) {
 		NewCache,
 		NewSigner,
 		NewOtp,
+		NewDocumentConfig,
 		NewRoleResolver,
 		NewInternalHTTPClient,
 
@@ -35,6 +37,7 @@ func InitializeApp() (*App, error) {
 		team_v1.NewService,
 		shipping_v1.NewService,
 		product_v1.NewService,
+		document_v1.NewService,
 
 		NewServeMux,
 		NewServer,

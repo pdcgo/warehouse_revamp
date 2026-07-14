@@ -13,8 +13,19 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
+
+// NewDocumentConfig builds the document storage config from the app config. The service fills in
+// defaults (temp dir, size cap, URL TTL) for anything left unset.
+func NewDocumentConfig(cfg *Config) docstore.Config {
+	return docstore.Config{
+		Dir:         cfg.DocumentStorageDir,
+		BaseURL:     cfg.DocumentBaseURL,
+		TokenSecret: cfg.DocumentTokenSecret,
+	}
+}
 
 // NewDatabase opens the shared Postgres. GORM reads and writes rows; goose owns the schema.
 // There is deliberately no AutoMigrate.

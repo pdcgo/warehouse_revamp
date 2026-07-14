@@ -9,7 +9,17 @@
 > documents (products, payments, orders) don't exist here yet.
 
 > **Decisions so far**
-> - _(open — nothing decided; the open questions are collected in §7)_
+> - **BUILT now** — the owner asked to implement it (#12), so the three RPCs ship on a **local
+>   filesystem backend** behind the `Signer`/`ObjectStore` seam. GCS is deferred, not designed out.
+>   (owner, 2026-07-14)
+> - **`GetDownloadUrl` is team-scoped** — the inherited cross-team read gap (§6) is CLOSED: the
+>   request carries `team_id` (use_scope) and the query is constrained to it, so another team's
+>   document reads as NotFound.
+> - **Resource types at launch: `GENERAL` (private) + `PROFILE_PICTURE` (public).** More get added
+>   when real domains (products, payments) need them.
+> - **Still open:** production storage backend (GCS/S3/MinIO — §4), public-ACL-vs-always-signed
+>   (§4), a Delete RPC + `deleted_at` (§5). The local backend fakes signing/expiry; a real cloud
+>   backend must implement them.
 
 ---
 

@@ -11,6 +11,9 @@ import (
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	document_service "github.com/pdcgo/warehouse_revamp/backend/services/document_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
+	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
@@ -33,6 +36,8 @@ func NewServeMux(
 	teamService *team_v1.Service,
 	shippingService *shipping_v1.Service,
 	productService *product_v1.Service,
+	documentService *document_v1.Service,
+	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
 ) (*http.ServeMux, error) {
@@ -70,6 +75,7 @@ func NewServeMux(
 		team_service.NewRegister(mux, teamService, opts),
 		shipping_service.NewRegister(mux, shippingService, opts),
 		product_service.NewRegister(mux, productService, opts),
+		document_service.NewRegister(mux, documentService, docCfg, opts),
 	)
 
 	return mux, nil
@@ -102,9 +108,13 @@ func withCORS(cfg *Config, handler http.Handler) http.Handler {
 	// From the UI it looks like the API returned nothing.
 	allowedHeaders := append(connectcors.AllowedHeaders(), "Authorization")
 
+	// PUT is not a Connect method; it is added for the local document file endpoint, which clients
+	// upload to directly with a cross-origin PUT.
+	allowedMethods := append(connectcors.AllowedMethods(), http.MethodPut)
+
 	middleware := cors.New(cors.Options{
 		AllowedOrigins: cfg.AllowedOrigins,
-		AllowedMethods: connectcors.AllowedMethods(),
+		AllowedMethods: allowedMethods,
 		AllowedHeaders: allowedHeaders,
 		ExposedHeaders: connectcors.ExposedHeaders(),
 	})
