@@ -145,6 +145,34 @@ erDiagram
 
 ---
 
+## category_service
+
+`backend/services/category_service/db_migrations/`
+
+```mermaid
+erDiagram
+    categories ||--o{ categories : "parent_id (self-referential, NULL = top-level)"
+
+    categories {
+        bigserial   id          PK
+        text        name        "CHECK <> '' — UNIQUE per parent among active rows"
+        bigint      parent_id   FK "nullable, self-referential (NULL = top-level)"
+        boolean     deleted     "default false (soft delete)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`categories`** — a **global**, nested product-category taxonomy. Unlike `products`, it is **not
+  team-scoped** (there is no `team_id`): root/admin curate one shared tree and every authenticated
+  user reads it. `parent_id` is a **self-referential FK** to `categories(id)` — `NULL` marks a
+  top-level category — so the table is a single tree the client assembles from the flat list. `name`
+  is unique among **active** siblings (`UNIQUE (COALESCE(parent_id, 0), name) WHERE deleted = FALSE`,
+  which folds the NULL top-level parent into one bucket), so a soft delete frees the name for reuse.
+  A category with active children cannot be deleted.
+
+---
+
 ## document_service
 
 `backend/services/document_service/db_migrations/`

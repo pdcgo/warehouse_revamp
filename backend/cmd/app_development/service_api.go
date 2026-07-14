@@ -11,6 +11,8 @@ import (
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	category_service "github.com/pdcgo/warehouse_revamp/backend/services/category_service"
+	category_v1 "github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	document_service "github.com/pdcgo/warehouse_revamp/backend/services/document_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
@@ -36,6 +38,7 @@ func NewServeMux(
 	teamService *team_v1.Service,
 	shippingService *shipping_v1.Service,
 	productService *product_v1.Service,
+	categoryService *category_v1.Service,
 	documentService *document_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
@@ -75,6 +78,7 @@ func NewServeMux(
 		team_service.NewRegister(mux, teamService, opts),
 		shipping_service.NewRegister(mux, shippingService, opts),
 		product_service.NewRegister(mux, productService, opts),
+		category_service.NewRegister(mux, categoryService, opts),
 		document_service.NewRegister(mux, documentService, docCfg, opts),
 	)
 
