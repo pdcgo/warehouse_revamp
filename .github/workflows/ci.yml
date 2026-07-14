@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Contract + compile + static checks. No database needed, so this is the fast feedback.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.56.0
+          github_token: ${{ github.token }}
+
+      - name: buf lint
+        working-directory: proto
+        run: buf lint
+
+      # Drift check: regenerate and fail if the committed output differs. Generated code is
+      # committed but never hand-edited — this proves it matches the .proto.
+      - name: buf generate (drift check)
+        working-directory: proto
+        run: buf generate
+
+      - name: verify no generated drift
+        run: |
+          if ! git diff --exit-code -- backend/gen frontend/src/gen; then
+            echo "::error::generated code is stale — run 'cd proto && buf generate' and commit"
+            exit 1
+          fi
+
+      - name: go build + vet
+        working-directory: backend
+        run: |
+          go build ./...
+          go vet ./...
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: frontend typecheck + build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm run build
+
+  # Go tests + Playwright e2e against real Postgres and Redis.
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        # Match the local dev port (5433) so the same DSNs work in CI unchanged.
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable
+      REDIS_ADDR: localhost:6380
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: go test
+        working-directory: backend
+        run: go test ./...
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: install playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
+      # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.
+      - name: e2e
+        working-directory: frontend
+        run: npm run e2e
