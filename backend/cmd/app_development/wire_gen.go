@@ -8,7 +8,7 @@ package main
 
 import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 // Injectors from wire.go:
@@ -28,10 +28,10 @@ func InitializeApp() (*App, error) {
 	signer := NewSigner(config)
 	cacheManager := NewCache(config)
 	roleResolver := NewRoleResolver(db, cacheManager)
-	authService := user_service.NewAuthService(db, signer, roleResolver)
+	authService := user_v1.NewAuthService(db, signer, roleResolver)
 	mainInternalHTTPClient := NewInternalHTTPClient()
 	teamServiceClient := NewTeamClient(config, mainInternalHTTPClient)
-	service := user_service.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
+	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
 	team_v1Service := team_v1.NewService(db, userServiceClient)
 	serveMux, err := NewServeMux(authService, service, team_v1Service, roleResolver, signer)

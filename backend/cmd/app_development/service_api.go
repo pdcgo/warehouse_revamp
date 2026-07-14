@@ -13,7 +13,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
 
@@ -23,8 +23,8 @@ import (
 // interceptor at all, which quietly turned their declared request_policy options into
 // decoration — the policy was written down and never enforced. Mounting is not optional here.
 func NewServeMux(
-	authService *user_service.AuthService,
-	userService *user_service.Service,
+	authService *user_v1.AuthService,
+	userService *user_v1.Service,
 	teamService *team_v1.Service,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,

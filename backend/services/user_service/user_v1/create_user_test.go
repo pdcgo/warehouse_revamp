@@ -1,4 +1,4 @@
-package user_service_test
+package user_v1_test
 
 import (
 	"context"
@@ -12,20 +12,20 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 	"gorm.io/gorm"
 )
 
-// newService builds a user_service.Service against the test tx. teamClient is nil — none of the
+// newService builds a user_v1.Service against the test tx. teamClient is nil — none of the
 // handlers under test here call it (only TeamAccessList does, which needs a live team_service).
-func newService(t *testing.T, db *gorm.DB) *user_service.Service {
+func newService(t *testing.T, db *gorm.DB) *user_v1.Service {
 	t.Helper()
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
 
-	return user_service.NewService(
+	return user_v1.NewService(
 		db,
 		san_auth.NewSigner("test-secret", time.Hour),
 		resolver,

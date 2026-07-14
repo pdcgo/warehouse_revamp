@@ -7,7 +7,7 @@ import (
 	"github.com/google/wire"
 
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 // InitializeApp is the composition root. Regenerate after changing it:
@@ -27,8 +27,8 @@ func InitializeApp() (*App, error) {
 		NewUserClient,
 		NewTeamClient,
 
-		user_service.NewAuthService,
-		user_service.NewService,
+		user_v1.NewAuthService,
+		user_v1.NewService,
 		team_v1.NewService,
 
 		NewServeMux,
