@@ -14,6 +14,7 @@ import { rpcError, userClient } from "../api/clients";
 import { useAuth } from "../auth/AuthContext";
 import { toaster } from "../components/Toaster";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { ProfilePicture } from "./ProfilePicture";
 
 // ProfilePage is the caller editing THEMSELVES.
 //
@@ -26,6 +27,7 @@ export function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -43,6 +45,7 @@ export function ProfilePage() {
         const me = res.data[identity.identityId.toString()];
 
         setName(me?.name ?? "");
+        setAvatarUrl(me?.avatarUrl ?? "");
       } catch {
         // Non-fatal: the form still works, it just starts empty.
       } finally {
@@ -73,6 +76,16 @@ export function ProfilePage() {
   return (
     <Stack gap="section" maxW="md">
       <Heading size="md">My Profile</Heading>
+
+      <Card.Root>
+        <Card.Body>
+          <ProfilePicture
+            avatarUrl={avatarUrl || undefined}
+            name={name || identity?.username}
+            onUpdated={(newAvatarUrl) => setAvatarUrl(newAvatarUrl)}
+          />
+        </Card.Body>
+      </Card.Root>
 
       <Card.Root>
         <Card.Body>
