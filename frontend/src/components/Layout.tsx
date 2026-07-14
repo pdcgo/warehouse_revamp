@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Box,
+  Breadcrumb,
   Button,
   Flex,
   Icon,
@@ -11,7 +12,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { Logo, WarehouseMark } from "./Logo";
@@ -27,8 +28,15 @@ export function Layout() {
   const { identity, logout } = useAuth();
   const { teams, current, selectTeam } = useTeam();
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
 
   const menu = menuFor(current?.teamType, current?.role);
+
+  // The current page's label, derived from the route — drives the top-bar breadcrumb/title.
+  const currentLabel =
+    menu.find((item) =>
+      item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to),
+    )?.label ?? "";
 
   return (
     <Flex minH="100dvh">
@@ -113,6 +121,16 @@ export function Layout() {
           px="page"
           py="card"
         >
+          <Breadcrumb.Root size="lg">
+            <Breadcrumb.List>
+              <Breadcrumb.Item>
+                <Breadcrumb.CurrentLink fontWeight="semibold" color="fg">
+                  {currentLabel}
+                </Breadcrumb.CurrentLink>
+              </Breadcrumb.Item>
+            </Breadcrumb.List>
+          </Breadcrumb.Root>
+
           <Spacer />
 
           <Text fontSize="sm" color="fg.muted" data-testid="current-user">
