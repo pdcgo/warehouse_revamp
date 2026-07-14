@@ -10,20 +10,26 @@ package san_testdb
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-const defaultDSN = "host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable"
+// Tests run against a SEPARATE database (`warehouse_test`), never the development database
+// ("postgres") the owner reviews on — same Postgres instance, different database. It is created on
+// demand (see ensureTestDatabase), and per-test transactions roll back, so it self-cleans.
+const defaultDSN = "host=localhost port=5433 user=user password=password dbname=warehouse_test sslmode=disable"
 
 // migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
 // root user that references it. There is no cross-service FK to enforce it, so order matters here
@@ -64,7 +70,50 @@ func repoRoot() string {
 	}
 }
 
+// ensureTestDatabase creates the target database if it does not exist, connecting to the
+// maintenance database ("postgres") to do so. Postgres will not auto-create `warehouse_test`, so
+// this is what makes a fresh checkout — and CI, where only "postgres" exists — work with no manual
+// `createdb`.
+func ensureTestDatabase(testDSN string) error {
+	cfg, err := pgx.ParseConfig(testDSN)
+	if err != nil {
+		return err
+	}
+
+	// Nothing to create if the DSN already points at the maintenance database.
+	if cfg.Database == "" || cfg.Database == "postgres" {
+		return nil
+	}
+
+	adminCfg := cfg.Copy()
+	adminCfg.Database = "postgres"
+
+	admin, err := sql.Open("pgx", stdlib.RegisterConnConfig(adminCfg))
+	if err != nil {
+		return err
+	}
+	defer admin.Close()
+
+	_, err = admin.Exec(`CREATE DATABASE "` + cfg.Database + `"`)
+	if err != nil {
+		// A parallel test package may have created it between our check and this CREATE — success.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "42P04" { // duplicate_database
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func connect() (*gorm.DB, error) {
+	err := ensureTestDatabase(dsn())
+	if err != nil {
+		return nil, err
+	}
+
 	raw, err := sql.Open("pgx", dsn())
 	if err != nil {
 		return nil, err

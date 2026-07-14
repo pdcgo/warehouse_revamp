@@ -63,6 +63,14 @@ Postgres through [backend/pkgs/san_testdb/](backend/pkgs/san_testdb/) — a per-
 that rolls back, so tests are isolated and need no cleanup (it *skips* when no DB is reachable).
 This is an **adaptation** of the reference project's scenario/seed harness, not an import of it.
 
+**Tests use a SEPARATE database — never the dev one.** All automated tests run against
+`warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
+instance (`:5433`), a different database, so a test run can never read or corrupt review data.
+`san_testdb` creates `warehouse_test` on demand and rolls back per test; the e2e resets it fresh
+each run and drops it after (`go run ./cmd/tool db reset-test|drop-test`), and runs its own API/UI
+on **dedicated ports (8081 / 5175)** so it cannot reuse — or pollute — the dev servers, and can run
+while they're up. Override the target with `TEST_DATABASE_URL`.
+
 ### 3. Models and migrations are **per service** — services stay independent
 
 A service owns its own data. There is **no shared model package and no global migration set**.

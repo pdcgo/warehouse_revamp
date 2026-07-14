@@ -58,7 +58,7 @@ test("bad credentials are refused, and do not reveal whether the account exists"
 test("root logs in, lands in the app, and sees the root team", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  await expect(page).toHaveURL("http://localhost:5174/");
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("home-user")).toContainText("root");
 
   // The team NAME proves TeamAccessList resolved it from team_service over RPC (TeamByIds) —
@@ -75,7 +75,7 @@ test("the session survives a page reload (CheckAccess revalidates the stored tok
 
   // Still in. The token came from localStorage and CheckAccess said it was good — no flash of
   // the login page, because AuthGate blocks the first render until that settles.
-  await expect(page).toHaveURL("http://localhost:5174/");
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("home-user")).toContainText("root");
 });
 
