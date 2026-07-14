@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Card, Heading, Stack, Text } from "@chakra-ui/react";
 import { PasswordInput } from "../components/PasswordInput";
+import { UserItem } from "../components/UserItem";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
 
@@ -38,6 +39,14 @@ export function ComponentsPage() {
         <Text fontSize="xs" color="fg.muted" data-testid="shipping-demo-value">
           Selected code: {courier || "(none)"}
         </Text>
+      </ComponentCard>
+
+      <ComponentCard
+        title="UserItem"
+        description="The shared way to show a user — avatar (or initials), display name, and @username."
+      >
+        <UserItem user={{ name: "Ada Lovelace", username: "ada", avatarUrl: "" }} />
+        <UserItem user={{ name: "", username: "no_name_user", avatarUrl: "" }} />
       </ComponentCard>
 
       <ComponentCard
