@@ -94,9 +94,12 @@ type UpdateProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// NO user_id. The subject is the token holder — same rule as ResetPassword.
 	// Absent = leave alone.
-	Name          *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email         *string `protobuf:"bytes,2,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	PhoneNumber   *string `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
+	Name        *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Email       *string `protobuf:"bytes,2,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	PhoneNumber *string `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
+	// The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
+	// alone; present-and-empty = clear it.
+	AvatarUrl     *string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3,oneof" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -148,6 +151,13 @@ func (x *UpdateProfileRequest) GetEmail() string {
 func (x *UpdateProfileRequest) GetPhoneNumber() string {
 	if x != nil && x.PhoneNumber != nil {
 		return *x.PhoneNumber
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetAvatarUrl() string {
+	if x != nil && x.AvatarUrl != nil {
+		return *x.AvatarUrl
 	}
 	return ""
 }
@@ -786,13 +796,15 @@ func (x *SearchUserResponse) GetUsers() []*PublicUser {
 }
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	IsSuspended   bool                   `protobuf:"varint,6,opt,name=is_suspended,json=isSuspended,proto3" json:"is_suspended,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username    string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Email       string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	PhoneNumber string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	IsSuspended bool                   `protobuf:"varint,6,opt,name=is_suspended,json=isSuspended,proto3" json:"is_suspended,omitempty"`
+	// A compact avatar URL (the profile picture's thumbnail); empty if none set.
+	AvatarUrl     string `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -867,6 +879,13 @@ func (x *User) GetIsSuspended() bool {
 		return x.IsSuspended
 	}
 	return false
+}
+
+func (x *User) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 type CreateUserRequest struct {
@@ -2223,14 +2242,17 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"PublicUser\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xbb\x01\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xf8\x01\n" +
 	"\x14UpdateProfileRequest\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12#\n" +
 	"\x05email\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x01R\x05email\x88\x01\x01\x12/\n" +
-	"\fphone_number\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01:\x06\x92\xb5\x18\x02 \x01B\a\n" +
+	"\fphone_number\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01\x12,\n" +
+	"\n" +
+	"avatar_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x03R\tavatarUrl\x88\x01\x01:\x06\x92\xb5\x18\x02 \x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_emailB\x0f\n" +
-	"\r_phone_number\"D\n" +
+	"\r_phone_numberB\r\n" +
+	"\v_avatar_url\"D\n" +
 	"\x15UpdateProfileResponse\x12+\n" +
 	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"\xdc\x01\n" +
 	"\x11UpdateUserRequest\x12 \n" +
@@ -2272,14 +2294,16 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x01q\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x02\x18dR\x01q\x12\x1f\n" +
 	"\x05limit\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit:\x06\x92\xb5\x18\x02 \x01\"I\n" +
 	"\x12SearchUserResponse\x123\n" +
-	"\x05users\x18\x01 \x03(\v2\x1d.warehouse.user.v1.PublicUserR\x05users\"\xa2\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x1d.warehouse.user.v1.PublicUserR\x05users\"\xc1\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x04 \x01(\tR\x05email\x12!\n" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12!\n" +
-	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\"\xca\x02\n" +
+	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xca\x02\n" +
 	"\x11CreateUserRequest\x12\x1d\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x12%\n" +
 	"\busername\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x03\x18dR\busername\x12&\n" +

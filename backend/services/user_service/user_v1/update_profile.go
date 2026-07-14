@@ -22,6 +22,11 @@ func (s *Service) UpdateProfile(
 
 	updates := profileUpdates(req.Msg.Name, req.Msg.Email, req.Msg.PhoneNumber)
 
+	// The avatar URL comes from document_service after the client uploads a profile picture.
+	if req.Msg.AvatarUrl != nil {
+		updates["avatar_url"] = req.Msg.GetAvatarUrl()
+	}
+
 	user, err := s.applyUserUpdates(ctx, identity.GetIdentityId(), updates)
 	if err != nil {
 		return nil, err

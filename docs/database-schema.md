@@ -70,6 +70,7 @@ erDiagram
         text        email               UK "UNIQUE on LOWER(email) WHERE email <> ''"
         text        phone_number
         boolean     is_suspended        "default false"
+        text        avatar_url          "profile picture thumbnail URL (document_service)"
         timestamptz last_password_reset "nullable"
         timestamptz created_at
         timestamptz updated_at

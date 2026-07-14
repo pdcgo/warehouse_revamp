@@ -88,6 +88,9 @@ message UpdateProfileRequest {
   optional string name = 1 [(buf.validate.field).string.max_len = 128];
   optional string email = 2 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 3 [(buf.validate.field).string.max_len = 40];
+  // The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
+  // alone; present-and-empty = clear it.
+  optional string avatar_url = 4 [(buf.validate.field).string.max_len = 1024];
 }
 
 message UpdateProfileResponse {
@@ -220,6 +223,8 @@ message User {
   string email = 4;
   string phone_number = 5;
   bool is_suspended = 6;
+  // A compact avatar URL (the profile picture's thumbnail); empty if none set.
+  string avatar_url = 7;
 }
 
 message CreateUserRequest {

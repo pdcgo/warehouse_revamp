@@ -108,5 +108,6 @@ func userToProto(user *user_service_models.User) *userv1.User {
 		Email:       user.Email,
 		PhoneNumber: user.PhoneNumber,
 		IsSuspended: user.IsSuspended,
+		AvatarUrl:   user.AvatarURL,
 	}
 }
