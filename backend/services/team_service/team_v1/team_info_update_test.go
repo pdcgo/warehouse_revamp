@@ -1,4 +1,4 @@
-package team_service_test
+package team_v1_test
 
 import (
 	"context"
@@ -6,28 +6,11 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
-	"gorm.io/gorm"
 
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_service_models"
 )
-
-// newTeam inserts a team directly (bypassing the TeamCreate saga, which needs a live
-// user_service) and returns its id.
-func newTeam(t *testing.T, db *gorm.DB, code string) uint64 {
-	t.Helper()
-
-	team := team_service_models.Team{Type: "warehouse", Name: "Test WH", TeamCode: code}
-
-	err := db.Create(&team).Error
-	if err != nil {
-		t.Fatalf("insert team: %v", err)
-	}
-
-	return team.ID
-}
 
 // THE fix, pinned: a partial TeamInfoUpdate must not blank the fields it did not send.
 //
@@ -36,9 +19,9 @@ func newTeam(t *testing.T, db *gorm.DB, code string) uint64 {
 // red the moment that regresses.
 func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := team_service.NewService(db, nil) // userClient nil: TeamInfoUpdate never calls it
+	svc := newService(db)
 
-	teamID := newTeam(t, db, "WH-INFO")
+	teamID := newTeam(t, db, "warehouse", "WH-INFO")
 	ctx := context.Background()
 
 	// Set the bank details in full.
@@ -80,9 +63,9 @@ func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 // one team (the UNIQUE index + ON CONFLICT is what closes the source's duplicate-row race).
 func TestTeamInfoUpdate_UpsertIsSingleRow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := team_service.NewService(db, nil)
+	svc := newService(db)
 
-	teamID := newTeam(t, db, "WH-UPSERT")
+	teamID := newTeam(t, db, "warehouse", "WH-UPSERT")
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
@@ -107,9 +90,9 @@ func TestTeamInfoUpdate_UpsertIsSingleRow(t *testing.T) {
 // not express (it overloaded 0 to mean "clear", so there was no way to say "leave it").
 func TestTeamInfoUpdate_PresentZeroClears(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := team_service.NewService(db, nil)
+	svc := newService(db)
 
-	teamID := newTeam(t, db, "WH-CLEAR")
+	teamID := newTeam(t, db, "warehouse", "WH-CLEAR")
 	ctx := context.Background()
 
 	_, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
@@ -137,7 +120,7 @@ func TestTeamInfoUpdate_PresentZeroClears(t *testing.T) {
 // A missing team is NotFound, not a silently-created orphan info row.
 func TestTeamInfoUpdate_MissingTeam(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := team_service.NewService(db, nil)
+	svc := newService(db)
 
 	_, err := svc.TeamInfoUpdate(context.Background(), connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
 		TeamId:        9_999_999,

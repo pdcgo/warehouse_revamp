@@ -1,4 +1,4 @@
-package team_service
+package team_v1
 
 import (
 	"context"

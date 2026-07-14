@@ -1,4 +1,4 @@
-package team_service
+package team_v1
 
 import (
 	"context"
@@ -36,40 +36,14 @@ func (s *Service) TeamCreate(
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	teamType := req.Msg.GetType()
-
-	typeText, err := teamTypeToText(teamType)
+	// The pure-DB core, separated so it can be unit-tested without the saga below.
+	team, err := s.createTeam(ctx, req.Msg)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	// The CHECK constraint would catch this, but a clear error beats a constraint violation.
-	if teamType == teamv1.TeamType_TEAM_TYPE_ROOT {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("the root team is seeded, it cannot be created"))
-	}
-
-	team := team_service_models.Team{
-		Type:        typeText,
-		Name:        req.Msg.GetName(),
-		TeamCode:    req.Msg.GetTeamCode(),
-		Description: req.Msg.GetDescription(),
-	}
-
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Create(&team).Error
-		if err != nil {
-			return err
-		}
-
-		return tx.Create(&team_service_models.TeamInfo{TeamID: team.ID}).Error
-	})
-	if err != nil {
-		return nil, dbError(err)
+		return nil, err
 	}
 
 	// --- the saga's remote step ---
-	err = s.grantOwner(ctx, team.ID, identity.GetIdentityId(), teamType)
+	err = s.grantOwner(ctx, team.ID, identity.GetIdentityId(), req.Msg.GetType())
 	if err != nil {
 		// COMPENSATE. Soft-delete, never hard-delete: the grant may in fact have SUCCEEDED on a
 		// call that timed out, and a hard delete would leave a dangling user_team_roles row
@@ -94,7 +68,46 @@ func (s *Service) TeamCreate(
 			errors.New("team created but the owner grant failed; the team was rolled back"))
 	}
 
-	return connect.NewResponse(&teamv1.TeamCreateResponse{Team: teamToProto(&team)}), nil
+	return connect.NewResponse(&teamv1.TeamCreateResponse{Team: teamToProto(team)}), nil
+}
+
+// createTeam validates the request and inserts the team + its (empty) info row in one
+// transaction. It is the pure-DB core of TeamCreate, kept separate from the owner-grant saga so
+// it can be unit-tested without a live user_service. Returns connect errors ready to surface.
+func (s *Service) createTeam(ctx context.Context, msg *teamv1.TeamCreateRequest) (*team_service_models.Team, error) {
+	teamType := msg.GetType()
+
+	typeText, err := teamTypeToText(teamType)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// The CHECK constraint would catch this, but a clear error beats a constraint violation.
+	if teamType == teamv1.TeamType_TEAM_TYPE_ROOT {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("the root team is seeded, it cannot be created"))
+	}
+
+	team := &team_service_models.Team{
+		Type:        typeText,
+		Name:        msg.GetName(),
+		TeamCode:    msg.GetTeamCode(),
+		Description: msg.GetDescription(),
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(team).Error
+		if err != nil {
+			return err
+		}
+
+		return tx.Create(&team_service_models.TeamInfo{TeamID: team.ID}).Error
+	})
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	return team, nil
 }
 
 // grantOwner asks user_service to make the caller this team's owner.

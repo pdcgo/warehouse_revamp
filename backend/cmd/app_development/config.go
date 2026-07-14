@@ -38,7 +38,7 @@ type Config struct {
 
 func NewConfig() (*Config, error) {
 	cfg := Config{
-		Addr:            ":8080",
+		Addr:            "localhost:8080",
 		AllowedOrigins:  []string{"http://localhost:5174"},
 		DatabaseURL:     "host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable",
 		RedisAddr:       "",

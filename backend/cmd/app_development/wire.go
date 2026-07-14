@@ -6,7 +6,7 @@ package main
 import (
 	"github.com/google/wire"
 
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
+	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 )
 
@@ -29,7 +29,7 @@ func InitializeApp() (*App, error) {
 
 		user_service.NewAuthService,
 		user_service.NewService,
-		team_service.NewService,
+		team_v1.NewService,
 
 		NewServeMux,
 		NewServer,

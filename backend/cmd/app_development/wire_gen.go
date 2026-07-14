@@ -7,7 +7,7 @@
 package main
 
 import (
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 )
 
@@ -33,8 +33,8 @@ func InitializeApp() (*App, error) {
 	teamServiceClient := NewTeamClient(config, mainInternalHTTPClient)
 	service := user_service.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
-	team_serviceService := team_service.NewService(db, userServiceClient)
-	serveMux, err := NewServeMux(authService, service, team_serviceService, roleResolver, signer)
+	team_v1Service := team_v1.NewService(db, userServiceClient)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

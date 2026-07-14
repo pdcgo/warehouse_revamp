@@ -36,18 +36,32 @@ The point of building new is to escape an accumulated design, not to re-derive i
 One directory per service. **The folder name always carries the `_service` suffix** —
 `hello_service`, not `hello`; `user_service`, not `user`. The Go package matches the folder.
 
+Inside a service, handlers live in a **versioned handler sub-package** named after the proto
+iface version (`warehouse.team.v1` → `team_v1`). **One file per RPC**, the constructor in
+`service.go`, and a **unit test per RPC** beside it (`<rpc>_test.go`).
+
 ```
 backend/
   cmd/app_development/       the dev server — wires services into the mux
   cmd/tool/                  the development CLI (HARD RULE 3)
   gen/                       generated code (never hand-edited)
-  pkgs/                      shared, non-service packages (e.g. san_config)
+  pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
   services/
-    hello_service/           HelloService implementation  ← package hello_service
-    <service_name>/          ← every new service goes here, one dir each
-      <service_name>_models/ db models — one file per model (HARD RULE 3)
+    team_service/            ← one dir per service (folder ends in _service)
+      team_v1/               handler sub-package (matches warehouse.team.v1)
+        service.go           NewService / NewTeamService + shared helpers
+        team_create.go       one file per RPC …
+        team_create_test.go  … and a unit test beside each (see Testing)
+        mapper.go
+      team_service_models/   db models — one file per model (HARD RULE 3)
       db_migrations/         goose migrations, owned by this service (HARD RULE 3)
 ```
+
+**Testing.** Test in priority order: **unit → integration → e2e**. **Write a unit test for each
+RPC as it's implemented** (`<rpc>_test.go` beside the handler). Unit tests run against a real
+Postgres through [backend/pkgs/san_testdb/](backend/pkgs/san_testdb/) — a per-test transaction
+that rolls back, so tests are isolated and need no cleanup (it *skips* when no DB is reachable).
+This is an **adaptation** of the reference project's scenario/seed harness, not an import of it.
 
 ### 3. Models and migrations are **per service** — services stay independent
 

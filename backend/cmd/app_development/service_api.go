@@ -12,7 +12,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
+	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
@@ -25,7 +25,7 @@ import (
 func NewServeMux(
 	authService *user_service.AuthService,
 	userService *user_service.Service,
-	teamService *team_service.Service,
+	teamService *team_v1.Service,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
 ) (*http.ServeMux, error) {

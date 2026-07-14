@@ -1,4 +1,4 @@
-package team_service
+package team_v1
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_service_models"
 )
 
 // Service implements [teamv1connect.TeamServiceHandler].
@@ -64,4 +65,23 @@ func dbError(err error) error {
 
 func notFound() error {
 	return connect.NewError(connect.CodeNotFound, errors.New("team not found"))
+}
+
+var errTeamMissing = errors.New("team not found")
+
+// teamExists reports whether a non-deleted team with this id exists. Shared by the CRUD
+// handlers, which check existence explicitly rather than inferring it from RowsAffected.
+func teamExists(tx *gorm.DB, teamID uint64) (bool, error) {
+	var count int64
+
+	err := tx.
+		Model(&team_service_models.Team{}).
+		Where("id = ? AND deleted = ?", teamID, false).
+		Count(&count).
+		Error
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
