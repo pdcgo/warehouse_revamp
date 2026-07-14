@@ -86,6 +86,10 @@ backend/services/<service_name>/
 - Applied state is tracked per service in its own `<service_name>_version` table.
 - A model belongs to exactly one service. If two services need the same data, that is a
   contract question (an RPC), not a reason to share a model package.
+- **Document every schema change.** A migration that changes the schema updates
+  [docs/database-schema.md](docs/database-schema.md) **in the same commit** — one section per
+  service, each with a **mermaid** `erDiagram` of the tables and their relations. The migrations
+  are authoritative; the doc mirrors them for humans and must not drift.
 
 Migrations are driven by the **development tool** at [backend/cmd/tool/](backend/cmd/tool/)
 (`urfave/cli/v3`), run from `./backend`:
