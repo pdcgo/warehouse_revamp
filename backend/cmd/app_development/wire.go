@@ -19,6 +19,7 @@ func InitializeApp() (*App, error) {
 		NewDatabase,
 		NewCache,
 		NewSigner,
+		NewOtp,
 		NewRoleResolver,
 		NewInternalHTTPClient,
 

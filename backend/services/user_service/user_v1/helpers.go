@@ -5,11 +5,14 @@ import (
 	"errors"
 	"math"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
 
@@ -118,4 +121,42 @@ func totalPages(total int64, limit uint32) uint32 {
 	}
 
 	return uint32(math.Ceil(float64(total) / float64(limit)))
+}
+
+// writePassword hashes and stores a new password, stamps last_password_reset (which kills every
+// token minted before `now` — see CheckAccess), and drops the user's cached roles.
+//
+// Shared by every path that sets a password: the authenticated self-serve reset (which also
+// mints a token, on top of this) and the OTP forgot-password reset (which does not).
+func writePassword(
+	ctx context.Context,
+	db *gorm.DB,
+	resolver access_interceptors.RoleResolver,
+	userID uint64,
+	password string,
+	now time.Time,
+) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	err = db.
+		WithContext(ctx).
+		Model(&user_service_models.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]any{
+			"password":            string(hash),
+			"last_password_reset": now,
+			"updated_at":          gorm.Expr("NOW()"),
+		}).
+		Error
+	if err != nil {
+		return err
+	}
+
+	// A password change is a security event — drop cached roles so nothing stale survives it.
+	_ = resolver.Invalidate(ctx, userID)
+
+	return nil
 }

@@ -16,6 +16,11 @@ service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+
+  // The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+  // the account's phone, then reset the password with it.
+  rpc RequestPasswordResetOtp(RequestPasswordResetOtpRequest) returns (RequestPasswordResetOtpResponse);
+  rpc ResetPasswordWithOtp(ResetPasswordWithOtpRequest) returns (ResetPasswordWithOtpResponse);
 }
 
 // UserService owns `users` and `user_team_roles`. It does NOT own teams — team names are
@@ -356,6 +361,38 @@ message CheckAccessResponse {
   // The caller's role in the requested team_id, or ROLE_UNSPECIFIED.
   warehouse.role_base.v1.Role role = 3;
 }
+
+message RequestPasswordResetOtpRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+// Deliberately EMPTY, and the handler ALWAYS succeeds — revealing whether the username exists
+// (or has a phone) would turn this into an account-enumeration oracle.
+message RequestPasswordResetOtpResponse {}
+
+message ResetPasswordWithOtpRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 12
+  }];
+  string new_password = 3 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 200
+  }];
+}
+
+message ResetPasswordWithOtpResponse {}
 
 // ---------------------------------------------------------------------------- user
 

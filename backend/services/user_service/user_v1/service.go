@@ -8,6 +8,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
@@ -20,12 +21,20 @@ type AuthService struct {
 	// resolver is used to INVALIDATE cached roles on login/logout, and to answer CheckAccess's
 	// role question.
 	resolver access_interceptors.RoleResolver
+
+	// otp backs the forgot-password flow (Send a code, Verify it). Mock in dev, Twilio in prod.
+	otp san_verification.OtpVerification
 }
 
 var _ userv1connect.AuthServiceHandler = (*AuthService)(nil)
 
-func NewAuthService(db *gorm.DB, signer *san_auth.Signer, resolver access_interceptors.RoleResolver) *AuthService {
-	return &AuthService{db: db, signer: signer, resolver: resolver}
+func NewAuthService(
+	db *gorm.DB,
+	signer *san_auth.Signer,
+	resolver access_interceptors.RoleResolver,
+	otp san_verification.OtpVerification,
+) *AuthService {
+	return &AuthService{db: db, signer: signer, resolver: resolver, otp: otp}
 }
 
 // Service implements [userv1connect.UserServiceHandler].

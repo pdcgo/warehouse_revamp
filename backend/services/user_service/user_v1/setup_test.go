@@ -13,6 +13,7 @@ import (
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
@@ -26,13 +27,14 @@ func testSigner() *san_auth.Signer {
 	return san_auth.NewSigner(testSecret, time.Hour)
 }
 
-// newAuthService builds the AuthService (Login / Logout / CheckAccess) against the test tx.
+// newAuthService builds the AuthService against the test tx, with the OTP mock (accepts
+// san_verification.MockOtpCode).
 func newAuthService(t *testing.T, db *gorm.DB) *user_v1.AuthService {
 	t.Helper()
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
 
-	return user_v1.NewAuthService(db, testSigner(), resolver)
+	return user_v1.NewAuthService(db, testSigner(), resolver, san_verification.NewMockOtpVerification())
 }
 
 // newServiceWithTeams is like newService but with a supplied team client, for TeamAccessList.

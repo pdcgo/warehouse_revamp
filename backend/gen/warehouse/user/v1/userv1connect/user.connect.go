@@ -41,6 +41,12 @@ const (
 	AuthServiceLogoutProcedure = "/warehouse.user.v1.AuthService/Logout"
 	// AuthServiceCheckAccessProcedure is the fully-qualified name of the AuthService's CheckAccess RPC.
 	AuthServiceCheckAccessProcedure = "/warehouse.user.v1.AuthService/CheckAccess"
+	// AuthServiceRequestPasswordResetOtpProcedure is the fully-qualified name of the AuthService's
+	// RequestPasswordResetOtp RPC.
+	AuthServiceRequestPasswordResetOtpProcedure = "/warehouse.user.v1.AuthService/RequestPasswordResetOtp"
+	// AuthServiceResetPasswordWithOtpProcedure is the fully-qualified name of the AuthService's
+	// ResetPasswordWithOtp RPC.
+	AuthServiceResetPasswordWithOtpProcedure = "/warehouse.user.v1.AuthService/ResetPasswordWithOtp"
 	// UserServiceTeamAccessListProcedure is the fully-qualified name of the UserService's
 	// TeamAccessList RPC.
 	UserServiceTeamAccessListProcedure = "/warehouse.user.v1.UserService/TeamAccessList"
@@ -79,6 +85,10 @@ type AuthServiceClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	CheckAccess(context.Context, *connect.Request[v1.CheckAccessRequest]) (*connect.Response[v1.CheckAccessResponse], error)
+	// The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+	// the account's phone, then reset the password with it.
+	RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error)
+	ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the warehouse.user.v1.AuthService service. By
@@ -110,14 +120,28 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("CheckAccess")),
 			connect.WithClientOptions(opts...),
 		),
+		requestPasswordResetOtp: connect.NewClient[v1.RequestPasswordResetOtpRequest, v1.RequestPasswordResetOtpResponse](
+			httpClient,
+			baseURL+AuthServiceRequestPasswordResetOtpProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RequestPasswordResetOtp")),
+			connect.WithClientOptions(opts...),
+		),
+		resetPasswordWithOtp: connect.NewClient[v1.ResetPasswordWithOtpRequest, v1.ResetPasswordWithOtpResponse](
+			httpClient,
+			baseURL+AuthServiceResetPasswordWithOtpProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ResetPasswordWithOtp")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	login       *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	logout      *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
-	checkAccess *connect.Client[v1.CheckAccessRequest, v1.CheckAccessResponse]
+	login                   *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	logout                  *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	checkAccess             *connect.Client[v1.CheckAccessRequest, v1.CheckAccessResponse]
+	requestPasswordResetOtp *connect.Client[v1.RequestPasswordResetOtpRequest, v1.RequestPasswordResetOtpResponse]
+	resetPasswordWithOtp    *connect.Client[v1.ResetPasswordWithOtpRequest, v1.ResetPasswordWithOtpResponse]
 }
 
 // Login calls warehouse.user.v1.AuthService.Login.
@@ -135,11 +159,25 @@ func (c *authServiceClient) CheckAccess(ctx context.Context, req *connect.Reques
 	return c.checkAccess.CallUnary(ctx, req)
 }
 
+// RequestPasswordResetOtp calls warehouse.user.v1.AuthService.RequestPasswordResetOtp.
+func (c *authServiceClient) RequestPasswordResetOtp(ctx context.Context, req *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error) {
+	return c.requestPasswordResetOtp.CallUnary(ctx, req)
+}
+
+// ResetPasswordWithOtp calls warehouse.user.v1.AuthService.ResetPasswordWithOtp.
+func (c *authServiceClient) ResetPasswordWithOtp(ctx context.Context, req *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error) {
+	return c.resetPasswordWithOtp.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the warehouse.user.v1.AuthService service.
 type AuthServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	CheckAccess(context.Context, *connect.Request[v1.CheckAccessRequest]) (*connect.Response[v1.CheckAccessResponse], error)
+	// The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+	// the account's phone, then reset the password with it.
+	RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error)
+	ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -167,6 +205,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("CheckAccess")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRequestPasswordResetOtpHandler := connect.NewUnaryHandler(
+		AuthServiceRequestPasswordResetOtpProcedure,
+		svc.RequestPasswordResetOtp,
+		connect.WithSchema(authServiceMethods.ByName("RequestPasswordResetOtp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceResetPasswordWithOtpHandler := connect.NewUnaryHandler(
+		AuthServiceResetPasswordWithOtpProcedure,
+		svc.ResetPasswordWithOtp,
+		connect.WithSchema(authServiceMethods.ByName("ResetPasswordWithOtp")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.user.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceLoginProcedure:
@@ -175,6 +225,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceLogoutHandler.ServeHTTP(w, r)
 		case AuthServiceCheckAccessProcedure:
 			authServiceCheckAccessHandler.ServeHTTP(w, r)
+		case AuthServiceRequestPasswordResetOtpProcedure:
+			authServiceRequestPasswordResetOtpHandler.ServeHTTP(w, r)
+		case AuthServiceResetPasswordWithOtpProcedure:
+			authServiceResetPasswordWithOtpHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -194,6 +248,14 @@ func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[
 
 func (UnimplementedAuthServiceHandler) CheckAccess(context.Context, *connect.Request[v1.CheckAccessRequest]) (*connect.Response[v1.CheckAccessResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.CheckAccess is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.RequestPasswordResetOtp is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.ResetPasswordWithOtp is not implemented"))
 }
 
 // UserServiceClient is a client for the warehouse.user.v1.UserService service.

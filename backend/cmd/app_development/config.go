@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_config"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 )
 
 type Config struct {
@@ -27,6 +28,10 @@ type Config struct {
 
 	// TokenTTL is how long a freshly-minted token lives.
 	TokenTTL time.Duration `env:"TOKEN_TTL" yaml:"token_ttl"`
+
+	// Twilio configures OTP delivery for the forgot-password flow. Empty (the dev default) means
+	// the OTP mock is used — see backend/pkgs/san_verification.
+	Twilio san_verification.TwilioConfiguration `yaml:"twilio"`
 
 	// InternalBaseURL is where services reach EACH OTHER over Connect.
 	//
