@@ -14,6 +14,7 @@ import {
 import { rpcError, userClient } from "../api/clients";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../team/TeamContext";
+import { PasswordInput } from "../components/PasswordInput";
 import { toaster } from "../components/Toaster";
 import { roleLabel, rolesFor } from "../lib/roles";
 
@@ -104,8 +105,7 @@ export function CreateUserDialog({ onDone }: { onDone: () => void }) {
 
                   <Field.Root required>
                     <Field.Label>Password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={password}
                       data-testid="new-password"
                       onChange={(e) => setPassword(e.target.value)}

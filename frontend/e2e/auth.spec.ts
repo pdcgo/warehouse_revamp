@@ -4,7 +4,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 async function login(page: import("@playwright/test").Page, username: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
@@ -13,6 +13,22 @@ test("an unauthenticated visitor is sent to login", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});
+
+test("the password field can be revealed and hidden", async ({ page }) => {
+  await page.goto("/login");
+
+  const password = page.getByLabel("Password", { exact: true });
+  await password.fill("hunter2");
+
+  // Masked by default; the toggle flips it to plain text and back.
+  await expect(password).toHaveAttribute("type", "password");
+
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
+
+  await page.getByRole("button", { name: "Hide password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
 });
 
 test("bad credentials are refused, and do not reveal whether the account exists", async ({ page }) => {

@@ -11,6 +11,7 @@ import {
   Stack,
 } from "@chakra-ui/react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "./AuthContext";
 
 export function LoginPage() {
@@ -71,8 +72,7 @@ export function LoginPage() {
 
               <Field.Root>
                 <Field.Label>Password</Field.Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={password}
                   autoComplete="current-password"
                   onChange={(e) => setPassword(e.target.value)}

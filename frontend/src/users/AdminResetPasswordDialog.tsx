@@ -6,13 +6,13 @@ import {
   Dialog,
   Field,
   IconButton,
-  Input,
   Portal,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
+import { PasswordInput } from "../components/PasswordInput";
 import { toaster } from "../components/Toaster";
 
 // AdminResetPasswordDialog calls AdminResetPassword — a DIFFERENT RPC from the self-serve
@@ -100,8 +100,7 @@ export function AdminResetPasswordDialog({ user }: { user: User }) {
 
                   <Field.Root required>
                     <Field.Label>New password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={password}
                       autoComplete="new-password"
                       data-testid="admin-new-password-1"
@@ -112,8 +111,7 @@ export function AdminResetPasswordDialog({ user }: { user: User }) {
 
                   <Field.Root required>
                     <Field.Label>Confirm new password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={confirm}
                       autoComplete="new-password"
                       data-testid="admin-new-password-2"

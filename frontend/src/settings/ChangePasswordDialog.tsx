@@ -5,13 +5,13 @@ import {
   CloseButton,
   Dialog,
   Field,
-  Input,
   Portal,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { rpcError, userClient } from "../api/clients";
 import { isRemembered, setToken } from "../auth/tokenStorage";
+import { PasswordInput } from "../components/PasswordInput";
 import { toaster } from "../components/Toaster";
 
 // ChangePasswordDialog calls ResetPassword — the SELF-SERVE one, which has no user_id field.
@@ -91,8 +91,7 @@ export function ChangePasswordDialog() {
 
                   <Field.Root required>
                     <Field.Label>Current password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={oldPassword}
                       autoComplete="current-password"
                       data-testid="old-password"
@@ -102,8 +101,7 @@ export function ChangePasswordDialog() {
 
                   <Field.Root required>
                     <Field.Label>New password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={newPassword}
                       autoComplete="new-password"
                       data-testid="new-password-1"
@@ -114,8 +112,7 @@ export function ChangePasswordDialog() {
 
                   <Field.Root required>
                     <Field.Label>Confirm new password</Field.Label>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       value={confirm}
                       autoComplete="new-password"
                       data-testid="new-password-2"
