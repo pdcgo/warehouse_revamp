@@ -9,11 +9,9 @@ import (
 	"connectrpc.com/validate"
 	"github.com/rs/cors"
 
-	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/hello/v1/hellov1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
-	"github.com/pdcgo/warehouse_revamp/backend/services/hello_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -28,7 +26,6 @@ func NewServeMux(
 	authService *user_service.AuthService,
 	userService *user_service.Service,
 	teamService *team_service.Service,
-	helloService *hello_service.Service,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
 ) (*http.ServeMux, error) {
@@ -61,9 +58,6 @@ func NewServeMux(
 	mux.Handle(userv1connect.NewAuthServiceHandler(authService, opts))
 	mux.Handle(userv1connect.NewUserServiceHandler(userService, opts))
 	mux.Handle(teamv1connect.NewTeamServiceHandler(teamService, opts))
-
-	// Scaffold. Delete with hello_service.
-	mux.Handle(hellov1connect.NewHelloServiceHandler(helloService))
 
 	return mux, nil
 }
