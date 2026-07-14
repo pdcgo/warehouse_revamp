@@ -355,6 +355,14 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 
 ### The design system
 
+**Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
+request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
+`Select`/`NativeSelect`, `Table`, `Dialog`, `Stack`, …), never a hand-rolled `<button>`, `<input>`,
+`<select>`, or a bare `<div>` styled by hand — Chakra components carry the theme's sizing, spacing,
+colours, and a11y wiring, and skipping them is how an app drifts off its design system. For a rich
+picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
+native element is genuinely needed, get an explicit ask first.
+
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:
 
