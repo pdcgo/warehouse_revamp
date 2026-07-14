@@ -1,17 +1,19 @@
 import { useState } from "react";
 import {
+  Avatar,
   Box,
   Breadcrumb,
-  Button,
   Flex,
   Icon,
   IconButton,
+  Menu,
+  Portal,
   Spacer,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { ChevronDown, CircleUser, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { TeamSwitcher } from "../team/TeamSwitcher";
@@ -29,6 +31,7 @@ export function Layout() {
   const { current } = useTeam();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const menu = menuFor(current?.teamType, current?.role);
 
@@ -116,13 +119,54 @@ export function Layout() {
 
           <Spacer />
 
-          <Text fontSize="sm" color="fg.muted" data-testid="current-user">
-            {identity?.username}
-          </Text>
+          <Menu.Root positioning={{ placement: "bottom-end" }}>
+            <Menu.Trigger asChild>
+              <Flex
+                as="button"
+                data-testid="user-menu"
+                align="center"
+                gap="2"
+                rounded="md"
+                px="2"
+                py="1"
+                cursor="pointer"
+                _hover={{ bg: "bg.muted" }}
+              >
+                <Avatar.Root size="xs" colorPalette="brand">
+                  <Avatar.Fallback name={identity?.username} />
+                </Avatar.Root>
 
-          <Button size="xs" variant="outline" onClick={() => void logout()}>
-            Sign out
-          </Button>
+                <Text fontSize="sm" color="fg.muted" data-testid="current-user">
+                  {identity?.username}
+                </Text>
+
+                <Icon as={ChevronDown} boxSize="4" color="fg.muted" flexShrink={0} />
+              </Flex>
+            </Menu.Trigger>
+
+            <Portal>
+              <Menu.Positioner>
+                <Menu.Content minW="200px">
+                  <Menu.Item value="profile" onClick={() => navigate("/profile")}>
+                    <Icon as={CircleUser} boxSize="4" />
+                    Profile
+                  </Menu.Item>
+
+                  <Menu.Separator />
+
+                  <Menu.Item
+                    value="sign-out"
+                    color="fg.error"
+                    data-testid="sign-out"
+                    onClick={() => void logout()}
+                  >
+                    <Icon as={LogOut} boxSize="4" />
+                    Sign out
+                  </Menu.Item>
+                </Menu.Content>
+              </Menu.Positioner>
+            </Portal>
+          </Menu.Root>
         </Flex>
 
         <Box as="main" flex="1" overflow="auto" p="page">

@@ -112,7 +112,9 @@ test("sign out clears the session", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await expect(page.getByTestId("home-user")).toContainText("root");
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  // Sign out now lives inside the top-right user menu: open it, then pick "Sign out".
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("sign-out").click();
 
   await expect(page).toHaveURL(/\/login$/);
 
