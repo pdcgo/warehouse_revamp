@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, Component, FolderTree, House, Package, Users, UsersRound, Warehouse } from "lucide-react";
+import { Building2, CircleUser, FolderTree, House, Package, Users, UsersRound, Warehouse } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers } from "../lib/roles";
@@ -17,7 +17,6 @@ const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: Fol
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const ALL_USERS: MenuItem = { to: "/all-users", label: "All Users", icon: UsersRound };
-const COMPONENTS: MenuItem = { to: "/components", label: "Components", icon: Component };
 const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
@@ -37,8 +36,6 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // Every user across every team — the root management view (issue #40). Root/admin only; the
     // team-scoped "Users" item below stays for team managers.
     menu.push(ALL_USERS);
-    // The shared-components gallery is a preview/dev surface — keep it to root/admin.
-    menu.push(COMPONENTS);
   }
 
   // Products are a warehouse/selling team's own catalogue — the two team types that actually
