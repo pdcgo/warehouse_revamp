@@ -6,7 +6,6 @@ import {
   Flex,
   Icon,
   IconButton,
-  NativeSelect,
   Spacer,
   Stack,
   Text,
@@ -15,6 +14,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
+import { TeamSwitcher } from "../team/TeamSwitcher";
 import { Logo, WarehouseMark } from "./Logo";
 import { menuFor } from "./nav";
 
@@ -26,7 +26,7 @@ import { menuFor } from "./nav";
 // server's access interceptor is what actually stops a call — never move a check into here.)
 export function Layout() {
   const { identity, logout } = useAuth();
-  const { teams, current, selectTeam } = useTeam();
+  const { current } = useTeam();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -55,24 +55,7 @@ export function Layout() {
           {collapsed ? <WarehouseMark size={26} /> : <Logo size={28} />}
         </Box>
 
-        {teams.length > 0 && !collapsed && (
-          <NativeSelect.Root size="sm">
-            <NativeSelect.Field
-              data-testid="team-switcher"
-              value={current?.teamId.toString() ?? ""}
-              onChange={(e) => selectTeam(BigInt(e.target.value))}
-            >
-              {teams.map((team) => (
-                <option key={team.teamId.toString()} value={team.teamId.toString()}>
-                  {/* team_service may be down: TeamAccessList degrades rather than failing, so
-                      the name can legitimately be empty. Fall back rather than render blank. */}
-                  {team.teamName || `Team #${team.teamId}`}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-        )}
+        <TeamSwitcher collapsed={collapsed} />
 
         <Stack gap="1" flex="1">
           {menu.map((item) => (
