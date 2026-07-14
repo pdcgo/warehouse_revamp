@@ -43,7 +43,7 @@ export function Layout() {
         borderColor="border"
         p="card"
       >
-        <Box px="2" py="1" overflow="hidden">
+        <Box px="2" py="1" overflow="hidden" color="brand.solid">
           {collapsed ? <WarehouseMark size={26} /> : <Logo size={28} />}
         </Box>
 

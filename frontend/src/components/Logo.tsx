@@ -2,9 +2,9 @@ import { HStack, Text } from "@chakra-ui/react";
 import type { StackProps } from "@chakra-ui/react";
 
 // The brand mark: a minimalist pitched-roof warehouse with a roller door. Line style (stroke,
-// currentColor, no fill) so it matches the lucide icons and inherits whatever text colour it sits
-// in — no palette is baked in, since the visual identity's accent is still a placeholder. The same
-// geometry lives in frontend/public/warehouse.svg (the favicon); keep the two in sync.
+// currentColor, no fill) so it matches the lucide icons; it inherits the surrounding `color`, which
+// Logo sets to the theme accent (brand.solid). The same geometry lives in
+// frontend/public/warehouse.svg (the favicon) — keep the two in sync.
 export function WarehouseMark({ size = 24 }: { size?: number }) {
   return (
     <svg
@@ -36,7 +36,7 @@ export function Logo({
   ...rest
 }: { size?: number; showWordmark?: boolean } & StackProps) {
   return (
-    <HStack gap="2.5" {...rest}>
+    <HStack gap="2.5" color="brand.solid" {...rest}>
       <WarehouseMark size={size} />
       {showWordmark && (
         <Text fontSize="lg" fontWeight="semibold" letterSpacing="tight" lineHeight="1">
