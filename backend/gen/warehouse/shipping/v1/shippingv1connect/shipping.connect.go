@@ -36,11 +36,19 @@ const (
 	// ShippingServiceShippingListProcedure is the fully-qualified name of the ShippingService's
 	// ShippingList RPC.
 	ShippingServiceShippingListProcedure = "/warehouse.shipping.v1.ShippingService/ShippingList"
+	// ShippingServiceShippingCreateProcedure is the fully-qualified name of the ShippingService's
+	// ShippingCreate RPC.
+	ShippingServiceShippingCreateProcedure = "/warehouse.shipping.v1.ShippingService/ShippingCreate"
+	// ShippingServiceShippingUpdateProcedure is the fully-qualified name of the ShippingService's
+	// ShippingUpdate RPC.
+	ShippingServiceShippingUpdateProcedure = "/warehouse.shipping.v1.ShippingService/ShippingUpdate"
 )
 
 // ShippingServiceClient is a client for the warehouse.shipping.v1.ShippingService service.
 type ShippingServiceClient interface {
 	ShippingList(context.Context, *connect.Request[v1.ShippingListRequest]) (*connect.Response[v1.ShippingListResponse], error)
+	ShippingCreate(context.Context, *connect.Request[v1.ShippingCreateRequest]) (*connect.Response[v1.ShippingCreateResponse], error)
+	ShippingUpdate(context.Context, *connect.Request[v1.ShippingUpdateRequest]) (*connect.Response[v1.ShippingUpdateResponse], error)
 }
 
 // NewShippingServiceClient constructs a client for the warehouse.shipping.v1.ShippingService
@@ -60,12 +68,26 @@ func NewShippingServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(shippingServiceMethods.ByName("ShippingList")),
 			connect.WithClientOptions(opts...),
 		),
+		shippingCreate: connect.NewClient[v1.ShippingCreateRequest, v1.ShippingCreateResponse](
+			httpClient,
+			baseURL+ShippingServiceShippingCreateProcedure,
+			connect.WithSchema(shippingServiceMethods.ByName("ShippingCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		shippingUpdate: connect.NewClient[v1.ShippingUpdateRequest, v1.ShippingUpdateResponse](
+			httpClient,
+			baseURL+ShippingServiceShippingUpdateProcedure,
+			connect.WithSchema(shippingServiceMethods.ByName("ShippingUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // shippingServiceClient implements ShippingServiceClient.
 type shippingServiceClient struct {
-	shippingList *connect.Client[v1.ShippingListRequest, v1.ShippingListResponse]
+	shippingList   *connect.Client[v1.ShippingListRequest, v1.ShippingListResponse]
+	shippingCreate *connect.Client[v1.ShippingCreateRequest, v1.ShippingCreateResponse]
+	shippingUpdate *connect.Client[v1.ShippingUpdateRequest, v1.ShippingUpdateResponse]
 }
 
 // ShippingList calls warehouse.shipping.v1.ShippingService.ShippingList.
@@ -73,9 +95,21 @@ func (c *shippingServiceClient) ShippingList(ctx context.Context, req *connect.R
 	return c.shippingList.CallUnary(ctx, req)
 }
 
+// ShippingCreate calls warehouse.shipping.v1.ShippingService.ShippingCreate.
+func (c *shippingServiceClient) ShippingCreate(ctx context.Context, req *connect.Request[v1.ShippingCreateRequest]) (*connect.Response[v1.ShippingCreateResponse], error) {
+	return c.shippingCreate.CallUnary(ctx, req)
+}
+
+// ShippingUpdate calls warehouse.shipping.v1.ShippingService.ShippingUpdate.
+func (c *shippingServiceClient) ShippingUpdate(ctx context.Context, req *connect.Request[v1.ShippingUpdateRequest]) (*connect.Response[v1.ShippingUpdateResponse], error) {
+	return c.shippingUpdate.CallUnary(ctx, req)
+}
+
 // ShippingServiceHandler is an implementation of the warehouse.shipping.v1.ShippingService service.
 type ShippingServiceHandler interface {
 	ShippingList(context.Context, *connect.Request[v1.ShippingListRequest]) (*connect.Response[v1.ShippingListResponse], error)
+	ShippingCreate(context.Context, *connect.Request[v1.ShippingCreateRequest]) (*connect.Response[v1.ShippingCreateResponse], error)
+	ShippingUpdate(context.Context, *connect.Request[v1.ShippingUpdateRequest]) (*connect.Response[v1.ShippingUpdateResponse], error)
 }
 
 // NewShippingServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +125,26 @@ func NewShippingServiceHandler(svc ShippingServiceHandler, opts ...connect.Handl
 		connect.WithSchema(shippingServiceMethods.ByName("ShippingList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	shippingServiceShippingCreateHandler := connect.NewUnaryHandler(
+		ShippingServiceShippingCreateProcedure,
+		svc.ShippingCreate,
+		connect.WithSchema(shippingServiceMethods.ByName("ShippingCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	shippingServiceShippingUpdateHandler := connect.NewUnaryHandler(
+		ShippingServiceShippingUpdateProcedure,
+		svc.ShippingUpdate,
+		connect.WithSchema(shippingServiceMethods.ByName("ShippingUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.shipping.v1.ShippingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ShippingServiceShippingListProcedure:
 			shippingServiceShippingListHandler.ServeHTTP(w, r)
+		case ShippingServiceShippingCreateProcedure:
+			shippingServiceShippingCreateHandler.ServeHTTP(w, r)
+		case ShippingServiceShippingUpdateProcedure:
+			shippingServiceShippingUpdateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +156,12 @@ type UnimplementedShippingServiceHandler struct{}
 
 func (UnimplementedShippingServiceHandler) ShippingList(context.Context, *connect.Request[v1.ShippingListRequest]) (*connect.Response[v1.ShippingListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.shipping.v1.ShippingService.ShippingList is not implemented"))
+}
+
+func (UnimplementedShippingServiceHandler) ShippingCreate(context.Context, *connect.Request[v1.ShippingCreateRequest]) (*connect.Response[v1.ShippingCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.shipping.v1.ShippingService.ShippingCreate is not implemented"))
+}
+
+func (UnimplementedShippingServiceHandler) ShippingUpdate(context.Context, *connect.Request[v1.ShippingUpdateRequest]) (*connect.Response[v1.ShippingUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.shipping.v1.ShippingService.ShippingUpdate is not implemented"))
 }

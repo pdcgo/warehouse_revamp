@@ -7,6 +7,7 @@
 package shippingv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -181,11 +182,215 @@ func (x *ShippingListResponse) GetData() []*Shipping {
 	return nil
 }
 
+type ShippingCreateRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The stable machine key a shipment stores. Unique; immutable once created.
+	Code          string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShippingCreateRequest) Reset() {
+	*x = ShippingCreateRequest{}
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShippingCreateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShippingCreateRequest) ProtoMessage() {}
+
+func (x *ShippingCreateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShippingCreateRequest.ProtoReflect.Descriptor instead.
+func (*ShippingCreateRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_shipping_v1_shipping_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ShippingCreateRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ShippingCreateRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type ShippingCreateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Shipping      *Shipping              `protobuf:"bytes,1,opt,name=shipping,proto3" json:"shipping,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShippingCreateResponse) Reset() {
+	*x = ShippingCreateResponse{}
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShippingCreateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShippingCreateResponse) ProtoMessage() {}
+
+func (x *ShippingCreateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShippingCreateResponse.ProtoReflect.Descriptor instead.
+func (*ShippingCreateResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_shipping_v1_shipping_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ShippingCreateResponse) GetShipping() *Shipping {
+	if x != nil {
+		return x.Shipping
+	}
+	return nil
+}
+
+type ShippingUpdateRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ShippingId uint64                 `protobuf:"varint,1,opt,name=shipping_id,json=shippingId,proto3" json:"shipping_id,omitempty"`
+	// Absent = leave alone. `code` is immutable, so it is not editable here.
+	Name *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	// Present = set active. Deactivate a courier by sending active=false (reversible — the row is
+	// never deleted, so historical shipments keep their reference).
+	Active        *bool `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShippingUpdateRequest) Reset() {
+	*x = ShippingUpdateRequest{}
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShippingUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShippingUpdateRequest) ProtoMessage() {}
+
+func (x *ShippingUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShippingUpdateRequest.ProtoReflect.Descriptor instead.
+func (*ShippingUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_shipping_v1_shipping_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ShippingUpdateRequest) GetShippingId() uint64 {
+	if x != nil {
+		return x.ShippingId
+	}
+	return 0
+}
+
+func (x *ShippingUpdateRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *ShippingUpdateRequest) GetActive() bool {
+	if x != nil && x.Active != nil {
+		return *x.Active
+	}
+	return false
+}
+
+type ShippingUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Shipping      *Shipping              `protobuf:"bytes,1,opt,name=shipping,proto3" json:"shipping,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShippingUpdateResponse) Reset() {
+	*x = ShippingUpdateResponse{}
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShippingUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShippingUpdateResponse) ProtoMessage() {}
+
+func (x *ShippingUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_shipping_v1_shipping_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShippingUpdateResponse.ProtoReflect.Descriptor instead.
+func (*ShippingUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_shipping_v1_shipping_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ShippingUpdateResponse) GetShipping() *Shipping {
+	if x != nil {
+		return x.Shipping
+	}
+	return nil
+}
+
 var File_warehouse_shipping_v1_shipping_proto protoreflect.FileDescriptor
 
 const file_warehouse_shipping_v1_shipping_proto_rawDesc = "" +
 	"\n" +
-	"$warehouse/shipping/v1/shipping.proto\x12\x15warehouse.shipping.v1\x1a!warehouse/role_base/v1/role.proto\"Z\n" +
+	"$warehouse/shipping/v1/shipping.proto\x12\x15warehouse.shipping.v1\x1a\x1bbuf/validate/validate.proto\x1a!warehouse/role_base/v1/role.proto\"Z\n" +
 	"\bShipping\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
@@ -194,9 +399,27 @@ const file_warehouse_shipping_v1_shipping_proto_rawDesc = "" +
 	"\x13ShippingListRequest\x12)\n" +
 	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive:\x06\x92\xb5\x18\x02 \x01\"K\n" +
 	"\x14ShippingListResponse\x123\n" +
-	"\x04data\x18\x01 \x03(\v2\x1f.warehouse.shipping.v1.ShippingR\x04data2z\n" +
+	"\x04data\x18\x01 \x03(\v2\x1f.warehouse.shipping.v1.ShippingR\x04data\"_\n" +
+	"\x15ShippingCreateRequest\x12\x1d\n" +
+	"\x04code\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18(R\x04code\x12\x1d\n" +
+	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18xR\x04name:\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\"U\n" +
+	"\x16ShippingCreateResponse\x12;\n" +
+	"\bshipping\x18\x01 \x01(\v2\x1f.warehouse.shipping.v1.ShippingR\bshipping\"\xa0\x01\n" +
+	"\x15ShippingUpdateRequest\x12(\n" +
+	"\vshipping_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
+	"shippingId\x12\"\n" +
+	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18xH\x00R\x04name\x88\x01\x01\x12\x1b\n" +
+	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01:\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02B\a\n" +
+	"\x05_nameB\t\n" +
+	"\a_active\"U\n" +
+	"\x16ShippingUpdateResponse\x12;\n" +
+	"\bshipping\x18\x01 \x01(\v2\x1f.warehouse.shipping.v1.ShippingR\bshipping2\xd8\x02\n" +
 	"\x0fShippingService\x12g\n" +
-	"\fShippingList\x12*.warehouse.shipping.v1.ShippingListRequest\x1a+.warehouse.shipping.v1.ShippingListResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipping/v1;shippingv1b\x06proto3"
+	"\fShippingList\x12*.warehouse.shipping.v1.ShippingListRequest\x1a+.warehouse.shipping.v1.ShippingListResponse\x12m\n" +
+	"\x0eShippingCreate\x12,.warehouse.shipping.v1.ShippingCreateRequest\x1a-.warehouse.shipping.v1.ShippingCreateResponse\x12m\n" +
+	"\x0eShippingUpdate\x12,.warehouse.shipping.v1.ShippingUpdateRequest\x1a-.warehouse.shipping.v1.ShippingUpdateResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipping/v1;shippingv1b\x06proto3"
 
 var (
 	file_warehouse_shipping_v1_shipping_proto_rawDescOnce sync.Once
@@ -210,21 +433,31 @@ func file_warehouse_shipping_v1_shipping_proto_rawDescGZIP() []byte {
 	return file_warehouse_shipping_v1_shipping_proto_rawDescData
 }
 
-var file_warehouse_shipping_v1_shipping_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_warehouse_shipping_v1_shipping_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_warehouse_shipping_v1_shipping_proto_goTypes = []any{
-	(*Shipping)(nil),             // 0: warehouse.shipping.v1.Shipping
-	(*ShippingListRequest)(nil),  // 1: warehouse.shipping.v1.ShippingListRequest
-	(*ShippingListResponse)(nil), // 2: warehouse.shipping.v1.ShippingListResponse
+	(*Shipping)(nil),               // 0: warehouse.shipping.v1.Shipping
+	(*ShippingListRequest)(nil),    // 1: warehouse.shipping.v1.ShippingListRequest
+	(*ShippingListResponse)(nil),   // 2: warehouse.shipping.v1.ShippingListResponse
+	(*ShippingCreateRequest)(nil),  // 3: warehouse.shipping.v1.ShippingCreateRequest
+	(*ShippingCreateResponse)(nil), // 4: warehouse.shipping.v1.ShippingCreateResponse
+	(*ShippingUpdateRequest)(nil),  // 5: warehouse.shipping.v1.ShippingUpdateRequest
+	(*ShippingUpdateResponse)(nil), // 6: warehouse.shipping.v1.ShippingUpdateResponse
 }
 var file_warehouse_shipping_v1_shipping_proto_depIdxs = []int32{
 	0, // 0: warehouse.shipping.v1.ShippingListResponse.data:type_name -> warehouse.shipping.v1.Shipping
-	1, // 1: warehouse.shipping.v1.ShippingService.ShippingList:input_type -> warehouse.shipping.v1.ShippingListRequest
-	2, // 2: warehouse.shipping.v1.ShippingService.ShippingList:output_type -> warehouse.shipping.v1.ShippingListResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 1: warehouse.shipping.v1.ShippingCreateResponse.shipping:type_name -> warehouse.shipping.v1.Shipping
+	0, // 2: warehouse.shipping.v1.ShippingUpdateResponse.shipping:type_name -> warehouse.shipping.v1.Shipping
+	1, // 3: warehouse.shipping.v1.ShippingService.ShippingList:input_type -> warehouse.shipping.v1.ShippingListRequest
+	3, // 4: warehouse.shipping.v1.ShippingService.ShippingCreate:input_type -> warehouse.shipping.v1.ShippingCreateRequest
+	5, // 5: warehouse.shipping.v1.ShippingService.ShippingUpdate:input_type -> warehouse.shipping.v1.ShippingUpdateRequest
+	2, // 6: warehouse.shipping.v1.ShippingService.ShippingList:output_type -> warehouse.shipping.v1.ShippingListResponse
+	4, // 7: warehouse.shipping.v1.ShippingService.ShippingCreate:output_type -> warehouse.shipping.v1.ShippingCreateResponse
+	6, // 8: warehouse.shipping.v1.ShippingService.ShippingUpdate:output_type -> warehouse.shipping.v1.ShippingUpdateResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_shipping_v1_shipping_proto_init() }
@@ -232,13 +465,14 @@ func file_warehouse_shipping_v1_shipping_proto_init() {
 	if File_warehouse_shipping_v1_shipping_proto != nil {
 		return
 	}
+	file_warehouse_shipping_v1_shipping_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_shipping_v1_shipping_proto_rawDesc), len(file_warehouse_shipping_v1_shipping_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

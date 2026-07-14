@@ -7,6 +7,7 @@ import { ComponentsPage } from "./dev/ComponentsPage";
 import { HomePage } from "./home/HomePage";
 import { ProductsPage } from "./products/ProductsPage";
 import { ProfilePage } from "./settings/ProfilePage";
+import { ShippingChannelsPage } from "./shipping/ShippingChannelsPage";
 import { TeamProvider } from "./team/TeamContext";
 import { TeamsPage } from "./teams/TeamsPage";
 import { WarehousesPage } from "./teams/WarehousesPage";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "teams", element: <TeamsPage /> },
       { path: "warehouses", element: <WarehousesPage /> },
       { path: "categories", element: <CategoriesPage /> },
+      { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "all-users", element: <AllUsersPage /> },

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, FolderTree, House, Package, Users, UsersRound, Warehouse } from "lucide-react";
+import { Building2, CircleUser, FolderTree, House, Package, Truck, Users, UsersRound, Warehouse } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers } from "../lib/roles";
@@ -14,6 +14,7 @@ const HOME: MenuItem = { to: "/", label: "Home", icon: House };
 const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
 const WAREHOUSES: MenuItem = { to: "/warehouses", label: "Warehouses", icon: Warehouse };
 const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: FolderTree };
+const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const ALL_USERS: MenuItem = { to: "/all-users", label: "All Users", icon: UsersRound };
@@ -33,6 +34,8 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(WAREHOUSES);
     // Categories are one GLOBAL taxonomy, curated by root/admin — same gate as Teams.
     menu.push(CATEGORIES);
+    // Shipping channels are one GLOBAL courier catalogue, curated by root/admin — same gate.
+    menu.push(SHIPPING);
     // Every user across every team — the root management view (issue #40). Root/admin only; the
     // team-scoped "Users" item below stays for team managers.
     menu.push(ALL_USERS);

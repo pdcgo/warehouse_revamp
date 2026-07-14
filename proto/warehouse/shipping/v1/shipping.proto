@@ -2,14 +2,19 @@ syntax = "proto3";
 
 package warehouse.shipping.v1;
 
+import "buf/validate/validate.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipping/v1;shippingv1";
 
 // ShippingService owns `shippings` — the catalogue of couriers a shipment can go out with. It is
-// reference data (seeded by migration, rarely changing), so the only RPC for now is a read.
+// GLOBAL reference data (seeded by migration, rarely changing): every authenticated user reads it,
+// and root/admin curate it (create/update, deactivate = update active=false — never a hard delete,
+// because a retired courier is still referenced by historical shipments).
 service ShippingService {
   rpc ShippingList(ShippingListRequest) returns (ShippingListResponse);
+  rpc ShippingCreate(ShippingCreateRequest) returns (ShippingCreateResponse);
+  rpc ShippingUpdate(ShippingUpdateRequest) returns (ShippingUpdateResponse);
 }
 
 // Shipping is one courier (e.g. JNE, J&T). `code` is the stable machine key a shipment stores;
@@ -31,4 +36,53 @@ message ShippingListRequest {
 
 message ShippingListResponse {
   repeated Shipping data = 1;
+}
+
+message ShippingCreateRequest {
+  // Curating the courier catalogue is a SYSTEM-level action — root/admin only, and deliberately
+  // UNSCOPED (there is no team). Never add a team-level role here without a use_scope field.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  // The stable machine key a shipment stores. Unique; immutable once created.
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 40
+  }];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+}
+
+message ShippingCreateResponse {
+  Shipping shipping = 1;
+}
+
+message ShippingUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 shipping_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. `code` is immutable, so it is not editable here.
+  optional string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  // Present = set active. Deactivate a courier by sending active=false (reversible — the row is
+  // never deleted, so historical shipments keep their reference).
+  optional bool active = 3;
+}
+
+message ShippingUpdateResponse {
+  Shipping shipping = 1;
 }

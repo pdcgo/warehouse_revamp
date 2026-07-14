@@ -4,6 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -11,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/shipping/v1/shipping.proto.
  */
 export const file_warehouse_shipping_v1_shipping: GenFile = /*@__PURE__*/
-  fileDesc("CiR3YXJlaG91c2Uvc2hpcHBpbmcvdjEvc2hpcHBpbmcucHJvdG8SFXdhcmVob3VzZS5zaGlwcGluZy52MSJCCghTaGlwcGluZxIKCgJpZBgBIAEoBBIMCgRjb2RlGAIgASgJEgwKBG5hbWUYAyABKAkSDgoGYWN0aXZlGAQgASgIIjcKE1NoaXBwaW5nTGlzdFJlcXVlc3QSGAoQaW5jbHVkZV9pbmFjdGl2ZRgBIAEoCDoGkrUYAiABIkUKFFNoaXBwaW5nTGlzdFJlc3BvbnNlEi0KBGRhdGEYASADKAsyHy53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmcyegoPU2hpcHBpbmdTZXJ2aWNlEmcKDFNoaXBwaW5nTGlzdBIqLndhcmVob3VzZS5zaGlwcGluZy52MS5TaGlwcGluZ0xpc3RSZXF1ZXN0Gisud2FyZWhvdXNlLnNoaXBwaW5nLnYxLlNoaXBwaW5nTGlzdFJlc3BvbnNlQlBaTmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2hpcHBpbmcvdjE7c2hpcHBpbmd2MWIGcHJvdG8z", [file_warehouse_role_base_v1_role]);
+  fileDesc("CiR3YXJlaG91c2Uvc2hpcHBpbmcvdjEvc2hpcHBpbmcucHJvdG8SFXdhcmVob3VzZS5zaGlwcGluZy52MSJCCghTaGlwcGluZxIKCgJpZBgBIAEoBBIMCgRjb2RlGAIgASgJEgwKBG5hbWUYAyABKAkSDgoGYWN0aXZlGAQgASgIIjcKE1NoaXBwaW5nTGlzdFJlcXVlc3QSGAoQaW5jbHVkZV9pbmFjdGl2ZRgBIAEoCDoGkrUYAiABIkUKFFNoaXBwaW5nTGlzdFJlc3BvbnNlEi0KBGRhdGEYASADKAsyHy53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmciUwoVU2hpcHBpbmdDcmVhdGVSZXF1ZXN0EhcKBGNvZGUYASABKAlCCbpIBnIEEAEYKBIXCgRuYW1lGAIgASgJQgm6SAZyBBABGHg6CJK1GAQKAgECIksKFlNoaXBwaW5nQ3JlYXRlUmVzcG9uc2USMQoIc2hpcHBpbmcYASABKAsyHy53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmcihgEKFVNoaXBwaW5nVXBkYXRlUmVxdWVzdBIcCgtzaGlwcGluZ19pZBgBIAEoBEIHukgEMgIgABIcCgRuYW1lGAIgASgJQgm6SAZyBBABGHhIAIgBARITCgZhY3RpdmUYAyABKAhIAYgBAToIkrUYBAoCAQJCBwoFX25hbWVCCQoHX2FjdGl2ZSJLChZTaGlwcGluZ1VwZGF0ZVJlc3BvbnNlEjEKCHNoaXBwaW5nGAEgASgLMh8ud2FyZWhvdXNlLnNoaXBwaW5nLnYxLlNoaXBwaW5nMtgCCg9TaGlwcGluZ1NlcnZpY2USZwoMU2hpcHBpbmdMaXN0Eioud2FyZWhvdXNlLnNoaXBwaW5nLnYxLlNoaXBwaW5nTGlzdFJlcXVlc3QaKy53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmdMaXN0UmVzcG9uc2USbQoOU2hpcHBpbmdDcmVhdGUSLC53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmdDcmVhdGVSZXF1ZXN0Gi0ud2FyZWhvdXNlLnNoaXBwaW5nLnYxLlNoaXBwaW5nQ3JlYXRlUmVzcG9uc2USbQoOU2hpcHBpbmdVcGRhdGUSLC53YXJlaG91c2Uuc2hpcHBpbmcudjEuU2hpcHBpbmdVcGRhdGVSZXF1ZXN0Gi0ud2FyZWhvdXNlLnNoaXBwaW5nLnYxLlNoaXBwaW5nVXBkYXRlUmVzcG9uc2VCUFpOZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zaGlwcGluZy92MTtzaGlwcGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
 
 /**
  * Shipping is one courier (e.g. JNE, J&T). `code` is the stable machine key a shipment stores;
@@ -85,8 +86,100 @@ export const ShippingListResponseSchema: GenMessage<ShippingListResponse> = /*@_
   messageDesc(file_warehouse_shipping_v1_shipping, 2);
 
 /**
+ * @generated from message warehouse.shipping.v1.ShippingCreateRequest
+ */
+export type ShippingCreateRequest = Message<"warehouse.shipping.v1.ShippingCreateRequest"> & {
+  /**
+   * The stable machine key a shipment stores. Unique; immutable once created.
+   *
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message warehouse.shipping.v1.ShippingCreateRequest.
+ * Use `create(ShippingCreateRequestSchema)` to create a new message.
+ */
+export const ShippingCreateRequestSchema: GenMessage<ShippingCreateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_shipping_v1_shipping, 3);
+
+/**
+ * @generated from message warehouse.shipping.v1.ShippingCreateResponse
+ */
+export type ShippingCreateResponse = Message<"warehouse.shipping.v1.ShippingCreateResponse"> & {
+  /**
+   * @generated from field: warehouse.shipping.v1.Shipping shipping = 1;
+   */
+  shipping?: Shipping;
+};
+
+/**
+ * Describes the message warehouse.shipping.v1.ShippingCreateResponse.
+ * Use `create(ShippingCreateResponseSchema)` to create a new message.
+ */
+export const ShippingCreateResponseSchema: GenMessage<ShippingCreateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_shipping_v1_shipping, 4);
+
+/**
+ * @generated from message warehouse.shipping.v1.ShippingUpdateRequest
+ */
+export type ShippingUpdateRequest = Message<"warehouse.shipping.v1.ShippingUpdateRequest"> & {
+  /**
+   * @generated from field: uint64 shipping_id = 1;
+   */
+  shippingId: bigint;
+
+  /**
+   * Absent = leave alone. `code` is immutable, so it is not editable here.
+   *
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * Present = set active. Deactivate a courier by sending active=false (reversible — the row is
+   * never deleted, so historical shipments keep their reference).
+   *
+   * @generated from field: optional bool active = 3;
+   */
+  active?: boolean;
+};
+
+/**
+ * Describes the message warehouse.shipping.v1.ShippingUpdateRequest.
+ * Use `create(ShippingUpdateRequestSchema)` to create a new message.
+ */
+export const ShippingUpdateRequestSchema: GenMessage<ShippingUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_shipping_v1_shipping, 5);
+
+/**
+ * @generated from message warehouse.shipping.v1.ShippingUpdateResponse
+ */
+export type ShippingUpdateResponse = Message<"warehouse.shipping.v1.ShippingUpdateResponse"> & {
+  /**
+   * @generated from field: warehouse.shipping.v1.Shipping shipping = 1;
+   */
+  shipping?: Shipping;
+};
+
+/**
+ * Describes the message warehouse.shipping.v1.ShippingUpdateResponse.
+ * Use `create(ShippingUpdateResponseSchema)` to create a new message.
+ */
+export const ShippingUpdateResponseSchema: GenMessage<ShippingUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_shipping_v1_shipping, 6);
+
+/**
  * ShippingService owns `shippings` — the catalogue of couriers a shipment can go out with. It is
- * reference data (seeded by migration, rarely changing), so the only RPC for now is a read.
+ * GLOBAL reference data (seeded by migration, rarely changing): every authenticated user reads it,
+ * and root/admin curate it (create/update, deactivate = update active=false — never a hard delete,
+ * because a retired courier is still referenced by historical shipments).
  *
  * @generated from service warehouse.shipping.v1.ShippingService
  */
@@ -98,6 +191,22 @@ export const ShippingService: GenService<{
     methodKind: "unary";
     input: typeof ShippingListRequestSchema;
     output: typeof ShippingListResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.shipping.v1.ShippingService.ShippingCreate
+   */
+  shippingCreate: {
+    methodKind: "unary";
+    input: typeof ShippingCreateRequestSchema;
+    output: typeof ShippingCreateResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.shipping.v1.ShippingService.ShippingUpdate
+   */
+  shippingUpdate: {
+    methodKind: "unary";
+    input: typeof ShippingUpdateRequestSchema;
+    output: typeof ShippingUpdateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_shipping_v1_shipping, 0);
