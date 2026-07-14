@@ -48,7 +48,9 @@
 >   every non-root request in the system. `Find` leaves the struct zeroed and returns no error,
 >   so a missing membership correctly reads as role 0. See
 >   `backend/pkgs/san_authz/role_resolver.go`.
-> - **PARKED:** the third writer of `teams` (`warehouse_service`) — §3.6.
+> - **A warehouse IS a team** (`warehouse_id == team_id`); warehouses are created via
+>   `TeamCreate(type=warehouse)`, and warehouse_service keys its own table by that id.
+>   (owner, 2026-07-14 — §3.6)
 > - **PARKED:** validating `return_warehouse_id` / `return_user_id` — §5.4.
 >
 > **✅ team_service is fully decided. Implementation can start.**
@@ -267,26 +269,28 @@ Both fixes get a **test that fails against the old behaviour**: a concurrent-upd
 would produce two rows, and a partial-update test asserting the bank details survive a
 contact-number-only PATCH.
 
-### ⏸ 3.6 A third, undocumented writer of `teams` — **PARKED** (owner: "we talk later")
+### ✅ 3.6 A warehouse IS a team — **DECIDED** (owner, 2026-07-14)
 
-`warehouse_service/v2/warehouse/warehouse_create.go:90` **also** creates teams
-(`tx.Create(&db_models.Team{Type: WarehouseTeamType})`) — and then creates the Warehouse with its
-**primary key set equal to the team id**. So in the source, `warehouse_id == team_id` is an
-identity trick, not a coincidence, and other code relies on it.
+**A warehouse is a team of type `warehouse`. `warehouse_id == team_id`.** One entity, one id.
+The roling scope for a warehouse is its team id, which is also its warehouse id — exactly how
+warehouse teams already work in the interceptor today. (owner: "#10 yes".)
 
-**Not a blocker for team_service or user_service — nothing we build now depends on it.** But it is
-a design decision waiting at the door of `warehouse_service`, so it is recorded here rather than
-rediscovered:
+What this commits `warehouse_service` to, when it is built:
 
-- Under per-service independence, warehouse_service **cannot** write `teams`. It must call
-  `TeamCreate` over RPC — which breaks the single transaction (same shape as §5.1) **and** breaks
-  the `warehouse_id == team_id` trick, since the id would now be assigned by another service.
-- So the real question, when we get there: **is a warehouse a team, or does a warehouse *have* a
-  team?** The source answers "is" by fusing their primary keys. That is exactly the kind of
-  accidental coupling a rewrite exists to remove — but it is load-bearing in the roling system,
-  where a warehouse team's id *is* the scope value.
+- A warehouse is **created via `team_service.TeamCreate(type=warehouse)`** — team_service mints
+  the id (per-service independence: warehouse_service cannot write `teams`). That returned team
+  id **is** the warehouse id.
+- `warehouse_service` owns a table of warehouse-specific attributes (address, fee config, racks,
+  …) **keyed by that same id** (`warehouse_id`/PK = the team id). It stores no separate warehouse
+  id of its own.
+- Authorization for a warehouse scopes on its team id — no translation, no second lookup.
+- The `warehouse_id == team_id` identity is **kept on purpose** (it is load-bearing in roling),
+  but the id is now minted by team_service via RPC, not fused inside a single cross-table insert.
+  So creating a warehouse is the same saga shape as §5.1 (create the team, then write the
+  warehouse row; compensate if the second step fails).
 
-Deferred by the owner. Revisit before designing `warehouse_service`.
+Consequence for the "third writer of teams" problem: it dissolves. There is no independent
+warehouse-team creation — one path (`TeamCreate`) mints every team, warehouses included.
 
 ### 🔴 3.4 The `TeamType` landmine ✅ **STANDARDIZED IN PROTO** (owner)
 
