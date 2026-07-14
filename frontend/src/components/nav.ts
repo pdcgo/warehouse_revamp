@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+import { Building2, CircleUser, House, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers } from "../lib/roles";
@@ -5,12 +7,13 @@ import { canManageUsers } from "../lib/roles";
 export interface MenuItem {
   to: string;
   label: string;
+  icon: LucideIcon;
 }
 
-const HOME: MenuItem = { to: "/", label: "Home" };
-const TEAMS: MenuItem = { to: "/teams", label: "Teams" };
-const USERS: MenuItem = { to: "/users", label: "Users" };
-const PROFILE: MenuItem = { to: "/profile", label: "Profile" };
+const HOME: MenuItem = { to: "/", label: "Home", icon: House };
+const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
+const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
+const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
 //
