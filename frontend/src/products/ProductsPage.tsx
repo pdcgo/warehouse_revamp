@@ -147,7 +147,7 @@ export function ProductsPage() {
                     <EditProductDialog product={product} onDone={() => void load()} />
 
                     <ConfirmDialog
-                      title="Delete product"
+                      title="Delete Product"
                       message={`Delete "${product.sku}"? This cannot be undone.`}
                       confirmLabel="Delete"
                       onConfirm={() => remove(product)}

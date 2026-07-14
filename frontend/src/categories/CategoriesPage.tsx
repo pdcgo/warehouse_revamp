@@ -102,7 +102,7 @@ export function CategoriesPage() {
                     <EditCategoryDialog category={category} onDone={() => void load()} />
 
                     <ConfirmDialog
-                      title="Delete category"
+                      title="Delete Category"
                       message={`Delete "${category.name}"? This cannot be undone.`}
                       confirmLabel="Delete"
                       onConfirm={() => remove(category)}

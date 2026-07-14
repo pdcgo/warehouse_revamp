@@ -350,7 +350,7 @@ export function AllUsersPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete user"
+          title="Delete User"
           message={`Permanently delete ${dialog.user.username}? Their team memberships are removed too. This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.user)}

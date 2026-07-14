@@ -377,6 +377,8 @@ Two more UI rules:
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
   reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
+- **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
+  "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:

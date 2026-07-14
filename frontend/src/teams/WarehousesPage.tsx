@@ -205,7 +205,7 @@ export function WarehousesPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete warehouse"
+          title="Delete Warehouse"
           message={`Delete "${dialog.team.name}"? This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.team)}

@@ -311,7 +311,7 @@ export function UsersPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Remove from team"
+          title="Remove from Team"
           message={`Remove ${dialog.user.username} from ${current?.teamName || "this team"}? The account itself is kept.`}
           confirmLabel="Remove"
           onConfirm={() => removeFromTeam(dialog.user)}
@@ -342,7 +342,7 @@ export function UsersPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete user"
+          title="Delete User"
           message={`Permanently delete ${dialog.user.username}? Their team memberships are removed too. This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.user)}

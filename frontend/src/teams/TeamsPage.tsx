@@ -213,7 +213,7 @@ export function TeamsPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete team"
+          title="Delete Team"
           message={`Delete "${dialog.team.name}"? This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.team)}

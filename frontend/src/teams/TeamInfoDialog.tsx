@@ -135,7 +135,7 @@ export function TeamInfoDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{team.name} — contact &amp; bank</Dialog.Title>
+                <Dialog.Title>{team.name} — Contact &amp; Bank</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>

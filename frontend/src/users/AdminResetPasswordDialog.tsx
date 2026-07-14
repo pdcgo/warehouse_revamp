@@ -107,7 +107,7 @@ export function AdminResetPasswordDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Reset password for {user.username}</Dialog.Title>
+                <Dialog.Title>Reset Password for {user.username}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
