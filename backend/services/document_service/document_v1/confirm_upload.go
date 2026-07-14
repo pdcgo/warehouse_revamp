@@ -64,15 +64,23 @@ func (s *Service) ConfirmUpload(
 		publicURL = s.signer.PublicURL(assetKey)
 	}
 
+	// Generate a thumbnail for image uploads (best-effort — never fails the confirm).
+	var thumbKey, thumbURL string
+	if isImage(doc.MimeType) {
+		thumbKey, thumbURL = s.makeThumbnail(doc.TeamID, doc.ID, assetKey, isPublic(doc.ResourceType))
+	}
+
 	err = s.db.WithContext(ctx).
 		Model(&document_service_models.Document{}).
 		Where("id = ?", doc.ID).
 		Updates(map[string]any{
-			"object_key": assetKey,
-			"status":     statusActive,
-			"size_bytes": size,
-			"public_url": publicURL,
-			"updated_at": time.Now(),
+			"object_key":    assetKey,
+			"status":        statusActive,
+			"size_bytes":    size,
+			"public_url":    publicURL,
+			"thumbnail_key": thumbKey,
+			"thumbnail_url": thumbURL,
+			"updated_at":    time.Now(),
 		}).
 		Error
 	if err != nil {
@@ -83,6 +91,8 @@ func (s *Service) ConfirmUpload(
 	doc.Status = statusActive
 	doc.SizeBytes = size
 	doc.PublicURL = publicURL
+	doc.ThumbnailKey = thumbKey
+	doc.ThumbnailURL = thumbURL
 
 	return connect.NewResponse(&documentv1.ConfirmUploadResponse{Document: toProto(&doc)}), nil
 }

@@ -15,6 +15,8 @@ type Document struct {
 	CreatedByID  uint64
 	Status       string
 	PublicURL    string
+	ThumbnailKey string
+	ThumbnailURL string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

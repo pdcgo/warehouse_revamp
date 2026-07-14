@@ -190,6 +190,8 @@ erDiagram
         bigint      created_by_id "uploader (best-effort audit)"
         text        status        "CHECK in (pending, active)"
         text        public_url    "public resource types only"
+        text        thumbnail_key "storage path of the generated thumbnail (images)"
+        text        thumbnail_url "public thumbnail URL (public image types)"
         timestamptz created_at
         timestamptz updated_at
     }

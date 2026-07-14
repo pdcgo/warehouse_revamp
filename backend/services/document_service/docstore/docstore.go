@@ -4,6 +4,7 @@
 package docstore
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -68,4 +69,8 @@ type ObjectStore interface {
 	Move(srcKey, dstKey string) error
 	// Delete removes an object.
 	Delete(key string) error
+	// Open reads an object's bytes (used to generate a thumbnail from an uploaded image).
+	Open(key string) (io.ReadCloser, error)
+	// Put writes a derived object (the generated thumbnail).
+	Put(key string, r io.Reader) error
 }

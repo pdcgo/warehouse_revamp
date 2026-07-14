@@ -18,8 +18,12 @@ sequenceDiagram
     API->>API: verify HMAC token → document id (reject if expired/forged)
     API->>S: Stat(incoming key) — the bytes must exist
     API->>S: Move incoming/ → assets/
-    API->>API: status=active; set public_url for public types
-    API-->>UI: Document (+ public_url for public resource types)
+    opt image upload
+        API->>S: Open asset, decode, scale to ≤256px, Put assets/…_thumb.jpg
+        Note over API,S: best-effort — a failed thumbnail never fails the confirm
+    end
+    API->>API: status=active; set public_url + thumbnail_url for public types
+    API-->>UI: Document (+ public_url + thumbnail_url for public resource types)
     Note over UI,API: later, on demand…
     UI->>API: GetDownloadUrl(team_id, document_id)
     API->>API: SELECT … WHERE id=? AND team_id=? AND status=active
@@ -37,6 +41,10 @@ sequenceDiagram
 - **`GetDownloadUrl` is team-scoped** — the `team_id = ?` clause means another team's document reads
   as `NotFound`, closing a cross-team read gap. Public resource types (e.g. profile pictures) get a
   stable URL; private ones get a fresh short-lived signed URL each call.
+- **Image uploads get a thumbnail** generated on confirm — decoded, scaled so its longest side is
+  ≤256px, re-encoded as JPEG, and stored beside the asset. `thumbnail_url` (public types) lets the
+  UI load a light preview fast. Generation is best-effort: a non-decodable image just yields no
+  thumbnail, never a failed upload.
 - **Storage is behind a `Signer`/`ObjectStore` seam** (`docstore`). Dev/tests use a local
   filesystem backend with an unauthenticated `/local-storage` file endpoint (path-traversal
   guarded); a cloud backend implements the same two interfaces and changes nothing else.

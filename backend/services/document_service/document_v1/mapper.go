@@ -14,5 +14,6 @@ func toProto(d *document_service_models.Document) *documentv1.Document {
 		MimeType:     d.MimeType,
 		SizeBytes:    d.SizeBytes,
 		PublicUrl:    d.PublicURL,
+		ThumbnailUrl: d.ThumbnailURL,
 	}
 }

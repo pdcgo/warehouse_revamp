@@ -94,6 +94,24 @@ func (l *LocalStore) Delete(key string) error {
 	return err
 }
 
+func (l *LocalStore) Open(key string) (io.ReadCloser, error) {
+	path, err := safeJoin(l.dir, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.Open(path)
+}
+
+func (l *LocalStore) Put(key string, r io.Reader) error {
+	path, err := safeJoin(l.dir, key)
+	if err != nil {
+		return err
+	}
+
+	return writeObject(path, r)
+}
+
 // --- file handler ---
 
 // NewLocalFileHandler serves the object bytes: PUT writes an object, GET/HEAD reads it. It is

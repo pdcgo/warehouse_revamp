@@ -84,7 +84,10 @@ type Document struct {
 	MimeType     string                 `protobuf:"bytes,5,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	SizeBytes    int64                  `protobuf:"varint,6,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	// Non-empty only for PUBLIC resource types.
-	PublicUrl     string `protobuf:"bytes,7,opt,name=public_url,json=publicUrl,proto3" json:"public_url,omitempty"`
+	PublicUrl string `protobuf:"bytes,7,opt,name=public_url,json=publicUrl,proto3" json:"public_url,omitempty"`
+	// A stable URL to a small thumbnail, generated on upload for image documents. Non-empty only for
+	// PUBLIC image types (e.g. a profile picture) — lets the UI load a light image fast.
+	ThumbnailUrl  string `protobuf:"bytes,8,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -164,6 +167,13 @@ func (x *Document) GetSizeBytes() int64 {
 func (x *Document) GetPublicUrl() string {
 	if x != nil {
 		return x.PublicUrl
+	}
+	return ""
+}
+
+func (x *Document) GetThumbnailUrl() string {
+	if x != nil {
+		return x.ThumbnailUrl
 	}
 	return ""
 }
@@ -527,7 +537,7 @@ var File_warehouse_document_v1_document_proto protoreflect.FileDescriptor
 
 const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\n" +
-	"$warehouse/document/v1/document.proto\x12\x15warehouse.document.v1\x1a\x1bbuf/validate/validate.proto\x1a!warehouse/role_base/v1/role.proto\"\xfc\x01\n" +
+	"$warehouse/document/v1/document.proto\x12\x15warehouse.document.v1\x1a\x1bbuf/validate/validate.proto\x1a!warehouse/role_base/v1/role.proto\"\xa1\x02\n" +
 	"\bDocument\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12P\n" +
@@ -537,7 +547,8 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\n" +
 	"size_bytes\x18\x06 \x01(\x03R\tsizeBytes\x12\x1d\n" +
 	"\n" +
-	"public_url\x18\a \x01(\tR\tpublicUrl\"\xa9\x02\n" +
+	"public_url\x18\a \x01(\tR\tpublicUrl\x12#\n" +
+	"\rthumbnail_url\x18\b \x01(\tR\fthumbnailUrl\"\xa9\x02\n" +
 	"\x14RequestUploadRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\\\n" +
 	"\rresource_type\x18\x02 \x01(\x0e2+.warehouse.document.v1.DocumentResourceTypeB\n" +

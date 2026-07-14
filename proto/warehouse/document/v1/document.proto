@@ -37,6 +37,9 @@ message Document {
   int64 size_bytes = 6;
   // Non-empty only for PUBLIC resource types.
   string public_url = 7;
+  // A stable URL to a small thumbnail, generated on upload for image documents. Non-empty only for
+  // PUBLIC image types (e.g. a profile picture) — lets the UI load a light image fast.
+  string thumbnail_url = 8;
 }
 
 message RequestUploadRequest {
