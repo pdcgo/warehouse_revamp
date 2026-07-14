@@ -6,8 +6,8 @@ sync: any migration that changes the schema updates this file in the same commit
 
 Each service owns its own tables. **There are no cross-service foreign keys** — a service refers to
 another's rows by an *opaque id* it never joins on (it resolves them over RPC, e.g.
-`team_service.TeamByIds`). Those logical links are drawn as dashed relationships below and are not
-enforced by the database.
+`team_service.TeamByIds`). Those logical links are described in the prose and are not enforced by
+the database.
 
 ---
 
@@ -17,24 +17,24 @@ enforced by the database.
 
 ```mermaid
 erDiagram
-    teams ||--o| team_infos : "has (1:1)"
+    teams ||--o| team_infos : "has 1 to 1"
 
     teams {
         bigserial   id          PK
-        text        type        "CHECK in (root, admin, warehouse, selling)"
-        text        name        "CHECK <> ''"
-        text        team_code   UK "CHECK <> ''"
+        text        type        "root admin warehouse or selling"
+        text        name        "required"
+        text        team_code   UK "required unique"
         text        description
-        boolean     deleted     "default false (soft delete)"
+        boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at
     }
 
     team_infos {
         bigserial   id                  PK
-        bigint      team_id             FK "UNIQUE, ON DELETE CASCADE"
-        bigint      return_warehouse_id "nullable, opaque cross-service id"
-        bigint      return_user_id      "nullable, opaque cross-service id"
+        bigint      team_id             FK "unique, on delete cascade"
+        bigint      return_warehouse_id "nullable opaque cross-service id"
+        bigint      return_user_id      "nullable opaque cross-service id"
         text        contact_number
         text        bank_type
         text        bank_owner_name
@@ -65,12 +65,12 @@ erDiagram
     users {
         bigserial   id                  PK
         text        name
-        text        username            UK "UNIQUE on LOWER(username), CHECK <> ''"
-        text        password            "bcrypt hash; '' = cannot log in"
-        text        email               UK "UNIQUE on LOWER(email) WHERE email <> ''"
+        text        username            UK "unique on lower, required"
+        text        password            "bcrypt hash, empty means cannot log in"
+        text        email               UK "unique on lower when set"
         text        phone_number
         boolean     is_suspended        "default false"
-        text        avatar_url          "profile picture thumbnail URL (document_service)"
+        text        avatar_url          "profile picture thumbnail url"
         timestamptz last_password_reset "nullable"
         timestamptz created_at
         timestamptz updated_at
@@ -78,18 +78,18 @@ erDiagram
 
     user_team_roles {
         bigserial   id         PK
-        bigint      team_id    "opaque cross-service id (no FK to teams)"
-        bigint      user_id    FK "ON DELETE CASCADE"
-        bigint      role       "warehouse.role_base.v1.Role enum number"
+        bigint      team_id    "opaque cross-service id, no FK to teams"
+        bigint      user_id    FK "on delete cascade"
+        bigint      role       "role_base.v1.Role enum number"
         text        alias
         timestamptz created_at
         timestamptz updated_at
     }
 ```
 
-- **`users`** — the identity table. `password = ''` is a deliberate "cannot log in" marker (bcrypt
-  never matches an empty hash), used by the seeded root account until a password is set. Case-
-  insensitive uniqueness on both `username` and (non-empty) `email`.
+- **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
+  (bcrypt never matches an empty hash), used by the seeded root account until a password is set.
+  Case-insensitive uniqueness on both `username` and (non-empty) `email`.
 - **`user_team_roles`** — a user's role within a team. `role` stores the raw proto `Role` enum
   *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`
@@ -106,8 +106,8 @@ erDiagram
 erDiagram
     shippings {
         bigserial   id         PK
-        text        code       UK "CHECK <> '' (stable machine key)"
-        text        name       "CHECK <> '' (display label)"
+        text        code       UK "required unique, stable machine key"
+        text        name       "required, display label"
         boolean     active     "default true"
         timestamptz created_at
         timestamptz updated_at
@@ -115,8 +115,8 @@ erDiagram
 ```
 
 - **`shippings`** — the courier catalogue (JNE, J&T, SiCepat, …), seeded by the migration as stable
-  reference data. `code` is unique and is what a shipment stores; `active=false` retires a courier
-  without deleting it. No relations — it stands alone.
+  reference data, and curated by root/admin. `code` is unique and is what a shipment stores;
+  `active = false` retires a courier without deleting it. No relations — it stands alone.
 
 ---
 
@@ -128,11 +128,11 @@ erDiagram
 erDiagram
     products {
         bigserial   id          PK
-        bigint      team_id     "owning team — opaque cross-service id (no FK)"
-        text        sku         "CHECK <> '' — UNIQUE per team among active rows"
-        text        name        "CHECK <> ''"
+        bigint      team_id     "owning team, opaque cross-service id, no FK"
+        text        sku         "required, unique per team among active"
+        text        name        "required"
         text        description
-        boolean     deleted     "default false (soft delete)"
+        boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -152,13 +152,13 @@ erDiagram
 
 ```mermaid
 erDiagram
-    categories ||--o{ categories : "parent_id (self-referential, NULL = top-level)"
+    categories ||--o{ categories : "parent_id self-referential"
 
     categories {
         bigserial   id          PK
-        text        name        "CHECK <> '' — UNIQUE per parent among active rows"
-        bigint      parent_id   FK "nullable, self-referential (NULL = top-level)"
-        boolean     deleted     "default false (soft delete)"
+        text        name        "required, unique per parent among active"
+        bigint      parent_id   FK "nullable self-referential, null means top-level"
+        boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -182,17 +182,17 @@ erDiagram
 erDiagram
     documents {
         text        id            PK "uuid"
-        bigint      team_id       "owning team — opaque cross-service id (no FK)"
-        text        resource_type "CHECK in (general, profile_picture)"
-        text        object_key    "storage path (incoming/ → assets/ on confirm)"
+        bigint      team_id       "owning team, opaque cross-service id, no FK"
+        text        resource_type "general or profile_picture"
+        text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
         text        filename
-        bigint      created_by_id "uploader (best-effort audit)"
-        text        status        "CHECK in (pending, active)"
+        bigint      created_by_id "uploader, best-effort audit"
+        text        status        "pending or active"
         text        public_url    "public resource types only"
-        text        thumbnail_key "storage path of the generated thumbnail (images)"
-        text        thumbnail_url "public thumbnail URL (public image types)"
+        text        thumbnail_key "generated thumbnail path for images"
+        text        thumbnail_url "public thumbnail url for public images"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -200,8 +200,9 @@ erDiagram
 
 - **`documents`** — metadata for one stored file; the bytes live in object storage, not the DB.
   Team-scoped (`team_id` opaque, no FK). `status` goes `pending` → `active` on ConfirmUpload, which
-  also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url` is set only for
-  public resource types (currently `profile_picture`).
+  also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url`/`thumbnail_url` are
+  set only for public resource types (currently `profile_picture`); an image upload also gets a
+  generated thumbnail.
 
 ---
 
@@ -209,12 +210,12 @@ erDiagram
 
 ```mermaid
 erDiagram
-    teams ||--o{ user_team_roles : "team_id (opaque, via RPC)"
-    teams ||--o{ products : "team_id (opaque, via RPC)"
-    teams ||--o{ documents : "team_id (opaque, via RPC)"
+    teams ||--o{ user_team_roles : "team_id, opaque via RPC"
+    teams ||--o{ products : "team_id, opaque via RPC"
+    teams ||--o{ documents : "team_id, opaque via RPC"
 ```
 
 `user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
 `team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
-services. They carry no database foreign key by design (HARD RULE 3 — services
-stay independent); the owning service resolves them over Connect RPC.
+services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
+the owning service resolves them over Connect RPC.
