@@ -23,12 +23,23 @@ const CREATABLE: { value: TeamType; label: string }[] = [
   { value: TeamType.ADMIN, label: "Admin" },
 ];
 
-export function CreateTeamDialog({ onDone }: { onDone: () => void }) {
+export function CreateTeamDialog({
+  onDone,
+  fixedType,
+}: {
+  onDone: () => void;
+  // When set, the new team is always this type: the type selector is hidden and shown as
+  // read-only text. Used by warehouse-scoped views that only ever create WAREHOUSE teams.
+  fixedType?: TeamType;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [type, setType] = useState<TeamType>(TeamType.WAREHOUSE);
+  const [type, setType] = useState<TeamType>(fixedType ?? TeamType.WAREHOUSE);
+
+  // Label for the locked type (falls back to a generic noun for an unlisted type).
+  const lockedLabel = CREATABLE.find((t) => t.value === fixedType)?.label ?? "Team";
   const [name, setName] = useState("");
   const [teamCode, setTeamCode] = useState("");
   const [description, setDescription] = useState("");
@@ -61,8 +72,12 @@ export function CreateTeamDialog({ onDone }: { onDone: () => void }) {
   return (
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
-        <Button size="xs" colorPalette="brand" data-testid="open-create-team">
-          New team
+        <Button
+          size="xs"
+          colorPalette="brand"
+          data-testid={fixedType === undefined ? "open-create-team" : `open-create-${lockedLabel.toLowerCase()}`}
+        >
+          {fixedType === undefined ? "New team" : `New ${lockedLabel.toLowerCase()}`}
         </Button>
       </Dialog.Trigger>
 
@@ -72,7 +87,7 @@ export function CreateTeamDialog({ onDone }: { onDone: () => void }) {
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>New Team</Dialog.Title>
+                <Dialog.Title>{fixedType === undefined ? "New Team" : `New ${lockedLabel}`}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -83,24 +98,34 @@ export function CreateTeamDialog({ onDone }: { onDone: () => void }) {
                     </Text>
                   )}
 
-                  <Field.Root required>
-                    <Field.Label>Type</Field.Label>
-                    <NativeSelect.Root size="sm">
-                      <NativeSelect.Field
-                        value={String(type)}
-                        data-testid="new-team-type"
-                        onChange={(e) => setType(Number(e.target.value) as TeamType)}
-                      >
-                        {CREATABLE.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <Field.HelperText>Type is fixed once the team is created.</Field.HelperText>
-                  </Field.Root>
+                  {fixedType === undefined ? (
+                    <Field.Root required>
+                      <Field.Label>Type</Field.Label>
+                      <NativeSelect.Root size="sm">
+                        <NativeSelect.Field
+                          value={String(type)}
+                          data-testid="new-team-type"
+                          onChange={(e) => setType(Number(e.target.value) as TeamType)}
+                        >
+                          {CREATABLE.map((t) => (
+                            <option key={t.value} value={t.value}>
+                              {t.label}
+                            </option>
+                          ))}
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+                      <Field.HelperText>Type is fixed once the team is created.</Field.HelperText>
+                    </Field.Root>
+                  ) : (
+                    <Field.Root>
+                      <Field.Label>Type</Field.Label>
+                      <Text fontWeight="medium" data-testid="new-team-type-fixed">
+                        {lockedLabel}
+                      </Text>
+                      <Field.HelperText>Locked for this view.</Field.HelperText>
+                    </Field.Root>
+                  )}
 
                   <Field.Root required>
                     <Field.Label>Name</Field.Label>
