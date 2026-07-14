@@ -76,7 +76,13 @@ func (s *Service) TeamInfoUpdate(
 
 		// The upsert. ON CONFLICT (team_id) is only possible because of the UNIQUE index —
 		// that index IS the fix for the duplicate-row race.
+		//
+		// The present values are applied to BOTH paths: onto `row` for the INSERT (no existing
+		// info row) and via DoUpdates for the UPDATE (conflict). Populating only DoUpdates would
+		// silently drop every field on first write — a latent bug hidden in normal flow because
+		// TeamCreate happens to pre-create an empty info row, so the insert path is rarely hit.
 		row := team_service_models.TeamInfo{TeamID: teamID}
+		applyInfoValues(&row, updates)
 
 		err = tx.
 			Clauses(clause.OnConflict{
@@ -103,6 +109,36 @@ func (s *Service) TeamInfoUpdate(
 	}
 
 	return connect.NewResponse(&teamv1.TeamInfoUpdateResponse{Info: teamInfoToProto(&info)}), nil
+}
+
+// applyInfoValues copies the present-column map onto the struct, so the INSERT path of the
+// upsert writes the same values the UPDATE path (DoUpdates) would. Kept in lockstep with the
+// map-building above: one source of "what is present", applied to both paths.
+func applyInfoValues(row *team_service_models.TeamInfo, updates map[string]any) {
+	if v, ok := updates["contact_number"].(string); ok {
+		row.ContactNumber = v
+	}
+
+	if v, ok := updates["bank_type"].(string); ok {
+		row.BankType = v
+	}
+
+	if v, ok := updates["bank_owner_name"].(string); ok {
+		row.BankOwnerName = v
+	}
+
+	if v, ok := updates["bank_account_number"].(string); ok {
+		row.BankAccountNumber = v
+	}
+
+	// Present return ids are stored as *uint64 (nullableID gives nil for a present-zero clear).
+	if v, ok := updates["return_warehouse_id"].(uint64); ok {
+		row.ReturnWarehouseID = &v
+	}
+
+	if v, ok := updates["return_user_id"].(uint64); ok {
+		row.ReturnUserID = &v
+	}
 }
 
 // nullableID maps 0 -> NULL. The proto's `optional` already distinguishes absent from present,

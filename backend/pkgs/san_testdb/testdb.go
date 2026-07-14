@@ -1,0 +1,130 @@
+// Package san_testdb gives handler tests a real Postgres with per-test isolation.
+//
+// Each test gets a *gorm.DB that is already inside a transaction; everything it writes is rolled
+// back when the test ends. A handler's own `tx.Transaction(...)` becomes a SAVEPOINT under it, so
+// real transactional behaviour is exercised without any test leaking rows into the next.
+//
+// If no test database is reachable, tests SKIP rather than fail — so `go test ./...` stays green
+// on a machine with no Postgres, while CI and local-with-docker run the real thing.
+package san_testdb
+
+import (
+	"database/sql"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync"
+	"testing"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+const defaultDSN = "host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable"
+
+// migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
+// root user that references it. There is no cross-service FK to enforce it, so order matters here
+// exactly as it does in production.
+var migrationServices = []string{"team_service", "user_service"}
+
+var (
+	once    sync.Once
+	shared  *gorm.DB
+	initErr error
+)
+
+func dsn() string {
+	if v := os.Getenv("TEST_DATABASE_URL"); v != "" {
+		return v
+	}
+
+	return defaultDSN
+}
+
+// repoRoot walks up from this source file to the directory holding go.mod, so migration paths
+// resolve no matter which package's tests are running.
+func repoRoot() string {
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return dir
+		}
+
+		dir = parent
+	}
+}
+
+func connect() (*gorm.DB, error) {
+	raw, err := sql.Open("pgx", dsn())
+	if err != nil {
+		return nil, err
+	}
+
+	err = raw.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply every service's migrations (idempotent — a no-op once current). Each service tracks
+	// its own <service>_version table, exactly like the real migrator.
+	root := repoRoot()
+
+	err = goose.SetDialect("postgres")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, svc := range migrationServices {
+		goose.SetTableName(svc + "_version")
+
+		dir := filepath.Join(root, "services", svc, "db_migrations")
+
+		err = goose.Up(raw, dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return gorm.Open(postgres.New(postgres.Config{Conn: raw}), &gorm.Config{
+		TranslateError: true,
+		Logger:         logger.Default.LogMode(logger.Silent),
+	})
+}
+
+// DB returns a transaction-scoped *gorm.DB for one test. Rolled back automatically at test end.
+//
+// The seeded root team (id 1) and root user (id 1) are present — they come from the migrations
+// and survive the rollback, so every test starts from the same baseline the real system boots
+// with.
+func DB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	once.Do(func() {
+		shared, initErr = connect()
+	})
+
+	if initErr != nil {
+		t.Skipf("san_testdb: no test database (%v) — set TEST_DATABASE_URL or run docker compose up -d", initErr)
+	}
+
+	tx := shared.Begin()
+	if tx.Error != nil {
+		t.Fatalf("san_testdb: begin: %v", tx.Error)
+	}
+
+	t.Cleanup(func() {
+		tx.Rollback()
+	})
+
+	return tx
+}
