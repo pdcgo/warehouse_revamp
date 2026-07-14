@@ -97,6 +97,28 @@ erDiagram
 
 ---
 
+## shipping_service
+
+`backend/services/shipping_service/db_migrations/`
+
+```mermaid
+erDiagram
+    shippings {
+        bigserial   id         PK
+        text        code       UK "CHECK <> '' (stable machine key)"
+        text        name       "CHECK <> '' (display label)"
+        boolean     active     "default true"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`shippings`** — the courier catalogue (JNE, J&T, SiCepat, …), seeded by the migration as stable
+  reference data. `code` is unique and is what a shipment stores; `active=false` retires a courier
+  without deleting it. No relations — it stands alone.
+
+---
+
 ## Cross-service links (logical, not enforced)
 
 ```mermaid

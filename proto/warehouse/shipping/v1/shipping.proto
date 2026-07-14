@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package warehouse.shipping.v1;
+
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipping/v1;shippingv1";
+
+// ShippingService owns `shippings` — the catalogue of couriers a shipment can go out with. It is
+// reference data (seeded by migration, rarely changing), so the only RPC for now is a read.
+service ShippingService {
+  rpc ShippingList(ShippingListRequest) returns (ShippingListResponse);
+}
+
+// Shipping is one courier (e.g. JNE, J&T). `code` is the stable machine key a shipment stores;
+// `name` is the human label.
+message Shipping {
+  uint64 id = 1;
+  string code = 2;
+  string name = 3;
+  bool active = 4;
+}
+
+message ShippingListRequest {
+  // Reference data — any authenticated staff member may list couriers.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // Default (false) returns only active couriers; true includes retired ones.
+  bool include_inactive = 1;
+}
+
+message ShippingListResponse {
+  repeated Shipping data = 1;
+}
