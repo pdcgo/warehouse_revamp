@@ -46,7 +46,7 @@ async function loginExpectingFailure(page: Page, username: string, password: str
 }
 
 async function gotoUsers(page: Page) {
-  await page.getByRole("link", { name: "Users" }).click();
+  await page.getByRole("link", { name: "Users", exact: true }).click();
   await expect(page.getByTestId("users-table")).toBeVisible();
 }
 
