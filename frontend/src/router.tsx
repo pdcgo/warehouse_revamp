@@ -3,6 +3,7 @@ import { AuthGate, ProtectedRoute } from "./auth/AuthGate";
 import { LoginPage } from "./auth/LoginPage";
 import { CategoriesPage } from "./categories/CategoriesPage";
 import { Layout } from "./components/Layout";
+import { ComponentsPage } from "./dev/ComponentsPage";
 import { HomePage } from "./home/HomePage";
 import { ProductsPage } from "./products/ProductsPage";
 import { ProfilePage } from "./settings/ProfilePage";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "categories", element: <CategoriesPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "users", element: <UsersPage /> },
+      { path: "components", element: <ComponentsPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],
   },

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, FolderTree, House, Package, Users } from "lucide-react";
+import { Building2, CircleUser, Component, FolderTree, House, Package, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers } from "../lib/roles";
@@ -15,6 +15,7 @@ const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
 const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: FolderTree };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
+const COMPONENTS: MenuItem = { to: "/components", label: "Components", icon: Component };
 const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
@@ -29,6 +30,8 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(TEAMS);
     // Categories are one GLOBAL taxonomy, curated by root/admin — same gate as Teams.
     menu.push(CATEGORIES);
+    // The shared-components gallery is a preview/dev surface — keep it to root/admin.
+    menu.push(COMPONENTS);
   }
 
   // Products are a warehouse/selling team's own catalogue — the two team types that actually
