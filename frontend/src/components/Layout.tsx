@@ -12,8 +12,8 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ChevronDown, CircleUser, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { TeamSwitcher } from "../team/TeamSwitcher";
@@ -31,7 +31,6 @@ export function Layout() {
   const { current } = useTeam();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   const menu = menuFor(current?.teamType, current?.role);
 
@@ -147,13 +146,6 @@ export function Layout() {
             <Portal>
               <Menu.Positioner>
                 <Menu.Content minW="200px">
-                  <Menu.Item value="profile" onClick={() => navigate("/profile")}>
-                    <Icon as={CircleUser} boxSize="4" />
-                    Profile
-                  </Menu.Item>
-
-                  <Menu.Separator />
-
                   <Menu.Item
                     value="sign-out"
                     color="fg.error"
