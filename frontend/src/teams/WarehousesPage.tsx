@@ -2,16 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Flex,
   Heading,
-  HStack,
   Icon,
   IconButton,
+  Menu,
+  Portal,
   Spacer,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Trash2 } from "lucide-react";
+import { Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
@@ -32,6 +33,12 @@ export function WarehousesPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Which row action is open, and for which warehouse. Each row's actions live behind one overflow
+  // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
+  const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(
+    null,
+  );
 
   // Create/delete are root/admin (backend: TeamCreate/TeamDelete are [ROOT, ADMIN]). The
   // Warehouses menu itself only shows for root/admin team types, but this is the real gate —
@@ -108,41 +115,101 @@ export function WarehousesPage() {
                   <Table.Cell>{team.teamCode}</Table.Cell>
 
                   <Table.Cell textAlign="end">
-                    <HStack justify="end" gap="1">
-                      <TeamInfoDialog team={team} />
+                    <Menu.Root>
+                      <Menu.Trigger asChild>
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          aria-label="Actions"
+                          data-testid={`row-actions-warehouse-${team.teamCode}`}
+                        >
+                          <Icon as={MoreHorizontal} boxSize="4" />
+                        </IconButton>
+                      </Menu.Trigger>
 
-                      {admin && (
-                        <>
-                          <EditTeamDialog team={team} onDone={() => void load()} />
+                      <Portal>
+                        <Menu.Positioner>
+                          <Menu.Content>
+                            <Menu.Item
+                              value="info"
+                              data-testid={`info-team-${team.teamCode}`}
+                              onClick={() => setDialog({ kind: "info", team })}
+                            >
+                              <Icon as={Landmark} boxSize="4" />
+                              Contact &amp; bank
+                            </Menu.Item>
 
-                          {!isRoot && (
-                            <ConfirmDialog
-                              title="Delete warehouse"
-                              message={`Delete "${team.name}"? This cannot be undone.`}
-                              confirmLabel="Delete"
-                              onConfirm={() => remove(team)}
-                              trigger={
-                                <IconButton
-                                  size="xs"
-                                  variant="ghost"
-                                  colorPalette="red"
-                                  aria-label="Delete"
-                                  data-testid={`delete-warehouse-${team.teamCode}`}
+                            {admin && (
+                              <>
+                                <Menu.Item
+                                  value="edit"
+                                  data-testid={`edit-team-${team.teamCode}`}
+                                  onClick={() => setDialog({ kind: "edit", team })}
                                 >
-                                  <Icon as={Trash2} boxSize="4" />
-                                </IconButton>
-                              }
-                            />
-                          )}
-                        </>
-                      )}
-                    </HStack>
+                                  <Icon as={Pencil} boxSize="4" />
+                                  Edit
+                                </Menu.Item>
+
+                                {!isRoot && (
+                                  <Menu.Item
+                                    value="delete"
+                                    color="fg.error"
+                                    data-testid={`delete-warehouse-${team.teamCode}`}
+                                    onClick={() => setDialog({ kind: "delete", team })}
+                                  >
+                                    <Icon as={Trash2} boxSize="4" />
+                                    Delete
+                                  </Menu.Item>
+                                )}
+                              </>
+                            )}
+                          </Menu.Content>
+                        </Menu.Positioner>
+                      </Portal>
+                    </Menu.Root>
                   </Table.Cell>
                 </Table.Row>
               );
             })}
           </Table.Body>
         </Table.Root>
+      )}
+
+      {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "info" && (
+        <TeamInfoDialog
+          key={dialog.team.id.toString()}
+          team={dialog.team}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
+      {dialog?.kind === "edit" && (
+        <EditTeamDialog
+          key={dialog.team.id.toString()}
+          team={dialog.team}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          onDone={() => void load()}
+        />
+      )}
+
+      {dialog?.kind === "delete" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          title="Delete warehouse"
+          message={`Delete "${dialog.team.name}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => remove(dialog.team)}
+        />
       )}
     </Stack>
   );

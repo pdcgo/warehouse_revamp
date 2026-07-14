@@ -19,9 +19,32 @@ import { toaster } from "../components/Toaster";
 
 // EditTeamDialog changes only name + description. `type` and `team_code` are immutable after
 // create — they are not in the request, so a rename can never violate the root-team invariant.
-export function EditTeamDialog({ team, onDone }: { team: Team; onDone: () => void }) {
-  const [open, setOpen] = useState(false);
+export function EditTeamDialog({
+  team,
+  onDone,
+  open: openProp,
+  onOpenChange,
+}: {
+  team: Team;
+  onDone: () => void;
+  // Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
+  // inline trigger is rendered. Absent, the dialog triggers itself as before.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const isControlled = openProp !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = isControlled ? openProp : uncontrolledOpen;
   const [busy, setBusy] = useState(false);
+
+  function setOpen(next: boolean) {
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setUncontrolledOpen(next);
+    }
+  }
+
   const [error, setError] = useState("");
 
   const [name, setName] = useState(team.name);
@@ -50,11 +73,13 @@ export function EditTeamDialog({ team, onDone }: { team: Team; onDone: () => voi
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
-      <Dialog.Trigger asChild>
-        <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-team-${team.teamCode}`}>
-          <Icon as={Pencil} boxSize="4" />
-        </IconButton>
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-team-${team.teamCode}`}>
+            <Icon as={Pencil} boxSize="4" />
+          </IconButton>
+        </Dialog.Trigger>
+      )}
 
       <Portal>
         <Dialog.Backdrop />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Button,
@@ -23,8 +23,20 @@ import { toaster } from "../components/Toaster";
 // It loads the current values via TeamDetail (which is the only RPC that returns `info`), then
 // writes with TeamInfoUpdate. That RPC is team-scoped: a team owner/admin may edit their own,
 // root/admin may edit any.
-export function TeamInfoDialog({ team }: { team: Team }) {
-  const [open, setOpen] = useState(false);
+export function TeamInfoDialog({
+  team,
+  open: openProp,
+  onOpenChange,
+}: {
+  team: Team;
+  // Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
+  // inline trigger is rendered. Absent, the dialog triggers itself as before.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const isControlled = openProp !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = isControlled ? openProp : uncontrolledOpen;
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,31 +46,54 @@ export function TeamInfoDialog({ team }: { team: Team }) {
   const [bankOwnerName, setBankOwnerName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
 
-  // Load the current info when the dialog opens — not before, so the list view stays cheap.
-  async function onOpenChange(next: boolean) {
-    setOpen(next);
+  function setOpen(next: boolean) {
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setUncontrolledOpen(next);
+    }
+  }
 
-    if (!next) {
+  // Load the current info when the dialog opens — not before, so the list view stays cheap. Driven
+  // by `open` (an effect, not the onOpenChange handler) so a controlled open loads too.
+  useEffect(() => {
+    if (!open) {
       return;
     }
+
+    let cancelled = false;
 
     setLoading(true);
     setError("");
 
-    try {
-      const res = await teamClient.teamDetail({ teamId: team.id });
-      const info = res.team?.info;
+    void (async () => {
+      try {
+        const res = await teamClient.teamDetail({ teamId: team.id });
+        const info = res.team?.info;
 
-      setContactNumber(info?.contactNumber ?? "");
-      setBankType(info?.bankType ?? "");
-      setBankOwnerName(info?.bankOwnerName ?? "");
-      setBankAccountNumber(info?.bankAccountNumber ?? "");
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setLoading(false);
-    }
-  }
+        if (cancelled) {
+          return;
+        }
+
+        setContactNumber(info?.contactNumber ?? "");
+        setBankType(info?.bankType ?? "");
+        setBankOwnerName(info?.bankOwnerName ?? "");
+        setBankAccountNumber(info?.bankAccountNumber ?? "");
+      } catch (err) {
+        if (!cancelled) {
+          setError(rpcError(err));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, team.id]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -85,12 +120,14 @@ export function TeamInfoDialog({ team }: { team: Team }) {
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => void onOpenChange(e.open)}>
-      <Dialog.Trigger asChild>
-        <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
-          <Icon as={Landmark} boxSize="4" />
-        </IconButton>
-      </Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
+            <Icon as={Landmark} boxSize="4" />
+          </IconButton>
+        </Dialog.Trigger>
+      )}
 
       <Portal>
         <Dialog.Backdrop />

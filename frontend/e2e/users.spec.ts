@@ -82,6 +82,7 @@ test("UpdateUser: an admin edits another user's name", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`edit-${NEW_USER}`).click();
   await page.getByTestId("edit-name").fill("Renamed By Admin");
   await page.getByTestId("submit-edit-user").click();
@@ -122,6 +123,7 @@ test("AdminResetPassword: an admin sets a locked-out user's password", async ({ 
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`reset-password-${NEW_USER}`).click();
   await page.getByTestId("admin-new-password-1").fill(ADMIN_SET_PASSWORD);
   await page.getByTestId("admin-new-password-2").fill(ADMIN_SET_PASSWORD);
@@ -143,6 +145,7 @@ test("SuspendUser: suspending cuts the account off; restoring brings it back", a
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`suspend-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
 
@@ -157,6 +160,7 @@ test("SuspendUser: suspending cuts the account off; restoring brings it back", a
   // Restore.
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`suspend-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId(`suspended-${NEW_USER}`)).toBeHidden();
@@ -170,6 +174,7 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await gotoUsers(page);
 
   // Remove from the team. The ACCOUNT survives — only the membership goes.
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`remove-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
@@ -192,6 +197,7 @@ test("DeleteUser: the account is gone for good", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
   await page.getByTestId(`delete-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
 

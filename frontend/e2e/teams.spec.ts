@@ -45,6 +45,7 @@ test("EditTeam: rename sticks; type and code are untouched", async ({ page }) =>
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`edit-team-${CODE}`).click();
   await page.getByTestId("edit-team-name").fill(`${NAME} renamed`);
   await page.getByTestId("submit-edit-team").click();
@@ -59,6 +60,7 @@ test("TeamInfo: bank details round-trip", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
   await page.getByTestId("info-contact").fill("0812-0000");
   await page.getByTestId("info-bank-owner").fill("E2E Holder");
@@ -67,6 +69,7 @@ test("TeamInfo: bank details round-trip", async ({ page }) => {
   await expect(page.getByTestId("submit-team-info")).toBeHidden();
 
   // Reopen: the values must have persisted (TeamDetail returns them).
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
   await expect(page.getByTestId("info-bank-owner")).toHaveValue("E2E Holder");
   await expect(page.getByTestId("info-bank-account")).toHaveValue("999888777");
@@ -85,6 +88,7 @@ test("DeleteTeam: the team is gone", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`delete-team-${CODE}`).click();
   await page.getByTestId("confirm-action").click();
 

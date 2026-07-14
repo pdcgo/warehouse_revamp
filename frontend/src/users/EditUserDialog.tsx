@@ -23,13 +23,36 @@ import { toaster } from "../components/Toaster";
 // They are two different RPCs with two different policies on purpose: UpdateProfile has no
 // user_id at all (the subject is the token holder), while UpdateUser is root/admin-only. One RPC
 // meaning both is exactly how the source produced an IDOR.
-export function EditUserDialog({ user, onDone }: { user: User; onDone: () => void }) {
+export function EditUserDialog({
+  user,
+  onDone,
+  open: openProp,
+  onOpenChange,
+}: {
+  user: User;
+  onDone: () => void;
+  // Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
+  // inline trigger is rendered. Absent, the dialog triggers itself as before.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { identity } = useAuth();
 
   const isSelf = identity?.identityId === user.id;
 
-  const [open, setOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = isControlled ? openProp : uncontrolledOpen;
   const [busy, setBusy] = useState(false);
+
+  function setOpen(next: boolean) {
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setUncontrolledOpen(next);
+    }
+  }
+
   const [error, setError] = useState("");
 
   const [name, setName] = useState(user.name);
@@ -64,11 +87,13 @@ export function EditUserDialog({ user, onDone }: { user: User; onDone: () => voi
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
-      <Dialog.Trigger asChild>
-        <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-${user.username}`}>
-          <Icon as={Pencil} boxSize="4" />
-        </IconButton>
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-${user.username}`}>
+            <Icon as={Pencil} boxSize="4" />
+          </IconButton>
+        </Dialog.Trigger>
+      )}
 
       <Portal>
         <Dialog.Backdrop />

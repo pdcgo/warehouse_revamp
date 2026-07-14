@@ -368,6 +368,16 @@ colours, and a11y wiring, and skipping them is how an app drifts off its design 
 picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
 native element is genuinely needed, get an explicit ask first.
 
+Two more UI rules:
+
+- **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three
+  or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
+  opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
+  menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
+- **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
+  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
+  `Dialog`) before it runs. Never a bare one-click destructive button.
+
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:
 

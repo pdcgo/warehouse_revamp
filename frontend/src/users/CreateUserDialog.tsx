@@ -20,13 +20,34 @@ import { roleLabel, rolesFor } from "../lib/roles";
 
 // CreateUserDialog calls CreateUser, which creates the account AND the team membership in ONE
 // transaction. So there is no window where a user exists with no team.
-export function CreateUserDialog({ onDone }: { onDone: () => void }) {
+export function CreateUserDialog({
+  onDone,
+  open: openProp,
+  onOpenChange,
+}: {
+  onDone: () => void;
+  // Optional controlled mode: a caller may drive `open` and suppress the inline trigger. Absent,
+  // the dialog triggers itself as before.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { current } = useTeam();
 
   const roles = rolesFor(current?.teamType);
 
-  const [open, setOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = isControlled ? openProp : uncontrolledOpen;
   const [busy, setBusy] = useState(false);
+
+  function setOpen(next: boolean) {
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setUncontrolledOpen(next);
+    }
+  }
+
   const [error, setError] = useState("");
 
   const [username, setUsername] = useState("");
@@ -71,11 +92,13 @@ export function CreateUserDialog({ onDone }: { onDone: () => void }) {
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
-      <Dialog.Trigger asChild>
-        <Button size="xs" colorPalette="brand" data-testid="open-create-user">
-          New user
-        </Button>
-      </Dialog.Trigger>
+      {!isControlled && (
+        <Dialog.Trigger asChild>
+          <Button size="xs" colorPalette="brand" data-testid="open-create-user">
+            New user
+          </Button>
+        </Dialog.Trigger>
+      )}
 
       <Portal>
         <Dialog.Backdrop />

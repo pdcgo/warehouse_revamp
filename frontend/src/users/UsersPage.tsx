@@ -8,13 +8,15 @@ import {
   Icon,
   IconButton,
   Input,
+  Menu,
+  Portal,
   Spacer,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Pause, Play, Trash2, UserMinus } from "lucide-react";
+import { KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
@@ -38,6 +40,12 @@ export function UsersPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Which row action is open, and for which user. The row's actions live behind one overflow menu;
+  // picking an item sets this, and the matching dialog (rendered once, below) opens from it.
+  const [dialog, setDialog] = useState<
+    { kind: "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
+  >(null);
 
   // A global admin may look at EVERY user (team_id = 0). Anyone else sees only their own team.
   //
@@ -193,82 +201,152 @@ export function UsersPage() {
                   </Table.Cell>
 
                   <Table.Cell textAlign="end">
-                    <HStack justify="end" gap="1">
-                      <EditUserDialog user={user} onDone={() => void load()} />
+                    <Menu.Root>
+                      <Menu.Trigger asChild>
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          aria-label="Actions"
+                          data-testid={`row-actions-${user.username}`}
+                        >
+                          <Icon as={MoreHorizontal} boxSize="4" />
+                        </IconButton>
+                      </Menu.Trigger>
 
-                      {!allTeams && current && !isSelf && (
-                        <ConfirmDialog
-                          title="Remove from team"
-                          message={`Remove ${user.username} from ${current.teamName || "this team"}? The account itself is kept.`}
-                          confirmLabel="Remove"
-                          onConfirm={() => removeFromTeam(user)}
-                          trigger={
-                            <IconButton
-                              size="xs"
-                              variant="ghost"
-                              aria-label="Remove from team"
-                              data-testid={`remove-${user.username}`}
+                      <Portal>
+                        <Menu.Positioner>
+                          <Menu.Content>
+                            <Menu.Item
+                              value="edit"
+                              data-testid={`edit-${user.username}`}
+                              onClick={() => setDialog({ kind: "edit", user })}
                             >
-                              <Icon as={UserMinus} boxSize="4" />
-                            </IconButton>
-                          }
-                        />
-                      )}
+                              <Icon as={Pencil} boxSize="4" />
+                              Edit
+                            </Menu.Item>
 
-                      {globalAdmin && !isSelf && (
-                        <>
-                          {/* An admin sets a password without knowing the old one — which is
-                              exactly the situation you are in when someone is locked out. */}
-                          <AdminResetPasswordDialog user={user} />
-
-                          <ConfirmDialog
-                            title={user.isSuspended ? "Restore account" : "Suspend account"}
-                            message={
-                              user.isSuspended
-                                ? `Restore ${user.username}? They will be able to sign in again.`
-                                : `Suspend ${user.username}? Their active session is cut off immediately and they cannot sign in.`
-                            }
-                            confirmLabel={user.isSuspended ? "Restore" : "Suspend"}
-                            destructive={!user.isSuspended}
-                            onConfirm={() => suspend(user, !user.isSuspended)}
-                            trigger={
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                aria-label={user.isSuspended ? "Restore" : "Suspend"}
-                                data-testid={`suspend-${user.username}`}
+                            {!allTeams && current && !isSelf && (
+                              <Menu.Item
+                                value="remove"
+                                data-testid={`remove-${user.username}`}
+                                onClick={() => setDialog({ kind: "remove", user })}
                               >
-                                {user.isSuspended ? <Icon as={Play} boxSize="4" /> : <Icon as={Pause} boxSize="4" />}
-                              </IconButton>
-                            }
-                          />
+                                <Icon as={UserMinus} boxSize="4" />
+                                Remove from team
+                              </Menu.Item>
+                            )}
 
-                          <ConfirmDialog
-                            title="Delete user"
-                            message={`Permanently delete ${user.username}? Their team memberships are removed too. This cannot be undone.`}
-                            confirmLabel="Delete"
-                            onConfirm={() => remove(user)}
-                            trigger={
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                colorPalette="red"
-                                aria-label="Delete"
-                                data-testid={`delete-${user.username}`}
-                              >
-                                <Icon as={Trash2} boxSize="4" />
-                              </IconButton>
-                            }
-                          />
-                        </>
-                      )}
-                    </HStack>
+                            {globalAdmin && !isSelf && (
+                              <>
+                                {/* An admin sets a password without knowing the old one — which
+                                    is exactly the situation when someone is locked out. */}
+                                <Menu.Item
+                                  value="reset"
+                                  data-testid={`reset-password-${user.username}`}
+                                  onClick={() => setDialog({ kind: "reset", user })}
+                                >
+                                  <Icon as={KeyRound} boxSize="4" />
+                                  Reset password
+                                </Menu.Item>
+
+                                <Menu.Item
+                                  value="suspend"
+                                  data-testid={`suspend-${user.username}`}
+                                  onClick={() => setDialog({ kind: "suspend", user })}
+                                >
+                                  <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
+                                  {user.isSuspended ? "Restore" : "Suspend"}
+                                </Menu.Item>
+
+                                <Menu.Item
+                                  value="delete"
+                                  color="fg.error"
+                                  data-testid={`delete-${user.username}`}
+                                  onClick={() => setDialog({ kind: "delete", user })}
+                                >
+                                  <Icon as={Trash2} boxSize="4" />
+                                  Delete
+                                </Menu.Item>
+                              </>
+                            )}
+                          </Menu.Content>
+                        </Menu.Positioner>
+                      </Portal>
+                    </Menu.Root>
                   </Table.Cell>
                 </Table.Row>
               );
             })}
           </Table.Body>
         </Table.Root>
+      )}
+
+      {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "edit" && (
+        <EditUserDialog
+          key={dialog.user.id.toString()}
+          user={dialog.user}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          onDone={() => void load()}
+        />
+      )}
+
+      {dialog?.kind === "reset" && (
+        <AdminResetPasswordDialog
+          key={dialog.user.id.toString()}
+          user={dialog.user}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
+      {dialog?.kind === "remove" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          title="Remove from team"
+          message={`Remove ${dialog.user.username} from ${current?.teamName || "this team"}? The account itself is kept.`}
+          confirmLabel="Remove"
+          onConfirm={() => removeFromTeam(dialog.user)}
+        />
+      )}
+
+      {dialog?.kind === "suspend" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          title={dialog.user.isSuspended ? "Restore account" : "Suspend account"}
+          message={
+            dialog.user.isSuspended
+              ? `Restore ${dialog.user.username}? They will be able to sign in again.`
+              : `Suspend ${dialog.user.username}? Their active session is cut off immediately and they cannot sign in.`
+          }
+          confirmLabel={dialog.user.isSuspended ? "Restore" : "Suspend"}
+          destructive={!dialog.user.isSuspended}
+          onConfirm={() => suspend(dialog.user, !dialog.user.isSuspended)}
+        />
+      )}
+
+      {dialog?.kind === "delete" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          title="Delete user"
+          message={`Permanently delete ${dialog.user.username}? Their team memberships are removed too. This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => remove(dialog.user)}
+        />
       )}
 
       {!loading && users.length === 0 && !error && (
