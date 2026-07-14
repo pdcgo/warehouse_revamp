@@ -132,8 +132,12 @@ cd backend && go tool wire ./cmd/app_development
 Wire is registered as a `tool` directive in `go.mod`, so `go tool wire` survives `go mod tidy`
 (a plain `go run github.com/google/wire/cmd/wire` does not — tidy prunes the tool's own deps).
 
-A service exposes a `New<X>Service(deps...)` constructor; add it to the `wire.Build` set and
-mount its handler in `service_api.go`.
+A service exposes a `New<X>Service(deps...)` constructor; add it to the `wire.Build` set. To
+**mount** it, give the service a `register.go` (`func NewRegister(mux, service, opts)
+san_grpc.RegisterHandler`) that mounts its handler(s) and returns the proto service names it
+exposes, then add one line to `service_api.go`'s `san_grpc.Register(mux, …)` call. Mounting and
+gRPC reflection come from the same call ([backend/pkgs/san_grpc/](backend/pkgs/san_grpc/)), so a
+service can't be served without also appearing in reflection, or vice-versa.
 
 CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`).
 

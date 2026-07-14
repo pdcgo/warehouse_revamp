@@ -9,6 +9,7 @@ require (
 	cloud.google.com/go/secretmanager v1.20.0
 	connectrpc.com/connect v1.19.0
 	connectrpc.com/cors v0.1.0
+	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/validate v0.6.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/wire v0.7.0

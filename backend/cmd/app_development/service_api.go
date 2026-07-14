@@ -9,10 +9,11 @@ import (
 	"connectrpc.com/validate"
 	"github.com/rs/cors"
 
-	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
-	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
+	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
@@ -55,9 +56,13 @@ func NewServeMux(
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mux.Handle(userv1connect.NewAuthServiceHandler(authService, opts))
-	mux.Handle(userv1connect.NewUserServiceHandler(userService, opts))
-	mux.Handle(teamv1connect.NewTeamServiceHandler(teamService, opts))
+	// Each service reports the handler(s) it mounts and the proto services it exposes; san_grpc
+	// mounts them and advertises exactly those over gRPC reflection. Adding a service is one line
+	// here plus its register.go — reflection can never drift from what is actually served.
+	san_grpc.Register(mux,
+		user_service.NewRegister(mux, authService, userService, opts),
+		team_service.NewRegister(mux, teamService, opts),
+	)
 
 	return mux, nil
 }
