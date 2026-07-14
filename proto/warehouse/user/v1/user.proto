@@ -78,6 +78,8 @@ message PublicUser {
   uint64 id = 1;
   string username = 2;
   string name = 3;
+  // Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
+  string avatar_url = 4;
 }
 
 message UpdateProfileRequest {

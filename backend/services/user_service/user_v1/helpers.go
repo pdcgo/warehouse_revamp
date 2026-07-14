@@ -109,9 +109,10 @@ func escapeLike(q string) string {
 // contact details. A picker needs a name.
 func publicUserToProto(user *user_service_models.User) *userv1.PublicUser {
 	return &userv1.PublicUser{
-		Id:       user.ID,
-		Username: user.Username,
-		Name:     user.Name,
+		Id:        user.ID,
+		Username:  user.Username,
+		Name:      user.Name,
+		AvatarUrl: user.AvatarURL,
 	}
 }
 
