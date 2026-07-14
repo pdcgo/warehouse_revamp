@@ -355,6 +355,23 @@ services grow.
 
 ---
 
+## Git workflow
+
+All work happens on a single long-lived **`dev`** branch. Commit straight to `dev` — do **not**
+create a branch or a PR per issue/task. The owner keeps `dev` checked out to preview the running
+app and review as work lands, so per-issue branch-switching just gets in the way.
+
+- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
+  should pass at each commit.
+- Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
+  move items Ready → In progress → Done as work proceeds.
+- Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
+  never push `main` or merge without an explicit ask.
+
+CI (`.github/workflows/ci.yml`) runs on push-to-`main` and every PR: buf lint + generated-drift
+check, `go build/vet/test`, frontend build, and Playwright e2e against Postgres + Redis service
+containers.
+
 ## graphify
 
 This project uses [graphify](https://pypi.org/project/graphifyy/) to turn the codebase into a
