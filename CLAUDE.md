@@ -348,6 +348,13 @@ set. Two things are centralised there on purpose:
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
 
+**Icons come from [lucide-react](https://lucide.dev), and only from there.** Import the named
+icon and render it (`import { Pencil } from "lucide-react"` → `<Pencil size={16} />`). Do **not**
+use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as icons — they render differently on every
+platform and carry no consistent size or colour. Match the surrounding size (`16` for an `xs`
+row action) and keep the button's `aria-label` — the icon is decorative, the label is the name.
+Chakra's own `CloseButton` is a primitive, not an icon, and stays.
+
 The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 
 Auth is deliberately **not wired** into the frontend shell: it's still being designed in

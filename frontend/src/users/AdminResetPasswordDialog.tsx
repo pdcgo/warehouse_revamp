@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { KeyRound } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { PasswordInput } from "../components/PasswordInput";
@@ -72,7 +73,7 @@ export function AdminResetPasswordDialog({ user }: { user: User }) {
           aria-label="Reset password"
           data-testid={`reset-password-${user.username}`}
         >
-          🔑
+          <KeyRound size={16} />
         </IconButton>
       </Dialog.Trigger>
 

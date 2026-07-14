@@ -11,6 +11,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { Pencil } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
@@ -64,7 +65,7 @@ export function EditUserDialog({ user, onDone }: { user: User; onDone: () => voi
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
         <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-${user.username}`}>
-          ✎
+          <Pencil size={16} />
         </IconButton>
       </Dialog.Trigger>
 

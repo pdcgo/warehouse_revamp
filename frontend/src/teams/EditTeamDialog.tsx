@@ -11,6 +11,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { Pencil } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
@@ -50,7 +51,7 @@ export function EditTeamDialog({ team, onDone }: { team: Team; onDone: () => voi
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
         <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-team-${team.teamCode}`}>
-          ✎
+          <Pencil size={16} />
         </IconButton>
       </Dialog.Trigger>
 

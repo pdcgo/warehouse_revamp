@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, IconButton, Input } from "@chakra-ui/react";
 import type { InputProps } from "@chakra-ui/react";
+import { Eye, EyeOff } from "lucide-react";
 
 // PasswordInput is a password field with a show/hide toggle. It renders a plain <Input> (so it
 // still consumes the surrounding Field's context — the label→control id wiring, `required`,
@@ -30,7 +31,7 @@ export function PasswordInput(props: InputProps) {
         insetEnd="1"
         transform="translateY(-50%)"
       >
-        {visible ? "🙈" : "👁"}
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
       </IconButton>
     </Box>
   );

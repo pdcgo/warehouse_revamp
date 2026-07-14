@@ -13,6 +13,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
+import { Pause, Play, Trash2, UserMinus } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
@@ -207,7 +208,7 @@ export function UsersPage() {
                               aria-label="Remove from team"
                               data-testid={`remove-${user.username}`}
                             >
-                              ⊘
+                              <UserMinus size={16} />
                             </IconButton>
                           }
                         />
@@ -236,7 +237,7 @@ export function UsersPage() {
                                 aria-label={user.isSuspended ? "Restore" : "Suspend"}
                                 data-testid={`suspend-${user.username}`}
                               >
-                                {user.isSuspended ? "▶" : "⏸"}
+                                {user.isSuspended ? <Play size={16} /> : <Pause size={16} />}
                               </IconButton>
                             }
                           />
@@ -254,7 +255,7 @@ export function UsersPage() {
                                 aria-label="Delete"
                                 data-testid={`delete-${user.username}`}
                               >
-                                ✕
+                                <Trash2 size={16} />
                               </IconButton>
                             }
                           />

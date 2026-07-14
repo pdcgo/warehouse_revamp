@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { Landmark } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
@@ -86,7 +87,7 @@ export function TeamInfoDialog({ team }: { team: Team }) {
     <Dialog.Root open={open} onOpenChange={(e) => void onOpenChange(e.open)}>
       <Dialog.Trigger asChild>
         <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
-          🏦
+          <Landmark size={16} />
         </IconButton>
       </Dialog.Trigger>
 

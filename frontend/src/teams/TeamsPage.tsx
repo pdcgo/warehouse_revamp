@@ -11,6 +11,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
+import { Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
@@ -135,7 +136,7 @@ export function TeamsPage() {
                                   aria-label="Delete"
                                   data-testid={`delete-team-${team.teamCode}`}
                                 >
-                                  ✕
+                                  <Trash2 size={16} />
                                 </IconButton>
                               }
                             />
