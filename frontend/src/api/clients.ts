@@ -1,6 +1,7 @@
 import { createClient } from "@connectrpc/connect";
 import { AuthService, UserService } from "../gen/warehouse/user/v1/user_pb";
 import { TeamService } from "../gen/warehouse/team/v1/team_pb";
+import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { ShippingService } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { transport } from "../transport";
 
@@ -9,6 +10,7 @@ import { transport } from "../transport";
 export const authClient = createClient(AuthService, transport);
 export const userClient = createClient(UserService, transport);
 export const teamClient = createClient(TeamService, transport);
+export const productClient = createClient(ProductService, transport);
 export const shippingClient = createClient(ShippingService, transport);
 
 // rpcError turns a Connect error into something a human can read.

@@ -3,6 +3,7 @@ import { AuthGate, ProtectedRoute } from "./auth/AuthGate";
 import { LoginPage } from "./auth/LoginPage";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./home/HomePage";
+import { ProductsPage } from "./products/ProductsPage";
 import { ProfilePage } from "./settings/ProfilePage";
 import { TeamProvider } from "./team/TeamContext";
 import { TeamsPage } from "./teams/TeamsPage";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "teams", element: <TeamsPage /> },
+      { path: "products", element: <ProductsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],

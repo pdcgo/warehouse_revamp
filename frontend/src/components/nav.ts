@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, House, Users } from "lucide-react";
+import { Building2, CircleUser, House, Package, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers } from "../lib/roles";
@@ -12,6 +12,7 @@ export interface MenuItem {
 
 const HOME: MenuItem = { to: "/", label: "Home", icon: House };
 const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
+const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
 
@@ -25,6 +26,12 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
 
   if (teamType === TeamType.ROOT || teamType === TeamType.ADMIN) {
     menu.push(TEAMS);
+  }
+
+  // Products are a warehouse/selling team's own catalogue — the two team types that actually
+  // hold stock. Root/admin teams have no products of their own.
+  if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
+    menu.push(PRODUCTS);
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend
