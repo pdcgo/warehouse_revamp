@@ -90,6 +90,11 @@ backend/services/<service_name>/
   [docs/database-schema.md](docs/database-schema.md) **in the same commit** — one section per
   service, each with a **mermaid** `erDiagram` of the tables and their relations. The migrations
   are authoritative; the doc mirrors them for humans and must not drift.
+- **Document complex / cross-service RPC flows.** Any RPC with a non-trivial flow (multi-step,
+  saga, compensation) or a dependency on another service goes in
+  `docs/services/<service_name>/rpc.md`, with a **mermaid** sequence/flow diagram. Update it in the
+  same commit as any refactor, flow change, or code change that touches the flow — the doc must not
+  drift. Simple single-table CRUD RPCs do not need an entry.
 
 Migrations are driven by the **development tool** at [backend/cmd/tool/](backend/cmd/tool/)
 (`urfave/cli/v3`), run from `./backend`:
