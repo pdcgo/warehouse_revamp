@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Card, Heading, Stack, Text } from "@chakra-ui/react";
 import { PasswordInput } from "../components/PasswordInput";
 import { UserItem } from "../components/UserItem";
+import { TeamItem } from "../components/TeamItem";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
 
@@ -47,6 +49,15 @@ export function ComponentsPage() {
       >
         <UserItem user={{ name: "Ada Lovelace", username: "ada", avatarUrl: "" }} />
         <UserItem user={{ name: "", username: "no_name_user", avatarUrl: "" }} />
+      </ComponentCard>
+
+      <ComponentCard
+        title="TeamItem"
+        description="The shared way to show a team — avatar, name, and a type badge coloured per team type."
+      >
+        <TeamItem team={{ teamName: "Jakarta Warehouse", teamType: TeamType.WAREHOUSE }} />
+        <TeamItem team={{ teamName: "Srengat Selling", teamType: TeamType.SELLING }} />
+        <TeamItem team={{ teamName: "Root Team", teamType: TeamType.ROOT }} />
       </ComponentCard>
 
       <ComponentCard
