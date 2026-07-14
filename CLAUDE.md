@@ -385,7 +385,10 @@ app and review as work lands, so per-issue branch-switching just gets in the way
 - Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
   should pass at each commit.
 - Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
-  move items Ready → In progress → Done as work proceeds.
+  move items **Ready → In progress** when you start, and **In progress → In review** when the
+  work is finished and green on `dev`. **Stop at In review** — do **not** move to Done and do
+  **not** `gh issue close` it yourself. The owner previews on `dev`, then flips it to Done and
+  closes the issue. Done means "the owner reviewed it", not "the code landed".
 - Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
   never push `main` or merge without an explicit ask.
 
