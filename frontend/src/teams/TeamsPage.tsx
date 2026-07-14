@@ -4,6 +4,7 @@ import {
   Flex,
   Heading,
   HStack,
+  Icon,
   IconButton,
   Spacer,
   Spinner,
@@ -136,7 +137,7 @@ export function TeamsPage() {
                                   aria-label="Delete"
                                   data-testid={`delete-team-${team.teamCode}`}
                                 >
-                                  <Trash2 size={16} />
+                                  <Icon as={Trash2} boxSize="4" />
                                 </IconButton>
                               }
                             />

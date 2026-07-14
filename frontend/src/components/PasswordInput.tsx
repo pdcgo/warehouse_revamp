@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, IconButton, Input } from "@chakra-ui/react";
+import { Box, Icon, IconButton, Input } from "@chakra-ui/react";
 import type { InputProps } from "@chakra-ui/react";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -31,7 +31,7 @@ export function PasswordInput(props: InputProps) {
         insetEnd="1"
         transform="translateY(-50%)"
       >
-        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        {visible ? <Icon as={EyeOff} boxSize="4" /> : <Icon as={Eye} boxSize="4" />}
       </IconButton>
     </Box>
   );

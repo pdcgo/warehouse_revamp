@@ -348,12 +348,15 @@ set. Two things are centralised there on purpose:
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
 
-**Icons come from [lucide-react](https://lucide.dev), and only from there.** Import the named
-icon and render it (`import { Pencil } from "lucide-react"` → `<Pencil size={16} />`). Do **not**
-use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as icons — they render differently on every
-platform and carry no consistent size or colour. Match the surrounding size (`16` for an `xs`
-row action) and keep the button's `aria-label` — the icon is decorative, the label is the name.
-Chakra's own `CloseButton` is a primitive, not an icon, and stays.
+**Icons come from [lucide-react](https://lucide.dev), rendered through Chakra's `<Icon>` wrapper.**
+Import the named icon, then wrap it: `import { Pencil } from "lucide-react"` →
+`<Icon as={Pencil} boxSize="4" />`. lucide is the only icon source; `<Icon>` is what makes the
+icon obey Chakra's sizing/colour tokens, so **size is a `boxSize` token, not a raw pixel prop**
+(`"4"` = 16px, the size for an `xs` row action). Do **not** import lucide icons bare
+(`<Pencil size={16} />`), and do **not** use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as
+icons — they render differently on every platform. Keep the button's `aria-label` — the icon is
+decorative, the label is the name. Chakra's own `CloseButton` is a primitive, not an icon, and
+stays.
 
 The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 

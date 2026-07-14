@@ -5,6 +5,7 @@ import {
   Flex,
   HStack,
   Heading,
+  Icon,
   IconButton,
   Input,
   Spacer,
@@ -208,7 +209,7 @@ export function UsersPage() {
                               aria-label="Remove from team"
                               data-testid={`remove-${user.username}`}
                             >
-                              <UserMinus size={16} />
+                              <Icon as={UserMinus} boxSize="4" />
                             </IconButton>
                           }
                         />
@@ -237,7 +238,7 @@ export function UsersPage() {
                                 aria-label={user.isSuspended ? "Restore" : "Suspend"}
                                 data-testid={`suspend-${user.username}`}
                               >
-                                {user.isSuspended ? <Play size={16} /> : <Pause size={16} />}
+                                {user.isSuspended ? <Icon as={Play} boxSize="4" /> : <Icon as={Pause} boxSize="4" />}
                               </IconButton>
                             }
                           />
@@ -255,7 +256,7 @@ export function UsersPage() {
                                 aria-label="Delete"
                                 data-testid={`delete-${user.username}`}
                               >
-                                <Trash2 size={16} />
+                                <Icon as={Trash2} boxSize="4" />
                               </IconButton>
                             }
                           />

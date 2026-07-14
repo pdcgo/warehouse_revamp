@@ -5,6 +5,7 @@ import {
   CloseButton,
   Dialog,
   Field,
+  Icon,
   IconButton,
   Input,
   Portal,
@@ -51,7 +52,7 @@ export function EditTeamDialog({ team, onDone }: { team: Team; onDone: () => voi
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
         <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-team-${team.teamCode}`}>
-          <Pencil size={16} />
+          <Icon as={Pencil} boxSize="4" />
         </IconButton>
       </Dialog.Trigger>
 

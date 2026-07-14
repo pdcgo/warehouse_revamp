@@ -5,6 +5,7 @@ import {
   CloseButton,
   Dialog,
   Field,
+  Icon,
   IconButton,
   Input,
   Portal,
@@ -87,7 +88,7 @@ export function TeamInfoDialog({ team }: { team: Team }) {
     <Dialog.Root open={open} onOpenChange={(e) => void onOpenChange(e.open)}>
       <Dialog.Trigger asChild>
         <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
-          <Landmark size={16} />
+          <Icon as={Landmark} boxSize="4" />
         </IconButton>
       </Dialog.Trigger>
 

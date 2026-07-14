@@ -5,6 +5,7 @@ import {
   CloseButton,
   Dialog,
   Field,
+  Icon,
   IconButton,
   Portal,
   Stack,
@@ -73,7 +74,7 @@ export function AdminResetPasswordDialog({ user }: { user: User }) {
           aria-label="Reset password"
           data-testid={`reset-password-${user.username}`}
         >
-          <KeyRound size={16} />
+          <Icon as={KeyRound} boxSize="4" />
         </IconButton>
       </Dialog.Trigger>
 
