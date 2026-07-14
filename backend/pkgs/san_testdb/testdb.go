@@ -34,7 +34,7 @@ const defaultDSN = "host=localhost port=5433 user=user password=password dbname=
 // migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
 // root user that references it. There is no cross-service FK to enforce it, so order matters here
 // exactly as it does in production. Independent services (shipping_service) can go anywhere.
-var migrationServices = []string{"team_service", "user_service", "shipping_service"}
+var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service"}
 
 var (
 	once    sync.Once

@@ -11,6 +11,8 @@ import (
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
+	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
@@ -30,6 +32,7 @@ func NewServeMux(
 	userService *user_v1.Service,
 	teamService *team_v1.Service,
 	shippingService *shipping_v1.Service,
+	productService *product_v1.Service,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
 ) (*http.ServeMux, error) {
@@ -66,6 +69,7 @@ func NewServeMux(
 		user_service.NewRegister(mux, authService, userService, opts),
 		team_service.NewRegister(mux, teamService, opts),
 		shipping_service.NewRegister(mux, shippingService, opts),
+		product_service.NewRegister(mux, productService, opts),
 	)
 
 	return mux, nil

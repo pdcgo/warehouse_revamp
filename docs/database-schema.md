@@ -119,13 +119,40 @@ erDiagram
 
 ---
 
+## product_service
+
+`backend/services/product_service/db_migrations/`
+
+```mermaid
+erDiagram
+    products {
+        bigserial   id          PK
+        bigint      team_id     "owning team — opaque cross-service id (no FK)"
+        text        sku         "CHECK <> '' — UNIQUE per team among active rows"
+        text        name        "CHECK <> ''"
+        text        description
+        boolean     deleted     "default false (soft delete)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`products`** — a team's catalogue items. Every RPC is team-scoped (`team_id` carries
+  `use_scope`), so a product is only ever reachable within its owning team. `sku` is unique per team
+  **among active products only** (`UNIQUE (team_id, sku) WHERE deleted = FALSE`), so a soft-deleted
+  product frees its SKU for reuse and two teams may share a SKU. `team_id` is opaque — no FK to
+  `team_service.teams`.
+
+---
+
 ## Cross-service links (logical, not enforced)
 
 ```mermaid
 erDiagram
     teams ||--o{ user_team_roles : "team_id (opaque, via RPC)"
+    teams ||--o{ products : "team_id (opaque, via RPC)"
 ```
 
-`user_team_roles.team_id`, `team_infos.return_warehouse_id`, and `team_infos.return_user_id` point
-at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services
+`user_team_roles.team_id`, `products.team_id`, `team_infos.return_warehouse_id`, and
+`team_infos.return_user_id` point at rows owned by other services. They carry no database foreign key by design (HARD RULE 3 — services
 stay independent); the owning service resolves them over Connect RPC.

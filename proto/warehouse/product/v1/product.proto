@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package warehouse.product.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
+
+// ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team
+// owns its own catalogue), so every RPC is team-scoped: `team_id` carries (use_scope), and the
+// handler only ever touches rows with that team_id — you cannot reach another team's product by
+// passing its id.
+service ProductService {
+  rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
+  rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
+  rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
+}
+
+message Product {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  bool deleted = 6;
+}
+
+message ProductCreateRequest {
+  // Write: the team's managers. Team-level roles are legal here because team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string sku = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string description = 4 [(buf.validate.field).string = {max_len: 1000}];
+}
+
+message ProductCreateResponse {
+  Product product = 1;
+}
+
+message ProductListRequest {
+  // Read: anyone in the team, including staff and customer service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ProductListResponse {
+  repeated Product products = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message ProductUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  optional string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string description = 5 [(buf.validate.field).string = {max_len: 1000}];
+}
+
+message ProductUpdateResponse {
+  Product product = 1;
+}
+
+message ProductDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDeleteResponse {}
