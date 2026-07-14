@@ -11,6 +11,7 @@ import {
   Stack,
 } from "@chakra-ui/react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { Logo } from "../components/Logo";
 import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "./AuthContext";
 
@@ -52,6 +53,8 @@ export function LoginPage() {
         <Card.Body>
           <form onSubmit={onSubmit}>
             <Stack gap="section">
+              <Logo size={40} justify="center" pb="1" />
+
               <Heading size="md">Sign in</Heading>
 
               {error && (

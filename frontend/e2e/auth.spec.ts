@@ -13,6 +13,10 @@ test("an unauthenticated visitor is sent to login", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+
+  // The brand: a readable tab title and the wordmark on the login card.
+  await expect(page).toHaveTitle("PDC Warehouse");
+  await expect(page.getByText("PDC Warehouse")).toBeVisible();
 });
 
 test("the password field can be revealed and hidden", async ({ page }) => {
