@@ -35,6 +35,12 @@ lock users out; it should only blank the display label. The frontend falls back 
 when the name is empty. The degraded result is **never cached**, or a brief outage would poison the
 cache with blank names past the outage.
 
+`UserTeams` is the **same flow pointed at another user**: instead of the token holder, it takes a
+`user_id` and returns that user (as a `PublicUser`) plus their memberships. It is **root/admin only**
+(unscoped roles-policy) — it backs the admin user-detail view, where an admin inspects which teams a
+given user has joined. It reuses `teamResolver` and degrades to blank names identically; an unknown
+`user_id` is `NotFound`.
+
 ## The forgot-password flow (RequestPasswordResetOtp → ResetPasswordWithOtp)
 
 Two RPCs that together reset a password via a one-time code, using an external OTP provider
@@ -66,4 +72,4 @@ with no phone, so it can't be used to enumerate accounts. `ResetPasswordWithOtp`
 `Unauthenticated` error for "no such user" and "wrong code", for the same reason. It issues no token
 — the user logs in fresh.
 
-Code: `backend/services/user_service/user_v1/{team_access_list,request_password_reset_otp,reset_password_with_otp}.go`.
+Code: `backend/services/user_service/user_v1/{team_access_list,user_teams,request_password_reset_otp,reset_password_with_otp}.go`.

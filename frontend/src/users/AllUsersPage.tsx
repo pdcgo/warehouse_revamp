@@ -19,6 +19,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   KeyRound,
   MoreHorizontal,
   Pause,
@@ -39,6 +40,7 @@ import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
+import { UserDetailDialog } from "./UserDetailDialog";
 
 const PAGE_SIZE = 20;
 
@@ -68,7 +70,7 @@ export function AllUsersPage() {
   // Which row action is open, and for which user. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<
-    { kind: "edit" | "reset" | "suspend" | "delete"; user: User } | null
+    { kind: "details" | "edit" | "reset" | "suspend" | "delete"; user: User } | null
   >(null);
 
   // The team filter's options. Loaded once — a non-fatal failure just leaves "All teams" as the
@@ -257,6 +259,18 @@ export function AllUsersPage() {
                               Edit
                             </Menu.Item>
 
+                            {/* UserTeams is root/admin only — offer the view only where it works. */}
+                            {globalAdmin && (
+                              <Menu.Item
+                                value="details"
+                                data-testid={`details-${user.username}`}
+                                onClick={() => setDialog({ kind: "details", user })}
+                              >
+                                <Icon as={Eye} boxSize="4" />
+                                Details
+                              </Menu.Item>
+                            )}
+
                             {globalAdmin && !isSelf && (
                               <>
                                 {/* An admin sets a password without knowing the old one — exactly
@@ -303,6 +317,17 @@ export function AllUsersPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "details" && (
+        <UserDetailDialog
+          key={dialog.user.id.toString()}
+          user={dialog.user}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
       {dialog?.kind === "edit" && (
         <EditUserDialog
           key={dialog.user.id.toString()}

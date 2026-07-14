@@ -50,6 +50,8 @@ const (
 	// UserServiceTeamAccessListProcedure is the fully-qualified name of the UserService's
 	// TeamAccessList RPC.
 	UserServiceTeamAccessListProcedure = "/warehouse.user.v1.UserService/TeamAccessList"
+	// UserServiceUserTeamsProcedure is the fully-qualified name of the UserService's UserTeams RPC.
+	UserServiceUserTeamsProcedure = "/warehouse.user.v1.UserService/UserTeams"
 	// UserServiceTeamUserUpdateProcedure is the fully-qualified name of the UserService's
 	// TeamUserUpdate RPC.
 	UserServiceTeamUserUpdateProcedure = "/warehouse.user.v1.UserService/TeamUserUpdate"
@@ -262,6 +264,10 @@ func (UnimplementedAuthServiceHandler) ResetPasswordWithOtp(context.Context, *co
 type UserServiceClient interface {
 	// TeamAccessList — the session bootstrap: which teams am I in, and as what.
 	TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error)
+	// UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+	// only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+	// go blank if it is unreachable, never failing the call.
+	UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error)
 	// TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
 	TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error)
 	// RoleResolve is how OTHER services check a caller's role without reading this service's
@@ -306,6 +312,12 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceTeamAccessListProcedure,
 			connect.WithSchema(userServiceMethods.ByName("TeamAccessList")),
+			connect.WithClientOptions(opts...),
+		),
+		userTeams: connect.NewClient[v1.UserTeamsRequest, v1.UserTeamsResponse](
+			httpClient,
+			baseURL+UserServiceUserTeamsProcedure,
+			connect.WithSchema(userServiceMethods.ByName("UserTeams")),
 			connect.WithClientOptions(opts...),
 		),
 		teamUserUpdate: connect.NewClient[v1.TeamUserUpdateRequest, v1.TeamUserUpdateResponse](
@@ -386,6 +398,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
 	teamAccessList     *connect.Client[v1.TeamAccessListRequest, v1.TeamAccessListResponse]
+	userTeams          *connect.Client[v1.UserTeamsRequest, v1.UserTeamsResponse]
 	teamUserUpdate     *connect.Client[v1.TeamUserUpdateRequest, v1.TeamUserUpdateResponse]
 	roleResolve        *connect.Client[v1.RoleResolveRequest, v1.RoleResolveResponse]
 	createUser         *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
@@ -403,6 +416,11 @@ type userServiceClient struct {
 // TeamAccessList calls warehouse.user.v1.UserService.TeamAccessList.
 func (c *userServiceClient) TeamAccessList(ctx context.Context, req *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error) {
 	return c.teamAccessList.CallUnary(ctx, req)
+}
+
+// UserTeams calls warehouse.user.v1.UserService.UserTeams.
+func (c *userServiceClient) UserTeams(ctx context.Context, req *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error) {
+	return c.userTeams.CallUnary(ctx, req)
 }
 
 // TeamUserUpdate calls warehouse.user.v1.UserService.TeamUserUpdate.
@@ -469,6 +487,10 @@ func (c *userServiceClient) SearchUser(ctx context.Context, req *connect.Request
 type UserServiceHandler interface {
 	// TeamAccessList — the session bootstrap: which teams am I in, and as what.
 	TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error)
+	// UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+	// only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+	// go blank if it is unreachable, never failing the call.
+	UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error)
 	// TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
 	TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error)
 	// RoleResolve is how OTHER services check a caller's role without reading this service's
@@ -509,6 +531,12 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceTeamAccessListProcedure,
 		svc.TeamAccessList,
 		connect.WithSchema(userServiceMethods.ByName("TeamAccessList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceUserTeamsHandler := connect.NewUnaryHandler(
+		UserServiceUserTeamsProcedure,
+		svc.UserTeams,
+		connect.WithSchema(userServiceMethods.ByName("UserTeams")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceTeamUserUpdateHandler := connect.NewUnaryHandler(
@@ -587,6 +615,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case UserServiceTeamAccessListProcedure:
 			userServiceTeamAccessListHandler.ServeHTTP(w, r)
+		case UserServiceUserTeamsProcedure:
+			userServiceUserTeamsHandler.ServeHTTP(w, r)
 		case UserServiceTeamUserUpdateProcedure:
 			userServiceTeamUserUpdateHandler.ServeHTTP(w, r)
 		case UserServiceRoleResolveProcedure:
@@ -622,6 +652,10 @@ type UnimplementedUserServiceHandler struct{}
 
 func (UnimplementedUserServiceHandler) TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.TeamAccessList is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.UserTeams is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error) {

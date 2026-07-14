@@ -16,7 +16,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
@@ -29,6 +29,7 @@ import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { AddMemberDialog } from "./AddMemberDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
+import { UserDetailDialog } from "./UserDetailDialog";
 
 const PAGE_SIZE = 20;
 
@@ -44,7 +45,7 @@ export function UsersPage() {
   // Which row action is open, and for which user. The row's actions live behind one overflow menu;
   // picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<
-    { kind: "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
+    { kind: "details" | "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
   >(null);
 
   // A global admin may look at EVERY user (team_id = 0). Anyone else sees only their own team.
@@ -225,6 +226,18 @@ export function UsersPage() {
                               Edit
                             </Menu.Item>
 
+                            {/* UserTeams is root/admin only — offer the view only where it works. */}
+                            {globalAdmin && (
+                              <Menu.Item
+                                value="details"
+                                data-testid={`details-${user.username}`}
+                                onClick={() => setDialog({ kind: "details", user })}
+                              >
+                                <Icon as={Eye} boxSize="4" />
+                                Details
+                              </Menu.Item>
+                            )}
+
                             {!allTeams && current && !isSelf && (
                               <Menu.Item
                                 value="remove"
@@ -282,6 +295,17 @@ export function UsersPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "details" && (
+        <UserDetailDialog
+          key={dialog.user.id.toString()}
+          user={dialog.user}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
       {dialog?.kind === "edit" && (
         <EditUserDialog
           key={dialog.user.id.toString()}

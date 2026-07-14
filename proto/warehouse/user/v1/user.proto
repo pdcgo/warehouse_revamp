@@ -29,6 +29,11 @@ service UserService {
   // TeamAccessList — the session bootstrap: which teams am I in, and as what.
   rpc TeamAccessList(TeamAccessListRequest) returns (TeamAccessListResponse);
 
+  // UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+  // only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+  // go blank if it is unreachable, never failing the call.
+  rpc UserTeams(UserTeamsRequest) returns (UserTeamsResponse);
+
   // TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
   rpc TeamUserUpdate(TeamUserUpdateRequest) returns (TeamUserUpdateResponse);
 
@@ -424,6 +429,28 @@ message TeamAccessListRequest {
 
 message TeamAccessListResponse {
   repeated TeamAccessItem teams = 1;
+}
+
+message UserTeamsRequest {
+  // Unscoped roles-policy = root/admin only, and it says so. Viewing another user's memberships
+  // is not a team-scoped operation — a user can belong to several teams — so it is not scoped.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message UserTeamsResponse {
+  // The user being viewed, so the detail screen can render them without a second round trip.
+  PublicUser user = 1;
+
+  // Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
+  // correct; team_name/team_type blank if team_service is unreachable.
+  repeated TeamAccessItem teams = 2;
 }
 
 message TeamUserUpdateRequest {
