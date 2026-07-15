@@ -114,7 +114,12 @@ export function UserDetailPage() {
                 teams.map((t) => (
                   <TeamItem
                     key={t.teamId.toString()}
-                    team={{ teamName: t.teamName, teamType: t.teamType, teamId: t.teamId }}
+                    team={{
+                      teamName: t.teamName,
+                      teamType: t.teamType,
+                      teamId: t.teamId,
+                      imageUrl: t.imageUrl,
+                    }}
                   />
                 ))
               )}

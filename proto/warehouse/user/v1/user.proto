@@ -417,6 +417,10 @@ message TeamAccessItem {
   // rather than failing, because a display-name lookup must never take down login.
   string team_name = 4;
   warehouse.team.v1.TeamType team_type = 5;
+
+  // The team's compact picture, resolved from team_service alongside the name. Empty when the team
+  // has no picture (or team_service is unreachable) — the UI falls back to initials.
+  string image_url = 6;
 }
 
 message TeamAccessListRequest {

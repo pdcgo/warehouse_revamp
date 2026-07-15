@@ -1736,8 +1736,11 @@ type TeamAccessItem struct {
 	Alias  string                 `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
 	// Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
 	// rather than failing, because a display-name lookup must never take down login.
-	TeamName      string       `protobuf:"bytes,4,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
-	TeamType      v12.TeamType `protobuf:"varint,5,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
+	TeamName string       `protobuf:"bytes,4,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
+	TeamType v12.TeamType `protobuf:"varint,5,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
+	// The team's compact picture, resolved from team_service alongside the name. Empty when the team
+	// has no picture (or team_service is unreachable) — the UI falls back to initials.
+	ImageUrl      string `protobuf:"bytes,6,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1805,6 +1808,13 @@ func (x *TeamAccessItem) GetTeamType() v12.TeamType {
 		return x.TeamType
 	}
 	return v12.TeamType(0)
+}
+
+func (x *TeamAccessItem) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
 }
 
 type TeamAccessListRequest struct {
@@ -2501,13 +2511,14 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\fR\x04code\x12-\n" +
 	"\fnew_password\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\vnewPassword:\x06\x92\xb5\x18\x02\x18\x01\"\x1e\n" +
-	"\x1cResetPasswordWithOtpResponse\"\xc8\x01\n" +
+	"\x1cResetPasswordWithOtpResponse\"\xe5\x01\n" +
 	"\x0eTeamAccessItem\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x120\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x14\n" +
 	"\x05alias\x18\x03 \x01(\tR\x05alias\x12\x1b\n" +
 	"\tteam_name\x18\x04 \x01(\tR\bteamName\x128\n" +
-	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"u\n" +
+	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\x12\x1b\n" +
+	"\timage_url\x18\x06 \x01(\tR\bimageUrl\"u\n" +
 	"\x15TeamAccessListRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12;\n" +
 	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\x8d\x01\n" +

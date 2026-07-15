@@ -98,6 +98,7 @@ func (s *Service) UserTeams(
 		if found {
 			item.TeamName = team.Name
 			item.TeamType = teamv1.TeamType(team.Type)
+			item.ImageUrl = team.ImageURL
 		}
 
 		items = append(items, item)

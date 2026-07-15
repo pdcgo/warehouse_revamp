@@ -35,8 +35,9 @@ func newTeamResolver(client teamv1connect.TeamServiceClient, cache san_caches.Ca
 }
 
 type cachedTeam struct {
-	Name string `json:"name"`
-	Type int32  `json:"type"`
+	Name     string `json:"name"`
+	Type     int32  `json:"type"`
+	ImageURL string `json:"image_url"`
 }
 
 func teamCacheKey(id uint64) san_caches.StringKey {
@@ -92,7 +93,11 @@ func (r *teamResolver) resolve(ctx context.Context, bearer string, ids []uint64)
 		}
 
 		for id, team := range res.Msg.GetData() {
-			entry := cachedTeam{Name: team.GetName(), Type: int32(team.GetType())}
+			entry := cachedTeam{
+				Name:     team.GetName(),
+				Type:     int32(team.GetType()),
+				ImageURL: team.GetImageUrl(),
+			}
 
 			out[id] = entry
 			_ = r.cache.Set(ctx, teamCacheKey(id), entry, teamCacheTTL)

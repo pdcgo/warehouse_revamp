@@ -1,22 +1,23 @@
 import { useState } from "react";
-import { Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
+import { Avatar, Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
+import { TeamItem } from "../components/TeamItem";
 import { useTeam } from "./TeamContext";
 
-// Each team type carries a colour so the current scope is recognisable at a glance.
-function typeColor(type: TeamType | undefined): string {
+// Each team type carries a colour so the current scope's avatar fallback is recognisable at a glance.
+function typePalette(type: TeamType | undefined): string {
   switch (type) {
     case TeamType.WAREHOUSE:
-      return "blue.500";
+      return "blue";
     case TeamType.SELLING:
-      return "green.500";
+      return "green";
     case TeamType.ADMIN:
-      return "purple.500";
+      return "purple";
     case TeamType.ROOT:
-      return "brand.solid";
+      return "brand";
     default:
-      return "gray.400";
+      return "gray";
   }
 }
 
@@ -82,7 +83,15 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
           _hover={{ bg: "bg.muted" }}
           justify={collapsed ? "center" : "flex-start"}
         >
-          <Box boxSize="6" rounded="sm" bg={typeColor(current?.teamType)} flexShrink={0} />
+          <Avatar.Root
+            shape="rounded"
+            size="sm"
+            colorPalette={typePalette(current?.teamType)}
+            flexShrink={0}
+          >
+            <Avatar.Fallback name={name} />
+            <Avatar.Image src={current?.imageUrl || undefined} alt={name} />
+          </Avatar.Root>
 
           {!collapsed && (
             <>
@@ -125,8 +134,6 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                     as="button"
                     key={team.teamId.toString()}
                     data-testid={`team-option-${team.teamId}`}
-                    align="center"
-                    gap="2.5"
                     w="full"
                     rounded="md"
                     px="2.5"
@@ -138,13 +145,19 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                       setOpen(false);
                     }}
                   >
-                    <Box boxSize="4" rounded="sm" bg={typeColor(team.teamType)} flexShrink={0} />
-                    <Text flex="1" textAlign="start" lineClamp={1}>
-                      {team.teamName || `Team #${team.teamId}`}
-                    </Text>
-                    {current?.teamId === team.teamId && (
-                      <Icon as={Check} boxSize="4" color="brand.fg" flexShrink={0} />
-                    )}
+                    <TeamItem
+                      team={{
+                        teamName: team.teamName,
+                        teamType: team.teamType,
+                        teamId: team.teamId,
+                        imageUrl: team.imageUrl,
+                      }}
+                      action={
+                        current?.teamId === team.teamId ? (
+                          <Icon as={Check} boxSize="4" color="brand.fg" flexShrink={0} />
+                        ) : undefined
+                      }
+                    />
                   </Flex>
                 ))}
 
