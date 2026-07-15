@@ -43,6 +43,14 @@ const (
 	ShopServiceShopUpdateProcedure = "/warehouse.selling.v1.ShopService/ShopUpdate"
 	// ShopServiceShopDeleteProcedure is the fully-qualified name of the ShopService's ShopDelete RPC.
 	ShopServiceShopDeleteProcedure = "/warehouse.selling.v1.ShopService/ShopDelete"
+	// ShopServiceShopUserListProcedure is the fully-qualified name of the ShopService's ShopUserList
+	// RPC.
+	ShopServiceShopUserListProcedure = "/warehouse.selling.v1.ShopService/ShopUserList"
+	// ShopServiceShopUserAddProcedure is the fully-qualified name of the ShopService's ShopUserAdd RPC.
+	ShopServiceShopUserAddProcedure = "/warehouse.selling.v1.ShopService/ShopUserAdd"
+	// ShopServiceShopUserRemoveProcedure is the fully-qualified name of the ShopService's
+	// ShopUserRemove RPC.
+	ShopServiceShopUserRemoveProcedure = "/warehouse.selling.v1.ShopService/ShopUserRemove"
 )
 
 // ShopServiceClient is a client for the warehouse.selling.v1.ShopService service.
@@ -52,6 +60,10 @@ type ShopServiceClient interface {
 	ShopDetail(context.Context, *connect.Request[v1.ShopDetailRequest]) (*connect.Response[v1.ShopDetailResponse], error)
 	ShopUpdate(context.Context, *connect.Request[v1.ShopUpdateRequest]) (*connect.Response[v1.ShopUpdateResponse], error)
 	ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error)
+	// Shop access — which users may work on a shop (#86). Scoped to the shop's team.
+	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
+	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
+	ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error)
 }
 
 // NewShopServiceClient constructs a client for the warehouse.selling.v1.ShopService service. By
@@ -95,16 +107,37 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(shopServiceMethods.ByName("ShopDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		shopUserList: connect.NewClient[v1.ShopUserListRequest, v1.ShopUserListResponse](
+			httpClient,
+			baseURL+ShopServiceShopUserListProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+			connect.WithClientOptions(opts...),
+		),
+		shopUserAdd: connect.NewClient[v1.ShopUserAddRequest, v1.ShopUserAddResponse](
+			httpClient,
+			baseURL+ShopServiceShopUserAddProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopUserAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		shopUserRemove: connect.NewClient[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse](
+			httpClient,
+			baseURL+ShopServiceShopUserRemoveProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopUserRemove")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // shopServiceClient implements ShopServiceClient.
 type shopServiceClient struct {
-	shopCreate *connect.Client[v1.ShopCreateRequest, v1.ShopCreateResponse]
-	shopList   *connect.Client[v1.ShopListRequest, v1.ShopListResponse]
-	shopDetail *connect.Client[v1.ShopDetailRequest, v1.ShopDetailResponse]
-	shopUpdate *connect.Client[v1.ShopUpdateRequest, v1.ShopUpdateResponse]
-	shopDelete *connect.Client[v1.ShopDeleteRequest, v1.ShopDeleteResponse]
+	shopCreate     *connect.Client[v1.ShopCreateRequest, v1.ShopCreateResponse]
+	shopList       *connect.Client[v1.ShopListRequest, v1.ShopListResponse]
+	shopDetail     *connect.Client[v1.ShopDetailRequest, v1.ShopDetailResponse]
+	shopUpdate     *connect.Client[v1.ShopUpdateRequest, v1.ShopUpdateResponse]
+	shopDelete     *connect.Client[v1.ShopDeleteRequest, v1.ShopDeleteResponse]
+	shopUserList   *connect.Client[v1.ShopUserListRequest, v1.ShopUserListResponse]
+	shopUserAdd    *connect.Client[v1.ShopUserAddRequest, v1.ShopUserAddResponse]
+	shopUserRemove *connect.Client[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse]
 }
 
 // ShopCreate calls warehouse.selling.v1.ShopService.ShopCreate.
@@ -132,6 +165,21 @@ func (c *shopServiceClient) ShopDelete(ctx context.Context, req *connect.Request
 	return c.shopDelete.CallUnary(ctx, req)
 }
 
+// ShopUserList calls warehouse.selling.v1.ShopService.ShopUserList.
+func (c *shopServiceClient) ShopUserList(ctx context.Context, req *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error) {
+	return c.shopUserList.CallUnary(ctx, req)
+}
+
+// ShopUserAdd calls warehouse.selling.v1.ShopService.ShopUserAdd.
+func (c *shopServiceClient) ShopUserAdd(ctx context.Context, req *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error) {
+	return c.shopUserAdd.CallUnary(ctx, req)
+}
+
+// ShopUserRemove calls warehouse.selling.v1.ShopService.ShopUserRemove.
+func (c *shopServiceClient) ShopUserRemove(ctx context.Context, req *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error) {
+	return c.shopUserRemove.CallUnary(ctx, req)
+}
+
 // ShopServiceHandler is an implementation of the warehouse.selling.v1.ShopService service.
 type ShopServiceHandler interface {
 	ShopCreate(context.Context, *connect.Request[v1.ShopCreateRequest]) (*connect.Response[v1.ShopCreateResponse], error)
@@ -139,6 +187,10 @@ type ShopServiceHandler interface {
 	ShopDetail(context.Context, *connect.Request[v1.ShopDetailRequest]) (*connect.Response[v1.ShopDetailResponse], error)
 	ShopUpdate(context.Context, *connect.Request[v1.ShopUpdateRequest]) (*connect.Response[v1.ShopUpdateResponse], error)
 	ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error)
+	// Shop access — which users may work on a shop (#86). Scoped to the shop's team.
+	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
+	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
+	ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error)
 }
 
 // NewShopServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -178,6 +230,24 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(shopServiceMethods.ByName("ShopDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	shopServiceShopUserListHandler := connect.NewUnaryHandler(
+		ShopServiceShopUserListProcedure,
+		svc.ShopUserList,
+		connect.WithSchema(shopServiceMethods.ByName("ShopUserList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	shopServiceShopUserAddHandler := connect.NewUnaryHandler(
+		ShopServiceShopUserAddProcedure,
+		svc.ShopUserAdd,
+		connect.WithSchema(shopServiceMethods.ByName("ShopUserAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	shopServiceShopUserRemoveHandler := connect.NewUnaryHandler(
+		ShopServiceShopUserRemoveProcedure,
+		svc.ShopUserRemove,
+		connect.WithSchema(shopServiceMethods.ByName("ShopUserRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.ShopService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ShopServiceShopCreateProcedure:
@@ -190,6 +260,12 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 			shopServiceShopUpdateHandler.ServeHTTP(w, r)
 		case ShopServiceShopDeleteProcedure:
 			shopServiceShopDeleteHandler.ServeHTTP(w, r)
+		case ShopServiceShopUserListProcedure:
+			shopServiceShopUserListHandler.ServeHTTP(w, r)
+		case ShopServiceShopUserAddProcedure:
+			shopServiceShopUserAddHandler.ServeHTTP(w, r)
+		case ShopServiceShopUserRemoveProcedure:
+			shopServiceShopUserRemoveHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -217,4 +293,16 @@ func (UnimplementedShopServiceHandler) ShopUpdate(context.Context, *connect.Requ
 
 func (UnimplementedShopServiceHandler) ShopDelete(context.Context, *connect.Request[v1.ShopDeleteRequest]) (*connect.Response[v1.ShopDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopDelete is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUserList is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUserAdd is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUserRemove is not implemented"))
 }

@@ -18,6 +18,11 @@ service ShopService {
   rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse);
   rpc ShopUpdate(ShopUpdateRequest) returns (ShopUpdateResponse);
   rpc ShopDelete(ShopDeleteRequest) returns (ShopDeleteResponse);
+
+  // Shop access — which users may work on a shop (#86). Scoped to the shop's team.
+  rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse);
+  rpc ShopUserAdd(ShopUserAddRequest) returns (ShopUserAddResponse);
+  rpc ShopUserRemove(ShopUserRemoveRequest) returns (ShopUserRemoveResponse);
 }
 
 // Marketplace is the storefront a shop lives on. Append-only; OTHER covers anything not yet listed.
@@ -178,3 +183,71 @@ message ShopDeleteRequest {
 }
 
 message ShopDeleteResponse {}
+
+// --- Shop access (#86): the users who may work on a shop. user_id is an OPAQUE user_service id. ---
+
+message ShopUserListRequest {
+  // Read: anyone in the team (same audience as ShopList).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ShopUserListResponse {
+  // Opaque user_service ids; the caller resolves them (UserByIDs) to display names.
+  repeated uint64 user_ids = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message ShopUserAddRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 user_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopUserAddResponse {}
+
+message ShopUserRemoveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 user_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopUserRemoveResponse {}

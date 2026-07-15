@@ -71,6 +71,27 @@ test("Read: the shop detail page opens from the row (#85)", async ({ page }) => 
   await expect(page.getByTestId("shops-table")).toBeVisible();
 });
 
+test("Users: grant and revoke a user's access to the shop (#86)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoShops(page);
+
+  await page.getByTestId(`open-shop-${CODE}`).click();
+  await expect(page.getByTestId("shop-users-section")).toBeVisible();
+  await expect(page.getByTestId("shop-users-empty")).toBeVisible();
+
+  // Grant root access via the shared user picker.
+  await page.getByTestId("user-select").locator("input").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
+  await page.getByTestId("shop-add-user").click();
+
+  await expect(page.getByTestId(`shop-user-row-${ROOT_USERNAME}`)).toBeVisible();
+
+  // Revoke it again.
+  await page.getByTestId(`remove-shop-user-${ROOT_USERNAME}`).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId(`shop-user-row-${ROOT_USERNAME}`)).toBeHidden();
+});
+
 test("Edit: rename and change marketplace; both persist", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoShops(page);

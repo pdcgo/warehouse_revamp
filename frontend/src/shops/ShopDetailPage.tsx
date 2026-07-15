@@ -7,6 +7,7 @@ import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { ShopFormDialog } from "./ShopFormDialog";
+import { ShopUsersSection } from "./ShopUsersSection";
 
 function parseShopId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -145,6 +146,12 @@ export function ShopDetailPage() {
               <Field label="Description" value={shop.description} />
             </SimpleGrid>
           </Stack>
+        </Card.Body>
+      </Card.Root>
+
+      <Card.Root>
+        <Card.Body>
+          <ShopUsersSection teamId={current.teamId} shopId={shop.id} />
         </Card.Body>
       </Card.Root>
 

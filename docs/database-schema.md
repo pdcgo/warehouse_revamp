@@ -192,6 +192,8 @@ erDiagram
 
 ```mermaid
 erDiagram
+    shops ||--o{ shop_users : "shop_id"
+
     shops {
         bigserial   id          PK
         bigint      team_id     "owning SELLING team, opaque cross-service id, no FK"
@@ -203,6 +205,13 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    shop_users {
+        bigserial   id         PK
+        bigint      shop_id    FK "-> shops(id), ON DELETE CASCADE"
+        bigint      user_id    "opaque user_service id, no FK"
+        timestamptz created_at
+    }
 ```
 
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
@@ -213,6 +222,11 @@ erDiagram
   `CHECK` IN-list: the mapper + proto validation guard the value, and an IN-list is just one more
   place to drift when the enum grows (the trap behind #80). No credentials are stored — "just shop
   info". selling_service will grow to own orders (the #23 decomposition).
+- **`shop_users`** — which users may work on a shop (#86); one row per (shop, user) grant, `UNIQUE
+  (shop_id, user_id)`. `user_id` is an **opaque** user_service id (no FK). The RPCs are scoped
+  through the shop's team (the request carries the team_id, and the handler verifies the shop
+  belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
+  the grants when a shop is hard-deleted.
 
 `backend/services/category_service/db_migrations/`
 
