@@ -64,12 +64,15 @@ test("Read: the dedicated warehouse detail page opens from the row", async ({ pa
 
   await expect(page.getByTestId("team-detail-page")).toBeVisible();
   await expect(page.getByTestId("team-detail-page")).toContainText(NAME);
-  // TeamCreate makes the creator the owner, so root is a member of this warehouse team.
-  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
 
-  // #79 — a WAREHOUSE team's detail shows the warehouse-specific section (hours + location).
+  // #79 — the General tab (default) shows the warehouse-specific section (hours + location).
   await expect(page.getByTestId("warehouse-detail-section")).toBeVisible();
   await expect(page.getByTestId("warehouse-detail-operating")).toBeVisible();
+
+  // Members live under the Member tab now (#89).
+  await page.getByTestId("team-detail-tab-member").click();
+  // TeamCreate makes the creator the owner, so root is a member of this warehouse team.
+  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
 
   // Back returns to the Teams page (the detail route's backTo is /teams).
   await page.getByTestId("team-detail-back").click();

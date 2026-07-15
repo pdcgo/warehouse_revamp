@@ -84,6 +84,9 @@ test("TeamDetail: the dedicated detail page shows the team and its members", asy
   await expect(page.getByTestId("team-detail-page")).toBeVisible();
   await expect(page.getByTestId("team-detail-page")).toContainText(`${NAME} renamed`);
 
+  // Members live under the Member tab now (#89) — switch to it.
+  await page.getByTestId("team-detail-tab-member").click();
+
   // TeamCreate makes the creator (root) the owner, so root is a member of this team.
   await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
 

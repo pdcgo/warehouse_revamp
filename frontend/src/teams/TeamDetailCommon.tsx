@@ -15,6 +15,7 @@ import {
   Spinner,
   Stack,
   Table,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, UserMinus } from "lucide-react";
@@ -146,8 +147,20 @@ export function TeamDetailCommon({
         )}
       </Flex>
 
-      <TeamItem
-        team={{
+      <Tabs.Root defaultValue="general">
+        <Tabs.List>
+          <Tabs.Trigger value="general" data-testid="team-detail-tab-general">
+            General
+          </Tabs.Trigger>
+          <Tabs.Trigger value="member" data-testid="team-detail-tab-member">
+            Member
+          </Tabs.Trigger>
+        </Tabs.List>
+
+        <Tabs.Content value="general">
+          <Stack gap="section">
+            <TeamItem
+              team={{
           teamName: team.name,
           teamType: team.type,
           teamId: team.id,
@@ -174,19 +187,20 @@ export function TeamDetailCommon({
         </SimpleGrid>
       </Stack>
 
-      {/* The type-specific section (warehouse hours + location, selling shops, …). */}
-      {extra && (
-        <>
-          <Separator />
-          {extra}
-        </>
-      )}
+            {/* The type-specific section (warehouse hours + location, selling shops, …). */}
+            {extra && (
+              <>
+                <Separator />
+                {extra}
+              </>
+            )}
+          </Stack>
+        </Tabs.Content>
 
-      <Separator />
-
-      <Stack gap="card">
-        <Flex align="center" gap="card">
-          <Heading size="sm">Members</Heading>
+        <Tabs.Content value="member">
+          <Stack gap="card">
+            <Flex align="center" gap="card">
+              <Heading size="sm">Members</Heading>
           <Spacer />
           {admin && <AddMemberDialog teamId={team.id} teamType={team.type} onDone={() => void loadMembers()} />}
         </Flex>
@@ -272,7 +286,9 @@ export function TeamDetailCommon({
             )}
           </>
         )}
-      </Stack>
+          </Stack>
+        </Tabs.Content>
+      </Tabs.Root>
 
       {editing && (
         <EditTeamDialog
