@@ -48,6 +48,7 @@ const (
 const (
 	resourceGeneral        = "general"
 	resourceProfilePicture = "profile_picture"
+	resourceProductImage   = "product_image"
 )
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
@@ -56,6 +57,8 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourceGeneral, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE:
 		return resourceProfilePicture, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE:
+		return resourceProductImage, nil
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -67,15 +70,17 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_GENERAL
 	case resourceProfilePicture:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE
+	case resourceProductImage:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}
 }
 
 // isPublic reports whether a resource type is served at a stable public URL (an <img src>) rather
-// than a short-lived signed one.
+// than a short-lived signed one. Product images and avatars are shown inline, so they are public.
 func isPublic(text string) bool {
-	return text == resourceProfilePicture
+	return text == resourceProfilePicture || text == resourceProductImage
 }
 
 var errDocumentMissing = errors.New("document not found")

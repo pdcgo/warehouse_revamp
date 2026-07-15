@@ -15,6 +15,7 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/pro
 service ProductService {
   rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
   rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
   rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
   rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
 }
@@ -26,6 +27,36 @@ message Product {
   string name = 4;
   string description = 5;
   bool deleted = 6;
+
+  // The product's category (a node in the global category taxonomy). Required on create/update —
+  // 0 only appears on rows created before categories existed.
+  uint64 category_id = 7;
+
+  // The COVER image, denormalised onto the product row so a list/card can render a picture without
+  // joining product_images. Mirrors the first entry of `images`; empty when the product has none.
+  string default_image_url = 8;
+  string default_image_thumbnail_url = 9;
+
+  // The full gallery (up to 5), ordered; the first is the cover. Populated by ProductDetail ONLY —
+  // ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
+  // denormalised cover) so a list never has to join product_images.
+  repeated ProductImage images = 10;
+}
+
+// ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
+// are produced by the two-phase document_service upload and stored verbatim on the product.
+message ProductImage {
+  string url = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2048
+  }];
+  string thumbnail_url = 2 [(buf.validate.field).string.max_len = 2048];
+}
+
+// ProductImages wraps the gallery for UPDATE: a message field has presence, so a nil wrapper means
+// "leave the images alone" while a present (even empty) wrapper means "replace with exactly these".
+message ProductImages {
+  repeated ProductImage items = 1 [(buf.validate.field).repeated.max_items = 5];
 }
 
 message ProductCreateRequest {
@@ -54,6 +85,12 @@ message ProductCreateRequest {
     max_len: 200
   }];
   string description = 4 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category is required — every new product is filed under one taxonomy node.
+  uint64 category_id = 5 [(buf.validate.field).uint64.gt = 0];
+
+  // Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
+  repeated ProductImage images = 6 [(buf.validate.field).repeated.max_items = 5];
 }
 
 message ProductCreateResponse {
@@ -116,9 +153,42 @@ message ProductUpdateRequest {
     max_len: 200
   }];
   optional string description = 5 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category stays required: when present it must be a real node. Absent = leave alone.
+  optional uint64 category_id = 6 [(buf.validate.field).uint64.gt = 0];
+
+  // The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
+  // exactly its items (the edit page always sends the full desired set). The first is the cover.
+  ProductImages images = 7;
 }
 
 message ProductUpdateResponse {
+  Product product = 1;
+}
+
+message ProductDetailRequest {
+  // Read: anyone in the team (same audience as ProductList).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDetailResponse {
   Product product = 1;
 }
 

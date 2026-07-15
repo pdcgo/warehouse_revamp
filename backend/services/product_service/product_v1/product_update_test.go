@@ -28,6 +28,64 @@ func TestProductUpdate_ChangesFields(t *testing.T) {
 	}
 }
 
+// A present images wrapper REPLACES the gallery and re-denormalises the cover; a nil wrapper leaves
+// the images alone; an empty wrapper clears them.
+func TestProductUpdate_ReplacesImages(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	created, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
+		TeamId: 2, Sku: "U-IMG", Name: "Start", CategoryId: 1,
+		Images: []*productv1.ProductImage{
+			{Url: "https://cdn/old1.jpg", ThumbnailUrl: "https://cdn/old1_t.jpg"},
+			{Url: "https://cdn/old2.jpg"},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	id := created.Msg.GetProduct().GetId()
+
+	// Replace two images with one; the cover follows to the new first image.
+	resp, err := svc.ProductUpdate(context.Background(), connect.NewRequest(&productv1.ProductUpdateRequest{
+		TeamId: 2, ProductId: id,
+		Images: &productv1.ProductImages{Items: []*productv1.ProductImage{
+			{Url: "https://cdn/new.jpg", ThumbnailUrl: "https://cdn/new_t.jpg"},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("update replace: %v", err)
+	}
+	if got := resp.Msg.GetProduct(); len(got.GetImages()) != 1 ||
+		got.GetImages()[0].GetUrl() != "https://cdn/new.jpg" ||
+		got.GetDefaultImageUrl() != "https://cdn/new.jpg" {
+		t.Fatalf("after replace: %+v", resp.Msg.GetProduct())
+	}
+
+	// A nil wrapper (rename only) leaves the single image alone.
+	resp, err = svc.ProductUpdate(context.Background(), connect.NewRequest(&productv1.ProductUpdateRequest{
+		TeamId: 2, ProductId: id, Name: proto.String("Renamed"),
+	}))
+	if err != nil {
+		t.Fatalf("update rename: %v", err)
+	}
+	if got := resp.Msg.GetProduct(); got.GetName() != "Renamed" || len(got.GetImages()) != 1 {
+		t.Fatalf("rename should keep images: %+v", resp.Msg.GetProduct())
+	}
+
+	// An empty wrapper clears the gallery and the cover.
+	resp, err = svc.ProductUpdate(context.Background(), connect.NewRequest(&productv1.ProductUpdateRequest{
+		TeamId: 2, ProductId: id, Images: &productv1.ProductImages{},
+	}))
+	if err != nil {
+		t.Fatalf("update clear: %v", err)
+	}
+	if got := resp.Msg.GetProduct(); len(got.GetImages()) != 0 || got.GetDefaultImageUrl() != "" {
+		t.Fatalf("after clear: %+v", resp.Msg.GetProduct())
+	}
+}
+
 func TestProductUpdate_UnknownIsNotFound(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)

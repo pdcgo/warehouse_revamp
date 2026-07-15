@@ -1,0 +1,109 @@
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+
+// #60 — Create/Edit Product as a PAGE (not a popup), with a required category and up to 5 images.
+//
+// Images need a real object store to upload (document_service two-phase upload), which the e2e
+// environment does not provide — so the gallery bytes are covered by backend unit tests, and this
+// spec drives the rest end to end: the create/edit PAGE, the required-category gate, and CRUD.
+//
+// The Products menu is intentionally hidden on a ROOT team (it is a warehouse/selling surface), but
+// root holds ROLE_ROOT so the product RPCs are authorised in the root team. We reach the page by
+// its route directly — the menu gate is UX only.
+
+const SUFFIX = Date.now().toString().slice(-6);
+const SKU = `P${SUFFIX}`;
+const NAME = `E2E Product ${SUFFIX}`;
+const CATEGORY = `E2E Cat ${SUFFIX}`;
+
+async function login(page: Page, username: string, password: string) {
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByTestId("current-user")).toHaveText(username);
+}
+
+async function gotoProducts(page: Page) {
+  await page.goto("/products");
+  await expect(page.getByTestId("products-table")).toBeVisible();
+}
+
+test.describe.configure({ mode: "serial" });
+
+test("setup: create a category products can be filed under", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.getByRole("link", { name: "Categories" }).click();
+  await page.getByTestId("open-create-category").click();
+  await page.getByTestId("new-category-name").fill(CATEGORY);
+  await page.getByTestId("submit-create-category").click();
+
+  // The dialog closes on success — the category now exists in the global taxonomy.
+  await expect(page.getByTestId("submit-create-category")).toBeHidden();
+});
+
+test("Create: product create is a PAGE; category is required; the product appears", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoProducts(page);
+
+  await page.getByTestId("open-create-product").click();
+
+  // A dedicated page, not a dialog.
+  await expect(page.getByTestId("product-edit-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/products\/new$/);
+
+  await page.getByTestId("product-edit-sku").fill(SKU);
+  await page.getByTestId("product-edit-name").fill(NAME);
+  await page.getByTestId("product-edit-description").fill("made by e2e");
+
+  // Category is required — Save stays disabled until one is chosen.
+  await expect(page.getByTestId("product-edit-save")).toBeDisabled();
+
+  await page.getByTestId("category-select").click();
+  await page.getByRole("option", { name: CATEGORY }).click();
+
+  await expect(page.getByTestId("product-edit-save")).toBeEnabled();
+  await page.getByTestId("product-edit-save").click();
+
+  // Saving returns to the list, where the new product shows.
+  await expect(page.getByTestId("products-table")).toBeVisible();
+  await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(NAME);
+});
+
+test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoProducts(page);
+
+  await page.getByTestId(`edit-${SKU}`).click();
+
+  await expect(page.getByTestId("product-edit-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/products\/\d+\/edit$/);
+
+  // ProductDetail pre-fills the form.
+  await expect(page.getByTestId("product-edit-name")).toHaveValue(NAME);
+  await expect(page.getByTestId("product-edit-sku")).toHaveValue(SKU);
+
+  await page.getByTestId("product-edit-name").fill(`${NAME} renamed`);
+  await page.getByTestId("product-edit-save").click();
+
+  await expect(page.getByTestId("products-table")).toBeVisible();
+  await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(`${NAME} renamed`);
+});
+
+test("Delete: the product is gone", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoProducts(page);
+
+  await page.getByTestId(`delete-${SKU}`).click();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(page.getByTestId(`product-row-${SKU}`)).toBeHidden();
+});

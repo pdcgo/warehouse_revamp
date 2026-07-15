@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/product/v1/product.proto.
  */
 export const file_warehouse_product_v1_product: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSJnCgdQcm9kdWN0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSCwoDc2t1GAMgASgJEgwKBG5hbWUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDwoHZGVsZXRlZBgGIAEoCCKTAQoUUHJvZHVjdENyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFgoDc2t1GAIgASgJQgm6SAZyBBABGEASGAoEbmFtZRgDIAEoCUIKukgHcgUQARjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY6Ac6DJK1GAgKBgECAwQGCSJHChVQcm9kdWN0Q3JlYXRlUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QijQEKElByb2R1Y3RMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgieAoTUHJvZHVjdExpc3RSZXNwb25zZRIvCghwcm9kdWN0cxgBIAMoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLgAQoUUHJvZHVjdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIbCgNza3UYAyABKAlCCbpIBnIEEAEYQEgAiAEBEh0KBG5hbWUYBCABKAlCCrpIB3IFEAEYyAFIAYgBARIiCgtkZXNjcmlwdGlvbhgFIAEoCUIIukgFcgMY6AdIAogBAToMkrUYCAoGAQIDBAYJQgYKBF9za3VCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uIkcKFVByb2R1Y3RVcGRhdGVSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJfChRQcm9kdWN0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOgyStRgICgYBAgMEBgkiFwoVUHJvZHVjdERlbGV0ZVJlc3BvbnNlMrIDCg5Qcm9kdWN0U2VydmljZRJoCg1Qcm9kdWN0Q3JlYXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVzcG9uc2USYgoLUHJvZHVjdExpc3QSKC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlcXVlc3QaKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlEmgKDVByb2R1Y3RVcGRhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXNwb25zZRJoCg1Qcm9kdWN0RGVsZXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERlbGV0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9wcm9kdWN0L3YxO3Byb2R1Y3R2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLwAQoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIu8BChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFOgyStRgICgYBAgMEBgkiRwoVUHJvZHVjdENyZWF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Io0BChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIngKE1Byb2R1Y3RMaXN0UmVzcG9uc2USLwoIcHJvZHVjdHMYASADKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iyAIKFFByb2R1Y3RVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASGwoDc2t1GAMgASgJQgm6SAZyBBABGEBIAIgBARIdCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBSAGIAQESIgoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGOgHSAKIAQESIQoLY2F0ZWdvcnlfaWQYBiABKARCB7pIBDICIABIA4gBARIzCgZpbWFnZXMYByABKAsyIy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VzOgyStRgICgYBAgMEBglCBgoEX3NrdUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDgoMX2NhdGVnb3J5X2lkIkcKFVByb2R1Y3RVcGRhdGVSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJhChRQcm9kdWN0RGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOg6StRgKCggBAgMEBQYJCCJHChVQcm9kdWN0RGV0YWlsUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiXwoUUHJvZHVjdERlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgADoMkrUYCAoGAQIDBAYJIhcKFVByb2R1Y3REZWxldGVSZXNwb25zZTKcBAoOUHJvZHVjdFNlcnZpY2USaAoNUHJvZHVjdENyZWF0ZRIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlc3BvbnNlEmIKC1Byb2R1Y3RMaXN0Eigud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RSZXNwb25zZRJoCg1Qcm9kdWN0RGV0YWlsEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERldGFpbFJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGV0YWlsUmVzcG9uc2USaAoNUHJvZHVjdFVwZGF0ZRIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFVwZGF0ZVJlc3BvbnNlEmgKDVByb2R1Y3REZWxldGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZWxldGVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3Byb2R1Y3QvdjE7cHJvZHVjdHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.product.v1.Product
@@ -49,6 +49,36 @@ export type Product = Message<"warehouse.product.v1.Product"> & {
    * @generated from field: bool deleted = 6;
    */
   deleted: boolean;
+
+  /**
+   * The product's category (a node in the global category taxonomy). Required on create/update —
+   * 0 only appears on rows created before categories existed.
+   *
+   * @generated from field: uint64 category_id = 7;
+   */
+  categoryId: bigint;
+
+  /**
+   * The COVER image, denormalised onto the product row so a list/card can render a picture without
+   * joining product_images. Mirrors the first entry of `images`; empty when the product has none.
+   *
+   * @generated from field: string default_image_url = 8;
+   */
+  defaultImageUrl: string;
+
+  /**
+   * @generated from field: string default_image_thumbnail_url = 9;
+   */
+  defaultImageThumbnailUrl: string;
+
+  /**
+   * The full gallery (up to 5), ordered; the first is the cover. Populated by ProductDetail ONLY —
+   * ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
+   * denormalised cover) so a list never has to join product_images.
+   *
+   * @generated from field: repeated warehouse.product.v1.ProductImage images = 10;
+   */
+  images: ProductImage[];
 };
 
 /**
@@ -57,6 +87,51 @@ export type Product = Message<"warehouse.product.v1.Product"> & {
  */
 export const ProductSchema: GenMessage<Product> = /*@__PURE__*/
   messageDesc(file_warehouse_product_v1_product, 0);
+
+/**
+ * ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
+ * are produced by the two-phase document_service upload and stored verbatim on the product.
+ *
+ * @generated from message warehouse.product.v1.ProductImage
+ */
+export type ProductImage = Message<"warehouse.product.v1.ProductImage"> & {
+  /**
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string thumbnail_url = 2;
+   */
+  thumbnailUrl: string;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductImage.
+ * Use `create(ProductImageSchema)` to create a new message.
+ */
+export const ProductImageSchema: GenMessage<ProductImage> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 1);
+
+/**
+ * ProductImages wraps the gallery for UPDATE: a message field has presence, so a nil wrapper means
+ * "leave the images alone" while a present (even empty) wrapper means "replace with exactly these".
+ *
+ * @generated from message warehouse.product.v1.ProductImages
+ */
+export type ProductImages = Message<"warehouse.product.v1.ProductImages"> & {
+  /**
+   * @generated from field: repeated warehouse.product.v1.ProductImage items = 1;
+   */
+  items: ProductImage[];
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductImages.
+ * Use `create(ProductImagesSchema)` to create a new message.
+ */
+export const ProductImagesSchema: GenMessage<ProductImages> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 2);
 
 /**
  * @generated from message warehouse.product.v1.ProductCreateRequest
@@ -81,6 +156,20 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
    * @generated from field: string description = 4;
    */
   description: string;
+
+  /**
+   * Category is required — every new product is filed under one taxonomy node.
+   *
+   * @generated from field: uint64 category_id = 5;
+   */
+  categoryId: bigint;
+
+  /**
+   * Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
+   *
+   * @generated from field: repeated warehouse.product.v1.ProductImage images = 6;
+   */
+  images: ProductImage[];
 };
 
 /**
@@ -88,7 +177,7 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
  * Use `create(ProductCreateRequestSchema)` to create a new message.
  */
 export const ProductCreateRequestSchema: GenMessage<ProductCreateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 1);
+  messageDesc(file_warehouse_product_v1_product, 3);
 
 /**
  * @generated from message warehouse.product.v1.ProductCreateResponse
@@ -105,7 +194,7 @@ export type ProductCreateResponse = Message<"warehouse.product.v1.ProductCreateR
  * Use `create(ProductCreateResponseSchema)` to create a new message.
  */
 export const ProductCreateResponseSchema: GenMessage<ProductCreateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 2);
+  messageDesc(file_warehouse_product_v1_product, 4);
 
 /**
  * @generated from message warehouse.product.v1.ProductListRequest
@@ -132,7 +221,7 @@ export type ProductListRequest = Message<"warehouse.product.v1.ProductListReques
  * Use `create(ProductListRequestSchema)` to create a new message.
  */
 export const ProductListRequestSchema: GenMessage<ProductListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 3);
+  messageDesc(file_warehouse_product_v1_product, 5);
 
 /**
  * @generated from message warehouse.product.v1.ProductListResponse
@@ -154,7 +243,7 @@ export type ProductListResponse = Message<"warehouse.product.v1.ProductListRespo
  * Use `create(ProductListResponseSchema)` to create a new message.
  */
 export const ProductListResponseSchema: GenMessage<ProductListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 4);
+  messageDesc(file_warehouse_product_v1_product, 6);
 
 /**
  * @generated from message warehouse.product.v1.ProductUpdateRequest
@@ -186,6 +275,21 @@ export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRe
    * @generated from field: optional string description = 5;
    */
   description?: string;
+
+  /**
+   * Category stays required: when present it must be a real node. Absent = leave alone.
+   *
+   * @generated from field: optional uint64 category_id = 6;
+   */
+  categoryId?: bigint;
+
+  /**
+   * The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
+   * exactly its items (the edit page always sends the full desired set). The first is the cover.
+   *
+   * @generated from field: warehouse.product.v1.ProductImages images = 7;
+   */
+  images?: ProductImages;
 };
 
 /**
@@ -193,7 +297,7 @@ export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRe
  * Use `create(ProductUpdateRequestSchema)` to create a new message.
  */
 export const ProductUpdateRequestSchema: GenMessage<ProductUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 5);
+  messageDesc(file_warehouse_product_v1_product, 7);
 
 /**
  * @generated from message warehouse.product.v1.ProductUpdateResponse
@@ -210,7 +314,46 @@ export type ProductUpdateResponse = Message<"warehouse.product.v1.ProductUpdateR
  * Use `create(ProductUpdateResponseSchema)` to create a new message.
  */
 export const ProductUpdateResponseSchema: GenMessage<ProductUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 6);
+  messageDesc(file_warehouse_product_v1_product, 8);
+
+/**
+ * @generated from message warehouse.product.v1.ProductDetailRequest
+ */
+export type ProductDetailRequest = Message<"warehouse.product.v1.ProductDetailRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductDetailRequest.
+ * Use `create(ProductDetailRequestSchema)` to create a new message.
+ */
+export const ProductDetailRequestSchema: GenMessage<ProductDetailRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 9);
+
+/**
+ * @generated from message warehouse.product.v1.ProductDetailResponse
+ */
+export type ProductDetailResponse = Message<"warehouse.product.v1.ProductDetailResponse"> & {
+  /**
+   * @generated from field: warehouse.product.v1.Product product = 1;
+   */
+  product?: Product;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductDetailResponse.
+ * Use `create(ProductDetailResponseSchema)` to create a new message.
+ */
+export const ProductDetailResponseSchema: GenMessage<ProductDetailResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 10);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteRequest
@@ -232,7 +375,7 @@ export type ProductDeleteRequest = Message<"warehouse.product.v1.ProductDeleteRe
  * Use `create(ProductDeleteRequestSchema)` to create a new message.
  */
 export const ProductDeleteRequestSchema: GenMessage<ProductDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 7);
+  messageDesc(file_warehouse_product_v1_product, 11);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteResponse
@@ -245,7 +388,7 @@ export type ProductDeleteResponse = Message<"warehouse.product.v1.ProductDeleteR
  * Use `create(ProductDeleteResponseSchema)` to create a new message.
  */
 export const ProductDeleteResponseSchema: GenMessage<ProductDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 8);
+  messageDesc(file_warehouse_product_v1_product, 12);
 
 /**
  * ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team
@@ -271,6 +414,14 @@ export const ProductService: GenService<{
     methodKind: "unary";
     input: typeof ProductListRequestSchema;
     output: typeof ProductListResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.product.v1.ProductService.ProductDetail
+   */
+  productDetail: {
+    methodKind: "unary";
+    input: typeof ProductDetailRequestSchema;
+    output: typeof ProductDetailResponseSchema;
   },
   /**
    * @generated from rpc warehouse.product.v1.ProductService.ProductUpdate

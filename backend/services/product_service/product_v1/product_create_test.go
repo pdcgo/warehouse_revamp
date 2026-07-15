@@ -27,6 +27,35 @@ func TestProductCreate_CreatesInTeam(t *testing.T) {
 	}
 }
 
+// A create carries a category and up to 5 images; the first image is denormalised as the cover.
+func TestProductCreate_WithCategoryAndImages(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	resp, err := svc.ProductCreate(context.Background(), connect.NewRequest(&productv1.ProductCreateRequest{
+		TeamId: 2, Sku: "IMG-1", Name: "Photographed", CategoryId: 7,
+		Images: []*productv1.ProductImage{
+			{Url: "https://cdn/a.jpg", ThumbnailUrl: "https://cdn/a_t.jpg"},
+			{Url: "https://cdn/b.jpg", ThumbnailUrl: "https://cdn/b_t.jpg"},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("ProductCreate: %v", err)
+	}
+
+	got := resp.Msg.GetProduct()
+	if got.GetCategoryId() != 7 {
+		t.Fatalf("category = %d, want 7", got.GetCategoryId())
+	}
+	// The cover mirrors the FIRST image.
+	if got.GetDefaultImageUrl() != "https://cdn/a.jpg" || got.GetDefaultImageThumbnailUrl() != "https://cdn/a_t.jpg" {
+		t.Fatalf("cover = %q / %q", got.GetDefaultImageUrl(), got.GetDefaultImageThumbnailUrl())
+	}
+	if len(got.GetImages()) != 2 || got.GetImages()[0].GetUrl() != "https://cdn/a.jpg" || got.GetImages()[1].GetUrl() != "https://cdn/b.jpg" {
+		t.Fatalf("images = %+v", got.GetImages())
+	}
+}
+
 // SKU is unique per team among active products.
 func TestProductCreate_DuplicateSkuRejected(t *testing.T) {
 	db := san_testdb.DB(t)

@@ -127,13 +127,28 @@ erDiagram
 
 ```mermaid
 erDiagram
+    products ||--o{ product_images : "product_id"
+
     products {
-        bigserial   id          PK
-        bigint      team_id     "owning team, opaque cross-service id, no FK"
-        text        sku         "required, unique per team among active"
-        text        name        "required"
+        bigserial   id                          PK
+        bigint      team_id                     "owning team, opaque cross-service id, no FK"
+        text        sku                         "required, unique per team among active"
+        text        name                        "required"
         text        description
-        boolean     deleted     "soft delete"
+        bigint      category_id                 "required on write, opaque cross-service id, no FK"
+        text        default_image_url           "denormalised cover, mirrors images[0]"
+        text        default_image_thumbnail_url "denormalised cover thumbnail"
+        boolean     deleted                     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    product_images {
+        bigserial   id            PK
+        bigint      product_id    FK "-> products(id), ON DELETE CASCADE"
+        text        url           "required, public URL from document_service"
+        text        thumbnail_url "best-effort thumbnail"
+        int         position      "gallery order, 0 = cover"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -143,7 +158,16 @@ erDiagram
   `use_scope`), so a product is only ever reachable within its owning team. `sku` is unique per team
   **among active products only** (`UNIQUE (team_id, sku) WHERE deleted = FALSE`), so a soft-deleted
   product frees its SKU for reuse and two teams may share a SKU. `team_id` is opaque — no FK to
-  `team_service.teams`.
+  `team_service.teams`. `category_id` is likewise an **opaque cross-service id** (a `category_service`
+  node, no FK); it is **required on write** (the handler rejects 0), `DEFAULT 0` only so pre-existing
+  rows survive the migration. `default_image_url` / `default_image_thumbnail_url` are the
+  **denormalised cover** (mirror of the first `product_images` row) so a list renders a picture
+  without a join.
+- **`product_images`** — a product's gallery, **up to 5** (enforced by the handler + proto, not the
+  DB), ordered by `position` (0 = cover). `url`/`thumbnail_url` are produced by the two-phase
+  `document_service` upload (resource type `PRODUCT_IMAGE`, served at a stable public URL) and stored
+  verbatim. `ProductUpdate` replaces the whole set when its `images` wrapper is present. `ON DELETE
+  CASCADE` covers a hard delete; products are normally soft-deleted, so images stay with them.
 
 ---
 
@@ -202,8 +226,8 @@ erDiagram
 - **`documents`** — metadata for one stored file; the bytes live in object storage, not the DB.
   Team-scoped (`team_id` opaque, no FK). `status` goes `pending` → `active` on ConfirmUpload, which
   also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url`/`thumbnail_url` are
-  set only for public resource types (currently `profile_picture`); an image upload also gets a
-  generated thumbnail.
+  set only for public resource types (`profile_picture`, `product_image`); an image upload also gets
+  a generated thumbnail.
 
 ---
 
@@ -214,6 +238,7 @@ erDiagram
     teams ||--o{ user_team_roles : "team_id, opaque via RPC"
     teams ||--o{ products : "team_id, opaque via RPC"
     teams ||--o{ documents : "team_id, opaque via RPC"
+    categories ||--o{ products : "category_id, opaque via RPC"
 ```
 
 `user_team_roles.team_id`, `products.team_id`, `documents.team_id`,

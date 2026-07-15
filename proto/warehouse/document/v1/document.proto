@@ -26,6 +26,7 @@ enum DocumentResourceType {
   DOCUMENT_RESOURCE_TYPE_UNSPECIFIED = 0;
   DOCUMENT_RESOURCE_TYPE_GENERAL = 1; // private: any uploaded document (pdf/image)
   DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE = 2; // public: a user avatar image
+  DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE = 3; // public: a product catalogue image (gets a thumbnail)
 }
 
 message Document {

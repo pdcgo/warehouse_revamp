@@ -39,6 +39,9 @@ const (
 	// ProductServiceProductListProcedure is the fully-qualified name of the ProductService's
 	// ProductList RPC.
 	ProductServiceProductListProcedure = "/warehouse.product.v1.ProductService/ProductList"
+	// ProductServiceProductDetailProcedure is the fully-qualified name of the ProductService's
+	// ProductDetail RPC.
+	ProductServiceProductDetailProcedure = "/warehouse.product.v1.ProductService/ProductDetail"
 	// ProductServiceProductUpdateProcedure is the fully-qualified name of the ProductService's
 	// ProductUpdate RPC.
 	ProductServiceProductUpdateProcedure = "/warehouse.product.v1.ProductService/ProductUpdate"
@@ -51,6 +54,7 @@ const (
 type ProductServiceClient interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
+	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
 }
@@ -78,6 +82,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(productServiceMethods.ByName("ProductList")),
 			connect.WithClientOptions(opts...),
 		),
+		productDetail: connect.NewClient[v1.ProductDetailRequest, v1.ProductDetailResponse](
+			httpClient,
+			baseURL+ProductServiceProductDetailProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductDetail")),
+			connect.WithClientOptions(opts...),
+		),
 		productUpdate: connect.NewClient[v1.ProductUpdateRequest, v1.ProductUpdateResponse](
 			httpClient,
 			baseURL+ProductServiceProductUpdateProcedure,
@@ -97,6 +107,7 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type productServiceClient struct {
 	productCreate *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
 	productList   *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
+	productDetail *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
 	productUpdate *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
 	productDelete *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
 }
@@ -109,6 +120,11 @@ func (c *productServiceClient) ProductCreate(ctx context.Context, req *connect.R
 // ProductList calls warehouse.product.v1.ProductService.ProductList.
 func (c *productServiceClient) ProductList(ctx context.Context, req *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error) {
 	return c.productList.CallUnary(ctx, req)
+}
+
+// ProductDetail calls warehouse.product.v1.ProductService.ProductDetail.
+func (c *productServiceClient) ProductDetail(ctx context.Context, req *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {
+	return c.productDetail.CallUnary(ctx, req)
 }
 
 // ProductUpdate calls warehouse.product.v1.ProductService.ProductUpdate.
@@ -125,6 +141,7 @@ func (c *productServiceClient) ProductDelete(ctx context.Context, req *connect.R
 type ProductServiceHandler interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
+	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
 }
@@ -148,6 +165,12 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		connect.WithSchema(productServiceMethods.ByName("ProductList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	productServiceProductDetailHandler := connect.NewUnaryHandler(
+		ProductServiceProductDetailProcedure,
+		svc.ProductDetail,
+		connect.WithSchema(productServiceMethods.ByName("ProductDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	productServiceProductUpdateHandler := connect.NewUnaryHandler(
 		ProductServiceProductUpdateProcedure,
 		svc.ProductUpdate,
@@ -166,6 +189,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductCreateHandler.ServeHTTP(w, r)
 		case ProductServiceProductListProcedure:
 			productServiceProductListHandler.ServeHTTP(w, r)
+		case ProductServiceProductDetailProcedure:
+			productServiceProductDetailHandler.ServeHTTP(w, r)
 		case ProductServiceProductUpdateProcedure:
 			productServiceProductUpdateHandler.ServeHTTP(w, r)
 		case ProductServiceProductDeleteProcedure:
@@ -185,6 +210,10 @@ func (UnimplementedProductServiceHandler) ProductCreate(context.Context, *connec
 
 func (UnimplementedProductServiceHandler) ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductList is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDetail is not implemented"))
 }
 
 func (UnimplementedProductServiceHandler) ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error) {
