@@ -221,7 +221,7 @@ func (x *DayHours) GetCloseTime() string {
 	return ""
 }
 
-// WarehouseInfo is a warehouse team's two weekly schedules.
+// WarehouseInfo is a warehouse team's operational data: its two weekly schedules and its location.
 type WarehouseInfo struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -229,8 +229,10 @@ type WarehouseInfo struct {
 	OperatingHours []*DayHours `protobuf:"bytes,2,rep,name=operating_hours,json=operatingHours,proto3" json:"operating_hours,omitempty"`
 	// When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
 	ReceivingHours []*DayHours `protobuf:"bytes,3,rep,name=receiving_hours,json=receivingHours,proto3" json:"receiving_hours,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The warehouse's physical location / address (free text).
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WarehouseInfo) Reset() {
@@ -282,6 +284,13 @@ func (x *WarehouseInfo) GetReceivingHours() []*DayHours {
 		return x.ReceivingHours
 	}
 	return nil
+}
+
+func (x *WarehouseInfo) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
 }
 
 type WarehouseInfoDetailRequest struct {
@@ -379,8 +388,10 @@ type WarehouseInfoUpdateRequest struct {
 	// row per weekday per schedule; the handler rejects duplicates and bad times.
 	OperatingHours []*DayHours `protobuf:"bytes,2,rep,name=operating_hours,json=operatingHours,proto3" json:"operating_hours,omitempty"`
 	ReceivingHours []*DayHours `protobuf:"bytes,3,rep,name=receiving_hours,json=receivingHours,proto3" json:"receiving_hours,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The warehouse address — a full replacement, sent by the editor alongside the schedules.
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WarehouseInfoUpdateRequest) Reset() {
@@ -432,6 +443,13 @@ func (x *WarehouseInfoUpdateRequest) GetReceivingHours() []*DayHours {
 		return x.ReceivingHours
 	}
 	return nil
+}
+
+func (x *WarehouseInfoUpdateRequest) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
 }
 
 type WarehouseInfoUpdateResponse struct {
@@ -1424,19 +1442,21 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x04open\x18\x02 \x01(\bR\x04open\x12$\n" +
 	"\topen_time\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\x05R\bopenTime\x12&\n" +
 	"\n" +
-	"close_time\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18\x05R\tcloseTime\"\xb4\x01\n" +
+	"close_time\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18\x05R\tcloseTime\"\xd0\x01\n" +
 	"\rWarehouseInfo\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12D\n" +
 	"\x0foperating_hours\x18\x02 \x03(\v2\x1b.warehouse.team.v1.DayHoursR\x0eoperatingHours\x12D\n" +
-	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursR\x0ereceivingHours\"F\n" +
+	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursR\x0ereceivingHours\x12\x1a\n" +
+	"\blocation\x18\x04 \x01(\tR\blocation\"F\n" +
 	"\x1aWarehouseInfoDetailRequest\x12 \n" +
 	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\x06\x92\xb5\x18\x02 \x01\"S\n" +
 	"\x1bWarehouseInfoDetailResponse\x124\n" +
-	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\xee\x01\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\x94\x02\n" +
 	"\x1aWarehouseInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
 	"\x0foperating_hours\x18\x02 \x03(\v2\x1b.warehouse.team.v1.DayHoursB\b\xbaH\x05\x92\x01\x02\x10\aR\x0eoperatingHours\x12N\n" +
-	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursB\b\xbaH\x05\x92\x01\x02\x10\aR\x0ereceivingHours:\n" +
+	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursB\b\xbaH\x05\x92\x01\x02\x10\aR\x0ereceivingHours\x12$\n" +
+	"\blocation\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\blocation:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"S\n" +
 	"\x1bWarehouseInfoUpdateResponse\x124\n" +

@@ -36,6 +36,7 @@ export function WarehouseEditPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [operating, setOperating] = useState<WeekHours>(weekFromDayHours(undefined));
   const [receiving, setReceiving] = useState<WeekHours>(weekFromDayHours(undefined));
 
@@ -60,6 +61,7 @@ export function WarehouseEditPage() {
 
         setName(detail.team?.name ?? "");
         setDescription(detail.team?.description ?? "");
+        setLocation(hours.info?.location ?? "");
         setOperating(weekFromDayHours(hours.info?.operatingHours));
         setReceiving(weekFromDayHours(hours.info?.receivingHours));
       } catch (err) {
@@ -91,6 +93,7 @@ export function WarehouseEditPage() {
         teamId: id,
         operatingHours: dayHoursFromWeek(operating),
         receivingHours: dayHoursFromWeek(receiving),
+        location,
       });
 
       toaster.create({ type: "success", title: "Warehouse saved" });
@@ -148,6 +151,16 @@ export function WarehouseEditPage() {
                     data-testid="warehouse-edit-description"
                     onChange={(e) => setDescription(e.target.value)}
                   />
+                </Field.Root>
+
+                <Field.Root>
+                  <Field.Label>Location</Field.Label>
+                  <Textarea
+                    value={location}
+                    data-testid="warehouse-edit-location"
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                  <Field.HelperText>The warehouse's physical address.</Field.HelperText>
                 </Field.Root>
               </Stack>
             </Card.Body>

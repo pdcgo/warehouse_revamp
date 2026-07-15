@@ -84,6 +84,7 @@ test("Update: edit is a dedicated page; name and weekly hours persist", async ({
   await expect(page).toHaveURL(new RegExp(`/teams/\\d+/edit$`));
 
   await page.getByTestId("warehouse-edit-name").fill(`${NAME} renamed`);
+  await page.getByTestId("warehouse-edit-location").fill("Jl. E2E No. 7, Jakarta");
 
   // Set Monday (weekday 1) operating hours 09:00–17:00.
   await page.getByTestId("operating-hours-open-1").click();
@@ -106,6 +107,7 @@ test("Update: edit is a dedicated page; name and weekly hours persist", async ({
   await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`edit-team-${CODE}`).click();
   await expect(page.getByTestId("warehouse-edit-page")).toBeVisible();
+  await expect(page.getByTestId("warehouse-edit-location")).toHaveValue("Jl. E2E No. 7, Jakarta");
   await expect(page.getByTestId("operating-hours-from-1")).toHaveValue("09:00");
   await expect(page.getByTestId("operating-hours-to-1")).toHaveValue("17:00");
   await expect(page.getByTestId("receiving-hours-from-1")).toHaveValue("10:00");

@@ -18,6 +18,7 @@ the database.
 ```mermaid
 erDiagram
     teams ||--o| team_infos : "has 1 to 1"
+    teams ||--o| warehouse_infos : "1 to 1 (warehouse teams)"
 
     teams {
         bigserial   id          PK
@@ -43,6 +44,16 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    warehouse_infos {
+        bigserial   id              PK
+        bigint      team_id         FK "unique, the warehouse team"
+        jsonb       operating_hours "weekly open/close grid"
+        jsonb       receiving_hours "weekly order-receiving grid"
+        text        location        "physical address, free text"
+        timestamptz created_at
+        timestamptz updated_at
+    }
 ```
 
 - **`teams`** — one row per team (a warehouse *is* a team; see `plans/team_service/`). Root-ness is
@@ -52,6 +63,10 @@ erDiagram
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
   real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
   services — no FK is possible across the service boundary.
+- **`warehouse_infos`** — 1:1 with a WAREHOUSE `teams` row (`UNIQUE (team_id)`, so `WarehouseInfoUpdate`
+  is an `ON CONFLICT` upsert). The two schedules are stored as JSONB (a per-day open/close grid; the
+  handler validates and marshals). `location` is the warehouse's physical address (#39). A warehouse
+  with no row yet reads as "every day closed, no location".
 
 ---
 

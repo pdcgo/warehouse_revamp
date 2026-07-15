@@ -16,6 +16,9 @@ type WarehouseInfo struct {
 	OperatingHours string `gorm:"type:jsonb"`
 	ReceivingHours string `gorm:"type:jsonb"`
 
+	// The warehouse's physical location / address (free text).
+	Location string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -61,6 +61,7 @@ func (s *Service) WarehouseInfoUpdate(
 			TeamID:         teamID,
 			OperatingHours: operatingJSON,
 			ReceivingHours: receivingJSON,
+			Location:       req.Msg.GetLocation(),
 		}
 
 		err = tx.
@@ -69,6 +70,7 @@ func (s *Service) WarehouseInfoUpdate(
 				DoUpdates: clause.Assignments(map[string]any{
 					"operating_hours": operatingJSON,
 					"receiving_hours": receivingJSON,
+					"location":        req.Msg.GetLocation(),
 					"updated_at":      gorm.Expr("NOW()"),
 				}),
 			}).
@@ -128,5 +130,6 @@ func warehouseInfoToProto(info *team_service_models.WarehouseInfo) (*teamv1.Ware
 		TeamId:         info.TeamID,
 		OperatingHours: operating,
 		ReceivingHours: receiving,
+		Location:       info.Location,
 	}, nil
 }

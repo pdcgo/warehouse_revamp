@@ -30,6 +30,7 @@ func TestWarehouseInfo_UpdateThenDetail(t *testing.T) {
 		ReceivingHours: []*teamv1.DayHours{
 			day(teamv1.Weekday_WEEKDAY_MONDAY, true, "10:00", "15:00"),
 		},
+		Location: "Jl. Test No. 1, Jakarta",
 	}))
 	if err != nil {
 		t.Fatalf("WarehouseInfoUpdate: %v", err)
@@ -59,6 +60,10 @@ func TestWarehouseInfo_UpdateThenDetail(t *testing.T) {
 	rc := res.Msg.GetInfo().GetReceivingHours()
 	if len(rc) != 1 || rc[0].GetOpenTime() != "10:00" {
 		t.Errorf("receiving = %+v, want one Mon 10:00-15:00 row", rc)
+	}
+
+	if res.Msg.GetInfo().GetLocation() != "Jl. Test No. 1, Jakarta" {
+		t.Errorf("location = %q, want the saved address", res.Msg.GetInfo().GetLocation())
 	}
 }
 

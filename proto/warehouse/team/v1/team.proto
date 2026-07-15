@@ -60,7 +60,7 @@ message DayHours {
   string close_time = 4 [(buf.validate.field).string.max_len = 5];
 }
 
-// WarehouseInfo is a warehouse team's two weekly schedules.
+// WarehouseInfo is a warehouse team's operational data: its two weekly schedules and its location.
 message WarehouseInfo {
   uint64 team_id = 1;
 
@@ -69,6 +69,9 @@ message WarehouseInfo {
 
   // When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
   repeated DayHours receiving_hours = 3;
+
+  // The warehouse's physical location / address (free text).
+  string location = 4;
 }
 
 message WarehouseInfoDetailRequest {
@@ -100,6 +103,9 @@ message WarehouseInfoUpdateRequest {
   // row per weekday per schedule; the handler rejects duplicates and bad times.
   repeated DayHours operating_hours = 2 [(buf.validate.field).repeated.max_items = 7];
   repeated DayHours receiving_hours = 3 [(buf.validate.field).repeated.max_items = 7];
+
+  // The warehouse address — a full replacement, sent by the editor alongside the schedules.
+  string location = 4 [(buf.validate.field).string.max_len = 500];
 }
 
 message WarehouseInfoUpdateResponse {
