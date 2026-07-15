@@ -18,17 +18,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  KeyRound,
-  MoreHorizontal,
-  Pause,
-  Pencil,
-  Play,
-  Trash2,
-} from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { rpcError, teamClient, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
@@ -37,6 +27,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { UserItem } from "../components/UserItem";
+import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
@@ -151,8 +142,6 @@ export function AllUsersPage() {
       toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
     }
   }
-
-  const totalPage = pageInfo ? pageInfo.totalPage : 1;
 
   return (
     <Stack gap="section">
@@ -389,34 +378,13 @@ export function AllUsersPage() {
         </Text>
       )}
 
-      {!loading && totalPage > 1 && (
-        <HStack justify="end" gap="card">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            aria-label="Previous page"
-            data-testid="all-users-prev"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            <Icon as={ChevronLeft} boxSize="4" />
-          </IconButton>
-
-          <Text fontSize="sm" color="fg.muted" data-testid="all-users-page">
-            Page {page} of {totalPage}
-          </Text>
-
-          <IconButton
-            size="xs"
-            variant="ghost"
-            aria-label="Next page"
-            data-testid="all-users-next"
-            disabled={page >= totalPage}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <Icon as={ChevronRight} boxSize="4" />
-          </IconButton>
-        </HStack>
+      {!loading && (
+        <Pagination
+          count={Number(pageInfo?.totalItems ?? 0n)}
+          pageSize={PAGE_SIZE}
+          page={page}
+          onPageChange={setPage}
+        />
       )}
     </Stack>
   );

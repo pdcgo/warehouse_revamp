@@ -26,6 +26,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { UserItem } from "../components/UserItem";
+import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
@@ -42,6 +43,8 @@ export function UsersPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -68,17 +71,19 @@ export function UsersPage() {
       const res = await userClient.userList({
         teamId,
         q,
-        page: { page: 1, limit: PAGE_SIZE },
+        page: { page, limit: PAGE_SIZE },
       });
 
       setUsers(res.users);
+      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
     } catch (err) {
       setError(rpcError(err));
       setUsers([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
-  }, [teamId, q]);
+  }, [teamId, q, page]);
 
   useEffect(() => {
     void load();
@@ -143,7 +148,10 @@ export function UsersPage() {
             variant={allTeams ? "solid" : "outline"}
             colorPalette="brand"
             data-testid="toggle-all-users"
-            onClick={() => setAllTeams((v) => !v)}
+            onClick={() => {
+              setAllTeams((v) => !v);
+              setPage(1);
+            }}
           >
             {allTeams ? "All users" : "This team"}
           </Button>
@@ -159,7 +167,10 @@ export function UsersPage() {
           placeholder="Search name, username or email"
           value={q}
           data-testid="user-search"
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
         />
       </HStack>
 
@@ -307,6 +318,15 @@ export function UsersPage() {
             })}
           </Table.Body>
         </Table.Root>
+      )}
+
+      {!loading && (
+        <Pagination
+          count={totalItems}
+          pageSize={PAGE_SIZE}
+          page={page}
+          onPageChange={setPage}
+        />
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
