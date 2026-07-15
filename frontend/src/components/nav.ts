@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, Truck, Users, UsersRound, Warehouse } from "lucide-react";
+import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, Truck, Users, UsersRound } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -12,7 +12,6 @@ export interface MenuItem {
 
 const HOME: MenuItem = { to: "/", label: "Home", icon: House };
 const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
-const WAREHOUSES: MenuItem = { to: "/warehouses", label: "Warehouses", icon: Warehouse };
 const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: FolderTree };
 const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
@@ -31,9 +30,8 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   const menu: MenuItem[] = [HOME];
 
   if (teamType === TeamType.ROOT || teamType === TeamType.ADMIN) {
+    // Teams is the single home for every team type — warehouses are the Warehouses TAB here (#59).
     menu.push(TEAMS);
-    // A warehouse is a team of type WAREHOUSE — managed by root/admin, same gate as Teams.
-    menu.push(WAREHOUSES);
     // Categories are one GLOBAL taxonomy, curated by root/admin — same gate as Teams.
     menu.push(CATEGORIES);
     // Shipping channels are one GLOBAL courier catalogue, curated by root/admin — same gate.

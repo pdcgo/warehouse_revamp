@@ -94,7 +94,7 @@ export function WarehouseEditPage() {
       });
 
       toaster.create({ type: "success", title: "Warehouse saved" });
-      void navigate(`/warehouses/${teamId}`);
+      void navigate(`/teams/${teamId}`);
     } catch (err) {
       setError(rpcError(err));
     } finally {
@@ -114,7 +114,7 @@ export function WarehouseEditPage() {
           variant="ghost"
           aria-label="Back"
           data-testid="warehouse-edit-back"
-          onClick={() => navigate(`/warehouses/${teamId}`)}
+          onClick={() => navigate(`/teams/${teamId}`)}
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Box,
   Flex,
-  Heading,
   Icon,
   IconButton,
   Menu,
@@ -24,12 +23,21 @@ import { TeamItem } from "../components/TeamItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
+import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
 
 const ROOT_TEAM_ID = 1n;
 
-// A warehouse IS a team of type WAREHOUSE — this is the Teams view filtered to that type.
-export function WarehousesPage() {
+// TeamTable is the shared team list used by every tab of the Teams page (#59). Filtered by
+// `teamType` (undefined = all types). For warehouse teams, `editAsPage` sends Edit to the
+// dedicated warehouse edit page (it carries the weekly hours); every other type edits in a dialog.
+export function TeamTable({
+  teamType,
+  editAsPage = false,
+}: {
+  teamType?: TeamType;
+  editAsPage?: boolean;
+}) {
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -37,16 +45,10 @@ export function WarehousesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Which row action is open, and for which warehouse. Each row's actions live behind one overflow
-  // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
-  const [dialog, setDialog] = useState<{
-    kind: "info" | "delete";
-    team: Team;
-  } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(null);
 
-  // Create/delete are root/admin (backend: TeamCreate/TeamDelete are [ROOT, ADMIN]). The
-  // Warehouses menu itself only shows for root/admin team types, but this is the real gate —
-  // and the backend enforces it regardless of what the UI renders.
+  // Create/delete are root/admin (backend: TeamCreate/TeamDelete are [ROOT, ADMIN]). The backend
+  // is the real gate; this only decides what the UI offers.
   const admin = isGlobalAdmin(current?.role);
 
   const load = useCallback(async () => {
@@ -55,7 +57,8 @@ export function WarehousesPage() {
 
     try {
       const res = await teamClient.teamList({
-        teamType: TeamType.WAREHOUSE,
+        // team_type = UNSPECIFIED (the enum default) means "all types" server-side.
+        teamType: teamType ?? TeamType.UNSPECIFIED,
         page: { page: 1, limit: 50 },
       });
       setTeams(res.teams);
@@ -65,7 +68,7 @@ export function WarehousesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [teamType]);
 
   useEffect(() => {
     void load();
@@ -74,7 +77,7 @@ export function WarehousesPage() {
   async function remove(team: Team) {
     try {
       await teamClient.teamDelete({ teamId: team.id });
-      toaster.create({ type: "success", title: `Warehouse "${team.name}" deleted` });
+      toaster.create({ type: "success", title: `Team "${team.name}" deleted` });
       await load();
     } catch (err) {
       toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
@@ -84,13 +87,12 @@ export function WarehousesPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Warehouses</Heading>
         <Spacer />
-        {admin && <CreateTeamDialog fixedType={TeamType.WAREHOUSE} onDone={() => void load()} />}
+        {admin && <CreateTeamDialog fixedType={teamType} onDone={() => void load()} />}
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="warehouses-error">
+        <Text color="red.fg" data-testid="teams-error">
           {error}
         </Text>
       )}
@@ -98,7 +100,7 @@ export function WarehousesPage() {
       {loading ? (
         <Spinner colorPalette="brand" />
       ) : (
-        <Table.Root size="sm" data-testid="warehouses-table">
+        <Table.Root size="sm" data-testid="teams-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>Name</Table.ColumnHeader>
@@ -109,17 +111,15 @@ export function WarehousesPage() {
 
           <Table.Body>
             {teams.map((team) => {
-              // A warehouse is never the root team (that's type ROOT), so this guard never
-              // fires here — kept to mirror TeamsPage's delete behaviour exactly.
               const isRoot = team.id === ROOT_TEAM_ID;
 
               return (
-                <Table.Row key={team.id.toString()} data-testid={`warehouse-row-${team.teamCode}`}>
+                <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
                   <Table.Cell>
                     <Box
                       cursor="pointer"
-                      data-testid={`open-warehouse-${team.teamCode}`}
-                      onClick={() => navigate(`/warehouses/${team.id}`)}
+                      data-testid={`open-team-${team.teamCode}`}
+                      onClick={() => navigate(`/teams/${team.id}`)}
                     >
                       <TeamItem
                         team={{
@@ -140,7 +140,7 @@ export function WarehousesPage() {
                           size="xs"
                           variant="ghost"
                           aria-label="Actions"
-                          data-testid={`row-actions-warehouse-${team.teamCode}`}
+                          data-testid={`row-actions-team-${team.teamCode}`}
                         >
                           <Icon as={MoreHorizontal} boxSize="4" />
                         </IconButton>
@@ -151,8 +151,8 @@ export function WarehousesPage() {
                           <Menu.Content>
                             <Menu.Item
                               value="detail"
-                              data-testid={`detail-warehouse-${team.teamCode}`}
-                              onClick={() => navigate(`/warehouses/${team.id}`)}
+                              data-testid={`detail-team-${team.teamCode}`}
+                              onClick={() => navigate(`/teams/${team.id}`)}
                             >
                               <Icon as={Eye} boxSize="4" />
                               Details
@@ -171,8 +171,12 @@ export function WarehousesPage() {
                               <>
                                 <Menu.Item
                                   value="edit"
-                                  data-testid={`edit-warehouse-${team.teamCode}`}
-                                  onClick={() => navigate(`/warehouses/${team.id}/edit`)}
+                                  data-testid={`edit-team-${team.teamCode}`}
+                                  onClick={() =>
+                                    editAsPage
+                                      ? navigate(`/teams/${team.id}/edit`)
+                                      : setDialog({ kind: "edit", team })
+                                  }
                                 >
                                   <Icon as={Pencil} boxSize="4" />
                                   Edit
@@ -182,7 +186,7 @@ export function WarehousesPage() {
                                   <Menu.Item
                                     value="delete"
                                     color="fg.error"
-                                    data-testid={`delete-warehouse-${team.teamCode}`}
+                                    data-testid={`delete-team-${team.teamCode}`}
                                     onClick={() => setDialog({ kind: "delete", team })}
                                   >
                                     <Icon as={Trash2} boxSize="4" />
@@ -203,7 +207,6 @@ export function WarehousesPage() {
         </Table.Root>
       )}
 
-      {/* One instance of each dialog, driven by the row menu's selection above. */}
       {dialog?.kind === "info" && (
         <TeamInfoDialog
           key={dialog.team.id.toString()}
@@ -215,13 +218,25 @@ export function WarehousesPage() {
         />
       )}
 
+      {dialog?.kind === "edit" && (
+        <EditTeamDialog
+          key={dialog.team.id.toString()}
+          team={dialog.team}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          onDone={() => void load()}
+        />
+      )}
+
       {dialog?.kind === "delete" && (
         <ConfirmDialog
           open
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete Warehouse"
+          title="Delete Team"
           message={`Delete "${dialog.team.name}"? This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.team)}

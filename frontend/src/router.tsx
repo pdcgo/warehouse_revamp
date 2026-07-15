@@ -13,7 +13,6 @@ import { ShippingChannelsPage } from "./shipping/ShippingChannelsPage";
 import { TeamProvider } from "./team/TeamContext";
 import { TeamDetailPage } from "./teams/TeamDetailPage";
 import { TeamsPage } from "./teams/TeamsPage";
-import { WarehousesPage } from "./teams/WarehousesPage";
 import { WarehouseEditPage } from "./warehouses/WarehouseEditPage";
 import { AllUsersPage } from "./users/AllUsersPage";
 import { UserDetailPage } from "./users/UserDetailPage";
@@ -51,12 +50,9 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "teams", element: <TeamsPage /> },
       { path: "teams/:teamId", element: <TeamDetailPage noun="Team" backTo="/teams" /> },
-      { path: "warehouses", element: <WarehousesPage /> },
-      { path: "warehouses/:teamId/edit", element: <WarehouseEditPage /> },
-      {
-        path: "warehouses/:teamId",
-        element: <TeamDetailPage noun="Warehouse" backTo="/warehouses" />,
-      },
+      // The warehouse edit surface is a dedicated page (it carries the weekly hours); every team
+      // type reaches it under /teams. Non-warehouse teams edit in a dialog instead (#59).
+      { path: "teams/:teamId/edit", element: <WarehouseEditPage /> },
       { path: "categories", element: <CategoriesPage /> },
       { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
