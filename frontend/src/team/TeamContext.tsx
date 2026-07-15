@@ -37,7 +37,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   // selection stable across a refresh.
   const load = useCallback(
     async (preferredId?: bigint) => {
-      const res = await userClient.teamAccessList({});
+      // Ask for a large first page: this backs the team switcher, which needs all of the caller's
+      // teams. A person is realistically in far fewer than the 200 max.
+      const res = await userClient.teamAccessList({ page: { page: 1, limit: 200 } });
 
       setTeams(res.teams);
 

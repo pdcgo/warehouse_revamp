@@ -425,10 +425,15 @@ message TeamAccessListRequest {
   // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
   // authenticated user could enumerate anyone else's teams and roles.
   uint64 user_id = 1;
+
+  // Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
+  // pages so it can never return an unbounded set. The team switcher asks for a large first page.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
 }
 
 message TeamAccessListResponse {
   repeated TeamAccessItem teams = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
 }
 
 message UserTeamsRequest {
@@ -442,6 +447,9 @@ message UserTeamsRequest {
   };
 
   uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // Paginated (HARD RULE 9), same as TeamAccessList.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
 }
 
 message UserTeamsResponse {
@@ -451,6 +459,7 @@ message UserTeamsResponse {
   // Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
   // correct; team_name/team_type blank if team_service is unreachable.
   repeated TeamAccessItem teams = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message TeamUserUpdateRequest {

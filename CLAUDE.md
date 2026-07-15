@@ -199,12 +199,15 @@ unpaginated growing list is a latent slow-query / out-of-memory bug that only bi
 is full — so the default is: **when in doubt, paginate.** Removing a page filter later is a
 breaking change; adding one to a list that already hurts is an incident.
 
-- **Complies today:** `TeamList`, `UserList`, `ProductList`. A capped typeahead like `SearchUser`
-  (a `limit` of 1–20) satisfies the intent without a page cursor — it can never return "everything".
+- **Complies today:** `TeamList`, `UserList`, `ProductList`, `TeamAccessList`, `UserTeams`. A
+  capped typeahead like `SearchUser` (a `limit` of 1–20) satisfies the intent without a page
+  cursor — it can never return "everything". `TeamAccessList` / `UserTeams` return one person's
+  memberships (a handful in practice) but page anyway, for consistency — the bar is "returns a
+  list", not "is currently large". A caller that needs the whole set (the team switcher) asks for
+  a large first page.
 - **Exempt — bounded reference data, and the proto says so:** `ShippingList` (the courier
-  catalogue: curated, rarely-changing, dozens of rows) and `TeamAccessList` / `UserTeams` (one
-  person's own memberships — a handful). These do not "have many data"; a page filter would be
-  ceremony. The moment one can grow unbounded, it stops being exempt.
+  catalogue: curated, rarely-changing, dozens of rows). The moment it can grow unbounded, it stops
+  being exempt.
 - **The tree exception:** a picker that needs the WHOLE tree at once — `CategoryList` backing
   `CategorySelect` — cannot page, because a page is a flat window and a tree needs every node to
   assemble. A full-tree read is allowed ONLY as a deliberate, documented **picker feed**. A

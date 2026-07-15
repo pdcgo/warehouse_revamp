@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
@@ -73,6 +74,13 @@ func grantRole(t *testing.T, db *gorm.DB, teamID, userID uint64, role role_basev
 	if err != nil {
 		t.Fatalf("insert membership: %v", err)
 	}
+}
+
+// pageAll is the page filter the tests pass to paginated list RPCs: the first page at the max
+// limit, so a small fixture comes back whole. Handlers are called directly here (no validation
+// interceptor), so the required `page` must be supplied explicitly.
+func pageAll() *commonv1.PageFilter {
+	return &commonv1.PageFilter{Page: 1, Limit: 200}
 }
 
 // ctxWithIdentity puts an authenticated identity in ctx, as the interceptor would — for the

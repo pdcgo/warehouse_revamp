@@ -1811,7 +1811,10 @@ type TeamAccessListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
 	// authenticated user could enumerate anyone else's teams and roles.
-	UserId        uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
+	// pages so it can never return an unbounded set. The team switcher asks for a large first page.
+	Page          *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1853,9 +1856,17 @@ func (x *TeamAccessListRequest) GetUserId() uint64 {
 	return 0
 }
 
+func (x *TeamAccessListRequest) GetPage() *v1.PageFilter {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
 type TeamAccessListResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Teams         []*TeamAccessItem      `protobuf:"bytes,1,rep,name=teams,proto3" json:"teams,omitempty"`
+	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1897,9 +1908,18 @@ func (x *TeamAccessListResponse) GetTeams() []*TeamAccessItem {
 	return nil
 }
 
+func (x *TeamAccessListResponse) GetPageInfo() *v1.PageInfo {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
 type UserTeamsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Paginated (HARD RULE 9), same as TeamAccessList.
+	Page          *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1941,6 +1961,13 @@ func (x *UserTeamsRequest) GetUserId() uint64 {
 	return 0
 }
 
+func (x *UserTeamsRequest) GetPage() *v1.PageFilter {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
 type UserTeamsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The user being viewed, so the detail screen can render them without a second round trip.
@@ -1948,6 +1975,7 @@ type UserTeamsResponse struct {
 	// Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
 	// correct; team_name/team_type blank if team_service is unreachable.
 	Teams         []*TeamAccessItem `protobuf:"bytes,2,rep,name=teams,proto3" json:"teams,omitempty"`
+	PageInfo      *v1.PageInfo      `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1992,6 +2020,13 @@ func (x *UserTeamsResponse) GetUser() *PublicUser {
 func (x *UserTeamsResponse) GetTeams() []*TeamAccessItem {
 	if x != nil {
 		return x.Teams
+	}
+	return nil
+}
+
+func (x *UserTeamsResponse) GetPageInfo() *v1.PageInfo {
+	if x != nil {
+		return x.PageInfo
 	}
 	return nil
 }
@@ -2472,17 +2507,21 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x14\n" +
 	"\x05alias\x18\x03 \x01(\tR\x05alias\x12\x1b\n" +
 	"\tteam_name\x18\x04 \x01(\tR\bteamName\x128\n" +
-	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"8\n" +
+	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"u\n" +
 	"\x15TeamAccessListRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x04R\x06userId:\x06\x92\xb5\x18\x02 \x01\"Q\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12;\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\x8d\x01\n" +
 	"\x16TeamAccessListResponse\x127\n" +
-	"\x05teams\x18\x01 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\">\n" +
+	"\x05teams\x18\x01 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\x12:\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"{\n" +
 	"\x10UserTeamsRequest\x12 \n" +
-	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\b\x92\xb5\x18\x04\n" +
-	"\x02\x01\x02\"\x7f\n" +
+	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12;\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\"\xbb\x01\n" +
 	"\x11UserTeamsResponse\x121\n" +
 	"\x04user\x18\x01 \x01(\v2\x1d.warehouse.user.v1.PublicUserR\x04user\x127\n" +
-	"\x05teams\x18\x02 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\"\xcd\x01\n" +
+	"\x05teams\x18\x02 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xcd\x01\n" +
 	"\x15TeamUserUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x122\n" +
 	"\x03add\x18\x02 \x01(\v2\x1e.warehouse.user.v1.AddTeamUserH\x00R\x03add\x12;\n" +
@@ -2609,58 +2648,62 @@ var file_warehouse_user_v1_user_proto_depIdxs = []int32{
 	46, // 11: warehouse.user.v1.CheckAccessResponse.role:type_name -> warehouse.role_base.v1.Role
 	46, // 12: warehouse.user.v1.TeamAccessItem.role:type_name -> warehouse.role_base.v1.Role
 	48, // 13: warehouse.user.v1.TeamAccessItem.team_type:type_name -> warehouse.team.v1.TeamType
-	32, // 14: warehouse.user.v1.TeamAccessListResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
-	0,  // 15: warehouse.user.v1.UserTeamsResponse.user:type_name -> warehouse.user.v1.PublicUser
-	32, // 16: warehouse.user.v1.UserTeamsResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
-	38, // 17: warehouse.user.v1.TeamUserUpdateRequest.add:type_name -> warehouse.user.v1.AddTeamUser
-	39, // 18: warehouse.user.v1.TeamUserUpdateRequest.remove:type_name -> warehouse.user.v1.RemoveTeamUser
-	46, // 19: warehouse.user.v1.AddTeamUser.role:type_name -> warehouse.role_base.v1.Role
-	46, // 20: warehouse.user.v1.RoleResolveResponse.role:type_name -> warehouse.role_base.v1.Role
-	46, // 21: warehouse.user.v1.RoleResolveResponse.root_role:type_name -> warehouse.role_base.v1.Role
-	0,  // 22: warehouse.user.v1.UserByIDsResponse.DataEntry.value:type_name -> warehouse.user.v1.PublicUser
-	22, // 23: warehouse.user.v1.AuthService.Login:input_type -> warehouse.user.v1.LoginRequest
-	24, // 24: warehouse.user.v1.AuthService.Logout:input_type -> warehouse.user.v1.LogoutRequest
-	26, // 25: warehouse.user.v1.AuthService.CheckAccess:input_type -> warehouse.user.v1.CheckAccessRequest
-	28, // 26: warehouse.user.v1.AuthService.RequestPasswordResetOtp:input_type -> warehouse.user.v1.RequestPasswordResetOtpRequest
-	30, // 27: warehouse.user.v1.AuthService.ResetPasswordWithOtp:input_type -> warehouse.user.v1.ResetPasswordWithOtpRequest
-	33, // 28: warehouse.user.v1.UserService.TeamAccessList:input_type -> warehouse.user.v1.TeamAccessListRequest
-	35, // 29: warehouse.user.v1.UserService.UserTeams:input_type -> warehouse.user.v1.UserTeamsRequest
-	37, // 30: warehouse.user.v1.UserService.TeamUserUpdate:input_type -> warehouse.user.v1.TeamUserUpdateRequest
-	41, // 31: warehouse.user.v1.UserService.RoleResolve:input_type -> warehouse.user.v1.RoleResolveRequest
-	16, // 32: warehouse.user.v1.UserService.CreateUser:input_type -> warehouse.user.v1.CreateUserRequest
-	18, // 33: warehouse.user.v1.UserService.ResetPassword:input_type -> warehouse.user.v1.ResetPasswordRequest
-	20, // 34: warehouse.user.v1.UserService.AdminResetPassword:input_type -> warehouse.user.v1.AdminResetPasswordRequest
-	1,  // 35: warehouse.user.v1.UserService.UpdateProfile:input_type -> warehouse.user.v1.UpdateProfileRequest
-	3,  // 36: warehouse.user.v1.UserService.UpdateUser:input_type -> warehouse.user.v1.UpdateUserRequest
-	5,  // 37: warehouse.user.v1.UserService.SuspendUser:input_type -> warehouse.user.v1.SuspendUserRequest
-	7,  // 38: warehouse.user.v1.UserService.DeleteUser:input_type -> warehouse.user.v1.DeleteUserRequest
-	9,  // 39: warehouse.user.v1.UserService.UserList:input_type -> warehouse.user.v1.UserListRequest
-	11, // 40: warehouse.user.v1.UserService.UserByIDs:input_type -> warehouse.user.v1.UserByIDsRequest
-	13, // 41: warehouse.user.v1.UserService.SearchUser:input_type -> warehouse.user.v1.SearchUserRequest
-	23, // 42: warehouse.user.v1.AuthService.Login:output_type -> warehouse.user.v1.LoginResponse
-	25, // 43: warehouse.user.v1.AuthService.Logout:output_type -> warehouse.user.v1.LogoutResponse
-	27, // 44: warehouse.user.v1.AuthService.CheckAccess:output_type -> warehouse.user.v1.CheckAccessResponse
-	29, // 45: warehouse.user.v1.AuthService.RequestPasswordResetOtp:output_type -> warehouse.user.v1.RequestPasswordResetOtpResponse
-	31, // 46: warehouse.user.v1.AuthService.ResetPasswordWithOtp:output_type -> warehouse.user.v1.ResetPasswordWithOtpResponse
-	34, // 47: warehouse.user.v1.UserService.TeamAccessList:output_type -> warehouse.user.v1.TeamAccessListResponse
-	36, // 48: warehouse.user.v1.UserService.UserTeams:output_type -> warehouse.user.v1.UserTeamsResponse
-	40, // 49: warehouse.user.v1.UserService.TeamUserUpdate:output_type -> warehouse.user.v1.TeamUserUpdateResponse
-	42, // 50: warehouse.user.v1.UserService.RoleResolve:output_type -> warehouse.user.v1.RoleResolveResponse
-	17, // 51: warehouse.user.v1.UserService.CreateUser:output_type -> warehouse.user.v1.CreateUserResponse
-	19, // 52: warehouse.user.v1.UserService.ResetPassword:output_type -> warehouse.user.v1.ResetPasswordResponse
-	21, // 53: warehouse.user.v1.UserService.AdminResetPassword:output_type -> warehouse.user.v1.AdminResetPasswordResponse
-	2,  // 54: warehouse.user.v1.UserService.UpdateProfile:output_type -> warehouse.user.v1.UpdateProfileResponse
-	4,  // 55: warehouse.user.v1.UserService.UpdateUser:output_type -> warehouse.user.v1.UpdateUserResponse
-	6,  // 56: warehouse.user.v1.UserService.SuspendUser:output_type -> warehouse.user.v1.SuspendUserResponse
-	8,  // 57: warehouse.user.v1.UserService.DeleteUser:output_type -> warehouse.user.v1.DeleteUserResponse
-	10, // 58: warehouse.user.v1.UserService.UserList:output_type -> warehouse.user.v1.UserListResponse
-	12, // 59: warehouse.user.v1.UserService.UserByIDs:output_type -> warehouse.user.v1.UserByIDsResponse
-	14, // 60: warehouse.user.v1.UserService.SearchUser:output_type -> warehouse.user.v1.SearchUserResponse
-	42, // [42:61] is the sub-list for method output_type
-	23, // [23:42] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	44, // 14: warehouse.user.v1.TeamAccessListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	32, // 15: warehouse.user.v1.TeamAccessListResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
+	45, // 16: warehouse.user.v1.TeamAccessListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	44, // 17: warehouse.user.v1.UserTeamsRequest.page:type_name -> warehouse.common.v1.PageFilter
+	0,  // 18: warehouse.user.v1.UserTeamsResponse.user:type_name -> warehouse.user.v1.PublicUser
+	32, // 19: warehouse.user.v1.UserTeamsResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
+	45, // 20: warehouse.user.v1.UserTeamsResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	38, // 21: warehouse.user.v1.TeamUserUpdateRequest.add:type_name -> warehouse.user.v1.AddTeamUser
+	39, // 22: warehouse.user.v1.TeamUserUpdateRequest.remove:type_name -> warehouse.user.v1.RemoveTeamUser
+	46, // 23: warehouse.user.v1.AddTeamUser.role:type_name -> warehouse.role_base.v1.Role
+	46, // 24: warehouse.user.v1.RoleResolveResponse.role:type_name -> warehouse.role_base.v1.Role
+	46, // 25: warehouse.user.v1.RoleResolveResponse.root_role:type_name -> warehouse.role_base.v1.Role
+	0,  // 26: warehouse.user.v1.UserByIDsResponse.DataEntry.value:type_name -> warehouse.user.v1.PublicUser
+	22, // 27: warehouse.user.v1.AuthService.Login:input_type -> warehouse.user.v1.LoginRequest
+	24, // 28: warehouse.user.v1.AuthService.Logout:input_type -> warehouse.user.v1.LogoutRequest
+	26, // 29: warehouse.user.v1.AuthService.CheckAccess:input_type -> warehouse.user.v1.CheckAccessRequest
+	28, // 30: warehouse.user.v1.AuthService.RequestPasswordResetOtp:input_type -> warehouse.user.v1.RequestPasswordResetOtpRequest
+	30, // 31: warehouse.user.v1.AuthService.ResetPasswordWithOtp:input_type -> warehouse.user.v1.ResetPasswordWithOtpRequest
+	33, // 32: warehouse.user.v1.UserService.TeamAccessList:input_type -> warehouse.user.v1.TeamAccessListRequest
+	35, // 33: warehouse.user.v1.UserService.UserTeams:input_type -> warehouse.user.v1.UserTeamsRequest
+	37, // 34: warehouse.user.v1.UserService.TeamUserUpdate:input_type -> warehouse.user.v1.TeamUserUpdateRequest
+	41, // 35: warehouse.user.v1.UserService.RoleResolve:input_type -> warehouse.user.v1.RoleResolveRequest
+	16, // 36: warehouse.user.v1.UserService.CreateUser:input_type -> warehouse.user.v1.CreateUserRequest
+	18, // 37: warehouse.user.v1.UserService.ResetPassword:input_type -> warehouse.user.v1.ResetPasswordRequest
+	20, // 38: warehouse.user.v1.UserService.AdminResetPassword:input_type -> warehouse.user.v1.AdminResetPasswordRequest
+	1,  // 39: warehouse.user.v1.UserService.UpdateProfile:input_type -> warehouse.user.v1.UpdateProfileRequest
+	3,  // 40: warehouse.user.v1.UserService.UpdateUser:input_type -> warehouse.user.v1.UpdateUserRequest
+	5,  // 41: warehouse.user.v1.UserService.SuspendUser:input_type -> warehouse.user.v1.SuspendUserRequest
+	7,  // 42: warehouse.user.v1.UserService.DeleteUser:input_type -> warehouse.user.v1.DeleteUserRequest
+	9,  // 43: warehouse.user.v1.UserService.UserList:input_type -> warehouse.user.v1.UserListRequest
+	11, // 44: warehouse.user.v1.UserService.UserByIDs:input_type -> warehouse.user.v1.UserByIDsRequest
+	13, // 45: warehouse.user.v1.UserService.SearchUser:input_type -> warehouse.user.v1.SearchUserRequest
+	23, // 46: warehouse.user.v1.AuthService.Login:output_type -> warehouse.user.v1.LoginResponse
+	25, // 47: warehouse.user.v1.AuthService.Logout:output_type -> warehouse.user.v1.LogoutResponse
+	27, // 48: warehouse.user.v1.AuthService.CheckAccess:output_type -> warehouse.user.v1.CheckAccessResponse
+	29, // 49: warehouse.user.v1.AuthService.RequestPasswordResetOtp:output_type -> warehouse.user.v1.RequestPasswordResetOtpResponse
+	31, // 50: warehouse.user.v1.AuthService.ResetPasswordWithOtp:output_type -> warehouse.user.v1.ResetPasswordWithOtpResponse
+	34, // 51: warehouse.user.v1.UserService.TeamAccessList:output_type -> warehouse.user.v1.TeamAccessListResponse
+	36, // 52: warehouse.user.v1.UserService.UserTeams:output_type -> warehouse.user.v1.UserTeamsResponse
+	40, // 53: warehouse.user.v1.UserService.TeamUserUpdate:output_type -> warehouse.user.v1.TeamUserUpdateResponse
+	42, // 54: warehouse.user.v1.UserService.RoleResolve:output_type -> warehouse.user.v1.RoleResolveResponse
+	17, // 55: warehouse.user.v1.UserService.CreateUser:output_type -> warehouse.user.v1.CreateUserResponse
+	19, // 56: warehouse.user.v1.UserService.ResetPassword:output_type -> warehouse.user.v1.ResetPasswordResponse
+	21, // 57: warehouse.user.v1.UserService.AdminResetPassword:output_type -> warehouse.user.v1.AdminResetPasswordResponse
+	2,  // 58: warehouse.user.v1.UserService.UpdateProfile:output_type -> warehouse.user.v1.UpdateProfileResponse
+	4,  // 59: warehouse.user.v1.UserService.UpdateUser:output_type -> warehouse.user.v1.UpdateUserResponse
+	6,  // 60: warehouse.user.v1.UserService.SuspendUser:output_type -> warehouse.user.v1.SuspendUserResponse
+	8,  // 61: warehouse.user.v1.UserService.DeleteUser:output_type -> warehouse.user.v1.DeleteUserResponse
+	10, // 62: warehouse.user.v1.UserService.UserList:output_type -> warehouse.user.v1.UserListResponse
+	12, // 63: warehouse.user.v1.UserService.UserByIDs:output_type -> warehouse.user.v1.UserByIDsResponse
+	14, // 64: warehouse.user.v1.UserService.SearchUser:output_type -> warehouse.user.v1.SearchUserResponse
+	46, // [46:65] is the sub-list for method output_type
+	27, // [27:46] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_user_v1_user_proto_init() }

@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
@@ -57,12 +58,28 @@ func (s *Service) TeamAccessList(
 		}
 	}
 
+	page := req.Msg.GetPage()
+
+	query := s.db.
+		WithContext(ctx).
+		Model(&user_service_models.UserTeamRole{}).
+		Where("user_id = ?", target)
+
+	var total int64
+
+	err = query.Count(&total).Error
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	var memberships []user_service_models.UserTeamRole
 
-	err = s.db.
-		WithContext(ctx).
-		Where("user_id = ?", target).
+	offset := int((page.GetPage() - 1) * page.GetLimit())
+
+	err = query.
 		Order("team_id ASC").
+		Offset(offset).
+		Limit(int(page.GetLimit())).
 		Find(&memberships).
 		Error
 	if err != nil {
@@ -97,5 +114,12 @@ func (s *Service) TeamAccessList(
 		items = append(items, item)
 	}
 
-	return connect.NewResponse(&userv1.TeamAccessListResponse{Teams: items}), nil
+	return connect.NewResponse(&userv1.TeamAccessListResponse{
+		Teams: items,
+		PageInfo: &commonv1.PageInfo{
+			CurrentPage: page.GetPage(),
+			TotalPage:   totalPages(total, page.GetLimit()),
+			TotalItems:  uint64(total),
+		},
+	}), nil
 }

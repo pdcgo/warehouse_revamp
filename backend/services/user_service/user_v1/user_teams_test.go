@@ -27,7 +27,7 @@ func TestUserTeams_ReturnsUserAndTeams(t *testing.T) {
 	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_TEAM_OWNER)
 
 	// The interceptor gates this by policy; the handler itself takes the user id from the request.
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestUserTeams_DegradesWhenTeamsMissing(t *testing.T) {
 	uid := insertUser(t, db, "viewed2", "pw12345678")
 	grantRole(t, db, 3, uid, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
 
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams must not fail when names are unavailable: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestUserTeams_NoMemberships(t *testing.T) {
 	svc := newServiceWithTeams(t, db, &fakeTeamClient{})
 	uid := insertUser(t, db, "loner", "pw12345678")
 
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestUserTeams_UnknownUserIsNotFound(t *testing.T) {
 
 	svc := newServiceWithTeams(t, db, &fakeTeamClient{})
 
-	_, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: 999999}))
+	_, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: 999999, Page: pageAll()}))
 	if err == nil {
 		t.Fatal("UserTeams(unknown id) = nil error, want NotFound")
 	}

@@ -34,7 +34,7 @@ export function UserDetailDialog({
 
     void (async () => {
       try {
-        const res = await userClient.userTeams({ userId: user.id });
+        const res = await userClient.userTeams({ userId: user.id, page: { page: 1, limit: 200 } });
 
         if (!cancelled) {
           setTeams(res.teams);

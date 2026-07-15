@@ -29,7 +29,7 @@ func TestTeamAccessList_ReturnsMembershipsWithNames(t *testing.T) {
 	ctx := ctxWithIdentity(uid, "multi")
 
 	// user_id = 0 means "me".
-	res, err := svc.TeamAccessList(ctx, connect.NewRequest(&userv1.TeamAccessListRequest{}))
+	res, err := svc.TeamAccessList(ctx, connect.NewRequest(&userv1.TeamAccessListRequest{Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("TeamAccessList: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestTeamAccessList_DegradesWhenTeamsMissing(t *testing.T) {
 
 	ctx := ctxWithIdentity(uid, "degrade")
 
-	res, err := svc.TeamAccessList(ctx, connect.NewRequest(&userv1.TeamAccessListRequest{}))
+	res, err := svc.TeamAccessList(ctx, connect.NewRequest(&userv1.TeamAccessListRequest{Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("TeamAccessList must not fail when names are unavailable: %v", err)
 	}
