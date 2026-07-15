@@ -25,7 +25,7 @@ sequenceDiagram
         U-->>T: error
         T->>T: COMPENSATE — soft-delete the team (deleted = true)
         Note over T: never HARD delete — the grant may have<br/>succeeded on a timed-out call, and a hard<br/>delete would strand a user_team_roles row
-        T-->>C: Internal ("team created but owner grant failed; rolled back")
+        T-->>C: Internal error - team created but owner grant failed, rolled back
     end
 ```
 

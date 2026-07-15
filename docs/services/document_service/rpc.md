@@ -11,7 +11,7 @@ sequenceDiagram
     participant API as document_service
     participant S as Object storage
     UI->>API: RequestUpload(team_id, resource_type, content_type, size, filename)
-    API->>API: authorize team; INSERT document (status=pending)<br/>key = incoming/teams/{team}/{uuid}.{ext}
+    API->>API: authorize team, INSERT document (status=pending)<br/>key = incoming/teams/{team}/{uuid}.{ext}
     API-->>UI: signed PUT url + upload_token (HMAC of id:expiry) + headers
     UI->>S: PUT raw bytes to the signed url (echo headers) — bytes SKIP the API
     UI->>API: ConfirmUpload(upload_token)
@@ -22,12 +22,12 @@ sequenceDiagram
         API->>S: Open asset, decode, scale to ≤256px, Put assets/…_thumb.jpg
         Note over API,S: best-effort — a failed thumbnail never fails the confirm
     end
-    API->>API: status=active; set public_url + thumbnail_url for public types
+    API->>API: status=active, set public_url + thumbnail_url for public types
     API-->>UI: Document (+ public_url + thumbnail_url for public resource types)
     Note over UI,API: later, on demand…
     UI->>API: GetDownloadUrl(team_id, document_id)
     API->>API: SELECT … WHERE id=? AND team_id=? AND status=active
-    API-->>UI: public → stable url; private → fresh short-lived signed url
+    API-->>UI: public → stable url, private → fresh short-lived signed url
 ```
 
 **Why these choices:**
