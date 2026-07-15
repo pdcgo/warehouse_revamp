@@ -33,9 +33,17 @@ func testSigner() *san_auth.Signer {
 func newAuthService(t *testing.T, db *gorm.DB) *user_v1.AuthService {
 	t.Helper()
 
+	return newAuthServiceWithOtp(t, db, san_verification.NewMockOtpVerification())
+}
+
+// newAuthServiceWithOtp is newAuthService with an explicit OTP backend, so a test can observe
+// Send being called (or make it fail).
+func newAuthServiceWithOtp(t *testing.T, db *gorm.DB, otp san_verification.OtpVerification) *user_v1.AuthService {
+	t.Helper()
+
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
 
-	return user_v1.NewAuthService(db, testSigner(), resolver, san_verification.NewMockOtpVerification())
+	return user_v1.NewAuthService(db, testSigner(), resolver, otp)
 }
 
 // newServiceWithTeams is like newService but with a supplied team client, for TeamAccessList.
