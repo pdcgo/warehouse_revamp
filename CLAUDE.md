@@ -489,9 +489,15 @@ app and review as work lands, so per-issue branch-switching just gets in the way
     own judgement. Never present an inferred order as if it were the board's.
 - Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
   move items **Ready → In progress** when you start, and **In progress → In review** when the
-  work is finished and green on `dev`. **Stop at In review** — do **not** move to Done and do
-  **not** `gh issue close` it yourself. The owner previews on `dev`, then flips it to Done and
-  closes the issue. Done means "the owner reviewed it", not "the code landed".
+  work is finished and green on `dev`.
+  - **Move it to In progress FIRST — before writing a single line of code, as the opening step of
+    picking up the item.** Not after the first edit, not at commit time, not "later". The board is
+    how the owner sees what's being worked on right now; code that lands while the item still reads
+    *Ready* means the board lied about the state the whole time. If you catch yourself already
+    editing files with the item still in Ready, you skipped this — fix it immediately.
+  - **Stop at In review** — do **not** move to Done and do **not** `gh issue close` it yourself.
+    The owner previews on `dev`, then flips it to Done and closes the issue. Done means "the owner
+    reviewed it", not "the code landed".
   - Board IDs for `gh project item-edit` (needs the `project` token scope —
     `gh auth refresh -s project`):
     - Project id `PVT_kwDOB8TF184BdVMC` · Status field id `PVTSSF_lADOB8TF184BdVMCzhX3esc`
