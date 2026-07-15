@@ -18,6 +18,7 @@ import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { TeamItem } from "../components/TeamItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
@@ -111,7 +112,9 @@ export function WarehousesPage() {
 
               return (
                 <Table.Row key={team.id.toString()} data-testid={`warehouse-row-${team.teamCode}`}>
-                  <Table.Cell>{team.name}</Table.Cell>
+                  <Table.Cell>
+                    <TeamItem team={{ teamName: team.name, teamType: team.type, teamId: team.id }} />
+                  </Table.Cell>
                   <Table.Cell>{team.teamCode}</Table.Cell>
 
                   <Table.Cell textAlign="end">
