@@ -13,6 +13,7 @@ import { roleLabel } from "../lib/roles";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
+import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
 // and a live render. The left list and the cards are both driven from this array, so they can't
@@ -85,15 +86,37 @@ function TeamSelectDemo() {
 }
 
 function UserSelectDemo() {
-  const [id, setId] = useState(0n);
+  const [all, setAll] = useState(0n);
+  const [scoped, setScoped] = useState(0n);
+  const { current } = useTeam();
 
   return (
-    <>
-      <UserSelect value={id || undefined} onChange={setId} />
-      <Text fontSize="xs" color="fg.muted">
-        Selected user id: {id.toString()}
-      </Text>
-    </>
+    <Stack gap="card">
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          All users (default)
+        </Text>
+        <UserSelect value={all || undefined} onChange={setAll} />
+        <Text fontSize="xs" color="fg.muted">
+          Selected user id: {all.toString()}
+        </Text>
+      </Stack>
+
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          Scoped to the current team{current ? ` (${current.teamName || `#${current.teamId}`})` : ""}
+        </Text>
+        <UserSelect
+          value={scoped || undefined}
+          onChange={setScoped}
+          teamId={current?.teamId}
+          placeholder="Search this team's members"
+        />
+        <Text fontSize="xs" color="fg.muted">
+          Selected user id: {scoped.toString()}
+        </Text>
+      </Stack>
+    </Stack>
   );
 }
 
@@ -167,7 +190,7 @@ const ENTRIES: Entry[] = [
   {
     id: "user-select",
     title: "UserSelect",
-    description: "Searchable user picker (Chakra Combobox, server-side SearchUser) — options render with UserItem. Emits a user id.",
+    description: "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList).",
     render: () => <UserSelectDemo />,
   },
   {
