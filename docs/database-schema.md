@@ -193,6 +193,8 @@ erDiagram
 ```mermaid
 erDiagram
     shops ||--o{ shop_users : "shop_id"
+    shops ||--o{ orders : "shop_id"
+    orders ||--o{ order_items : "order_id"
 
     shops {
         bigserial   id          PK
@@ -212,6 +214,33 @@ erDiagram
         bigint      user_id    "opaque user_service id, no FK"
         timestamptz created_at
     }
+
+    orders {
+        bigserial   id               PK
+        bigint      team_id          "owning SELLING team, opaque, no FK"
+        bigint      shop_id          FK "-> shops(id)"
+        text        status           "OrderStatus enum as text (placed/confirmed/cancelled); no CHECK"
+        text        customer_name    "required"
+        text        customer_phone
+        text        customer_address
+        text        shipping_code    "opaque shipping_service courier code"
+        bigint      subtotal         "whole rupiah"
+        bigint      shipping_cost
+        bigint      total
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_items {
+        bigserial   id         PK
+        bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
+        bigint      product_id "opaque product_service id, no FK"
+        text        sku        "snapshot at order time"
+        text        name       "snapshot"
+        int         quantity   ">= 1"
+        bigint      unit_price "whole rupiah snapshot"
+        timestamptz created_at
+    }
 ```
 
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
@@ -227,6 +256,13 @@ erDiagram
   through the shop's team (the request carries the team_id, and the handler verifies the shop
   belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
   the grants when a shop is hard-deleted.
+- **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
+  shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
+  (same service). `status` is the `OrderStatus` enum as text (`placed`/`confirmed`/`cancelled` —
+  selling-side only; fulfillment states wait on the warehouse core), no `CHECK` (mapper + proto
+  guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
+  at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
+  COGS/margin are the revenue side (#74). The UI is #68.
 
 `backend/services/category_service/db_migrations/`
 

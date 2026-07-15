@@ -17,7 +17,23 @@
 >   Bukalapak/Other), `description`. **No credentials/integration metadata** — "just save shop
 >   info"; the marketplace-integration secret story waits for import (#73). Managed by team
 >   owner/admin (+ root/admin). (owner, 2026-07-15)
-> - The order/revenue forks in §3 (3.2, 3.3, 3.4, 3.6, 3.7) are still **open** and need the owner.
+> - **§3.2/§3.3/§3.4/§3.7 for #67 — provisionally DECIDED BY THE AGENT (owner delegated overnight
+>   2026-07-15; please review at 06:00 and redirect if wrong).** Orders live in **`selling_service`**
+>   (it "will grow to own orders"), a new `warehouse.selling.v1.OrderService`.
+>   - **Statuses (§3.2):** selling-side only — `ORDER_STATUS_PLACED` / `CONFIRMED` / `CANCELLED`.
+>     The fulfillment states (picking→packed→shipped→delivered) are deliberately absent until the
+>     warehouse core (plan.md §1) is designed.
+>   - **Stock (§3.3):** `OrderCreate` does **NOT** touch inventory — no reservation, no decrement.
+>     Stock integration is its own issue (#69), so this decision stays reversible.
+>   - **Intake (§3.4):** manual create only; no marketplace import / external ref yet (that is #73).
+>   - **Money (§3.7):** stored as **int64 whole rupiah**. The order FREEZES `subtotal` +
+>     `shipping_cost` + `total`; each line snapshots `product_id`/`sku`/`name`/`quantity`/`unit_price`.
+>     COGS / margin / fees are the revenue side (#74), not here.
+>   - **Shape:** `order` (team_id scope, shop_id, status, customer name/phone/address, shipping_code,
+>     the three money totals) + `order_items` (the line snapshots). No FKs across services (shop_id,
+>     product_id are opaque). #67 ships the backend (model + OrderCreate/List/Detail); the UI is #68.
+> - Still **open** and need the owner: §3.6 (which warehouse fulfils — needs §1) and the whole
+>   revenue side (#32 / §3.7 downstream).
 
 ---
 

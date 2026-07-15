@@ -10,16 +10,20 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// NewRegister mounts selling_service's Connect handler under the shared interceptor chain and
-// reports it for reflection.
+// NewRegister mounts selling_service's Connect handlers (ShopService + OrderService, both served by
+// the one selling impl) under the shared interceptor chain and reports them for reflection.
 func NewRegister(
 	mux *http.ServeMux,
-	shop *selling_v1.Service,
+	selling *selling_v1.Service,
 	opts connect.HandlerOption,
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
-		mux.Handle(sellingv1connect.NewShopServiceHandler(shop, opts))
+		mux.Handle(sellingv1connect.NewShopServiceHandler(selling, opts))
+		mux.Handle(sellingv1connect.NewOrderServiceHandler(selling, opts))
 
-		return san_grpc.ServiceReflectNames{sellingv1connect.ShopServiceName}
+		return san_grpc.ServiceReflectNames{
+			sellingv1connect.ShopServiceName,
+			sellingv1connect.OrderServiceName,
+		}
 	}
 }

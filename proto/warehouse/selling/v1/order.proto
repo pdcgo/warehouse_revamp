@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// OrderService owns `orders` + `order_items` — the SELLING side of an order (#67): who ordered, from
+// which shop, the lines, and the money. Fulfillment (pick→pack→ship) is a separate concern that
+// waits on the warehouse core (plans/plan.md §1), so it is deliberately absent here. Team-scoped
+// like the rest of selling_service; OrderCreate does NOT touch inventory (that is #69).
+service OrderService {
+  rpc OrderCreate(OrderCreateRequest) returns (OrderCreateResponse);
+  rpc OrderList(OrderListRequest) returns (OrderListResponse);
+  rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
+}
+
+// Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
+// warehouse core.
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLACED = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_CANCELLED = 3;
+}
+
+// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
+// SNAPSHOT taken at order time, so later catalogue edits never rewrite an order's history. Money is
+// whole rupiah (int64). Used for both input (create; `id` ignored) and output.
+message OrderItem {
+  uint64 id = 1;
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  uint32 quantity = 5 [(buf.validate.field).uint32.gte = 1];
+  int64 unit_price = 6 [(buf.validate.field).int64.gte = 0];
+}
+
+message Order {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  uint64 shop_id = 3;
+  OrderStatus status = 4;
+
+  string customer_name = 5;
+  string customer_phone = 6;
+  string customer_address = 7;
+  // A shipping_service courier code (opaque; no FK).
+  string shipping_code = 8;
+
+  // The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes
+  // shipping_cost. COGS/margin/fees are the revenue side (#74), not here.
+  int64 subtotal = 9;
+  int64 shipping_cost = 10;
+  int64 total = 11;
+
+  // The lines — populated by OrderDetail (OrderList returns a summary without them).
+  repeated OrderItem items = 12;
+
+  int64 created_at_unix = 13;
+}
+
+message OrderCreateRequest {
+  // Write: the selling team's managers and customer service (CS types orders in).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  string customer_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string customer_phone = 4 [(buf.validate.field).string.max_len = 40];
+  string customer_address = 5 [(buf.validate.field).string.max_len = 1000];
+  string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
+
+  int64 subtotal = 7 [(buf.validate.field).int64.gte = 0];
+  int64 shipping_cost = 8 [(buf.validate.field).int64.gte = 0];
+  int64 total = 9 [(buf.validate.field).int64.gte = 0];
+
+  // At least one line; `id` on each is ignored.
+  repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message OrderCreateResponse {
+  Order order = 1;
+}
+
+message OrderListRequest {
+  // Read: anyone in the selling team.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message OrderListResponse {
+  // Order summaries (no line items).
+  repeated Order orders = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message OrderDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderDetailResponse {
+  Order order = 1;
+}
