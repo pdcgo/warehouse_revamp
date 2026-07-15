@@ -11,6 +11,9 @@ It is at the **design stage** — almost nothing is decided. The running design 
 **[plans/plan.md](plans/plan.md)**. Read it before proposing anything, and keep it current as
 decisions land.
 
+> **This repository is PUBLIC.** Keep credentials, secrets, and the names of unrelated internal
+> systems out of anything committed — code, comments, docs, and commit messages alike.
+
 ---
 
 ## HARD RULES
@@ -456,11 +459,28 @@ app and review as work lands, so per-issue branch-switching just gets in the way
 
 - Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
   should pass at each commit.
+- **An issue's real spec lives in its COMMENTS, not just the body.** The owner drives each
+  issue as a thread: the body is the initial ask; refinements, reworks, and NEW requirements
+  arrive as comments, and the **last comment is usually the current spec**. Before starting —
+  and before moving anything to In review — read the full comment thread and satisfy the latest
+  requirements. An issue is not done until its comments are.
+  - `gh issue view N --comments` is **broken here** (it errors on a Projects-classic GraphQL
+    deprecation). Use the REST API instead:
+    `gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'` (all) or
+    `… --jq '.[-1].body'` (last only; the array is oldest→newest).
 - Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
   move items **Ready → In progress** when you start, and **In progress → In review** when the
   work is finished and green on `dev`. **Stop at In review** — do **not** move to Done and do
   **not** `gh issue close` it yourself. The owner previews on `dev`, then flips it to Done and
   closes the issue. Done means "the owner reviewed it", not "the code landed".
+  - Board IDs for `gh project item-edit` (needs the `project` token scope —
+    `gh auth refresh -s project`):
+    - Project id `PVT_kwDOB8TF184BdVMC` · Status field id `PVTSSF_lADOB8TF184BdVMCzhX3esc`
+    - Status options: Backlog `f75ad846` · Ready `61e4505c` · In progress `47fc9ee4` ·
+      In review `df73e18b` · Done `98236657`
+    - Move: `gh project item-edit --project-id <PID> --id <ITEM> --field-id <SF>
+      --single-select-option-id <OPT>` · Find an item id:
+      `gh project item-list 2 --owner pdcgo --format json`
 - Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
   never push `main` or merge without an explicit ask.
 
