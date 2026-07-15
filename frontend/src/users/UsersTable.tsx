@@ -5,7 +5,6 @@ import {
   Box,
   Flex,
   HStack,
-  Heading,
   Icon,
   IconButton,
   Input,
@@ -18,11 +17,10 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
 import { rpcError, teamClient, userClient } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
-import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -32,49 +30,61 @@ import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
+import { AddMemberDialog } from "./AddMemberDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 
 const PAGE_SIZE = 20;
 
-// AllUsersPage is the ROOT/ADMIN management view of EVERY user across EVERY team (issue #40).
+// UsersTable is the one user-management surface, used by both faces of the Users page (#58):
 //
-// It leans on one backend fact: UserList with team_id = 0 resolves to the root scope and returns
-// all users — root/admin only. A team_id > 0 narrows to that team's members. So the single
-// team-filter control drives both "see everyone" (All teams = 0) and "filter by team".
-export function AllUsersPage() {
+//  - mode="team": manage the members of ONE team (the current team). Offers Add member and
+//    Remove-from-team. This is the whole page for warehouse/selling managers, and the
+//    "My Team User" tab for root/admin.
+//  - mode="all": manage EVERY user across EVERY team (root/admin only). A team filter narrows the
+//    list; team_id = 0 means everyone (the root scope). No Add member / Remove-from-team — those
+//    are team-membership actions, meaningless in a cross-team view. This is the "All User" tab.
+//
+// Only one of these is ever mounted at a time (the tabs use lazyMount + unmountOnExit), so the
+// shared `user-*` testids never collide.
+export function UsersTable({ mode }: { mode: "team" | "all" }) {
   const { identity } = useAuth();
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  // The whole page is a root/admin surface; this only decides whether to OFFER the destructive
-  // row actions. The backend's interceptor is the real boundary regardless.
+  // The whole cross-team view, and the destructive row actions, are root/admin surfaces. This flag
+  // only decides what the UI OFFERS — the backend interceptor is the real boundary either way.
   const globalAdmin = isGlobalAdmin(current?.role);
 
+  // mode="all" carries a team filter (0 = all teams); mode="team" is pinned to the current team.
   const [teams, setTeams] = useState<Team[]>([]);
-  const [teamId, setTeamId] = useState<bigint>(0n);
+  const [filterTeamId, setFilterTeamId] = useState<bigint>(0n);
+  const teamId = mode === "all" ? filterTeamId : (current?.teamId ?? 0n);
 
   const [users, setUsers] = useState<User[]>([]);
-  const [pageInfo, setPageInfo] = useState<PageInfo | undefined>(undefined);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Which row action is open, and for which user. Each row's actions live behind one overflow
-  // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
+  // Which row action is open, and for which user. The row's actions live behind one overflow menu;
+  // picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<
-    { kind: "edit" | "reset" | "suspend" | "delete"; user: User } | null
+    { kind: "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
   >(null);
 
-  // The team filter's options. Loaded once — a non-fatal failure just leaves "All teams" as the
-  // only choice, which still lists everyone.
+  // The team-filter options (all mode only). A non-fatal failure just leaves "All teams" as the
+  // sole choice, which still lists everyone.
   useEffect(() => {
+    if (mode !== "all") {
+      return;
+    }
+
     let cancelled = false;
 
     void (async () => {
       try {
         const res = await teamClient.teamList({ page: { page: 1, limit: 200 } });
-
         if (!cancelled) {
           setTeams(res.teams);
         }
@@ -88,7 +98,7 @@ export function AllUsersPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,11 +113,11 @@ export function AllUsersPage() {
       });
 
       setUsers(res.users);
-      setPageInfo(res.pageInfo);
+      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
     } catch (err) {
       setError(rpcError(err));
       setUsers([]);
-      setPageInfo(undefined);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -124,6 +134,8 @@ export function AllUsersPage() {
       toaster.create({
         type: "success",
         title: suspended ? `${user.username} suspended` : `${user.username} restored`,
+        // Worth saying: suspension is not "they cannot log in next time" — it cuts their current
+        // session off on the very next request.
         description: suspended ? "Their active session was cut off immediately." : undefined,
       });
 
@@ -143,12 +155,30 @@ export function AllUsersPage() {
     }
   }
 
+  async function removeFromTeam(user: User) {
+    try {
+      await userClient.teamUserUpdate({
+        teamId: current?.teamId ?? 0n,
+        action: { case: "remove", value: { userId: user.id } },
+      });
+
+      toaster.create({ type: "success", title: `${user.username} removed from the team` });
+      await load();
+    } catch (err) {
+      toaster.create({ type: "error", title: "Remove failed", description: rpcError(err) });
+    }
+  }
+
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">All Users</Heading>
+        {mode === "team" && current && (
+          <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
+        )}
+
         <Spacer />
-        {/* CreateUserDialog creates into the CURRENT team (it reads useTeam itself). See report. */}
+
+        {mode === "team" && <AddMemberDialog onDone={() => void load()} />}
         <CreateUserDialog onDone={() => void load()} />
       </Flex>
 
@@ -157,35 +187,37 @@ export function AllUsersPage() {
           maxW="sm"
           placeholder="Search name, username or email"
           value={q}
-          data-testid="all-users-search"
+          data-testid="user-search"
           onChange={(e) => {
             setQ(e.target.value);
             setPage(1);
           }}
         />
 
-        <NativeSelect.Root maxW="xs">
-          <NativeSelect.Field
-            value={teamId.toString()}
-            data-testid="all-users-team-filter"
-            onChange={(e) => {
-              setTeamId(BigInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            <option value="0">All teams</option>
-            {teams.map((t) => (
-              <option key={t.id.toString()} value={t.id.toString()}>
-                {t.name || `Team #${t.id}`}
-              </option>
-            ))}
-          </NativeSelect.Field>
-          <NativeSelect.Indicator />
-        </NativeSelect.Root>
+        {mode === "all" && (
+          <NativeSelect.Root maxW="xs">
+            <NativeSelect.Field
+              value={teamId.toString()}
+              data-testid="users-team-filter"
+              onChange={(e) => {
+                setFilterTeamId(BigInt(e.target.value));
+                setPage(1);
+              }}
+            >
+              <option value="0">All teams</option>
+              {teams.map((t) => (
+                <option key={t.id.toString()} value={t.id.toString()}>
+                  {t.name || `Team #${t.id}`}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        )}
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="all-users-error">
+        <Text color="red.fg" data-testid="users-error">
           {error}
         </Text>
       )}
@@ -193,7 +225,7 @@ export function AllUsersPage() {
       {loading ? (
         <Spinner colorPalette="brand" />
       ) : (
-        <Table.Root size="sm" data-testid="all-users-table">
+        <Table.Root size="sm" data-testid="users-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>User</Table.ColumnHeader>
@@ -205,14 +237,16 @@ export function AllUsersPage() {
 
           <Table.Body>
             {users.map((user) => {
-              // Never offer to suspend or delete yourself — the confirm would be the last thing
-              // you ever did in this app.
+              // Never offer to suspend or delete yourself — the confirm would be the last thing you
+              // ever did in this app.
               const isSelf = identity?.identityId === user.id;
 
               return (
-                <Table.Row key={user.id.toString()} data-testid={`all-users-row-${user.username}`}>
+                <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
                   <Table.Cell>
                     {globalAdmin ? (
+                      // The detail PAGE reads UserTeams (root/admin only), so only offer
+                      // click-to-open where it will actually work.
                       <Box
                         cursor="pointer"
                         data-testid={`open-user-${user.username}`}
@@ -227,7 +261,7 @@ export function AllUsersPage() {
                   <Table.Cell>{user.email}</Table.Cell>
                   <Table.Cell>
                     {user.isSuspended ? (
-                      <Badge colorPalette="red" data-testid={`all-users-suspended-${user.username}`}>
+                      <Badge colorPalette="red" data-testid={`suspended-${user.username}`}>
                         Suspended
                       </Badge>
                     ) : (
@@ -242,7 +276,7 @@ export function AllUsersPage() {
                           size="xs"
                           variant="ghost"
                           aria-label="Actions"
-                          data-testid={`all-users-row-actions-${user.username}`}
+                          data-testid={`row-actions-${user.username}`}
                         >
                           <Icon as={MoreHorizontal} boxSize="4" />
                         </IconButton>
@@ -272,6 +306,17 @@ export function AllUsersPage() {
                               </Menu.Item>
                             )}
 
+                            {mode === "team" && current && !isSelf && (
+                              <Menu.Item
+                                value="remove"
+                                data-testid={`remove-${user.username}`}
+                                onClick={() => setDialog({ kind: "remove", user })}
+                              >
+                                <Icon as={UserMinus} boxSize="4" />
+                                Remove from team
+                              </Menu.Item>
+                            )}
+
                             {globalAdmin && !isSelf && (
                               <>
                                 {/* An admin sets a password without knowing the old one — exactly
@@ -287,7 +332,7 @@ export function AllUsersPage() {
 
                                 <Menu.Item
                                   value="suspend"
-                                  data-testid={`all-users-suspend-${user.username}`}
+                                  data-testid={`suspend-${user.username}`}
                                   onClick={() => setDialog({ kind: "suspend", user })}
                                 >
                                   <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
@@ -297,7 +342,7 @@ export function AllUsersPage() {
                                 <Menu.Item
                                   value="delete"
                                   color="fg.error"
-                                  data-testid={`all-users-delete-${user.username}`}
+                                  data-testid={`delete-${user.username}`}
                                   onClick={() => setDialog({ kind: "delete", user })}
                                 >
                                   <Icon as={Trash2} boxSize="4" />
@@ -315,6 +360,16 @@ export function AllUsersPage() {
             })}
           </Table.Body>
         </Table.Root>
+      )}
+
+      {!loading && users.length === 0 && !error && (
+        <Text color="fg.muted" data-testid="users-empty">
+          No users found.
+        </Text>
+      )}
+
+      {!loading && (
+        <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
@@ -341,13 +396,26 @@ export function AllUsersPage() {
         />
       )}
 
+      {dialog?.kind === "remove" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          title="Remove from Team"
+          message={`Remove ${dialog.user.username} from ${current?.teamName || "this team"}? The account itself is kept.`}
+          confirmLabel="Remove"
+          onConfirm={() => removeFromTeam(dialog.user)}
+        />
+      )}
+
       {dialog?.kind === "suspend" && (
         <ConfirmDialog
           open
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title={dialog.user.isSuspended ? "Restore account" : "Suspend account"}
+          title={dialog.user.isSuspended ? "Restore Account" : "Suspend Account"}
           message={
             dialog.user.isSuspended
               ? `Restore ${dialog.user.username}? They will be able to sign in again.`
@@ -369,21 +437,6 @@ export function AllUsersPage() {
           message={`Permanently delete ${dialog.user.username}? Their team memberships are removed too. This cannot be undone.`}
           confirmLabel="Delete"
           onConfirm={() => remove(dialog.user)}
-        />
-      )}
-
-      {!loading && users.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="all-users-empty">
-          No users found.
-        </Text>
-      )}
-
-      {!loading && (
-        <Pagination
-          count={Number(pageInfo?.totalItems ?? 0n)}
-          pageSize={PAGE_SIZE}
-          page={page}
-          onPageChange={setPage}
         />
       )}
     </Stack>

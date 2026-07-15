@@ -194,10 +194,10 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
 
-  // They still exist — visible to a global admin looking at every user.
-  await page.getByTestId("toggle-all-users").click();
+  // They still exist — visible on the All User tab (#58), which lists everyone across teams.
+  await page.getByTestId("users-tab-all").click();
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
-  await page.getByTestId("toggle-all-users").click();
+  await page.getByTestId("users-tab-team").click();
 
   // SearchUser is unscoped precisely so this works: finding someone who is NOT in your team.
   // The dialog now uses the shared UserSelect combobox (#62).
@@ -256,7 +256,7 @@ test("DeleteUser: the account is gone for good", async ({ page }) => {
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
 
-  // Really gone — not just filtered out of this team's view.
-  await page.getByTestId("toggle-all-users").click();
+  // Really gone — not just filtered out of this team's view. The All User tab lists everyone.
+  await page.getByTestId("users-tab-all").click();
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
 });

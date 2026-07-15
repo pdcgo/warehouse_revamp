@@ -14,7 +14,6 @@ import { TeamProvider } from "./team/TeamContext";
 import { TeamDetailPage } from "./teams/TeamDetailPage";
 import { TeamsPage } from "./teams/TeamsPage";
 import { WarehouseEditPage } from "./warehouses/WarehouseEditPage";
-import { AllUsersPage } from "./users/AllUsersPage";
 import { UserDetailPage } from "./users/UserDetailPage";
 import { UsersPage } from "./users/UsersPage";
 
@@ -59,7 +58,6 @@ export const router = createBrowserRouter([
       { path: "inventory", element: <InventoryPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
-      { path: "all-users", element: <AllUsersPage /> },
       { path: "components", element: <ComponentsPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "profile", element: <ProfilePage /> },
