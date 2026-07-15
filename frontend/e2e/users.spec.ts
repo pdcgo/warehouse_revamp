@@ -200,9 +200,10 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await page.getByTestId("toggle-all-users").click();
 
   // SearchUser is unscoped precisely so this works: finding someone who is NOT in your team.
+  // The dialog now uses the shared UserSelect combobox (#62).
   await page.getByTestId("open-add-member").click();
-  await page.getByTestId("member-search").fill(NEW_USER);
-  await page.getByTestId(`member-option-${NEW_USER}`).click();
+  await page.getByTestId("user-select").locator("input").fill(NEW_USER);
+  await page.getByTestId(`user-select-option-${NEW_USER}`).click();
   await page.getByTestId("submit-add-member").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();

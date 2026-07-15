@@ -6,7 +6,6 @@ import {
   Dialog,
   Field,
   Input,
-  NativeSelect,
   Portal,
   Stack,
   Text,
@@ -15,8 +14,9 @@ import { rpcError, userClient } from "../api/clients";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../team/TeamContext";
 import { PasswordInput } from "../components/PasswordInput";
+import { RoleSelect } from "../components/RoleSelect";
 import { toaster } from "../components/Toaster";
-import { roleLabel, rolesFor } from "../lib/roles";
+import { rolesFor } from "../lib/roles";
 
 // CreateUserDialog calls CreateUser, which creates the account AND the team membership in ONE
 // transaction. So there is no window where a user exists with no team.
@@ -148,20 +148,7 @@ export function CreateUserDialog({
 
                   <Field.Root>
                     <Field.Label>Role in {current?.teamName || "this team"}</Field.Label>
-                    <NativeSelect.Root size="sm">
-                      <NativeSelect.Field
-                        value={String(role)}
-                        data-testid="new-role"
-                        onChange={(e) => setRole(Number(e.target.value) as Role)}
-                      >
-                        {roles.map((r) => (
-                          <option key={r} value={r}>
-                            {roleLabel(r)}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                    <RoleSelect teamType={current?.teamType} value={role} onChange={setRole} />
                   </Field.Root>
                 </Stack>
               </Dialog.Body>
