@@ -191,6 +191,27 @@ This is a collaborative design. When a decision is needed, put it in the relevan
 brainstorming doc as an option with its trade-offs and **ask** — do not quietly pick one and
 build on it.
 
+### 9. A list RPC over data that can grow MUST paginate
+
+Any RPC returning a `repeated` result whose size **grows with the data** takes a required
+`warehouse.common.v1.PageFilter page` and returns a `warehouse.common.v1.PageInfo page_info`. An
+unpaginated growing list is a latent slow-query / out-of-memory bug that only bites once the table
+is full — so the default is: **when in doubt, paginate.** Removing a page filter later is a
+breaking change; adding one to a list that already hurts is an incident.
+
+- **Complies today:** `TeamList`, `UserList`, `ProductList`. A capped typeahead like `SearchUser`
+  (a `limit` of 1–20) satisfies the intent without a page cursor — it can never return "everything".
+- **Exempt — bounded reference data, and the proto says so:** `ShippingList` (the courier
+  catalogue: curated, rarely-changing, dozens of rows) and `TeamAccessList` / `UserTeams` (one
+  person's own memberships — a handful). These do not "have many data"; a page filter would be
+  ceremony. The moment one can grow unbounded, it stops being exempt.
+- **The tree exception:** a picker that needs the WHOLE tree at once — `CategoryList` backing
+  `CategorySelect` — cannot page, because a page is a flat window and a tree needs every node to
+  assemble. A full-tree read is allowed ONLY as a deliberate, documented **picker feed**. A
+  *browse / management* screen over the same growing data must still paginate (load a level's
+  children by `parent_id`, which is naturally small). Never let a "load everything" read quietly
+  become the backing for a growing management list.
+
 ---
 
 ## Layout
