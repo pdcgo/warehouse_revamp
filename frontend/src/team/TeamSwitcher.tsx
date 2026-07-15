@@ -139,6 +139,9 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                     px="2.5"
                     py="2"
                     cursor="pointer"
+                    // A <button> defaults to text-align:center, which would centre the team name
+                    // inside TeamItem — start-align it so the row reads avatar → name, left to right.
+                    textAlign="start"
                     _hover={{ bg: "bg.muted" }}
                     onClick={() => {
                       selectTeam(team.teamId);

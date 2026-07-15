@@ -59,7 +59,7 @@ export function TeamItem({ team, action }: TeamItemProps) {
       </Avatar.Root>
 
       <Stack gap="0.5" flex="1" minW="0">
-        <Text fontWeight="medium" lineClamp={1}>
+        <Text fontWeight="medium" lineClamp={1} textAlign="start">
           {name}
         </Text>
         <Badge colorPalette={palette} size="sm" alignSelf="flex-start">
