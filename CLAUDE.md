@@ -473,6 +473,20 @@ app and review as work lands, so per-issue branch-switching just gets in the way
     deprecation). Use the REST API instead:
     `gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'` (all) or
     `… --jq '.[-1].body'` (last only; the array is oldest→newest).
+- **Read PRIORITY (and Size) from the board — do not invent it.** When asked to work "by
+  priority", the order comes from the board's **Priority** field, not from your own guess about
+  what's important. Read it first.
+  - ⚠ `gh project item-list --format json` **does NOT include custom fields** — its items expose
+    only `content, id, status, title`. Priority/Size come **only** from the GraphQL API:
+    ```sh
+    gh api graphql -f query='{ organization(login:"pdcgo"){ projectV2(number:2){
+      items(first:100){ nodes{ content{ ... on Issue { number } }
+        fieldValues(first:20){ nodes{ ... on ProjectV2ItemFieldSingleSelectValue {
+          name field{ ... on ProjectV2FieldCommon { name } } } } } } } } } }'
+    ```
+  - If Priority is **unset** (as it is now — the field exists with no options/values), say so and
+    **ask the owner** (or propose an order for confirmation) rather than silently ranking by your
+    own judgement. Never present an inferred order as if it were the board's.
 - Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
   move items **Ready → In progress** when you start, and **In progress → In review** when the
   work is finished and green on `dev`. **Stop at In review** — do **not** move to Done and do
