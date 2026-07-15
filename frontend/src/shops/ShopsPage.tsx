@@ -19,7 +19,7 @@ import { rpcError, shopClient } from "../api/clients";
 import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { marketplaceLabel } from "../components/MarketplaceSelect";
+import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { toaster } from "../components/Toaster";
 import { ShopFormDialog } from "./ShopFormDialog";
 
@@ -136,7 +136,9 @@ export function ShopsPage() {
               <Table.Row key={shop.id.toString()} data-testid={`shop-row-${shop.shopCode}`}>
                 <Table.Cell>{shop.name}</Table.Cell>
                 <Table.Cell>{shop.shopCode}</Table.Cell>
-                <Table.Cell>{marketplaceLabel(shop.marketplace)}</Table.Cell>
+                <Table.Cell>
+                  <MarketplaceBadge marketplace={shop.marketplace} />
+                </Table.Cell>
 
                 <Table.Cell textAlign="end">
                   <HStack justify="end" gap="1">

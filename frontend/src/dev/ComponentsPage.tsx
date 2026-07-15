@@ -21,6 +21,7 @@ import {
   marketplaceLabel,
   description as marketplaceSelectDescription,
 } from "../components/MarketplaceSelect";
+import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
 import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 
@@ -208,6 +209,26 @@ const ENTRIES: Entry[] = [
     title: "MarketplaceSelect",
     description: marketplaceSelectDescription,
     render: () => <MarketplaceDemo />,
+  },
+  {
+    id: "marketplace-badge",
+    title: "MarketplaceBadge",
+    description: marketplaceBadgeDescription,
+    render: () => (
+      <Flex gap="2" wrap="wrap">
+        {[
+          Marketplace.SHOPEE,
+          Marketplace.TOKOPEDIA,
+          Marketplace.LAZADA,
+          Marketplace.TIKTOK,
+          Marketplace.BLIBLI,
+          Marketplace.BUKALAPAK,
+          Marketplace.OTHER,
+        ].map((m) => (
+          <MarketplaceBadge key={m} marketplace={m} />
+        ))}
+      </Flex>
+    ),
   },
   {
     id: "team-select",

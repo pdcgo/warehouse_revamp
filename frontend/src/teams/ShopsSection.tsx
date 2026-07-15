@@ -5,7 +5,7 @@ import { Store } from "lucide-react";
 import { shopClient } from "../api/clients";
 import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
-import { marketplaceLabel } from "../components/MarketplaceSelect";
+import { MarketplaceBadge } from "../components/MarketplaceBadge";
 
 // ShopsSection is the SELLING-only part of a team detail page (#79): the team's marketplace shops
 // (name / code / marketplace), read-only, with a shortcut to the Shops management screen when you
@@ -73,7 +73,9 @@ export function ShopsSection({ teamId }: { teamId: bigint }) {
               <Table.Row key={shop.id.toString()} data-testid={`shop-detail-row-${shop.shopCode}`}>
                 <Table.Cell>{shop.name}</Table.Cell>
                 <Table.Cell>{shop.shopCode}</Table.Cell>
-                <Table.Cell>{marketplaceLabel(shop.marketplace)}</Table.Cell>
+                <Table.Cell>
+                  <MarketplaceBadge marketplace={shop.marketplace} />
+                </Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>
