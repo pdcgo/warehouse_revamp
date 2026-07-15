@@ -2,12 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
-  Flex,
   Icon,
   IconButton,
   Menu,
   Portal,
-  Spacer,
   Spinner,
   Stack,
   Table,
@@ -22,7 +20,6 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { TeamItem } from "../components/TeamItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
-import { CreateTeamDialog } from "./CreateTeamDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
 
@@ -34,9 +31,12 @@ const ROOT_TEAM_ID = 1n;
 export function TeamTable({
   teamType,
   editAsPage = false,
+  reloadSignal,
 }: {
   teamType?: TeamType;
   editAsPage?: boolean;
+  // Bumped by the page when its header "New …" button creates a team, so this table reloads.
+  reloadSignal?: number;
 }) {
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -72,7 +72,7 @@ export function TeamTable({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadSignal]);
 
   async function remove(team: Team) {
     try {
@@ -86,11 +86,6 @@ export function TeamTable({
 
   return (
     <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Spacer />
-        {admin && <CreateTeamDialog fixedType={teamType} onDone={() => void load()} />}
-      </Flex>
-
       {error && (
         <Text color="red.fg" data-testid="teams-error">
           {error}

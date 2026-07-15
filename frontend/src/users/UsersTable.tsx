@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
-  Flex,
   HStack,
   Icon,
   IconButton,
@@ -11,7 +10,6 @@ import {
   Menu,
   NativeSelect,
   Portal,
-  Spacer,
   Spinner,
   Stack,
   Table,
@@ -28,9 +26,7 @@ import { UserItem } from "../components/UserItem";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
-import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
-import { AddMemberDialog } from "./AddMemberDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 
 const PAGE_SIZE = 20;
@@ -45,8 +41,9 @@ const PAGE_SIZE = 20;
 //    are team-membership actions, meaningless in a cross-team view. This is the "All User" tab.
 //
 // Only one of these is ever mounted at a time (the tabs use lazyMount + unmountOnExit), so the
-// shared `user-*` testids never collide.
-export function UsersTable({ mode }: { mode: "team" | "all" }) {
+// shared `user-*` testids never collide. The Add member / New user buttons live in the PAGE header
+// (#58 review), not here; `reloadSignal` is bumped there so this table reloads after one runs.
+export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloadSignal?: number }) {
   const { identity } = useAuth();
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -125,7 +122,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadSignal]);
 
   async function suspend(user: User, suspended: boolean) {
     try {
@@ -171,17 +168,6 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
 
   return (
     <Stack gap="section">
-      <Flex align="center" gap="card">
-        {mode === "team" && current && (
-          <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        )}
-
-        <Spacer />
-
-        {mode === "team" && <AddMemberDialog onDone={() => void load()} />}
-        <CreateUserDialog onDone={() => void load()} />
-      </Flex>
-
       <HStack gap="card">
         <Input
           maxW="sm"
