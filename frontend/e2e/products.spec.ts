@@ -117,6 +117,23 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
   await expect(page.getByTestId(`product-cover-${SKU_IMG}`)).toBeVisible();
 });
 
+test("Detail: the product detail page opens from the row (#83)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoProducts(page);
+
+  await page.getByTestId(`open-product-${SKU_IMG}`).click();
+
+  await expect(page.getByTestId("product-detail-page")).toBeVisible();
+  await expect(page.getByTestId("product-detail-name")).toHaveText(`${NAME} with image`);
+  await expect(page.getByTestId("product-detail-page")).toContainText(SKU_IMG);
+  // The category shows as a breadcrumb, and the image uploaded earlier is in the gallery.
+  await expect(page.getByTestId("product-detail-page")).toContainText(CATEGORY);
+  await expect(page.getByTestId("product-detail-image-0")).toBeVisible();
+
+  await page.getByTestId("product-detail-back").click();
+  await expect(page.getByTestId("products-table")).toBeVisible();
+});
+
 test("Multistage category: create a subcategory, then drill parent → child to file a product (#63)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 

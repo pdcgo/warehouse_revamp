@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Badge,
+  Box,
   Button,
   Flex,
   HStack,
@@ -168,7 +169,15 @@ export function ProductsPage() {
                     )}
                   </Table.Cell>
                   <Table.Cell>{product.sku}</Table.Cell>
-                  <Table.Cell>{product.name}</Table.Cell>
+                  <Table.Cell>
+                    <Box
+                      cursor="pointer"
+                      data-testid={`open-product-${product.sku}`}
+                      onClick={() => navigate(`/products/${product.id}`)}
+                    >
+                      {product.name}
+                    </Box>
+                  </Table.Cell>
                   <Table.Cell>{product.description}</Table.Cell>
 
                   <Table.Cell textAlign="end">
