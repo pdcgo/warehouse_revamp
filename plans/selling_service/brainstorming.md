@@ -6,8 +6,12 @@
 > *"break this to many issues if too big"*).
 
 > **Decisions so far**
-> - This is planning only. Every fork in §3 is **open** and needs the owner. (2026-07-15)
-> - _(nothing else settled)_
+> - **CREATE, not adapt** — the selling/order/revenue domains are designed from first principles,
+>   no other repo read (§3.1 settled). (owner, 2026-07-15)
+> - **Decomposed into sub-issues** — the §4 break-up was created as GitHub issues on the board
+>   (owner: "create all of them"). Shop management is Ready; the rest are Backlog behind the
+>   decisions/§1 dependency. (owner, 2026-07-15)
+> - Every remaining fork in §3 is still **open** and needs the owner.
 
 ---
 
