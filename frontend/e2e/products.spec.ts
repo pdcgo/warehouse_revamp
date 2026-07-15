@@ -74,7 +74,7 @@ test("Create: product create is a PAGE; category is required; the product appear
   await expect(page.getByTestId("product-edit-save")).toBeDisabled();
 
   await page.getByTestId("category-select").click();
-  await page.getByRole("option", { name: CATEGORY }).click();
+  await page.getByTestId(`category-node-${CATEGORY}`).click();
 
   await expect(page.getByTestId("product-edit-save")).toBeEnabled();
   await page.getByTestId("product-edit-save").click();
@@ -95,7 +95,7 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
   await page.getByTestId("product-edit-sku").fill(SKU_IMG);
   await page.getByTestId("product-edit-name").fill(`${NAME} with image`);
   await page.getByTestId("category-select").click();
-  await page.getByRole("option", { name: CATEGORY }).click();
+  await page.getByTestId(`category-node-${CATEGORY}`).click();
 
   // Upload a real PNG through the hidden file input — this drives requestUpload → PUT the bytes →
   // confirmUpload → product_images. #80 was that the documents resource_type CHECK rejected the
@@ -120,32 +120,29 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
 test("Multistage category: create a subcategory, then drill parent → child to file a product (#63)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // Create SUBCATEGORY under CATEGORY — the create dialog's parent picker is the multistage select.
+  // Create SUBCATEGORY under CATEGORY — the create dialog's parent picker is this same component.
   await page.getByRole("link", { name: "Categories" }).click();
   await page.getByTestId("open-create-category").click();
   await page.getByTestId("new-category-name").fill(SUBCATEGORY);
-  // Pick the parent (a top-level category) in stage 0 of the cascader.
+  // Open the picker and select the parent (a top-level category) as the parent.
   await page.getByTestId("category-select").click();
-  await page.getByRole("option", { name: CATEGORY }).click();
+  await page.getByTestId(`category-node-${CATEGORY}`).click();
   await page.getByTestId("submit-create-category").click();
   await expect(page.getByTestId("submit-create-category")).toBeHidden();
 
-  // Now file a product under the SUBCATEGORY by drilling: stage 0 = parent, stage 1 = child.
+  // Now file a product under the SUBCATEGORY by DRILLING the Miller columns: open parent → pick child.
   await gotoProducts(page);
   await page.getByTestId("open-create-product").click();
   await page.getByTestId("product-edit-sku").fill(SKU_SUB);
   await page.getByTestId("product-edit-name").fill(`${NAME} sub`);
 
-  // Stage 0 → pick the parent; that reveals stage 1 (the parent now has a child).
   await page.getByTestId("category-select").click();
-  await page.getByRole("option", { name: CATEGORY }).click();
-  await expect(page.getByTestId("category-select-1")).toBeVisible();
+  // Drill into the parent (its chevron), then select the child in the next column.
+  await page.getByTestId(`category-drill-${CATEGORY}`).click();
+  await page.getByTestId(`category-node-${SUBCATEGORY}`).click();
 
-  // Stage 1 → pick the child; the value is now the subcategory and Save is enabled.
-  await page.getByTestId("category-select-1").click();
-  await page.getByRole("option", { name: SUBCATEGORY }).click();
-  // The picker must CLOSE after selecting, or its dismiss layer eats the next click.
-  await expect(page.getByRole("option", { name: SUBCATEGORY })).toBeHidden();
+  // Selecting closes the popover; the trigger now shows the breadcrumb "Parent › Child".
+  await expect(page.getByTestId("category-select")).toContainText(`${CATEGORY} › ${SUBCATEGORY}`);
   await expect(page.getByTestId("product-edit-save")).toBeEnabled();
 
   await page.getByTestId("product-edit-save").click();
