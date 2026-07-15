@@ -182,7 +182,7 @@ const ENTRIES: Entry[] = [
 // navigates between them; each card is anchored so the link scrolls straight to it.
 export function ComponentsPage() {
   return (
-    <Flex gap="section" align="start">
+    <Flex gap="section" align="start" data-testid="components-page">
       <Stack
         as="nav"
         gap="1"
