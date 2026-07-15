@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
@@ -44,7 +45,8 @@ func InitializeApp() (*App, error) {
 	category_v1Service := category_v1.NewService(db)
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, category_v1Service, document_v1Service, docstoreConfig, roleResolver, signer)
+	inventory_v1Service := inventory_v1.NewService(db)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, category_v1Service, document_v1Service, inventory_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

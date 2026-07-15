@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// InventoryService owns `stock_movements` (an append-only ledger) and `stock_levels` (a derived
+// on-hand snapshot maintained from the ledger in the same transaction). It answers one question —
+// how much of a product is at a warehouse, and why did it change.
+//
+// Everything is scoped by `warehouse_id` (a team of type WAREHOUSE): that is the physical place and
+// the thing a worker has a role in. `product_id` is an OPAQUE id owned by product_service — there
+// is no cross-service FK; it is resolved over RPC when a name is needed.
+//
+// See plans/inventory_service/brainstorming.md.
+service InventoryService {
+  rpc StockList(StockListRequest) returns (StockListResponse);
+  rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);
+  rpc StockReceive(StockReceiveRequest) returns (StockReceiveResponse);
+  rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
+  rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
+}
+
+// MovementKind — why a stock quantity changed. Every ledger row has one.
+enum MovementKind {
+  MOVEMENT_KIND_UNSPECIFIED = 0;
+  MOVEMENT_KIND_RECEIVE = 1;
+  MOVEMENT_KIND_ADJUST = 2;
+  MOVEMENT_KIND_TRANSFER_OUT = 3;
+  MOVEMENT_KIND_TRANSFER_IN = 4;
+  MOVEMENT_KIND_PICK = 5; // reserved for the future order/pick flow
+}
+
+// StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
+message StockLevel {
+  uint64 product_id = 1;
+  uint64 warehouse_id = 2;
+  int64 on_hand = 3;
+}
+
+// StockMovement — one row of the ledger. Append-only; `balance` is the on-hand AFTER this movement,
+// so the history reads as a running total.
+message StockMovement {
+  uint64 id = 1;
+  uint64 product_id = 2;
+  uint64 warehouse_id = 3;
+  int64 delta = 4; // signed: + in, - out
+  int64 balance = 5; // on-hand after this movement
+  MovementKind kind = 6;
+  string reason = 7;
+  string ref = 8; // opaque external reference (e.g. an order id); optional
+  uint64 actor_user_id = 9;
+  string created_at = 10; // RFC3339
+}
+
+// -------------------------------------------------------------------------- reads
+
+message StockListRequest {
+  // Read: warehouse staff and up, plus root/admin.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message StockListResponse {
+  repeated StockLevel levels = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message StockHistoryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message StockHistoryResponse {
+  repeated StockMovement movements = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// -------------------------------------------------------------------------- writes
+
+message StockReceiveRequest {
+  // Receiving goods is a floor task — staff may do it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 3 [(buf.validate.field).int64.gt = 0];
+  string reason = 4 [(buf.validate.field).string.max_len = 200];
+  string ref = 5 [(buf.validate.field).string.max_len = 100];
+}
+
+message StockReceiveResponse {
+  StockMovement movement = 1;
+}
+
+message StockAdjustRequest {
+  // Correcting to a counted figure is a manager action.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The counted on-hand to correct TO (absolute, not a delta). The handler records the difference.
+  int64 on_hand = 3 [(buf.validate.field).int64.gte = 0];
+  string reason = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+message StockAdjustResponse {
+  StockMovement movement = 1;
+  StockLevel level = 2;
+}
+
+message StockTransferRequest {
+  // Moving stock out of a warehouse is a manager action; scope is the SOURCE warehouse.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The source. use_scope: you must have a role in the warehouse you are moving stock OUT of.
+  uint64 from_warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 to_warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 product_id = 3 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 4 [(buf.validate.field).int64.gt = 0];
+  string reason = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+message StockTransferResponse {
+  StockMovement out_movement = 1;
+  StockMovement in_movement = 2;
+}
