@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/urfave/cli/v3"
@@ -67,8 +69,138 @@ func seedCommand() *cli.Command {
 				},
 				Action: runSeedDev,
 			},
+			{
+				Name:  "categories",
+				Usage: "upsert the product-category taxonomy from a JSON file",
+				Description: "Upserts the global product-category tree from seed_asset/category.json (the\n" +
+					"Shopee Indonesia taxonomy). Idempotent — matches an existing active category by\n" +
+					"(parent, name) and inserts only what is missing, so re-running adds nothing.\n\n" +
+					"Unlike the dev fixture this is real reference data, so it is NOT refused against\n" +
+					"Production — the database prompt (and the production confirmation) still guards it.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "file",
+						Aliases: []string{"f"},
+						Usage:   "path to the category JSON",
+						Value:   "seed_asset/category.json",
+					},
+					&cli.StringFlag{
+						Name:    "dsn",
+						Sources: cli.EnvVars("DATABASE_URL"),
+						Usage:   "postgres DSN; skips the Local/Production prompt",
+					},
+				},
+				Action: runSeedCategories,
+			},
 		},
 	}
+}
+
+// categorySeed is one node of the taxonomy JSON: a name and its (optional) children. The tree is
+// self-describing, so nesting is arbitrary — the DB carries it as parent_id.
+type categorySeed struct {
+	Name     string         `json:"name"`
+	Children []categorySeed `json:"children"`
+}
+
+func runSeedCategories(ctx context.Context, cmd *cli.Command) error {
+	raw, err := os.ReadFile(cmd.String("file"))
+	if err != nil {
+		return fmt.Errorf("reading category file: %w", err)
+	}
+
+	var doc struct {
+		Categories []categorySeed `json:"categories"`
+	}
+
+	err = json.Unmarshal(raw, &doc)
+	if err != nil {
+		return fmt.Errorf("parsing category file: %w", err)
+	}
+
+	if len(doc.Categories) == 0 {
+		return errors.New("the category file has no `categories`")
+	}
+
+	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	inserted, err := upsertCategories(ctx, db, doc.Categories, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("categories seeded (target=%s): %d inserted (existing rows left untouched)", target, inserted)
+
+	return nil
+}
+
+// upsertCategories walks the tree depth-first, ensuring each node under `parentID` and recursing into
+// its children with the node's own id as their parent. Returns how many rows it actually inserted.
+func upsertCategories(ctx context.Context, db *sql.DB, nodes []categorySeed, parentID *uint64) (int, error) {
+	inserted := 0
+
+	for _, node := range nodes {
+		name := strings.TrimSpace(node.Name)
+		if name == "" {
+			return inserted, errors.New("a category has an empty name")
+		}
+
+		id, created, err := ensureCategory(ctx, db, name, parentID)
+		if err != nil {
+			return inserted, fmt.Errorf("category %q: %w", name, err)
+		}
+
+		if created {
+			inserted++
+		}
+
+		if len(node.Children) > 0 {
+			sub, err := upsertCategories(ctx, db, node.Children, &id)
+			if err != nil {
+				return inserted + sub, err
+			}
+			inserted += sub
+		}
+	}
+
+	return inserted, nil
+}
+
+// ensureCategory returns the id of the active category with this (parent, name), creating it if
+// absent. The second return is true only when a row was inserted. Matches the partial unique index
+// (COALESCE(parent_id, 0), name) WHERE deleted = FALSE, so a soft-deleted name does not block reuse.
+func ensureCategory(ctx context.Context, db *sql.DB, name string, parentID *uint64) (uint64, bool, error) {
+	// nil parent must reach the driver as SQL NULL, not 0.
+	var parentArg any
+	if parentID != nil {
+		parentArg = *parentID
+	}
+
+	var id uint64
+
+	err := db.QueryRowContext(ctx,
+		`SELECT id FROM categories
+		 WHERE name = $1 AND COALESCE(parent_id, 0) = COALESCE($2::bigint, 0) AND deleted = FALSE`,
+		name, parentArg,
+	).Scan(&id)
+	if err == nil {
+		return id, false, nil
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, false, err
+	}
+
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO categories (name, parent_id) VALUES ($1, $2) RETURNING id`,
+		name, parentArg,
+	).Scan(&id)
+
+	return id, err == nil, err
 }
 
 func runSeedRoot(ctx context.Context, cmd *cli.Command) error {
