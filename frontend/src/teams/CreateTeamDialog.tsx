@@ -6,7 +6,6 @@ import {
   Dialog,
   Field,
   Input,
-  NativeSelect,
   Portal,
   Stack,
   Text,
@@ -14,14 +13,7 @@ import {
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
-
-// The types a caller may CREATE. ROOT is excluded — the root team is seeded, never created
-// (the backend rejects it, and the proto's validation forbids UNSPECIFIED and ROOT).
-const CREATABLE: { value: TeamType; label: string }[] = [
-  { value: TeamType.WAREHOUSE, label: "Warehouse" },
-  { value: TeamType.SELLING, label: "Selling" },
-  { value: TeamType.ADMIN, label: "Admin" },
-];
+import { TeamTypeSelect, teamTypeLabel } from "../components/TeamTypeSelect";
 
 export function CreateTeamDialog({
   onDone,
@@ -38,8 +30,8 @@ export function CreateTeamDialog({
 
   const [type, setType] = useState<TeamType>(fixedType ?? TeamType.WAREHOUSE);
 
-  // Label for the locked type (falls back to a generic noun for an unlisted type).
-  const lockedLabel = CREATABLE.find((t) => t.value === fixedType)?.label ?? "Team";
+  // Label for the locked type (falls back to a generic noun for an unset fixedType).
+  const lockedLabel = fixedType !== undefined ? teamTypeLabel(fixedType) : "Team";
   const [name, setName] = useState("");
   const [teamCode, setTeamCode] = useState("");
   const [description, setDescription] = useState("");
@@ -101,20 +93,7 @@ export function CreateTeamDialog({
                   {fixedType === undefined ? (
                     <Field.Root required>
                       <Field.Label>Type</Field.Label>
-                      <NativeSelect.Root size="sm">
-                        <NativeSelect.Field
-                          value={String(type)}
-                          data-testid="new-team-type"
-                          onChange={(e) => setType(Number(e.target.value) as TeamType)}
-                        >
-                          {CREATABLE.map((t) => (
-                            <option key={t.value} value={t.value}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
+                      <TeamTypeSelect value={type} onChange={setType} />
                       <Field.HelperText>Type is fixed once the team is created.</Field.HelperText>
                     </Field.Root>
                   ) : (

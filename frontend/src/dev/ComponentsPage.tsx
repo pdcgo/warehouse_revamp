@@ -4,6 +4,7 @@ import { Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
 import { PasswordInput } from "../components/PasswordInput";
 import { UserItem } from "../components/UserItem";
 import { TeamItem } from "../components/TeamItem";
+import { TeamTypeSelect } from "../components/TeamTypeSelect";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
@@ -52,6 +53,19 @@ function CategoryDemo() {
   );
 }
 
+function TeamTypeDemo() {
+  const [type, setType] = useState<TeamType>(TeamType.WAREHOUSE);
+
+  return (
+    <>
+      <TeamTypeSelect value={type} onChange={setType} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected type: {TeamType[type]}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -93,6 +107,12 @@ const ENTRIES: Entry[] = [
     title: "CategorySelect",
     description: "Nested category picker over the global taxonomy. Emits a category id (0 = top-level).",
     render: () => <CategoryDemo />,
+  },
+  {
+    id: "team-type-select",
+    title: "TeamTypeSelect",
+    description: "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.",
+    render: () => <TeamTypeDemo />,
   },
 ];
 
