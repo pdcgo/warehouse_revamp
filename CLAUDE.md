@@ -518,8 +518,11 @@ containers.
 This project uses [graphify](https://pypi.org/project/graphifyy/) to turn the codebase into a
 queryable knowledge graph.
 
-**Status: the graph does not exist yet.** graphify is plumbed in and dormant; it starts
-earning its keep once real modules land.
+**Status: the graph is BUILT and ACTIVE** (`graphify-out/graph.json` exists; the `PreToolUse`
+hook fires the query-before-grep hint). Real modules have landed, so the rules below apply. Keep
+it current: run `graphify update .` after landing code changes (AST-only, no API cost). The
+semantic pass is skipped unless `GEMINI_API_KEY` / `GOOGLE_API_KEY` is set — the AST graph alone
+answers structural queries, which is the no-cost default.
 
 ### Invoking it
 
@@ -530,11 +533,11 @@ graphify is not on PATH. It lives in this repo's venv:
 source .venv/Scripts/activate            # or activate, then bare `graphify`
 ```
 
-### Once code exists
+### Building and keeping it current
 
 ```sh
-graphify .                # first build (semantic pass; costs API tokens)
-graphify update .         # after changing code — AST-only, no API cost
+graphify .                # full rebuild (semantic pass; costs API tokens)
+graphify update .         # after changing code — AST-only, no API cost (the routine one)
 ```
 
 ### Rules (apply once `graphify-out/graph.json` exists)
