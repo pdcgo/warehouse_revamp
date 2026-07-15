@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 
 	"github.com/pressly/goose/v3"
 	"github.com/urfave/cli/v3"
@@ -14,17 +15,22 @@ import (
 func migrateCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "migrate",
-		Usage:     "run goose migrations for ONE service",
-		ArgsUsage: "<up|down|status|create|redo|reset|version|up-to|down-to> [args...]",
+		Usage:     "run goose migrations for ONE service (or `up-all` for every service)",
+		ArgsUsage: "<up|down|status|create|redo|reset|version|up-to|down-to|up-all> [args...]",
 		Description: "Migrations are per-service (HARD RULE 3). Files live in\n" +
 			"services/<service>/db_migrations, and applied state is tracked in its own\n" +
 			"<service>_version table — so services stay independent.\n\n" +
 			"Run interactively and you are asked TWO things: which database\n" +
 			"(Local / Production), then which service. Pass --dsn and --service to skip\n" +
 			"both prompts (CI / scripts).\n\n" +
+			"`up-all` is the shortcut: it migrates EVERY service up, in dependency order\n" +
+			"(team_service and user_service first — team 1 must exist before the root role\n" +
+			"references it), so a fresh database is fully migrated in one command. It asks\n" +
+			"only for the database, not a service.\n\n" +
 			"Examples:\n" +
 			"  go run ./cmd/tool migrate create add_users --service user_service\n" +
 			"  go run ./cmd/tool migrate up\n" +
+			"  go run ./cmd/tool migrate up-all\n" +
 			"  go run ./cmd/tool migrate status --service user_service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -54,6 +60,12 @@ func runMigrate(ctx context.Context, cmd *cli.Command) error {
 	// authored with no Postgres running. Ask for the service only.
 	if gooseCmd == "create" {
 		return runCreate(ctx, cmd, gooseArgs)
+	}
+
+	// `up-all` is the shortcut: migrate EVERY service up, in dependency order. Asks only for the
+	// database (there is no single service to pick).
+	if gooseCmd == "up-all" {
+		return runMigrateUpAll(ctx, cmd)
 	}
 
 	// Prompt order mirrors the operator's mental model: WHICH DATABASE first (the
@@ -100,6 +112,75 @@ func runCreate(ctx context.Context, cmd *cli.Command, gooseArgs []string) error 
 	}
 
 	return goose.RunContext(ctx, "create", nil, dir, gooseArgs...)
+}
+
+// runMigrateUpAll migrates every service up, in dependency order, against one database.
+func runMigrateUpAll(ctx context.Context, cmd *cli.Command) error {
+	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	services, err := orderedServicesWithMigrations()
+	if err != nil {
+		return err
+	}
+
+	for _, service := range services {
+		dir, err := prepareMigrations(service)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("migrate up — service=%s target=%s", service, target)
+
+		err = goose.RunContext(ctx, "up", db, dir)
+		if err != nil {
+			return fmt.Errorf("migrating %s: %w", service, err)
+		}
+	}
+
+	log.Printf("all services migrated up (%d services, target=%s)", len(services), target)
+
+	return nil
+}
+
+// orderedServicesWithMigrations returns the services that have a db_migrations dir, in the order
+// they must be applied: team_service then user_service first (team 1 must exist before user_service
+// seeds the root role that references it — there is no cross-service FK to enforce it), then the
+// rest (independent) in discovered order.
+func orderedServicesWithMigrations() ([]string, error) {
+	all, err := discoverServices()
+	if err != nil {
+		return nil, err
+	}
+
+	withMigrations := make([]string, 0, len(all))
+	for _, service := range all {
+		_, statErr := os.Stat(migrationsDir(service))
+		if statErr == nil {
+			withMigrations = append(withMigrations, service)
+		}
+	}
+
+	ordered := make([]string, 0, len(withMigrations))
+	seen := map[string]bool{}
+
+	for _, service := range []string{"team_service", "user_service"} {
+		if slices.Contains(withMigrations, service) {
+			ordered = append(ordered, service)
+			seen[service] = true
+		}
+	}
+
+	for _, service := range withMigrations {
+		if !seen[service] {
+			ordered = append(ordered, service)
+		}
+	}
+
+	return ordered, nil
 }
 
 // prepareMigrations points goose at THIS service's migration folder and version table.
