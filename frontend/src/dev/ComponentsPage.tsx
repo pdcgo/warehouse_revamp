@@ -5,6 +5,7 @@ import { PasswordInput } from "../components/PasswordInput";
 import { UserItem } from "../components/UserItem";
 import { TeamItem } from "../components/TeamItem";
 import { TeamTypeSelect } from "../components/TeamTypeSelect";
+import { TeamSelect } from "../components/TeamSelect";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
@@ -66,6 +67,19 @@ function TeamTypeDemo() {
   );
 }
 
+function TeamSelectDemo() {
+  const [id, setId] = useState(0n);
+
+  return (
+    <>
+      <TeamSelect value={id || undefined} onChange={setId} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected team id: {id.toString()}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -113,6 +127,12 @@ const ENTRIES: Entry[] = [
     title: "TeamTypeSelect",
     description: "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.",
     render: () => <TeamTypeDemo />,
+  },
+  {
+    id: "team-select",
+    title: "TeamSelect",
+    description: "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id.",
+    render: () => <TeamSelectDemo />,
   },
 ];
 
