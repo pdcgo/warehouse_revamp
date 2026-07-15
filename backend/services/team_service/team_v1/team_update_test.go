@@ -30,6 +30,40 @@ func TestTeamUpdate_Renames(t *testing.T) {
 	}
 }
 
+func TestTeamUpdate_SetsImageURL(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(db)
+
+	id := newTeam(t, db, "selling", "UPDIMG")
+
+	const url = "https://cdn.example.test/team-thumb.png"
+
+	res, err := svc.TeamUpdate(context.Background(), connect.NewRequest(&teamv1.TeamUpdateRequest{
+		TeamId:   id,
+		ImageUrl: proto.String(url),
+	}))
+	if err != nil {
+		t.Fatalf("TeamUpdate: %v", err)
+	}
+
+	if res.Msg.GetTeam().GetImageUrl() != url {
+		t.Errorf("image_url = %q, want %q", res.Msg.GetTeam().GetImageUrl(), url)
+	}
+
+	// Present-and-empty clears it back to "".
+	res, err = svc.TeamUpdate(context.Background(), connect.NewRequest(&teamv1.TeamUpdateRequest{
+		TeamId:   id,
+		ImageUrl: proto.String(""),
+	}))
+	if err != nil {
+		t.Fatalf("TeamUpdate clear: %v", err)
+	}
+
+	if res.Msg.GetTeam().GetImageUrl() != "" {
+		t.Errorf("image_url after clear = %q, want empty", res.Msg.GetTeam().GetImageUrl())
+	}
+}
+
 // Re-submitting identical values must NOT be a spurious NotFound (Postgres reports 0 rows
 // affected on a no-op UPDATE; existence is checked explicitly instead).
 func TestTeamUpdate_NoOpIsNotNotFound(t *testing.T) {

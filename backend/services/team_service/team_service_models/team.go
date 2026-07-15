@@ -11,6 +11,7 @@ type Team struct {
 	Name        string
 	TeamCode    string
 	Description string
+	ImageURL    string
 	Deleted     bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

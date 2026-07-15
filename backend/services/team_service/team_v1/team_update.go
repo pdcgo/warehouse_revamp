@@ -31,6 +31,10 @@ func (s *Service) TeamUpdate(
 		updates["description"] = req.Msg.GetDescription()
 	}
 
+	if req.Msg.ImageUrl != nil {
+		updates["image_url"] = req.Msg.GetImageUrl()
+	}
+
 	var team team_service_models.Team
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

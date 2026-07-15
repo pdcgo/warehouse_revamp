@@ -34,8 +34,10 @@ function typeLabel(type: TeamType | undefined): string {
 }
 
 export interface TeamItemProps {
-  // Any team-shaped object with a name, type, and (optionally) id — a Team or a TeamAccessItem.
-  team: { teamName?: string; teamType?: TeamType; teamId?: bigint };
+  // Any team-shaped object with a name, type, and (optionally) id and picture — a Team or a
+  // TeamAccessItem. `imageUrl` is only present on shapes that carry it (a Team); TeamAccessItem
+  // has none, so those fall back to initials.
+  team: { teamName?: string; teamType?: TeamType; teamId?: bigint; imageUrl?: string };
   // Optional trailing content: a check, actions, etc.
   action?: ReactNode;
 }
@@ -51,6 +53,7 @@ export function TeamItem({ team, action }: TeamItemProps) {
     <HStack gap="card" w="full">
       <Avatar.Root shape="rounded" size="sm" colorPalette={palette} flexShrink={0}>
         <Avatar.Fallback name={name} />
+        <Avatar.Image src={team.imageUrl || undefined} alt={name} />
       </Avatar.Root>
 
       <Stack gap="0.5" flex="1" minW="0">

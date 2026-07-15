@@ -7,6 +7,7 @@ import { ComponentsPage } from "./dev/ComponentsPage";
 import { HomePage } from "./home/HomePage";
 import { ProductsPage } from "./products/ProductsPage";
 import { ProfilePage } from "./settings/ProfilePage";
+import { SettingsPage } from "./settings/SettingsPage";
 import { ShippingChannelsPage } from "./shipping/ShippingChannelsPage";
 import { TeamProvider } from "./team/TeamContext";
 import { TeamsPage } from "./teams/TeamsPage";
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
       { path: "users", element: <UsersPage /> },
       { path: "all-users", element: <AllUsersPage /> },
       { path: "components", element: <ComponentsPage /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],
   },

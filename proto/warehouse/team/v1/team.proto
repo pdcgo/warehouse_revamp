@@ -64,6 +64,10 @@ message Team {
 
   // Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
   TeamInfo info = 7;
+
+  // A compact team picture (like a user avatar). Empty when the team has no picture. Set via
+  // TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
+  string image_url = 8;
 }
 
 message TeamCreateRequest {
@@ -103,13 +107,15 @@ message TeamUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_WAREHOUSE_OWNER
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
     ]
   };
 
   // use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
-  // the two OWNER entries become dead letters — the policy would claim an owner may rename
-  // their team while the system silently required root/admin.
+  // the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
+  // team manager may edit their team while the system silently required root/admin.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
@@ -121,6 +127,9 @@ message TeamUpdateRequest {
     max_len: 128
   }];
   optional string description = 3 [(buf.validate.field).string = {max_len: 300}];
+
+  // The compact team picture URL (see Team.image_url). Present & empty = clear it.
+  optional string image_url = 4 [(buf.validate.field).string.max_len = 1024];
 }
 
 message TeamUpdateResponse {

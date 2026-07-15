@@ -25,6 +25,7 @@ erDiagram
         text        name        "required"
         text        team_code   UK "required unique"
         text        description
+        text        image_url   "compact team picture, empty if none"
         boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at

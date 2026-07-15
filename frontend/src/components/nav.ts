@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, FolderTree, House, Package, Truck, Users, UsersRound, Warehouse } from "lucide-react";
+import { Building2, CircleUser, FolderTree, House, Package, Settings, Truck, Users, UsersRound, Warehouse } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { canManageUsers } from "../lib/roles";
+import { canManageUsers, isTeamManager } from "../lib/roles";
 
 export interface MenuItem {
   to: string;
@@ -18,6 +18,7 @@ const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const ALL_USERS: MenuItem = { to: "/all-users", label: "All Users", icon: UsersRound };
+const SETTINGS: MenuItem = { to: "/settings", label: "Settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
@@ -51,6 +52,12 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   // decides for real.
   if (canManageUsers(role)) {
     menu.push(USERS);
+  }
+
+  // Team settings — the current team's picture and name (issues #43/#44). Same managers who may
+  // edit the team; the backend's TeamUpdate policy is the real gate.
+  if (isTeamManager(role)) {
+    menu.push(SETTINGS);
   }
 
   menu.push(PROFILE);

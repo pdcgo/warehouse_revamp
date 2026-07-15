@@ -11,6 +11,9 @@ interface TeamState {
   current: TeamAccessItem | null;
   ready: boolean;
   selectTeam: (teamId: bigint) => void;
+  // refresh re-loads the caller's memberships, KEEPING the current selection, so a rename or a
+  // new team picture is reflected in the switcher without a full reload.
+  refresh: () => Promise<void>;
 }
 
 const TeamContext = createContext<TeamState | null>(null);
@@ -27,6 +30,23 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<TeamAccessItem | null>(null);
   const [ready, setReady] = useState(false);
 
+  // load fetches memberships and picks the current team: the caller-supplied preferred id wins,
+  // then the last-used team from storage, then the first team. Passing the current id in keeps the
+  // selection stable across a refresh.
+  const load = useCallback(
+    async (preferredId?: bigint) => {
+      const res = await userClient.teamAccessList({});
+
+      setTeams(res.teams);
+
+      const wanted = (preferredId ?? "").toString() || window.localStorage.getItem(CURRENT_TEAM_KEY);
+      const restored = res.teams.find((t) => t.teamId.toString() === wanted);
+
+      setCurrent(restored ?? res.teams[0] ?? null);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!identity) {
       setTeams([]);
@@ -40,19 +60,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const res = await userClient.teamAccessList({});
-
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          await load();
         }
-
-        setTeams(res.teams);
-
-        // Restore the last-used team, else fall back to the first.
-        const saved = window.localStorage.getItem(CURRENT_TEAM_KEY);
-        const restored = res.teams.find((t) => t.teamId.toString() === saved);
-
-        setCurrent(restored ?? res.teams[0] ?? null);
       } catch {
         // Memberships are part of the session. If this fails the app is unusable anyway; the
         // route guard will send the user to login.
@@ -70,7 +80,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [identity]);
+  }, [identity, load]);
+
+  // refresh re-loads memberships but keeps whichever team is currently selected.
+  const refresh = useCallback(async () => {
+    await load(current?.teamId);
+  }, [load, current?.teamId]);
 
   const selectTeam = useCallback(
     (teamId: bigint) => {
@@ -87,7 +102,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <TeamContext.Provider value={{ teams, current, ready, selectTeam }}>
+    <TeamContext.Provider value={{ teams, current, ready, selectTeam, refresh }}>
       {children}
     </TeamContext.Provider>
   );

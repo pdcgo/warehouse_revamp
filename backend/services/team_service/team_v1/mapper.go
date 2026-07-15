@@ -76,6 +76,7 @@ func teamToProto(team *team_service_models.Team) *teamv1.Team {
 		TeamCode:    team.TeamCode,
 		Description: team.Description,
 		Deleted:     team.Deleted,
+		ImageUrl:    team.ImageURL,
 	}
 }
 

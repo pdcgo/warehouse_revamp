@@ -188,7 +188,10 @@ type Team struct {
 	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	Deleted     bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	// Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
-	Info          *TeamInfo `protobuf:"bytes,7,opt,name=info,proto3" json:"info,omitempty"`
+	Info *TeamInfo `protobuf:"bytes,7,opt,name=info,proto3" json:"info,omitempty"`
+	// A compact team picture (like a user avatar). Empty when the team has no picture. Set via
+	// TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
+	ImageUrl      string `protobuf:"bytes,8,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -270,6 +273,13 @@ func (x *Team) GetInfo() *TeamInfo {
 		return x.Info
 	}
 	return nil
+}
+
+func (x *Team) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
 }
 
 type TeamCreateRequest struct {
@@ -387,12 +397,14 @@ func (x *TeamCreateResponse) GetTeam() *Team {
 type TeamUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
-	// the two OWNER entries become dead letters — the policy would claim an owner may rename
-	// their team while the system silently required root/admin.
+	// the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
+	// team manager may edit their team while the system silently required root/admin.
 	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Absent = leave alone. `type` and `team_code` are immutable after create.
-	Name          *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description   *string `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Name        *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description *string `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// The compact team picture URL (see Team.image_url). Present & empty = clear it.
+	ImageUrl      *string `protobuf:"bytes,4,opt,name=image_url,json=imageUrl,proto3,oneof" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -444,6 +456,13 @@ func (x *TeamUpdateRequest) GetName() string {
 func (x *TeamUpdateRequest) GetDescription() string {
 	if x != nil && x.Description != nil {
 		return *x.Description
+	}
+	return ""
+}
+
+func (x *TeamUpdateRequest) GetImageUrl() string {
+	if x != nil && x.ImageUrl != nil {
+		return *x.ImageUrl
 	}
 	return ""
 }
@@ -1013,7 +1032,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0fbank_owner_name\x18\x04 \x01(\tR\rbankOwnerName\x12.\n" +
 	"\x13bank_account_number\x18\x05 \x01(\tR\x11bankAccountNumber\x12.\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\"\xe5\x01\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\"\x82\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -1021,7 +1040,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\tteam_code\x18\x04 \x01(\tR\bteamCode\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x18\n" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12/\n" +
-	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\"\xd0\x01\n" +
+	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\x12\x1b\n" +
+	"\timage_url\x18\b \x01(\tR\bimageUrl\"\xd0\x01\n" +
 	"\x11TeamCreateRequest\x12=\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\x04type\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
@@ -1031,16 +1051,18 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"A\n" +
 	"\x12TeamCreateResponse\x12+\n" +
-	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xb4\x01\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xf0\x01\n" +
 	"\x11TeamUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12#\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x04\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12/\n" +
-	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02H\x01R\vdescription\x88\x01\x01:\n" +
-	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x06B\a\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02H\x01R\vdescription\x88\x01\x01\x12*\n" +
+	"\timage_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x02R\bimageUrl\x88\x01\x01:\f\x92\xb5\x18\b\n" +
+	"\x06\x01\x02\x03\x04\x06\tB\a\n" +
 	"\x05_nameB\x0e\n" +
-	"\f_description\"A\n" +
+	"\f_descriptionB\f\n" +
+	"\n" +
+	"_image_url\"A\n" +
 	"\x12TeamUpdateResponse\x12+\n" +
 	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"?\n" +
 	"\x11TeamDeleteRequest\x12 \n" +

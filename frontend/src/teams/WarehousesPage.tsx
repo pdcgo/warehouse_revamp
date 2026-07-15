@@ -113,7 +113,14 @@ export function WarehousesPage() {
               return (
                 <Table.Row key={team.id.toString()} data-testid={`warehouse-row-${team.teamCode}`}>
                   <Table.Cell>
-                    <TeamItem team={{ teamName: team.name, teamType: team.type, teamId: team.id }} />
+                    <TeamItem
+                      team={{
+                        teamName: team.name,
+                        teamType: team.type,
+                        teamId: team.id,
+                        imageUrl: team.imageUrl,
+                      }}
+                    />
                   </Table.Cell>
                   <Table.Cell>{team.teamCode}</Table.Cell>
 
