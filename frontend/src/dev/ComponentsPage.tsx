@@ -6,6 +6,10 @@ import { UserItem } from "../components/UserItem";
 import { TeamItem } from "../components/TeamItem";
 import { TeamTypeSelect } from "../components/TeamTypeSelect";
 import { TeamSelect } from "../components/TeamSelect";
+import { UserSelect } from "../components/UserSelect";
+import { RoleSelect } from "../components/RoleSelect";
+import { Role } from "../gen/warehouse/role_base/v1/role_pb";
+import { roleLabel } from "../lib/roles";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { CategorySelect } from "../categories/CategorySelect";
@@ -80,6 +84,32 @@ function TeamSelectDemo() {
   );
 }
 
+function UserSelectDemo() {
+  const [id, setId] = useState(0n);
+
+  return (
+    <>
+      <UserSelect value={id || undefined} onChange={setId} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected user id: {id.toString()}
+      </Text>
+    </>
+  );
+}
+
+function RoleSelectDemo() {
+  const [role, setRole] = useState<Role>(Role.UNSPECIFIED);
+
+  return (
+    <>
+      <RoleSelect value={role || undefined} onChange={setRole} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected role: {role ? roleLabel(role) : "(none)"}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -133,6 +163,18 @@ const ENTRIES: Entry[] = [
     title: "TeamSelect",
     description: "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id.",
     render: () => <TeamSelectDemo />,
+  },
+  {
+    id: "user-select",
+    title: "UserSelect",
+    description: "Searchable user picker (Chakra Combobox, server-side SearchUser) — options render with UserItem. Emits a user id.",
+    render: () => <UserSelectDemo />,
+  },
+  {
+    id: "role-select",
+    title: "RoleSelect",
+    description: "Searchable role picker (Chakra Combobox). Offers all roles, or a team type's roles via the teamType prop. Emits a Role.",
+    render: () => <RoleSelectDemo />,
   },
 ];
 
