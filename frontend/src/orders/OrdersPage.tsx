@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Flex, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { Badge, Box, Button, Flex, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { orderClient, rpcError } from "../api/clients";
 import type { Order } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
@@ -65,6 +65,14 @@ export function OrdersPage() {
         <Heading size="md">Orders</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
+        <Button
+          size="xs"
+          colorPalette="brand"
+          data-testid="open-create-order"
+          onClick={() => navigate("/orders/new")}
+        >
+          New order
+        </Button>
       </Flex>
 
       {error && (

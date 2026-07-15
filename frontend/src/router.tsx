@@ -11,6 +11,7 @@ import { ProductEditPage } from "./products/ProductEditPage";
 import { ProductsPage } from "./products/ProductsPage";
 import { ShopDetailPage } from "./shops/ShopDetailPage";
 import { ShopsPage } from "./shops/ShopsPage";
+import { OrderCreatePage } from "./orders/OrderCreatePage";
 import { OrderDetailPage } from "./orders/OrderDetailPage";
 import { OrdersPage } from "./orders/OrdersPage";
 import { ProfilePage } from "./settings/ProfilePage";
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: "shops", element: <ShopsPage /> },
       { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "orders", element: <OrdersPage /> },
+      { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
       { path: "users", element: <UsersPage /> },

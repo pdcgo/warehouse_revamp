@@ -23,6 +23,12 @@ import {
 } from "../components/MarketplaceSelect";
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
+import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
+import {
+  ProductSelect,
+  description as productSelectDescription,
+  type PickedProduct,
+} from "../components/ProductSelect";
 import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
@@ -158,6 +164,40 @@ function MarketplaceDemo() {
   );
 }
 
+function ShopSelectDemo() {
+  const [id, setId] = useState(0n);
+  const { current } = useTeam();
+
+  return (
+    <>
+      <ShopSelect teamId={current?.teamId ?? 0n} value={id} onChange={setId} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected shop id: {id.toString()}
+        {current ? "" : " — select a selling team to load shops"}
+      </Text>
+    </>
+  );
+}
+
+function ProductSelectDemo() {
+  const [picked, setPicked] = useState<PickedProduct | null>(null);
+  const { current } = useTeam();
+
+  return (
+    <>
+      <ProductSelect
+        teamId={current?.teamId ?? 0n}
+        value={picked?.id}
+        onChange={setPicked}
+      />
+      <Text fontSize="xs" color="fg.muted">
+        Picked: {picked ? `${picked.sku} — ${picked.name}` : "(none)"}
+        {current ? "" : " — select a team to search its catalogue"}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -243,6 +283,18 @@ const ENTRIES: Entry[] = [
         ))}
       </Flex>
     ),
+  },
+  {
+    id: "shop-select",
+    title: "ShopSelect",
+    description: shopSelectDescription,
+    render: () => <ShopSelectDemo />,
+  },
+  {
+    id: "product-select",
+    title: "ProductSelect",
+    description: productSelectDescription,
+    render: () => <ProductSelectDemo />,
   },
   {
     id: "team-select",
