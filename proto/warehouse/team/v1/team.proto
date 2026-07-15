@@ -25,6 +25,85 @@ service TeamService {
   rpc TeamByIds(TeamByIdsRequest) returns (TeamByIdsResponse);
 
   rpc TeamInfoUpdate(TeamInfoUpdateRequest) returns (TeamInfoUpdateResponse);
+
+  // WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+  // Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+  // receive its orders. Days with no stored row default to closed.
+  rpc WarehouseInfoDetail(WarehouseInfoDetailRequest) returns (WarehouseInfoDetailResponse);
+
+  // WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+  rpc WarehouseInfoUpdate(WarehouseInfoUpdateRequest) returns (WarehouseInfoUpdateResponse);
+}
+
+// Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+// valid schedule row.
+enum Weekday {
+  WEEKDAY_UNSPECIFIED = 0;
+  WEEKDAY_MONDAY = 1;
+  WEEKDAY_TUESDAY = 2;
+  WEEKDAY_WEDNESDAY = 3;
+  WEEKDAY_THURSDAY = 4;
+  WEEKDAY_FRIDAY = 5;
+  WEEKDAY_SATURDAY = 6;
+  WEEKDAY_SUNDAY = 7;
+}
+
+// DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+// Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+message DayHours {
+  Weekday weekday = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  bool open = 2;
+  string open_time = 3 [(buf.validate.field).string.max_len = 5];
+  string close_time = 4 [(buf.validate.field).string.max_len = 5];
+}
+
+// WarehouseInfo is a warehouse team's two weekly schedules.
+message WarehouseInfo {
+  uint64 team_id = 1;
+
+  // When the warehouse is generally open.
+  repeated DayHours operating_hours = 2;
+
+  // When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+  repeated DayHours receiving_hours = 3;
+}
+
+message WarehouseInfoDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseInfoDetailResponse {
+  WarehouseInfo info = 1;
+}
+
+message WarehouseInfoUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+  // row per weekday per schedule; the handler rejects duplicates and bad times.
+  repeated DayHours operating_hours = 2 [(buf.validate.field).repeated.max_items = 7];
+  repeated DayHours receiving_hours = 3 [(buf.validate.field).repeated.max_items = 7];
+}
+
+message WarehouseInfoUpdateResponse {
+  WarehouseInfo info = 1;
 }
 
 // THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.

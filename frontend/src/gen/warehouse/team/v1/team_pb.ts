@@ -14,7 +14,156 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/team/v1/team.proto.
  */
 export const file_warehouse_team_v1_team: GenFile = /*@__PURE__*/
-  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSKxAQoIVGVhbUluZm8SDwoHdGVhbV9pZBgBIAEoBBIWCg5jb250YWN0X251bWJlchgCIAEoCRIRCgliYW5rX3R5cGUYAyABKAkSFwoPYmFua19vd25lcl9uYW1lGAQgASgJEhsKE2JhbmtfYWNjb3VudF9udW1iZXIYBSABKAkSGwoTcmV0dXJuX3dhcmVob3VzZV9pZBgGIAEoBBIWCg5yZXR1cm5fdXNlcl9pZBgHIAEoBCLCAQoEVGVhbRIKCgJpZBgBIAEoBBIpCgR0eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSDAoEbmFtZRgDIAEoCRIRCgl0ZWFtX2NvZGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDwoHZGVsZXRlZBgGIAEoCBIpCgRpbmZvGAcgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8SEQoJaW1hZ2VfdXJsGAggASgJIq0BChFUZWFtQ3JlYXRlUmVxdWVzdBI3CgR0eXBlGAEgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGVCDLpICYIBBhABIAAgARIYCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABEhwKCXRlYW1fY29kZRgDIAEoCUIJukgGcgQQARgKEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxisAjoIkrUYBAoCAQIiOwoSVGVhbUNyZWF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIssBChFUZWFtVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABSACIAQESIgoLZGVzY3JpcHRpb24YAyABKAlCCLpIBXIDGKwCSAGIAQESIAoJaW1hZ2VfdXJsGAQgASgJQgi6SAVyAxiACEgCiAEBOgyStRgICgYBAgMEBglCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgwKCl9pbWFnZV91cmwiOwoSVGVhbVVwZGF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjcKEVRlYW1EZWxldGVSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6CJK1GAQKAgECIhQKElRlYW1EZWxldGVSZXNwb25zZSKUAQoPVGVhbUxpc3RSZXF1ZXN0EhIKAXEYASABKAlCB7pIBHICGGQSLgoJdGVhbV90eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEibAoQVGVhbUxpc3RSZXNwb25zZRImCgV0ZWFtcxgBIAMoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0SMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyI1ChFUZWFtRGV0YWlsUmVxdWVzdBIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAOgaStRgCIAEiOwoSVGVhbURldGFpbFJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjwKEFRlYW1CeUlkc1JlcXVlc3QSIAoDaWRzGAEgAygEQhO6SBCSAQ0IARDIARgBIgQyAiAAOgaStRgCIAEilwEKEVRlYW1CeUlkc1Jlc3BvbnNlEjwKBGRhdGEYASADKAsyLi53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZS5EYXRhRW50cnkaRAoJRGF0YUVudHJ5EgsKA2tleRgBIAEoBBImCgV2YWx1ZRgCIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW06AjgBIpQDChVUZWFtSW5mb1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESJAoOY29udGFjdF9udW1iZXIYAiABKAlCB7pIBHICGChIAIgBARIfCgliYW5rX3R5cGUYAyABKAlCB7pIBHICGDxIAYgBARImCg9iYW5rX293bmVyX25hbWUYBCABKAlCCLpIBXIDGIABSAKIAQESKQoTYmFua19hY2NvdW50X251bWJlchgFIAEoCUIHukgEcgIYPEgDiAEBEiAKE3JldHVybl93YXJlaG91c2VfaWQYBiABKARIBIgBARIbCg5yZXR1cm5fdXNlcl9pZBgHIAEoBEgFiAEBOgyStRgICgYBAgMEBglCEQoPX2NvbnRhY3RfbnVtYmVyQgwKCl9iYW5rX3R5cGVCEgoQX2Jhbmtfb3duZXJfbmFtZUIWChRfYmFua19hY2NvdW50X251bWJlckIWChRfcmV0dXJuX3dhcmVob3VzZV9pZEIRCg9fcmV0dXJuX3VzZXJfaWQiQwoWVGVhbUluZm9VcGRhdGVSZXNwb25zZRIpCgRpbmZvGAEgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8qfgoIVGVhbVR5cGUSGQoVVEVBTV9UWVBFX1VOU1BFQ0lGSUVEEAASEgoOVEVBTV9UWVBFX1JPT1QQARITCg9URUFNX1RZUEVfQURNSU4QAhIXChNURUFNX1RZUEVfV0FSRUhPVVNFEAMSFQoRVEVBTV9UWVBFX1NFTExJTkcQBDKNBQoLVGVhbVNlcnZpY2USWQoKVGVhbUNyZWF0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1DcmVhdGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbUNyZWF0ZVJlc3BvbnNlElkKClRlYW1VcGRhdGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtVXBkYXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1VcGRhdGVSZXNwb25zZRJZCgpUZWFtRGVsZXRlEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbURlbGV0ZVJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtRGVsZXRlUmVzcG9uc2USUwoIVGVhbUxpc3QSIi53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdFJlcXVlc3QaIy53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdFJlc3BvbnNlElkKClRlYW1EZXRhaWwSJC53YXJlaG91c2UudGVhbS52MS5UZWFtRGV0YWlsUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZXRhaWxSZXNwb25zZRJWCglUZWFtQnlJZHMSIy53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXF1ZXN0GiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2USZQoOVGVhbUluZm9VcGRhdGUSKC53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mb1VwZGF0ZVJlcXVlc3QaKS53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mb1VwZGF0ZVJlc3BvbnNlQkhaRmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvdGVhbS92MTt0ZWFtdjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSKKAQoIRGF5SG91cnMSNwoHd2Vla2RheRgBIAEoDjIaLndhcmVob3VzZS50ZWFtLnYxLldlZWtkYXlCCrpIB4IBBBABIAASDAoEb3BlbhgCIAEoCBIaCglvcGVuX3RpbWUYAyABKAlCB7pIBHICGAUSGwoKY2xvc2VfdGltZRgEIAEoCUIHukgEcgIYBSKMAQoNV2FyZWhvdXNlSW5mbxIPCgd0ZWFtX2lkGAEgASgEEjQKD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzEjQKD3JlY2VpdmluZ19ob3VycxgDIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzIj4KGldhcmVob3VzZUluZm9EZXRhaWxSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6BpK1GAIgASJNChtXYXJlaG91c2VJbmZvRGV0YWlsUmVzcG9uc2USLgoEaW5mbxgBIAEoCzIgLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm8ixgEKGldhcmVob3VzZUluZm9VcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEj4KD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzQgi6SAWSAQIQBxI+Cg9yZWNlaXZpbmdfaG91cnMYAyADKAsyGy53YXJlaG91c2UudGVhbS52MS5EYXlIb3Vyc0IIukgFkgECEAc6CpK1GAYKBAECBgkiTQobV2FyZWhvdXNlSW5mb1VwZGF0ZVJlc3BvbnNlEi4KBGluZm8YASABKAsyIC53YXJlaG91c2UudGVhbS52MS5XYXJlaG91c2VJbmZvIrEBCghUZWFtSW5mbxIPCgd0ZWFtX2lkGAEgASgEEhYKDmNvbnRhY3RfbnVtYmVyGAIgASgJEhEKCWJhbmtfdHlwZRgDIAEoCRIXCg9iYW5rX293bmVyX25hbWUYBCABKAkSGwoTYmFua19hY2NvdW50X251bWJlchgFIAEoCRIbChNyZXR1cm5fd2FyZWhvdXNlX2lkGAYgASgEEhYKDnJldHVybl91c2VyX2lkGAcgASgEIsIBCgRUZWFtEgoKAmlkGAEgASgEEikKBHR5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRIMCgRuYW1lGAMgASgJEhEKCXRlYW1fY29kZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIPCgdkZWxldGVkGAYgASgIEikKBGluZm8YByABKAsyGy53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mbxIRCglpbWFnZV91cmwYCCABKAkirQEKEVRlYW1DcmVhdGVSZXF1ZXN0EjcKBHR5cGUYASABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZUIMukgJggEGEAEgACABEhgKBG5hbWUYAiABKAlCCrpIB3IFEAQYgAESHAoJdGVhbV9jb2RlGAMgASgJQgm6SAZyBBABGAoSHQoLZGVzY3JpcHRpb24YBCABKAlCCLpIBXIDGKwCOgiStRgECgIBAiI7ChJUZWFtQ3JlYXRlUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0iywEKEVRlYW1VcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KBG5hbWUYAiABKAlCCrpIB3IFEAQYgAFIAIgBARIiCgtkZXNjcmlwdGlvbhgDIAEoCUIIukgFcgMYrAJIAYgBARIgCglpbWFnZV91cmwYBCABKAlCCLpIBXIDGIAISAKIAQE6DJK1GAgKBgECAwQGCUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDAoKX2ltYWdlX3VybCI7ChJUZWFtVXBkYXRlUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0iNwoRVGVhbURlbGV0ZVJlcXVlc3QSGAoHdGVhbV9pZBgBIAEoBEIHukgEMgIgADoIkrUYBAoCAQIiFAoSVGVhbURlbGV0ZVJlc3BvbnNlIpQBCg9UZWFtTGlzdFJlcXVlc3QSEgoBcRgBIAEoCUIHukgEcgIYZBIuCgl0ZWFtX3R5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6BpK1GAIgASJsChBUZWFtTGlzdFJlc3BvbnNlEiYKBXRlYW1zGAEgAygLMhcud2FyZWhvdXNlLnRlYW0udjEuVGVhbRIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIjUKEVRlYW1EZXRhaWxSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6BpK1GAIgASI7ChJUZWFtRGV0YWlsUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0iPAoQVGVhbUJ5SWRzUmVxdWVzdBIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAA6BpK1GAIgASKXAQoRVGVhbUJ5SWRzUmVzcG9uc2USPAoEZGF0YRgBIAMoCzIuLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlLkRhdGFFbnRyeRpECglEYXRhRW50cnkSCwoDa2V5GAEgASgEEiYKBXZhbHVlGAIgASgLMhcud2FyZWhvdXNlLnRlYW0udjEuVGVhbToCOAEilAMKFVRlYW1JbmZvVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIkCg5jb250YWN0X251bWJlchgCIAEoCUIHukgEcgIYKEgAiAEBEh8KCWJhbmtfdHlwZRgDIAEoCUIHukgEcgIYPEgBiAEBEiYKD2Jhbmtfb3duZXJfbmFtZRgEIAEoCUIIukgFcgMYgAFIAogBARIpChNiYW5rX2FjY291bnRfbnVtYmVyGAUgASgJQge6SARyAhg8SAOIAQESIAoTcmV0dXJuX3dhcmVob3VzZV9pZBgGIAEoBEgEiAEBEhsKDnJldHVybl91c2VyX2lkGAcgASgESAWIAQE6DJK1GAgKBgECAwQGCUIRCg9fY29udGFjdF9udW1iZXJCDAoKX2JhbmtfdHlwZUISChBfYmFua19vd25lcl9uYW1lQhYKFF9iYW5rX2FjY291bnRfbnVtYmVyQhYKFF9yZXR1cm5fd2FyZWhvdXNlX2lkQhEKD19yZXR1cm5fdXNlcl9pZCJDChZUZWFtSW5mb1VwZGF0ZVJlc3BvbnNlEikKBGluZm8YASABKAsyGy53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mbyq2AQoHV2Vla2RheRIXChNXRUVLREFZX1VOU1BFQ0lGSUVEEAASEgoOV0VFS0RBWV9NT05EQVkQARITCg9XRUVLREFZX1RVRVNEQVkQAhIVChFXRUVLREFZX1dFRE5FU0RBWRADEhQKEFdFRUtEQVlfVEhVUlNEQVkQBBISCg5XRUVLREFZX0ZSSURBWRAFEhQKEFdFRUtEQVlfU0FUVVJEQVkQBhISCg5XRUVLREFZX1NVTkRBWRAHKn4KCFRlYW1UeXBlEhkKFVRFQU1fVFlQRV9VTlNQRUNJRklFRBAAEhIKDlRFQU1fVFlQRV9ST09UEAESEwoPVEVBTV9UWVBFX0FETUlOEAISFwoTVEVBTV9UWVBFX1dBUkVIT1VTRRADEhUKEVRFQU1fVFlQRV9TRUxMSU5HEAQy+QYKC1RlYW1TZXJ2aWNlElkKClRlYW1DcmVhdGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtQ3JlYXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1DcmVhdGVSZXNwb25zZRJZCgpUZWFtVXBkYXRlEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbVVwZGF0ZVJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtVXBkYXRlUmVzcG9uc2USWQoKVGVhbURlbGV0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZWxldGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbURlbGV0ZVJlc3BvbnNlElMKCFRlYW1MaXN0EiIud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZRJZCgpUZWFtRGV0YWlsEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbURldGFpbFJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtRGV0YWlsUmVzcG9uc2USVgoJVGVhbUJ5SWRzEiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVxdWVzdBokLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlEmUKDlRlYW1JbmZvVXBkYXRlEigud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm9VcGRhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm9VcGRhdGVSZXNwb25zZRJ0ChNXYXJlaG91c2VJbmZvRGV0YWlsEi0ud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mb0RldGFpbFJlcXVlc3QaLi53YXJlaG91c2UudGVhbS52MS5XYXJlaG91c2VJbmZvRGV0YWlsUmVzcG9uc2USdAoTV2FyZWhvdXNlSW5mb1VwZGF0ZRItLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm9VcGRhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mb1VwZGF0ZVJlc3BvbnNlQkhaRmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvdGVhbS92MTt0ZWFtdjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+
+/**
+ * DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+ * Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+ *
+ * @generated from message warehouse.team.v1.DayHours
+ */
+export type DayHours = Message<"warehouse.team.v1.DayHours"> & {
+  /**
+   * @generated from field: warehouse.team.v1.Weekday weekday = 1;
+   */
+  weekday: Weekday;
+
+  /**
+   * @generated from field: bool open = 2;
+   */
+  open: boolean;
+
+  /**
+   * @generated from field: string open_time = 3;
+   */
+  openTime: string;
+
+  /**
+   * @generated from field: string close_time = 4;
+   */
+  closeTime: string;
+};
+
+/**
+ * Describes the message warehouse.team.v1.DayHours.
+ * Use `create(DayHoursSchema)` to create a new message.
+ */
+export const DayHoursSchema: GenMessage<DayHours> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 0);
+
+/**
+ * WarehouseInfo is a warehouse team's two weekly schedules.
+ *
+ * @generated from message warehouse.team.v1.WarehouseInfo
+ */
+export type WarehouseInfo = Message<"warehouse.team.v1.WarehouseInfo"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * When the warehouse is generally open.
+   *
+   * @generated from field: repeated warehouse.team.v1.DayHours operating_hours = 2;
+   */
+  operatingHours: DayHours[];
+
+  /**
+   * When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+   *
+   * @generated from field: repeated warehouse.team.v1.DayHours receiving_hours = 3;
+   */
+  receivingHours: DayHours[];
+};
+
+/**
+ * Describes the message warehouse.team.v1.WarehouseInfo.
+ * Use `create(WarehouseInfoSchema)` to create a new message.
+ */
+export const WarehouseInfoSchema: GenMessage<WarehouseInfo> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 1);
+
+/**
+ * @generated from message warehouse.team.v1.WarehouseInfoDetailRequest
+ */
+export type WarehouseInfoDetailRequest = Message<"warehouse.team.v1.WarehouseInfoDetailRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+};
+
+/**
+ * Describes the message warehouse.team.v1.WarehouseInfoDetailRequest.
+ * Use `create(WarehouseInfoDetailRequestSchema)` to create a new message.
+ */
+export const WarehouseInfoDetailRequestSchema: GenMessage<WarehouseInfoDetailRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 2);
+
+/**
+ * @generated from message warehouse.team.v1.WarehouseInfoDetailResponse
+ */
+export type WarehouseInfoDetailResponse = Message<"warehouse.team.v1.WarehouseInfoDetailResponse"> & {
+  /**
+   * @generated from field: warehouse.team.v1.WarehouseInfo info = 1;
+   */
+  info?: WarehouseInfo;
+};
+
+/**
+ * Describes the message warehouse.team.v1.WarehouseInfoDetailResponse.
+ * Use `create(WarehouseInfoDetailResponseSchema)` to create a new message.
+ */
+export const WarehouseInfoDetailResponseSchema: GenMessage<WarehouseInfoDetailResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 3);
+
+/**
+ * @generated from message warehouse.team.v1.WarehouseInfoUpdateRequest
+ */
+export type WarehouseInfoUpdateRequest = Message<"warehouse.team.v1.WarehouseInfoUpdateRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+   * row per weekday per schedule; the handler rejects duplicates and bad times.
+   *
+   * @generated from field: repeated warehouse.team.v1.DayHours operating_hours = 2;
+   */
+  operatingHours: DayHours[];
+
+  /**
+   * @generated from field: repeated warehouse.team.v1.DayHours receiving_hours = 3;
+   */
+  receivingHours: DayHours[];
+};
+
+/**
+ * Describes the message warehouse.team.v1.WarehouseInfoUpdateRequest.
+ * Use `create(WarehouseInfoUpdateRequestSchema)` to create a new message.
+ */
+export const WarehouseInfoUpdateRequestSchema: GenMessage<WarehouseInfoUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 4);
+
+/**
+ * @generated from message warehouse.team.v1.WarehouseInfoUpdateResponse
+ */
+export type WarehouseInfoUpdateResponse = Message<"warehouse.team.v1.WarehouseInfoUpdateResponse"> & {
+  /**
+   * @generated from field: warehouse.team.v1.WarehouseInfo info = 1;
+   */
+  info?: WarehouseInfo;
+};
+
+/**
+ * Describes the message warehouse.team.v1.WarehouseInfoUpdateResponse.
+ * Use `create(WarehouseInfoUpdateResponseSchema)` to create a new message.
+ */
+export const WarehouseInfoUpdateResponseSchema: GenMessage<WarehouseInfoUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 5);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfo
@@ -64,7 +213,7 @@ export type TeamInfo = Message<"warehouse.team.v1.TeamInfo"> & {
  * Use `create(TeamInfoSchema)` to create a new message.
  */
 export const TeamInfoSchema: GenMessage<TeamInfo> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 0);
+  messageDesc(file_warehouse_team_v1_team, 6);
 
 /**
  * @generated from message warehouse.team.v1.Team
@@ -121,7 +270,7 @@ export type Team = Message<"warehouse.team.v1.Team"> & {
  * Use `create(TeamSchema)` to create a new message.
  */
 export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 1);
+  messageDesc(file_warehouse_team_v1_team, 7);
 
 /**
  * @generated from message warehouse.team.v1.TeamCreateRequest
@@ -153,7 +302,7 @@ export type TeamCreateRequest = Message<"warehouse.team.v1.TeamCreateRequest"> &
  * Use `create(TeamCreateRequestSchema)` to create a new message.
  */
 export const TeamCreateRequestSchema: GenMessage<TeamCreateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 2);
+  messageDesc(file_warehouse_team_v1_team, 8);
 
 /**
  * @generated from message warehouse.team.v1.TeamCreateResponse
@@ -170,7 +319,7 @@ export type TeamCreateResponse = Message<"warehouse.team.v1.TeamCreateResponse">
  * Use `create(TeamCreateResponseSchema)` to create a new message.
  */
 export const TeamCreateResponseSchema: GenMessage<TeamCreateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 3);
+  messageDesc(file_warehouse_team_v1_team, 9);
 
 /**
  * @generated from message warehouse.team.v1.TeamUpdateRequest
@@ -210,7 +359,7 @@ export type TeamUpdateRequest = Message<"warehouse.team.v1.TeamUpdateRequest"> &
  * Use `create(TeamUpdateRequestSchema)` to create a new message.
  */
 export const TeamUpdateRequestSchema: GenMessage<TeamUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 4);
+  messageDesc(file_warehouse_team_v1_team, 10);
 
 /**
  * @generated from message warehouse.team.v1.TeamUpdateResponse
@@ -227,7 +376,7 @@ export type TeamUpdateResponse = Message<"warehouse.team.v1.TeamUpdateResponse">
  * Use `create(TeamUpdateResponseSchema)` to create a new message.
  */
 export const TeamUpdateResponseSchema: GenMessage<TeamUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 5);
+  messageDesc(file_warehouse_team_v1_team, 11);
 
 /**
  * @generated from message warehouse.team.v1.TeamDeleteRequest
@@ -244,7 +393,7 @@ export type TeamDeleteRequest = Message<"warehouse.team.v1.TeamDeleteRequest"> &
  * Use `create(TeamDeleteRequestSchema)` to create a new message.
  */
 export const TeamDeleteRequestSchema: GenMessage<TeamDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 6);
+  messageDesc(file_warehouse_team_v1_team, 12);
 
 /**
  * @generated from message warehouse.team.v1.TeamDeleteResponse
@@ -257,7 +406,7 @@ export type TeamDeleteResponse = Message<"warehouse.team.v1.TeamDeleteResponse">
  * Use `create(TeamDeleteResponseSchema)` to create a new message.
  */
 export const TeamDeleteResponseSchema: GenMessage<TeamDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 7);
+  messageDesc(file_warehouse_team_v1_team, 13);
 
 /**
  * @generated from message warehouse.team.v1.TeamListRequest
@@ -284,7 +433,7 @@ export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
  * Use `create(TeamListRequestSchema)` to create a new message.
  */
 export const TeamListRequestSchema: GenMessage<TeamListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 8);
+  messageDesc(file_warehouse_team_v1_team, 14);
 
 /**
  * @generated from message warehouse.team.v1.TeamListResponse
@@ -306,7 +455,7 @@ export type TeamListResponse = Message<"warehouse.team.v1.TeamListResponse"> & {
  * Use `create(TeamListResponseSchema)` to create a new message.
  */
 export const TeamListResponseSchema: GenMessage<TeamListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 9);
+  messageDesc(file_warehouse_team_v1_team, 15);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailRequest
@@ -323,7 +472,7 @@ export type TeamDetailRequest = Message<"warehouse.team.v1.TeamDetailRequest"> &
  * Use `create(TeamDetailRequestSchema)` to create a new message.
  */
 export const TeamDetailRequestSchema: GenMessage<TeamDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 10);
+  messageDesc(file_warehouse_team_v1_team, 16);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailResponse
@@ -340,7 +489,7 @@ export type TeamDetailResponse = Message<"warehouse.team.v1.TeamDetailResponse">
  * Use `create(TeamDetailResponseSchema)` to create a new message.
  */
 export const TeamDetailResponseSchema: GenMessage<TeamDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 11);
+  messageDesc(file_warehouse_team_v1_team, 17);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsRequest
@@ -357,7 +506,7 @@ export type TeamByIdsRequest = Message<"warehouse.team.v1.TeamByIdsRequest"> & {
  * Use `create(TeamByIdsRequestSchema)` to create a new message.
  */
 export const TeamByIdsRequestSchema: GenMessage<TeamByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 12);
+  messageDesc(file_warehouse_team_v1_team, 18);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsResponse
@@ -377,7 +526,7 @@ export type TeamByIdsResponse = Message<"warehouse.team.v1.TeamByIdsResponse"> &
  * Use `create(TeamByIdsResponseSchema)` to create a new message.
  */
 export const TeamByIdsResponseSchema: GenMessage<TeamByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 13);
+  messageDesc(file_warehouse_team_v1_team, 19);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateRequest
@@ -432,7 +581,7 @@ export type TeamInfoUpdateRequest = Message<"warehouse.team.v1.TeamInfoUpdateReq
  * Use `create(TeamInfoUpdateRequestSchema)` to create a new message.
  */
 export const TeamInfoUpdateRequestSchema: GenMessage<TeamInfoUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 14);
+  messageDesc(file_warehouse_team_v1_team, 20);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateResponse
@@ -449,7 +598,61 @@ export type TeamInfoUpdateResponse = Message<"warehouse.team.v1.TeamInfoUpdateRe
  * Use `create(TeamInfoUpdateResponseSchema)` to create a new message.
  */
 export const TeamInfoUpdateResponseSchema: GenMessage<TeamInfoUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 15);
+  messageDesc(file_warehouse_team_v1_team, 21);
+
+/**
+ * Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+ * valid schedule row.
+ *
+ * @generated from enum warehouse.team.v1.Weekday
+ */
+export enum Weekday {
+  /**
+   * @generated from enum value: WEEKDAY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: WEEKDAY_MONDAY = 1;
+   */
+  MONDAY = 1,
+
+  /**
+   * @generated from enum value: WEEKDAY_TUESDAY = 2;
+   */
+  TUESDAY = 2,
+
+  /**
+   * @generated from enum value: WEEKDAY_WEDNESDAY = 3;
+   */
+  WEDNESDAY = 3,
+
+  /**
+   * @generated from enum value: WEEKDAY_THURSDAY = 4;
+   */
+  THURSDAY = 4,
+
+  /**
+   * @generated from enum value: WEEKDAY_FRIDAY = 5;
+   */
+  FRIDAY = 5,
+
+  /**
+   * @generated from enum value: WEEKDAY_SATURDAY = 6;
+   */
+  SATURDAY = 6,
+
+  /**
+   * @generated from enum value: WEEKDAY_SUNDAY = 7;
+   */
+  SUNDAY = 7,
+}
+
+/**
+ * Describes the enum warehouse.team.v1.Weekday.
+ */
+export const WeekdaySchema: GenEnum<Weekday> = /*@__PURE__*/
+  enumDesc(file_warehouse_team_v1_team, 0);
 
 /**
  * THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
@@ -492,7 +695,7 @@ export enum TeamType {
  * Describes the enum warehouse.team.v1.TeamType.
  */
 export const TeamTypeSchema: GenEnum<TeamType> = /*@__PURE__*/
-  enumDesc(file_warehouse_team_v1_team, 0);
+  enumDesc(file_warehouse_team_v1_team, 1);
 
 /**
  * TeamService owns `teams` and `team_infos`.
@@ -562,6 +765,28 @@ export const TeamService: GenService<{
     methodKind: "unary";
     input: typeof TeamInfoUpdateRequestSchema;
     output: typeof TeamInfoUpdateResponseSchema;
+  },
+  /**
+   * WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+   * Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+   * receive its orders. Days with no stored row default to closed.
+   *
+   * @generated from rpc warehouse.team.v1.TeamService.WarehouseInfoDetail
+   */
+  warehouseInfoDetail: {
+    methodKind: "unary";
+    input: typeof WarehouseInfoDetailRequestSchema;
+    output: typeof WarehouseInfoDetailResponseSchema;
+  },
+  /**
+   * WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+   *
+   * @generated from rpc warehouse.team.v1.TeamService.WarehouseInfoUpdate
+   */
+  warehouseInfoUpdate: {
+    methodKind: "unary";
+    input: typeof WarehouseInfoUpdateRequestSchema;
+    output: typeof WarehouseInfoUpdateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_team_v1_team, 0);

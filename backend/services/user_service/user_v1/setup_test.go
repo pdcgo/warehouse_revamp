@@ -134,3 +134,9 @@ func (f *fakeTeamClient) TeamDetail(context.Context, *connect.Request[teamv1.Tea
 func (f *fakeTeamClient) TeamInfoUpdate(context.Context, *connect.Request[teamv1.TeamInfoUpdateRequest]) (*connect.Response[teamv1.TeamInfoUpdateResponse], error) {
 	return nil, nil
 }
+func (f *fakeTeamClient) WarehouseInfoDetail(context.Context, *connect.Request[teamv1.WarehouseInfoDetailRequest]) (*connect.Response[teamv1.WarehouseInfoDetailResponse], error) {
+	return nil, nil
+}
+func (f *fakeTeamClient) WarehouseInfoUpdate(context.Context, *connect.Request[teamv1.WarehouseInfoUpdateRequest]) (*connect.Response[teamv1.WarehouseInfoUpdateResponse], error) {
+	return nil, nil
+}
