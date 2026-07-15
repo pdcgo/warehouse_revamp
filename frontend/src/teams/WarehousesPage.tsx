@@ -12,7 +12,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
@@ -24,6 +24,7 @@ import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
+import { TeamDetailDialog } from "./TeamDetailDialog";
 
 const ROOT_TEAM_ID = 1n;
 
@@ -37,9 +38,10 @@ export function WarehousesPage() {
 
   // Which row action is open, and for which warehouse. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
-  const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<{
+    kind: "detail" | "info" | "edit" | "delete";
+    team: Team;
+  } | null>(null);
 
   // Create/delete are root/admin (backend: TeamCreate/TeamDelete are [ROOT, ADMIN]). The
   // Warehouses menu itself only shows for root/admin team types, but this is the real gate —
@@ -141,6 +143,15 @@ export function WarehousesPage() {
                         <Menu.Positioner>
                           <Menu.Content>
                             <Menu.Item
+                              value="detail"
+                              data-testid={`detail-warehouse-${team.teamCode}`}
+                              onClick={() => setDialog({ kind: "detail", team })}
+                            >
+                              <Icon as={Eye} boxSize="4" />
+                              Details
+                            </Menu.Item>
+
+                            <Menu.Item
                               value="info"
                               data-testid={`info-team-${team.teamCode}`}
                               onClick={() => setDialog({ kind: "info", team })}
@@ -186,6 +197,18 @@ export function WarehousesPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "detail" && (
+        <TeamDetailDialog
+          key={dialog.team.id.toString()}
+          teamId={dialog.team.id}
+          noun="Warehouse"
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
       {dialog?.kind === "info" && (
         <TeamInfoDialog
           key={dialog.team.id.toString()}

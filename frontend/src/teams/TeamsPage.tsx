@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Badge,
   Flex,
   Heading,
   Icon,
@@ -13,26 +12,20 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../api/clients";
-import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { TeamItem } from "../components/TeamItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
+import { TeamDetailDialog } from "./TeamDetailDialog";
 
 const ROOT_TEAM_ID = 1n;
-
-const TYPE_LABEL: Record<number, string> = {
-  [TeamType.ROOT]: "Root",
-  [TeamType.ADMIN]: "Admin",
-  [TeamType.WAREHOUSE]: "Warehouse",
-  [TeamType.SELLING]: "Selling",
-};
 
 export function TeamsPage() {
   const { current } = useTeam();
@@ -43,9 +36,10 @@ export function TeamsPage() {
 
   // Which row action is open, and for which team. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
-  const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<{
+    kind: "detail" | "info" | "edit" | "delete";
+    team: Team;
+  } | null>(null);
 
   // Create/delete are root/admin (backend: TeamCreate/TeamDelete are [ROOT, ADMIN]). The Teams
   // menu itself only shows for root/admin team types, but this is the real gate — and the
@@ -103,7 +97,6 @@ export function TeamsPage() {
             <Table.Row>
               <Table.ColumnHeader>Name</Table.ColumnHeader>
               <Table.ColumnHeader>Code</Table.ColumnHeader>
-              <Table.ColumnHeader>Type</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
@@ -116,11 +109,17 @@ export function TeamsPage() {
 
               return (
                 <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
-                  <Table.Cell>{team.name}</Table.Cell>
-                  <Table.Cell>{team.teamCode}</Table.Cell>
                   <Table.Cell>
-                    <Badge>{TYPE_LABEL[team.type] ?? "Unknown"}</Badge>
+                    <TeamItem
+                      team={{
+                        teamName: team.name,
+                        teamType: team.type,
+                        teamId: team.id,
+                        imageUrl: team.imageUrl,
+                      }}
+                    />
                   </Table.Cell>
+                  <Table.Cell>{team.teamCode}</Table.Cell>
 
                   <Table.Cell textAlign="end">
                     <Menu.Root>
@@ -138,6 +137,15 @@ export function TeamsPage() {
                       <Portal>
                         <Menu.Positioner>
                           <Menu.Content>
+                            <Menu.Item
+                              value="detail"
+                              data-testid={`detail-team-${team.teamCode}`}
+                              onClick={() => setDialog({ kind: "detail", team })}
+                            >
+                              <Icon as={Eye} boxSize="4" />
+                              Details
+                            </Menu.Item>
+
                             <Menu.Item
                               value="info"
                               data-testid={`info-team-${team.teamCode}`}
@@ -184,6 +192,17 @@ export function TeamsPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
+      {dialog?.kind === "detail" && (
+        <TeamDetailDialog
+          key={dialog.team.id.toString()}
+          teamId={dialog.team.id}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+        />
+      )}
+
       {dialog?.kind === "info" && (
         <TeamInfoDialog
           key={dialog.team.id.toString()}

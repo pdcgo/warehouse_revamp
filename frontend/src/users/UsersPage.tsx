@@ -23,6 +23,7 @@ import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { UserItem } from "../components/UserItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
@@ -172,8 +173,7 @@ export function UsersPage() {
         <Table.Root size="sm" data-testid="users-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Username</Table.ColumnHeader>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
+              <Table.ColumnHeader>User</Table.ColumnHeader>
               <Table.ColumnHeader>Email</Table.ColumnHeader>
               <Table.ColumnHeader>Status</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
@@ -188,8 +188,9 @@ export function UsersPage() {
 
               return (
                 <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
-                  <Table.Cell>{user.username}</Table.Cell>
-                  <Table.Cell>{user.name}</Table.Cell>
+                  <Table.Cell>
+                    <UserItem user={user} />
+                  </Table.Cell>
                   <Table.Cell>{user.email}</Table.Cell>
                   <Table.Cell>
                     {user.isSuspended ? (
