@@ -1,28 +1,64 @@
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./auth/AuthGate";
 import { LoginPage } from "./auth/LoginPage";
-import { CategoriesPage } from "./categories/CategoriesPage";
 import { Layout } from "./components/Layout";
-import { ComponentsPage } from "./dev/ComponentsPage";
-import { HomePage } from "./home/HomePage";
-import { InventoryPage } from "./inventory/InventoryPage";
-import { ProductDetailPage } from "./products/ProductDetailPage";
-import { ProductEditPage } from "./products/ProductEditPage";
-import { ProductsPage } from "./products/ProductsPage";
-import { ShopDetailPage } from "./shops/ShopDetailPage";
-import { ShopsPage } from "./shops/ShopsPage";
-import { OrderCreatePage } from "./orders/OrderCreatePage";
-import { OrderDetailPage } from "./orders/OrderDetailPage";
-import { OrdersPage } from "./orders/OrdersPage";
-import { ProfilePage } from "./settings/ProfilePage";
-import { SettingsPage } from "./settings/SettingsPage";
-import { ShippingChannelsPage } from "./shipping/ShippingChannelsPage";
 import { TeamProvider } from "./team/TeamContext";
-import { TeamDetailPage } from "./teams/TeamDetailPage";
-import { TeamsPage } from "./teams/TeamsPage";
-import { WarehouseEditPage } from "./warehouses/WarehouseEditPage";
-import { UserDetailPage } from "./users/UserDetailPage";
-import { UsersPage } from "./users/UsersPage";
+
+// The app SHELL (auth gate, protected route, team provider, layout) and the LOGIN page load eagerly —
+// they are on the critical path to the first paint. Every PAGE behind the layout is code-split with
+// React.lazy so a route only pulls its own chunk; the Suspense boundary lives around the <Outlet/> in
+// Layout. The pages are named exports, so each import maps `.X` onto the default lazy expects.
+const HomePage = lazy(() => import("./home/HomePage").then((m) => ({ default: m.HomePage })));
+const TeamsPage = lazy(() => import("./teams/TeamsPage").then((m) => ({ default: m.TeamsPage })));
+const TeamDetailPage = lazy(() =>
+  import("./teams/TeamDetailPage").then((m) => ({ default: m.TeamDetailPage })),
+);
+const WarehouseEditPage = lazy(() =>
+  import("./warehouses/WarehouseEditPage").then((m) => ({ default: m.WarehouseEditPage })),
+);
+const CategoriesPage = lazy(() =>
+  import("./categories/CategoriesPage").then((m) => ({ default: m.CategoriesPage })),
+);
+const ShippingChannelsPage = lazy(() =>
+  import("./shipping/ShippingChannelsPage").then((m) => ({ default: m.ShippingChannelsPage })),
+);
+const ProductsPage = lazy(() =>
+  import("./products/ProductsPage").then((m) => ({ default: m.ProductsPage })),
+);
+const ProductEditPage = lazy(() =>
+  import("./products/ProductEditPage").then((m) => ({ default: m.ProductEditPage })),
+);
+const ProductDetailPage = lazy(() =>
+  import("./products/ProductDetailPage").then((m) => ({ default: m.ProductDetailPage })),
+);
+const ShopsPage = lazy(() => import("./shops/ShopsPage").then((m) => ({ default: m.ShopsPage })));
+const ShopDetailPage = lazy(() =>
+  import("./shops/ShopDetailPage").then((m) => ({ default: m.ShopDetailPage })),
+);
+const OrdersPage = lazy(() => import("./orders/OrdersPage").then((m) => ({ default: m.OrdersPage })));
+const OrderCreatePage = lazy(() =>
+  import("./orders/OrderCreatePage").then((m) => ({ default: m.OrderCreatePage })),
+);
+const OrderDetailPage = lazy(() =>
+  import("./orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })),
+);
+const InventoryPage = lazy(() =>
+  import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
+);
+const UsersPage = lazy(() => import("./users/UsersPage").then((m) => ({ default: m.UsersPage })));
+const UserDetailPage = lazy(() =>
+  import("./users/UserDetailPage").then((m) => ({ default: m.UserDetailPage })),
+);
+const ComponentsPage = lazy(() =>
+  import("./dev/ComponentsPage").then((m) => ({ default: m.ComponentsPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+const ProfilePage = lazy(() =>
+  import("./settings/ProfilePage").then((m) => ({ default: m.ProfilePage })),
+);
 
 // TeamProvider sits INSIDE the protected route: memberships are only loadable once there is an
 // identity, and TeamAccessList requires a token.

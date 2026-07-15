@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import {
   Avatar,
   Box,
@@ -9,6 +9,7 @@ import {
   Menu,
   Portal,
   Spacer,
+  Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -162,7 +163,11 @@ export function Layout() {
         </Flex>
 
         <Box as="main" flex="1" overflow="auto" p="page">
-          <Outlet />
+          {/* Each route's page is code-split (React.lazy in router.tsx); this boundary shows a
+              spinner for the brief moment its chunk is fetched. */}
+          <Suspense fallback={<Spinner colorPalette="brand" />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Flex>
     </Flex>
