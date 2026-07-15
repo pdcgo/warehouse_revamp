@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, Store, Truck, Users } from "lucide-react";
+import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -16,6 +16,7 @@ const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: Fol
 const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
 const SHOPS: MenuItem = { to: "/shops", label: "Shops", icon: Store };
+const ORDERS: MenuItem = { to: "/orders", label: "Orders", icon: ShoppingCart };
 const INVENTORY: MenuItem = { to: "/inventory", label: "Inventory", icon: Boxes };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "Settings", icon: Settings };
@@ -46,9 +47,10 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(PRODUCTS);
   }
 
-  // Shops are a SELLING team's marketplace storefronts (#66) — a selling-only concept.
+  // Shops and orders are SELLING-team concepts (#66/#68).
   if (teamType === TeamType.SELLING) {
     menu.push(SHOPS);
+    menu.push(ORDERS);
   }
 
   // Inventory is warehouse stock — the current team IS the warehouse for its staff.

@@ -22,7 +22,9 @@ import {
   description as marketplaceSelectDescription,
 } from "../components/MarketplaceSelect";
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
+import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
 import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
+import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
@@ -226,6 +228,18 @@ const ENTRIES: Entry[] = [
           Marketplace.OTHER,
         ].map((m) => (
           <MarketplaceBadge key={m} marketplace={m} />
+        ))}
+      </Flex>
+    ),
+  },
+  {
+    id: "order-status-badge",
+    title: "OrderStatusBadge",
+    description: orderStatusBadgeDescription,
+    render: () => (
+      <Flex gap="2" wrap="wrap">
+        {[OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.CANCELLED].map((s) => (
+          <OrderStatusBadge key={s} status={s} />
         ))}
       </Flex>
     ),
