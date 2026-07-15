@@ -15,8 +15,10 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 const SUFFIX = Date.now().toString().slice(-6);
 const SKU = `P${SUFFIX}`;
 const SKU_IMG = `PI${SUFFIX}`;
+const SKU_SUB = `PS${SUFFIX}`;
 const NAME = `E2E Product ${SUFFIX}`;
 const CATEGORY = `E2E Cat ${SUFFIX}`;
+const SUBCATEGORY = `E2E Sub ${SUFFIX}`;
 
 // A tiny valid 1×1 PNG — enough to exercise the real upload + thumbnail path.
 const PNG_BASE64 =
@@ -113,6 +115,41 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
   await expect(page.getByTestId("products-table")).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU_IMG}`)).toBeVisible();
   await expect(page.getByTestId(`product-cover-${SKU_IMG}`)).toBeVisible();
+});
+
+test("Multistage category: create a subcategory, then drill parent → child to file a product (#63)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Create SUBCATEGORY under CATEGORY — the create dialog's parent picker is the multistage select.
+  await page.getByRole("link", { name: "Categories" }).click();
+  await page.getByTestId("open-create-category").click();
+  await page.getByTestId("new-category-name").fill(SUBCATEGORY);
+  // Pick the parent (a top-level category) in stage 0 of the cascader.
+  await page.getByTestId("category-select").click();
+  await page.getByRole("option", { name: CATEGORY }).click();
+  await page.getByTestId("submit-create-category").click();
+  await expect(page.getByTestId("submit-create-category")).toBeHidden();
+
+  // Now file a product under the SUBCATEGORY by drilling: stage 0 = parent, stage 1 = child.
+  await gotoProducts(page);
+  await page.getByTestId("open-create-product").click();
+  await page.getByTestId("product-edit-sku").fill(SKU_SUB);
+  await page.getByTestId("product-edit-name").fill(`${NAME} sub`);
+
+  // Stage 0 → pick the parent; that reveals stage 1 (the parent now has a child).
+  await page.getByTestId("category-select").click();
+  await page.getByRole("option", { name: CATEGORY }).click();
+  await expect(page.getByTestId("category-select-1")).toBeVisible();
+
+  // Stage 1 → pick the child; the value is now the subcategory and Save is enabled.
+  await page.getByTestId("category-select-1").click();
+  await page.getByRole("option", { name: SUBCATEGORY }).click();
+  // The picker must CLOSE after selecting, or its dismiss layer eats the next click.
+  await expect(page.getByRole("option", { name: SUBCATEGORY })).toBeHidden();
+  await expect(page.getByTestId("product-edit-save")).toBeEnabled();
+
+  await page.getByTestId("product-edit-save").click();
+  await expect(page.getByTestId(`product-row-${SKU_SUB}`)).toBeVisible();
 });
 
 test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) => {

@@ -14,6 +14,54 @@ export interface CategoryNode {
 // It is defensive about a malformed list: a cycle is broken (each id is emitted at most once) and an
 // orphan (parent_id points at a category that is not in the list) is surfaced at the top level rather
 // than silently dropped.
+// childrenByParent groups categories under their parent_id (string key; "0" = top-level), each
+// bucket sorted by name. The multistage picker reads one bucket per stage.
+export function childrenByParent(categories: Category[]): Map<string, Category[]> {
+  const map = new Map<string, Category[]>();
+
+  for (const category of categories) {
+    const key = category.parentId.toString();
+    const bucket = map.get(key);
+
+    if (bucket) {
+      bucket.push(category);
+    } else {
+      map.set(key, [category]);
+    }
+  }
+
+  for (const bucket of map.values()) {
+    bucket.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return map;
+}
+
+// pathToRoot returns the ancestor chain [root … id] for a category id (inclusive), or [] for 0n /
+// an unknown id. Cycle-safe. The multistage picker uses it to pre-fill each stage from a value.
+export function pathToRoot(categories: Category[], id: bigint): Category[] {
+  if (id === 0n) {
+    return [];
+  }
+
+  const byId = new Map<string, Category>();
+  for (const category of categories) {
+    byId.set(category.id.toString(), category);
+  }
+
+  const path: Category[] = [];
+  const seen = new Set<string>();
+  let cur = byId.get(id.toString());
+
+  while (cur && !seen.has(cur.id.toString())) {
+    seen.add(cur.id.toString());
+    path.unshift(cur);
+    cur = cur.parentId === 0n ? undefined : byId.get(cur.parentId.toString());
+  }
+
+  return path;
+}
+
 export function flattenTree(categories: Category[]): CategoryNode[] {
   // Group children under their parent_id (as a string key — bigint is not a stable Map key here).
   const childrenOf = new Map<string, Category[]>();

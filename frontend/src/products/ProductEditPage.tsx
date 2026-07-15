@@ -156,7 +156,7 @@ export function ProductEditPage() {
         </Text>
       )}
 
-      <form onSubmit={save}>
+      <form onSubmit={save} noValidate>
         <Stack gap="section">
           <Card.Root>
             <Card.Body>
