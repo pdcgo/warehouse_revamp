@@ -464,6 +464,10 @@ app and review as work lands, so per-issue branch-switching just gets in the way
 
 - Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
   should pass at each commit.
+- **Decompose big work into SUB-ISSUES, not loose top-level issues.** When a plan is large enough
+  to split into pieces, create the pieces as GitHub **sub-issues under a parent issue** (via the
+  Sub-issues feature), not as unparented standalone issues — so progress rolls up under the parent
+  and stays trackable. (owner, #81)
 - **An issue's real spec lives in its COMMENTS, not just the body.** The owner drives each
   issue as a thread: the body is the initial ask; refinements, reworks, and NEW requirements
   arrive as comments, and the **last comment is usually the current spec**. Before starting —
