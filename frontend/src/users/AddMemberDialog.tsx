@@ -14,19 +14,33 @@ import {
 import { rpcError, userClient } from "../api/clients";
 import type { PublicUser } from "../gen/warehouse/user/v1/user_pb";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
+import type { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { toaster } from "../components/Toaster";
 import { roleLabel, rolesFor } from "../lib/roles";
 
-// AddMemberDialog adds an EXISTING user to the current team.
+// AddMemberDialog adds an EXISTING user to a team. It defaults to the CURRENT team (the scope), but
+// a caller may target another team explicitly (the team detail page manages an arbitrary team's
+// members) by passing `teamId` + `teamType`.
 //
 // It is the reason SearchUser is unscoped: you cannot find someone who is not in your team by
 // searching within your team. The search deliberately returns PublicUser only — id, username,
 // name — so browsing colleagues never exposes their email or phone.
-export function AddMemberDialog({ onDone }: { onDone: () => void }) {
+export function AddMemberDialog({
+  onDone,
+  teamId,
+  teamType,
+}: {
+  onDone: () => void;
+  teamId?: bigint;
+  teamType?: TeamType;
+}) {
   const { current } = useTeam();
 
-  const roles = rolesFor(current?.teamType);
+  const targetTeamId = teamId ?? current?.teamId;
+  const targetTeamType = teamType ?? current?.teamType;
+
+  const roles = rolesFor(targetTeamType);
 
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -70,7 +84,7 @@ export function AddMemberDialog({ onDone }: { onDone: () => void }) {
   }, [q, open]);
 
   async function add() {
-    if (!selected || !current) {
+    if (!selected || targetTeamId === undefined) {
       return;
     }
 
@@ -79,7 +93,7 @@ export function AddMemberDialog({ onDone }: { onDone: () => void }) {
 
     try {
       await userClient.teamUserUpdate({
-        teamId: current.teamId,
+        teamId: targetTeamId,
         action: {
           case: "add",
           value: { userId: BigInt(selected), role, alias: "" },

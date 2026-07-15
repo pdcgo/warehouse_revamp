@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
+  Box,
   Flex,
   Heading,
   Icon,
@@ -24,13 +26,13 @@ import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
-import { TeamDetailDialog } from "./TeamDetailDialog";
 
 const ROOT_TEAM_ID = 1n;
 
 // A warehouse IS a team of type WAREHOUSE — this is the Teams view filtered to that type.
 export function WarehousesPage() {
   const { current } = useTeam();
+  const navigate = useNavigate();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ export function WarehousesPage() {
   // Which row action is open, and for which warehouse. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<{
-    kind: "detail" | "info" | "edit" | "delete";
+    kind: "info" | "edit" | "delete";
     team: Team;
   } | null>(null);
 
@@ -115,14 +117,20 @@ export function WarehousesPage() {
               return (
                 <Table.Row key={team.id.toString()} data-testid={`warehouse-row-${team.teamCode}`}>
                   <Table.Cell>
-                    <TeamItem
-                      team={{
-                        teamName: team.name,
-                        teamType: team.type,
-                        teamId: team.id,
-                        imageUrl: team.imageUrl,
-                      }}
-                    />
+                    <Box
+                      cursor="pointer"
+                      data-testid={`open-warehouse-${team.teamCode}`}
+                      onClick={() => navigate(`/warehouses/${team.id}`)}
+                    >
+                      <TeamItem
+                        team={{
+                          teamName: team.name,
+                          teamType: team.type,
+                          teamId: team.id,
+                          imageUrl: team.imageUrl,
+                        }}
+                      />
+                    </Box>
                   </Table.Cell>
                   <Table.Cell>{team.teamCode}</Table.Cell>
 
@@ -145,7 +153,7 @@ export function WarehousesPage() {
                             <Menu.Item
                               value="detail"
                               data-testid={`detail-warehouse-${team.teamCode}`}
-                              onClick={() => setDialog({ kind: "detail", team })}
+                              onClick={() => navigate(`/warehouses/${team.id}`)}
                             >
                               <Icon as={Eye} boxSize="4" />
                               Details
@@ -197,18 +205,6 @@ export function WarehousesPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
-      {dialog?.kind === "detail" && (
-        <TeamDetailDialog
-          key={dialog.team.id.toString()}
-          teamId={dialog.team.id}
-          noun="Warehouse"
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
       {dialog?.kind === "info" && (
         <TeamInfoDialog
           key={dialog.team.id.toString()}

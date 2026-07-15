@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Badge,
+  Box,
   Button,
   Flex,
   HStack,
@@ -189,7 +190,19 @@ export function UsersPage() {
               return (
                 <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
                   <Table.Cell>
-                    <UserItem user={user} />
+                    {globalAdmin ? (
+                      // UserTeams (the detail source) is root/admin only, so only offer click-to-open
+                      // where it will actually work.
+                      <Box
+                        cursor="pointer"
+                        data-testid={`open-user-${user.username}`}
+                        onClick={() => setDialog({ kind: "details", user })}
+                      >
+                        <UserItem user={user} />
+                      </Box>
+                    ) : (
+                      <UserItem user={user} />
+                    )}
                   </Table.Cell>
                   <Table.Cell>{user.email}</Table.Cell>
                   <Table.Cell>

@@ -75,6 +75,23 @@ test("TeamInfo: bank details round-trip", async ({ page }) => {
   await expect(page.getByTestId("info-bank-account")).toHaveValue("999888777");
 });
 
+test("TeamDetail: the dedicated detail page shows the team and its members", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoTeams(page);
+
+  // Clicking the team opens its dedicated detail page (not a dialog).
+  await page.getByTestId(`open-team-${CODE}`).click();
+  await expect(page.getByTestId("team-detail-page")).toBeVisible();
+  await expect(page.getByTestId("team-detail-page")).toContainText(`${NAME} renamed`);
+
+  // TeamCreate makes the creator (root) the owner, so root is a member of this team.
+  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
+
+  // Back returns to the list.
+  await page.getByTestId("team-detail-back").click();
+  await expect(page.getByTestId("teams-table")).toBeVisible();
+});
+
 test("the root team cannot be deleted (no delete action offered)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);

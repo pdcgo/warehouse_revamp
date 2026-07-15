@@ -10,6 +10,7 @@ import { ProfilePage } from "./settings/ProfilePage";
 import { SettingsPage } from "./settings/SettingsPage";
 import { ShippingChannelsPage } from "./shipping/ShippingChannelsPage";
 import { TeamProvider } from "./team/TeamContext";
+import { TeamDetailPage } from "./teams/TeamDetailPage";
 import { TeamsPage } from "./teams/TeamsPage";
 import { WarehousesPage } from "./teams/WarehousesPage";
 import { AllUsersPage } from "./users/AllUsersPage";
@@ -46,7 +47,12 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "teams", element: <TeamsPage /> },
+      { path: "teams/:teamId", element: <TeamDetailPage noun="Team" backTo="/teams" /> },
       { path: "warehouses", element: <WarehousesPage /> },
+      {
+        path: "warehouses/:teamId",
+        element: <TeamDetailPage noun="Warehouse" backTo="/warehouses" />,
+      },
       { path: "categories", element: <CategoriesPage /> },
       { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },

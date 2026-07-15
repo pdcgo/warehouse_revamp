@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Badge,
+  Box,
   Flex,
   HStack,
   Heading,
@@ -221,7 +222,17 @@ export function AllUsersPage() {
               return (
                 <Table.Row key={user.id.toString()} data-testid={`all-users-row-${user.username}`}>
                   <Table.Cell>
-                    <UserItem user={user} />
+                    {globalAdmin ? (
+                      <Box
+                        cursor="pointer"
+                        data-testid={`open-user-${user.username}`}
+                        onClick={() => setDialog({ kind: "details", user })}
+                      >
+                        <UserItem user={user} />
+                      </Box>
+                    ) : (
+                      <UserItem user={user} />
+                    )}
                   </Table.Cell>
                   <Table.Cell>{user.email}</Table.Cell>
                   <Table.Cell>

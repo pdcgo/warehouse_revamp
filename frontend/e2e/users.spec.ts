@@ -90,6 +90,16 @@ test("UpdateUser: an admin edits another user's name", async ({ page }) => {
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toContainText("Renamed By Admin");
 });
 
+test("UserDetail: clicking a user opens their detail", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  // Clicking the user item (not the row menu) opens the detail dialog.
+  await page.getByTestId(`open-user-${NEW_USER}`).click();
+  await expect(page.getByTestId("user-detail")).toBeVisible();
+  await expect(page.getByTestId("user-detail")).toContainText(NEW_USER);
+});
+
 test("ResetPassword: a user changes their OWN password and stays signed in", async ({ page }) => {
   await login(page, NEW_USER, NEW_PASSWORD);
 
