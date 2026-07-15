@@ -32,6 +32,14 @@
 >   - **Shape:** `order` (team_id scope, shop_id, status, customer name/phone/address, shipping_code,
 >     the three money totals) + `order_items` (the line snapshots). No FKs across services (shop_id,
 >     product_id are opaque). #67 ships the backend (model + OrderCreate/List/Detail); the UI is #68.
+> - **#68 + #90 order UI shipped (agent, overnight 2026-07-15).** Orders list + read-only detail
+>   (#68), then the create form (#90): customer + shop + shipping + dynamic product lines, subtotal
+>   auto-summed, total = subtotal + shipping. Two new shared pickers — `ShopSelect` (bounded
+>   NativeSelect over the team's shops) and `ProductSelect` (searchable Combobox over the catalogue).
+>   **Design finding:** a product has **no catalogue price** (sku/name/category/images only), so the
+>   order line's `unit_price` is **typed by the CS person** — which is right anyway, since the
+>   buyer-paid price on a marketplace varies by shop/promo and the order FREEZES whatever was agreed.
+>   If a default/list price is ever wanted, it belongs on the product (a new field), not invented here.
 > - Still **open** and need the owner: §3.6 (which warehouse fulfils — needs §1) and the whole
 >   revenue side (#32 / §3.7 downstream).
 
