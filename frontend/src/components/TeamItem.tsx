@@ -45,6 +45,8 @@ export interface TeamItemProps {
 // TeamItem is the shared way to show a team (#42): a rounded avatar (name initials), the team name,
 // and a type badge coloured by team type. Everything that renders "a team" should use this so team
 // display stays consistent.
+export const description = "The shared way to show a team — avatar, name, and a type badge coloured per type.";
+
 export function TeamItem({ team, action }: TeamItemProps) {
   const name = team.teamName || (team.teamId !== undefined ? `Team #${team.teamId}` : "Team");
   const palette = typePalette(team.teamType);

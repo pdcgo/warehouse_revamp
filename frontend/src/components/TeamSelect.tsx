@@ -14,6 +14,8 @@ export interface TeamSelectProps {
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
 // on team NAME or team CODE. Each option renders with TeamItem, so the picker looks like every other
 // place a team is shown. It fetches the team list itself and emits the selected team id.
+export const description = "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id.";
+
 export function TeamSelect({
   value,
   onChange,

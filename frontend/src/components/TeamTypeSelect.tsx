@@ -37,6 +37,8 @@ export interface TeamTypeSelectProps {
 
 // TeamTypeSelect is the shared team-type picker (#45), built on Chakra's composable Select. It
 // emits a TeamType, so callers work in the enum, not strings.
+export const description = "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.";
+
 export function TeamTypeSelect({
   value,
   onChange,

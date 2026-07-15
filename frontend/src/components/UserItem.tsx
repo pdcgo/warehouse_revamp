@@ -17,6 +17,8 @@ export interface UserItemProps {
 // UserItem is the shared way to show a user in a list, a menu, a search result (#41): their avatar
 // (falling back to initials), display name, @username, and — optionally — a role badge. Everything
 // that renders "a user" should use this so avatars and naming stay consistent across the app.
+export const description = "The shared way to show a user — avatar (or initials), display name, and @username.";
+
 export function UserItem({ user, role, action, size = "sm" }: UserItemProps) {
   const display = user.name || user.username;
   const showRole = role !== undefined && role !== Role.UNSPECIFIED;

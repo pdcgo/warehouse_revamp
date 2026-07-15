@@ -8,6 +8,10 @@ import { Eye, EyeOff } from "lucide-react";
 // aria-invalid — exactly as a bare `<Input type="password">` did) and lays the toggle button over
 // it. Wrapping the Input in Chakra's InputGroup instead would break that Field association, so the
 // button is positioned absolutely over a relative Box rather than injected as an input element.
+// description documents this component in the shared-components gallery (/components). Every
+// curated shared component carries one so the gallery reads like living documentation.
+export const description = "A password field with a show/hide toggle. Drop-in for any masked input.";
+
 export function PasswordInput(props: InputProps) {
   const [visible, setVisible] = useState(false);
 

@@ -1,18 +1,21 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
-import { PasswordInput } from "../components/PasswordInput";
-import { UserItem } from "../components/UserItem";
-import { TeamItem } from "../components/TeamItem";
-import { TeamTypeSelect } from "../components/TeamTypeSelect";
-import { TeamSelect } from "../components/TeamSelect";
-import { UserSelect } from "../components/UserSelect";
-import { RoleSelect } from "../components/RoleSelect";
+// Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
+// them here so it is documentation generated from the components themselves, not a parallel list
+// that can drift.
+import { PasswordInput, description as passwordInputDescription } from "../components/PasswordInput";
+import { UserItem, description as userItemDescription } from "../components/UserItem";
+import { TeamItem, description as teamItemDescription } from "../components/TeamItem";
+import { TeamTypeSelect, description as teamTypeSelectDescription } from "../components/TeamTypeSelect";
+import { TeamSelect, description as teamSelectDescription } from "../components/TeamSelect";
+import { UserSelect, description as userSelectDescription } from "../components/UserSelect";
+import { RoleSelect, description as roleSelectDescription } from "../components/RoleSelect";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { roleLabel } from "../lib/roles";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { ShippingSelect } from "../shipping/ShippingSelect";
-import { CategorySelect } from "../categories/CategorySelect";
+import { ShippingSelect, description as shippingSelectDescription } from "../shipping/ShippingSelect";
+import { CategorySelect, description as categorySelectDescription } from "../categories/CategorySelect";
 import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
@@ -137,13 +140,13 @@ const ENTRIES: Entry[] = [
   {
     id: "password-input",
     title: "PasswordInput",
-    description: "A password field with a show/hide toggle. Drop-in for any masked input.",
+    description: passwordInputDescription,
     render: () => <PasswordDemo />,
   },
   {
     id: "user-item",
     title: "UserItem",
-    description: "The shared way to show a user — avatar (or initials), display name, and @username.",
+    description: userItemDescription,
     render: () => (
       <>
         <UserItem user={{ name: "Ada Lovelace", username: "ada", avatarUrl: "" }} />
@@ -154,7 +157,7 @@ const ENTRIES: Entry[] = [
   {
     id: "team-item",
     title: "TeamItem",
-    description: "The shared way to show a team — avatar, name, and a type badge coloured per type.",
+    description: teamItemDescription,
     render: () => (
       <>
         <TeamItem team={{ teamName: "Jakarta Warehouse", teamType: TeamType.WAREHOUSE }} />
@@ -166,37 +169,37 @@ const ENTRIES: Entry[] = [
   {
     id: "shipping-select",
     title: "ShippingSelect",
-    description: "Courier picker backed by the shipping catalogue. Emits a courier code.",
+    description: shippingSelectDescription,
     render: () => <ShippingDemo />,
   },
   {
     id: "category-select",
     title: "CategorySelect",
-    description: "Nested category picker over the global taxonomy. Emits a category id (0 = top-level).",
+    description: categorySelectDescription,
     render: () => <CategoryDemo />,
   },
   {
     id: "team-type-select",
     title: "TeamTypeSelect",
-    description: "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.",
+    description: teamTypeSelectDescription,
     render: () => <TeamTypeDemo />,
   },
   {
     id: "team-select",
     title: "TeamSelect",
-    description: "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id.",
+    description: teamSelectDescription,
     render: () => <TeamSelectDemo />,
   },
   {
     id: "user-select",
     title: "UserSelect",
-    description: "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList).",
+    description: userSelectDescription,
     render: () => <UserSelectDemo />,
   },
   {
     id: "role-select",
     title: "RoleSelect",
-    description: "Searchable role picker (Chakra Combobox). Offers all roles, or a team type's roles via the teamType prop. Emits a Role.",
+    description: roleSelectDescription,
     render: () => <RoleSelectDemo />,
   },
 ];

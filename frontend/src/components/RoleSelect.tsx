@@ -35,6 +35,8 @@ export interface RoleSelectProps {
 
 // RoleSelect is the shared role picker (#57): a searchable Chakra Combobox whose offered roles are
 // chosen by `roles`/`teamType`/all. Emits a Role.
+export const description = "Searchable role picker (Chakra Combobox). Offers all roles, or a team type's roles via the teamType prop. Emits a Role.";
+
 export function RoleSelect({
   value,
   onChange,

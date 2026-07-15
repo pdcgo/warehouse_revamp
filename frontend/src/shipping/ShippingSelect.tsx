@@ -14,6 +14,8 @@ export interface ShippingSelectProps {
 // ShippingSelect is a reusable courier picker backed by ShippingList. It loads the seeded courier
 // catalogue once; the value it emits is a courier CODE, so callers persist a stable key rather than
 // a display label.
+export const description = "Courier picker backed by the shipping catalogue. Emits a courier code.";
+
 export function ShippingSelect({
   value,
   onChange,

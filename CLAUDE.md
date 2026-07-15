@@ -410,6 +410,11 @@ Two more UI rules:
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
+- **Every curated shared component exports a `description`.** A reusable component previewed in
+  the [components gallery](frontend/src/dev/ComponentsPage.tsx) (`/components`) must
+  `export const description = "…"` alongside itself, and the gallery renders it — so the gallery
+  is living documentation generated from the components, not a parallel list that drifts. Adding a
+  new shared component to the gallery means adding its `description` in the same file.
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:

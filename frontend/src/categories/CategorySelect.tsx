@@ -25,6 +25,8 @@ export interface CategorySelectProps {
 // It uses Chakra's composable `Select` (createListCollection + Select.Root/…/Item) rather than a
 // NativeSelect: a native <option> can only fake indentation with padding spaces, whereas a composed
 // item can carry real per-depth indentation — which is the whole point of a nested picker.
+export const description = "Nested category picker over the global taxonomy. Emits a category id (0 = top-level).";
+
 export function CategorySelect({
   value = 0n,
   onChange,
