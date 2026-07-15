@@ -16,6 +16,12 @@ import { roleLabel } from "../lib/roles";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ShippingSelect, description as shippingSelectDescription } from "../shipping/ShippingSelect";
 import { CategorySelect, description as categorySelectDescription } from "../categories/CategorySelect";
+import {
+  MarketplaceSelect,
+  marketplaceLabel,
+  description as marketplaceSelectDescription,
+} from "../components/MarketplaceSelect";
+import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
@@ -136,6 +142,19 @@ function RoleSelectDemo() {
   );
 }
 
+function MarketplaceDemo() {
+  const [m, setM] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+
+  return (
+    <>
+      <MarketplaceSelect value={m} onChange={setM} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected: {m ? marketplaceLabel(m) : "(none)"}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -183,6 +202,12 @@ const ENTRIES: Entry[] = [
     title: "TeamTypeSelect",
     description: teamTypeSelectDescription,
     render: () => <TeamTypeDemo />,
+  },
+  {
+    id: "marketplace-select",
+    title: "MarketplaceSelect",
+    description: marketplaceSelectDescription,
+    render: () => <MarketplaceDemo />,
   },
   {
     id: "team-select",

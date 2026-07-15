@@ -20,6 +20,8 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
+	selling_service "github.com/pdcgo/warehouse_revamp/backend/services/selling_service"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
@@ -40,6 +42,7 @@ func NewServeMux(
 	teamService *team_v1.Service,
 	shippingService *shipping_v1.Service,
 	productService *product_v1.Service,
+	sellingService *selling_v1.Service,
 	categoryService *category_v1.Service,
 	documentService *document_v1.Service,
 	inventoryService *inventory_v1.Service,
@@ -81,6 +84,7 @@ func NewServeMux(
 		team_service.NewRegister(mux, teamService, opts),
 		shipping_service.NewRegister(mux, shippingService, opts),
 		product_service.NewRegister(mux, productService, opts),
+		selling_service.NewRegister(mux, sellingService, opts),
 		category_service.NewRegister(mux, categoryService, opts),
 		document_service.NewRegister(mux, documentService, docCfg, opts),
 		inventory_service.NewRegister(mux, inventoryService, opts),

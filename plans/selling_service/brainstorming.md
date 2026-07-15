@@ -11,7 +11,13 @@
 > - **Decomposed into sub-issues** — the §4 break-up was created as GitHub issues on the board
 >   (owner: "create all of them"). Shop management is Ready; the rest are Backlog behind the
 >   decisions/§1 dependency. (owner, 2026-07-15)
-> - Every remaining fork in §3 is still **open** and needs the owner.
+> - **§3.5 Shops SETTLED (#66)** — a new **`selling_service`** owns `shops` (team-scoped to a
+>   SELLING team). Shape: `name` (required), `shop_code` (unique per team, like team_code),
+>   `marketplace` (a typed **enum** → `MarketplaceSelect`: Shopee/Tokopedia/Lazada/TikTok/Blibli/
+>   Bukalapak/Other), `description`. **No credentials/integration metadata** — "just save shop
+>   info"; the marketplace-integration secret story waits for import (#73). Managed by team
+>   owner/admin (+ root/admin). (owner, 2026-07-15)
+> - The order/revenue forks in §3 (3.2, 3.3, 3.4, 3.6, 3.7) are still **open** and need the owner.
 
 ---
 

@@ -171,7 +171,33 @@ erDiagram
 
 ---
 
-## category_service
+## selling_service
+
+`backend/services/selling_service/db_migrations/`
+
+```mermaid
+erDiagram
+    shops {
+        bigserial   id          PK
+        bigint      team_id     "owning SELLING team, opaque cross-service id, no FK"
+        text        name        "required"
+        text        shop_code   "required, unique per team among active"
+        text        marketplace "Marketplace enum as text (shopee, tokopedia, …); no CHECK"
+        text        description
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
+  `use_scope`), so a shop is only ever reachable within its owning team. `shop_code` is unique per
+  team **among active shops only** (`UNIQUE (team_id, shop_code) WHERE deleted = FALSE`), so a
+  soft-deleted shop frees its code and two teams may share one. `marketplace` stores the proto
+  `Marketplace` enum **as text**, mapped in `selling_v1/mapper.go` — deliberately **without** a
+  `CHECK` IN-list: the mapper + proto validation guard the value, and an IN-list is just one more
+  place to drift when the enum grows (the trap behind #80). No credentials are stored — "just shop
+  info". selling_service will grow to own orders (the #23 decomposition).
 
 `backend/services/category_service/db_migrations/`
 
@@ -237,6 +263,7 @@ erDiagram
 erDiagram
     teams ||--o{ user_team_roles : "team_id, opaque via RPC"
     teams ||--o{ products : "team_id, opaque via RPC"
+    teams ||--o{ shops : "team_id, opaque via RPC"
     teams ||--o{ documents : "team_id, opaque via RPC"
     categories ||--o{ products : "category_id, opaque via RPC"
 ```

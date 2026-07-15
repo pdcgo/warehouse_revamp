@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// ShopService owns `shops` — the marketplace storefronts a SELLING team operates (#66). Every RPC
+// is team-scoped: `team_id` carries (use_scope), and the handler only ever touches rows with that
+// team_id, so one team can never reach another team's shop by id. selling_service will grow to own
+// orders too (the #23 decomposition); shops are the first piece.
+service ShopService {
+  rpc ShopCreate(ShopCreateRequest) returns (ShopCreateResponse);
+  rpc ShopList(ShopListRequest) returns (ShopListResponse);
+  rpc ShopDetail(ShopDetailRequest) returns (ShopDetailResponse);
+  rpc ShopUpdate(ShopUpdateRequest) returns (ShopUpdateResponse);
+  rpc ShopDelete(ShopDeleteRequest) returns (ShopDeleteResponse);
+}
+
+// Marketplace is the storefront a shop lives on. Append-only; OTHER covers anything not yet listed.
+enum Marketplace {
+  MARKETPLACE_UNSPECIFIED = 0;
+  MARKETPLACE_SHOPEE = 1;
+  MARKETPLACE_TOKOPEDIA = 2;
+  MARKETPLACE_LAZADA = 3;
+  MARKETPLACE_TIKTOK = 4;
+  MARKETPLACE_BLIBLI = 5;
+  MARKETPLACE_BUKALAPAK = 6;
+  MARKETPLACE_OTHER = 7;
+}
+
+message Shop {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string name = 3;
+  string shop_code = 4;
+  Marketplace marketplace = 5;
+  string description = 6;
+  bool deleted = 7;
+}
+
+message ShopCreateRequest {
+  // Write: the selling team's managers. Team-level roles are legal because team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  string shop_code = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+  // Required — a shop is always on a marketplace.
+  Marketplace marketplace = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string description = 5 [(buf.validate.field).string = {max_len: 1000}];
+}
+
+message ShopCreateResponse {
+  Shop shop = 1;
+}
+
+message ShopListRequest {
+  // Read: anyone in the selling team, including customer service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ShopListResponse {
+  repeated Shop shops = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message ShopDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopDetailResponse {
+  Shop shop = 1;
+}
+
+message ShopUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  optional string shop_code = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+  optional Marketplace marketplace = 5 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  optional string description = 6 [(buf.validate.field).string = {max_len: 1000}];
+}
+
+message ShopUpdateResponse {
+  Shop shop = 1;
+}
+
+message ShopDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopDeleteResponse {}
