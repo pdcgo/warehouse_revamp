@@ -59,6 +59,21 @@ test("root can reach the Users screen", async ({ page }) => {
   await expect(page.getByTestId(`user-row-${ROOT_USERNAME}`)).toBeVisible();
 });
 
+test("CreateUser rejects an invalid username — lowercase alphanumeric only (#87)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await page.getByTestId("open-create-user").click();
+  await page.getByTestId("new-username").fill("Bad_Name");
+  await page.getByTestId("new-password").fill("e2epassword1");
+  await page.getByTestId("new-name").fill("Nope");
+  await page.getByTestId("submit-create-user").click();
+
+  // The frontend blocks it with a validation error; no account is created.
+  await expect(page.getByTestId("create-user-error")).toBeVisible();
+  await expect(page.getByTestId("submit-create-user")).toBeVisible(); // dialog stays open
+});
+
 test("CreateUser: a new user appears, and can immediately sign in", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);

@@ -907,7 +907,9 @@ type CreateUserRequest struct {
 	//	                is automatically root/admin-only — no extra check needed.
 	//
 	// Both tables belong to user_service, so this is ONE real transaction, not a saga.
-	TeamId      uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
+	// enforces the same rule; this is the real gate.
 	Username    string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	Password    string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
@@ -2458,10 +2460,10 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12!\n" +
 	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xca\x02\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xd7\x02\n" +
 	"\x11CreateUserRequest\x12\x1d\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x12%\n" +
-	"\busername\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x03\x18dR\busername\x12&\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x122\n" +
+	"\busername\x18\x02 \x01(\tB\x16\xbaH\x13r\x11\x10\x03\x18d2\v^[a-z0-9]+$R\busername\x12&\n" +
 	"\bpassword\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\bpassword\x12\x1c\n" +
 	"\x04name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x04name\x12\x1e\n" +

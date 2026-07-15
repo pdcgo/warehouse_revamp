@@ -256,9 +256,12 @@ message CreateUserRequest {
   // Both tables belong to user_service, so this is ONE real transaction, not a saga.
   uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 
+  // Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
+  // enforces the same rule; this is the real gate.
   string username = 2 [(buf.validate.field).string = {
     min_len: 3
     max_len: 100
+    pattern: "^[a-z0-9]+$"
   }];
   string password = 3 [(buf.validate.field).string = {
     min_len: 8

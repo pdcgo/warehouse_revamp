@@ -59,6 +59,12 @@ export function CreateUserDialog({
   async function submit(event: FormEvent) {
     event.preventDefault();
 
+    // Username is lowercase alphanumeric only (#87) — the backend enforces the same rule.
+    if (!/^[a-z0-9]+$/.test(username)) {
+      setError("Username may only contain lowercase letters and numbers.");
+      return;
+    }
+
     setBusy(true);
     setError("");
 
@@ -124,6 +130,7 @@ export function CreateUserDialog({
                       data-testid="new-username"
                       onChange={(e) => setUsername(e.target.value)}
                     />
+                    <Field.HelperText>Lowercase letters and numbers only.</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
