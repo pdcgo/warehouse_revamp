@@ -208,6 +208,43 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
 });
 
+test("ForgotPassword: recover the account with an OTP, then sign in", async ({ page }) => {
+  // The mock OTP backend (dev / test — no Twilio configured) approves this one fixed code for
+  // everyone. See backend pkgs/san_verification/otp_mock.go: MockOtpCode.
+  const OTP_CODE = "123456";
+  const OTP_SET_PASSWORD = "otp-recovered-1";
+
+  // Start signed out, from the login page.
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await page.goto("/login");
+
+  // Step 1 — ask for a code by username. This ALWAYS advances: the server never reveals whether
+  // the account exists, and neither does the UI.
+  await page.getByTestId("open-forgot-password").click();
+  await page.getByTestId("forgot-username").fill(NEW_USER);
+  await page.getByTestId("request-otp").click();
+
+  // Step 2 — enter the code and a new password.
+  await page.getByTestId("otp-code").fill(OTP_CODE);
+  await page.getByTestId("otp-new-password-1").fill(OTP_SET_PASSWORD);
+  await page.getByTestId("otp-new-password-2").fill(OTP_SET_PASSWORD);
+  await page.getByTestId("submit-otp-reset").click();
+
+  // Wait for the SUCCESS TOAST before doing anything else. It only appears once the reset RPC
+  // has resolved — navigating away sooner (as an earlier version did) aborts the in-flight
+  // request, and the password is never actually changed.
+  await expect(page.getByText("Password reset")).toBeVisible();
+
+  // The recovery flow deliberately returns NO token, so the user signs in fresh with the new
+  // password.
+  await login(page, NEW_USER, OTP_SET_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
 test("DeleteUser: the account is gone for good", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);

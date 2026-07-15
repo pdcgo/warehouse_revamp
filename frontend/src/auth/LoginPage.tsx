@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Field,
+  Flex,
   Heading,
   Input,
   Stack,
@@ -13,6 +14,7 @@ import {
 import { Navigate, useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { PasswordInput } from "../components/PasswordInput";
+import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
 import { useAuth } from "./AuthContext";
 
 export function LoginPage() {
@@ -94,6 +96,10 @@ export function LoginPage() {
               <Button type="submit" colorPalette="brand" loading={busy}>
                 Sign in
               </Button>
+
+              <Flex justify="center">
+                <ForgotPasswordDialog />
+              </Flex>
             </Stack>
           </form>
         </Card.Body>
