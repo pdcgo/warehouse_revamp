@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -41,7 +42,6 @@ import { isGlobalAdmin } from "../lib/roles";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
-import { UserDetailDialog } from "./UserDetailDialog";
 
 const PAGE_SIZE = 20;
 
@@ -53,6 +53,7 @@ const PAGE_SIZE = 20;
 export function AllUsersPage() {
   const { identity } = useAuth();
   const { current } = useTeam();
+  const navigate = useNavigate();
 
   // The whole page is a root/admin surface; this only decides whether to OFFER the destructive
   // row actions. The backend's interceptor is the real boundary regardless.
@@ -71,7 +72,7 @@ export function AllUsersPage() {
   // Which row action is open, and for which user. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<
-    { kind: "details" | "edit" | "reset" | "suspend" | "delete"; user: User } | null
+    { kind: "edit" | "reset" | "suspend" | "delete"; user: User } | null
   >(null);
 
   // The team filter's options. Loaded once — a non-fatal failure just leaves "All teams" as the
@@ -226,7 +227,7 @@ export function AllUsersPage() {
                       <Box
                         cursor="pointer"
                         data-testid={`open-user-${user.username}`}
-                        onClick={() => setDialog({ kind: "details", user })}
+                        onClick={() => navigate(`/users/${user.id}`)}
                       >
                         <UserItem user={user} />
                       </Box>
@@ -275,7 +276,7 @@ export function AllUsersPage() {
                               <Menu.Item
                                 value="details"
                                 data-testid={`details-${user.username}`}
-                                onClick={() => setDialog({ kind: "details", user })}
+                                onClick={() => navigate(`/users/${user.id}`)}
                               >
                                 <Icon as={Eye} boxSize="4" />
                                 Details
@@ -328,17 +329,6 @@ export function AllUsersPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
-      {dialog?.kind === "details" && (
-        <UserDetailDialog
-          key={dialog.user.id.toString()}
-          user={dialog.user}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
       {dialog?.kind === "edit" && (
         <EditUserDialog
           key={dialog.user.id.toString()}

@@ -403,6 +403,10 @@ Two more UI rules:
   `Dialog`) before it runs. Never a bare one-click destructive button.
 - **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
   "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
+- **A detail view is a PAGE, not a dialog.** "See the full record" — user detail, team detail,
+  warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
+  `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
+  confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:

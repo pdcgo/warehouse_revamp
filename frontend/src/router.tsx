@@ -14,6 +14,7 @@ import { TeamDetailPage } from "./teams/TeamDetailPage";
 import { TeamsPage } from "./teams/TeamsPage";
 import { WarehousesPage } from "./teams/WarehousesPage";
 import { AllUsersPage } from "./users/AllUsersPage";
+import { UserDetailPage } from "./users/UserDetailPage";
 import { UsersPage } from "./users/UsersPage";
 
 // TeamProvider sits INSIDE the protected route: memberships are only loadable once there is an
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "users", element: <UsersPage /> },
+      { path: "users/:userId", element: <UserDetailPage /> },
       { path: "all-users", element: <AllUsersPage /> },
       { path: "components", element: <ComponentsPage /> },
       { path: "settings", element: <SettingsPage /> },

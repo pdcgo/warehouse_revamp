@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -31,13 +32,13 @@ import { CreateUserDialog } from "./CreateUserDialog";
 import { EditUserDialog } from "./EditUserDialog";
 import { AddMemberDialog } from "./AddMemberDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
-import { UserDetailDialog } from "./UserDetailDialog";
 
 const PAGE_SIZE = 20;
 
 export function UsersPage() {
   const { identity } = useAuth();
   const { current } = useTeam();
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState<User[]>([]);
   const [q, setQ] = useState("");
@@ -47,7 +48,7 @@ export function UsersPage() {
   // Which row action is open, and for which user. The row's actions live behind one overflow menu;
   // picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<
-    { kind: "details" | "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
+    { kind: "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
   >(null);
 
   // A global admin may look at EVERY user (team_id = 0). Anyone else sees only their own team.
@@ -191,12 +192,12 @@ export function UsersPage() {
                 <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
                   <Table.Cell>
                     {globalAdmin ? (
-                      // UserTeams (the detail source) is root/admin only, so only offer click-to-open
-                      // where it will actually work.
+                      // The detail PAGE reads UserTeams (root/admin only), so only offer
+                      // click-to-open where it will actually work.
                       <Box
                         cursor="pointer"
                         data-testid={`open-user-${user.username}`}
-                        onClick={() => setDialog({ kind: "details", user })}
+                        onClick={() => navigate(`/users/${user.id}`)}
                       >
                         <UserItem user={user} />
                       </Box>
@@ -245,7 +246,7 @@ export function UsersPage() {
                               <Menu.Item
                                 value="details"
                                 data-testid={`details-${user.username}`}
-                                onClick={() => setDialog({ kind: "details", user })}
+                                onClick={() => navigate(`/users/${user.id}`)}
                               >
                                 <Icon as={Eye} boxSize="4" />
                                 Details
@@ -309,17 +310,6 @@ export function UsersPage() {
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
-      {dialog?.kind === "details" && (
-        <UserDetailDialog
-          key={dialog.user.id.toString()}
-          user={dialog.user}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
       {dialog?.kind === "edit" && (
         <EditUserDialog
           key={dialog.user.id.toString()}
