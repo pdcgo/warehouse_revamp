@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CircleUser, FolderTree, House, Package, Settings, Truck, Users, UsersRound, Warehouse } from "lucide-react";
+import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, Truck, Users, UsersRound, Warehouse } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -16,6 +16,7 @@ const WAREHOUSES: MenuItem = { to: "/warehouses", label: "Warehouses", icon: War
 const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: FolderTree };
 const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
+const INVENTORY: MenuItem = { to: "/inventory", label: "Inventory", icon: Boxes };
 const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
 const ALL_USERS: MenuItem = { to: "/all-users", label: "All Users", icon: UsersRound };
 const SETTINGS: MenuItem = { to: "/settings", label: "Settings", icon: Settings };
@@ -37,6 +38,8 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(CATEGORIES);
     // Shipping channels are one GLOBAL courier catalogue, curated by root/admin — same gate.
     menu.push(SHIPPING);
+    // Stock lives at warehouses; root/admin oversee every warehouse's inventory (they pick one).
+    menu.push(INVENTORY);
     // Every user across every team — the root management view (issue #40). Root/admin only; the
     // team-scoped "Users" item below stays for team managers.
     menu.push(ALL_USERS);
@@ -46,6 +49,11 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   // hold stock. Root/admin teams have no products of their own.
   if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
     menu.push(PRODUCTS);
+  }
+
+  // Inventory is warehouse stock — the current team IS the warehouse for its staff.
+  if (teamType === TeamType.WAREHOUSE) {
+    menu.push(INVENTORY);
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend

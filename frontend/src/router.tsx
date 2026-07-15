@@ -5,6 +5,7 @@ import { CategoriesPage } from "./categories/CategoriesPage";
 import { Layout } from "./components/Layout";
 import { ComponentsPage } from "./dev/ComponentsPage";
 import { HomePage } from "./home/HomePage";
+import { InventoryPage } from "./inventory/InventoryPage";
 import { ProductsPage } from "./products/ProductsPage";
 import { ProfilePage } from "./settings/ProfilePage";
 import { SettingsPage } from "./settings/SettingsPage";
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "categories", element: <CategoriesPage /> },
       { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
+      { path: "inventory", element: <InventoryPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
       { path: "all-users", element: <AllUsersPage /> },
