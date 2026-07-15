@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
+  Box,
   Button,
   Flex,
   HStack,
@@ -29,6 +31,7 @@ const PAGE_SIZE = 20;
 // `current.teamId` in its body — the team is the scope, and a team only ever sees its own shops.
 export function ShopsPage() {
   const { current } = useTeam();
+  const navigate = useNavigate();
 
   const [shops, setShops] = useState<Shop[]>([]);
   const [q, setQ] = useState("");
@@ -134,7 +137,15 @@ export function ShopsPage() {
           <Table.Body>
             {shops.map((shop) => (
               <Table.Row key={shop.id.toString()} data-testid={`shop-row-${shop.shopCode}`}>
-                <Table.Cell>{shop.name}</Table.Cell>
+                <Table.Cell>
+                  <Box
+                    cursor="pointer"
+                    data-testid={`open-shop-${shop.shopCode}`}
+                    onClick={() => navigate(`/shops/${shop.id}`)}
+                  >
+                    {shop.name}
+                  </Box>
+                </Table.Cell>
                 <Table.Cell>{shop.shopCode}</Table.Cell>
                 <Table.Cell>
                   <MarketplaceBadge marketplace={shop.marketplace} />

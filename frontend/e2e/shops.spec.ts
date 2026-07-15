@@ -56,6 +56,21 @@ test("Create: a new shop appears; marketplace is required", async ({ page }) => 
   await expect(page.getByTestId(`shop-row-${CODE}`)).toContainText("Shopee");
 });
 
+test("Read: the shop detail page opens from the row (#85)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoShops(page);
+
+  await page.getByTestId(`open-shop-${CODE}`).click();
+
+  await expect(page.getByTestId("shop-detail-page")).toBeVisible();
+  await expect(page.getByTestId("shop-detail-name")).toHaveText(NAME);
+  await expect(page.getByTestId("shop-detail-page")).toContainText(CODE);
+  await expect(page.getByTestId("shop-detail-page")).toContainText("Shopee");
+
+  await page.getByTestId("shop-detail-back").click();
+  await expect(page.getByTestId("shops-table")).toBeVisible();
+});
+
 test("Edit: rename and change marketplace; both persist", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoShops(page);

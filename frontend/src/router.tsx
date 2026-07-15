@@ -8,6 +8,7 @@ import { HomePage } from "./home/HomePage";
 import { InventoryPage } from "./inventory/InventoryPage";
 import { ProductEditPage } from "./products/ProductEditPage";
 import { ProductsPage } from "./products/ProductsPage";
+import { ShopDetailPage } from "./shops/ShopDetailPage";
 import { ShopsPage } from "./shops/ShopsPage";
 import { ProfilePage } from "./settings/ProfilePage";
 import { SettingsPage } from "./settings/SettingsPage";
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: "products/new", element: <ProductEditPage /> },
       { path: "products/:productId/edit", element: <ProductEditPage /> },
       { path: "shops", element: <ShopsPage /> },
+      { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
