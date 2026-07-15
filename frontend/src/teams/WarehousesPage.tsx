@@ -24,7 +24,6 @@ import { TeamItem } from "../components/TeamItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { CreateTeamDialog } from "./CreateTeamDialog";
-import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
 
 const ROOT_TEAM_ID = 1n;
@@ -41,7 +40,7 @@ export function WarehousesPage() {
   // Which row action is open, and for which warehouse. Each row's actions live behind one overflow
   // menu; picking an item sets this, and the matching dialog (rendered once, below) opens from it.
   const [dialog, setDialog] = useState<{
-    kind: "info" | "edit" | "delete";
+    kind: "info" | "delete";
     team: Team;
   } | null>(null);
 
@@ -172,8 +171,8 @@ export function WarehousesPage() {
                               <>
                                 <Menu.Item
                                   value="edit"
-                                  data-testid={`edit-team-${team.teamCode}`}
-                                  onClick={() => setDialog({ kind: "edit", team })}
+                                  data-testid={`edit-warehouse-${team.teamCode}`}
+                                  onClick={() => navigate(`/warehouses/${team.id}/edit`)}
                                 >
                                   <Icon as={Pencil} boxSize="4" />
                                   Edit
@@ -213,18 +212,6 @@ export function WarehousesPage() {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-        />
-      )}
-
-      {dialog?.kind === "edit" && (
-        <EditTeamDialog
-          key={dialog.team.id.toString()}
-          team={dialog.team}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          onDone={() => void load()}
         />
       )}
 

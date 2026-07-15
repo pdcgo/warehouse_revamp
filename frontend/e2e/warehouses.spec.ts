@@ -26,8 +26,9 @@ async function login(page: Page, username: string, password: string) {
 
 async function gotoWarehouses(page: Page) {
   // The Warehouses menu only renders for root/admin team types — reaching it at all is part of
-  // "in Root Access".
-  await page.getByRole("link", { name: "Warehouses" }).click();
+  // "in Root Access". Scope to the SIDEBAR nav (the first navigation): a warehouse detail page
+  // also has a breadcrumb "Warehouses" link, which would otherwise be ambiguous.
+  await page.getByRole("navigation").first().getByRole("link", { name: "Warehouses", exact: true }).click();
   await expect(page.getByTestId("warehouses-table")).toBeVisible();
 }
 
@@ -66,18 +67,43 @@ test("Read: the dedicated warehouse detail page opens from the row", async ({ pa
   await expect(page.getByTestId("warehouses-table")).toBeVisible();
 });
 
-test("Update: renaming the warehouse sticks; the code stays fixed", async ({ page }) => {
+test("Update: edit is a dedicated page; name and weekly hours persist", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoWarehouses(page);
 
+  // Edit opens a PAGE, not a popup (issue #39 comment 6).
   await page.getByTestId(`row-actions-warehouse-${CODE}`).click();
-  await page.getByTestId(`edit-team-${CODE}`).click();
-  await page.getByTestId("edit-team-name").fill(`${NAME} renamed`);
-  await page.getByTestId("submit-edit-team").click();
+  await page.getByTestId(`edit-warehouse-${CODE}`).click();
+  await expect(page.getByTestId("warehouse-edit-page")).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/warehouses/\\d+/edit$`));
 
-  const row = page.getByTestId(`warehouse-row-${CODE}`);
-  await expect(row).toContainText(`${NAME} renamed`);
-  await expect(row).toContainText(CODE);
+  await page.getByTestId("warehouse-edit-name").fill(`${NAME} renamed`);
+
+  // Set Monday (weekday 1) operating hours 09:00–17:00.
+  await page.getByTestId("operating-hours-open-1").click();
+  await page.getByTestId("operating-hours-from-1").fill("09:00");
+  await page.getByTestId("operating-hours-to-1").fill("17:00");
+
+  // And Monday order-receiving hours 10:00–15:00 (narrower, as real warehouses are).
+  await page.getByTestId("receiving-hours-open-1").click();
+  await page.getByTestId("receiving-hours-from-1").fill("10:00");
+  await page.getByTestId("receiving-hours-to-1").fill("15:00");
+
+  await page.getByTestId("warehouse-edit-save").click();
+
+  // Saving returns to the detail page, and the rename shows in the list.
+  await gotoWarehouses(page);
+  await expect(page.getByTestId(`warehouse-row-${CODE}`)).toContainText(`${NAME} renamed`);
+  await expect(page.getByTestId(`warehouse-row-${CODE}`)).toContainText(CODE);
+
+  // Reopen the editor: the hours we set must have persisted.
+  await page.getByTestId(`row-actions-warehouse-${CODE}`).click();
+  await page.getByTestId(`edit-warehouse-${CODE}`).click();
+  await expect(page.getByTestId("warehouse-edit-page")).toBeVisible();
+  await expect(page.getByTestId("operating-hours-from-1")).toHaveValue("09:00");
+  await expect(page.getByTestId("operating-hours-to-1")).toHaveValue("17:00");
+  await expect(page.getByTestId("receiving-hours-from-1")).toHaveValue("10:00");
+  await expect(page.getByTestId("receiving-hours-to-1")).toHaveValue("15:00");
 });
 
 test("Delete: the warehouse is soft-deleted and drops out of the list", async ({ page }) => {

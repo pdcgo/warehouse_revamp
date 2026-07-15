@@ -14,6 +14,7 @@ import { TeamProvider } from "./team/TeamContext";
 import { TeamDetailPage } from "./teams/TeamDetailPage";
 import { TeamsPage } from "./teams/TeamsPage";
 import { WarehousesPage } from "./teams/WarehousesPage";
+import { WarehouseEditPage } from "./warehouses/WarehouseEditPage";
 import { AllUsersPage } from "./users/AllUsersPage";
 import { UserDetailPage } from "./users/UserDetailPage";
 import { UsersPage } from "./users/UsersPage";
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: "teams", element: <TeamsPage /> },
       { path: "teams/:teamId", element: <TeamDetailPage noun="Team" backTo="/teams" /> },
       { path: "warehouses", element: <WarehousesPage /> },
+      { path: "warehouses/:teamId/edit", element: <WarehouseEditPage /> },
       {
         path: "warehouses/:teamId",
         element: <TeamDetailPage noun="Warehouse" backTo="/warehouses" />,
