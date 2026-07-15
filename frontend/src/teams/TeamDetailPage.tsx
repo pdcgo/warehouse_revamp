@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Flex,
+  HStack,
   Heading,
   Icon,
   IconButton,
+  Input,
   Separator,
   SimpleGrid,
   Spacer,
@@ -14,7 +16,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, Pencil, UserMinus } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, UserMinus } from "lucide-react";
 import { rpcError, teamClient, userClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
@@ -27,6 +29,9 @@ import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { AddMemberDialog } from "../users/AddMemberDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
+import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
+
+const MEMBER_PAGE_SIZE = 20;
 
 function parseTeamId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -74,6 +79,9 @@ export function TeamDetailPage({
 
   const [members, setMembers] = useState<User[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberPage, setMemberPage] = useState(1);
+  const [memberPageInfo, setMemberPageInfo] = useState<PageInfo | undefined>(undefined);
 
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<User | null>(null);
@@ -112,19 +120,28 @@ export function TeamDetailPage({
     setMembersLoading(true);
 
     try {
-      const res = await userClient.userList({ teamId, page: { page: 1, limit: 100 } });
+      const res = await userClient.userList({
+        teamId,
+        q: memberQuery,
+        page: { page: memberPage, limit: MEMBER_PAGE_SIZE },
+      });
       setMembers(res.users);
+      setMemberPageInfo(res.pageInfo);
     } catch {
       setMembers([]);
+      setMemberPageInfo(undefined);
     } finally {
       setMembersLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, memberQuery, memberPage]);
 
   useEffect(() => {
     void loadTeam();
+  }, [loadTeam]);
+
+  useEffect(() => {
     void loadMembers();
-  }, [loadTeam, loadMembers]);
+  }, [loadMembers]);
 
   async function removeMember(user: User) {
     try {
@@ -225,13 +242,26 @@ export function TeamDetailPage({
                 )}
               </Flex>
 
+              <Input
+                maxW="sm"
+                size="sm"
+                placeholder="Search members by name, username or email"
+                value={memberQuery}
+                data-testid="member-list-search"
+                onChange={(e) => {
+                  setMemberQuery(e.target.value);
+                  setMemberPage(1);
+                }}
+              />
+
               {membersLoading ? (
                 <Spinner colorPalette="brand" size="sm" />
               ) : members.length === 0 ? (
                 <Text color="fg.muted" data-testid="team-detail-no-members">
-                  No members yet.
+                  {memberQuery ? "No members match your search." : "No members yet."}
                 </Text>
               ) : (
+                <>
                 <Table.Root size="sm" data-testid="team-detail-members">
                   <Table.Body>
                     {members.map((user) => {
@@ -264,6 +294,37 @@ export function TeamDetailPage({
                     })}
                   </Table.Body>
                 </Table.Root>
+
+                {memberPageInfo && memberPageInfo.totalPage > 1 && (
+                  <HStack justify="end" gap="card">
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      aria-label="Previous page"
+                      data-testid="member-prev"
+                      disabled={memberPage <= 1}
+                      onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                    >
+                      <Icon as={ChevronLeft} boxSize="4" />
+                    </IconButton>
+
+                    <Text fontSize="sm" color="fg.muted" data-testid="member-page">
+                      Page {memberPage} of {memberPageInfo.totalPage}
+                    </Text>
+
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      aria-label="Next page"
+                      data-testid="member-next"
+                      disabled={memberPage >= memberPageInfo.totalPage}
+                      onClick={() => setMemberPage((p) => p + 1)}
+                    >
+                      <Icon as={ChevronRight} boxSize="4" />
+                    </IconButton>
+                  </HStack>
+                )}
+                </>
               )}
             </Stack>
 

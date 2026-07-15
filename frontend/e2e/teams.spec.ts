@@ -87,6 +87,12 @@ test("TeamDetail: the dedicated detail page shows the team and its members", asy
   // TeamCreate makes the creator (root) the owner, so root is a member of this team.
   await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
 
+  // The member list is searchable: a non-matching query empties it, clearing it brings root back.
+  await page.getByTestId("member-list-search").fill("zzz-no-such-member");
+  await expect(page.getByTestId("team-detail-no-members")).toBeVisible();
+  await page.getByTestId("member-list-search").fill("");
+  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
+
   // Back returns to the list.
   await page.getByTestId("team-detail-back").click();
   await expect(page.getByTestId("teams-table")).toBeVisible();
