@@ -39,6 +39,9 @@ export default defineConfig({
         // Services call EACH OTHER over Connect at this URL. It must point at THIS backend's port,
         // or a cross-service RPC (e.g. TeamAccessList → team_service) silently hits the dev :8080.
         INTERNAL_BASE_URL: "http://localhost:8081",
+        // The document file endpoint clients PUT/GET through. Must be THIS backend's port, or a
+        // browser image upload PUTs to the dead dev :8080 instead of :8081.
+        DOCUMENT_BASE_URL: "http://localhost:8081/local-storage",
       },
     },
     {

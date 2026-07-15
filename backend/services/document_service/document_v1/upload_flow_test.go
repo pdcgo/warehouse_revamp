@@ -94,6 +94,39 @@ func TestUploadFlow_PublicImage(t *testing.T) {
 	}
 }
 
+// A product image (#60/#80) is public like an avatar and MUST be an allowed resource_type — the
+// pending row is inserted at RequestUpload, so a missing value in the documents_resource_type_valid
+// CHECK fails here with a constraint violation (this is the #80 regression).
+func TestUploadFlow_ProductImage(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc, cfg := newService(t, db)
+	ctx := context.Background()
+
+	up, err := svc.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
+		TeamId:       2,
+		ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE,
+		ContentType:  "image/jpeg",
+		SizeBytes:    4,
+		Filename:     "product.jpg",
+	}))
+	if err != nil {
+		t.Fatalf("RequestUpload (product image): %v", err)
+	}
+
+	putBytes(t, cfg, up.Msg.GetUploadUrl(), []byte("jpg!"))
+
+	conf, err := svc.ConfirmUpload(ctx, connect.NewRequest(&documentv1.ConfirmUploadRequest{
+		UploadToken: up.Msg.GetUploadToken(),
+	}))
+	if err != nil {
+		t.Fatalf("ConfirmUpload (product image): %v", err)
+	}
+	// Public, so it carries a stable URL — which is exactly what the product row stores.
+	if conf.Msg.GetDocument().GetPublicUrl() == "" {
+		t.Fatal("product image should have a public url after confirm")
+	}
+}
+
 // Confirm before the bytes land is a precondition failure, not a success.
 func TestConfirmUpload_MissingBytes(t *testing.T) {
 	db := san_testdb.DB(t)

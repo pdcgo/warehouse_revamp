@@ -14,8 +14,13 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
 const SUFFIX = Date.now().toString().slice(-6);
 const SKU = `P${SUFFIX}`;
+const SKU_IMG = `PI${SUFFIX}`;
 const NAME = `E2E Product ${SUFFIX}`;
 const CATEGORY = `E2E Cat ${SUFFIX}`;
+
+// A tiny valid 1×1 PNG — enough to exercise the real upload + thumbnail path.
+const PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
@@ -76,6 +81,38 @@ test("Create: product create is a PAGE; category is required; the product appear
   await expect(page.getByTestId("products-table")).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU}`)).toContainText(NAME);
+});
+
+test("Create with image: the upload succeeds and the cover shows in the list (#80)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoProducts(page);
+
+  await page.getByTestId("open-create-product").click();
+  await expect(page.getByTestId("product-edit-page")).toBeVisible();
+
+  await page.getByTestId("product-edit-sku").fill(SKU_IMG);
+  await page.getByTestId("product-edit-name").fill(`${NAME} with image`);
+  await page.getByTestId("category-select").click();
+  await page.getByRole("option", { name: CATEGORY }).click();
+
+  // Upload a real PNG through the hidden file input — this drives requestUpload → PUT the bytes →
+  // confirmUpload → product_images. #80 was that the documents resource_type CHECK rejected the
+  // 'product_image' value, so requestUpload failed with "violates check constraint".
+  await page.getByTestId("product-images-input").locator('input[type="file"]').setInputFiles({
+    name: "pixel.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(PNG_BASE64, "base64"),
+  });
+
+  // The thumbnail appears only once the upload + confirm resolves.
+  await expect(page.getByTestId("product-image-0")).toBeVisible({ timeout: 15_000 });
+
+  await page.getByTestId("product-edit-save").click();
+
+  // Back on the list, the product shows its denormalised cover thumbnail.
+  await expect(page.getByTestId("products-table")).toBeVisible();
+  await expect(page.getByTestId(`product-row-${SKU_IMG}`)).toBeVisible();
+  await expect(page.getByTestId(`product-cover-${SKU_IMG}`)).toBeVisible();
 });
 
 test("Edit: edit is a PAGE, pre-filled; the rename persists", async ({ page }) => {
