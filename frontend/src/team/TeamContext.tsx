@@ -4,6 +4,8 @@ import { userClient } from "../api/clients";
 import type { TeamAccessItem } from "../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
 
+// Stored in sessionStorage, NOT localStorage: the active team is per-TAB, so two tabs can be open
+// on two different teams at once (a warehouse manager reconciling against a selling team, say).
 const CURRENT_TEAM_KEY = "warehouse_revamp.team";
 
 interface TeamState {
@@ -39,7 +41,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
       setTeams(res.teams);
 
-      const wanted = (preferredId ?? "").toString() || window.localStorage.getItem(CURRENT_TEAM_KEY);
+      const wanted =
+        (preferredId ?? "").toString() || window.sessionStorage.getItem(CURRENT_TEAM_KEY);
       const restored = res.teams.find((t) => t.teamId.toString() === wanted);
 
       setCurrent(restored ?? res.teams[0] ?? null);
@@ -95,8 +98,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      window.localStorage.setItem(CURRENT_TEAM_KEY, teamId.toString());
-      setCurrent(team);
+      window.sessionStorage.setItem(CURRENT_TEAM_KEY, teamId.toString());
+
+      // Reset to the app root and hard-reload. Switching team re-scopes the WHOLE app, so rather
+      // than surgically re-fetch every open view, we reload: no stale data from the previous scope
+      // can survive, and the route returns to a page that exists for the new team.
+      window.location.assign("/");
     },
     [teams],
   );
