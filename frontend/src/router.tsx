@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "teams", element: <TeamsPage /> },
-      { path: "teams/:teamId", element: <TeamDetailPage noun="Team" backTo="/teams" /> },
+      { path: "teams/:teamId", element: <TeamDetailPage backTo="/teams" /> },
       // The warehouse edit surface is a dedicated page (it carries the weekly hours); every team
       // type reaches it under /teams. Non-warehouse teams edit in a dialog instead (#59).
       { path: "teams/:teamId/edit", element: <WarehouseEditPage /> },
