@@ -152,6 +152,16 @@ screen is **§1 territory** again.
 What does an order freeze for the revenue side — buyer-paid total, COGS, shipping cost, warehouse
 fee, marketplace fee? This is the seam between #23 and #32.
 
+> **Implementation finding (#90).** `OrderCreate` currently **trusts** the client's `subtotal` /
+> `shipping_cost` / `total` — it stores them verbatim, it does not recompute from the lines. The #90
+> form always sends derived-consistent values (`subtotal = Σ qty·unit_price`, `total = subtotal +
+> shipping`), so manual orders are safe today. But we deliberately did **not** add a server-side
+> `total == subtotal + shipping` check, because on a marketplace the buyer-paid total legitimately
+> **differs** from `Σ lines` (platform vouchers, free-shipping subsidies, coins). So the real fork for
+> #74 is: **introduce explicit `discount` / `fee` fields** and then the server can enforce an
+> invariant — until then there is no arithmetic the server can safely assert. Decide this before
+> marketplace import (#73) starts feeding in real payout numbers.
+
 ---
 
 ## 4. Proposed decomposition into issues
