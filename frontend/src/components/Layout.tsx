@@ -17,6 +17,8 @@ import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
+import { LANGUAGES, useLanguage } from "../i18n/language";
+import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "../team/TeamSwitcher";
 import { Logo, WarehouseMark } from "./Logo";
 import { menuFor } from "./nav";
@@ -30,6 +32,7 @@ import { menuFor } from "./nav";
 export function Layout() {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
+  const { lang, setLang } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -147,6 +150,20 @@ export function Layout() {
             <Portal>
               <Menu.Positioner>
                 <Menu.Content minW="200px">
+                  {/* Language switcher (#93). Persists the choice and sets the page language; the
+                      UI-string translation itself is the i18n effort tracked in #65. */}
+                  <Menu.RadioItemGroup value={lang} onValueChange={(e) => setLang(e.value as Lang)}>
+                    <Menu.ItemGroupLabel>Language</Menu.ItemGroupLabel>
+                    {LANGUAGES.map((l) => (
+                      <Menu.RadioItem key={l.value} value={l.value} data-testid={`lang-${l.value}`}>
+                        {l.label}
+                        <Menu.ItemIndicator />
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.RadioItemGroup>
+
+                  <Menu.Separator />
+
                   <Menu.Item
                     value="sign-out"
                     color="fg.error"
