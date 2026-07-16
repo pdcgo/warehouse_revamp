@@ -18,6 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { productClient, rpcError } from "../api/clients";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { CategorySelect } from "../categories/CategorySelect";
 import { toaster } from "../components/Toaster";
@@ -36,6 +37,13 @@ export function ProductEditPage() {
   const { t } = useTranslation();
 
   const teamId = current?.teamId;
+
+  // A warehouse team cannot create products (#101) — block the create form even by direct URL.
+  useEffect(() => {
+    if (!editing && current?.teamType === TeamType.WAREHOUSE) {
+      void navigate("/products", { replace: true });
+    }
+  }, [editing, current?.teamType, navigate]);
 
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);

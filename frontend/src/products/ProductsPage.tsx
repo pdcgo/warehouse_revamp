@@ -21,6 +21,7 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import { productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
@@ -107,14 +108,17 @@ export function ProductsPage() {
         <Heading size="md">{t("products.heading")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-product"
-          onClick={() => navigate("/products/new")}
-        >
-          {t("products.newProduct")}
-        </Button>
+        {/* A warehouse team stocks products but does not create them (#101) — no create action. */}
+        {current.teamType !== TeamType.WAREHOUSE && (
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-product"
+            onClick={() => navigate("/products/new")}
+          >
+            {t("products.newProduct")}
+          </Button>
+        )}
       </Flex>
 
       <HStack>
