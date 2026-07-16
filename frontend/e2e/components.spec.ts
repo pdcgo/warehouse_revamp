@@ -32,9 +32,10 @@ test("the showcase loads, is navigable, and includes the shipping and nested-cat
   await expect(nav.getByRole("link", { name: "CategorySelect" })).toBeVisible();
 
   // Both required pickers render in the gallery (their triggers exist regardless of whether the
-  // backing catalogue has data yet).
+  // backing catalogue has data yet). The CategorySelect card now shows two instances — the default
+  // and the leafOnly variant (#63) — so assert the first.
   await expect(page.getByTestId("shipping-select")).toBeVisible();
-  await expect(page.getByTestId("category-select")).toBeVisible();
+  await expect(page.getByTestId("category-select").first()).toBeVisible();
 
   // The nav anchor jumps to the component's card.
   await nav.getByRole("link", { name: "CategorySelect" }).click();

@@ -13,6 +13,12 @@ export interface CategorySelectProps {
   placeholder?: string;
   /** A category id to omit — pass a node's own id when reparenting so it (and its subtree) can't be picked. */
   excludeId?: bigint;
+  /**
+   * When true, only END categories (leaves — nodes with no children) may be SELECTED: clicking a
+   * parent drills into it instead of selecting it, and the search list shows only leaves. Default
+   * false — any node is selectable. (#63)
+   */
+  leafOnly?: boolean;
   disabled?: boolean;
 }
 
@@ -66,13 +72,14 @@ function collectAll(forest: CatNode[], trail: CatNode[], out: { node: CatNode; p
 // Rendered inline (portalled={false}) so it works inside modal dialogs (create/edit category), where
 // a portalled popover renders outside the dialog and the modal makes it inert.
 export const description =
-  "Nested-category picker (#63): a Popover with a breadcrumb trigger and cascading Miller columns over the global taxonomy. Emits a category id (0 = none).";
+  "Nested-category picker (#63): a Popover with a breadcrumb trigger and cascading Miller columns over the global taxonomy. Emits a category id (0 = none). Pass `leafOnly` to allow selecting only end (leaf) categories — parents then drill instead of select.";
 
 export function CategorySelect({
   value = 0n,
   onChange,
   placeholder = "Select category…",
   excludeId,
+  leafOnly = false,
   disabled,
 }: CategorySelectProps) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -133,8 +140,10 @@ export function CategorySelect({
     }
     const all: { node: CatNode; path: CatNode[] }[] = [];
     collectAll(forest, [], all);
-    return all.filter((m) => m.node.cat.name.toLowerCase().includes(q));
-  }, [forest, query]);
+    return all.filter(
+      (m) => m.node.cat.name.toLowerCase().includes(q) && (!leafOnly || m.node.children.length === 0),
+    );
+  }, [forest, query, leafOnly]);
 
   function select(id: bigint) {
     onChange?.(id);
@@ -241,7 +250,9 @@ export function CategorySelect({
                                   justifyContent="flex-start"
                                   colorPalette={selected || drilled ? "brand" : undefined}
                                   data-testid={`category-node-${node.cat.name}`}
-                                  onClick={() => select(node.cat.id)}
+                                  onClick={() =>
+                                    leafOnly && hasChildren ? drill(i, node) : select(node.cat.id)
+                                  }
                                 >
                                   <Text as="span" truncate>
                                     {node.cat.name}

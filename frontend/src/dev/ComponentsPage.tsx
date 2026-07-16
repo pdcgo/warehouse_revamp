@@ -66,14 +66,30 @@ function ShippingDemo() {
 
 function CategoryDemo() {
   const [id, setId] = useState(0n);
+  const [leafId, setLeafId] = useState(0n);
 
   return (
-    <>
-      <CategorySelect value={id} onChange={setId} />
-      <Text fontSize="xs" color="fg.muted">
-        Selected id: {id.toString()}
-      </Text>
-    </>
+    <Stack gap="card">
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          Any category selectable (default)
+        </Text>
+        <CategorySelect value={id} onChange={setId} />
+        <Text fontSize="xs" color="fg.muted">
+          Selected id: {id.toString()}
+        </Text>
+      </Stack>
+
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          End categories only — <code>leafOnly</code>
+        </Text>
+        <CategorySelect value={leafId} onChange={setLeafId} leafOnly />
+        <Text fontSize="xs" color="fg.muted">
+          Selected id: {leafId.toString()}
+        </Text>
+      </Stack>
+    </Stack>
   );
 }
 
