@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
@@ -24,7 +25,7 @@ func TestShopDetail_Returns(t *testing.T) {
 	}
 
 	got := resp.Msg.GetShop()
-	if got.GetName() != "Detail Shop" || got.GetMarketplace() != sellingv1.Marketplace_MARKETPLACE_TIKTOK {
+	if got.GetName() != "Detail Shop" || got.GetMarketplace() != marketplacev1.Marketplace_MARKETPLACE_TIKTOK {
 		t.Fatalf("unexpected shop: %+v", got)
 	}
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Flex,
@@ -32,6 +33,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 export function SuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   // Only a selling team (and root/admin) manages suppliers; a warehouse team is read-only (#107).
   const canManage = current?.teamType !== TeamType.WAREHOUSE;
 
@@ -143,14 +145,21 @@ export function SuppliersPage() {
 
           <Table.Body>
             {suppliers.map((supplier) => (
-              <Table.Row key={supplier.id.toString()} data-testid={`supplier-row-${supplier.code}`}>
-                <Table.Cell>{supplier.code}</Table.Cell>
+              <Table.Row
+                key={supplier.id.toString()}
+                data-testid={`supplier-row-${supplier.code}`}
+                cursor="pointer"
+                _hover={{ bg: "bg.subtle" }}
+                onClick={() => navigate(`/inventories/suppliers/${supplier.id}`)}
+              >
+                <Table.Cell data-testid={`supplier-open-${supplier.id}`}>{supplier.code}</Table.Cell>
                 <Table.Cell>{supplier.name}</Table.Cell>
                 <Table.Cell>{supplier.contact}</Table.Cell>
                 <Table.Cell>{supplier.city}</Table.Cell>
 
                 {canManage && (
-                  <Table.Cell textAlign="end">
+                  // Stop the row's navigate from firing when a row action is used.
+                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                     <HStack justify="end" gap="1">
                       <IconButton
                         size="xs"

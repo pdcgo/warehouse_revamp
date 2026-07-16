@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
@@ -16,7 +17,7 @@ func TestShopCreate_CreatesInTeam(t *testing.T) {
 
 	resp, err := svc.ShopCreate(context.Background(), connect.NewRequest(&sellingv1.ShopCreateRequest{
 		TeamId: 2, Name: "My Shop", ShopCode: "SHOP-1",
-		Marketplace: sellingv1.Marketplace_MARKETPLACE_SHOPEE, Description: "a shop",
+		Marketplace: marketplacev1.Marketplace_MARKETPLACE_SHOPEE, Description: "a shop",
 	}))
 	if err != nil {
 		t.Fatalf("ShopCreate: %v", err)
@@ -27,7 +28,7 @@ func TestShopCreate_CreatesInTeam(t *testing.T) {
 		t.Fatalf("unexpected shop: %+v", got)
 	}
 	// The marketplace enum must round-trip through the text column.
-	if got.GetMarketplace() != sellingv1.Marketplace_MARKETPLACE_SHOPEE {
+	if got.GetMarketplace() != marketplacev1.Marketplace_MARKETPLACE_SHOPEE {
 		t.Fatalf("marketplace = %v, want SHOPEE", got.GetMarketplace())
 	}
 }
@@ -39,7 +40,7 @@ func TestShopCreate_DuplicateCodeRejected(t *testing.T) {
 
 	req := func() *connect.Request[sellingv1.ShopCreateRequest] {
 		return connect.NewRequest(&sellingv1.ShopCreateRequest{
-			TeamId: 2, Name: "First", ShopCode: "DUP", Marketplace: sellingv1.Marketplace_MARKETPLACE_TOKOPEDIA,
+			TeamId: 2, Name: "First", ShopCode: "DUP", Marketplace: marketplacev1.Marketplace_MARKETPLACE_TOKOPEDIA,
 		})
 	}
 
@@ -60,14 +61,14 @@ func TestShopCreate_SameCodeDifferentTeamOk(t *testing.T) {
 	svc := newService(t, db)
 
 	_, err := svc.ShopCreate(context.Background(), connect.NewRequest(&sellingv1.ShopCreateRequest{
-		TeamId: 2, Name: "A", ShopCode: "SHARED", Marketplace: sellingv1.Marketplace_MARKETPLACE_LAZADA,
+		TeamId: 2, Name: "A", ShopCode: "SHARED", Marketplace: marketplacev1.Marketplace_MARKETPLACE_LAZADA,
 	}))
 	if err != nil {
 		t.Fatalf("team 2 create: %v", err)
 	}
 
 	_, err = svc.ShopCreate(context.Background(), connect.NewRequest(&sellingv1.ShopCreateRequest{
-		TeamId: 3, Name: "B", ShopCode: "SHARED", Marketplace: sellingv1.Marketplace_MARKETPLACE_LAZADA,
+		TeamId: 3, Name: "B", ShopCode: "SHARED", Marketplace: marketplacev1.Marketplace_MARKETPLACE_LAZADA,
 	}))
 	if err != nil {
 		t.Fatalf("team 3 create with same code should succeed: %v", err)

@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_marketplace"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -18,7 +19,7 @@ func (s *Service) ShopCreate(
 		TeamID:      req.Msg.GetTeamId(),
 		Name:        req.Msg.GetName(),
 		ShopCode:    req.Msg.GetShopCode(),
-		Marketplace: marketplaceToText(req.Msg.GetMarketplace()),
+		Marketplace: san_marketplace.ToText(req.Msg.GetMarketplace()),
 		Description: req.Msg.GetDescription(),
 	}
 

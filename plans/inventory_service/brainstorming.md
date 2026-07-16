@@ -7,7 +7,12 @@
 > Nothing here is built. Nothing is decided until it is in the decision log.
 
 > **Decisions so far**
-> - _(none yet — this doc opens the discussion)_
+> - **Suppliers live in `inventory_service`** (#103) — a team's vendors, team-scoped CRUD.
+> - **A supplier has channels** (#120) — online (a store on a marketplace) or offline (a physical
+>   shop). See §10.
+> - **`Marketplace` is a shared proto** (#120, owner call) — promoted out of `warehouse.selling.v1`
+>   into `warehouse.marketplace.v1`, referenced by both selling (shops) and inventory (supplier
+>   channels); the text encoding lives once in `pkgs/san_marketplace`.
 >
 > **Hard constraints inherited from the system**
 > - **Per-service.** `inventory_service` owns its own models + goose migrations; no shared model
@@ -226,8 +231,65 @@ lands first and the §1-blocked parts wait. Each is small enough to be one PR-si
 
 ---
 
-## 9. Session log
+## 9. Suppliers & their channels (#103, #120)
+
+Suppliers were added to `inventory_service` (#103) — a team's vendors, the counterpart to "who do we
+buy stock from?". #120 asks the next question: **how do we actually reach a supplier to order?** A
+supplier is one entity but a team may reach it several ways — an official Shopee store, a TikTok
+shop, a physical shop you call. So a supplier **has many channels**.
+
+**Channel shape.** A `supplier_channels` row is one contact route, of one of two kinds:
+
+| Kind | What it records | Fields |
+| --- | --- | --- |
+| **Online** | a store on a marketplace | `marketplace` (required) + `name` + `url` |
+| **Offline** | a physical shop | `name` + `contact` + `location` |
+
+- `type` and `marketplace` are stored **as text** and mapped in the handler (no `CHECK` IN-list —
+  #80). The handler enforces the pairing: an **online** channel must name a marketplace; an
+  **offline** one stores none (a marketplace on the request is ignored).
+- `supplier_id` is a **real FK** (same service), `ON DELETE CASCADE`. Scope to a team is enforced by
+  the handler (verify the supplier is an active supplier in the scoped team, then operate on its
+  channels) — the same "verify the parent, then touch the child" shape as `shop_users`. A channel of
+  another team's supplier reads as **NotFound**.
+- CRUD: `SupplierChannelList` (paged, per supplier), `Create`, `Update`, `Delete`. Managers write;
+  the broad team read (incl. warehouse roles + customer service) can list. Channels are **hard**
+  deleted — unlike suppliers, a channel carries no history worth keeping.
+
+**Why `Marketplace` became shared.** The marketplace list (Shopee, TikTok, …) was born in
+`warehouse.selling.v1` because shops needed it first (#66). But a marketplace is not a *selling*
+concept — it is a shared vocabulary of e-commerce platforms, and a **supplier** lives on one just as
+a **shop** does. Rather than couple inventory→selling (an import across domains) or duplicate the
+enum, the owner chose to **promote it** to a neutral `warehouse.marketplace.v1`, referenced by both.
+The canonical *text* form is likewise shared, in `pkgs/san_marketplace` (a pure stateless helper —
+HARD RULE 3 bans shared *models*, not helpers), so the two domains cannot drift to different
+encodings of "shopee".
+
+```mermaid
+erDiagram
+    suppliers ||--o{ supplier_channels : "has many"
+    supplier_channels {
+        text type        "online | offline"
+        text marketplace "online only, shared Marketplace code"
+        text name
+        text url          "online"
+        text contact      "offline"
+        text location     "offline"
+    }
+```
+
+**Not yet.** A channel is just contact info today — ordering *through* a channel (a purchase order, a
+received shipment tied back to the channel it came from) is downstream of the warehouse receiving
+flow (§1) and is not built.
+
+---
+
+## 10. Session log
 
 - **2026-07-15** — Opened the doc from issue #22. Framed inventory from first principles (movements
   ledger + derived on-hand), separated the §1-independent core from the §1-blocked detail, and
   proposed a sub-issue breakdown. All key model/scope decisions raised as options — none settled.
+- **2026-07-16** — Added supplier **channels** (§9, #120): online/offline contact routes per
+  supplier. Recorded the owner's call to **promote `Marketplace` to a shared proto**
+  (`warehouse.marketplace.v1`) referenced by both selling and inventory, with the text encoding in
+  `pkgs/san_marketplace`. Supplier now has a detail page reached by clicking the row.

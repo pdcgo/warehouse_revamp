@@ -12,7 +12,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { rpcError, shopClient } from "../api/clients";
-import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
+import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { MarketplaceSelect } from "../components/MarketplaceSelect";

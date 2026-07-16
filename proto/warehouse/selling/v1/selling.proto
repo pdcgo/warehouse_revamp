@@ -4,6 +4,7 @@ package warehouse.selling.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
@@ -25,24 +26,12 @@ service ShopService {
   rpc ShopUserRemove(ShopUserRemoveRequest) returns (ShopUserRemoveResponse);
 }
 
-// Marketplace is the storefront a shop lives on. Append-only; OTHER covers anything not yet listed.
-enum Marketplace {
-  MARKETPLACE_UNSPECIFIED = 0;
-  MARKETPLACE_SHOPEE = 1;
-  MARKETPLACE_TOKOPEDIA = 2;
-  MARKETPLACE_LAZADA = 3;
-  MARKETPLACE_TIKTOK = 4;
-  MARKETPLACE_BLIBLI = 5;
-  MARKETPLACE_BUKALAPAK = 6;
-  MARKETPLACE_OTHER = 7;
-}
-
 message Shop {
   uint64 id = 1;
   uint64 team_id = 2;
   string name = 3;
   string shop_code = 4;
-  Marketplace marketplace = 5;
+  warehouse.marketplace.v1.Marketplace marketplace = 5;
   string description = 6;
   bool deleted = 7;
 }
@@ -71,7 +60,7 @@ message ShopCreateRequest {
     max_len: 32
   }];
   // Required — a shop is always on a marketplace.
-  Marketplace marketplace = 4 [(buf.validate.field).enum = {
+  warehouse.marketplace.v1.Marketplace marketplace = 4 [(buf.validate.field).enum = {
     defined_only: true
     not_in: [0]
   }];
@@ -154,7 +143,7 @@ message ShopUpdateRequest {
     min_len: 1
     max_len: 32
   }];
-  optional Marketplace marketplace = 5 [(buf.validate.field).enum = {
+  optional warehouse.marketplace.v1.Marketplace marketplace = 5 [(buf.validate.field).enum = {
     defined_only: true
     not_in: [0]
   }];

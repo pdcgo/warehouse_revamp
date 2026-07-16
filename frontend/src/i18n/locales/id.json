@@ -285,6 +285,56 @@
       "unavailable": "Pemasok tidak tersedia"
     }
   },
+  "supplierChannel": {
+    "deleted": "Saluran \"{{name}}\" dihapus",
+    "deleteFailed": "Gagal menghapus",
+    "deleteTitle": "Hapus Saluran",
+    "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "delete": "Hapus",
+    "type": {
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "section": {
+      "title": "Saluran",
+      "empty": "Belum ada saluran."
+    },
+    "table": {
+      "type": "Tipe",
+      "channel": "Saluran",
+      "details": "Detail",
+      "actions": "Aksi"
+    },
+    "detail": {
+      "invalidId": "ID pemasok tidak valid.",
+      "selectTeam": "Pilih tim untuk melihat pemasoknya.",
+      "back": "Kembali ke Pemasok",
+      "notFound": "Pemasok tidak ditemukan.",
+      "title": "Detail Pemasok",
+      "code": "Kode",
+      "contact": "Kontak",
+      "province": "Provinsi",
+      "city": "Kota",
+      "address": "Alamat",
+      "description": "Deskripsi"
+    },
+    "form": {
+      "saved": "Saluran disimpan",
+      "created": "Saluran \"{{name}}\" dibuat",
+      "addChannel": "Tambah Saluran",
+      "editTitle": "Ubah Saluran",
+      "createTitle": "Tambah Saluran",
+      "type": "Tipe",
+      "marketplace": "Marketplace",
+      "name": "Nama",
+      "url": "URL",
+      "contact": "Kontak",
+      "location": "Lokasi",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "create": "Tambah"
+    }
+  },
   "teams": {
     "name": "Nama",
     "description": "Deskripsi",

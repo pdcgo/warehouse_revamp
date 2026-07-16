@@ -2,11 +2,13 @@
 // @generated from file warehouse/selling/v1/selling.proto (package warehouse.selling.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
 import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { Marketplace } from "../../marketplace/v1/marketplace_pb";
+import { file_warehouse_marketplace_v1_marketplace } from "../../marketplace/v1/marketplace_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/selling.proto.
  */
 export const file_warehouse_selling_v1_selling: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2Uvc2VsbGluZy92MS9zZWxsaW5nLnByb3RvEhR3YXJlaG91c2Uuc2VsbGluZy52MSKiAQoEU2hvcBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBG5hbWUYAyABKAkSEQoJc2hvcF9jb2RlGAQgASgJEjYKC21hcmtldHBsYWNlGAUgASgOMiEud2FyZWhvdXNlLnNlbGxpbmcudjEuTWFya2V0cGxhY2USEwoLZGVzY3JpcHRpb24YBiABKAkSDwoHZGVsZXRlZBgHIAEoCCLYAQoRU2hvcENyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoEbmFtZRgCIAEoCUIKukgHcgUQARiAARIcCglzaG9wX2NvZGUYAyABKAlCCbpIBnIEEAEYIBJCCgttYXJrZXRwbGFjZRgEIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLk1hcmtldHBsYWNlQgq6SAeCAQQQASAAEh0KC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoBzoKkrUYBgoEAQIDBCI+ChJTaG9wQ3JlYXRlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AihwEKD1Nob3BMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIDBAUibwoQU2hvcExpc3RSZXNwb25zZRIpCgVzaG9wcxgBIAMoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3ASMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJYChFTaG9wRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSI+ChJTaG9wRGV0YWlsUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AivQIKEVNob3BVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASHQoEbmFtZRgDIAEoCUIKukgHcgUQARiAAUgAiAEBEiEKCXNob3BfY29kZRgEIAEoCUIJukgGcgQQARggSAGIAQESRwoLbWFya2V0cGxhY2UYBSABKA4yIS53YXJlaG91c2Uuc2VsbGluZy52MS5NYXJrZXRwbGFjZUIKukgHggEEEAEgAEgCiAEBEiIKC2Rlc2NyaXB0aW9uGAYgASgJQgi6SAVyAxjoB0gDiAEBOgqStRgGCgQBAgMEQgcKBV9uYW1lQgwKCl9zaG9wX2NvZGVCDgoMX21hcmtldHBsYWNlQg4KDF9kZXNjcmlwdGlvbiI+ChJTaG9wVXBkYXRlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AiVwoRU2hvcERlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIUChJTaG9wRGVsZXRlUmVzcG9uc2UikQEKE1Nob3BVc2VyTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFIloKFFNob3BVc2VyTGlzdFJlc3BvbnNlEhAKCHVzZXJfaWRzGAEgAygEEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8icgoSU2hvcFVzZXJBZGRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASGAoHdXNlcl9pZBgDIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIVChNTaG9wVXNlckFkZFJlc3BvbnNlInUKFVNob3BVc2VyUmVtb3ZlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU2hvcFVzZXJSZW1vdmVSZXNwb25zZSrXAQoLTWFya2V0cGxhY2USGwoXTUFSS0VUUExBQ0VfVU5TUEVDSUZJRUQQABIWChJNQVJLRVRQTEFDRV9TSE9QRUUQARIZChVNQVJLRVRQTEFDRV9UT0tPUEVESUEQAhIWChJNQVJLRVRQTEFDRV9MQVpBREEQAxIWChJNQVJLRVRQTEFDRV9USUtUT0sQBBIWChJNQVJLRVRQTEFDRV9CTElCTEkQBRIZChVNQVJLRVRQTEFDRV9CVUtBTEFQQUsQBhIVChFNQVJLRVRQTEFDRV9PVEhFUhAHMqQGCgtTaG9wU2VydmljZRJfCgpTaG9wQ3JlYXRlEicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcENyZWF0ZVJlcXVlc3QaKC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wQ3JlYXRlUmVzcG9uc2USWQoIU2hvcExpc3QSJS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdFJlcXVlc3QaJi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wTGlzdFJlc3BvbnNlEl8KClNob3BEZXRhaWwSJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wRGV0YWlsUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZXRhaWxSZXNwb25zZRJfCgpTaG9wVXBkYXRlEicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVwZGF0ZVJlcXVlc3QaKC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXBkYXRlUmVzcG9uc2USXwoKU2hvcERlbGV0ZRInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZWxldGVSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcERlbGV0ZVJlc3BvbnNlEmUKDFNob3BVc2VyTGlzdBIpLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyTGlzdFJlcXVlc3QaKi53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RSZXNwb25zZRJiCgtTaG9wVXNlckFkZBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyQWRkUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVc2VyQWRkUmVzcG9uc2USawoOU2hvcFVzZXJSZW1vdmUSKy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlclJlbW92ZVJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlclJlbW92ZVJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2Uvc2VsbGluZy92MS9zZWxsaW5nLnByb3RvEhR3YXJlaG91c2Uuc2VsbGluZy52MSKmAQoEU2hvcBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBG5hbWUYAyABKAkSEQoJc2hvcF9jb2RlGAQgASgJEjoKC21hcmtldHBsYWNlGAUgASgOMiUud2FyZWhvdXNlLm1hcmtldHBsYWNlLnYxLk1hcmtldHBsYWNlEhMKC2Rlc2NyaXB0aW9uGAYgASgJEg8KB2RlbGV0ZWQYByABKAgi3AEKEVNob3BDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKBG5hbWUYAiABKAlCCrpIB3IFEAEYgAESHAoJc2hvcF9jb2RlGAMgASgJQgm6SAZyBBABGCASRgoLbWFya2V0cGxhY2UYBCABKA4yJS53YXJlaG91c2UubWFya2V0cGxhY2UudjEuTWFya2V0cGxhY2VCCrpIB4IBBBABIAASHQoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGOgHOgqStRgGCgQBAgMEIj4KElNob3BDcmVhdGVSZXNwb25zZRIoCgRzaG9wGAEgASgLMhoud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcCKHAQoPU2hvcExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhIKAXEYAiABKAlCB7pIBHICGGQSNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgMEBSJvChBTaG9wTGlzdFJlc3BvbnNlEikKBXNob3BzGAEgAygLMhoud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIlgKEVNob3BEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIj4KElNob3BEZXRhaWxSZXNwb25zZRIoCgRzaG9wGAEgASgLMhoud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcCLBAgoRU2hvcFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABIdCgRuYW1lGAMgASgJQgq6SAdyBRABGIABSACIAQESIQoJc2hvcF9jb2RlGAQgASgJQgm6SAZyBBABGCBIAYgBARJLCgttYXJrZXRwbGFjZRgFIAEoDjIlLndhcmVob3VzZS5tYXJrZXRwbGFjZS52MS5NYXJrZXRwbGFjZUIKukgHggEEEAEgAEgCiAEBEiIKC2Rlc2NyaXB0aW9uGAYgASgJQgi6SAVyAxjoB0gDiAEBOgqStRgGCgQBAgMEQgcKBV9uYW1lQgwKCl9zaG9wX2NvZGVCDgoMX21hcmtldHBsYWNlQg4KDF9kZXNjcmlwdGlvbiI+ChJTaG9wVXBkYXRlUmVzcG9uc2USKAoEc2hvcBgBIAEoCzIaLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3AiVwoRU2hvcERlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIUChJTaG9wRGVsZXRlUmVzcG9uc2UikQEKE1Nob3BVc2VyTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFIloKFFNob3BVc2VyTGlzdFJlc3BvbnNlEhAKCHVzZXJfaWRzGAEgAygEEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8icgoSU2hvcFVzZXJBZGRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASGAoHdXNlcl9pZBgDIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCIVChNTaG9wVXNlckFkZFJlc3BvbnNlInUKFVNob3BVc2VyUmVtb3ZlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdzaG9wX2lkGAIgASgEQge6SAQyAiAAEhgKB3VzZXJfaWQYAyABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU2hvcFVzZXJSZW1vdmVSZXNwb25zZTKkBgoLU2hvcFNlcnZpY2USXwoKU2hvcENyZWF0ZRInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BDcmVhdGVSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcENyZWF0ZVJlc3BvbnNlElkKCFNob3BMaXN0EiUud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RSZXF1ZXN0GiYud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcExpc3RSZXNwb25zZRJfCgpTaG9wRGV0YWlsEicud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcERldGFpbFJlcXVlc3QaKC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wRGV0YWlsUmVzcG9uc2USXwoKU2hvcFVwZGF0ZRInLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BVcGRhdGVSZXF1ZXN0Gigud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVwZGF0ZVJlc3BvbnNlEl8KClNob3BEZWxldGUSJy53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wRGVsZXRlUmVxdWVzdBooLndhcmVob3VzZS5zZWxsaW5nLnYxLlNob3BEZWxldGVSZXNwb25zZRJlCgxTaG9wVXNlckxpc3QSKS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckxpc3RSZXF1ZXN0Gioud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJMaXN0UmVzcG9uc2USYgoLU2hvcFVzZXJBZGQSKC53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckFkZFJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5TaG9wVXNlckFkZFJlc3BvbnNlEmsKDlNob3BVc2VyUmVtb3ZlEisud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJSZW1vdmVSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuU2hvcFVzZXJSZW1vdmVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_marketplace_v1_marketplace, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.selling.v1.Shop
@@ -41,7 +43,7 @@ export type Shop = Message<"warehouse.selling.v1.Shop"> & {
   shopCode: string;
 
   /**
-   * @generated from field: warehouse.selling.v1.Marketplace marketplace = 5;
+   * @generated from field: warehouse.marketplace.v1.Marketplace marketplace = 5;
    */
   marketplace: Marketplace;
 
@@ -85,7 +87,7 @@ export type ShopCreateRequest = Message<"warehouse.selling.v1.ShopCreateRequest"
   /**
    * Required — a shop is always on a marketplace.
    *
-   * @generated from field: warehouse.selling.v1.Marketplace marketplace = 4;
+   * @generated from field: warehouse.marketplace.v1.Marketplace marketplace = 4;
    */
   marketplace: Marketplace;
 
@@ -234,7 +236,7 @@ export type ShopUpdateRequest = Message<"warehouse.selling.v1.ShopUpdateRequest"
   shopCode?: string;
 
   /**
-   * @generated from field: optional warehouse.selling.v1.Marketplace marketplace = 5;
+   * @generated from field: optional warehouse.marketplace.v1.Marketplace marketplace = 5;
    */
   marketplace?: Marketplace;
 
@@ -433,59 +435,6 @@ export type ShopUserRemoveResponse = Message<"warehouse.selling.v1.ShopUserRemov
  */
 export const ShopUserRemoveResponseSchema: GenMessage<ShopUserRemoveResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_selling, 16);
-
-/**
- * Marketplace is the storefront a shop lives on. Append-only; OTHER covers anything not yet listed.
- *
- * @generated from enum warehouse.selling.v1.Marketplace
- */
-export enum Marketplace {
-  /**
-   * @generated from enum value: MARKETPLACE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: MARKETPLACE_SHOPEE = 1;
-   */
-  SHOPEE = 1,
-
-  /**
-   * @generated from enum value: MARKETPLACE_TOKOPEDIA = 2;
-   */
-  TOKOPEDIA = 2,
-
-  /**
-   * @generated from enum value: MARKETPLACE_LAZADA = 3;
-   */
-  LAZADA = 3,
-
-  /**
-   * @generated from enum value: MARKETPLACE_TIKTOK = 4;
-   */
-  TIKTOK = 4,
-
-  /**
-   * @generated from enum value: MARKETPLACE_BLIBLI = 5;
-   */
-  BLIBLI = 5,
-
-  /**
-   * @generated from enum value: MARKETPLACE_BUKALAPAK = 6;
-   */
-  BUKALAPAK = 6,
-
-  /**
-   * @generated from enum value: MARKETPLACE_OTHER = 7;
-   */
-  OTHER = 7,
-}
-
-/**
- * Describes the enum warehouse.selling.v1.Marketplace.
- */
-export const MarketplaceSchema: GenEnum<Marketplace> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_selling, 0);
 
 /**
  * ShopService owns `shops` — the marketplace storefronts a SELLING team operates (#66). Every RPC

@@ -285,6 +285,56 @@
       "unavailable": "Suppliers unavailable"
     }
   },
+  "supplierChannel": {
+    "deleted": "Channel \"{{name}}\" deleted",
+    "deleteFailed": "Delete failed",
+    "deleteTitle": "Delete Channel",
+    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
+    "delete": "Delete",
+    "type": {
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "section": {
+      "title": "Channels",
+      "empty": "No channels yet."
+    },
+    "table": {
+      "type": "Type",
+      "channel": "Channel",
+      "details": "Details",
+      "actions": "Actions"
+    },
+    "detail": {
+      "invalidId": "Invalid supplier id.",
+      "selectTeam": "Select a team to view its suppliers.",
+      "back": "Back to Suppliers",
+      "notFound": "Supplier not found.",
+      "title": "Supplier Details",
+      "code": "Code",
+      "contact": "Contact",
+      "province": "Province",
+      "city": "City",
+      "address": "Address",
+      "description": "Description"
+    },
+    "form": {
+      "saved": "Channel saved",
+      "created": "Channel \"{{name}}\" created",
+      "addChannel": "Add Channel",
+      "editTitle": "Edit Channel",
+      "createTitle": "Add Channel",
+      "type": "Type",
+      "marketplace": "Marketplace",
+      "name": "Name",
+      "url": "URL",
+      "contact": "Contact",
+      "location": "Location",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Add"
+    }
+  },
   "teams": {
     "name": "Name",
     "description": "Description",

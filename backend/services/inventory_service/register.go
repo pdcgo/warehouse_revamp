@@ -21,6 +21,7 @@ func NewRegister(
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewSupplierServiceHandler(inventory, opts))
+		mux.Handle(inventoryv1connect.NewSupplierChannelServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
@@ -30,6 +31,7 @@ func NewRegister(
 		return san_grpc.ServiceReflectNames{
 			inventoryv1connect.InventoryServiceName,
 			inventoryv1connect.SupplierServiceName,
+			inventoryv1connect.SupplierChannelServiceName,
 			inventoryv1connect.RestockRequestServiceName,
 		}
 	}

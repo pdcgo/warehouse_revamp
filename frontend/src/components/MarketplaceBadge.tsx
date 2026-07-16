@@ -1,5 +1,5 @@
 import { Badge } from "@chakra-ui/react";
-import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
+import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { marketplaceLabel } from "./MarketplaceSelect";
 
 // The STANDARD colour for each marketplace, so a marketplace always looks the same everywhere it is

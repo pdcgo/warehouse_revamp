@@ -55,6 +55,9 @@ const PlacementsPage = lazy(() =>
 const SuppliersPage = lazy(() =>
   import("./suppliers/SuppliersPage").then((m) => ({ default: m.SuppliersPage })),
 );
+const SupplierDetailPage = lazy(() =>
+  import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
+);
 const RestockRequestsPage = lazy(() =>
   import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
 );
@@ -127,6 +130,7 @@ export const router = createBrowserRouter([
       { path: "inventories/restock", element: <InventoryPage title="Restock" restock /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
+      { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Restock requests (#105): the shared list for both sides, plus the selling-side create page.
       { path: "inventories/requests", element: <RestockRequestsPage /> },
       { path: "inventories/requests/new", element: <RestockRequestCreatePage /> },

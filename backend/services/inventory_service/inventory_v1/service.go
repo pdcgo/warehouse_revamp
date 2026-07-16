@@ -29,6 +29,7 @@ type Service struct {
 var (
 	_ inventoryv1connect.InventoryServiceHandler       = (*Service)(nil)
 	_ inventoryv1connect.SupplierServiceHandler        = (*Service)(nil)
+	_ inventoryv1connect.SupplierChannelServiceHandler = (*Service)(nil)
 	_ inventoryv1connect.RestockRequestServiceHandler  = (*Service)(nil)
 )
 

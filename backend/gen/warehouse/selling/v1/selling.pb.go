@@ -8,7 +8,8 @@ package sellingv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,78 +25,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Marketplace is the storefront a shop lives on. Append-only; OTHER covers anything not yet listed.
-type Marketplace int32
-
-const (
-	Marketplace_MARKETPLACE_UNSPECIFIED Marketplace = 0
-	Marketplace_MARKETPLACE_SHOPEE      Marketplace = 1
-	Marketplace_MARKETPLACE_TOKOPEDIA   Marketplace = 2
-	Marketplace_MARKETPLACE_LAZADA      Marketplace = 3
-	Marketplace_MARKETPLACE_TIKTOK      Marketplace = 4
-	Marketplace_MARKETPLACE_BLIBLI      Marketplace = 5
-	Marketplace_MARKETPLACE_BUKALAPAK   Marketplace = 6
-	Marketplace_MARKETPLACE_OTHER       Marketplace = 7
-)
-
-// Enum value maps for Marketplace.
-var (
-	Marketplace_name = map[int32]string{
-		0: "MARKETPLACE_UNSPECIFIED",
-		1: "MARKETPLACE_SHOPEE",
-		2: "MARKETPLACE_TOKOPEDIA",
-		3: "MARKETPLACE_LAZADA",
-		4: "MARKETPLACE_TIKTOK",
-		5: "MARKETPLACE_BLIBLI",
-		6: "MARKETPLACE_BUKALAPAK",
-		7: "MARKETPLACE_OTHER",
-	}
-	Marketplace_value = map[string]int32{
-		"MARKETPLACE_UNSPECIFIED": 0,
-		"MARKETPLACE_SHOPEE":      1,
-		"MARKETPLACE_TOKOPEDIA":   2,
-		"MARKETPLACE_LAZADA":      3,
-		"MARKETPLACE_TIKTOK":      4,
-		"MARKETPLACE_BLIBLI":      5,
-		"MARKETPLACE_BUKALAPAK":   6,
-		"MARKETPLACE_OTHER":       7,
-	}
-)
-
-func (x Marketplace) Enum() *Marketplace {
-	p := new(Marketplace)
-	*p = x
-	return p
-}
-
-func (x Marketplace) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Marketplace) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_selling_v1_selling_proto_enumTypes[0].Descriptor()
-}
-
-func (Marketplace) Type() protoreflect.EnumType {
-	return &file_warehouse_selling_v1_selling_proto_enumTypes[0]
-}
-
-func (x Marketplace) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Marketplace.Descriptor instead.
-func (Marketplace) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{0}
-}
-
 type Shop struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	TeamId        uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	ShopCode      string                 `protobuf:"bytes,4,opt,name=shop_code,json=shopCode,proto3" json:"shop_code,omitempty"`
-	Marketplace   Marketplace            `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.selling.v1.Marketplace" json:"marketplace,omitempty"`
+	Marketplace   v1.Marketplace         `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
 	Description   string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
 	Deleted       bool                   `protobuf:"varint,7,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -160,11 +96,11 @@ func (x *Shop) GetShopCode() string {
 	return ""
 }
 
-func (x *Shop) GetMarketplace() Marketplace {
+func (x *Shop) GetMarketplace() v1.Marketplace {
 	if x != nil {
 		return x.Marketplace
 	}
-	return Marketplace_MARKETPLACE_UNSPECIFIED
+	return v1.Marketplace(0)
 }
 
 func (x *Shop) GetDescription() string {
@@ -187,8 +123,8 @@ type ShopCreateRequest struct {
 	Name     string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	ShopCode string                 `protobuf:"bytes,3,opt,name=shop_code,json=shopCode,proto3" json:"shop_code,omitempty"`
 	// Required — a shop is always on a marketplace.
-	Marketplace   Marketplace `protobuf:"varint,4,opt,name=marketplace,proto3,enum=warehouse.selling.v1.Marketplace" json:"marketplace,omitempty"`
-	Description   string      `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Marketplace   v1.Marketplace `protobuf:"varint,4,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
+	Description   string         `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -244,11 +180,11 @@ func (x *ShopCreateRequest) GetShopCode() string {
 	return ""
 }
 
-func (x *ShopCreateRequest) GetMarketplace() Marketplace {
+func (x *ShopCreateRequest) GetMarketplace() v1.Marketplace {
 	if x != nil {
 		return x.Marketplace
 	}
-	return Marketplace_MARKETPLACE_UNSPECIFIED
+	return v1.Marketplace(0)
 }
 
 func (x *ShopCreateRequest) GetDescription() string {
@@ -306,7 +242,7 @@ type ShopListRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	Q             string                 `protobuf:"bytes,2,opt,name=q,proto3" json:"q,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	Page          *v11.PageFilter        `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -355,7 +291,7 @@ func (x *ShopListRequest) GetQ() string {
 	return ""
 }
 
-func (x *ShopListRequest) GetPage() *v1.PageFilter {
+func (x *ShopListRequest) GetPage() *v11.PageFilter {
 	if x != nil {
 		return x.Page
 	}
@@ -365,7 +301,7 @@ func (x *ShopListRequest) GetPage() *v1.PageFilter {
 type ShopListResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Shops         []*Shop                `protobuf:"bytes,1,rep,name=shops,proto3" json:"shops,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	PageInfo      *v11.PageInfo          `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -407,7 +343,7 @@ func (x *ShopListResponse) GetShops() []*Shop {
 	return nil
 }
 
-func (x *ShopListResponse) GetPageInfo() *v1.PageInfo {
+func (x *ShopListResponse) GetPageInfo() *v11.PageInfo {
 	if x != nil {
 		return x.PageInfo
 	}
@@ -515,10 +451,10 @@ type ShopUpdateRequest struct {
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ShopId uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	// Absent = leave alone. Present = write it.
-	Name          *string      `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	ShopCode      *string      `protobuf:"bytes,4,opt,name=shop_code,json=shopCode,proto3,oneof" json:"shop_code,omitempty"`
-	Marketplace   *Marketplace `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.selling.v1.Marketplace,oneof" json:"marketplace,omitempty"`
-	Description   *string      `protobuf:"bytes,6,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Name          *string         `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	ShopCode      *string         `protobuf:"bytes,4,opt,name=shop_code,json=shopCode,proto3,oneof" json:"shop_code,omitempty"`
+	Marketplace   *v1.Marketplace `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace,oneof" json:"marketplace,omitempty"`
+	Description   *string         `protobuf:"bytes,6,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -581,11 +517,11 @@ func (x *ShopUpdateRequest) GetShopCode() string {
 	return ""
 }
 
-func (x *ShopUpdateRequest) GetMarketplace() Marketplace {
+func (x *ShopUpdateRequest) GetMarketplace() v1.Marketplace {
 	if x != nil && x.Marketplace != nil {
 		return *x.Marketplace
 	}
-	return Marketplace_MARKETPLACE_UNSPECIFIED
+	return v1.Marketplace(0)
 }
 
 func (x *ShopUpdateRequest) GetDescription() string {
@@ -731,7 +667,7 @@ type ShopUserListRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	ShopId        uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	Page          *v11.PageFilter        `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -780,7 +716,7 @@ func (x *ShopUserListRequest) GetShopId() uint64 {
 	return 0
 }
 
-func (x *ShopUserListRequest) GetPage() *v1.PageFilter {
+func (x *ShopUserListRequest) GetPage() *v11.PageFilter {
 	if x != nil {
 		return x.Page
 	}
@@ -790,8 +726,8 @@ func (x *ShopUserListRequest) GetPage() *v1.PageFilter {
 type ShopUserListResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Opaque user_service ids; the caller resolves them (UserByIDs) to display names.
-	UserIds       []uint64     `protobuf:"varint,1,rep,packed,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	PageInfo      *v1.PageInfo `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	UserIds       []uint64      `protobuf:"varint,1,rep,packed,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	PageInfo      *v11.PageInfo `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -833,7 +769,7 @@ func (x *ShopUserListResponse) GetUserIds() []uint64 {
 	return nil
 }
 
-func (x *ShopUserListResponse) GetPageInfo() *v1.PageInfo {
+func (x *ShopUserListResponse) GetPageInfo() *v11.PageInfo {
 	if x != nil {
 		return x.PageInfo
 	}
@@ -1036,21 +972,21 @@ var File_warehouse_selling_v1_selling_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/selling/v1/selling.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xe1\x01\n" +
+	"\"warehouse/selling/v1/selling.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\xe5\x01\n" +
 	"\x04Shop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
-	"\tshop_code\x18\x04 \x01(\tR\bshopCode\x12C\n" +
-	"\vmarketplace\x18\x05 \x01(\x0e2!.warehouse.selling.v1.MarketplaceR\vmarketplace\x12 \n" +
+	"\tshop_code\x18\x04 \x01(\tR\bshopCode\x12G\n" +
+	"\vmarketplace\x18\x05 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceR\vmarketplace\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x18\n" +
-	"\adeleted\x18\a \x01(\bR\adeleted\"\x8a\x02\n" +
+	"\adeleted\x18\a \x01(\bR\adeleted\"\x8e\x02\n" +
 	"\x11ShopCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x04name\x12&\n" +
-	"\tshop_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\bshopCode\x12O\n" +
-	"\vmarketplace\x18\x04 \x01(\x0e2!.warehouse.selling.v1.MarketplaceB\n" +
+	"\tshop_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\bshopCode\x12S\n" +
+	"\vmarketplace\x18\x04 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\vmarketplace\x12*\n" +
 	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\vdescription:\n" +
 	"\x92\xb5\x18\x06\n" +
@@ -1070,14 +1006,14 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"D\n" +
 	"\x12ShopDetailResponse\x12.\n" +
-	"\x04shop\x18\x01 \x01(\v2\x1a.warehouse.selling.v1.ShopR\x04shop\"\xf7\x02\n" +
+	"\x04shop\x18\x01 \x01(\v2\x1a.warehouse.selling.v1.ShopR\x04shop\"\xfb\x02\n" +
 	"\x11ShopUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12#\n" +
 	"\x04name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12+\n" +
-	"\tshop_code\x18\x04 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 H\x01R\bshopCode\x88\x01\x01\x12T\n" +
-	"\vmarketplace\x18\x05 \x01(\x0e2!.warehouse.selling.v1.MarketplaceB\n" +
+	"\tshop_code\x18\x04 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 H\x01R\bshopCode\x88\x01\x01\x12X\n" +
+	"\vmarketplace\x18\x05 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00H\x02R\vmarketplace\x88\x01\x01\x12/\n" +
 	"\vdescription\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aH\x03R\vdescription\x88\x01\x01:\n" +
 	"\x92\xb5\x18\x06\n" +
@@ -1116,16 +1052,7 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\auser_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\x18\n" +
-	"\x16ShopUserRemoveResponse*\xd7\x01\n" +
-	"\vMarketplace\x12\x1b\n" +
-	"\x17MARKETPLACE_UNSPECIFIED\x10\x00\x12\x16\n" +
-	"\x12MARKETPLACE_SHOPEE\x10\x01\x12\x19\n" +
-	"\x15MARKETPLACE_TOKOPEDIA\x10\x02\x12\x16\n" +
-	"\x12MARKETPLACE_LAZADA\x10\x03\x12\x16\n" +
-	"\x12MARKETPLACE_TIKTOK\x10\x04\x12\x16\n" +
-	"\x12MARKETPLACE_BLIBLI\x10\x05\x12\x19\n" +
-	"\x15MARKETPLACE_BUKALAPAK\x10\x06\x12\x15\n" +
-	"\x11MARKETPLACE_OTHER\x10\a2\xa4\x06\n" +
+	"\x16ShopUserRemoveResponse2\xa4\x06\n" +
 	"\vShopService\x12_\n" +
 	"\n" +
 	"ShopCreate\x12'.warehouse.selling.v1.ShopCreateRequest\x1a(.warehouse.selling.v1.ShopCreateResponse\x12Y\n" +
@@ -1152,58 +1079,57 @@ func file_warehouse_selling_v1_selling_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_selling_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_selling_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_warehouse_selling_v1_selling_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_warehouse_selling_v1_selling_proto_goTypes = []any{
-	(Marketplace)(0),               // 0: warehouse.selling.v1.Marketplace
-	(*Shop)(nil),                   // 1: warehouse.selling.v1.Shop
-	(*ShopCreateRequest)(nil),      // 2: warehouse.selling.v1.ShopCreateRequest
-	(*ShopCreateResponse)(nil),     // 3: warehouse.selling.v1.ShopCreateResponse
-	(*ShopListRequest)(nil),        // 4: warehouse.selling.v1.ShopListRequest
-	(*ShopListResponse)(nil),       // 5: warehouse.selling.v1.ShopListResponse
-	(*ShopDetailRequest)(nil),      // 6: warehouse.selling.v1.ShopDetailRequest
-	(*ShopDetailResponse)(nil),     // 7: warehouse.selling.v1.ShopDetailResponse
-	(*ShopUpdateRequest)(nil),      // 8: warehouse.selling.v1.ShopUpdateRequest
-	(*ShopUpdateResponse)(nil),     // 9: warehouse.selling.v1.ShopUpdateResponse
-	(*ShopDeleteRequest)(nil),      // 10: warehouse.selling.v1.ShopDeleteRequest
-	(*ShopDeleteResponse)(nil),     // 11: warehouse.selling.v1.ShopDeleteResponse
-	(*ShopUserListRequest)(nil),    // 12: warehouse.selling.v1.ShopUserListRequest
-	(*ShopUserListResponse)(nil),   // 13: warehouse.selling.v1.ShopUserListResponse
-	(*ShopUserAddRequest)(nil),     // 14: warehouse.selling.v1.ShopUserAddRequest
-	(*ShopUserAddResponse)(nil),    // 15: warehouse.selling.v1.ShopUserAddResponse
-	(*ShopUserRemoveRequest)(nil),  // 16: warehouse.selling.v1.ShopUserRemoveRequest
-	(*ShopUserRemoveResponse)(nil), // 17: warehouse.selling.v1.ShopUserRemoveResponse
-	(*v1.PageFilter)(nil),          // 18: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),            // 19: warehouse.common.v1.PageInfo
+	(*Shop)(nil),                   // 0: warehouse.selling.v1.Shop
+	(*ShopCreateRequest)(nil),      // 1: warehouse.selling.v1.ShopCreateRequest
+	(*ShopCreateResponse)(nil),     // 2: warehouse.selling.v1.ShopCreateResponse
+	(*ShopListRequest)(nil),        // 3: warehouse.selling.v1.ShopListRequest
+	(*ShopListResponse)(nil),       // 4: warehouse.selling.v1.ShopListResponse
+	(*ShopDetailRequest)(nil),      // 5: warehouse.selling.v1.ShopDetailRequest
+	(*ShopDetailResponse)(nil),     // 6: warehouse.selling.v1.ShopDetailResponse
+	(*ShopUpdateRequest)(nil),      // 7: warehouse.selling.v1.ShopUpdateRequest
+	(*ShopUpdateResponse)(nil),     // 8: warehouse.selling.v1.ShopUpdateResponse
+	(*ShopDeleteRequest)(nil),      // 9: warehouse.selling.v1.ShopDeleteRequest
+	(*ShopDeleteResponse)(nil),     // 10: warehouse.selling.v1.ShopDeleteResponse
+	(*ShopUserListRequest)(nil),    // 11: warehouse.selling.v1.ShopUserListRequest
+	(*ShopUserListResponse)(nil),   // 12: warehouse.selling.v1.ShopUserListResponse
+	(*ShopUserAddRequest)(nil),     // 13: warehouse.selling.v1.ShopUserAddRequest
+	(*ShopUserAddResponse)(nil),    // 14: warehouse.selling.v1.ShopUserAddResponse
+	(*ShopUserRemoveRequest)(nil),  // 15: warehouse.selling.v1.ShopUserRemoveRequest
+	(*ShopUserRemoveResponse)(nil), // 16: warehouse.selling.v1.ShopUserRemoveResponse
+	(v1.Marketplace)(0),            // 17: warehouse.marketplace.v1.Marketplace
+	(*v11.PageFilter)(nil),         // 18: warehouse.common.v1.PageFilter
+	(*v11.PageInfo)(nil),           // 19: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_selling_proto_depIdxs = []int32{
-	0,  // 0: warehouse.selling.v1.Shop.marketplace:type_name -> warehouse.selling.v1.Marketplace
-	0,  // 1: warehouse.selling.v1.ShopCreateRequest.marketplace:type_name -> warehouse.selling.v1.Marketplace
-	1,  // 2: warehouse.selling.v1.ShopCreateResponse.shop:type_name -> warehouse.selling.v1.Shop
+	17, // 0: warehouse.selling.v1.Shop.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	17, // 1: warehouse.selling.v1.ShopCreateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	0,  // 2: warehouse.selling.v1.ShopCreateResponse.shop:type_name -> warehouse.selling.v1.Shop
 	18, // 3: warehouse.selling.v1.ShopListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	1,  // 4: warehouse.selling.v1.ShopListResponse.shops:type_name -> warehouse.selling.v1.Shop
+	0,  // 4: warehouse.selling.v1.ShopListResponse.shops:type_name -> warehouse.selling.v1.Shop
 	19, // 5: warehouse.selling.v1.ShopListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	1,  // 6: warehouse.selling.v1.ShopDetailResponse.shop:type_name -> warehouse.selling.v1.Shop
-	0,  // 7: warehouse.selling.v1.ShopUpdateRequest.marketplace:type_name -> warehouse.selling.v1.Marketplace
-	1,  // 8: warehouse.selling.v1.ShopUpdateResponse.shop:type_name -> warehouse.selling.v1.Shop
+	0,  // 6: warehouse.selling.v1.ShopDetailResponse.shop:type_name -> warehouse.selling.v1.Shop
+	17, // 7: warehouse.selling.v1.ShopUpdateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	0,  // 8: warehouse.selling.v1.ShopUpdateResponse.shop:type_name -> warehouse.selling.v1.Shop
 	18, // 9: warehouse.selling.v1.ShopUserListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	19, // 10: warehouse.selling.v1.ShopUserListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	2,  // 11: warehouse.selling.v1.ShopService.ShopCreate:input_type -> warehouse.selling.v1.ShopCreateRequest
-	4,  // 12: warehouse.selling.v1.ShopService.ShopList:input_type -> warehouse.selling.v1.ShopListRequest
-	6,  // 13: warehouse.selling.v1.ShopService.ShopDetail:input_type -> warehouse.selling.v1.ShopDetailRequest
-	8,  // 14: warehouse.selling.v1.ShopService.ShopUpdate:input_type -> warehouse.selling.v1.ShopUpdateRequest
-	10, // 15: warehouse.selling.v1.ShopService.ShopDelete:input_type -> warehouse.selling.v1.ShopDeleteRequest
-	12, // 16: warehouse.selling.v1.ShopService.ShopUserList:input_type -> warehouse.selling.v1.ShopUserListRequest
-	14, // 17: warehouse.selling.v1.ShopService.ShopUserAdd:input_type -> warehouse.selling.v1.ShopUserAddRequest
-	16, // 18: warehouse.selling.v1.ShopService.ShopUserRemove:input_type -> warehouse.selling.v1.ShopUserRemoveRequest
-	3,  // 19: warehouse.selling.v1.ShopService.ShopCreate:output_type -> warehouse.selling.v1.ShopCreateResponse
-	5,  // 20: warehouse.selling.v1.ShopService.ShopList:output_type -> warehouse.selling.v1.ShopListResponse
-	7,  // 21: warehouse.selling.v1.ShopService.ShopDetail:output_type -> warehouse.selling.v1.ShopDetailResponse
-	9,  // 22: warehouse.selling.v1.ShopService.ShopUpdate:output_type -> warehouse.selling.v1.ShopUpdateResponse
-	11, // 23: warehouse.selling.v1.ShopService.ShopDelete:output_type -> warehouse.selling.v1.ShopDeleteResponse
-	13, // 24: warehouse.selling.v1.ShopService.ShopUserList:output_type -> warehouse.selling.v1.ShopUserListResponse
-	15, // 25: warehouse.selling.v1.ShopService.ShopUserAdd:output_type -> warehouse.selling.v1.ShopUserAddResponse
-	17, // 26: warehouse.selling.v1.ShopService.ShopUserRemove:output_type -> warehouse.selling.v1.ShopUserRemoveResponse
+	1,  // 11: warehouse.selling.v1.ShopService.ShopCreate:input_type -> warehouse.selling.v1.ShopCreateRequest
+	3,  // 12: warehouse.selling.v1.ShopService.ShopList:input_type -> warehouse.selling.v1.ShopListRequest
+	5,  // 13: warehouse.selling.v1.ShopService.ShopDetail:input_type -> warehouse.selling.v1.ShopDetailRequest
+	7,  // 14: warehouse.selling.v1.ShopService.ShopUpdate:input_type -> warehouse.selling.v1.ShopUpdateRequest
+	9,  // 15: warehouse.selling.v1.ShopService.ShopDelete:input_type -> warehouse.selling.v1.ShopDeleteRequest
+	11, // 16: warehouse.selling.v1.ShopService.ShopUserList:input_type -> warehouse.selling.v1.ShopUserListRequest
+	13, // 17: warehouse.selling.v1.ShopService.ShopUserAdd:input_type -> warehouse.selling.v1.ShopUserAddRequest
+	15, // 18: warehouse.selling.v1.ShopService.ShopUserRemove:input_type -> warehouse.selling.v1.ShopUserRemoveRequest
+	2,  // 19: warehouse.selling.v1.ShopService.ShopCreate:output_type -> warehouse.selling.v1.ShopCreateResponse
+	4,  // 20: warehouse.selling.v1.ShopService.ShopList:output_type -> warehouse.selling.v1.ShopListResponse
+	6,  // 21: warehouse.selling.v1.ShopService.ShopDetail:output_type -> warehouse.selling.v1.ShopDetailResponse
+	8,  // 22: warehouse.selling.v1.ShopService.ShopUpdate:output_type -> warehouse.selling.v1.ShopUpdateResponse
+	10, // 23: warehouse.selling.v1.ShopService.ShopDelete:output_type -> warehouse.selling.v1.ShopDeleteResponse
+	12, // 24: warehouse.selling.v1.ShopService.ShopUserList:output_type -> warehouse.selling.v1.ShopUserListResponse
+	14, // 25: warehouse.selling.v1.ShopService.ShopUserAdd:output_type -> warehouse.selling.v1.ShopUserAddResponse
+	16, // 26: warehouse.selling.v1.ShopService.ShopUserRemove:output_type -> warehouse.selling.v1.ShopUserRemoveResponse
 	19, // [19:27] is the sub-list for method output_type
 	11, // [11:19] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -1222,14 +1148,13 @@ func file_warehouse_selling_v1_selling_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_selling_proto_rawDesc), len(file_warehouse_selling_v1_selling_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      0,
 			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_selling_v1_selling_proto_goTypes,
 		DependencyIndexes: file_warehouse_selling_v1_selling_proto_depIdxs,
-		EnumInfos:         file_warehouse_selling_v1_selling_proto_enumTypes,
 		MessageInfos:      file_warehouse_selling_v1_selling_proto_msgTypes,
 	}.Build()
 	File_warehouse_selling_v1_selling_proto = out.File

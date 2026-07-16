@@ -31,7 +31,7 @@ import {
   description as productSelectDescription,
   type PickedProduct,
 } from "../components/ProductSelect";
-import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
+import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
 

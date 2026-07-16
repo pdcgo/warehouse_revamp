@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
+	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
@@ -17,7 +18,7 @@ func TestShopUpdate_ChangesFields(t *testing.T) {
 
 	id := insertShop(t, db, 2, "Old name", "S1", "shopee")
 
-	mp := sellingv1.Marketplace_MARKETPLACE_TOKOPEDIA
+	mp := marketplacev1.Marketplace_MARKETPLACE_TOKOPEDIA
 	resp, err := svc.ShopUpdate(context.Background(), connect.NewRequest(&sellingv1.ShopUpdateRequest{
 		TeamId: 2, ShopId: id, Name: proto.String("New name"), Marketplace: &mp,
 	}))
@@ -27,7 +28,7 @@ func TestShopUpdate_ChangesFields(t *testing.T) {
 
 	got := resp.Msg.GetShop()
 	if got.GetName() != "New name" || got.GetShopCode() != "S1" ||
-		got.GetMarketplace() != sellingv1.Marketplace_MARKETPLACE_TOKOPEDIA {
+		got.GetMarketplace() != marketplacev1.Marketplace_MARKETPLACE_TOKOPEDIA {
 		t.Fatalf("unexpected after update: %+v", got)
 	}
 }

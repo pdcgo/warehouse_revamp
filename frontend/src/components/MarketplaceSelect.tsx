@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Select, createListCollection } from "@chakra-ui/react";
-import { Marketplace } from "../gen/warehouse/selling/v1/selling_pb";
+import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 
 // marketplaceLabel is the shared display name for a marketplace — used by the picker below and by
 // callers that show a shop's marketplace read-only (e.g. a table cell).

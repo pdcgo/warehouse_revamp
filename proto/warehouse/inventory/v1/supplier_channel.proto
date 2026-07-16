@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// SupplierChannelService owns `supplier_channels` — the ways a team can reach or order from a
+// supplier (#120): an ONLINE channel (a store on a marketplace) or an OFFLINE channel (a physical
+// shop with a contact and a location). Channels belong to a supplier, which belongs to a team, so
+// every RPC is team-scoped (`team_id` carries use_scope) and the handler verifies the supplier
+// belongs to that team before touching its channels.
+service SupplierChannelService {
+  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse);
+  rpc SupplierChannelCreate(SupplierChannelCreateRequest) returns (SupplierChannelCreateResponse);
+  rpc SupplierChannelUpdate(SupplierChannelUpdateRequest) returns (SupplierChannelUpdateResponse);
+  rpc SupplierChannelDelete(SupplierChannelDeleteRequest) returns (SupplierChannelDeleteResponse);
+}
+
+// How the supplier is reached. ONLINE = a store on a marketplace; OFFLINE = a physical shop.
+enum SupplierChannelType {
+  SUPPLIER_CHANNEL_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_CHANNEL_TYPE_ONLINE = 1;
+  SUPPLIER_CHANNEL_TYPE_OFFLINE = 2;
+}
+
+message SupplierChannel {
+  uint64 id = 1;
+  uint64 supplier_id = 2;
+  SupplierChannelType type = 3;
+  // Online only — which marketplace the store is on. UNSPECIFIED for an offline channel.
+  warehouse.marketplace.v1.Marketplace marketplace = 4;
+  // The store / shop name — a label for the channel.
+  string name = 5;
+  // Online only — a link to the store (optional).
+  string url = 6;
+  // A phone / WhatsApp contact — the primary field for an offline shop (optional).
+  string contact = 7;
+  // Offline only — the shop's physical location / address (optional).
+  string location = 8;
+}
+
+message SupplierChannelListRequest {
+  // Read: anyone in the team, including staff and customer service (same as SupplierDetail).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message SupplierChannelListResponse {
+  repeated SupplierChannel channels = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message SupplierChannelCreateRequest {
+  // Write: only a SELLING team's managers (same as SupplierCreate).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Required. The handler additionally requires a marketplace when type is ONLINE.
+  SupplierChannelType type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // Online only — leave UNSPECIFIED for an offline channel (the handler enforces the pairing).
+  warehouse.marketplace.v1.Marketplace marketplace = 4 [(buf.validate.field).enum = {defined_only: true}];
+  string name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string url = 6 [(buf.validate.field).string.max_len = 500];
+  string contact = 7 [(buf.validate.field).string.max_len = 50];
+  string location = 8 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierChannelCreateResponse {
+  SupplierChannel channel = 1;
+}
+
+message SupplierChannelUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 channel_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it. The handler re-checks the online/marketplace pairing
+  // against the resulting row.
+  optional SupplierChannelType type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  optional warehouse.marketplace.v1.Marketplace marketplace = 4 [(buf.validate.field).enum = {defined_only: true}];
+  optional string name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string url = 6 [(buf.validate.field).string.max_len = 500];
+  optional string contact = 7 [(buf.validate.field).string.max_len = 50];
+  optional string location = 8 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierChannelUpdateResponse {
+  SupplierChannel channel = 1;
+}
+
+message SupplierChannelDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 channel_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SupplierChannelDeleteResponse {}

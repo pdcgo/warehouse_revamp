@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_marketplace"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -31,7 +32,7 @@ func (s *Service) ShopUpdate(
 	}
 
 	if req.Msg.Marketplace != nil {
-		updates["marketplace"] = marketplaceToText(req.Msg.GetMarketplace())
+		updates["marketplace"] = san_marketplace.ToText(req.Msg.GetMarketplace())
 	}
 
 	if req.Msg.Description != nil {

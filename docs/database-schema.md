@@ -246,11 +246,13 @@ erDiagram
 - **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
   `use_scope`), so a shop is only ever reachable within its owning team. `shop_code` is unique per
   team **among active shops only** (`UNIQUE (team_id, shop_code) WHERE deleted = FALSE`), so a
-  soft-deleted shop frees its code and two teams may share one. `marketplace` stores the proto
-  `Marketplace` enum **as text**, mapped in `selling_v1/mapper.go` — deliberately **without** a
-  `CHECK` IN-list: the mapper + proto validation guard the value, and an IN-list is just one more
-  place to drift when the enum grows (the trap behind #80). No credentials are stored — "just shop
-  info". selling_service will grow to own orders (the #23 decomposition).
+  soft-deleted shop frees its code and two teams may share one. `marketplace` stores the shared
+  `warehouse.marketplace.v1.Marketplace` enum **as text**, mapped via `pkgs/san_marketplace` — the
+  same helper `inventory_service.supplier_channels` uses, so the two domains cannot drift to different
+  encodings (#120). Deliberately **without** a `CHECK` IN-list: the mapper + proto validation guard
+  the value, and an IN-list is just one more place to drift when the enum grows (the trap behind #80).
+  No credentials are stored — "just shop info". selling_service also owns orders (the #23
+  decomposition).
 - **`shop_users`** — which users may work on a shop (#86); one row per (shop, user) grant, `UNIQUE
   (shop_id, user_id)`. `user_id` is an **opaque** user_service id (no FK). The RPCs are scoped
   through the shop's team (the request carries the team_id, and the handler verifies the shop
@@ -348,6 +350,8 @@ erDiagram
         timestamptz created_at
     }
 
+    suppliers ||--o{ supplier_channels : "supplier_id"
+
     suppliers {
         bigserial   id          PK
         bigint      team_id     "owning team, opaque cross-service id, no FK"
@@ -359,6 +363,19 @@ erDiagram
         text        address
         text        description
         boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    supplier_channels {
+        bigserial   id          PK
+        bigint      supplier_id FK "-> suppliers(id), ON DELETE CASCADE"
+        text        type        "SupplierChannelType as text (online/offline); no CHECK"
+        text        marketplace "online only: marketplace code (shopee/tiktok/...); empty otherwise"
+        text        name        "required, the store/shop name"
+        text        url         "online only, optional link to the store"
+        text        contact     "phone/WA, primary for an offline shop"
+        text        location    "offline only, physical address"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -391,6 +408,16 @@ erDiagram
   `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
   fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
   delete, search, pagination).
+- **`supplier_channels`** — the ways a team can reach or order from a supplier (#120): an **online**
+  channel (a store on a marketplace) or an **offline** channel (a physical shop). `supplier_id` is a
+  **real FK** to `suppliers` (same service, `ON DELETE CASCADE`); scope to a team is enforced by the
+  handler (it verifies the supplier is in the team before touching its channels), not by a column on
+  this table. `type` and `marketplace` are stored **as text** (mapped in the handler, no `CHECK`
+  IN-list, cf. #80); the `marketplace` code is the shared `warehouse.marketplace.v1.Marketplace`
+  vocabulary (the same enum `selling_service.shops.marketplace` uses — promoted to a neutral proto so
+  neither domain owns it, #120), set only for an online channel. An online channel must name a
+  marketplace;
+  an offline one keeps `contact`/`location`. Channels are hard-deleted (no history to keep).
 - **`restock_requests`** — a SELLING team's request for a WAREHOUSE to restock a product (#105). The
   flow is two-sided: `requesting_team_id` (the selling team, `use_scope` on create/cancel/list) raises
   a `pending` request naming a `warehouse_id` (the target warehouse, `use_scope` on fulfil/list), a
