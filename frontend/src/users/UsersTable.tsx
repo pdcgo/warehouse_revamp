@@ -29,7 +29,7 @@ import { isGlobalAdmin } from "../lib/roles";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 // UsersTable is the one user-management surface, used by both faces of the Users page (#58):
 //
