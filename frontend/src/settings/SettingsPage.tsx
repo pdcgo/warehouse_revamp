@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Card, Field, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
 import { TeamPicture } from "../team/TeamPicture";
@@ -13,6 +14,7 @@ import { isTeamManager } from "../lib/roles";
 // (use_scope) reads it there, never a header). The manager gate below is UX only; the access
 // interceptor is the real boundary.
 export function SettingsPage() {
+  const { t } = useTranslation();
   const { current, refresh } = useTeam();
 
   const [name, setName] = useState("");
@@ -28,9 +30,9 @@ export function SettingsPage() {
   if (!current) {
     return (
       <Stack gap="section" maxW="lg">
-        <Heading size="md">Settings</Heading>
+        <Heading size="md">{t("account.settings")}</Heading>
         <Text color="fg.muted" data-testid="settings-no-team">
-          Select a team to manage its settings.
+          {t("account.selectTeamToManage")}
         </Text>
       </Stack>
     );
@@ -51,9 +53,9 @@ export function SettingsPage() {
       // Reflect the rename in the team switcher and everywhere else `current` is read.
       await refresh();
 
-      toaster.create({ type: "success", title: "Team name updated" });
+      toaster.create({ type: "success", title: t("account.teamNameUpdated") });
     } catch (err) {
-      toaster.create({ type: "error", title: "Update failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("account.updateFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
     }
@@ -61,12 +63,12 @@ export function SettingsPage() {
 
   return (
     <Stack gap="section" maxW="lg">
-      <Heading size="md">Settings</Heading>
+      <Heading size="md">{t("account.settings")}</Heading>
 
       <Card.Root>
         <Card.Body>
           <Stack gap="card">
-            <Heading size="sm">Team Picture</Heading>
+            <Heading size="sm">{t("account.teamPicture")}</Heading>
             <TeamPicture />
           </Stack>
         </Card.Body>
@@ -76,10 +78,10 @@ export function SettingsPage() {
         <Card.Body>
           <form onSubmit={saveName}>
             <Stack gap="card">
-              <Heading size="sm">Team Name</Heading>
+              <Heading size="sm">{t("account.teamName")}</Heading>
 
               <Field.Root>
-                <Field.Label>Name</Field.Label>
+                <Field.Label>{t("account.name")}</Field.Label>
                 <Input
                   value={name}
                   disabled={!canEdit || busy}
@@ -90,7 +92,7 @@ export function SettingsPage() {
 
               {!canEdit && (
                 <Text color="fg.muted" fontSize="xs" data-testid="settings-name-hint">
-                  Only a team owner or admin can change the team name.
+                  {t("account.onlyOwnerCanRename")}
                 </Text>
               )}
 
@@ -101,7 +103,7 @@ export function SettingsPage() {
                 disabled={!canEdit}
                 data-testid="save-team-name"
               >
-                Save
+                {t("account.save")}
               </Button>
             </Stack>
           </form>

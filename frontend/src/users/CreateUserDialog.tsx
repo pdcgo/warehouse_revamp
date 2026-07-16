@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -31,6 +32,7 @@ export function CreateUserDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { current } = useTeam();
 
   const roles = rolesFor(current?.teamType);
@@ -61,7 +63,7 @@ export function CreateUserDialog({
 
     // Username is lowercase alphanumeric only (#87) — the backend enforces the same rule.
     if (!/^[a-z0-9]+$/.test(username)) {
-      setError("Username may only contain lowercase letters and numbers.");
+      setError(t("users.create.usernameError"));
       return;
     }
 
@@ -81,7 +83,7 @@ export function CreateUserDialog({
         alias: "",
       });
 
-      toaster.create({ type: "success", title: `${username} created` });
+      toaster.create({ type: "success", title: t("users.toast.userCreated", { username }) });
 
       setUsername("");
       setPassword("");
@@ -101,7 +103,7 @@ export function CreateUserDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <Button size="xs" colorPalette="brand" data-testid="open-create-user">
-            New user
+            {t("users.newUser")}
           </Button>
         </Dialog.Trigger>
       )}
@@ -112,7 +114,7 @@ export function CreateUserDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>New User</Dialog.Title>
+                <Dialog.Title>{t("users.create.title")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -124,37 +126,37 @@ export function CreateUserDialog({
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Username</Field.Label>
+                    <Field.Label>{t("users.field.username")}</Field.Label>
                     <Input
                       value={username}
                       data-testid="new-username"
                       onChange={(e) => setUsername(e.target.value)}
                     />
-                    <Field.HelperText>Lowercase letters and numbers only.</Field.HelperText>
+                    <Field.HelperText>{t("users.helper.usernameRule")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Password</Field.Label>
+                    <Field.Label>{t("users.field.password")}</Field.Label>
                     <PasswordInput
                       value={password}
                       data-testid="new-password"
                       onChange={(e) => setPassword(e.target.value)}
                     />
-                    <Field.HelperText>At least 8 characters.</Field.HelperText>
+                    <Field.HelperText>{t("users.helper.min8")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("users.field.name")}</Field.Label>
                     <Input value={name} data-testid="new-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Email</Field.Label>
+                    <Field.Label>{t("users.field.email")}</Field.Label>
                     <Input value={email} data-testid="new-email" onChange={(e) => setEmail(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Role in {current?.teamName || "this team"}</Field.Label>
+                    <Field.Label>{t("users.create.roleInTeam", { team: current?.teamName || t("users.thisTeam") })}</Field.Label>
                     <RoleSelect teamType={current?.teamType} value={role} onChange={setRole} />
                   </Field.Root>
                 </Stack>
@@ -162,11 +164,11 @@ export function CreateUserDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("users.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-create-user">
-                  Create
+                  {t("users.create.submit")}
                 </Button>
               </Dialog.Footer>
 

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, FileUpload, Icon, IconButton, Image, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { ImagePlus, X } from "lucide-react";
 import { documentClient, rpcError } from "../api/clients";
@@ -33,6 +34,7 @@ export function ProductImagesInput({
   onChange: (images: ProductImageValue[]) => void;
   max?: number;
 }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
   // A synchronous guard: FileUpload can fire onFileChange more than once per pick (accept + reject
@@ -73,7 +75,7 @@ export function ProductImagesInput({
         thumbnailUrl: conf.document?.thumbnailUrl || conf.document?.publicUrl || "",
       };
     } catch (err) {
-      toaster.create({ type: "error", title: "Upload failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("products.toast.uploadFailed"), description: rpcError(err) });
 
       return null;
     }
@@ -94,7 +96,11 @@ export function ProductImagesInput({
     }
 
     if (files.length > room) {
-      toaster.create({ type: "info", title: `Only ${max} images allowed`, description: `Kept the first ${room}.` });
+      toaster.create({
+        type: "info",
+        title: t("products.toast.tooManyImages", { max }),
+        description: t("products.toast.keptFirst", { room }),
+      });
     }
 
     uploadingRef.current = true;
@@ -137,7 +143,7 @@ export function ProductImagesInput({
 
               {i === 0 && (
                 <Badge position="absolute" top="1" left="1" size="xs" colorPalette="brand">
-                  Cover
+                  {t("products.cover")}
                 </Badge>
               )}
 
@@ -174,13 +180,13 @@ export function ProductImagesInput({
         <FileUpload.Trigger asChild>
           <Button variant="outline" colorPalette="brand" loading={busy} disabled={full} data-testid="add-product-image">
             <Icon as={ImagePlus} />
-            Add images
+            {t("products.addImages")}
           </Button>
         </FileUpload.Trigger>
       </FileUpload.Root>
 
       <Text color="fg.muted" fontSize="xs">
-        {value.length}/{max} images. The first is the cover. JPG or PNG.
+        {t("products.imagesHelp", { used: value.length, max })}
       </Text>
     </Stack>
   );

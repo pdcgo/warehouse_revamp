@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, CloseButton, Dialog, Field, Portal, Stack, Text } from "@chakra-ui/react";
 import { rpcError, userClient } from "../api/clients";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
@@ -24,6 +25,7 @@ export function AddMemberDialog({
   teamId?: bigint;
   teamType?: TeamType;
 }) {
+  const { t } = useTranslation();
   const { current } = useTeam();
 
   const targetTeamId = teamId ?? current?.teamId;
@@ -54,7 +56,7 @@ export function AddMemberDialog({
         },
       });
 
-      toaster.create({ type: "success", title: "Member added" });
+      toaster.create({ type: "success", title: t("users.toast.memberAdded") });
 
       setUserId(undefined);
       setOpen(false);
@@ -79,7 +81,7 @@ export function AddMemberDialog({
     >
       <Dialog.Trigger asChild>
         <Button size="xs" variant="outline" data-testid="open-add-member">
-          Add member
+          {t("users.addMember.trigger")}
         </Button>
       </Dialog.Trigger>
 
@@ -88,7 +90,7 @@ export function AddMemberDialog({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Add Member</Dialog.Title>
+              <Dialog.Title>{t("users.addMember.title")}</Dialog.Title>
             </Dialog.Header>
 
             <Dialog.Body>
@@ -100,13 +102,13 @@ export function AddMemberDialog({
                 )}
 
                 <Field.Root>
-                  <Field.Label>Find a user</Field.Label>
-                  <UserSelect value={userId} onChange={setUserId} placeholder="Search across all teams" />
-                  <Field.HelperText>Searches everyone — add a user who isn't in this team yet.</Field.HelperText>
+                  <Field.Label>{t("users.addMember.findUser")}</Field.Label>
+                  <UserSelect value={userId} onChange={setUserId} placeholder={t("users.addMember.searchPlaceholder")} />
+                  <Field.HelperText>{t("users.addMember.helper")}</Field.HelperText>
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Role</Field.Label>
+                  <Field.Label>{t("users.field.role")}</Field.Label>
                   <RoleSelect teamType={targetTeamType} value={role} onChange={setRole} />
                 </Field.Root>
               </Stack>
@@ -115,7 +117,7 @@ export function AddMemberDialog({
             <Dialog.Footer>
               <Dialog.ActionTrigger asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t("users.cancel")}
                 </Button>
               </Dialog.ActionTrigger>
 
@@ -126,7 +128,7 @@ export function AddMemberDialog({
                 onClick={() => void add()}
                 data-testid="submit-add-member"
               >
-                Add
+                {t("users.addMember.submit")}
               </Button>
             </Dialog.Footer>
 

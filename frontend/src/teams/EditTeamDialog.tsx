@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
@@ -32,6 +33,7 @@ export function EditTeamDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
@@ -61,7 +63,7 @@ export function EditTeamDialog({
       // current values, and the backend never blanks what it does not receive.
       await teamClient.teamUpdate({ teamId: team.id, name, description });
 
-      toaster.create({ type: "success", title: `Team "${name}" updated` });
+      toaster.create({ type: "success", title: t("teams.teamUpdated", { name }) });
       setOpen(false);
       onDone();
     } catch (err) {
@@ -87,7 +89,7 @@ export function EditTeamDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Edit {team.name}</Dialog.Title>
+                <Dialog.Title>{t("teams.editTeamTitle", { name: team.name })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -99,12 +101,12 @@ export function EditTeamDialog({
                   )}
 
                   <Field.Root>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("teams.name")}</Field.Label>
                     <Input value={name} data-testid="edit-team-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Description</Field.Label>
+                    <Field.Label>{t("teams.description")}</Field.Label>
                     <Input
                       value={description}
                       data-testid="edit-team-description"
@@ -113,18 +115,18 @@ export function EditTeamDialog({
                   </Field.Root>
 
                   <Text fontSize="xs" color="fg.muted">
-                    Type ({team.teamCode}) and code are fixed after creation.
+                    {t("teams.typeCodeFixed", { code: team.teamCode })}
                   </Text>
                 </Stack>
               </Dialog.Body>
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("teams.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-edit-team">
-                  Save
+                  {t("teams.save")}
                 </Button>
               </Dialog.Footer>
 

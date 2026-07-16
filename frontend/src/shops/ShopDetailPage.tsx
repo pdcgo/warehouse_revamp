@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
@@ -39,6 +40,7 @@ export function ShopDetailPage() {
   const { shopId } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
+  const { t } = useTranslation();
 
   const id = parseShopId(shopId);
 
@@ -51,7 +53,7 @@ export function ShopDetailPage() {
 
   const load = useCallback(async () => {
     if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? "Invalid shop id." : "");
+      setError(id === 0n ? t("shops.detail.invalidId") : "");
       setLoading(false);
       return;
     }
@@ -77,9 +79,9 @@ export function ShopDetailPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Shops</Heading>
+        <Heading size="md">{t("shops.title")}</Heading>
         <Text color="fg.muted" data-testid="shop-detail-no-team">
-          Select a team to view its shops.
+          {t("shops.detail.selectTeam")}
         </Text>
       </Stack>
     );
@@ -100,10 +102,10 @@ export function ShopDetailPage() {
           onClick={() => navigate("/shops")}
         >
           <Icon as={ArrowLeft} boxSize="4" />
-          Back to Shops
+          {t("shops.detail.back")}
         </Button>
         <Text color="red.fg" data-testid="shop-detail-error">
-          {error || "Shop not found."}
+          {error || t("shops.detail.notFound")}
         </Text>
       </Stack>
     );
@@ -119,15 +121,15 @@ export function ShopDetailPage() {
         onClick={() => navigate("/shops")}
       >
         <Icon as={ArrowLeft} boxSize="4" />
-        Back to Shops
+        {t("shops.detail.back")}
       </Button>
 
       <Flex align="center" gap="card">
-        <Heading size="md">Shop Details</Heading>
+        <Heading size="md">{t("shops.detail.title")}</Heading>
         <Spacer />
         <Button size="xs" variant="outline" data-testid="shop-detail-edit" onClick={() => setEditing(true)}>
           <Icon as={Pencil} boxSize="4" />
-          Edit
+          {t("shops.detail.edit")}
         </Button>
       </Flex>
 
@@ -142,8 +144,8 @@ export function ShopDetailPage() {
             </Flex>
 
             <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-              <Field label="Code" value={shop.shopCode} />
-              <Field label="Description" value={shop.description} />
+              <Field label={t("shops.detail.code")} value={shop.shopCode} />
+              <Field label={t("shops.detail.description")} value={shop.description} />
             </SimpleGrid>
           </Stack>
         </Card.Body>

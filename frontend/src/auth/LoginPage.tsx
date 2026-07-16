@@ -12,12 +12,14 @@ import {
   Stack,
 } from "@chakra-ui/react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Logo } from "../components/Logo";
 import { PasswordInput } from "../components/PasswordInput";
 import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
 import { useAuth } from "./AuthContext";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { identity, login } = useAuth();
   const navigate = useNavigate();
 
@@ -43,7 +45,7 @@ export function LoginPage() {
     } catch (err) {
       // The server returns the SAME message for an unknown user and a wrong password — do not
       // embellish it here, or the UI reintroduces the account-enumeration leak the API avoids.
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("account.loginFailed"));
     } finally {
       setBusy(false);
     }
@@ -57,7 +59,7 @@ export function LoginPage() {
             <Stack gap="section">
               <Logo size={40} justify="center" pb="1" />
 
-              <Heading size="md">Sign in</Heading>
+              <Heading size="md">{t("account.signIn")}</Heading>
 
               {error && (
                 <Alert.Root status="error" data-testid="login-error">
@@ -67,7 +69,7 @@ export function LoginPage() {
               )}
 
               <Field.Root>
-                <Field.Label>Username</Field.Label>
+                <Field.Label>{t("account.username")}</Field.Label>
                 <Input
                   value={username}
                   autoComplete="username"
@@ -76,7 +78,7 @@ export function LoginPage() {
               </Field.Root>
 
               <Field.Root>
-                <Field.Label>Password</Field.Label>
+                <Field.Label>{t("account.password")}</Field.Label>
                 <PasswordInput
                   value={password}
                   autoComplete="current-password"
@@ -90,11 +92,11 @@ export function LoginPage() {
               >
                 <Checkbox.HiddenInput />
                 <Checkbox.Control />
-                <Checkbox.Label>Remember me</Checkbox.Label>
+                <Checkbox.Label>{t("account.rememberMe")}</Checkbox.Label>
               </Checkbox.Root>
 
               <Button type="submit" colorPalette="brand" loading={busy}>
-                Sign in
+                {t("account.signIn")}
               </Button>
 
               <Flex justify="center">

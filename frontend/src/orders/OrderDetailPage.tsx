@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Check } from "lucide-react";
@@ -37,6 +38,7 @@ function Field({ label, value }: { label: string; value: string }) {
 // the customer, status, shipping, the frozen money totals, and the line items, scoped to the current
 // team via OrderDetail.
 export function OrderDetailPage() {
+  const { t } = useTranslation();
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
@@ -51,7 +53,7 @@ export function OrderDetailPage() {
 
   const load = useCallback(async () => {
     if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? "Invalid order id." : "");
+      setError(id === 0n ? t("orders.invalidOrderId") : "");
       setLoading(false);
       return;
     }
@@ -68,7 +70,7 @@ export function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, id]);
+  }, [teamId, id, t]);
 
   useEffect(() => {
     void load();
@@ -83,7 +85,7 @@ export function OrderDetailPage() {
     try {
       const res = await orderClient.orderConfirm({ teamId, orderId: order.id });
       setOrder(res.order ?? order);
-      toaster.create({ type: "success", title: "Order confirmed" });
+      toaster.create({ type: "success", title: t("orders.orderConfirmed") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
     } finally {
@@ -99,7 +101,7 @@ export function OrderDetailPage() {
     try {
       const res = await orderClient.orderCancel({ teamId, orderId: order.id });
       setOrder(res.order ?? order);
-      toaster.create({ type: "success", title: "Order cancelled" });
+      toaster.create({ type: "success", title: t("orders.orderCancelled") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
     }
@@ -108,9 +110,9 @@ export function OrderDetailPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Orders</Heading>
+        <Heading size="md">{t("orders.title")}</Heading>
         <Text color="fg.muted" data-testid="order-detail-no-team">
-          Select a team to view its orders.
+          {t("orders.selectTeamView")}
         </Text>
       </Stack>
     );
@@ -131,10 +133,10 @@ export function OrderDetailPage() {
           onClick={() => navigate("/orders")}
         >
           <Icon as={ArrowLeft} boxSize="4" />
-          Back to Orders
+          {t("orders.backToOrders")}
         </Button>
         <Text color="red.fg" data-testid="order-detail-error">
-          {error || "Order not found."}
+          {error || t("orders.orderNotFound")}
         </Text>
       </Stack>
     );
@@ -150,12 +152,12 @@ export function OrderDetailPage() {
         onClick={() => navigate("/orders")}
       >
         <Icon as={ArrowLeft} boxSize="4" />
-        Back to Orders
+        {t("orders.backToOrders")}
       </Button>
 
       <Flex align="center" gap="card">
         <Heading size="md" data-testid="order-detail-title">
-          Order #{order.id.toString()}
+          {t("orders.orderTitle", { id: order.id.toString() })}
         </Heading>
         <OrderStatusBadge status={order.status} />
         <Spacer />
@@ -168,20 +170,20 @@ export function OrderDetailPage() {
             onClick={() => void confirmOrder()}
           >
             <Icon as={Check} boxSize="4" />
-            Confirm
+            {t("orders.confirm")}
           </Button>
         )}
 
         {(order.status === OrderStatus.PLACED || order.status === OrderStatus.CONFIRMED) && (
           <ConfirmDialog
-            title="Cancel Order"
-            message={`Cancel order #${order.id.toString()}? This can't be undone.`}
-            confirmLabel="Cancel Order"
+            title={t("orders.cancelOrder")}
+            message={t("orders.cancelMessage", { id: order.id.toString() })}
+            confirmLabel={t("orders.cancelOrder")}
             onConfirm={cancelOrder}
             trigger={
               <Button variant="outline" colorPalette="red" data-testid="order-cancel">
                 <Icon as={Ban} boxSize="4" />
-                Cancel
+                {t("orders.cancel")}
               </Button>
             }
           />
@@ -192,13 +194,13 @@ export function OrderDetailPage() {
         <Card.Body>
           <Stack gap="card">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              Customer &amp; shipping
+              {t("orders.customerAndShipping")}
             </Text>
             <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-              <Field label="Customer" value={order.customerName} />
-              <Field label="Phone" value={order.customerPhone} />
-              <Field label="Address" value={order.customerAddress} />
-              <Field label="Shipping" value={order.shippingCode} />
+              <Field label={t("orders.customer")} value={order.customerName} />
+              <Field label={t("orders.phone")} value={order.customerPhone} />
+              <Field label={t("orders.address")} value={order.customerAddress} />
+              <Field label={t("orders.shipping")} value={order.shippingCode} />
             </SimpleGrid>
           </Stack>
         </Card.Body>
@@ -208,17 +210,17 @@ export function OrderDetailPage() {
         <Card.Body>
           <Stack gap="card">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              Items
+              {t("orders.items")}
             </Text>
 
             <Table.Root size="sm" data-testid="order-detail-items">
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeader>SKU</Table.ColumnHeader>
-                  <Table.ColumnHeader>Name</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">Qty</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">Unit price</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">Line total</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("orders.sku")}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("orders.name")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("orders.unitPrice")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -238,13 +240,13 @@ export function OrderDetailPage() {
 
             <Stack gap="1" align="end">
               <Text fontSize="sm" color="fg.muted">
-                Subtotal: {formatRupiah(order.subtotal)}
+                {t("orders.subtotal")}: {formatRupiah(order.subtotal)}
               </Text>
               <Text fontSize="sm" color="fg.muted">
-                Shipping: {formatRupiah(order.shippingCost)}
+                {t("orders.shipping")}: {formatRupiah(order.shippingCost)}
               </Text>
               <Text fontSize="md" fontWeight="semibold" data-testid="order-detail-total">
-                Total: {formatRupiah(order.total)}
+                {t("orders.total")}: {formatRupiah(order.total)}
               </Text>
             </Stack>
           </Stack>

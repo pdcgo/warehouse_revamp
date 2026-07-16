@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -35,6 +36,7 @@ export function ShopFormDialog({
   onOpenChange?: (open: boolean) => void;
 }) {
   const { current } = useTeam();
+  const { t } = useTranslation();
 
   const editing = shop !== undefined;
   const isControlled = openProp !== undefined;
@@ -72,10 +74,10 @@ export function ShopFormDialog({
     try {
       if (editing && shop) {
         await shopClient.shopUpdate({ teamId: current.teamId, shopId: shop.id, name, shopCode, marketplace, description });
-        toaster.create({ type: "success", title: "Shop saved" });
+        toaster.create({ type: "success", title: t("shops.form.saved") });
       } else {
         await shopClient.shopCreate({ teamId: current.teamId, name, shopCode, marketplace, description });
-        toaster.create({ type: "success", title: `Shop "${name}" created` });
+        toaster.create({ type: "success", title: t("shops.form.created", { name }) });
 
         setName("");
         setShopCode("");
@@ -97,7 +99,7 @@ export function ShopFormDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <Button size="xs" colorPalette="brand" data-testid="open-create-shop">
-            New shop
+            {t("shops.form.newShop")}
           </Button>
         </Dialog.Trigger>
       )}
@@ -108,7 +110,7 @@ export function ShopFormDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{editing ? "Edit Shop" : "New Shop"}</Dialog.Title>
+                <Dialog.Title>{editing ? t("shops.form.editTitle") : t("shops.form.createTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -120,23 +122,23 @@ export function ShopFormDialog({
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("shops.form.name")}</Field.Label>
                     <Input value={name} data-testid="shop-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Shop code</Field.Label>
+                    <Field.Label>{t("shops.form.shopCode")}</Field.Label>
                     <Input value={shopCode} data-testid="shop-code" onChange={(e) => setShopCode(e.target.value)} />
-                    <Field.HelperText>Unique within the team, up to 32 characters.</Field.HelperText>
+                    <Field.HelperText>{t("shops.form.shopCodeHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Marketplace</Field.Label>
+                    <Field.Label>{t("shops.form.marketplace")}</Field.Label>
                     <MarketplaceSelect value={marketplace} onChange={setMarketplace} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Description</Field.Label>
+                    <Field.Label>{t("shops.form.description")}</Field.Label>
                     <Input
                       value={description}
                       data-testid="shop-description"
@@ -148,11 +150,11 @@ export function ShopFormDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("shops.form.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} disabled={!canSave} data-testid="submit-shop">
-                  {editing ? "Save" : "Create"}
+                  {editing ? t("shops.form.save") : t("shops.form.create")}
                 </Button>
               </Dialog.Footer>
 

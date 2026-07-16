@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -32,6 +33,7 @@ export function ProductEditPage() {
   const editing = productId !== undefined;
   const { current } = useTeam();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const teamId = current?.teamId;
 
@@ -108,7 +110,10 @@ export function ProductEditPage() {
         await productClient.productCreate({ teamId, sku, name, description, categoryId, images });
       }
 
-      toaster.create({ type: "success", title: editing ? "Product saved" : `Product "${sku}" created` });
+      toaster.create({
+        type: "success",
+        title: editing ? t("products.toast.saved") : t("products.toast.created", { sku }),
+      });
       void navigate("/products");
     } catch (err) {
       setError(rpcError(err));
@@ -120,9 +125,9 @@ export function ProductEditPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Products</Heading>
+        <Heading size="md">{t("products.heading")}</Heading>
         <Text color="fg.muted" data-testid="product-edit-no-team">
-          Select a team to manage its products.
+          {t("products.noTeam")}
         </Text>
       </Stack>
     );
@@ -147,7 +152,7 @@ export function ProductEditPage() {
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">{editing ? "Edit Product" : "New Product"}</Heading>
+        <Heading size="md">{editing ? t("products.form.editTitle") : t("products.form.newTitle")}</Heading>
       </Flex>
 
       {error && (
@@ -162,17 +167,17 @@ export function ProductEditPage() {
             <Card.Body>
               <Stack gap="card">
                 <Field.Root required>
-                  <Field.Label>SKU</Field.Label>
+                  <Field.Label>{t("products.field.sku")}</Field.Label>
                   <Input value={sku} data-testid="product-edit-sku" onChange={(e) => setSku(e.target.value)} />
                 </Field.Root>
 
                 <Field.Root required>
-                  <Field.Label>Name</Field.Label>
+                  <Field.Label>{t("products.field.name")}</Field.Label>
                   <Input value={name} data-testid="product-edit-name" onChange={(e) => setName(e.target.value)} />
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Description</Field.Label>
+                  <Field.Label>{t("products.field.description")}</Field.Label>
                   <Textarea
                     value={description}
                     data-testid="product-edit-description"
@@ -181,14 +186,14 @@ export function ProductEditPage() {
                 </Field.Root>
 
                 <Field.Root required>
-                  <Field.Label>Category</Field.Label>
+                  <Field.Label>{t("products.field.category")}</Field.Label>
                   <CategorySelect
                     value={categoryId}
                     onChange={setCategoryId}
-                    placeholder="Select a category"
+                    placeholder={t("products.form.categoryPlaceholder")}
                     leafOnly
                   />
-                  <Field.HelperText>Every product is filed under an end category.</Field.HelperText>
+                  <Field.HelperText>{t("products.form.categoryHelp")}</Field.HelperText>
                 </Field.Root>
               </Stack>
             </Card.Body>
@@ -197,7 +202,7 @@ export function ProductEditPage() {
           <Card.Root>
             <Card.Body>
               <Stack gap="card">
-                <Text fontWeight="medium">Images</Text>
+                <Text fontWeight="medium">{t("products.images")}</Text>
                 <ProductImagesInput teamId={teamId ?? 0n} value={images} onChange={setImages} />
               </Stack>
             </Card.Body>
@@ -211,7 +216,7 @@ export function ProductEditPage() {
               disabled={!canSave}
               data-testid="product-edit-save"
             >
-              {editing ? "Save" : "Create"}
+              {editing ? t("products.save") : t("products.create")}
             </Button>
           </Flex>
         </Stack>

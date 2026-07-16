@@ -1,16 +1,17 @@
 import { Box, HStack, Input, Stack, Switch, Text } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { Weekday } from "../gen/warehouse/team/v1/team_pb";
 import type { DayHours } from "../gen/warehouse/team/v1/team_pb";
 
 // The seven weekdays in display order (Mon..Sun), matching the backend's Weekday 1..7.
-const WEEKDAYS: { day: Weekday; label: string }[] = [
-  { day: Weekday.MONDAY, label: "Monday" },
-  { day: Weekday.TUESDAY, label: "Tuesday" },
-  { day: Weekday.WEDNESDAY, label: "Wednesday" },
-  { day: Weekday.THURSDAY, label: "Thursday" },
-  { day: Weekday.FRIDAY, label: "Friday" },
-  { day: Weekday.SATURDAY, label: "Saturday" },
-  { day: Weekday.SUNDAY, label: "Sunday" },
+const WEEKDAYS: { day: Weekday; labelKey: string }[] = [
+  { day: Weekday.MONDAY, labelKey: "teams.weekday.monday" },
+  { day: Weekday.TUESDAY, labelKey: "teams.weekday.tuesday" },
+  { day: Weekday.WEDNESDAY, labelKey: "teams.weekday.wednesday" },
+  { day: Weekday.THURSDAY, labelKey: "teams.weekday.thursday" },
+  { day: Weekday.FRIDAY, labelKey: "teams.weekday.friday" },
+  { day: Weekday.SATURDAY, labelKey: "teams.weekday.saturday" },
+  { day: Weekday.SUNDAY, labelKey: "teams.weekday.sunday" },
 ];
 
 export interface DayRow {
@@ -62,6 +63,8 @@ interface WeeklyHoursEditorProps {
 // WeeklyHoursEditor is a fixed 7-row grid: each weekday has an open/closed switch and, when open,
 // an open and a close time. Used twice on the warehouse edit page (operating + receiving hours).
 export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHoursEditorProps) {
+  const { t } = useTranslation();
+
   function setRow(index: number, patch: Partial<DayRow>) {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
@@ -78,7 +81,7 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
         return (
           <HStack key={wd.day} gap="card" align="center">
             <Box w="90px" fontSize="sm">
-              {wd.label}
+              {t(wd.labelKey)}
             </Box>
 
             <Switch.Root
@@ -88,7 +91,7 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
             >
               <Switch.HiddenInput />
               <Switch.Control />
-              <Switch.Label>{row.open ? "Open" : "Closed"}</Switch.Label>
+              <Switch.Label>{row.open ? t("teams.open") : t("teams.closed")}</Switch.Label>
             </Switch.Root>
 
             {row.open && (
@@ -102,7 +105,7 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
                   onChange={(e) => setRow(i, { openTime: e.target.value })}
                 />
                 <Text fontSize="xs" color="fg.muted">
-                  to
+                  {t("teams.to")}
                 </Text>
                 <Input
                   type="time"

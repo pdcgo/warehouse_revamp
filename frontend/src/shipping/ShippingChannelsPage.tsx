@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Power, PowerOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, shippingClient } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
@@ -23,6 +24,7 @@ import { EditShippingDialog } from "./EditShippingDialog";
 // (see the nav gate). It is not team-scoped. The table lists ALL channels (include_inactive) so a
 // retired courier can be reactivated; the Status badge tells them apart.
 export function ShippingChannelsPage() {
+  const { t } = useTranslation();
   const [channels, setChannels] = useState<Shipping[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,18 +58,20 @@ export function ShippingChannelsPage() {
       await shippingClient.shippingUpdate({ shippingId: channel.id, active: next });
       toaster.create({
         type: "success",
-        title: next ? `Channel "${channel.name}" activated` : `Channel "${channel.name}" deactivated`,
+        title: next
+          ? t("catalog.shipping.activatedToast", { name: channel.name })
+          : t("catalog.shipping.deactivatedToast", { name: channel.name }),
       });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Update failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("catalog.updateFailed"), description: rpcError(err) });
     }
   }
 
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Shipping</Heading>
+        <Heading size="md">{t("catalog.shipping.title")}</Heading>
         <Spacer />
         <CreateShippingDialog onDone={() => void load()} />
       </Flex>
@@ -84,10 +88,10 @@ export function ShippingChannelsPage() {
         <Table.Root size="sm" data-testid="shipping-channels-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Code</Table.ColumnHeader>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
-              <Table.ColumnHeader>Status</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("catalog.shipping.code")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("catalog.name")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("catalog.shipping.status")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("catalog.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -98,7 +102,7 @@ export function ShippingChannelsPage() {
                 <Table.Cell>{channel.name}</Table.Cell>
                 <Table.Cell>
                   <Badge colorPalette={channel.active ? "green" : "gray"}>
-                    {channel.active ? "Active" : "Inactive"}
+                    {channel.active ? t("catalog.shipping.active") : t("catalog.shipping.inactive")}
                   </Badge>
                 </Table.Cell>
 
@@ -126,7 +130,7 @@ export function ShippingChannelsPage() {
 
       {!loading && channels.length === 0 && !error && (
         <Text color="fg.muted" data-testid="shipping-channels-empty">
-          No shipping channels yet.
+          {t("catalog.shipping.empty")}
         </Text>
       )}
     </Stack>

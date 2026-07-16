@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -44,6 +45,7 @@ const PAGE_SIZE = 10;
 // shared `user-*` testids never collide. The Add member / New user buttons live in the PAGE header
 // (#58 review), not here; `reloadSignal` is bumped there so this table reloads after one runs.
 export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloadSignal?: number }) {
+  const { t } = useTranslation();
   const { identity } = useAuth();
   const { current } = useTeam();
   const navigate = useNavigate();
@@ -130,25 +132,27 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
 
       toaster.create({
         type: "success",
-        title: suspended ? `${user.username} suspended` : `${user.username} restored`,
+        title: suspended
+          ? t("users.toast.userSuspended", { username: user.username })
+          : t("users.toast.userRestored", { username: user.username }),
         // Worth saying: suspension is not "they cannot log in next time" — it cuts their current
         // session off on the very next request.
-        description: suspended ? "Their active session was cut off immediately." : undefined,
+        description: suspended ? t("users.toast.suspendedDescription") : undefined,
       });
 
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Suspend failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("users.toast.suspendFailed"), description: rpcError(err) });
     }
   }
 
   async function remove(user: User) {
     try {
       await userClient.deleteUser({ userId: user.id });
-      toaster.create({ type: "success", title: `${user.username} deleted` });
+      toaster.create({ type: "success", title: t("users.toast.userDeleted", { username: user.username }) });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("users.toast.deleteFailed"), description: rpcError(err) });
     }
   }
 
@@ -159,10 +163,10 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
         action: { case: "remove", value: { userId: user.id } },
       });
 
-      toaster.create({ type: "success", title: `${user.username} removed from the team` });
+      toaster.create({ type: "success", title: t("users.toast.removedFromTeam", { username: user.username }) });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Remove failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("users.toast.removeFailed"), description: rpcError(err) });
     }
   }
 
@@ -171,7 +175,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
       <HStack gap="card">
         <Input
           maxW="sm"
-          placeholder="Search name, username or email"
+          placeholder={t("users.searchPlaceholder")}
           value={q}
           data-testid="user-search"
           onChange={(e) => {
@@ -190,10 +194,10 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                 setPage(1);
               }}
             >
-              <option value="0">All teams</option>
-              {teams.map((t) => (
-                <option key={t.id.toString()} value={t.id.toString()}>
-                  {t.name || `Team #${t.id}`}
+              <option value="0">{t("users.allTeams")}</option>
+              {teams.map((team) => (
+                <option key={team.id.toString()} value={team.id.toString()}>
+                  {team.name || `Team #${team.id}`}
                 </option>
               ))}
             </NativeSelect.Field>
@@ -214,10 +218,10 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
         <Table.Root size="sm" data-testid="users-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>User</Table.ColumnHeader>
-              <Table.ColumnHeader>Email</Table.ColumnHeader>
-              <Table.ColumnHeader>Status</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("users.table.user")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("users.table.email")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("users.table.status")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("users.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -248,10 +252,10 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                   <Table.Cell>
                     {user.isSuspended ? (
                       <Badge colorPalette="red" data-testid={`suspended-${user.username}`}>
-                        Suspended
+                        {t("users.status.suspended")}
                       </Badge>
                     ) : (
-                      <Badge colorPalette="green">Active</Badge>
+                      <Badge colorPalette="green">{t("users.status.active")}</Badge>
                     )}
                   </Table.Cell>
 
@@ -277,7 +281,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                               onClick={() => setDialog({ kind: "edit", user })}
                             >
                               <Icon as={Pencil} boxSize="4" />
-                              Edit
+                              {t("users.action.edit")}
                             </Menu.Item>
 
                             {/* UserTeams is root/admin only — offer the view only where it works. */}
@@ -288,7 +292,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                                 onClick={() => navigate(`/users/${user.id}`)}
                               >
                                 <Icon as={Eye} boxSize="4" />
-                                Details
+                                {t("users.action.details")}
                               </Menu.Item>
                             )}
 
@@ -299,7 +303,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                                 onClick={() => setDialog({ kind: "remove", user })}
                               >
                                 <Icon as={UserMinus} boxSize="4" />
-                                Remove from team
+                                {t("users.action.removeFromTeam")}
                               </Menu.Item>
                             )}
 
@@ -313,7 +317,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                                   onClick={() => setDialog({ kind: "reset", user })}
                                 >
                                   <Icon as={KeyRound} boxSize="4" />
-                                  Reset password
+                                  {t("users.action.resetPassword")}
                                 </Menu.Item>
 
                                 <Menu.Item
@@ -322,7 +326,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                                   onClick={() => setDialog({ kind: "suspend", user })}
                                 >
                                   <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
-                                  {user.isSuspended ? "Restore" : "Suspend"}
+                                  {user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
                                 </Menu.Item>
 
                                 <Menu.Item
@@ -332,7 +336,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
                                   onClick={() => setDialog({ kind: "delete", user })}
                                 >
                                   <Icon as={Trash2} boxSize="4" />
-                                  Delete
+                                  {t("users.action.delete")}
                                 </Menu.Item>
                               </>
                             )}
@@ -350,7 +354,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
 
       {!loading && users.length === 0 && !error && (
         <Text color="fg.muted" data-testid="users-empty">
-          No users found.
+          {t("users.empty")}
         </Text>
       )}
 
@@ -388,9 +392,12 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Remove from Team"
-          message={`Remove ${dialog.user.username} from ${current?.teamName || "this team"}? The account itself is kept.`}
-          confirmLabel="Remove"
+          title={t("users.confirm.removeFromTeam.title")}
+          message={t("users.confirm.removeFromTeam.message", {
+            username: dialog.user.username,
+            team: current?.teamName || t("users.thisTeam"),
+          })}
+          confirmLabel={t("users.confirm.removeFromTeam.confirm")}
           onConfirm={() => removeFromTeam(dialog.user)}
         />
       )}
@@ -401,13 +408,13 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title={dialog.user.isSuspended ? "Restore Account" : "Suspend Account"}
+          title={dialog.user.isSuspended ? t("users.confirm.restore.title") : t("users.confirm.suspend.title")}
           message={
             dialog.user.isSuspended
-              ? `Restore ${dialog.user.username}? They will be able to sign in again.`
-              : `Suspend ${dialog.user.username}? Their active session is cut off immediately and they cannot sign in.`
+              ? t("users.confirm.restore.message", { username: dialog.user.username })
+              : t("users.confirm.suspend.message", { username: dialog.user.username })
           }
-          confirmLabel={dialog.user.isSuspended ? "Restore" : "Suspend"}
+          confirmLabel={dialog.user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
           destructive={!dialog.user.isSuspended}
           onConfirm={() => suspend(dialog.user, !dialog.user.isSuspended)}
         />
@@ -419,9 +426,9 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete User"
-          message={`Permanently delete ${dialog.user.username}? Their team memberships are removed too. This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("users.confirm.delete.title")}
+          message={t("users.confirm.delete.message", { username: dialog.user.username })}
+          confirmLabel={t("users.action.delete")}
           onConfirm={() => remove(dialog.user)}
         />
       )}

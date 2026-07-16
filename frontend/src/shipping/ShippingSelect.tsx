@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NativeSelect } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { rpcError, shippingClient } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 
@@ -19,9 +20,11 @@ export const description = "Courier picker backed by the shipping catalogue. Emi
 export function ShippingSelect({
   value,
   onChange,
-  placeholder = "Select a courier",
+  placeholder,
   disabled,
 }: ShippingSelectProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("catalog.shippingSelect.placeholder");
   const [couriers, setCouriers] = useState<Shipping[]>([]);
   const [error, setError] = useState("");
 
@@ -50,7 +53,7 @@ export function ShippingSelect({
         onChange={(e) => onChange?.(e.target.value)}
       >
         <option value="" disabled>
-          {error ? "Couriers unavailable" : placeholder}
+          {error ? t("catalog.shippingSelect.unavailable") : resolvedPlaceholder}
         </option>
         {couriers.map((courier) => (
           <option key={courier.code} value={courier.code}>

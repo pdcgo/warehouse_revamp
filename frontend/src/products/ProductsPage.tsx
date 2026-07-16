@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -33,6 +34,7 @@ const PAGE_SIZE = 20;
 export function ProductsPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
@@ -79,10 +81,10 @@ export function ProductsPage() {
 
     try {
       await productClient.productDelete({ teamId, productId: product.id });
-      toaster.create({ type: "success", title: `Product "${product.sku}" deleted` });
+      toaster.create({ type: "success", title: t("products.toast.deleted", { sku: product.sku }) });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("products.toast.deleteFailed"), description: rpcError(err) });
     }
   }
 
@@ -90,9 +92,9 @@ export function ProductsPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Products</Heading>
+        <Heading size="md">{t("products.heading")}</Heading>
         <Text color="fg.muted" data-testid="products-no-team">
-          Select a team to manage its products.
+          {t("products.noTeam")}
         </Text>
       </Stack>
     );
@@ -101,7 +103,7 @@ export function ProductsPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Products</Heading>
+        <Heading size="md">{t("products.heading")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
         <Button
@@ -110,14 +112,14 @@ export function ProductsPage() {
           data-testid="open-create-product"
           onClick={() => navigate("/products/new")}
         >
-          New product
+          {t("products.newProduct")}
         </Button>
       </Flex>
 
       <HStack>
         <Input
           maxW="sm"
-          placeholder="Search SKU or name"
+          placeholder={t("products.searchPlaceholder")}
           value={q}
           data-testid="product-search"
           onChange={(e) => {
@@ -139,11 +141,11 @@ export function ProductsPage() {
         <Table.Root size="sm" data-testid="products-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader w="12">Image</Table.ColumnHeader>
-              <Table.ColumnHeader>SKU</Table.ColumnHeader>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
-              <Table.ColumnHeader>Description</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader w="12">{t("products.table.image")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("products.table.sku")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("products.table.name")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("products.table.description")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("products.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -196,9 +198,9 @@ export function ProductsPage() {
                       </IconButton>
 
                       <ConfirmDialog
-                        title="Delete Product"
-                        message={`Delete "${product.sku}"? This cannot be undone.`}
-                        confirmLabel="Delete"
+                        title={t("products.deleteDialog.title")}
+                        message={t("products.deleteDialog.message", { sku: product.sku })}
+                        confirmLabel={t("products.deleteDialog.confirmLabel")}
                         onConfirm={() => remove(product)}
                         trigger={
                           <IconButton
@@ -223,7 +225,7 @@ export function ProductsPage() {
 
       {!loading && products.length === 0 && !error && (
         <Text color="fg.muted" data-testid="products-empty">
-          No products found.
+          {t("products.empty")}
         </Text>
       )}
 

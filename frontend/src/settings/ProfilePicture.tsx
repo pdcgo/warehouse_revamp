@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar, Button, FileUpload, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { Camera } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { documentClient, rpcError, userClient } from "../api/clients";
 import { DocumentResourceType } from "../gen/warehouse/document/v1/document_pb";
 import { useTeam } from "../team/TeamContext";
@@ -23,6 +24,7 @@ interface ProfilePictureProps {
 // (the (use_scope) option), so with no current team there is nothing to scope to and the control
 // is disabled.
 export function ProfilePicture({ avatarUrl, name, onUpdated }: ProfilePictureProps) {
+  const { t } = useTranslation();
   const { current } = useTeam();
   const [busy, setBusy] = useState(false);
 
@@ -67,9 +69,9 @@ export function ProfilePicture({ avatarUrl, name, onUpdated }: ProfilePicturePro
       await userClient.updateProfile({ avatarUrl: url });
 
       onUpdated(url);
-      toaster.create({ type: "success", title: "Profile picture updated" });
+      toaster.create({ type: "success", title: t("account.profilePictureUpdated") });
     } catch (err) {
-      toaster.create({ type: "error", title: "Upload failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("account.uploadFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
     }
@@ -104,13 +106,13 @@ export function ProfilePicture({ avatarUrl, name, onUpdated }: ProfilePicturePro
               data-testid="change-picture"
             >
               <Icon as={Camera} />
-              Change picture
+              {t("account.changePicture")}
             </Button>
           </FileUpload.Trigger>
         </FileUpload.Root>
 
         <Text color="fg.muted" fontSize="xs">
-          {noTeam ? "Select a team first to change your picture." : "JPG or PNG, shown across the app."}
+          {noTeam ? t("account.selectTeamForPicture") : t("account.pictureHint")}
         </Text>
       </Stack>
     </HStack>

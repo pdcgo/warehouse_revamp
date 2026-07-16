@@ -11,6 +11,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { authClient, rpcError } from "../api/clients";
 import { PasswordInput } from "../components/PasswordInput";
 import { toaster } from "../components/Toaster";
@@ -27,6 +28,7 @@ import { toaster } from "../components/Toaster";
 type Step = "request" | "verify";
 
 export function ForgotPasswordDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("request");
   const [busy, setBusy] = useState(false);
@@ -71,7 +73,7 @@ export function ForgotPasswordDialog() {
     event.preventDefault();
 
     if (newPassword !== confirm) {
-      setError("The new passwords do not match.");
+      setError(t("account.passwordsDoNotMatch"));
 
       return;
     }
@@ -84,8 +86,8 @@ export function ForgotPasswordDialog() {
 
       toaster.create({
         type: "success",
-        title: "Password reset",
-        description: "Sign in with your new password.",
+        title: t("account.passwordReset"),
+        description: t("account.signInWithNewPassword"),
       });
 
       setOpen(false);
@@ -114,7 +116,7 @@ export function ForgotPasswordDialog() {
             and a <button> with no type defaults to submit — so clicking it would fire an empty
             login on top of opening the dialog. */}
         <Button type="button" variant="plain" size="xs" colorPalette="brand" data-testid="open-forgot-password">
-          Forgot password?
+          {t("account.forgotPassword")}
         </Button>
       </Dialog.Trigger>
 
@@ -123,7 +125,7 @@ export function ForgotPasswordDialog() {
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Reset Password</Dialog.Title>
+              <Dialog.Title>{t("account.resetPasswordTitle")}</Dialog.Title>
             </Dialog.Header>
 
             {step === "request" ? (
@@ -131,8 +133,7 @@ export function ForgotPasswordDialog() {
                 <Dialog.Body>
                   <Stack gap="card">
                     <Text color="fg.muted" fontSize="sm">
-                      Enter your username. If it has a phone number on file, we'll text a
-                      one-time code.
+                      {t("account.enterUsernameHint")}
                     </Text>
 
                     {error && (
@@ -143,7 +144,7 @@ export function ForgotPasswordDialog() {
                     )}
 
                     <Field.Root required>
-                      <Field.Label>Username</Field.Label>
+                      <Field.Label>{t("account.username")}</Field.Label>
                       <Input
                         value={username}
                         autoComplete="username"
@@ -157,12 +158,12 @@ export function ForgotPasswordDialog() {
                 <Dialog.Footer>
                   <Dialog.ActionTrigger asChild>
                     <Button type="button" variant="outline">
-                      Cancel
+                      {t("account.cancel")}
                     </Button>
                   </Dialog.ActionTrigger>
 
                   <Button type="submit" colorPalette="brand" loading={busy} data-testid="request-otp">
-                    Send code
+                    {t("account.sendCode")}
                   </Button>
                 </Dialog.Footer>
               </form>
@@ -171,8 +172,8 @@ export function ForgotPasswordDialog() {
                 <Dialog.Body>
                   <Stack gap="card">
                     <Text color="fg.muted" fontSize="sm">
-                      Enter the code sent to <strong>{username}</strong> and choose a new
-                      password.
+                      {t("account.enterCodePrefix")} <strong>{username}</strong>{" "}
+                      {t("account.enterCodeSuffix")}
                     </Text>
 
                     {error && (
@@ -183,7 +184,7 @@ export function ForgotPasswordDialog() {
                     )}
 
                     <Field.Root required>
-                      <Field.Label>Code</Field.Label>
+                      <Field.Label>{t("account.code")}</Field.Label>
                       <Input
                         value={code}
                         inputMode="numeric"
@@ -194,18 +195,18 @@ export function ForgotPasswordDialog() {
                     </Field.Root>
 
                     <Field.Root required>
-                      <Field.Label>New password</Field.Label>
+                      <Field.Label>{t("account.newPassword")}</Field.Label>
                       <PasswordInput
                         value={newPassword}
                         autoComplete="new-password"
                         data-testid="otp-new-password-1"
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
-                      <Field.HelperText>At least 8 characters.</Field.HelperText>
+                      <Field.HelperText>{t("account.atLeast8Characters")}</Field.HelperText>
                     </Field.Root>
 
                     <Field.Root required>
-                      <Field.Label>Confirm new password</Field.Label>
+                      <Field.Label>{t("account.confirmNewPassword")}</Field.Label>
                       <PasswordInput
                         value={confirm}
                         autoComplete="new-password"
@@ -218,11 +219,11 @@ export function ForgotPasswordDialog() {
 
                 <Dialog.Footer>
                   <Button type="button" variant="outline" onClick={() => setStep("request")}>
-                    Back
+                    {t("account.back")}
                   </Button>
 
                   <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-otp-reset">
-                    Reset password
+                    {t("account.resetPassword")}
                   </Button>
                 </Dialog.Footer>
               </form>

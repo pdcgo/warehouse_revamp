@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -60,6 +61,7 @@ function lineTotal(line: LineDraft): bigint {
 // no inventory is touched (that is #69) and no fulfillment happens here. Money is computed on the
 // client for display, but the backend is the source of truth for what it stores.
 export function OrderCreatePage() {
+  const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -139,7 +141,7 @@ export function OrderCreatePage() {
         })),
       });
 
-      toaster.create({ type: "success", title: "Order created" });
+      toaster.create({ type: "success", title: t("orders.orderCreated") });
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");
     } catch (err) {
@@ -152,9 +154,9 @@ export function OrderCreatePage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Orders</Heading>
+        <Heading size="md">{t("orders.title")}</Heading>
         <Text color="fg.muted" data-testid="order-create-no-team">
-          Select a team to create an order.
+          {t("orders.selectTeamCreate")}
         </Text>
       </Stack>
     );
@@ -172,7 +174,7 @@ export function OrderCreatePage() {
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">New Order</Heading>
+        <Heading size="md">{t("orders.newOrderTitle")}</Heading>
       </Flex>
 
       {error && (
@@ -186,10 +188,10 @@ export function OrderCreatePage() {
           <Card.Root>
             <Card.Body>
               <Stack gap="card">
-                <Text fontWeight="medium">Customer &amp; shop</Text>
+                <Text fontWeight="medium">{t("orders.customerAndShop")}</Text>
 
                 <Field.Root required>
-                  <Field.Label>Customer name</Field.Label>
+                  <Field.Label>{t("orders.customerName")}</Field.Label>
                   <Input
                     value={customerName}
                     data-testid="order-create-customer-name"
@@ -198,7 +200,7 @@ export function OrderCreatePage() {
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Phone</Field.Label>
+                  <Field.Label>{t("orders.phone")}</Field.Label>
                   <Input
                     value={customerPhone}
                     data-testid="order-create-customer-phone"
@@ -207,7 +209,7 @@ export function OrderCreatePage() {
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Address</Field.Label>
+                  <Field.Label>{t("orders.address")}</Field.Label>
                   <Textarea
                     value={customerAddress}
                     data-testid="order-create-customer-address"
@@ -216,12 +218,12 @@ export function OrderCreatePage() {
                 </Field.Root>
 
                 <Field.Root required>
-                  <Field.Label>Shop</Field.Label>
+                  <Field.Label>{t("orders.shop")}</Field.Label>
                   <ShopSelect teamId={teamId ?? 0n} value={shopId} onChange={setShopId} />
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Shipping</Field.Label>
+                  <Field.Label>{t("orders.shipping")}</Field.Label>
                   <ShippingSelect value={shippingCode} onChange={setShippingCode} />
                 </Field.Root>
               </Stack>
@@ -232,7 +234,7 @@ export function OrderCreatePage() {
             <Card.Body>
               <Stack gap="card">
                 <Flex align="center">
-                  <Text fontWeight="medium">Items</Text>
+                  <Text fontWeight="medium">{t("orders.items")}</Text>
                 </Flex>
 
                 <Stack gap="card">
@@ -259,7 +261,7 @@ export function OrderCreatePage() {
                         </Box>
 
                         <Field.Root w="20">
-                          <Field.Label fontSize="xs">Qty</Field.Label>
+                          <Field.Label fontSize="xs">{t("orders.qty")}</Field.Label>
                           <Input
                             type="number"
                             min="1"
@@ -270,7 +272,7 @@ export function OrderCreatePage() {
                         </Field.Root>
 
                         <Field.Root w="32">
-                          <Field.Label fontSize="xs">Unit price</Field.Label>
+                          <Field.Label fontSize="xs">{t("orders.unitPrice")}</Field.Label>
                           <Input
                             type="number"
                             min="0"
@@ -312,7 +314,7 @@ export function OrderCreatePage() {
                   onClick={addLine}
                 >
                   <Icon as={Plus} boxSize="4" />
-                  Add line
+                  {t("orders.addLine")}
                 </Button>
               </Stack>
             </Card.Body>
@@ -322,12 +324,12 @@ export function OrderCreatePage() {
             <Card.Body>
               <Stack gap="card">
                 <Flex align="center" gap="card">
-                  <Text color="fg.muted">Subtotal</Text>
+                  <Text color="fg.muted">{t("orders.subtotal")}</Text>
                   <Text data-testid="order-create-subtotal">{formatRupiah(subtotal)}</Text>
                 </Flex>
 
                 <Field.Root>
-                  <Field.Label>Shipping cost</Field.Label>
+                  <Field.Label>{t("orders.shippingCost")}</Field.Label>
                   <Input
                     type="number"
                     min="0"
@@ -341,7 +343,7 @@ export function OrderCreatePage() {
                 <Separator />
 
                 <Flex align="center" gap="card">
-                  <Text fontWeight="semibold">Total</Text>
+                  <Text fontWeight="semibold">{t("orders.total")}</Text>
                   <Text fontWeight="semibold" data-testid="order-create-total">
                     {formatRupiah(total)}
                   </Text>
@@ -358,7 +360,7 @@ export function OrderCreatePage() {
               disabled={!canSave}
               data-testid="order-create-save"
             >
-              Create Order
+              {t("orders.createOrder")}
             </Button>
           </Flex>
         </Stack>

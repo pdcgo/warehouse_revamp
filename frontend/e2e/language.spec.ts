@@ -36,6 +36,11 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
   await expect(page.getByRole("link", { name: "Beranda" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "id");
 
+  // Page CONTENT translates too, not only the shell: the Products page heading is Indonesian (#97).
+  await page.goto("/products");
+  await expect(page.getByRole("heading", { name: "Produk" }).first()).toBeVisible();
+  await page.goto("/");
+
   // Persists across a reload.
   await page.reload();
   await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -33,6 +34,7 @@ function parseUserId(raw: string | undefined): bigint {
 // read that degrades: if team_service is down the team names come back blank and TeamItem falls
 // back to `Team #<id>`.
 export function UserDetailPage() {
+  const { t } = useTranslation();
   const { userId: userIdParam } = useParams();
   const navigate = useNavigate();
 
@@ -47,7 +49,7 @@ export function UserDetailPage() {
 
   const load = useCallback(async () => {
     if (userId === 0n) {
-      setError("Invalid user id.");
+      setError(t("users.detail.invalidId"));
       setLoading(false);
       return;
     }
@@ -67,7 +69,7 @@ export function UserDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [userId, page]);
+  }, [userId, page, t]);
 
   useEffect(() => {
     void load();
@@ -83,7 +85,7 @@ export function UserDetailPage() {
         onClick={() => navigate(-1)}
       >
         <Icon as={ArrowLeft} boxSize="4" />
-        Back
+        {t("users.detail.back")}
       </Button>
 
       {error && (
@@ -97,18 +99,18 @@ export function UserDetailPage() {
       ) : (
         user && (
           <>
-            <Heading size="md">User Details</Heading>
+            <Heading size="md">{t("users.detail.title")}</Heading>
 
             <UserItem user={user} size="md" />
 
             <Stack gap="card">
               <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-                Teams
+                {t("users.detail.teams")}
               </Text>
 
               {teams.length === 0 ? (
                 <Text color="fg.muted" data-testid="user-detail-empty">
-                  Not a member of any team.
+                  {t("users.detail.noTeams")}
                 </Text>
               ) : (
                 teams.map((t) => (

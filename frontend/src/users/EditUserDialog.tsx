@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -36,6 +37,7 @@ export function EditUserDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { identity } = useAuth();
 
   const isSelf = identity?.identityId === user.id;
@@ -75,7 +77,7 @@ export function EditUserDialog({
         await userClient.updateUser({ userId: user.id, name, email, phoneNumber: phone });
       }
 
-      toaster.create({ type: "success", title: `${user.username} updated` });
+      toaster.create({ type: "success", title: t("users.toast.userUpdated", { username: user.username }) });
       setOpen(false);
       onDone();
     } catch (err) {
@@ -101,7 +103,7 @@ export function EditUserDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Edit {user.username}</Dialog.Title>
+                <Dialog.Title>{t("users.edit.title", { username: user.username })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -113,17 +115,17 @@ export function EditUserDialog({
                   )}
 
                   <Field.Root>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("users.field.name")}</Field.Label>
                     <Input value={name} data-testid="edit-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Email</Field.Label>
+                    <Field.Label>{t("users.field.email")}</Field.Label>
                     <Input value={email} data-testid="edit-email" onChange={(e) => setEmail(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Phone</Field.Label>
+                    <Field.Label>{t("users.field.phone")}</Field.Label>
                     <Input value={phone} data-testid="edit-phone" onChange={(e) => setPhone(e.target.value)} />
                   </Field.Root>
                 </Stack>
@@ -131,11 +133,11 @@ export function EditUserDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("users.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-edit-user">
-                  Save
+                  {t("users.edit.save")}
                 </Button>
               </Dialog.Footer>
 

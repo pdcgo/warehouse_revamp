@@ -19,6 +19,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Pencil, UserMinus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
@@ -68,6 +69,7 @@ export function TeamDetailCommon({
   onReload: () => void;
   extra?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { identity } = useAuth();
   const { current } = useTeam();
@@ -115,10 +117,13 @@ export function TeamDetailCommon({
         action: { case: "remove", value: { userId: user.id } },
       });
 
-      toaster.create({ type: "success", title: `${user.username} removed from the ${noun.toLowerCase()}` });
+      toaster.create({
+        type: "success",
+        title: t("teams.memberRemoved", { username: user.username, noun: noun.toLowerCase() }),
+      });
       await loadMembers();
     } catch (err) {
-      toaster.create({ type: "error", title: "Remove failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("teams.removeFailed"), description: rpcError(err) });
     }
   }
 
@@ -134,16 +139,16 @@ export function TeamDetailCommon({
         onClick={() => navigate(backTo)}
       >
         <Icon as={ArrowLeft} boxSize="4" />
-        Back to {noun}s
+        {t("teams.backToNoun", { noun })}
       </Button>
 
       <Flex align="center" gap="card">
-        <Heading size="md">{noun} Details</Heading>
+        <Heading size="md">{t("teams.nounDetails", { noun })}</Heading>
         <Spacer />
         {admin && (
           <Button size="xs" variant="outline" data-testid="team-detail-edit" onClick={() => setEditing(true)}>
             <Icon as={Pencil} boxSize="4" />
-            Edit
+            {t("teams.edit")}
           </Button>
         )}
       </Flex>
@@ -151,10 +156,10 @@ export function TeamDetailCommon({
       <Tabs.Root defaultValue="general">
         <Tabs.List>
           <Tabs.Trigger value="general" data-testid="team-detail-tab-general">
-            General
+            {t("teams.tabGeneral")}
           </Tabs.Trigger>
           <Tabs.Trigger value="member" data-testid="team-detail-tab-member">
-            Member
+            {t("teams.tabMember")}
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -170,21 +175,21 @@ export function TeamDetailCommon({
       />
 
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-        <DetailField label="Code" value={team.teamCode} />
-        <DetailField label="Description" value={team.description} />
+        <DetailField label={t("teams.code")} value={team.teamCode} />
+        <DetailField label={t("teams.description")} value={team.description} />
       </SimpleGrid>
 
       <Separator />
 
       <Stack gap="card">
         <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-          Contact &amp; bank
+          {t("teams.contactBank")}
         </Text>
         <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-          <DetailField label="Contact number" value={info?.contactNumber ?? ""} />
-          <DetailField label="Bank" value={info?.bankType ?? ""} />
-          <DetailField label="Account holder" value={info?.bankOwnerName ?? ""} />
-          <DetailField label="Account number" value={info?.bankAccountNumber ?? ""} />
+          <DetailField label={t("teams.contactNumber")} value={info?.contactNumber ?? ""} />
+          <DetailField label={t("teams.bank")} value={info?.bankType ?? ""} />
+          <DetailField label={t("teams.accountHolder")} value={info?.bankOwnerName ?? ""} />
+          <DetailField label={t("teams.accountNumber")} value={info?.bankAccountNumber ?? ""} />
         </SimpleGrid>
       </Stack>
 
@@ -201,7 +206,7 @@ export function TeamDetailCommon({
         <Tabs.Content value="member">
           <Stack gap="card">
             <Flex align="center" gap="card">
-              <Heading size="sm">Members</Heading>
+              <Heading size="sm">{t("teams.members")}</Heading>
           <Spacer />
           {admin && <AddMemberDialog teamId={team.id} teamType={team.type} onDone={() => void loadMembers()} />}
         </Flex>
@@ -209,7 +214,7 @@ export function TeamDetailCommon({
         <Input
           maxW="sm"
           size="sm"
-          placeholder="Search members by name, username or email"
+          placeholder={t("teams.searchMembers")}
           value={memberQuery}
           data-testid="member-list-search"
           onChange={(e) => {
@@ -222,7 +227,7 @@ export function TeamDetailCommon({
           <Spinner colorPalette="brand" size="sm" />
         ) : members.length === 0 ? (
           <Text color="fg.muted" data-testid="team-detail-no-members">
-            {memberQuery ? "No members match your search." : "No members yet."}
+            {memberQuery ? t("teams.noMembersMatch") : t("teams.noMembers")}
           </Text>
         ) : (
           <>
@@ -287,9 +292,9 @@ export function TeamDetailCommon({
           onOpenChange={(o) => {
             if (!o) setRemoving(null);
           }}
-          title="Remove from Team"
-          message={`Remove ${removing.username} from "${team.name}"? The account itself is kept.`}
-          confirmLabel="Remove"
+          title={t("teams.removeFromTeamTitle")}
+          message={t("teams.removeMemberConfirm", { username: removing.username, teamName: team.name })}
+          confirmLabel={t("teams.remove")}
           onConfirm={() => removeMember(removing)}
         />
       )}

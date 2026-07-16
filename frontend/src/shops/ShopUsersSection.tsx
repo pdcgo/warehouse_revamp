@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { UserMinus } from "lucide-react";
 import { rpcError, shopClient, userClient } from "../api/clients";
@@ -12,6 +13,7 @@ import { toaster } from "../components/Toaster";
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect (unscoped — grant anyone),
 // and removes with a confirm. Scoped to the shop's team; the backend is the real gate.
 export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: bigint }) {
+  const { t } = useTranslation();
   const [userIds, setUserIds] = useState<bigint[]>([]);
   const [users, setUsers] = useState<Record<string, PublicUser>>({});
   const [loading, setLoading] = useState(true);
@@ -55,11 +57,11 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
 
     try {
       await shopClient.shopUserAdd({ teamId, shopId, userId: adding });
-      toaster.create({ type: "success", title: "User added to the shop" });
+      toaster.create({ type: "success", title: t("shops.users.userAdded") });
       setAdding(undefined);
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Add failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("shops.users.addFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
     }
@@ -68,21 +70,21 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
   async function remove(userId: bigint) {
     try {
       await shopClient.shopUserRemove({ teamId, shopId, userId });
-      toaster.create({ type: "success", title: "Access removed" });
+      toaster.create({ type: "success", title: t("shops.users.accessRemoved") });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Remove failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("shops.users.removeFailed"), description: rpcError(err) });
     }
   }
 
   return (
     <Stack gap="card" data-testid="shop-users-section">
-      <Heading size="sm">Users with access</Heading>
+      <Heading size="sm">{t("shops.users.heading")}</Heading>
 
       <HStack gap="card" align="end">
         <Field.Root>
-          <Field.Label>Add a user</Field.Label>
-          <UserSelect value={adding} onChange={setAdding} placeholder="Search all users" />
+          <Field.Label>{t("shops.users.addLabel")}</Field.Label>
+          <UserSelect value={adding} onChange={setAdding} placeholder={t("shops.users.searchPlaceholder")} />
         </Field.Root>
         <Button
           colorPalette="brand"
@@ -91,7 +93,7 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
           onClick={() => void add()}
           data-testid="shop-add-user"
         >
-          Add
+          {t("shops.users.add")}
         </Button>
       </HStack>
 
@@ -105,7 +107,7 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
         <Spinner size="sm" colorPalette="brand" />
       ) : userIds.length === 0 ? (
         <Text color="fg.muted" data-testid="shop-users-empty">
-          No users have access yet.
+          {t("shops.users.empty")}
         </Text>
       ) : (
         <Table.Root size="sm" data-testid="shop-users-table">
@@ -144,9 +146,9 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
           onOpenChange={(o) => {
             if (!o) setRemoving(null);
           }}
-          title="Remove Access"
-          message={`Remove ${removing.label}'s access to this shop?`}
-          confirmLabel="Remove"
+          title={t("shops.users.removeTitle")}
+          message={t("shops.users.removeConfirm", { label: removing.label })}
+          confirmLabel={t("shops.users.remove")}
           onConfirm={() => remove(removing.id)}
         />
       )}

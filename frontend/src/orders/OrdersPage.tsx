@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Flex, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { orderClient, rpcError } from "../api/clients";
@@ -13,6 +14,7 @@ const PAGE_SIZE = 20;
 // OrdersPage lists the CURRENT selling TEAM's orders (#68), newest first, paginated. The team is the
 // scope — a team only ever sees its own orders. Rows open the read-only detail page.
 export function OrdersPage() {
+  const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -51,9 +53,9 @@ export function OrdersPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Orders</Heading>
+        <Heading size="md">{t("orders.title")}</Heading>
         <Text color="fg.muted" data-testid="orders-no-team">
-          Select a team to view its orders.
+          {t("orders.selectTeamView")}
         </Text>
       </Stack>
     );
@@ -62,8 +64,10 @@ export function OrdersPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Orders</Heading>
-        <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
+        <Heading size="md">{t("orders.title")}</Heading>
+        <Badge colorPalette="brand">
+          {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
+        </Badge>
         <Spacer />
         <Button
           size="xs"
@@ -71,7 +75,7 @@ export function OrdersPage() {
           data-testid="open-create-order"
           onClick={() => navigate("/orders/new")}
         >
-          New order
+          {t("orders.newOrder")}
         </Button>
       </Flex>
 
@@ -87,10 +91,10 @@ export function OrdersPage() {
         <Table.Root size="sm" data-testid="orders-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Order</Table.ColumnHeader>
-              <Table.ColumnHeader>Customer</Table.ColumnHeader>
-              <Table.ColumnHeader>Status</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Total</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("orders.orderColumn")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("orders.status")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("orders.total")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -120,7 +124,7 @@ export function OrdersPage() {
 
       {!loading && orders.length === 0 && !error && (
         <Text color="fg.muted" data-testid="orders-empty">
-          No orders yet.
+          {t("orders.noOrders")}
         </Text>
       )}
 

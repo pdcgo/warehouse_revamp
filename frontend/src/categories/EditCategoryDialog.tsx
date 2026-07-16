@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { categoryClient, rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { toaster } from "../components/Toaster";
@@ -29,6 +30,7 @@ export function EditCategoryDialog({
   category: Category;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export function EditCategoryDialog({
     try {
       await categoryClient.categoryUpdate({ categoryId: category.id, name, parentId });
 
-      toaster.create({ type: "success", title: `Category "${name}" updated` });
+      toaster.create({ type: "success", title: t("catalog.categories.updatedToast", { name }) });
       setOpen(false);
       onDone();
     } catch (err) {
@@ -74,7 +76,7 @@ export function EditCategoryDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Edit {category.name}</Dialog.Title>
+                <Dialog.Title>{t("catalog.categories.editTitle", { name: category.name })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -86,7 +88,7 @@ export function EditCategoryDialog({
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("catalog.name")}</Field.Label>
                     <Input
                       value={name}
                       data-testid="edit-category-name"
@@ -95,20 +97,20 @@ export function EditCategoryDialog({
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Parent</Field.Label>
+                    <Field.Label>{t("catalog.categories.parent")}</Field.Label>
                     <CategorySelect
                       value={parentId}
                       onChange={setParentId}
                       excludeId={category.id}
                     />
-                    <Field.HelperText>A category cannot be its own parent.</Field.HelperText>
+                    <Field.HelperText>{t("catalog.categories.parentHelpEdit")}</Field.HelperText>
                   </Field.Root>
                 </Stack>
               </Dialog.Body>
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("catalog.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button
@@ -117,7 +119,7 @@ export function EditCategoryDialog({
                   loading={busy}
                   data-testid="submit-edit-category"
                 >
-                  Save
+                  {t("catalog.save")}
                 </Button>
               </Dialog.Footer>
 

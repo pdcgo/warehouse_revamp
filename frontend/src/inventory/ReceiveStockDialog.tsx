@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -28,6 +29,7 @@ export function ReceiveStockDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,7 +40,7 @@ export function ReceiveStockDialog({
 
     const qty = Number(quantity);
     if (!Number.isInteger(qty) || qty <= 0) {
-      setError("Quantity must be a positive whole number.");
+      setError(t("inventory.quantityPositiveError"));
       return;
     }
 
@@ -54,7 +56,10 @@ export function ReceiveStockDialog({
         ref: "",
       });
 
-      toaster.create({ type: "success", title: `Received ${qty} × ${product.sku}` });
+      toaster.create({
+        type: "success",
+        title: t("inventory.receivedToast", { qty, sku: product.sku }),
+      });
       onOpenChange(false);
       onDone();
     } catch (err) {
@@ -72,7 +77,7 @@ export function ReceiveStockDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Receive Stock</Dialog.Title>
+                <Dialog.Title>{t("inventory.receiveStockTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -88,7 +93,7 @@ export function ReceiveStockDialog({
                   </Text>
 
                   <Field.Root required>
-                    <Field.Label>Quantity</Field.Label>
+                    <Field.Label>{t("inventory.quantity")}</Field.Label>
                     <Input
                       type="number"
                       min="1"
@@ -99,10 +104,10 @@ export function ReceiveStockDialog({
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Reason</Field.Label>
+                    <Field.Label>{t("inventory.reason")}</Field.Label>
                     <Input
                       value={reason}
-                      placeholder="e.g. PO #123, supplier delivery"
+                      placeholder={t("inventory.receiveReasonPlaceholder")}
                       data-testid="receive-reason"
                       onChange={(e) => setReason(e.target.value)}
                     />
@@ -112,11 +117,11 @@ export function ReceiveStockDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("inventory.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-receive">
-                  Receive
+                  {t("inventory.receive")}
                 </Button>
               </Dialog.Footer>
 

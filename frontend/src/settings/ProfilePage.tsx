@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../api/clients";
 import { useAuth } from "../auth/AuthContext";
 import { toaster } from "../components/Toaster";
@@ -22,6 +23,7 @@ import { ProfilePicture } from "./ProfilePicture";
 // always the token holder. That is not a check that can be forgotten; it is a shape that cannot
 // express the wrong thing.
 export function ProfilePage() {
+  const { t } = useTranslation();
   const { identity } = useAuth();
 
   const [name, setName] = useState("");
@@ -61,9 +63,9 @@ export function ProfilePage() {
 
     try {
       await userClient.updateProfile({ name, email, phoneNumber: phone });
-      toaster.create({ type: "success", title: "Profile updated" });
+      toaster.create({ type: "success", title: t("account.profileUpdated") });
     } catch (err) {
-      toaster.create({ type: "error", title: "Update failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("account.updateFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
     }
@@ -75,7 +77,7 @@ export function ProfilePage() {
 
   return (
     <Stack gap="section" maxW="md">
-      <Heading size="md">My Profile</Heading>
+      <Heading size="md">{t("account.myProfile")}</Heading>
 
       <Card.Root>
         <Card.Body>
@@ -92,26 +94,26 @@ export function ProfilePage() {
           <form onSubmit={save}>
             <Stack gap="card">
               <Text color="fg.muted" fontSize="sm" data-testid="profile-username">
-                Signed in as <strong>{identity?.username}</strong>
+                {t("account.signedInAs")} <strong>{identity?.username}</strong>
               </Text>
 
               <Field.Root>
-                <Field.Label>Name</Field.Label>
+                <Field.Label>{t("account.name")}</Field.Label>
                 <Input value={name} data-testid="profile-name" onChange={(e) => setName(e.target.value)} />
               </Field.Root>
 
               <Field.Root>
-                <Field.Label>Email</Field.Label>
+                <Field.Label>{t("account.email")}</Field.Label>
                 <Input value={email} data-testid="profile-email" onChange={(e) => setEmail(e.target.value)} />
               </Field.Root>
 
               <Field.Root>
-                <Field.Label>Phone</Field.Label>
+                <Field.Label>{t("account.phone")}</Field.Label>
                 <Input value={phone} data-testid="profile-phone" onChange={(e) => setPhone(e.target.value)} />
               </Field.Root>
 
               <Button type="submit" colorPalette="brand" loading={busy} data-testid="save-profile">
-                Save
+                {t("account.save")}
               </Button>
             </Stack>
           </form>
@@ -121,11 +123,10 @@ export function ProfilePage() {
       <Card.Root>
         <Card.Body>
           <Stack gap="card">
-            <Heading size="sm">Password</Heading>
+            <Heading size="sm">{t("account.password")}</Heading>
 
             <Text color="fg.muted" fontSize="sm">
-              Changing your password signs out every other session — any token issued before the
-              change stops working immediately.
+              {t("account.changePasswordWarning")}
             </Text>
 
             <ChangePasswordDialog />

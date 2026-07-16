@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Image, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
@@ -38,6 +39,7 @@ export function ProductDetailPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
+  const { t } = useTranslation();
 
   const id = parseProductId(productId);
   const teamId = current?.teamId;
@@ -79,9 +81,9 @@ export function ProductDetailPage() {
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Products</Heading>
+        <Heading size="md">{t("products.heading")}</Heading>
         <Text color="fg.muted" data-testid="product-detail-no-team">
-          Select a team to view its products.
+          {t("products.detail.noTeam")}
         </Text>
       </Stack>
     );
@@ -102,10 +104,10 @@ export function ProductDetailPage() {
           onClick={() => navigate("/products")}
         >
           <Icon as={ArrowLeft} boxSize="4" />
-          Back to Products
+          {t("products.backToProducts")}
         </Button>
         <Text color="red.fg" data-testid="product-detail-error">
-          {error || "Product not found."}
+          {error || t("products.detail.notFound")}
         </Text>
       </Stack>
     );
@@ -128,7 +130,7 @@ export function ProductDetailPage() {
       </Button>
 
       <Flex align="center" gap="card">
-        <Heading size="md">Product Details</Heading>
+        <Heading size="md">{t("products.detail.heading")}</Heading>
         <Spacer />
         <Button
           size="xs"
@@ -137,7 +139,7 @@ export function ProductDetailPage() {
           onClick={() => navigate(`/products/${product.id}/edit`)}
         >
           <Icon as={Pencil} boxSize="4" />
-          Edit
+          {t("products.edit")}
         </Button>
       </Flex>
 
@@ -149,11 +151,11 @@ export function ProductDetailPage() {
             </Heading>
 
             <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-              <Field label="SKU" value={product.sku} />
-              <Field label="Category" value={categoryLabel} />
+              <Field label={t("products.field.sku")} value={product.sku} />
+              <Field label={t("products.field.category")} value={categoryLabel} />
             </SimpleGrid>
 
-            <Field label="Description" value={product.description} />
+            <Field label={t("products.field.description")} value={product.description} />
           </Stack>
         </Card.Body>
       </Card.Root>
@@ -161,10 +163,10 @@ export function ProductDetailPage() {
       <Card.Root>
         <Card.Body>
           <Stack gap="card">
-            <Text fontWeight="medium">Images</Text>
+            <Text fontWeight="medium">{t("products.images")}</Text>
             {product.images.length === 0 ? (
               <Text color="fg.muted" fontSize="sm" data-testid="product-detail-no-images">
-                No images.
+                {t("products.detail.noImages")}
               </Text>
             ) : (
               <SimpleGrid columns={{ base: 3, md: 5 }} gap="card" data-testid="product-detail-images">

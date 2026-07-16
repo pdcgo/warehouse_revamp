@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -32,6 +33,7 @@ const PAGE_SIZE = 20;
 export function ShopsPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [shops, setShops] = useState<Shop[]>([]);
   const [q, setQ] = useState("");
@@ -75,19 +77,19 @@ export function ShopsPage() {
 
     try {
       await shopClient.shopDelete({ teamId, shopId: shop.id });
-      toaster.create({ type: "success", title: `Shop "${shop.name}" deleted` });
+      toaster.create({ type: "success", title: t("shops.deleted", { name: shop.name }) });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("shops.deleteFailed"), description: rpcError(err) });
     }
   }
 
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">Shops</Heading>
+        <Heading size="md">{t("shops.title")}</Heading>
         <Text color="fg.muted" data-testid="shops-no-team">
-          Select a team to manage its shops.
+          {t("shops.selectTeam")}
         </Text>
       </Stack>
     );
@@ -96,7 +98,7 @@ export function ShopsPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Shops</Heading>
+        <Heading size="md">{t("shops.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
         <ShopFormDialog onDone={() => void load()} />
@@ -105,7 +107,7 @@ export function ShopsPage() {
       <HStack>
         <Input
           maxW="sm"
-          placeholder="Search name or code"
+          placeholder={t("shops.searchPlaceholder")}
           value={q}
           data-testid="shop-search"
           onChange={(e) => {
@@ -127,10 +129,10 @@ export function ShopsPage() {
         <Table.Root size="sm" data-testid="shops-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
-              <Table.ColumnHeader>Code</Table.ColumnHeader>
-              <Table.ColumnHeader>Marketplace</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("shops.table.name")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("shops.table.code")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("shops.table.marketplace")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("shops.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -164,9 +166,9 @@ export function ShopsPage() {
                     </IconButton>
 
                     <ConfirmDialog
-                      title="Delete Shop"
-                      message={`Delete "${shop.name}"? This cannot be undone.`}
-                      confirmLabel="Delete"
+                      title={t("shops.deleteShop")}
+                      message={t("shops.deleteConfirm", { name: shop.name })}
+                      confirmLabel={t("shops.delete")}
                       onConfirm={() => remove(shop)}
                       trigger={
                         <IconButton
@@ -190,7 +192,7 @@ export function ShopsPage() {
 
       {!loading && shops.length === 0 && !error && (
         <Text color="fg.muted" data-testid="shops-empty">
-          No shops found.
+          {t("shops.empty")}
         </Text>
       )}
 

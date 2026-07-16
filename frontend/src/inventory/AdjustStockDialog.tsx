@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -30,6 +31,7 @@ export function AdjustStockDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const [onHand, setOnHand] = useState(currentOnHand.toString());
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +42,7 @@ export function AdjustStockDialog({
 
     const counted = Number(onHand);
     if (!Number.isInteger(counted) || counted < 0) {
-      setError("Counted on-hand must be zero or a positive whole number.");
+      setError(t("inventory.countedOnHandError"));
       return;
     }
 
@@ -55,7 +57,10 @@ export function AdjustStockDialog({
         reason,
       });
 
-      toaster.create({ type: "success", title: `Adjusted ${product.sku} to ${counted}` });
+      toaster.create({
+        type: "success",
+        title: t("inventory.adjustedToast", { sku: product.sku, counted }),
+      });
       onOpenChange(false);
       onDone();
     } catch (err) {
@@ -73,7 +78,7 @@ export function AdjustStockDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Adjust Stock</Dialog.Title>
+                <Dialog.Title>{t("inventory.adjustStockTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -85,11 +90,15 @@ export function AdjustStockDialog({
                   )}
 
                   <Text fontSize="sm" color="fg.muted">
-                    {product.name} ({product.sku}) — current on-hand {currentOnHand.toString()}
+                    {t("inventory.adjustProductSummary", {
+                      name: product.name,
+                      sku: product.sku,
+                      onHand: currentOnHand.toString(),
+                    })}
                   </Text>
 
                   <Field.Root required>
-                    <Field.Label>Counted on-hand</Field.Label>
+                    <Field.Label>{t("inventory.countedOnHand")}</Field.Label>
                     <Input
                       type="number"
                       min="0"
@@ -97,14 +106,14 @@ export function AdjustStockDialog({
                       data-testid="adjust-onhand"
                       onChange={(e) => setOnHand(e.target.value)}
                     />
-                    <Field.HelperText>The difference is recorded in the ledger.</Field.HelperText>
+                    <Field.HelperText>{t("inventory.adjustHelper")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Reason</Field.Label>
+                    <Field.Label>{t("inventory.reason")}</Field.Label>
                     <Input
                       value={reason}
-                      placeholder="e.g. cycle count, damage"
+                      placeholder={t("inventory.adjustReasonPlaceholder")}
                       data-testid="adjust-reason"
                       onChange={(e) => setReason(e.target.value)}
                     />
@@ -114,11 +123,11 @@ export function AdjustStockDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("inventory.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-adjust">
-                  Adjust
+                  {t("inventory.adjust")}
                 </Button>
               </Dialog.Footer>
 

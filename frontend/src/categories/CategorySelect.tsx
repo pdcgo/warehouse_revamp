@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Flex, HStack, Icon, IconButton, Input, Popover, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { categoryClient, rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { childrenByParent } from "./categoryTree";
@@ -77,11 +78,13 @@ export const description =
 export function CategorySelect({
   value = 0n,
   onChange,
-  placeholder = "Select category…",
+  placeholder,
   excludeId,
   leafOnly = false,
   disabled,
 }: CategorySelectProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("catalog.categorySelect.placeholder");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -166,7 +169,7 @@ export function CategorySelect({
           w="full"
         >
           <Text as="span" truncate color={pathLabel ? undefined : "fg.muted"}>
-            {pathLabel || placeholder}
+            {pathLabel || resolvedPlaceholder}
           </Text>
           <Icon as={ChevronDown} boxSize="4" />
         </Button>
@@ -179,7 +182,7 @@ export function CategorySelect({
             <Stack gap="2">
               <Input
                 size="sm"
-                placeholder="Search category…"
+                placeholder={t("catalog.categorySelect.searchPlaceholder")}
                 value={query}
                 data-testid="category-search"
                 onChange={(e) => setQuery(e.target.value)}
@@ -197,7 +200,7 @@ export function CategorySelect({
                 <Box maxH="280px" overflowY="auto" minW="240px" data-testid="category-search-results">
                   {matches.length === 0 ? (
                     <Text p="2" fontSize="sm" color="fg.muted">
-                      No categories found
+                      {t("catalog.categorySelect.noResults")}
                     </Text>
                   ) : (
                     <Stack gap="0">
@@ -233,7 +236,7 @@ export function CategorySelect({
                       <Stack gap="0" p="1">
                         {col.length === 0 ? (
                           <Text p="2" fontSize="sm" color="fg.muted">
-                            Empty
+                            {t("catalog.categorySelect.emptyColumn")}
                           </Text>
                         ) : (
                           col.map((node) => {
@@ -286,7 +289,7 @@ export function CategorySelect({
                   <HStack justify="flex-end">
                     <Button size="xs" variant="ghost" data-testid="category-clear" onClick={() => select(0n)}>
                       <Icon as={X} boxSize="3" />
-                      Clear
+                      {t("catalog.clear")}
                     </Button>
                   </HStack>
                 </>

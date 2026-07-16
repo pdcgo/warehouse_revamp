@@ -16,6 +16,7 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import { toaster } from "../components/Toaster";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./WeeklyHoursEditor";
@@ -25,6 +26,7 @@ import type { WeekHours } from "./WeeklyHoursEditor";
 // a popup). It edits the warehouse's name and description AND its two weekly schedules: general
 // operating hours and when it can receive orders.
 export function WarehouseEditPage() {
+  const { t } = useTranslation();
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
 
@@ -96,7 +98,7 @@ export function WarehouseEditPage() {
         location,
       });
 
-      toaster.create({ type: "success", title: "Warehouse saved" });
+      toaster.create({ type: "success", title: t("teams.warehouseSaved") });
       void navigate(`/teams/${teamId}`);
     } catch (err) {
       setError(rpcError(err));
@@ -121,7 +123,7 @@ export function WarehouseEditPage() {
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">Edit Warehouse</Heading>
+        <Heading size="md">{t("teams.editWarehouseTitle")}</Heading>
       </Flex>
 
       {error && (
@@ -136,7 +138,7 @@ export function WarehouseEditPage() {
             <Card.Body>
               <Stack gap="card">
                 <Field.Root required>
-                  <Field.Label>Name</Field.Label>
+                  <Field.Label>{t("teams.name")}</Field.Label>
                   <Input
                     value={name}
                     data-testid="warehouse-edit-name"
@@ -145,7 +147,7 @@ export function WarehouseEditPage() {
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Description</Field.Label>
+                  <Field.Label>{t("teams.description")}</Field.Label>
                   <Textarea
                     value={description}
                     data-testid="warehouse-edit-description"
@@ -154,13 +156,13 @@ export function WarehouseEditPage() {
                 </Field.Root>
 
                 <Field.Root>
-                  <Field.Label>Location</Field.Label>
+                  <Field.Label>{t("teams.location")}</Field.Label>
                   <Textarea
                     value={location}
                     data-testid="warehouse-edit-location"
                     onChange={(e) => setLocation(e.target.value)}
                   />
-                  <Field.HelperText>The warehouse's physical address.</Field.HelperText>
+                  <Field.HelperText>{t("teams.warehouseAddressHelp")}</Field.HelperText>
                 </Field.Root>
               </Stack>
             </Card.Body>
@@ -170,14 +172,14 @@ export function WarehouseEditPage() {
             <Card.Body>
               <Stack gap="section">
                 <WeeklyHoursEditor
-                  label="Operating hours"
+                  label={t("teams.operatingHours")}
                   value={operating}
                   onChange={setOperating}
                   testId="operating-hours"
                 />
 
                 <WeeklyHoursEditor
-                  label="Order-receiving hours"
+                  label={t("teams.receivingHours")}
                   value={receiving}
                   onChange={setReceiving}
                   testId="receiving-hours"
@@ -188,7 +190,7 @@ export function WarehouseEditPage() {
 
           <Flex justify="end">
             <Button type="submit" colorPalette="brand" loading={saving} data-testid="warehouse-edit-save">
-              Save
+              {t("teams.save")}
             </Button>
           </Flex>
         </Stack>

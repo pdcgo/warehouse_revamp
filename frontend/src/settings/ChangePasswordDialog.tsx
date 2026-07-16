@@ -9,6 +9,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../api/clients";
 import { isRemembered, setToken } from "../auth/tokenStorage";
 import { PasswordInput } from "../components/PasswordInput";
@@ -20,6 +21,7 @@ import { toaster } from "../components/Toaster";
 // token issued before it, INCLUDING the one this browser is holding. Drop the new token and the
 // user logs themselves out by changing their password.
 export function ChangePasswordDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +34,7 @@ export function ChangePasswordDialog() {
     event.preventDefault();
 
     if (newPassword !== confirm) {
-      setError("The new passwords do not match.");
+      setError(t("account.passwordsDoNotMatch"));
 
       return;
     }
@@ -49,8 +51,8 @@ export function ChangePasswordDialog() {
 
       toaster.create({
         type: "success",
-        title: "Password changed",
-        description: "Other sessions have been signed out.",
+        title: t("account.passwordChanged"),
+        description: t("account.otherSessionsSignedOut"),
       });
 
       setOldPassword("");
@@ -68,7 +70,7 @@ export function ChangePasswordDialog() {
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
         <Button size="xs" variant="outline" data-testid="open-change-password">
-          Change password
+          {t("account.changePassword")}
         </Button>
       </Dialog.Trigger>
 
@@ -78,7 +80,7 @@ export function ChangePasswordDialog() {
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Change Password</Dialog.Title>
+                <Dialog.Title>{t("account.changePasswordTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -90,7 +92,7 @@ export function ChangePasswordDialog() {
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Current password</Field.Label>
+                    <Field.Label>{t("account.currentPassword")}</Field.Label>
                     <PasswordInput
                       value={oldPassword}
                       autoComplete="current-password"
@@ -100,18 +102,18 @@ export function ChangePasswordDialog() {
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>New password</Field.Label>
+                    <Field.Label>{t("account.newPassword")}</Field.Label>
                     <PasswordInput
                       value={newPassword}
                       autoComplete="new-password"
                       data-testid="new-password-1"
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
-                    <Field.HelperText>At least 8 characters.</Field.HelperText>
+                    <Field.HelperText>{t("account.atLeast8Characters")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Confirm new password</Field.Label>
+                    <Field.Label>{t("account.confirmNewPassword")}</Field.Label>
                     <PasswordInput
                       value={confirm}
                       autoComplete="new-password"
@@ -124,11 +126,11 @@ export function ChangePasswordDialog() {
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("account.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-change-password">
-                  Change password
+                  {t("account.changePassword")}
                 </Button>
               </Dialog.Footer>
 

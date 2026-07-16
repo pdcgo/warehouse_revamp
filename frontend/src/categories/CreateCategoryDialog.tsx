@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { categoryClient, rpcError } from "../api/clients";
 import { toaster } from "../components/Toaster";
 import { CategorySelect } from "./CategorySelect";
@@ -17,6 +18,7 @@ import { CategorySelect } from "./CategorySelect";
 // CreateCategoryDialog adds a category to the GLOBAL taxonomy. A parent of 0n makes it top-level;
 // picking a parent in the CategorySelect nests it under that node.
 export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +35,7 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
     try {
       await categoryClient.categoryCreate({ name, parentId });
 
-      toaster.create({ type: "success", title: `Category "${name}" created` });
+      toaster.create({ type: "success", title: t("catalog.categories.createdToast", { name }) });
 
       setName("");
       setParentId(0n);
@@ -50,7 +52,7 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       <Dialog.Trigger asChild>
         <Button size="xs" colorPalette="brand" data-testid="open-create-category">
-          New category
+          {t("catalog.categories.newCategory")}
         </Button>
       </Dialog.Trigger>
 
@@ -60,7 +62,7 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>New Category</Dialog.Title>
+                <Dialog.Title>{t("catalog.categories.newTitle")}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -72,7 +74,7 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("catalog.name")}</Field.Label>
                     <Input
                       value={name}
                       data-testid="new-category-name"
@@ -81,16 +83,16 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Parent</Field.Label>
+                    <Field.Label>{t("catalog.categories.parent")}</Field.Label>
                     <CategorySelect value={parentId} onChange={setParentId} />
-                    <Field.HelperText>Leave as top-level for a root category.</Field.HelperText>
+                    <Field.HelperText>{t("catalog.categories.parentHelpCreate")}</Field.HelperText>
                   </Field.Root>
                 </Stack>
               </Dialog.Body>
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("catalog.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button
@@ -99,7 +101,7 @@ export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
                   loading={busy}
                   data-testid="submit-create-category"
                 >
-                  Create
+                  {t("catalog.create")}
                 </Button>
               </Dialog.Footer>
 

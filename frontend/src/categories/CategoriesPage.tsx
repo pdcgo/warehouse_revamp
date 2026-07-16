@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { categoryClient, rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -25,6 +26,7 @@ import { EditCategoryDialog } from "./EditCategoryDialog";
 // root/admin (see the nav gate). It is not team-scoped, so unlike ProductsPage there is no current
 // team in play: the list is flat on the wire and flattenTree assembles the indented tree here.
 export function CategoriesPage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,12 +53,15 @@ export function CategoriesPage() {
   async function remove(category: Category) {
     try {
       await categoryClient.categoryDelete({ categoryId: category.id });
-      toaster.create({ type: "success", title: `Category "${category.name}" deleted` });
+      toaster.create({
+        type: "success",
+        title: t("catalog.categories.deletedToast", { name: category.name }),
+      });
       await load();
     } catch (err) {
       // The backend refuses to delete a category that still has sub-categories (FailedPrecondition);
       // surface that message rather than pretending it worked.
-      toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("catalog.deleteFailed"), description: rpcError(err) });
     }
   }
 
@@ -65,7 +70,7 @@ export function CategoriesPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card">
-        <Heading size="md">Categories</Heading>
+        <Heading size="md">{t("catalog.categories.title")}</Heading>
         <Spacer />
         <CreateCategoryDialog onDone={() => void load()} />
       </Flex>
@@ -82,8 +87,8 @@ export function CategoriesPage() {
         <Table.Root size="sm" data-testid="categories-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("catalog.name")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("catalog.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -102,9 +107,9 @@ export function CategoriesPage() {
                     <EditCategoryDialog category={category} onDone={() => void load()} />
 
                     <ConfirmDialog
-                      title="Delete Category"
-                      message={`Delete "${category.name}"? This cannot be undone.`}
-                      confirmLabel="Delete"
+                      title={t("catalog.categories.deleteTitle")}
+                      message={t("catalog.categories.deleteMessage", { name: category.name })}
+                      confirmLabel={t("catalog.delete")}
                       onConfirm={() => remove(category)}
                       trigger={
                         <IconButton
@@ -128,7 +133,7 @@ export function CategoriesPage() {
 
       {!loading && nodes.length === 0 && !error && (
         <Text color="fg.muted" data-testid="categories-empty">
-          No categories yet.
+          {t("catalog.categories.empty")}
         </Text>
       )}
     </Stack>

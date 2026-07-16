@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { useTeam } from "../team/TeamContext";
 import { isGlobalAdmin } from "../lib/roles";
@@ -18,6 +19,7 @@ import { UsersTable } from "./UsersTable";
 // the "My Team User" tab, but not "All User". Running either bumps `reload` so the active table
 // refreshes.
 export function UsersPage() {
+  const { t } = useTranslation();
   const { current } = useTeam();
   const globalAdmin = isGlobalAdmin(current?.role);
 
@@ -30,7 +32,7 @@ export function UsersPage() {
 
   const header = (
     <Flex align="center" gap="card">
-      <Heading size="md">Users</Heading>
+      <Heading size="md">{t("users.title")}</Heading>
       {!globalAdmin && current && (
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
       )}
@@ -58,10 +60,10 @@ export function UsersPage() {
       <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value as "team" | "all")} lazyMount unmountOnExit>
         <Tabs.List>
           <Tabs.Trigger value="team" data-testid="users-tab-team">
-            My Team User
+            {t("users.tab.myTeam")}
           </Tabs.Trigger>
           <Tabs.Trigger value="all" data-testid="users-tab-all">
-            All User
+            {t("users.tab.allUsers")}
           </Tabs.Trigger>
         </Tabs.List>
 

@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, shippingClient } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
@@ -26,6 +27,7 @@ export function EditShippingDialog({
   shipping: Shipping;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +43,7 @@ export function EditShippingDialog({
     try {
       await shippingClient.shippingUpdate({ shippingId: shipping.id, name });
 
-      toaster.create({ type: "success", title: `Channel "${name}" updated` });
+      toaster.create({ type: "success", title: t("catalog.shipping.updatedToast", { name }) });
       setOpen(false);
       onDone();
     } catch (err) {
@@ -70,7 +72,7 @@ export function EditShippingDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Edit {shipping.name}</Dialog.Title>
+                <Dialog.Title>{t("catalog.shipping.editTitle", { name: shipping.name })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -82,13 +84,13 @@ export function EditShippingDialog({
                   )}
 
                   <Field.Root>
-                    <Field.Label>Code</Field.Label>
+                    <Field.Label>{t("catalog.shipping.code")}</Field.Label>
                     <Input value={shipping.code} readOnly disabled />
-                    <Field.HelperText>The code cannot be changed.</Field.HelperText>
+                    <Field.HelperText>{t("catalog.shipping.codeHelpEdit")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("catalog.name")}</Field.Label>
                     <Input
                       value={name}
                       data-testid="edit-channel-name"
@@ -100,7 +102,7 @@ export function EditShippingDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("catalog.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button
@@ -109,7 +111,7 @@ export function EditShippingDialog({
                   loading={busy}
                   data-testid="submit-edit-shipping"
                 >
-                  Save
+                  {t("catalog.save")}
                 </Button>
               </Dialog.Footer>
 

@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
@@ -24,6 +25,7 @@ export function CreateTeamDialog({
   // read-only text. Used by warehouse-scoped views that only ever create WAREHOUSE teams.
   fixedType?: TeamType;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -47,7 +49,7 @@ export function CreateTeamDialog({
       // compensating RPC — so a fresh team is never ownerless.
       await teamClient.teamCreate({ type, name, teamCode, description });
 
-      toaster.create({ type: "success", title: `Team "${name}" created` });
+      toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
 
       setName("");
       setTeamCode("");
@@ -69,7 +71,7 @@ export function CreateTeamDialog({
           colorPalette="brand"
           data-testid={fixedType === undefined ? "open-create-team" : `open-create-${lockedLabel.toLowerCase()}`}
         >
-          {fixedType === undefined ? "New team" : `New ${lockedLabel.toLowerCase()}`}
+          {fixedType === undefined ? t("teams.newTeam") : t("teams.newLabeled", { label: lockedLabel.toLowerCase() })}
         </Button>
       </Dialog.Trigger>
 
@@ -79,7 +81,9 @@ export function CreateTeamDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{fixedType === undefined ? "New Team" : `New ${lockedLabel}`}</Dialog.Title>
+                <Dialog.Title>
+                  {fixedType === undefined ? t("teams.newTeamTitle") : t("teams.newLabeled", { label: lockedLabel })}
+                </Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -92,42 +96,42 @@ export function CreateTeamDialog({
 
                   {fixedType === undefined ? (
                     <Field.Root required>
-                      <Field.Label>Type</Field.Label>
+                      <Field.Label>{t("teams.type")}</Field.Label>
                       <TeamTypeSelect value={type} onChange={setType} />
-                      <Field.HelperText>Type is fixed once the team is created.</Field.HelperText>
+                      <Field.HelperText>{t("teams.typeFixedHelp")}</Field.HelperText>
                     </Field.Root>
                   ) : (
                     <Field.Root>
-                      <Field.Label>Type</Field.Label>
+                      <Field.Label>{t("teams.type")}</Field.Label>
                       <Text fontWeight="medium" data-testid="new-team-type-fixed">
                         {lockedLabel}
                       </Text>
-                      <Field.HelperText>Locked for this view.</Field.HelperText>
+                      <Field.HelperText>{t("teams.lockedForView")}</Field.HelperText>
                     </Field.Root>
                   )}
 
                   <Field.Root required>
-                    <Field.Label>Name</Field.Label>
+                    <Field.Label>{t("teams.name")}</Field.Label>
                     <Input
                       value={name}
                       data-testid="new-team-name"
                       onChange={(e) => setName(e.target.value)}
                     />
-                    <Field.HelperText>4–128 characters.</Field.HelperText>
+                    <Field.HelperText>{t("teams.nameHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Team code</Field.Label>
+                    <Field.Label>{t("teams.teamCode")}</Field.Label>
                     <Input
                       value={teamCode}
                       data-testid="new-team-code"
                       onChange={(e) => setTeamCode(e.target.value)}
                     />
-                    <Field.HelperText>Unique, up to 10 characters, immutable.</Field.HelperText>
+                    <Field.HelperText>{t("teams.teamCodeHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>Description</Field.Label>
+                    <Field.Label>{t("teams.description")}</Field.Label>
                     <Input
                       value={description}
                       data-testid="new-team-description"
@@ -139,11 +143,11 @@ export function CreateTeamDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("teams.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-create-team">
-                  Create
+                  {t("teams.create")}
                 </Button>
               </Dialog.Footer>
 

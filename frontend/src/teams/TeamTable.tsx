@@ -12,6 +12,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
@@ -38,6 +39,7 @@ export function TeamTable({
   // Bumped by the page when its header "New …" button creates a team, so this table reloads.
   reloadSignal?: number;
 }) {
+  const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -77,10 +79,10 @@ export function TeamTable({
   async function remove(team: Team) {
     try {
       await teamClient.teamDelete({ teamId: team.id });
-      toaster.create({ type: "success", title: `Team "${team.name}" deleted` });
+      toaster.create({ type: "success", title: t("teams.teamDeleted", { name: team.name }) });
       await load();
     } catch (err) {
-      toaster.create({ type: "error", title: "Delete failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("teams.deleteFailed"), description: rpcError(err) });
     }
   }
 
@@ -98,9 +100,9 @@ export function TeamTable({
         <Table.Root size="sm" data-testid="teams-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader>Name</Table.ColumnHeader>
-              <Table.ColumnHeader>Code</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("teams.name")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("teams.code")}</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">{t("teams.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -150,7 +152,7 @@ export function TeamTable({
                               onClick={() => navigate(`/teams/${team.id}`)}
                             >
                               <Icon as={Eye} boxSize="4" />
-                              Details
+                              {t("teams.detailsAction")}
                             </Menu.Item>
 
                             <Menu.Item
@@ -159,7 +161,7 @@ export function TeamTable({
                               onClick={() => setDialog({ kind: "info", team })}
                             >
                               <Icon as={Landmark} boxSize="4" />
-                              Contact &amp; bank
+                              {t("teams.contactBank")}
                             </Menu.Item>
 
                             {admin && (
@@ -174,7 +176,7 @@ export function TeamTable({
                                   }
                                 >
                                   <Icon as={Pencil} boxSize="4" />
-                                  Edit
+                                  {t("teams.edit")}
                                 </Menu.Item>
 
                                 {!isRoot && (
@@ -185,7 +187,7 @@ export function TeamTable({
                                     onClick={() => setDialog({ kind: "delete", team })}
                                   >
                                     <Icon as={Trash2} boxSize="4" />
-                                    Delete
+                                    {t("teams.delete")}
                                   </Menu.Item>
                                 )}
                               </>
@@ -231,9 +233,9 @@ export function TeamTable({
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          title="Delete Team"
-          message={`Delete "${dialog.team.name}"? This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("teams.deleteTeamTitle")}
+          message={t("teams.deleteTeamConfirm", { name: dialog.team.name })}
+          confirmLabel={t("teams.delete")}
           onConfirm={() => remove(dialog.team)}
         />
       )}

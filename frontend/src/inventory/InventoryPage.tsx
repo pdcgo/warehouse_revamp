@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Flex,
@@ -32,8 +33,9 @@ const LEVEL_LIMIT = 200;
 // and receive or adjust stock. It assumes a warehouse stocks its OWN team's catalogue (product
 // team_id = warehouse_id) — the cross-team-storage question is still open (see the brainstorming doc).
 // `title` lets it serve both the root/admin "Inventory" route and the "Restock" sub-menu (#95).
-export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) {
+export function InventoryPage({ title }: { title?: string } = {}) {
   const { current } = useTeam();
+  const { t } = useTranslation();
 
   // Default to the current team when it IS a warehouse; otherwise the user picks one.
   const [warehouseId, setWarehouseId] = useState<bigint | undefined>(
@@ -92,7 +94,7 @@ export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) 
   return (
     <Stack gap="section">
       <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">{title}</Heading>
+        <Heading size="md">{title ?? t("inventory.title")}</Heading>
         <Spacer />
         <TeamSelect
           value={warehouseId}
@@ -100,20 +102,20 @@ export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) 
             setWarehouseId(id);
             setPage(1);
           }}
-          placeholder="Pick a warehouse"
+          placeholder={t("inventory.pickWarehousePlaceholder")}
         />
       </Flex>
 
       {warehouseId === undefined ? (
         <Text color="fg.muted" data-testid="inventory-pick-warehouse">
-          Pick a warehouse to see its stock.
+          {t("inventory.pickWarehousePrompt")}
         </Text>
       ) : (
         <>
           <HStack>
             <Input
               maxW="sm"
-              placeholder="Search products by SKU or name"
+              placeholder={t("inventory.searchPlaceholder")}
               value={q}
               data-testid="inventory-search"
               onChange={(e) => {
@@ -133,16 +135,16 @@ export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) 
             <Spinner colorPalette="brand" />
           ) : products.length === 0 ? (
             <Text color="fg.muted" data-testid="inventory-empty">
-              No products in this warehouse's catalogue.
+              {t("inventory.empty")}
             </Text>
           ) : (
             <Table.Root size="sm" data-testid="inventory-table">
               <Table.Header>
                 <Table.Row>
-                  <Table.ColumnHeader>SKU</Table.ColumnHeader>
-                  <Table.ColumnHeader>Product</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">On hand</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("inventory.table.sku")}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("inventory.table.product")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("inventory.table.onHand")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("inventory.table.actions")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
 
@@ -166,12 +168,12 @@ export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) 
                             onClick={() => setDialog({ kind: "receive", product })}
                           >
                             <Icon as={Plus} boxSize="4" />
-                            Receive
+                            {t("inventory.receive")}
                           </Button>
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            aria-label="Adjust"
+                            aria-label={t("inventory.adjust")}
                             data-testid={`adjust-${product.sku}`}
                             onClick={() => setDialog({ kind: "adjust", product })}
                           >

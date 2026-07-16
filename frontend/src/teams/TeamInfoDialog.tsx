@@ -14,6 +14,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Landmark } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
@@ -34,6 +35,7 @@ export function TeamInfoDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
@@ -110,7 +112,7 @@ export function TeamInfoDialog({
         bankAccountNumber,
       });
 
-      toaster.create({ type: "success", title: "Team info updated" });
+      toaster.create({ type: "success", title: t("teams.teamInfoUpdated") });
       setOpen(false);
     } catch (err) {
       setError(rpcError(err));
@@ -135,7 +137,7 @@ export function TeamInfoDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{team.name} — Contact &amp; Bank</Dialog.Title>
+                <Dialog.Title>{t("teams.contactBankTitle", { name: team.name })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -150,7 +152,7 @@ export function TeamInfoDialog({
                     )}
 
                     <Field.Root>
-                      <Field.Label>Contact number</Field.Label>
+                      <Field.Label>{t("teams.contactNumber")}</Field.Label>
                       <Input
                         value={contactNumber}
                         data-testid="info-contact"
@@ -159,7 +161,7 @@ export function TeamInfoDialog({
                     </Field.Root>
 
                     <Field.Root>
-                      <Field.Label>Bank</Field.Label>
+                      <Field.Label>{t("teams.bank")}</Field.Label>
                       <Input
                         value={bankType}
                         data-testid="info-bank-type"
@@ -168,7 +170,7 @@ export function TeamInfoDialog({
                     </Field.Root>
 
                     <Field.Root>
-                      <Field.Label>Account holder</Field.Label>
+                      <Field.Label>{t("teams.accountHolder")}</Field.Label>
                       <Input
                         value={bankOwnerName}
                         data-testid="info-bank-owner"
@@ -177,7 +179,7 @@ export function TeamInfoDialog({
                     </Field.Root>
 
                     <Field.Root>
-                      <Field.Label>Account number</Field.Label>
+                      <Field.Label>{t("teams.accountNumber")}</Field.Label>
                       <Input
                         value={bankAccountNumber}
                         data-testid="info-bank-account"
@@ -190,11 +192,11 @@ export function TeamInfoDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("teams.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-team-info">
-                  Save
+                  {t("teams.save")}
                 </Button>
               </Dialog.Footer>
 

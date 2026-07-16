@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   CloseButton,
@@ -35,6 +36,7 @@ export function AdminResetPasswordDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
@@ -57,7 +59,7 @@ export function AdminResetPasswordDialog({
     event.preventDefault();
 
     if (password !== confirm) {
-      setError("The passwords do not match.");
+      setError(t("users.reset.mismatch"));
 
       return;
     }
@@ -70,10 +72,10 @@ export function AdminResetPasswordDialog({
 
       toaster.create({
         type: "success",
-        title: `Password reset for ${user.username}`,
+        title: t("users.toast.passwordReset", { username: user.username }),
         // Worth saying out loud: this is not just "they can log in with a new password" — every
         // token they already hold stops working.
-        description: "All of their existing sessions were signed out.",
+        description: t("users.toast.passwordResetDescription"),
       });
 
       setPassword("");
@@ -107,7 +109,7 @@ export function AdminResetPasswordDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>Reset Password for {user.username}</Dialog.Title>
+                <Dialog.Title>{t("users.reset.title", { username: user.username })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -119,23 +121,22 @@ export function AdminResetPasswordDialog({
                   )}
 
                   <Text fontSize="sm" color="fg.muted">
-                    Sets a new password without knowing the old one. Every session this user
-                    currently has will be signed out.
+                    {t("users.reset.description")}
                   </Text>
 
                   <Field.Root required>
-                    <Field.Label>New password</Field.Label>
+                    <Field.Label>{t("users.reset.newPassword")}</Field.Label>
                     <PasswordInput
                       value={password}
                       autoComplete="new-password"
                       data-testid="admin-new-password-1"
                       onChange={(e) => setPassword(e.target.value)}
                     />
-                    <Field.HelperText>At least 8 characters.</Field.HelperText>
+                    <Field.HelperText>{t("users.helper.min8")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>Confirm new password</Field.Label>
+                    <Field.Label>{t("users.reset.confirmPassword")}</Field.Label>
                     <PasswordInput
                       value={confirm}
                       autoComplete="new-password"
@@ -148,7 +149,7 @@ export function AdminResetPasswordDialog({
 
               <Dialog.Footer>
                 <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">Cancel</Button>
+                  <Button variant="outline">{t("users.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
                 <Button
@@ -157,7 +158,7 @@ export function AdminResetPasswordDialog({
                   loading={busy}
                   data-testid="submit-admin-reset"
                 >
-                  Reset password
+                  {t("users.action.resetPassword")}
                 </Button>
               </Dialog.Footer>
 
