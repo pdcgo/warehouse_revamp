@@ -102,8 +102,17 @@ flowchart LR
 maintainer, same 10-digit `kode wilayah` key, so kode pos **joins cleanly onto the desa row**
 instead of being name-matched. External reference data → no conflict with the clean-slate rule.
 
-**Volume (Kepmendagri 300.2.2-2430/2025):** 38 provinsi · 514 kabupaten/kota · 7.285 kecamatan
-· 83.762 desa/kelurahan. Trivial for Postgres; revised ~yearly by the government.
+**Volume:** 38 provinsi · 514 kabupaten/kota · 7.285 kecamatan · 83.762 desa/kelurahan. Trivial for
+Postgres; revised ~yearly by the government.
+
+> **Built (#113).** The pipeline is `go run ./cmd/tool region build-seed` → `regions.csv`, pinned by
+> commit SHA. Two findings from the real data:
+> - The edition upstream actually ships is **Kepmendagri 300.2.2-2138/2025**, not the
+>   *300.2.2-2430/2025* cited above — but its volume matches these counts **exactly** (91.599 rows),
+>   so this is a citation fix, not different data.
+> - **Kode pos is complete** for this edition — 83.762 of 83.762 desa, not "a few missing".
+> - 475 names carry an apostrophe (`Pasi Kuala Ba''u`); the generator fails loudly rather than
+>   dropping them. See the [seed README](../../backend/services/region_service/db_migrations/seed/README.md).
 
 **Format note:** cahyadsn ships **MySQL**; our stack is **Postgres (:5433)**. The seed step
 converts it (a CSV/`COPY` path is cleanest).

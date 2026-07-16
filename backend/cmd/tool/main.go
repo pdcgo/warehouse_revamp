@@ -19,6 +19,7 @@ func main() {
 			migrateCommand(),
 			seedCommand(),
 			dbCommand(),
+			regionCommand(),
 		},
 	}
 
