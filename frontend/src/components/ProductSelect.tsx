@@ -18,8 +18,12 @@ interface SelectableProduct {
 }
 
 export interface ProductSelectProps {
-  /** The team whose catalogue to search — products are team-scoped. */
+  /** The caller's team. In "team" scope it's the catalogue searched; in "all" scope it only
+   * authorizes the request (results are cross-team). */
   teamId: bigint;
+  /** "team" (default) searches this team's catalogue (ProductList); "all" discovers products across
+   * ALL teams (ProductDiscover, #110). */
+  scope?: "team" | "all";
   /** Selected product id (for the checkmark); 0n = none. */
   value?: bigint;
   onChange?: (product: PickedProduct) => void;
@@ -31,10 +35,11 @@ export interface ProductSelectProps {
 // a catalogue grows without limit, so this searches SERVER-side (ProductList's `q`, min 2 chars) the
 // way UserSelect does, and renders each option as "sku — name". It emits the whole PickedProduct so
 // the caller can snapshot sku/name onto the line; the buyer-paid unit price is entered separately.
-export const description = "Searchable catalogue picker for one order line (Chakra Combobox over ProductList, server-side). Emits the picked product's id + sku + name snapshot.";
+export const description = "Searchable product picker (Chakra Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
 
 export function ProductSelect({
   teamId,
+  scope = "team",
   value,
   onChange,
   placeholder = "Search products by name or SKU",
@@ -61,7 +66,11 @@ export function ProductSelect({
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const res = await productClient.productList({ teamId, q, page: { page: 1, limit: 10 } });
+          const req = { teamId, q, page: { page: 1, limit: 10 } };
+          const res =
+            scope === "all"
+              ? await productClient.productDiscover(req)
+              : await productClient.productList(req);
           if (!cancelled) set(res.products);
         } catch (err) {
           if (!cancelled) {
@@ -76,7 +85,7 @@ export function ProductSelect({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [input, teamId, set]);
+  }, [input, teamId, scope, set]);
 
   return (
     <Combobox.Root

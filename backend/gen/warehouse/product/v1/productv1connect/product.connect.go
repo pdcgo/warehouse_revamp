@@ -39,6 +39,9 @@ const (
 	// ProductServiceProductListProcedure is the fully-qualified name of the ProductService's
 	// ProductList RPC.
 	ProductServiceProductListProcedure = "/warehouse.product.v1.ProductService/ProductList"
+	// ProductServiceProductDiscoverProcedure is the fully-qualified name of the ProductService's
+	// ProductDiscover RPC.
+	ProductServiceProductDiscoverProcedure = "/warehouse.product.v1.ProductService/ProductDiscover"
 	// ProductServiceProductDetailProcedure is the fully-qualified name of the ProductService's
 	// ProductDetail RPC.
 	ProductServiceProductDetailProcedure = "/warehouse.product.v1.ProductService/ProductDetail"
@@ -54,6 +57,8 @@ const (
 type ProductServiceClient interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
+	// ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
+	ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
@@ -82,6 +87,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(productServiceMethods.ByName("ProductList")),
 			connect.WithClientOptions(opts...),
 		),
+		productDiscover: connect.NewClient[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse](
+			httpClient,
+			baseURL+ProductServiceProductDiscoverProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductDiscover")),
+			connect.WithClientOptions(opts...),
+		),
 		productDetail: connect.NewClient[v1.ProductDetailRequest, v1.ProductDetailResponse](
 			httpClient,
 			baseURL+ProductServiceProductDetailProcedure,
@@ -105,11 +116,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // productServiceClient implements ProductServiceClient.
 type productServiceClient struct {
-	productCreate *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
-	productList   *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
-	productDetail *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
-	productUpdate *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
-	productDelete *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
+	productCreate   *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
+	productList     *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
+	productDiscover *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
+	productDetail   *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
+	productUpdate   *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
+	productDelete   *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
 }
 
 // ProductCreate calls warehouse.product.v1.ProductService.ProductCreate.
@@ -120,6 +132,11 @@ func (c *productServiceClient) ProductCreate(ctx context.Context, req *connect.R
 // ProductList calls warehouse.product.v1.ProductService.ProductList.
 func (c *productServiceClient) ProductList(ctx context.Context, req *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error) {
 	return c.productList.CallUnary(ctx, req)
+}
+
+// ProductDiscover calls warehouse.product.v1.ProductService.ProductDiscover.
+func (c *productServiceClient) ProductDiscover(ctx context.Context, req *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error) {
+	return c.productDiscover.CallUnary(ctx, req)
 }
 
 // ProductDetail calls warehouse.product.v1.ProductService.ProductDetail.
@@ -141,6 +158,8 @@ func (c *productServiceClient) ProductDelete(ctx context.Context, req *connect.R
 type ProductServiceHandler interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
+	// ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
+	ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
@@ -163,6 +182,12 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		ProductServiceProductListProcedure,
 		svc.ProductList,
 		connect.WithSchema(productServiceMethods.ByName("ProductList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductDiscoverHandler := connect.NewUnaryHandler(
+		ProductServiceProductDiscoverProcedure,
+		svc.ProductDiscover,
+		connect.WithSchema(productServiceMethods.ByName("ProductDiscover")),
 		connect.WithHandlerOptions(opts...),
 	)
 	productServiceProductDetailHandler := connect.NewUnaryHandler(
@@ -189,6 +214,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductCreateHandler.ServeHTTP(w, r)
 		case ProductServiceProductListProcedure:
 			productServiceProductListHandler.ServeHTTP(w, r)
+		case ProductServiceProductDiscoverProcedure:
+			productServiceProductDiscoverHandler.ServeHTTP(w, r)
 		case ProductServiceProductDetailProcedure:
 			productServiceProductDetailHandler.ServeHTTP(w, r)
 		case ProductServiceProductUpdateProcedure:
@@ -210,6 +237,10 @@ func (UnimplementedProductServiceHandler) ProductCreate(context.Context, *connec
 
 func (UnimplementedProductServiceHandler) ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductList is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDiscover is not implemented"))
 }
 
 func (UnimplementedProductServiceHandler) ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {

@@ -15,6 +15,8 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/pro
 service ProductService {
   rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
   rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  // ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
+  rpc ProductDiscover(ProductDiscoverRequest) returns (ProductDiscoverResponse);
   rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
   rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
   rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
@@ -121,6 +123,34 @@ message ProductListRequest {
 }
 
 message ProductListResponse {
+  repeated Product products = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductDiscover lists products across ALL teams (open cross-team discovery, #106) so a selling team
+// can browse other teams' catalogues to order from. `team_id` is the CALLER's team — it authorizes the
+// request (use_scope: the caller must be a member with a listed role), but the results are NOT filtered
+// to it. Read-only; each Product carries its owning team_id.
+message ProductDiscoverRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ProductDiscoverResponse {
   repeated Product products = 1;
   warehouse.common.v1.PageInfo page_info = 2;
 }
