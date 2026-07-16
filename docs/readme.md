@@ -104,6 +104,39 @@ cd frontend && npm run typecheck && npm run build && npm run e2e
 
 ---
 
+## Overnight delegation mode
+
+The board can be worked **autonomously** — for leaving a batch of ready issues running overnight
+while you review progress from the GitHub Project board on your phone. It works the **Ready**
+column: each issue is triaged, the genuinely-actionable ones are built on `dev` (one at a time,
+kept green) and moved to **In review**; anything under-specified or blocked is left in Ready with
+a `🌙 overnight (parked)` comment saying why — never half-built.
+
+**Control keywords** (say these to Claude Code):
+
+| Say | Effect |
+| --- | --- |
+| `overnight mode: start` | Begin the autonomous run — sweep the Ready column, implement the actionable issues, re-checking through the night for anything you add. |
+| `overnight mode: stop` | Halt after the current step. Nothing in flight is left half-committed; `dev` stays green. |
+| `overnight mode: status` | Report what's In review, In progress, and parked so far. |
+
+**Guardrails it always honours:**
+
+- Commits to `dev` **only when the full green gate passes** (`buf lint`, `go build/vet/test`,
+  frontend `typecheck`). Never commits red.
+- Moves each issue **In progress → In review** and **stops there** — never Done, never closes an
+  issue, never pushes or merges to `main`. You review and flip those.
+- **Non-destructive to your other work** — it only stages or reverts the exact files it creates
+  for an issue, never unrelated uncommitted changes in your tree.
+- Every provisional call (a decision you hadn't answered) is logged in the relevant
+  `plans/<svc>/brainstorming.md` and flagged in an issue comment for your review.
+
+The machinery is a reusable workflow —
+[`.claude/workflows/overnight-board.js`](../.claude/workflows/overnight-board.js) — not tied to
+any one issue, so future nights just need issues dropped into **Ready**.
+
+---
+
 ## Where design happens
 
 Nothing is built before it is thought through in [../plans/](../plans/): `plan.md` holds the
