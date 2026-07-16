@@ -151,7 +151,12 @@ export function ProductsPage() {
               const cover = product.defaultImageThumbnailUrl || product.defaultImageUrl;
 
               return (
-                <Table.Row key={product.id.toString()} data-testid={`product-row-${product.sku}`}>
+                <Table.Row
+                  key={product.id.toString()}
+                  data-testid={`product-row-${product.sku}`}
+                  cursor="pointer"
+                  onClick={() => navigate(`/products/${product.id}`)}
+                >
                   <Table.Cell>
                     {cover ? (
                       <Image
@@ -170,17 +175,14 @@ export function ProductsPage() {
                   </Table.Cell>
                   <Table.Cell>{product.sku}</Table.Cell>
                   <Table.Cell>
-                    <Box
-                      cursor="pointer"
-                      data-testid={`open-product-${product.sku}`}
-                      onClick={() => navigate(`/products/${product.id}`)}
-                    >
-                      {product.name}
-                    </Box>
+                    {/* The whole row navigates to the detail page (#92); this keeps the stable
+                        testid the e2e clicks. */}
+                    <Box data-testid={`open-product-${product.sku}`}>{product.name}</Box>
                   </Table.Cell>
                   <Table.Cell>{product.description}</Table.Cell>
 
-                  <Table.Cell textAlign="end">
+                  {/* Row-action clicks must not bubble to the row's navigate. */}
+                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                     <HStack justify="end" gap="1">
                       <IconButton
                         size="xs"
