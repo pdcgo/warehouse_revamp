@@ -322,6 +322,64 @@ erDiagram
 
 ---
 
+## inventory_service
+
+`backend/services/inventory_service/db_migrations/`
+
+```mermaid
+erDiagram
+    stock_levels {
+        bigint      warehouse_id PK "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id   PK "opaque product_service id, no FK"
+        bigint      on_hand      "derived running total, CHECK >= 0"
+        timestamptz updated_at
+    }
+
+    stock_movements {
+        bigserial   id            PK
+        bigint      warehouse_id  "opaque, no FK"
+        bigint      product_id    "opaque, no FK"
+        bigint      delta         "signed: + in, - out"
+        bigint      balance       "on-hand after this movement"
+        smallint    kind          "MovementKind enum number"
+        text        reason
+        text        ref
+        bigint      actor_user_id "who, best-effort audit"
+        timestamptz created_at
+    }
+
+    suppliers {
+        bigserial   id          PK
+        bigint      team_id     "owning team, opaque cross-service id, no FK"
+        text        code        "required, unique per team among active"
+        text        name        "required"
+        text        contact
+        text        province
+        text        city
+        text        address
+        text        description
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
+  `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
+  cache of the running on-hand, maintained inside each movement's transaction, with a
+  `CHECK (on_hand >= 0)` that turns an over-draw into a failed movement rather than a negative on-hand.
+  Scoped by `warehouse_id` (`use_scope`); `product_id` is an opaque `product_service` id. Both ids are
+  opaque cross-service ids — no FK.
+- **`suppliers`** — a team's vendors (who it buys stock from). Team-scoped (`team_id` carries
+  `use_scope`), so a supplier is only ever reachable within its owning team. `code` is unique per team
+  **among active suppliers only** (`UNIQUE (team_id, code) WHERE deleted = FALSE`), so a soft-deleted
+  supplier frees its code for reuse and two teams may share one. `team_id` is opaque — no FK to
+  `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
+  fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
+  delete, search, pagination).
+
+---
+
 ## Cross-service links (logical, not enforced)
 
 ```mermaid

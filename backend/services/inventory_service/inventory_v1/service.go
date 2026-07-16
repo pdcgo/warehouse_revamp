@@ -24,8 +24,12 @@ type Service struct {
 	db *gorm.DB
 }
 
-// compile-time proof Service satisfies the generated handler interface.
-var _ inventoryv1connect.InventoryServiceHandler = (*Service)(nil)
+// compile-time proof Service satisfies both generated handler interfaces (one inventory_service
+// impl serves InventoryService and SupplierService).
+var (
+	_ inventoryv1connect.InventoryServiceHandler = (*Service)(nil)
+	_ inventoryv1connect.SupplierServiceHandler  = (*Service)(nil)
+)
 
 func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}

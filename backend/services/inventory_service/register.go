@@ -20,11 +20,15 @@ func NewRegister(
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
+		mux.Handle(inventoryv1connect.NewSupplierServiceHandler(inventory, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
 		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
 		mux.Handle("/events/inventory", event_source.NewMuxPushHandler(NewInventoryPushHandler()))
 
-		return san_grpc.ServiceReflectNames{inventoryv1connect.InventoryServiceName}
+		return san_grpc.ServiceReflectNames{
+			inventoryv1connect.InventoryServiceName,
+			inventoryv1connect.SupplierServiceName,
+		}
 	}
 }

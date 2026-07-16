@@ -11,6 +11,7 @@
     "inventories": "Inventaris",
     "restock": "Restok",
     "placements": "Penempatan",
+    "supplier": "Pemasok",
     "users": "Pengguna",
     "settings": "Pengaturan",
     "profile": "Profil"
@@ -171,6 +172,42 @@
       "edit": "Ubah",
       "code": "Kode",
       "description": "Deskripsi"
+    }
+  },
+  "suppliers": {
+    "title": "Pemasok",
+    "selectTeam": "Pilih tim untuk mengelola pemasoknya.",
+    "searchPlaceholder": "Cari nama atau kode",
+    "deleted": "Pemasok \"{{name}}\" dihapus",
+    "deleteFailed": "Gagal menghapus",
+    "deleteSupplier": "Hapus Pemasok",
+    "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "delete": "Hapus",
+    "empty": "Tidak ada pemasok ditemukan.",
+    "table": {
+      "code": "Kode",
+      "name": "Nama",
+      "contact": "Kontak",
+      "city": "Kota",
+      "actions": "Aksi"
+    },
+    "form": {
+      "saved": "Pemasok disimpan",
+      "created": "Pemasok \"{{name}}\" dibuat",
+      "newSupplier": "Pemasok baru",
+      "editTitle": "Ubah Pemasok",
+      "createTitle": "Pemasok Baru",
+      "code": "Kode",
+      "codeHelp": "Unik dalam tim, maksimal 32 karakter.",
+      "name": "Nama",
+      "contact": "Kontak",
+      "province": "Provinsi",
+      "city": "Kota",
+      "address": "Alamat",
+      "description": "Deskripsi",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "create": "Buat"
     }
   },
   "teams": {

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
+import { Boxes, Building2, CircleUser, Factory, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -44,6 +44,7 @@ const INVENTORIES: MenuGroup = {
   children: [
     { to: "/inventories/restock", label: "nav.restock", icon: PackagePlus },
     { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
+    { to: "/inventories/suppliers", label: "nav.supplier", icon: Factory },
   ],
 };
 

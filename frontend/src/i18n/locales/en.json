@@ -11,6 +11,7 @@
     "inventories": "Inventories",
     "restock": "Restock",
     "placements": "Placements",
+    "supplier": "Supplier",
     "users": "Users",
     "settings": "Settings",
     "profile": "Profile"
@@ -171,6 +172,42 @@
       "edit": "Edit",
       "code": "Code",
       "description": "Description"
+    }
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "selectTeam": "Select a team to manage its suppliers.",
+    "searchPlaceholder": "Search name or code",
+    "deleted": "Supplier \"{{name}}\" deleted",
+    "deleteFailed": "Delete failed",
+    "deleteSupplier": "Delete Supplier",
+    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
+    "delete": "Delete",
+    "empty": "No suppliers found.",
+    "table": {
+      "code": "Code",
+      "name": "Name",
+      "contact": "Contact",
+      "city": "City",
+      "actions": "Actions"
+    },
+    "form": {
+      "saved": "Supplier saved",
+      "created": "Supplier \"{{name}}\" created",
+      "newSupplier": "New supplier",
+      "editTitle": "Edit Supplier",
+      "createTitle": "New Supplier",
+      "code": "Code",
+      "codeHelp": "Unique within the team, up to 32 characters.",
+      "name": "Name",
+      "contact": "Contact",
+      "province": "Province",
+      "city": "City",
+      "address": "Address",
+      "description": "Description",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create"
     }
   },
   "teams": {

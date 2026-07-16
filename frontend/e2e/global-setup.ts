@@ -25,6 +25,7 @@ export default function globalSetup(): void {
   run(`go run ./cmd/tool migrate up --service selling_service --dsn "${TEST_DSN}"`);
   run(`go run ./cmd/tool migrate up --service category_service --dsn "${TEST_DSN}"`);
   run(`go run ./cmd/tool migrate up --service document_service --dsn "${TEST_DSN}"`);
+  run(`go run ./cmd/tool migrate up --service inventory_service --dsn "${TEST_DSN}"`);
 
   // The migration creates root with an EMPTY password, which bcrypt can never match. Without this
   // the account exists and cannot log in — which is the point.
