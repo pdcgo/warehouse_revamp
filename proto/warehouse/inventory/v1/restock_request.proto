@@ -29,19 +29,50 @@ enum RestockRequestStatus {
   RESTOCK_REQUEST_STATUS_CANCELLED = 3;
 }
 
+// One line of a restock request: a product, how much of it, and what it costs.
+message RestockRequestItem {
+  uint64 id = 1;
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // sku/name snapshot at request time (the product may live in another team's catalogue).
+  string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
+  // Whole rupiah, PER UNIT — what this product is expected to cost from the supplier. Zero is
+  // legitimate (a transfer, a sample), so it is gte 0, not gt 0.
+  int64 price = 6 [(buf.validate.field).int64.gte = 0];
+}
+
 message RestockRequest {
   uint64 id = 1;
   uint64 requesting_team_id = 2;
   uint64 warehouse_id = 3;
-  uint64 product_id = 4;
-  // sku/name snapshot at request time (the product may live in another team's catalogue).
-  string sku = 5;
-  string name = 6;
-  int64 quantity = 7;
+  // was product_id / sku / name / quantity — a request carries MANY priced lines now (#124).
+  reserved 4, 5, 6, 7;
+  reserved "product_id", "sku", "name", "quantity";
   // A shipping_service courier code (opaque) — how the goods reach the warehouse.
   string shipping_code = 8;
   RestockRequestStatus status = 9;
   int64 created_at_unix = 10;
+
+  // The lines. At least one.
+  repeated RestockRequestItem items = 11;
+
+  // All three are OPTIONAL context (#124) — a request is legitimate without any of them.
+  //
+  // order_id: the selling order this restock is FOR ("we need stock to fill that order"). An opaque
+  // selling_service id — no FK, it is another service's row. 0 = not tied to an order.
+  uint64 order_id = 12;
+  // The courier's tracking number (resi) for the shipment, once there is one. Empty = none yet.
+  string receipt = 13;
+  // Who the goods are bought from — an inventory_service supplier owned by the REQUESTING team.
+  // Same service, so this one is a real FK. 0 = no supplier recorded.
+  uint64 supplier_id = 14;
 }
 
 message RestockRequestCreateRequest {
@@ -61,17 +92,19 @@ message RestockRequestCreateRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
-  uint64 product_id = 3 [(buf.validate.field).uint64.gt = 0];
-  string sku = 4 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 64
-  }];
-  string name = 5 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 200
-  }];
-  int64 quantity = 6 [(buf.validate.field).int64.gt = 0];
+  // was product_id / sku / name / quantity — one product per request became `items` (#124).
+  reserved 3, 4, 5, 6;
+  reserved "product_id", "sku", "name", "quantity";
   string shipping_code = 7 [(buf.validate.field).string.max_len = 40];
+
+  // At least one line; `id` on each is ignored.
+  repeated RestockRequestItem items = 8 [(buf.validate.field).repeated.min_items = 1];
+
+  // Optional context — see RestockRequest. supplier_id, when set, must be a supplier of the
+  // REQUESTING team (the handler checks; a supplier from another team reads as NotFound).
+  uint64 order_id = 9;
+  string receipt = 10 [(buf.validate.field).string.max_len = 100];
+  uint64 supplier_id = 11;
 }
 
 message RestockRequestCreateResponse {

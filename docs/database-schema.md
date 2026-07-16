@@ -398,16 +398,30 @@ erDiagram
         timestamptz updated_at
     }
 
+    restock_requests ||--o{ restock_request_items : "restock_request_id"
+    suppliers ||--o{ restock_requests : "supplier_id (nullable)"
+
     restock_requests {
         bigserial   id                 PK
         bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
         bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
+        text        shipping_code      "opaque shipping_service courier code"
+        text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
+        bigint      order_id           "optional: the selling order it is for, opaque, no FK; 0 = none"
+        text        receipt            "optional: courier tracking number (resi)"
+        bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    restock_request_items {
+        bigserial   id                 PK
+        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
         bigint      product_id         "opaque product_service id, no FK"
         text        sku                "snapshot at request time"
         text        name               "snapshot"
         bigint      quantity           "CHECK > 0"
-        text        shipping_code      "opaque shipping_service courier code"
-        text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
+        bigint      price              "whole rupiah PER UNIT, CHECK >= 0"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -436,16 +450,27 @@ erDiagram
   neither domain owns it, #120), set only for an online channel. An online channel must name a
   marketplace;
   an offline one keeps `contact`/`location`. Channels are hard-deleted (no history to keep).
-- **`restock_requests`** — a SELLING team's request for a WAREHOUSE to restock a product (#105). The
-  flow is two-sided: `requesting_team_id` (the selling team, `use_scope` on create/cancel/list) raises
-  a `pending` request naming a `warehouse_id` (the target warehouse, `use_scope` on fulfil/list), a
-  `product_id` (opaque, with a `sku`/`name` snapshot frozen at request time), a `quantity`
-  (`CHECK > 0`) and a `shipping_code`. The warehouse **fulfils** it in one transaction — a
-  `stock_movements` RECEIVE for `quantity` plus a status flip to `fulfilled`, so the ledger and the
-  request can't diverge; the requester may **cancel** a still-pending one (`cancelled`). `status` is
-  the `RestockRequestStatus` enum **as text** (mapped in the handler, no `CHECK` IN-list, cf. #80).
-  Both team ids are opaque — no FK; indexes on `requesting_team_id` and `warehouse_id` serve the two
-  list views.
+- **`restock_requests`** / **`restock_request_items`** — a SELLING team's request for a WAREHOUSE to
+  restock (#105/#124). Two-sided: `requesting_team_id` (the selling team, `use_scope` on
+  create/cancel/list) raises a `pending` request naming a `warehouse_id` (the target warehouse,
+  `use_scope` on fulfil/list) and a `shipping_code`. The warehouse **fulfils** it in one transaction —
+  a `stock_movements` RECEIVE for **every line** plus a status flip to `fulfilled`, so the ledger and
+  the request can't diverge and a request is never half-received; the requester may **cancel** a
+  still-pending one. `status` is the `RestockRequestStatus` enum **as text** (mapped in the handler,
+  no `CHECK` IN-list, cf. #80). Both team ids are opaque — no FK; indexes on `requesting_team_id` and
+  `warehouse_id` serve the two list views.
+- A request carries **many priced lines** (#124), same shape as `orders`/`order_items`:
+  `restock_request_items` snapshots each line's `sku`/`name` at request time (the product may live in
+  another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `price`
+  (whole rupiah **per unit**, `CHECK >= 0` — zero is legitimate for a transfer or a sample).
+  `ON DELETE CASCADE`.
+- Three **optional** context columns on the header (#124): `order_id` — the selling order the restock
+  is *for* (an opaque `selling_service` id, **no FK**, `0` = untied); `receipt` — the courier's
+  tracking number (resi); and `supplier_id` — who the goods are bought from. `supplier_id` is the one
+  **real FK** of the three, because `suppliers` is the *same service* (`ON DELETE SET NULL`, so a
+  request keeps its history if a supplier is ever hard-deleted). The handler additionally requires the
+  supplier to belong to the **requesting team** — another team's supplier reads as `NotFound`, so the
+  error can't be used to confirm an id exists.
 
 ---
 

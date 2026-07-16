@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
@@ -34,6 +35,9 @@ func (s *Service) RestockRequestList(
 	var rrs []inventory_service_models.RestockRequest
 
 	err = query.
+		// Preload, not a join: GORM fetches this page's lines in ONE extra query keyed by request id,
+		// so a page of requests costs 2 queries rather than N+1 (#124).
+		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Order("id DESC").
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).

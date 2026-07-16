@@ -159,15 +159,28 @@
       "product": "Produk",
       "qty": "Jml",
       "shipment": "Pengiriman",
-      "actions": "Aksi"
+      "actions": "Aksi",
+      "moreProducts": "+{{count}} lainnya",
+      "noProducts": "Tidak ada produk"
     },
     "form": {
       "warehouse": "Gudang",
       "warehouseHelp": "Gudang yang akan menerima stok.",
-      "product": "Produk",
+      "products": "Produk",
       "quantity": "Jumlah",
+      "price": "Harga",
+      "addProduct": "Tambah produk",
+      "removeProduct": "Hapus produk",
+      "total": "Total",
       "shipment": "Pengiriman",
       "shipmentHelp": "Cara barang sampai ke gudang.",
+      "optionalDetails": "Detail opsional",
+      "supplier": "Pemasok",
+      "supplierHelp": "Pihak tempat barang dibeli.",
+      "receipt": "Resi",
+      "receiptHelp": "Nomor resi kurir, jika sudah ada.",
+      "orderId": "Pesanan",
+      "orderIdHelp": "Pesanan yang menjadi tujuan restok ini, berdasarkan nomornya.",
       "submit": "Buat Permintaan"
     },
     "cancel": {

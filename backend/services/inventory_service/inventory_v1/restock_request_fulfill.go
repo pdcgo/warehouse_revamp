@@ -28,6 +28,9 @@ func (s *Service) RestockRequestFulfill(
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
+			// The lock is on the request row; its lines are loaded separately (FOR UPDATE and a join
+			// do not mix), which is safe because the PENDING guard below is what serialises fulfils.
+			Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 			Where("id = ? AND warehouse_id = ?", req.Msg.GetRequestId(), warehouseID).
 			First(&rr).
 			Error
@@ -39,24 +42,37 @@ func (s *Service) RestockRequestFulfill(
 			return errRestockNotPending
 		}
 
-		balance, applyErr := applyDelta(tx, rr.WarehouseID, rr.ProductID, rr.Quantity)
-		if applyErr != nil {
-			return applyErr
+		// A request with no lines receives nothing — that is a broken row, not a no-op fulfil.
+		if len(rr.Items) == 0 {
+			return errRestockNoItems
 		}
 
-		_, moveErr := appendMovement(
-			tx,
-			rr.WarehouseID,
-			rr.ProductID,
-			rr.Quantity,
-			balance,
-			inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
-			"restock request",
-			rr.ShippingCode,
-			actorFrom(ctx),
-		)
-		if moveErr != nil {
-			return moveErr
+		actor := actorFrom(ctx)
+
+		// EVERY line is received, inside this one transaction: a request half-received is worse than
+		// one not received at all, and the status flip below must mean all of it landed (#124).
+		for i := range rr.Items {
+			item := rr.Items[i]
+
+			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, item.Quantity)
+			if applyErr != nil {
+				return applyErr
+			}
+
+			_, moveErr := appendMovement(
+				tx,
+				rr.WarehouseID,
+				item.ProductID,
+				item.Quantity,
+				balance,
+				inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
+				"restock request",
+				rr.ShippingCode,
+				actor,
+			)
+			if moveErr != nil {
+				return moveErr
+			}
 		}
 
 		rr.Status = restockStatusFulfilled

@@ -57,15 +57,19 @@ product; the warehouse fulfils it, and *fulfilment is what receives the stock*. 
 the stock ledger can never diverge because the fulfil does both in **one transaction**.
 
 - **`RestockRequestCreate`** — the SELLING team (`requesting_team_id`, `use_scope`) raises a `pending`
-  request naming the target `warehouse_id`, the `product_id` (+ a `sku`/`name` snapshot), a
-  `quantity` and a `shipping_code`. No stock is touched.
+  request naming the target `warehouse_id`, a `shipping_code`, and **one or more priced lines**
+  (product + `sku`/`name` snapshot + quantity + per-unit price, #124). Optionally an `order_id`, a
+  `receipt` (resi), and a `supplier_id` — the supplier must be the requesting team's own, else
+  **NotFound**. No stock is touched.
 - **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
   `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
   warehouse's "incoming" view. Paginated, newest first.
 - **`RestockRequestFulfill`** — the TARGET WAREHOUSE (`warehouse_id`, `use_scope`) receives the stock
   and flips the status, atomically. The request is loaded `FOR UPDATE` scoped to this warehouse
   (another warehouse's request reads as **NotFound**) and must be `pending` (a re-fulfil is
-  **FailedPrecondition**).
+  **FailedPrecondition**). **Every line is received inside the one transaction** (#124) — a request
+  half-received would be worse than one not received at all, and the status flip has to mean all of
+  it landed. A request with no lines is refused rather than "fulfilled" having moved nothing.
 - **`RestockRequestCancel`** — the REQUESTER (`requesting_team_id`, `use_scope`) cancels its own
   still-`pending` request (another team's reads as **NotFound**; a non-pending one is
   **FailedPrecondition**). No stock is touched.
@@ -103,8 +107,10 @@ sequenceDiagram
     else found but status != pending
         H-->>W: FailedPrecondition (re-fulfil)
     else pending
-        H->>DB: applyDelta(warehouse, product, +quantity) → balance
-        H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+        loop every line of the request (#124)
+            H->>DB: applyDelta(warehouse, line.product, +line.quantity) → balance
+            H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+        end
         H->>DB: UPDATE restock_requests SET status='fulfilled'
         H->>DB: COMMIT
         DB-->>H: ok

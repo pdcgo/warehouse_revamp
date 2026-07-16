@@ -18,12 +18,16 @@ import {
 } from "@chakra-ui/react";
 import { Ban, PackageCheck } from "lucide-react";
 import { restockClient, rpcError } from "../api/clients";
-import type { RestockRequest } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import type {
+  RestockRequest,
+  RestockRequestItem,
+} from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
+import { ShippingBadge } from "../components/ShippingBadge";
 import { toaster } from "../components/Toaster";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -43,6 +47,43 @@ function StatusBadge({ status }: { status: RestockRequestStatus }) {
     default:
       return <Badge colorPalette="gray">{t("restock.status.unspecified")}</Badge>;
   }
+}
+
+// The lines' total quantity — what the Qty column shows now that a request carries many products.
+function totalQuantity(items: RestockRequestItem[]): bigint {
+  return items.reduce((sum, item) => sum + item.quantity, 0n);
+}
+
+// ItemsSummary condenses a request's lines into one table cell (#124). A request is multi-line now,
+// but a LIST row is a scanning surface, not a breakdown: it shows the first line and counts the rest.
+// The full per-line detail belongs to the detail page (#125). `items` is defensively allowed to be
+// empty — the contract requires at least one line, so an empty one means a request written before
+// #124 or a partial response, and neither should blank the whole table.
+function ItemsSummary({ items }: { items: RestockRequestItem[] }) {
+  const { t } = useTranslation();
+  const [first, ...rest] = items;
+
+  if (!first) {
+    return (
+      <Span fontSize="xs" color="fg.muted">
+        {t("restock.table.noProducts")}
+      </Span>
+    );
+  }
+
+  return (
+    <Stack gap="0">
+      <Span fontWeight="medium">{first.sku}</Span>
+      <Span fontSize="xs" color="fg.muted">
+        {first.name}
+      </Span>
+      {rest.length > 0 && (
+        <Span fontSize="xs" color="fg.muted">
+          {t("restock.table.moreProducts", { count: rest.length })}
+        </Span>
+      )}
+    </Stack>
+  );
 }
 
 // RestockRequestsPage (#105) is the ONE screen both sides of a restock use. A single list serves
@@ -185,15 +226,12 @@ export function RestockRequestsPage() {
                   <Table.Cell>{t("restock.warehouseRef", { id: request.warehouseId.toString() })}</Table.Cell>
                   <Table.Cell>{t("restock.teamRef", { id: request.requestingTeamId.toString() })}</Table.Cell>
                   <Table.Cell>
-                    <Stack gap="0">
-                      <Span fontWeight="medium">{request.sku}</Span>
-                      <Span fontSize="xs" color="fg.muted">
-                        {request.name}
-                      </Span>
-                    </Stack>
+                    <ItemsSummary items={request.items} />
                   </Table.Cell>
-                  <Table.Cell textAlign="end">{request.quantity.toString()}</Table.Cell>
-                  <Table.Cell>{request.shippingCode || "—"}</Table.Cell>
+                  <Table.Cell textAlign="end">{totalQuantity(request.items).toString()}</Table.Cell>
+                  <Table.Cell>
+                    <ShippingBadge code={request.shippingCode} />
+                  </Table.Cell>
 
                   <Table.Cell textAlign="end">
                     <HStack justify="end" gap="1">

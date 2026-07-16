@@ -23,8 +23,10 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	const sellingTeam, warehouse uint64 = 2, 5
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductId: 100,
-		Sku: "SKU1", Name: "Widget", Quantity: 10, ShippingCode: "jne",
+		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 5000},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -86,13 +88,143 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	}
 }
 
+// A request carries MANY priced lines, and fulfilling it receives EVERY one of them (#124).
+func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 4, Price: 5000},
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 7, Price: 12500},
+			// Price 0 is legitimate — a transfer or a sample, not a mistake.
+			{ProductId: 300, Sku: "SKU3", Name: "Freebie", Quantity: 1},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	got := created.Msg.GetRequest()
+	if len(got.GetItems()) != 3 {
+		t.Fatalf("items = %d, want 3", len(got.GetItems()))
+	}
+	if got.GetItems()[1].GetPrice() != 12500 || got.GetItems()[1].GetSku() != "SKU2" {
+		t.Fatalf("line did not round-trip: %+v", got.GetItems()[1])
+	}
+
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: got.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	// Every line landed as its own on-hand.
+	levels, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouse, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+
+	onHand := map[uint64]int64{}
+	for _, l := range levels.Msg.GetLevels() {
+		onHand[l.GetProductId()] = l.GetOnHand()
+	}
+
+	if onHand[100] != 4 || onHand[200] != 7 || onHand[300] != 1 {
+		t.Fatalf("every line should be received, got %+v", onHand)
+	}
+}
+
+// The optional supplier must be one of the REQUESTING team's own — another team's reads as NotFound,
+// so the error cannot be used to confirm that an id exists (#124).
+func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam uint64 = 2
+
+	mine := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
+	theirs := insertSupplier(t, db, 9, "Their Vendor", "V-THEIRS")
+
+	create := func(supplierID uint64) error {
+		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: 5, SupplierId: supplierID,
+			OrderId: 77, Receipt: "JP1234567890",
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+			},
+		}))
+
+		return err
+	}
+
+	// Our own supplier is fine, and the optional context round-trips.
+	resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: 5, SupplierId: mine,
+		OrderId: 77, Receipt: "JP1234567890",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create with own supplier: %v", err)
+	}
+	if got := resp.Msg.GetRequest(); got.GetSupplierId() != mine || got.GetOrderId() != 77 ||
+		got.GetReceipt() != "JP1234567890" {
+		t.Fatalf("optional context did not round-trip: %+v", got)
+	}
+
+	// Another team's supplier is NotFound.
+	if code := connect.CodeOf(create(theirs)); code != connect.CodeNotFound {
+		t.Fatalf("cross-team supplier code = %v, want NotFound", code)
+	}
+
+	// An id that exists nowhere is the same NotFound — indistinguishable, on purpose.
+	if code := connect.CodeOf(create(999999)); code != connect.CodeNotFound {
+		t.Fatalf("unknown supplier code = %v, want NotFound", code)
+	}
+}
+
+// No supplier / order / receipt at all is a perfectly good request — all three are optional.
+func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: 2, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2, Price: 900},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create without optional context: %v", err)
+	}
+
+	got := created.Msg.GetRequest()
+	if got.GetSupplierId() != 0 || got.GetOrderId() != 0 || got.GetReceipt() != "" {
+		t.Fatalf("absent context should be zero, got %+v", got)
+	}
+}
+
 func TestRestockRequest_Cancel(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: 2, WarehouseId: 5, ProductId: 100, Sku: "S", Name: "N", Quantity: 3,
+		TeamId: 2, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "S", Name: "N", Quantity: 3},
+		},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
