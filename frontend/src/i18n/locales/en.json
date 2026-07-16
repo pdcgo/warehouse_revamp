@@ -146,6 +146,20 @@
     "back": "Back",
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
+    "detail": {
+      "title": "Restock Request",
+      "requestTitle": "Restock Request #{{id}}",
+      "back": "Back to Restock Requests",
+      "notFound": "Restock request not found.",
+      "invalidId": "Invalid restock request id.",
+      "request": "Request",
+      "sku": "SKU",
+      "name": "Name",
+      "unitPrice": "Unit price",
+      "lineTotal": "Line total",
+      "supplierRef": "Supplier #{{id}}",
+      "orderRef": "Order #{{id}}"
+    },
     "status": {
       "pending": "Pending",
       "fulfilled": "Fulfilled",

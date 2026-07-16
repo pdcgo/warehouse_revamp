@@ -146,6 +146,20 @@
     "back": "Kembali",
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
+    "detail": {
+      "title": "Permintaan Restok",
+      "requestTitle": "Permintaan Restok #{{id}}",
+      "back": "Kembali ke Permintaan Restok",
+      "notFound": "Permintaan restok tidak ditemukan.",
+      "invalidId": "ID permintaan restok tidak valid.",
+      "request": "Permintaan",
+      "sku": "SKU",
+      "name": "Nama",
+      "unitPrice": "Harga satuan",
+      "lineTotal": "Total baris",
+      "supplierRef": "Pemasok #{{id}}",
+      "orderRef": "Pesanan #{{id}}"
+    },
     "status": {
       "pending": "Menunggu",
       "fulfilled": "Terpenuhi",

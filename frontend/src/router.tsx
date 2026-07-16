@@ -64,6 +64,9 @@ const RestockRequestsPage = lazy(() =>
 const RestockRequestCreatePage = lazy(() =>
   import("./restock/RestockRequestCreatePage").then((m) => ({ default: m.RestockRequestCreatePage })),
 );
+const RestockRequestDetailPage = lazy(() =>
+  import("./restock/RestockRequestDetailPage").then((m) => ({ default: m.RestockRequestDetailPage })),
+);
 const UsersPage = lazy(() => import("./users/UsersPage").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./users/UserDetailPage").then((m) => ({ default: m.UserDetailPage })),
@@ -131,7 +134,10 @@ export const router = createBrowserRouter([
       // them. The on-hand list is "Stock" (it was only ever called Restock under the superseded
       // "pick a warehouse and receive there" design). Placements is a stub.
       { path: "inventories/restock", element: <RestockRequestsPage /> },
+      // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
+      // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
       { path: "inventories/restock/new", element: <RestockRequestCreatePage /> },
+      { path: "inventories/restock/:requestId", element: <RestockRequestDetailPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },

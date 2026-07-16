@@ -25,6 +25,10 @@ import {
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
 import { ShippingBadge, description as shippingBadgeDescription } from "../components/ShippingBadge";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
+import {
+  RestockStatusBadge,
+  description as restockStatusBadgeDescription,
+} from "../components/RestockStatusBadge";
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
 import {
@@ -40,6 +44,7 @@ import {
 } from "../components/AddressPicker";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
+import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
@@ -393,6 +398,23 @@ const ENTRIES: Entry[] = [
       <Flex gap="2" wrap="wrap">
         {[OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.CANCELLED].map((s) => (
           <OrderStatusBadge key={s} status={s} />
+        ))}
+      </Flex>
+    ),
+  },
+  {
+    id: "restock-status-badge",
+    title: "RestockStatusBadge",
+    description: restockStatusBadgeDescription,
+    render: () => (
+      <Flex gap="2" wrap="wrap">
+        {[
+          RestockRequestStatus.PENDING,
+          RestockRequestStatus.FULFILLED,
+          RestockRequestStatus.CANCELLED,
+          RestockRequestStatus.UNSPECIFIED,
+        ].map((s) => (
+          <RestockStatusBadge key={s} status={s} />
         ))}
       </Flex>
     ),

@@ -88,6 +88,63 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	}
 }
 
+// The detail page's read (#125): BOTH sides can open a request in full, with its lines; anyone else
+// gets NotFound rather than a permission error that would confirm the id exists.
+func TestRestockRequest_Detail(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne", Receipt: "JP99",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2, Price: 1500},
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 5, Price: 700},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	reqID := created.Msg.GetRequest().GetId()
+
+	// The requester and the target warehouse both see it, lines and all.
+	for _, team := range []uint64{sellingTeam, warehouse} {
+		resp, detailErr := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+			TeamId: team, RequestId: reqID,
+		}))
+		if detailErr != nil {
+			t.Fatalf("detail as team %d: %v", team, detailErr)
+		}
+
+		got := resp.Msg.GetRequest()
+		if len(got.GetItems()) != 2 {
+			t.Fatalf("team %d: items = %d, want 2", team, len(got.GetItems()))
+		}
+		if got.GetReceipt() != "JP99" || got.GetItems()[1].GetPrice() != 700 {
+			t.Fatalf("team %d: detail did not round-trip: %+v", team, got)
+		}
+	}
+
+	// A team on neither side of it cannot read it.
+	_, err = svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: 9, RequestId: reqID,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("outsider detail code = %v, want NotFound", connect.CodeOf(err))
+	}
+
+	// An id that does not exist is the same NotFound.
+	_, err = svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: 999999,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("unknown id code = %v, want NotFound", connect.CodeOf(err))
+	}
+}
+
 // A request carries MANY priced lines, and fulfilling it receives EVERY one of them (#124).
 func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	db := san_testdb.DB(t)

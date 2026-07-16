@@ -16,6 +16,8 @@ service RestockRequestService {
   rpc RestockRequestCreate(RestockRequestCreateRequest) returns (RestockRequestCreateResponse);
   // Both sides list: a team sees requests it MADE and requests TARGETING it as a warehouse.
   rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse);
+  // One request in full, with its lines — the detail page (#125). Same two-sided scope as List.
+  rpc RestockRequestDetail(RestockRequestDetailRequest) returns (RestockRequestDetailResponse);
   // The target warehouse fulfils a pending request — receives the stock and marks it fulfilled.
   rpc RestockRequestFulfill(RestockRequestFulfillRequest) returns (RestockRequestFulfillResponse);
   // The requesting team cancels a still-pending request.
@@ -131,6 +133,33 @@ message RestockRequestListRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message RestockRequestDetailRequest {
+  // Read: either side, exactly as List — the selling team that made it, or the warehouse it targets.
+  // A request that is neither reads as NotFound, so this cannot be used to probe other teams' ids.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestDetailResponse {
+  RestockRequest request = 1;
 }
 
 message RestockRequestListResponse {

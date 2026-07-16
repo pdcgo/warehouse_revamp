@@ -27,27 +27,11 @@ import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
+import { RestockStatusBadge } from "../components/RestockStatusBadge";
 import { ShippingBadge } from "../components/ShippingBadge";
 import { toaster } from "../components/Toaster";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-// StatusBadge maps a RestockRequestStatus to a coloured Chakra Badge. PENDING is the actionable
-// state (blue), FULFILLED is a positive terminal state (green), CANCELLED is inert (gray).
-function StatusBadge({ status }: { status: RestockRequestStatus }) {
-  const { t } = useTranslation();
-
-  switch (status) {
-    case RestockRequestStatus.PENDING:
-      return <Badge colorPalette="blue">{t("restock.status.pending")}</Badge>;
-    case RestockRequestStatus.FULFILLED:
-      return <Badge colorPalette="green">{t("restock.status.fulfilled")}</Badge>;
-    case RestockRequestStatus.CANCELLED:
-      return <Badge colorPalette="gray">{t("restock.status.cancelled")}</Badge>;
-    default:
-      return <Badge colorPalette="gray">{t("restock.status.unspecified")}</Badge>;
-  }
-}
 
 // The lines' total quantity — what the Qty column shows now that a request carries many products.
 function totalQuantity(items: RestockRequestItem[]): bigint {
@@ -219,9 +203,15 @@ export function RestockRequestsPage() {
               const isWarehouse = request.warehouseId === current.teamId;
 
               return (
-                <Table.Row key={request.id.toString()} data-testid={`restock-row-${request.id}`}>
-                  <Table.Cell>
-                    <StatusBadge status={request.status} />
+                <Table.Row
+                  key={request.id.toString()}
+                  data-testid={`restock-row-${request.id}`}
+                  cursor="pointer"
+                  _hover={{ bg: "bg.subtle" }}
+                  onClick={() => navigate(`/inventories/restock/${request.id}`)}
+                >
+                  <Table.Cell data-testid={`restock-open-${request.id}`}>
+                    <RestockStatusBadge status={request.status} />
                   </Table.Cell>
                   <Table.Cell>{t("restock.warehouseRef", { id: request.warehouseId.toString() })}</Table.Cell>
                   <Table.Cell>{t("restock.teamRef", { id: request.requestingTeamId.toString() })}</Table.Cell>
@@ -233,7 +223,8 @@ export function RestockRequestsPage() {
                     <ShippingBadge code={request.shippingCode} />
                   </Table.Cell>
 
-                  <Table.Cell textAlign="end">
+                  {/* Stop the row's navigate from firing when a row action is used. */}
+                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                     <HStack justify="end" gap="1">
                       {isPending && isRequester && (
                         <ConfirmDialog

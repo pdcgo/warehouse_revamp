@@ -63,7 +63,12 @@ the stock ledger can never diverge because the fulfil does both in **one transac
   **NotFound**. No stock is touched.
 - **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
   `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
-  warehouse's "incoming" view. Paginated, newest first.
+  warehouse's "incoming" view. Paginated, newest first. Lines are **preloaded** in one extra query
+  keyed by request id, so a page costs 2 queries rather than N+1.
+- **`RestockRequestDetail`** — one request in full, with its lines, for the detail page (#125). The
+  same two-sided scope as List, and the scope **is** the `WHERE` clause: a request that is neither
+  yours nor targeting you reads as **NotFound**, never PermissionDenied — a permission error would
+  confirm the id exists.
 - **`RestockRequestFulfill`** — the TARGET WAREHOUSE (`warehouse_id`, `use_scope`) receives the stock
   and flips the status, atomically. The request is loaded `FOR UPDATE` scoped to this warehouse
   (another warehouse's request reads as **NotFound**) and must be `pending` (a re-fulfil is
