@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
-// The UI languages the app offers (#93). This is the switcher's foundation only: it remembers the
-// user's choice (per device) and sets the document language. Actual STRING translation is the larger
-// i18n effort (#65) and waits on the library decision there — so today nothing in the UI text
-// changes yet; this is deliberately library-agnostic so whatever #65 picks can read the same stored
-// value. The default locale is likewise a #65 question (§2.2); we default to `en` because the UI
-// text ships in English today.
+// The UI languages the app offers (#93/#97). The switcher's chosen language drives react-i18next
+// (see ./config), so switching re-renders every translated component. The choice is persisted per
+// device and reflected on the document. `English` / `Bahasa Indonesia` are endonyms — shown in their
+// own language regardless of the active UI language, so they are not themselves translated.
 export type Lang = "id" | "en";
 
 export const LANGUAGES: { value: Lang; label: string }[] = [
@@ -15,28 +14,32 @@ export const LANGUAGES: { value: Lang; label: string }[] = [
 
 const LANG_KEY = "warehouse.lang";
 
-function isLang(v: string | null): v is Lang {
+function isLang(v: string | null | undefined): v is Lang {
   return v === "id" || v === "en";
 }
 
+// storedLang is read at i18n init to pick the starting language before React mounts. Defaults to
+// English (the source language the catalogs fall back to).
 export function storedLang(): Lang {
   const v = typeof localStorage !== "undefined" ? localStorage.getItem(LANG_KEY) : null;
   return isLang(v) ? v : "en";
 }
 
-// useLanguage exposes the current UI language and a setter that persists it and reflects it on the
-// document. When #65 introduces a translation layer, it consumes this same value.
+// useLanguage exposes the current UI language (from i18next) and a setter that changes it, persists
+// the choice, and reflects it on the document. Components read `lang` for the switcher's state and
+// use react-i18next's `useTranslation().t` for the actual strings.
 export function useLanguage() {
-  const [lang, setLangState] = useState<Lang>(storedLang);
+  const { i18n } = useTranslation();
+  const lang: Lang = isLang(i18n.language) ? i18n.language : "en";
 
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  const setLang = useCallback((next: Lang) => {
-    localStorage.setItem(LANG_KEY, next);
-    setLangState(next);
-  }, []);
+  const setLang = useCallback(
+    (next: Lang) => {
+      localStorage.setItem(LANG_KEY, next);
+      document.documentElement.lang = next;
+      void i18n.changeLanguage(next);
+    },
+    [i18n],
+  );
 
   return { lang, setLang };
 }

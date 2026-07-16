@@ -1,0 +1,22 @@
+{
+  "nav": {
+    "home": "Home",
+    "teams": "Teams",
+    "categories": "Categories",
+    "shipping": "Shipping",
+    "products": "Products",
+    "shops": "Shops",
+    "orders": "Orders",
+    "inventory": "Inventory",
+    "inventories": "Inventories",
+    "restock": "Restock",
+    "placements": "Placements",
+    "users": "Users",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "menu": {
+    "language": "Language",
+    "signOut": "Sign out"
+  }
+}

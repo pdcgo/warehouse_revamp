@@ -6,21 +6,22 @@ import { canManageUsers, isTeamManager } from "../lib/roles";
 
 export interface MenuItem {
   to: string;
+  // An i18n key (see src/i18n/locales) — the renderer translates it with t() (#97).
   label: string;
   icon: LucideIcon;
 }
 
-const HOME: MenuItem = { to: "/", label: "Home", icon: House };
-const TEAMS: MenuItem = { to: "/teams", label: "Teams", icon: Building2 };
-const CATEGORIES: MenuItem = { to: "/categories", label: "Categories", icon: FolderTree };
-const SHIPPING: MenuItem = { to: "/shipping", label: "Shipping", icon: Truck };
-const PRODUCTS: MenuItem = { to: "/products", label: "Products", icon: Package };
-const SHOPS: MenuItem = { to: "/shops", label: "Shops", icon: Store };
-const ORDERS: MenuItem = { to: "/orders", label: "Orders", icon: ShoppingCart };
-const INVENTORY: MenuItem = { to: "/inventory", label: "Inventory", icon: Boxes };
-const USERS: MenuItem = { to: "/users", label: "Users", icon: Users };
-const SETTINGS: MenuItem = { to: "/settings", label: "Settings", icon: Settings };
-const PROFILE: MenuItem = { to: "/profile", label: "Profile", icon: CircleUser };
+const HOME: MenuItem = { to: "/", label: "nav.home", icon: House };
+const TEAMS: MenuItem = { to: "/teams", label: "nav.teams", icon: Building2 };
+const CATEGORIES: MenuItem = { to: "/categories", label: "nav.categories", icon: FolderTree };
+const SHIPPING: MenuItem = { to: "/shipping", label: "nav.shipping", icon: Truck };
+const PRODUCTS: MenuItem = { to: "/products", label: "nav.products", icon: Package };
+const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
+const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
+const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
+const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
+const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
+const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
 //

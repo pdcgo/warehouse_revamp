@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
-// #93 — the language switcher in the avatar menu (before Sign out). Today it persists the choice and
-// sets the document language; translating the UI strings is the separate i18n effort (#65).
+// #93/#97 — the language switcher in the avatar menu, and real translation via react-i18next. The
+// shell (navigation, avatar menu) is translated; switching to Indonesian changes the text and
+// persists per device.
 
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
@@ -18,21 +19,32 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
-test("Language: switch language from the avatar menu; it persists across reload", async ({ page }) => {
+test("Language: switching to Indonesian translates the shell and persists", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // The switcher lives in the avatar menu, alongside Sign out.
+  // The shell starts in English (default locale). The sidebar's Home link comes first in the DOM
+  // (the breadcrumb also shows the page name), so .first() targets the nav link.
+  await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible();
+
+  // Switch to Indonesian from the avatar menu.
   await page.getByTestId("user-menu").click();
   await expect(page.getByTestId("lang-id")).toBeVisible();
   await expect(page.getByTestId("lang-en")).toBeVisible();
-  await expect(page.getByTestId("sign-out")).toBeVisible();
-
-  // Choosing a language reflects on the document…
   await page.getByTestId("lang-id").click();
+
+  // The navigation is translated and the document language reflects it.
+  await expect(page.getByRole("link", { name: "Beranda" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "id");
 
-  // …and survives a reload (persisted per device).
+  // Persists across a reload.
   await page.reload();
   await expect(page.getByTestId("current-user")).toHaveText(ROOT_USERNAME);
+  await expect(page.getByRole("link", { name: "Beranda" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "id");
+
+  // And back to English.
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("lang-en").click();
+  await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });

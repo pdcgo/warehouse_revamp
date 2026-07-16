@@ -15,6 +15,7 @@ import {
 } from "@chakra-ui/react";
 import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { LANGUAGES, useLanguage } from "../i18n/language";
@@ -33,6 +34,7 @@ export function Layout() {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
   const { lang, setLang } = useLanguage();
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -81,7 +83,7 @@ export function Layout() {
                   _hover={isActive ? undefined : { bg: "brand.subtle", color: "brand.fg" }}
                 >
                   <Icon as={item.icon} boxSize="4" flexShrink={0} />
-                  {!collapsed && <Text>{item.label}</Text>}
+                  {!collapsed && <Text>{t(item.label)}</Text>}
                 </Flex>
               )}
             </NavLink>
@@ -114,7 +116,7 @@ export function Layout() {
             <Breadcrumb.List>
               <Breadcrumb.Item>
                 <Breadcrumb.CurrentLink fontWeight="semibold" color="fg">
-                  {currentLabel}
+                  {currentLabel ? t(currentLabel) : ""}
                 </Breadcrumb.CurrentLink>
               </Breadcrumb.Item>
             </Breadcrumb.List>
@@ -153,7 +155,7 @@ export function Layout() {
                   {/* Language switcher (#93). Persists the choice and sets the page language; the
                       UI-string translation itself is the i18n effort tracked in #65. */}
                   <Menu.RadioItemGroup value={lang} onValueChange={(e) => setLang(e.value as Lang)}>
-                    <Menu.ItemGroupLabel>Language</Menu.ItemGroupLabel>
+                    <Menu.ItemGroupLabel>{t("menu.language")}</Menu.ItemGroupLabel>
                     {LANGUAGES.map((l) => (
                       <Menu.RadioItem key={l.value} value={l.value} data-testid={`lang-${l.value}`}>
                         {l.label}
@@ -171,7 +173,7 @@ export function Layout() {
                     onClick={() => void logout()}
                   >
                     <Icon as={LogOut} boxSize="4" />
-                    Sign out
+                    {t("menu.signOut")}
                   </Menu.Item>
                 </Menu.Content>
               </Menu.Positioner>

@@ -1,0 +1,22 @@
+{
+  "nav": {
+    "home": "Beranda",
+    "teams": "Tim",
+    "categories": "Kategori",
+    "shipping": "Pengiriman",
+    "products": "Produk",
+    "shops": "Toko",
+    "orders": "Pesanan",
+    "inventory": "Inventaris",
+    "inventories": "Inventaris",
+    "restock": "Restok",
+    "placements": "Penempatan",
+    "users": "Pengguna",
+    "settings": "Pengaturan",
+    "profile": "Profil"
+  },
+  "menu": {
+    "language": "Bahasa",
+    "signOut": "Keluar"
+  }
+}
