@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { NativeSelect } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rpcError, shippingClient } from "../api/clients";
-import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
+import { useShippingCatalogue } from "./catalogue";
 
 export interface ShippingSelectProps {
   /** Selected courier CODE (Shipping.code — the stable key a shipment stores, not the name). */
@@ -12,9 +10,9 @@ export interface ShippingSelectProps {
   disabled?: boolean;
 }
 
-// ShippingSelect is a reusable courier picker backed by ShippingList. It loads the seeded courier
-// catalogue once; the value it emits is a courier CODE, so callers persist a stable key rather than
-// a display label.
+// ShippingSelect is a reusable courier picker backed by the shared courier catalogue (#126) — it no
+// longer fetches for itself, so a screen with a picker AND badges makes ONE ShippingList call. The
+// value it emits is a courier CODE, so callers persist a stable key rather than a display label.
 export const description = "Courier picker backed by the shipping catalogue. Emits a courier code.";
 
 export function ShippingSelect({
@@ -25,25 +23,7 @@ export function ShippingSelect({
 }: ShippingSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("catalog.shippingSelect.placeholder");
-  const [couriers, setCouriers] = useState<Shipping[]>([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let alive = true;
-
-    shippingClient
-      .shippingList({})
-      .then((res) => {
-        if (alive) setCouriers(res.data);
-      })
-      .catch((err) => {
-        if (alive) setError(rpcError(err));
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { couriers, error } = useShippingCatalogue();
 
   return (
     <NativeSelect.Root disabled={disabled}>

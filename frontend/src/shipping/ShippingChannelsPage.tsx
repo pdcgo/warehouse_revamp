@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { rpcError, shippingClient } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
+import { invalidateShippingCatalogue } from "./catalogue";
 import { CreateShippingDialog } from "./CreateShippingDialog";
 import { EditShippingDialog } from "./EditShippingDialog";
 
@@ -48,6 +49,14 @@ export function ShippingChannelsPage() {
     void load();
   }, [load]);
 
+  // This page is the only thing that CHANGES the catalogue, and ShippingSelect/ShippingBadge read it
+  // from a session-long cache — so every mutation here drops that cache. Without this, a courier
+  // renamed on this screen keeps its old name in every badge until a full reload.
+  const refresh = useCallback(async () => {
+    invalidateShippingCatalogue();
+    await load();
+  }, [load]);
+
   // Deactivate/reactivate is a reversible flip of `active`, so it needs no confirm (unlike a
   // destructive delete). The row is never removed — a retired courier is still referenced by
   // historical shipments.
@@ -62,7 +71,7 @@ export function ShippingChannelsPage() {
           ? t("catalog.shipping.activatedToast", { name: channel.name })
           : t("catalog.shipping.deactivatedToast", { name: channel.name }),
       });
-      await load();
+      await refresh();
     } catch (err) {
       toaster.create({ type: "error", title: t("catalog.updateFailed"), description: rpcError(err) });
     }
@@ -73,7 +82,7 @@ export function ShippingChannelsPage() {
       <Flex align="center" gap="card">
         <Heading size="md">{t("catalog.shipping.title")}</Heading>
         <Spacer />
-        <CreateShippingDialog onDone={() => void load()} />
+        <CreateShippingDialog onDone={() => void refresh()} />
       </Flex>
 
       {error && (
@@ -108,7 +117,7 @@ export function ShippingChannelsPage() {
 
                 <Table.Cell textAlign="end">
                   <HStack justify="end" gap="1">
-                    <EditShippingDialog shipping={channel} onDone={() => void load()} />
+                    <EditShippingDialog shipping={channel} onDone={() => void refresh()} />
 
                     <IconButton
                       size="xs"

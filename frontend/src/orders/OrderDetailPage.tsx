@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,6 +9,7 @@ import type { Order, OrderAddress } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
+import { ShippingBadge } from "../components/ShippingBadge";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toaster } from "../components/Toaster";
 import { formatRupiah } from "../lib/money";
@@ -21,13 +23,16 @@ function parseOrderId(raw: string | undefined): bigint {
   }
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+// `value` is a ReactNode, not a string: most fields are plain text, but some render a component (the
+// courier is a ShippingBadge). An empty string still falls back to the same "—" as before; a
+// component decides its own empty state.
+function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack gap="0.5" minW="0">
       <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
         {label}
       </Text>
-      <Text fontSize="sm" lineClamp={3}>
+      <Text as="div" fontSize="sm" lineClamp={3}>
         {value || "—"}
       </Text>
     </Stack>
@@ -238,7 +243,7 @@ export function OrderDetailPage() {
               <Field label={t("orders.customer")} value={order.customerName} />
               <Field label={t("orders.phone")} value={order.customerPhone} />
               <AddressField label={t("orders.address")} address={order.address} />
-              <Field label={t("orders.shipping")} value={order.shippingCode} />
+              <Field label={t("orders.shipping")} value={<ShippingBadge code={order.shippingCode} />} />
             </SimpleGrid>
           </Stack>
         </Card.Body>

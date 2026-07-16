@@ -23,6 +23,7 @@ import {
   description as marketplaceSelectDescription,
 } from "../components/MarketplaceSelect";
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
+import { ShippingBadge, description as shippingBadgeDescription } from "../components/ShippingBadge";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
@@ -351,6 +352,35 @@ const ENTRIES: Entry[] = [
           Marketplace.OTHER,
         ].map((m) => (
           <MarketplaceBadge key={m} marketplace={m} />
+        ))}
+      </Flex>
+    ),
+  },
+  {
+    id: "shipping-badge",
+    title: "ShippingBadge",
+    description: shippingBadgeDescription,
+    render: () => (
+      // The seeded catalogue, plus the two edge cases the map has to survive: a courier that isn't in
+      // it (gray) and no courier at all ("—").
+      <Flex gap="2" wrap="wrap" align="center">
+        {[
+          "jne",
+          "jnt",
+          "sicepat",
+          "anteraja",
+          "ninja",
+          "pos",
+          "tiki",
+          "wahana",
+          "lion",
+          "idexpress",
+          "sap",
+          "ncs",
+          "unknown-courier",
+          "",
+        ].map((code) => (
+          <ShippingBadge key={code || "empty"} code={code} />
         ))}
       </Flex>
     ),
