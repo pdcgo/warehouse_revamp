@@ -208,6 +208,10 @@
       "cancel": "Cancel",
       "save": "Save",
       "create": "Create"
+    },
+    "select": {
+      "placeholder": "Select a supplier",
+      "unavailable": "Suppliers unavailable"
     }
   },
   "teams": {

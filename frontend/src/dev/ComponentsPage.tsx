@@ -25,6 +25,7 @@ import {
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
+import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
 import {
   ProductSelect,
   description as productSelectDescription,
@@ -220,6 +221,21 @@ function ShopSelectDemo() {
   );
 }
 
+function SupplierSelectDemo() {
+  const [id, setId] = useState(0n);
+  const { current } = useTeam();
+
+  return (
+    <>
+      <SupplierSelect teamId={current?.teamId ?? 0n} value={id} onChange={setId} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected supplier id: {id.toString()}
+        {current ? "" : " — select a team to load suppliers"}
+      </Text>
+    </>
+  );
+}
+
 function ProductSelectDemo() {
   const [picked, setPicked] = useState<PickedProduct | null>(null);
   const { current } = useTeam();
@@ -336,6 +352,12 @@ const ENTRIES: Entry[] = [
     title: "ShopSelect",
     description: shopSelectDescription,
     render: () => <ShopSelectDemo />,
+  },
+  {
+    id: "supplier-select",
+    title: "SupplierSelect",
+    description: supplierSelectDescription,
+    render: () => <SupplierSelectDemo />,
   },
   {
     id: "product-select",

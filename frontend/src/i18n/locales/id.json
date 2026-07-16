@@ -208,6 +208,10 @@
       "cancel": "Batal",
       "save": "Simpan",
       "create": "Buat"
+    },
+    "select": {
+      "placeholder": "Pilih pemasok",
+      "unavailable": "Pemasok tidak tersedia"
     }
   },
   "teams": {
