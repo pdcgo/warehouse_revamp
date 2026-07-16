@@ -140,22 +140,50 @@ export function Layout() {
               <Text flex="1" textAlign="start">
                 {t(group.label)}
               </Text>
-              <Icon as={open ? ChevronDown : ChevronRight} boxSize="4" flexShrink={0} />
+              {/* One chevron that TURNS, rather than two that swap — swapping is a jump cut, and the
+                  rotation is the same motion the drawer below is making (#123). */}
+              <Icon
+                as={ChevronRight}
+                boxSize="4"
+                flexShrink={0}
+                transform={open ? "rotate(90deg)" : "rotate(0deg)"}
+                transition="transform 180ms ease"
+              />
             </>
           )}
         </Flex>
 
-        {open &&
-          (collapsed ? (
-            // Collapsed sidebar: children are centred icons, no rail (there's no room for one).
-            group.children.map((child) => navItem(child))
-          ) : (
-            // Expanded: children sit a step to the right under a left rail, so the sub-menu reads as
-            // a nested group rather than a flat list level with its parent (#119).
-            <Stack gap="1" ml="4" pl="2" borderLeftWidth="1px" borderColor="border">
-              {group.children.map((child) => navItem(child))}
-            </Stack>
-          ))}
+        {/* The drawer (#123). `grid-template-rows: 0fr → 1fr` animates to the content's OWN height,
+            so there is no magic max-height to keep in sync as children are added — and it still ends
+            at `auto`, so a group never clips.
+            The children stay MOUNTED (an unmounted list has no height to animate from), so
+            `visibility` takes them out of the tab order while shut: a link you cannot see must not be
+            focusable. It is transitioned too, so it only flips once the drawer has finished closing. */}
+        <Box
+          display="grid"
+          gridTemplateRows={open ? "1fr" : "0fr"}
+          transition="grid-template-rows 180ms ease"
+        >
+          <Box
+            minH="0"
+            overflow="hidden"
+            visibility={open ? "visible" : "hidden"}
+            transition="visibility 180ms"
+          >
+            {collapsed ? (
+              // Collapsed sidebar: children are centred icons, no rail (there's no room for one).
+              <Stack gap="1" pt="1">
+                {group.children.map((child) => navItem(child))}
+              </Stack>
+            ) : (
+              // Expanded: children sit a step to the right under a left rail, so the sub-menu reads as
+              // a nested group rather than a flat list level with its parent (#119).
+              <Stack gap="1" pt="1" ml="4" pl="2" borderLeftWidth="1px" borderColor="border">
+                {group.children.map((child) => navItem(child))}
+              </Stack>
+            )}
+          </Box>
+        </Box>
       </Stack>
     );
   };
