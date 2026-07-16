@@ -5,6 +5,8 @@
     "categories": "Categories",
     "shipping": "Shipping",
     "products": "Products",
+    "myProduct": "My Product",
+    "discoverProduct": "Discover Product",
     "shops": "Shops",
     "orders": "Orders",
     "inventory": "Inventory",
@@ -22,6 +24,20 @@
   },
   "common": {
     "perPage": "Per page"
+  },
+  "discover": {
+    "title": "Discover Products",
+    "subtitle": "Browse products from every team.",
+    "selectTeam": "Select a team to discover products.",
+    "searchPlaceholder": "Search SKU or name",
+    "empty": "No products found.",
+    "teamBadge": "Team #{{id}}",
+    "table": {
+      "image": "Image",
+      "sku": "SKU",
+      "name": "Name",
+      "team": "Team"
+    }
   },
   "products": {
     "toast": {

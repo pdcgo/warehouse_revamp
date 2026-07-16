@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, Factory, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
+import { Boxes, Building2, CircleUser, Compass, Factory, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -36,6 +36,18 @@ const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
 
+// A selling team's Products is a sub-menu (#106): "My Product" (the team's own catalogue) and
+// "Discover Product" (products across ALL teams, to order from). A warehouse team keeps the flat
+// Products item.
+const PRODUCTS_GROUP: MenuGroup = {
+  label: "nav.products",
+  icon: Package,
+  children: [
+    { to: "/products", label: "nav.myProduct", icon: Package },
+    { to: "/products/discover", label: "nav.discoverProduct", icon: Compass },
+  ],
+};
+
 // Inventories is a sub-menu (#95): "restock" (receive stock) and "placements" (stock locations — a
 // stub until the warehouse core / locations are designed, plan.md §1).
 const INVENTORIES: MenuGroup = {
@@ -67,10 +79,13 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(INVENTORY);
   }
 
-  // Products are a warehouse/selling team's own catalogue — the two team types that actually
-  // hold stock. Root/admin teams have no products of their own.
-  if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
+  // A warehouse team gets a flat Products list; a selling team gets the Products sub-menu — My
+  // Product + Discover Product (#106). Root/admin teams have no products of their own.
+  if (teamType === TeamType.WAREHOUSE) {
     menu.push(PRODUCTS);
+  }
+  if (teamType === TeamType.SELLING) {
+    menu.push(PRODUCTS_GROUP);
   }
 
   // Shops and orders are SELLING-team concepts (#66/#68).

@@ -195,3 +195,13 @@ test("Delete: the product is gone", async ({ page }) => {
 
   await expect(page.getByTestId(`product-row-${SKU}`)).toBeHidden();
 });
+
+// #106 — Discover lists products across ALL teams (SKU_IMG, created above, is not deleted). Root
+// reaches the page by route (it's a selling-team menu, but ROLE_ROOT authorises ProductDiscover).
+test("Discover: products across teams are listed (#106)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/products/discover");
+  await expect(page.getByTestId("discover-table")).toBeVisible();
+  await expect(page.getByTestId(`discover-row-${SKU_IMG}`)).toBeVisible();
+});

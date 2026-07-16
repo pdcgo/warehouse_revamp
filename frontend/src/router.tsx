@@ -32,6 +32,9 @@ const ProductEditPage = lazy(() =>
 const ProductDetailPage = lazy(() =>
   import("./products/ProductDetailPage").then((m) => ({ default: m.ProductDetailPage })),
 );
+const DiscoverProductsPage = lazy(() =>
+  import("./products/DiscoverProductsPage").then((m) => ({ default: m.DiscoverProductsPage })),
+);
 const ShopsPage = lazy(() => import("./shops/ShopsPage").then((m) => ({ default: m.ShopsPage })));
 const ShopDetailPage = lazy(() =>
   import("./shops/ShopDetailPage").then((m) => ({ default: m.ShopDetailPage })),
@@ -104,6 +107,7 @@ export const router = createBrowserRouter([
       { path: "categories", element: <CategoriesPage /> },
       { path: "shipping", element: <ShippingChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
+      { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/new", element: <ProductEditPage /> },
       { path: "products/:productId", element: <ProductDetailPage /> },
       { path: "products/:productId/edit", element: <ProductEditPage /> },

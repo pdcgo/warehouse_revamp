@@ -5,6 +5,8 @@
     "categories": "Kategori",
     "shipping": "Pengiriman",
     "products": "Produk",
+    "myProduct": "Produk Saya",
+    "discoverProduct": "Temukan Produk",
     "shops": "Toko",
     "orders": "Pesanan",
     "inventory": "Inventaris",
@@ -22,6 +24,20 @@
   },
   "common": {
     "perPage": "Per halaman"
+  },
+  "discover": {
+    "title": "Temukan Produk",
+    "subtitle": "Jelajahi produk dari semua tim.",
+    "selectTeam": "Pilih tim untuk menemukan produk.",
+    "searchPlaceholder": "Cari SKU atau nama",
+    "empty": "Produk tidak ditemukan.",
+    "teamBadge": "Tim #{{id}}",
+    "table": {
+      "image": "Gambar",
+      "sku": "SKU",
+      "name": "Nama",
+      "team": "Tim"
+    }
   },
   "products": {
     "toast": {
