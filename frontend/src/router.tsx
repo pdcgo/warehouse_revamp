@@ -46,6 +46,9 @@ const OrderDetailPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
 );
+const PlacementsPage = lazy(() =>
+  import("./inventory/PlacementsPage").then((m) => ({ default: m.PlacementsPage })),
+);
 const UsersPage = lazy(() => import("./users/UsersPage").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./users/UserDetailPage").then((m) => ({ default: m.UserDetailPage })),
@@ -107,6 +110,9 @@ export const router = createBrowserRouter([
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
+      // The Inventories sub-menu (#95): Restock reuses the stock screen; Placements is a stub.
+      { path: "inventories/restock", element: <InventoryPage title="Restock" /> },
+      { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
       { path: "components", element: <ComponentsPage /> },

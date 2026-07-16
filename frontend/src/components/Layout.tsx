@@ -22,7 +22,8 @@ import { LANGUAGES, useLanguage } from "../i18n/language";
 import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "../team/TeamSwitcher";
 import { Logo, WarehouseMark } from "./Logo";
-import { menuFor } from "./nav";
+import { isMenuGroup, menuFor } from "./nav";
+import type { MenuItem } from "./nav";
 
 // The app shell: a persistent left sidebar (brand, team switcher, navigation) beside a content
 // column with a slim top bar (identity + sign out).
@@ -40,11 +41,39 @@ export function Layout() {
 
   const menu = menuFor(current?.teamType, current?.role);
 
+  // Flatten groups to their child links so the breadcrumb can match a sub-menu route too.
+  const flatItems: MenuItem[] = menu.flatMap((entry) => (isMenuGroup(entry) ? entry.children : [entry]));
+
   // The current page's label, derived from the route — drives the top-bar breadcrumb/title.
   const currentLabel =
-    menu.find((item) =>
+    flatItems.find((item) =>
       item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to),
     )?.label ?? "";
+
+  // One nav link row — shared by top-level items and (indented) group children.
+  const navItem = (item: MenuItem, indent = false) => (
+    <NavLink key={item.to} to={item.to} end={item.to === "/"}>
+      {({ isActive }) => (
+        <Flex
+          align="center"
+          gap="2.5"
+          rounded="md"
+          px="3"
+          py="2"
+          pl={indent && !collapsed ? "9" : "3"}
+          fontSize="sm"
+          fontWeight="medium"
+          justify={collapsed ? "center" : "flex-start"}
+          bg={isActive ? "brand.solid" : "transparent"}
+          color={isActive ? "brand.contrast" : "fg.muted"}
+          _hover={isActive ? undefined : { bg: "brand.subtle", color: "brand.fg" }}
+        >
+          <Icon as={item.icon} boxSize="4" flexShrink={0} />
+          {!collapsed && <Text>{t(item.label)}</Text>}
+        </Flex>
+      )}
+    </NavLink>
+  );
 
   return (
     <Flex minH="100dvh">
@@ -66,28 +95,30 @@ export function Layout() {
         <TeamSwitcher collapsed={collapsed} />
 
         <Stack gap="1" flex="1">
-          {menu.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === "/"}>
-              {({ isActive }) => (
+          {menu.map((entry) =>
+            isMenuGroup(entry) ? (
+              <Stack key={entry.label} gap="1" data-testid={`nav-group-${entry.label}`}>
+                {/* Section header (not a link) with the group's children indented beneath it. */}
                 <Flex
                   align="center"
                   gap="2.5"
-                  rounded="md"
                   px="3"
                   py="2"
-                  fontSize="sm"
-                  fontWeight="medium"
+                  fontSize="xs"
+                  fontWeight="semibold"
+                  textTransform="uppercase"
+                  color="fg.muted"
                   justify={collapsed ? "center" : "flex-start"}
-                  bg={isActive ? "brand.solid" : "transparent"}
-                  color={isActive ? "brand.contrast" : "fg.muted"}
-                  _hover={isActive ? undefined : { bg: "brand.subtle", color: "brand.fg" }}
                 >
-                  <Icon as={item.icon} boxSize="4" flexShrink={0} />
-                  {!collapsed && <Text>{t(item.label)}</Text>}
+                  <Icon as={entry.icon} boxSize="4" flexShrink={0} />
+                  {!collapsed && <Text>{t(entry.label)}</Text>}
                 </Flex>
-              )}
-            </NavLink>
-          ))}
+                {entry.children.map((child) => navItem(child, true))}
+              </Stack>
+            ) : (
+              navItem(entry)
+            ),
+          )}
         </Stack>
 
         <Flex justify={collapsed ? "center" : "flex-end"}>

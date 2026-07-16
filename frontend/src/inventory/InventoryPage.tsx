@@ -31,7 +31,8 @@ const LEVEL_LIMIT = 200;
 // InventoryPage is the warehouse stock screen (#55): pick a warehouse, see its products with on-hand,
 // and receive or adjust stock. It assumes a warehouse stocks its OWN team's catalogue (product
 // team_id = warehouse_id) — the cross-team-storage question is still open (see the brainstorming doc).
-export function InventoryPage() {
+// `title` lets it serve both the root/admin "Inventory" route and the "Restock" sub-menu (#95).
+export function InventoryPage({ title = "Inventory" }: { title?: string } = {}) {
   const { current } = useTeam();
 
   // Default to the current team when it IS a warehouse; otherwise the user picks one.
@@ -91,7 +92,7 @@ export function InventoryPage() {
   return (
     <Stack gap="section">
       <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">Inventory</Heading>
+        <Heading size="md">{title}</Heading>
         <Spacer />
         <TeamSelect
           value={warehouseId}

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, FolderTree, House, Package, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
+import { Boxes, Building2, CircleUser, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -9,6 +9,19 @@ export interface MenuItem {
   // An i18n key (see src/i18n/locales) — the renderer translates it with t() (#97).
   label: string;
   icon: LucideIcon;
+}
+
+// A MenuGroup is a labelled section with child links — an expandable sub-menu in the sidebar (#95).
+export interface MenuGroup {
+  label: string;
+  icon: LucideIcon;
+  children: MenuItem[];
+}
+
+export type MenuEntry = MenuItem | MenuGroup;
+
+export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
+  return "children" in entry;
 }
 
 const HOME: MenuItem = { to: "/", label: "nav.home", icon: House };
@@ -23,13 +36,24 @@ const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
 
+// Inventories is a sub-menu (#95): "restock" (receive stock) and "placements" (stock locations — a
+// stub until the warehouse core / locations are designed, plan.md §1).
+const INVENTORIES: MenuGroup = {
+  label: "nav.inventories",
+  icon: Boxes,
+  children: [
+    { to: "/inventories/restock", label: "nav.restock", icon: PackagePlus },
+    { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
+  ],
+};
+
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
 //
 // ⚠ THIS IS UX, NOT SECURITY. Hiding a menu item hides nothing: the RPC behind it is still
 // reachable, and the only thing that actually stops the call is the server's access interceptor.
 // Never move a check from the backend into here.
-export function menuFor(teamType: TeamType | undefined, role: Role | undefined): MenuItem[] {
-  const menu: MenuItem[] = [HOME];
+export function menuFor(teamType: TeamType | undefined, role: Role | undefined): MenuEntry[] {
+  const menu: MenuEntry[] = [HOME];
 
   if (teamType === TeamType.ROOT || teamType === TeamType.ADMIN) {
     // Teams is the single home for every team type — warehouses are the Warehouses TAB here (#59).
@@ -54,9 +78,9 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(ORDERS);
   }
 
-  // Inventory is warehouse stock — the current team IS the warehouse for its staff.
-  if (teamType === TeamType.WAREHOUSE) {
-    menu.push(INVENTORY);
+  // Inventories sub-menu — restock + placements — for the two team types that work with stock (#95).
+  if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
+    menu.push(INVENTORIES);
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend
