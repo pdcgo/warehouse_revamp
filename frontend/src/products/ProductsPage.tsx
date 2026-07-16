@@ -26,7 +26,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // ProductsPage lists the CURRENT TEAM's catalogue. Every RPC carries `current.teamId` in its
 // body — the team is the scope, and a selling/warehouse team only ever sees its own products.
@@ -39,6 +39,7 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,7 +58,7 @@ export function ProductsPage() {
       const res = await productClient.productList({
         teamId,
         q,
-        page: { page, limit: PAGE_SIZE },
+        page: { page, limit: pageSize },
       });
 
       setProducts(res.products);
@@ -68,7 +69,7 @@ export function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, q, page]);
+  }, [teamId, q, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -229,7 +230,17 @@ export function ProductsPage() {
         </Text>
       )}
 
-      <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
+      <Pagination
+        count={totalItems}
+        pageSize={pageSize}
+        page={page}
+        onPageChange={setPage}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={(n) => {
+          setPageSize(n);
+          setPage(1);
+        }}
+      />
     </Stack>
   );
 }

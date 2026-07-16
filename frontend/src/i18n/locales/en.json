@@ -19,6 +19,9 @@
     "language": "Language",
     "signOut": "Sign out"
   },
+  "common": {
+    "perPage": "Per page"
+  },
   "products": {
     "toast": {
       "deleted": "Product \"{{sku}}\" deleted",

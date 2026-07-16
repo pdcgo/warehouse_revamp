@@ -30,7 +30,7 @@ import { isGlobalAdmin } from "../lib/roles";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // UsersTable is the one user-management surface, used by both faces of the Users page (#58):
 //
@@ -62,6 +62,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
   const [users, setUsers] = useState<User[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -108,7 +109,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
         // team_id = 0 -> every user (root scope); a real id -> that team's members.
         teamId,
         q,
-        page: { page, limit: PAGE_SIZE },
+        page: { page, limit: pageSize },
       });
 
       setUsers(res.users);
@@ -120,7 +121,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
     } finally {
       setLoading(false);
     }
-  }, [teamId, q, page]);
+  }, [teamId, q, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -359,7 +360,17 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
       )}
 
       {!loading && (
-        <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
+        <Pagination
+          count={totalItems}
+          pageSize={pageSize}
+          page={page}
+          onPageChange={setPage}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          onPageSizeChange={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+        />
       )}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}

@@ -19,6 +19,9 @@
     "language": "Bahasa",
     "signOut": "Keluar"
   },
+  "common": {
+    "perPage": "Per halaman"
+  },
   "products": {
     "toast": {
       "deleted": "Produk \"{{sku}}\" dihapus",

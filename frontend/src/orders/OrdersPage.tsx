@@ -9,7 +9,7 @@ import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { Pagination } from "../components/Pagination";
 import { formatRupiah } from "../lib/money";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // OrdersPage lists the CURRENT selling TEAM's orders (#68), newest first, paginated. The team is the
 // scope — a team only ever sees its own orders. Rows open the read-only detail page.
@@ -20,6 +20,7 @@ export function OrdersPage() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,7 +36,7 @@ export function OrdersPage() {
     setError("");
 
     try {
-      const res = await orderClient.orderList({ teamId, page: { page, limit: PAGE_SIZE } });
+      const res = await orderClient.orderList({ teamId, page: { page, limit: pageSize } });
       setOrders(res.orders);
       setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
     } catch (err) {
@@ -44,7 +45,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, page]);
+  }, [teamId, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -129,7 +130,17 @@ export function OrdersPage() {
       )}
 
       {!loading && (
-        <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
+        <Pagination
+          count={totalItems}
+          pageSize={pageSize}
+          page={page}
+          onPageChange={setPage}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          onPageSizeChange={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+        />
       )}
     </Stack>
   );

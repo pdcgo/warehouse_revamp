@@ -24,7 +24,7 @@ import { Pagination } from "../components/Pagination";
 import { ReceiveStockDialog } from "./ReceiveStockDialog";
 import { AdjustStockDialog } from "./AdjustStockDialog";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // StockList is not filterable by product, so we pull a generous page of levels and join client-side.
 // A warehouse with more than this many stocked lines would need paging here too (noted for later).
 const LEVEL_LIMIT = 200;
@@ -46,6 +46,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -66,7 +67,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
 
     try {
       const [productRes, stockRes] = await Promise.all([
-        productClient.productList({ teamId: warehouseId, q, page: { page, limit: PAGE_SIZE } }),
+        productClient.productList({ teamId: warehouseId, q, page: { page, limit: pageSize } }),
         inventoryClient.stockList({ warehouseId, page: { page: 1, limit: LEVEL_LIMIT } }),
       ]);
 
@@ -85,7 +86,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [warehouseId, q, page]);
+  }, [warehouseId, q, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -190,7 +191,17 @@ export function InventoryPage({ title }: { title?: string } = {}) {
 
           {!loading && (
             <HStack justify="end">
-              <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
+              <Pagination
+                count={totalItems}
+                pageSize={pageSize}
+                page={page}
+                onPageChange={setPage}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageSizeChange={(n) => {
+                  setPageSize(n);
+                  setPage(1);
+                }}
+              />
             </HStack>
           )}
         </>

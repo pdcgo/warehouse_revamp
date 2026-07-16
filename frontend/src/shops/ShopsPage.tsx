@@ -26,7 +26,7 @@ import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { ShopFormDialog } from "./ShopFormDialog";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // ShopsPage lists the CURRENT selling TEAM's marketplace shops (#66). Every RPC carries
 // `current.teamId` in its body — the team is the scope, and a team only ever sees its own shops.
@@ -38,6 +38,7 @@ export function ShopsPage() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -54,7 +55,7 @@ export function ShopsPage() {
     setError("");
 
     try {
-      const res = await shopClient.shopList({ teamId, q, page: { page, limit: PAGE_SIZE } });
+      const res = await shopClient.shopList({ teamId, q, page: { page, limit: pageSize } });
 
       setShops(res.shops);
       setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
@@ -64,7 +65,7 @@ export function ShopsPage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, q, page]);
+  }, [teamId, q, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -196,7 +197,17 @@ export function ShopsPage() {
         </Text>
       )}
 
-      <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
+      <Pagination
+        count={totalItems}
+        pageSize={pageSize}
+        page={page}
+        onPageChange={setPage}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={(n) => {
+          setPageSize(n);
+          setPage(1);
+        }}
+      />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per shop. */}
       {editing && (
