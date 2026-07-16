@@ -13,7 +13,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -23,7 +23,7 @@ import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "../team/TeamSwitcher";
 import { Logo, WarehouseMark } from "./Logo";
 import { isMenuGroup, menuFor } from "./nav";
-import type { MenuItem } from "./nav";
+import type { MenuGroup, MenuItem } from "./nav";
 
 // The app shell: a persistent left sidebar (brand, team switcher, navigation) beside a content
 // column with a slim top bar (identity + sign out).
@@ -37,6 +37,9 @@ export function Layout() {
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  // Sub-menu groups are expandable (#104); a group whose label is in this set is collapsed. Empty by
+  // default, so groups start open.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const location = useLocation();
 
   const menu = menuFor(current?.teamType, current?.role);
@@ -75,6 +78,55 @@ export function Layout() {
     </NavLink>
   );
 
+  // A collapsible sub-menu group (#104): a clickable header (Capitalized, not uppercase) toggles its
+  // children. When the whole sidebar is collapsed the group is forced open (children show as icons).
+  const renderGroup = (group: MenuGroup) => {
+    const open = collapsed || !collapsedGroups.has(group.label);
+
+    return (
+      <Stack key={group.label} gap="1" data-testid={`nav-group-${group.label}`}>
+        <Flex
+          as="button"
+          align="center"
+          gap="2.5"
+          rounded="md"
+          px="3"
+          py="2"
+          fontSize="sm"
+          fontWeight="medium"
+          color="fg.muted"
+          cursor="pointer"
+          justify={collapsed ? "center" : "flex-start"}
+          _hover={{ bg: "brand.subtle", color: "brand.fg" }}
+          data-testid={`nav-group-toggle-${group.label}`}
+          onClick={() =>
+            setCollapsedGroups((prev) => {
+              const next = new Set(prev);
+              if (next.has(group.label)) {
+                next.delete(group.label);
+              } else {
+                next.add(group.label);
+              }
+              return next;
+            })
+          }
+        >
+          <Icon as={group.icon} boxSize="4" flexShrink={0} />
+          {!collapsed && (
+            <>
+              <Text flex="1" textAlign="start">
+                {t(group.label)}
+              </Text>
+              <Icon as={open ? ChevronDown : ChevronRight} boxSize="4" flexShrink={0} />
+            </>
+          )}
+        </Flex>
+
+        {open && group.children.map((child) => navItem(child, true))}
+      </Stack>
+    );
+  };
+
   return (
     <Flex minH="100dvh">
       <Flex
@@ -96,28 +148,7 @@ export function Layout() {
 
         <Stack gap="1" flex="1">
           {menu.map((entry) =>
-            isMenuGroup(entry) ? (
-              <Stack key={entry.label} gap="1" data-testid={`nav-group-${entry.label}`}>
-                {/* Section header (not a link) with the group's children indented beneath it. */}
-                <Flex
-                  align="center"
-                  gap="2.5"
-                  px="3"
-                  py="2"
-                  fontSize="xs"
-                  fontWeight="semibold"
-                  textTransform="uppercase"
-                  color="fg.muted"
-                  justify={collapsed ? "center" : "flex-start"}
-                >
-                  <Icon as={entry.icon} boxSize="4" flexShrink={0} />
-                  {!collapsed && <Text>{t(entry.label)}</Text>}
-                </Flex>
-                {entry.children.map((child) => navItem(child, true))}
-              </Stack>
-            ) : (
-              navItem(entry)
-            ),
+            isMenuGroup(entry) ? renderGroup(entry) : navItem(entry),
           )}
         </Stack>
 
