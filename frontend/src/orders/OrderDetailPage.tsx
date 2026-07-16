@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Check } from "lucide-react";
 import { orderClient, rpcError } from "../api/clients";
-import type { Order } from "../gen/warehouse/selling/v1/order_pb";
+import type { Order, OrderAddress } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
@@ -30,6 +30,44 @@ function Field({ label, value }: { label: string; value: string }) {
       <Text fontSize="sm" lineClamp={3}>
         {value || "—"}
       </Text>
+    </Stack>
+  );
+}
+
+// The order's FROZEN address (#118), read straight off the snapshot — the names are stored alongside
+// the codes, so this renders a years-old order without asking region_service anything.
+//
+// Every part is optional (the address itself is), so each line is rendered only if it has content and
+// an absent/blank address falls back to the same "—" every other empty field shows.
+function AddressField({ label, address }: { label: string; address?: OrderAddress }) {
+  const street = address?.addressLine ?? "";
+  const kodePos = address?.kodePos ?? "";
+  // Narrowest first — how an address is read aloud: "Keude Bakongan, Bakongan, Kabupaten Aceh
+  // Selatan, Aceh".
+  const region = [
+    address?.desaName,
+    address?.kecamatanName,
+    address?.kabupatenName,
+    address?.provinsiName,
+  ]
+    .filter((part) => part)
+    .join(", ");
+
+  return (
+    <Stack gap="0.5" minW="0">
+      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
+        {label}
+      </Text>
+
+      {street === "" && region === "" && kodePos === "" ? (
+        <Text fontSize="sm">—</Text>
+      ) : (
+        <Stack gap="0" data-testid="order-detail-address">
+          {street !== "" && <Text fontSize="sm">{street}</Text>}
+          {region !== "" && <Text fontSize="sm">{region}</Text>}
+          {kodePos !== "" && <Text fontSize="sm">{kodePos}</Text>}
+        </Stack>
+      )}
     </Stack>
   );
 }
@@ -199,7 +237,7 @@ export function OrderDetailPage() {
             <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
               <Field label={t("orders.customer")} value={order.customerName} />
               <Field label={t("orders.phone")} value={order.customerPhone} />
-              <Field label={t("orders.address")} value={order.customerAddress} />
+              <AddressField label={t("orders.address")} address={order.address} />
               <Field label={t("orders.shipping")} value={order.shippingCode} />
             </SimpleGrid>
           </Stack>

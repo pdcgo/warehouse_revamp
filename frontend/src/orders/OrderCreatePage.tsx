@@ -15,7 +15,6 @@ import {
   Separator,
   Stack,
   Text,
-  Textarea,
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { orderClient, rpcError } from "../api/clients";
@@ -23,6 +22,8 @@ import { useTeam } from "../team/TeamContext";
 import { ShopSelect } from "../components/ShopSelect";
 import { ProductSelect } from "../components/ProductSelect";
 import type { PickedProduct } from "../components/ProductSelect";
+import { AddressPicker, emptyAddress } from "../components/AddressPicker";
+import type { AddressValue } from "../components/AddressPicker";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { formatRupiah } from "../lib/money";
 import { toaster } from "../components/Toaster";
@@ -56,6 +57,13 @@ function lineTotal(line: LineDraft): bigint {
   return BigInt(toQty(line.quantity)) * toRupiah(line.unitPrice);
 }
 
+// The address is OPTIONAL (#118) — exactly as the free text it replaces was: an order can be taken
+// before the address is known. An untouched picker sends NOTHING rather than a message full of empty
+// strings, so "no address" stays distinguishable from "an address of blanks".
+function addressTouched(a: AddressValue): boolean {
+  return Object.values(a).some((v) => v.trim() !== "");
+}
+
 // OrderCreatePage is the selling-side "place an order" form (#90), a dedicated PAGE (like the product
 // editor) because it carries a dynamic list of lines. It creates via OrderCreate on the #67 contract:
 // no inventory is touched (that is #69) and no fulfillment happens here. Money is computed on the
@@ -79,7 +87,7 @@ export function OrderCreatePage() {
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [shopId, setShopId] = useState<bigint>(0n);
   const [shippingCode, setShippingCode] = useState("");
   const [shippingCost, setShippingCost] = useState("0");
@@ -126,7 +134,7 @@ export function OrderCreatePage() {
         shopId,
         customerName,
         customerPhone,
-        customerAddress,
+        address: addressTouched(address) ? address : undefined,
         shippingCode,
         subtotal,
         shippingCost: toRupiah(shippingCost),
@@ -208,15 +216,6 @@ export function OrderCreatePage() {
                   />
                 </Field.Root>
 
-                <Field.Root>
-                  <Field.Label>{t("orders.address")}</Field.Label>
-                  <Textarea
-                    value={customerAddress}
-                    data-testid="order-create-customer-address"
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                  />
-                </Field.Root>
-
                 <Field.Root required>
                   <Field.Label>{t("orders.shop")}</Field.Label>
                   <ShopSelect teamId={teamId ?? 0n} value={shopId} onChange={setShopId} />
@@ -226,6 +225,18 @@ export function OrderCreatePage() {
                   <Field.Label>{t("orders.shipping")}</Field.Label>
                   <ShippingSelect value={shippingCode} onChange={setShippingCode} />
                 </Field.Root>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+
+          {/* The address gets its own card: the shared AddressPicker is seven controls tall, and
+              wedging it between "Phone" and "Shop" would push the shop/shipping pair out of sight.
+              It is NOT required — nothing here gates the Create button. */}
+          <Card.Root>
+            <Card.Body>
+              <Stack gap="card">
+                <Text fontWeight="medium">{t("orders.deliveryAddress")}</Text>
+                <AddressPicker value={address} onChange={setAddress} />
               </Stack>
             </Card.Body>
           </Card.Root>

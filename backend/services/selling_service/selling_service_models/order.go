@@ -14,9 +14,23 @@ type Order struct {
 	// DB CHECK (the mapper + proto validation guard it; cf. #80).
 	Status string
 
-	CustomerName    string
-	CustomerPhone   string
-	CustomerAddress string
+	CustomerName  string
+	CustomerPhone string
+
+	// The delivery address, FROZEN at order time (#118) — codes AND names, so a past order renders
+	// without region_service and survives a desa being renamed or merged. The codes are opaque
+	// region_service ids; no FK (HARD RULE 3). AddressLine is the free text (jalan, no. rumah, RT/RW)
+	// that no dataset supplies — it is what the old `customer_address` column held.
+	ProvinsiCode  string
+	ProvinsiName  string
+	KabupatenCode string
+	KabupatenName string
+	KecamatanCode string
+	KecamatanName string
+	DesaCode      string
+	DesaName      string
+	KodePos       string
+	AddressLine   string
 	// A shipping_service courier code (opaque).
 	ShippingCode string
 

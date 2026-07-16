@@ -51,6 +51,32 @@ message OrderItem {
   int64 unit_price = 6 [(buf.validate.field).int64.gte = 0];
 }
 
+// A customer's delivery address, FROZEN onto the order (#118).
+//
+// A SNAPSHOT, not a live reference. region_service's rows change — a desa is renamed, merged, split —
+// and a historical order must keep reading exactly what was agreed, so the codes AND the names are
+// stored. Rendering a past order therefore never needs region_service at all. This is the same
+// decision the order already makes about its money and its line items: it freezes them.
+//
+// selling_service defines its OWN address shape rather than importing region_service's
+// RegionAncestry: a snapshot is THIS service's data (HARD RULE 3), and it must not track another
+// service's contract.
+message OrderAddress {
+  string provinsi_code = 1;
+  string provinsi_name = 2;
+  string kabupaten_code = 3;
+  string kabupaten_name = 4;
+  string kecamatan_code = 5;
+  string kecamatan_name = 6;
+  string desa_code = 7;
+  string desa_name = 8;
+  // The desa's postcode as chosen — editable in the picker, so not necessarily the dataset's.
+  string kode_pos = 9;
+  // Jalan, no. rumah, RT/RW — the part no dataset can supply. This is what the old free-text
+  // `customer_address` carried.
+  string address_line = 10;
+}
+
 message Order {
   uint64 id = 1;
   uint64 team_id = 2;
@@ -59,7 +85,9 @@ message Order {
 
   string customer_name = 5;
   string customer_phone = 6;
-  string customer_address = 7;
+  // was `string customer_address` — free text, replaced by the structured snapshot `address` (#118).
+  reserved 7;
+  reserved "customer_address";
   // A shipping_service courier code (opaque; no FK).
   string shipping_code = 8;
 
@@ -73,6 +101,9 @@ message Order {
   repeated OrderItem items = 12;
 
   int64 created_at_unix = 13;
+
+  // The frozen delivery address (#118).
+  OrderAddress address = 14;
 }
 
 message OrderCreateRequest {
@@ -98,7 +129,9 @@ message OrderCreateRequest {
     max_len: 200
   }];
   string customer_phone = 4 [(buf.validate.field).string.max_len = 40];
-  string customer_address = 5 [(buf.validate.field).string.max_len = 1000];
+  // was `string customer_address` — free text, replaced by `address` below (#118).
+  reserved 5;
+  reserved "customer_address";
   string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
 
   int64 subtotal = 7 [(buf.validate.field).int64.gte = 0];
@@ -107,6 +140,11 @@ message OrderCreateRequest {
 
   // At least one line; `id` on each is ignored.
   repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
+
+  // The delivery address, snapshotted onto the order. Optional — exactly as the free text it
+  // replaces was: an order can be taken before the address is known, and forcing four region levels
+  // to place one would be a new rule, not a port of the old one.
+  OrderAddress address = 11;
 }
 
 message OrderCreateResponse {

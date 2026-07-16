@@ -222,7 +222,16 @@ erDiagram
         text        status           "OrderStatus enum as text (placed/confirmed/cancelled); no CHECK"
         text        customer_name    "required"
         text        customer_phone
-        text        customer_address
+        text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
+        text        provinsi_name    "frozen name — survives a rename upstream"
+        text        kabupaten_code
+        text        kabupaten_name
+        text        kecamatan_code
+        text        kecamatan_name
+        text        desa_code
+        text        desa_name
+        text        kode_pos         "as chosen (editable in the picker)"
+        text        address_line     "jalan, no. rumah, RT/RW — free text"
         text        shipping_code    "opaque shipping_service courier code"
         bigint      subtotal         "whole rupiah"
         bigint      shipping_cost
@@ -265,6 +274,15 @@ erDiagram
   guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
   at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
   COGS/margin are the revenue side (#74). The UI is #68.
+- **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
+  columns, which replaced the old free-text `customer_address` (the migration carries that text into
+  `address_line`, since the street detail is exactly what it held). Both the **codes and the names**
+  are frozen: `region_service`'s rows change (a desa is renamed, merged, split) and a historical order
+  must keep reading what was agreed — so rendering a past order never touches `region_service`, and
+  there is **no FK** to it (HARD RULE 3; each consumer keeps its own snapshot). Flat columns rather
+  than one JSONB blob: an address is a fixed 4-tier shape, and "which orders ship to this kecamatan"
+  is a question worth being able to ask. The whole address is **optional** — as the free text it
+  replaced was.
 
 `backend/services/category_service/db_migrations/`
 

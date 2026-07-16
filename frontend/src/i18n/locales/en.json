@@ -116,6 +116,7 @@
     "selectTeamCreate": "Select a team to create an order.",
     "newOrderTitle": "New Order",
     "customerAndShop": "Customer & shop",
+    "deliveryAddress": "Delivery address",
     "customerName": "Customer name",
     "shop": "Shop",
     "addLine": "Add line",

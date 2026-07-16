@@ -53,9 +53,14 @@ export interface AddressPickerProps {
   disabled?: boolean;
 }
 
-// A level is dozens of rows (a kecamatan's desa), never the whole 83.762 — this comfortably covers
-// the biggest one in a single call.
-const LEVEL_LIMIT = 300;
+// A level is dozens of rows (a kecamatan's desa), never the whole 83.762 — so one page per level is
+// the whole story, no pager in the picker.
+//
+// 200 is the CEILING PageFilter allows (common/v1/page.proto: lte 200), and it is comfortably enough:
+// the largest level in the real dataset is Abenaho's 108 desa, and NO region anywhere has more than
+// 200 children. If a future Kepmendagri edition ever crosses that, this silently truncates a level —
+// so the number is checked, not guessed.
+const LEVEL_LIMIT = 200;
 // A typeahead is capped, not paged: it can never return "everything" (HARD RULE 9).
 const SEARCH_LIMIT = 10;
 const SEARCH_MIN_CHARS = 2;

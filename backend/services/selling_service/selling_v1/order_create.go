@@ -33,18 +33,31 @@ func (s *Service) OrderCreate(
 			return errShopMissing
 		}
 
+		address := req.Msg.GetAddress()
+
 		order = selling_service_models.Order{
-			TeamID:          teamID,
-			ShopID:          shopID,
-			Status:          orderStatusPlaced,
-			CustomerName:    req.Msg.GetCustomerName(),
-			CustomerPhone:   req.Msg.GetCustomerPhone(),
-			CustomerAddress: req.Msg.GetCustomerAddress(),
-			ShippingCode:    req.Msg.GetShippingCode(),
-			Subtotal:        req.Msg.GetSubtotal(),
-			ShippingCost:    req.Msg.GetShippingCost(),
-			Total:           req.Msg.GetTotal(),
-			Items:           orderItemModels(req.Msg.GetItems()),
+			TeamID:        teamID,
+			ShopID:        shopID,
+			Status:        orderStatusPlaced,
+			CustomerName:  req.Msg.GetCustomerName(),
+			CustomerPhone: req.Msg.GetCustomerPhone(),
+			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
+			// same forever even after region_service renames or merges the desa (#118).
+			ProvinsiCode:  address.GetProvinsiCode(),
+			ProvinsiName:  address.GetProvinsiName(),
+			KabupatenCode: address.GetKabupatenCode(),
+			KabupatenName: address.GetKabupatenName(),
+			KecamatanCode: address.GetKecamatanCode(),
+			KecamatanName: address.GetKecamatanName(),
+			DesaCode:      address.GetDesaCode(),
+			DesaName:      address.GetDesaName(),
+			KodePos:       address.GetKodePos(),
+			AddressLine:   address.GetAddressLine(),
+			ShippingCode:  req.Msg.GetShippingCode(),
+			Subtotal:      req.Msg.GetSubtotal(),
+			ShippingCost:  req.Msg.GetShippingCost(),
+			Total:         req.Msg.GetTotal(),
+			Items:         orderItemModels(req.Msg.GetItems()),
 		}
 
 		// GORM inserts the order and its items in this transaction, stamping their OrderID.

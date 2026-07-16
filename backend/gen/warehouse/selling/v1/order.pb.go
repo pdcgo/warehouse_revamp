@@ -165,15 +165,143 @@ func (x *OrderItem) GetUnitPrice() int64 {
 	return 0
 }
 
+// A customer's delivery address, FROZEN onto the order (#118).
+//
+// A SNAPSHOT, not a live reference. region_service's rows change — a desa is renamed, merged, split —
+// and a historical order must keep reading exactly what was agreed, so the codes AND the names are
+// stored. Rendering a past order therefore never needs region_service at all. This is the same
+// decision the order already makes about its money and its line items: it freezes them.
+//
+// selling_service defines its OWN address shape rather than importing region_service's
+// RegionAncestry: a snapshot is THIS service's data (HARD RULE 3), and it must not track another
+// service's contract.
+type OrderAddress struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProvinsiCode  string                 `protobuf:"bytes,1,opt,name=provinsi_code,json=provinsiCode,proto3" json:"provinsi_code,omitempty"`
+	ProvinsiName  string                 `protobuf:"bytes,2,opt,name=provinsi_name,json=provinsiName,proto3" json:"provinsi_name,omitempty"`
+	KabupatenCode string                 `protobuf:"bytes,3,opt,name=kabupaten_code,json=kabupatenCode,proto3" json:"kabupaten_code,omitempty"`
+	KabupatenName string                 `protobuf:"bytes,4,opt,name=kabupaten_name,json=kabupatenName,proto3" json:"kabupaten_name,omitempty"`
+	KecamatanCode string                 `protobuf:"bytes,5,opt,name=kecamatan_code,json=kecamatanCode,proto3" json:"kecamatan_code,omitempty"`
+	KecamatanName string                 `protobuf:"bytes,6,opt,name=kecamatan_name,json=kecamatanName,proto3" json:"kecamatan_name,omitempty"`
+	DesaCode      string                 `protobuf:"bytes,7,opt,name=desa_code,json=desaCode,proto3" json:"desa_code,omitempty"`
+	DesaName      string                 `protobuf:"bytes,8,opt,name=desa_name,json=desaName,proto3" json:"desa_name,omitempty"`
+	// The desa's postcode as chosen — editable in the picker, so not necessarily the dataset's.
+	KodePos string `protobuf:"bytes,9,opt,name=kode_pos,json=kodePos,proto3" json:"kode_pos,omitempty"`
+	// Jalan, no. rumah, RT/RW — the part no dataset can supply. This is what the old free-text
+	// `customer_address` carried.
+	AddressLine   string `protobuf:"bytes,10,opt,name=address_line,json=addressLine,proto3" json:"address_line,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderAddress) Reset() {
+	*x = OrderAddress{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderAddress) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderAddress) ProtoMessage() {}
+
+func (x *OrderAddress) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderAddress.ProtoReflect.Descriptor instead.
+func (*OrderAddress) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *OrderAddress) GetProvinsiCode() string {
+	if x != nil {
+		return x.ProvinsiCode
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetProvinsiName() string {
+	if x != nil {
+		return x.ProvinsiName
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetKabupatenCode() string {
+	if x != nil {
+		return x.KabupatenCode
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetKabupatenName() string {
+	if x != nil {
+		return x.KabupatenName
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetKecamatanCode() string {
+	if x != nil {
+		return x.KecamatanCode
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetKecamatanName() string {
+	if x != nil {
+		return x.KecamatanName
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetDesaCode() string {
+	if x != nil {
+		return x.DesaCode
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetDesaName() string {
+	if x != nil {
+		return x.DesaName
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetKodePos() string {
+	if x != nil {
+		return x.KodePos
+	}
+	return ""
+}
+
+func (x *OrderAddress) GetAddressLine() string {
+	if x != nil {
+		return x.AddressLine
+	}
+	return ""
+}
+
 type Order struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	TeamId          uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ShopId          uint64                 `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	Status          OrderStatus            `protobuf:"varint,4,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
-	CustomerName    string                 `protobuf:"bytes,5,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
-	CustomerPhone   string                 `protobuf:"bytes,6,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	CustomerAddress string                 `protobuf:"bytes,7,opt,name=customer_address,json=customerAddress,proto3" json:"customer_address,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	TeamId        uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId        uint64                 `protobuf:"varint,3,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	Status        OrderStatus            `protobuf:"varint,4,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
+	CustomerName  string                 `protobuf:"bytes,5,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
+	CustomerPhone string                 `protobuf:"bytes,6,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
 	// A shipping_service courier code (opaque; no FK).
 	ShippingCode string `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes
@@ -184,13 +312,15 @@ type Order struct {
 	// The lines — populated by OrderDetail (OrderList returns a summary without them).
 	Items         []*OrderItem `protobuf:"bytes,12,rep,name=items,proto3" json:"items,omitempty"`
 	CreatedAtUnix int64        `protobuf:"varint,13,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// The frozen delivery address (#118).
+	Address       *OrderAddress `protobuf:"bytes,14,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
 	*x = Order{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[1]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -202,7 +332,7 @@ func (x *Order) String() string {
 func (*Order) ProtoMessage() {}
 
 func (x *Order) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[1]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +345,7 @@ func (x *Order) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Order.ProtoReflect.Descriptor instead.
 func (*Order) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Order) GetId() uint64 {
@@ -256,13 +386,6 @@ func (x *Order) GetCustomerName() string {
 func (x *Order) GetCustomerPhone() string {
 	if x != nil {
 		return x.CustomerPhone
-	}
-	return ""
-}
-
-func (x *Order) GetCustomerAddress() string {
-	if x != nil {
-		return x.CustomerAddress
 	}
 	return ""
 }
@@ -309,26 +432,36 @@ func (x *Order) GetCreatedAtUnix() int64 {
 	return 0
 }
 
+func (x *Order) GetAddress() *OrderAddress {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
 type OrderCreateRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	TeamId          uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ShopId          uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	CustomerName    string                 `protobuf:"bytes,3,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
-	CustomerPhone   string                 `protobuf:"bytes,4,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	CustomerAddress string                 `protobuf:"bytes,5,opt,name=customer_address,json=customerAddress,proto3" json:"customer_address,omitempty"`
-	ShippingCode    string                 `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
-	Subtotal        int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	ShippingCost    int64                  `protobuf:"varint,8,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
-	Total           int64                  `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId        uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	CustomerName  string                 `protobuf:"bytes,3,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
+	CustomerPhone string                 `protobuf:"bytes,4,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
+	ShippingCode  string                 `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
+	Subtotal      int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
+	ShippingCost  int64                  `protobuf:"varint,8,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
+	Total         int64                  `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
 	// At least one line; `id` on each is ignored.
-	Items         []*OrderItem `protobuf:"bytes,10,rep,name=items,proto3" json:"items,omitempty"`
+	Items []*OrderItem `protobuf:"bytes,10,rep,name=items,proto3" json:"items,omitempty"`
+	// The delivery address, snapshotted onto the order. Optional — exactly as the free text it
+	// replaces was: an order can be taken before the address is known, and forcing four region levels
+	// to place one would be a new rule, not a port of the old one.
+	Address       *OrderAddress `protobuf:"bytes,11,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderCreateRequest) Reset() {
 	*x = OrderCreateRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[2]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +473,7 @@ func (x *OrderCreateRequest) String() string {
 func (*OrderCreateRequest) ProtoMessage() {}
 
 func (x *OrderCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[2]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +486,7 @@ func (x *OrderCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreateRequest.ProtoReflect.Descriptor instead.
 func (*OrderCreateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OrderCreateRequest) GetTeamId() uint64 {
@@ -380,13 +513,6 @@ func (x *OrderCreateRequest) GetCustomerName() string {
 func (x *OrderCreateRequest) GetCustomerPhone() string {
 	if x != nil {
 		return x.CustomerPhone
-	}
-	return ""
-}
-
-func (x *OrderCreateRequest) GetCustomerAddress() string {
-	if x != nil {
-		return x.CustomerAddress
 	}
 	return ""
 }
@@ -426,6 +552,13 @@ func (x *OrderCreateRequest) GetItems() []*OrderItem {
 	return nil
 }
 
+func (x *OrderCreateRequest) GetAddress() *OrderAddress {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
 type OrderCreateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Order         *Order                 `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
@@ -435,7 +568,7 @@ type OrderCreateResponse struct {
 
 func (x *OrderCreateResponse) Reset() {
 	*x = OrderCreateResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[3]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +580,7 @@ func (x *OrderCreateResponse) String() string {
 func (*OrderCreateResponse) ProtoMessage() {}
 
 func (x *OrderCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[3]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +593,7 @@ func (x *OrderCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCreateResponse.ProtoReflect.Descriptor instead.
 func (*OrderCreateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OrderCreateResponse) GetOrder() *Order {
@@ -480,7 +613,7 @@ type OrderListRequest struct {
 
 func (x *OrderListRequest) Reset() {
 	*x = OrderListRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[4]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +625,7 @@ func (x *OrderListRequest) String() string {
 func (*OrderListRequest) ProtoMessage() {}
 
 func (x *OrderListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[4]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +638,7 @@ func (x *OrderListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderListRequest.ProtoReflect.Descriptor instead.
 func (*OrderListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OrderListRequest) GetTeamId() uint64 {
@@ -533,7 +666,7 @@ type OrderListResponse struct {
 
 func (x *OrderListResponse) Reset() {
 	*x = OrderListResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[5]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +678,7 @@ func (x *OrderListResponse) String() string {
 func (*OrderListResponse) ProtoMessage() {}
 
 func (x *OrderListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[5]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +691,7 @@ func (x *OrderListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderListResponse.ProtoReflect.Descriptor instead.
 func (*OrderListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *OrderListResponse) GetOrders() []*Order {
@@ -585,7 +718,7 @@ type OrderDetailRequest struct {
 
 func (x *OrderDetailRequest) Reset() {
 	*x = OrderDetailRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[6]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +730,7 @@ func (x *OrderDetailRequest) String() string {
 func (*OrderDetailRequest) ProtoMessage() {}
 
 func (x *OrderDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[6]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +743,7 @@ func (x *OrderDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderDetailRequest.ProtoReflect.Descriptor instead.
 func (*OrderDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *OrderDetailRequest) GetTeamId() uint64 {
@@ -636,7 +769,7 @@ type OrderDetailResponse struct {
 
 func (x *OrderDetailResponse) Reset() {
 	*x = OrderDetailResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[7]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -648,7 +781,7 @@ func (x *OrderDetailResponse) String() string {
 func (*OrderDetailResponse) ProtoMessage() {}
 
 func (x *OrderDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[7]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -661,7 +794,7 @@ func (x *OrderDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderDetailResponse.ProtoReflect.Descriptor instead.
 func (*OrderDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *OrderDetailResponse) GetOrder() *Order {
@@ -683,7 +816,7 @@ type OrderConfirmRequest struct {
 
 func (x *OrderConfirmRequest) Reset() {
 	*x = OrderConfirmRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -695,7 +828,7 @@ func (x *OrderConfirmRequest) String() string {
 func (*OrderConfirmRequest) ProtoMessage() {}
 
 func (x *OrderConfirmRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -708,7 +841,7 @@ func (x *OrderConfirmRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderConfirmRequest.ProtoReflect.Descriptor instead.
 func (*OrderConfirmRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *OrderConfirmRequest) GetTeamId() uint64 {
@@ -734,7 +867,7 @@ type OrderConfirmResponse struct {
 
 func (x *OrderConfirmResponse) Reset() {
 	*x = OrderConfirmResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +879,7 @@ func (x *OrderConfirmResponse) String() string {
 func (*OrderConfirmResponse) ProtoMessage() {}
 
 func (x *OrderConfirmResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +892,7 @@ func (x *OrderConfirmResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderConfirmResponse.ProtoReflect.Descriptor instead.
 func (*OrderConfirmResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *OrderConfirmResponse) GetOrder() *Order {
@@ -781,7 +914,7 @@ type OrderCancelRequest struct {
 
 func (x *OrderCancelRequest) Reset() {
 	*x = OrderCancelRequest{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +926,7 @@ func (x *OrderCancelRequest) String() string {
 func (*OrderCancelRequest) ProtoMessage() {}
 
 func (x *OrderCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +939,7 @@ func (x *OrderCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCancelRequest.ProtoReflect.Descriptor instead.
 func (*OrderCancelRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *OrderCancelRequest) GetTeamId() uint64 {
@@ -832,7 +965,7 @@ type OrderCancelResponse struct {
 
 func (x *OrderCancelResponse) Reset() {
 	*x = OrderCancelResponse{}
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -844,7 +977,7 @@ func (x *OrderCancelResponse) String() string {
 func (*OrderCancelResponse) ProtoMessage() {}
 
 func (x *OrderCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +990,7 @@ func (x *OrderCancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCancelResponse.ProtoReflect.Descriptor instead.
 func (*OrderCancelResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *OrderCancelResponse) GetOrder() *Order {
@@ -881,36 +1014,48 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\rB\a\xbaH\x04*\x02(\x01R\bquantity\x12&\n" +
 	"\n" +
-	"unit_price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\"\xd6\x03\n" +
+	"unit_price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\"\xec\x02\n" +
+	"\fOrderAddress\x12#\n" +
+	"\rprovinsi_code\x18\x01 \x01(\tR\fprovinsiCode\x12#\n" +
+	"\rprovinsi_name\x18\x02 \x01(\tR\fprovinsiName\x12%\n" +
+	"\x0ekabupaten_code\x18\x03 \x01(\tR\rkabupatenCode\x12%\n" +
+	"\x0ekabupaten_name\x18\x04 \x01(\tR\rkabupatenName\x12%\n" +
+	"\x0ekecamatan_code\x18\x05 \x01(\tR\rkecamatanCode\x12%\n" +
+	"\x0ekecamatan_name\x18\x06 \x01(\tR\rkecamatanName\x12\x1b\n" +
+	"\tdesa_code\x18\a \x01(\tR\bdesaCode\x12\x1b\n" +
+	"\tdesa_name\x18\b \x01(\tR\bdesaName\x12\x19\n" +
+	"\bkode_pos\x18\t \x01(\tR\akodePos\x12!\n" +
+	"\faddress_line\x18\n" +
+	" \x01(\tR\vaddressLine\"\x81\x04\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
 	"\ashop_id\x18\x03 \x01(\x04R\x06shopId\x129\n" +
 	"\x06status\x18\x04 \x01(\x0e2!.warehouse.selling.v1.OrderStatusR\x06status\x12#\n" +
 	"\rcustomer_name\x18\x05 \x01(\tR\fcustomerName\x12%\n" +
-	"\x0ecustomer_phone\x18\x06 \x01(\tR\rcustomerPhone\x12)\n" +
-	"\x10customer_address\x18\a \x01(\tR\x0fcustomerAddress\x12#\n" +
+	"\x0ecustomer_phone\x18\x06 \x01(\tR\rcustomerPhone\x12#\n" +
 	"\rshipping_code\x18\b \x01(\tR\fshippingCode\x12\x1a\n" +
 	"\bsubtotal\x18\t \x01(\x03R\bsubtotal\x12#\n" +
 	"\rshipping_cost\x18\n" +
 	" \x01(\x03R\fshippingCost\x12\x14\n" +
 	"\x05total\x18\v \x01(\x03R\x05total\x125\n" +
 	"\x05items\x18\f \x03(\v2\x1f.warehouse.selling.v1.OrderItemR\x05items\x12&\n" +
-	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\"\xe0\x03\n" +
+	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\x12<\n" +
+	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddressJ\x04\b\a\x10\bR\x10customer_address\"\x81\x04\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12/\n" +
 	"\rcustomer_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\fcustomerName\x12.\n" +
-	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x123\n" +
-	"\x10customer_address\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x0fcustomerAddress\x12,\n" +
+	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x12,\n" +
 	"\rshipping_code\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\fshippingCode\x12#\n" +
 	"\bsubtotal\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\bsubtotal\x12,\n" +
 	"\rshipping_cost\x18\b \x01(\x03B\a\xbaH\x04\"\x02(\x00R\fshippingCost\x12\x1d\n" +
 	"\x05total\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05total\x12?\n" +
 	"\x05items\x18\n" +
-	" \x03(\v2\x1f.warehouse.selling.v1.OrderItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"H\n" +
+	" \x03(\v2\x1f.warehouse.selling.v1.OrderItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items\x12<\n" +
+	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06R\x10customer_address\"H\n" +
 	"\x13OrderCreateResponse\x121\n" +
 	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"\x82\x01\n" +
 	"\x10OrderListRequest\x12$\n" +
@@ -963,50 +1108,53 @@ func file_warehouse_selling_v1_order_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_warehouse_selling_v1_order_proto_goTypes = []any{
 	(OrderStatus)(0),             // 0: warehouse.selling.v1.OrderStatus
 	(*OrderItem)(nil),            // 1: warehouse.selling.v1.OrderItem
-	(*Order)(nil),                // 2: warehouse.selling.v1.Order
-	(*OrderCreateRequest)(nil),   // 3: warehouse.selling.v1.OrderCreateRequest
-	(*OrderCreateResponse)(nil),  // 4: warehouse.selling.v1.OrderCreateResponse
-	(*OrderListRequest)(nil),     // 5: warehouse.selling.v1.OrderListRequest
-	(*OrderListResponse)(nil),    // 6: warehouse.selling.v1.OrderListResponse
-	(*OrderDetailRequest)(nil),   // 7: warehouse.selling.v1.OrderDetailRequest
-	(*OrderDetailResponse)(nil),  // 8: warehouse.selling.v1.OrderDetailResponse
-	(*OrderConfirmRequest)(nil),  // 9: warehouse.selling.v1.OrderConfirmRequest
-	(*OrderConfirmResponse)(nil), // 10: warehouse.selling.v1.OrderConfirmResponse
-	(*OrderCancelRequest)(nil),   // 11: warehouse.selling.v1.OrderCancelRequest
-	(*OrderCancelResponse)(nil),  // 12: warehouse.selling.v1.OrderCancelResponse
-	(*v1.PageFilter)(nil),        // 13: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),          // 14: warehouse.common.v1.PageInfo
+	(*OrderAddress)(nil),         // 2: warehouse.selling.v1.OrderAddress
+	(*Order)(nil),                // 3: warehouse.selling.v1.Order
+	(*OrderCreateRequest)(nil),   // 4: warehouse.selling.v1.OrderCreateRequest
+	(*OrderCreateResponse)(nil),  // 5: warehouse.selling.v1.OrderCreateResponse
+	(*OrderListRequest)(nil),     // 6: warehouse.selling.v1.OrderListRequest
+	(*OrderListResponse)(nil),    // 7: warehouse.selling.v1.OrderListResponse
+	(*OrderDetailRequest)(nil),   // 8: warehouse.selling.v1.OrderDetailRequest
+	(*OrderDetailResponse)(nil),  // 9: warehouse.selling.v1.OrderDetailResponse
+	(*OrderConfirmRequest)(nil),  // 10: warehouse.selling.v1.OrderConfirmRequest
+	(*OrderConfirmResponse)(nil), // 11: warehouse.selling.v1.OrderConfirmResponse
+	(*OrderCancelRequest)(nil),   // 12: warehouse.selling.v1.OrderCancelRequest
+	(*OrderCancelResponse)(nil),  // 13: warehouse.selling.v1.OrderCancelResponse
+	(*v1.PageFilter)(nil),        // 14: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),          // 15: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_order_proto_depIdxs = []int32{
 	0,  // 0: warehouse.selling.v1.Order.status:type_name -> warehouse.selling.v1.OrderStatus
 	1,  // 1: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
-	1,  // 2: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
-	2,  // 3: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
-	13, // 4: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	2,  // 5: warehouse.selling.v1.OrderListResponse.orders:type_name -> warehouse.selling.v1.Order
-	14, // 6: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	2,  // 7: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
-	2,  // 8: warehouse.selling.v1.OrderConfirmResponse.order:type_name -> warehouse.selling.v1.Order
-	2,  // 9: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 10: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
-	5,  // 11: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
-	7,  // 12: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
-	9,  // 13: warehouse.selling.v1.OrderService.OrderConfirm:input_type -> warehouse.selling.v1.OrderConfirmRequest
-	11, // 14: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
-	4,  // 15: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
-	6,  // 16: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
-	8,  // 17: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
-	10, // 18: warehouse.selling.v1.OrderService.OrderConfirm:output_type -> warehouse.selling.v1.OrderConfirmResponse
-	12, // 19: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	2,  // 2: warehouse.selling.v1.Order.address:type_name -> warehouse.selling.v1.OrderAddress
+	1,  // 3: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
+	2,  // 4: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	3,  // 5: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
+	14, // 6: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	3,  // 7: warehouse.selling.v1.OrderListResponse.orders:type_name -> warehouse.selling.v1.Order
+	15, // 8: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	3,  // 9: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 10: warehouse.selling.v1.OrderConfirmResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 11: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
+	4,  // 12: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
+	6,  // 13: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
+	8,  // 14: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
+	10, // 15: warehouse.selling.v1.OrderService.OrderConfirm:input_type -> warehouse.selling.v1.OrderConfirmRequest
+	12, // 16: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
+	5,  // 17: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
+	7,  // 18: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
+	9,  // 19: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
+	11, // 20: warehouse.selling.v1.OrderService.OrderConfirm:output_type -> warehouse.selling.v1.OrderConfirmResponse
+	13, // 21: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_proto_init() }
@@ -1020,7 +1168,7 @@ func file_warehouse_selling_v1_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_proto_rawDesc), len(file_warehouse_selling_v1_order_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

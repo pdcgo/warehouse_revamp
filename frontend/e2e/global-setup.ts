@@ -26,11 +26,14 @@ export default function globalSetup(): void {
   run(`go run ./cmd/tool migrate up --service category_service --dsn "${TEST_DSN}"`);
   run(`go run ./cmd/tool migrate up --service document_service --dsn "${TEST_DSN}"`);
   run(`go run ./cmd/tool migrate up --service inventory_service --dsn "${TEST_DSN}"`);
-  // region_service: the SCHEMA only. The 91.599-row seed is deliberately not loaded — the gallery's
-  // AddressPicker just needs the table to exist to render an (empty) picker, and making every e2e run
-  // load the whole country would cost seconds and couple the suite to upstream reference data.
-  // A spec that needs real regions should seed the few rows it asserts on.
   run(`go run ./cmd/tool migrate up --service region_service --dsn "${TEST_DSN}"`);
+  // A TINY region fixture — one real chain (Aceh → … → Keude Bakongan), not the 91.599-row seed.
+  // The order form's AddressPicker needs regions to be pickable at all, but making every e2e run load
+  // the whole country would cost seconds and couple the suite to upstream reference data. Five rows
+  // prove the cascade and the snapshot; the loader is the same one production uses.
+  run(
+    `go run ./cmd/tool region load-seed --file ../frontend/e2e/fixtures/regions.csv --dsn "${TEST_DSN}"`,
+  );
 
   // The migration creates root with an EMPTY password, which bcrypt can never match. Without this
   // the account exists and cannot log in — which is the point.

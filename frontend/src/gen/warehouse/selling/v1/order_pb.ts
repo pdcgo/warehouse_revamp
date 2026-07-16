@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order.proto.
  */
 export const file_warehouse_selling_v1_order: GenFile = /*@__PURE__*/
-  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEingEKCU9yZGVySXRlbRIKCgJpZBgBIAEoBBIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhYKA3NrdRgDIAEoCUIJukgGcgQQARhAEhgKBG5hbWUYBCABKAlCCrpIB3IFEAEYyAESGQoIcXVhbnRpdHkYBSABKA1CB7pIBCoCKAESGwoKdW5pdF9wcmljZRgGIAEoA0IHukgEIgIoACLJAgoFT3JkZXISCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIPCgdzaG9wX2lkGAMgASgEEjEKBnN0YXR1cxgEIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU3RhdHVzEhUKDWN1c3RvbWVyX25hbWUYBSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYBiABKAkSGAoQY3VzdG9tZXJfYWRkcmVzcxgHIAEoCRIVCg1zaGlwcGluZ19jb2RlGAggASgJEhAKCHN1YnRvdGFsGAkgASgDEhUKDXNoaXBwaW5nX2Nvc3QYCiABKAMSDQoFdG90YWwYCyABKAMSLgoFaXRlbXMYDCADKAsyHy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckl0ZW0SFwoPY3JlYXRlZF9hdF91bml4GA0gASgDIu4CChJPcmRlckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABIhCg1jdXN0b21lcl9uYW1lGAMgASgJQgq6SAdyBRABGMgBEh8KDmN1c3RvbWVyX3Bob25lGAQgASgJQge6SARyAhgoEiIKEGN1c3RvbWVyX2FkZHJlc3MYBSABKAlCCLpIBXIDGOgHEh4KDXNoaXBwaW5nX2NvZGUYBiABKAlCB7pIBHICGCgSGQoIc3VidG90YWwYByABKANCB7pIBCICKAASHgoNc2hpcHBpbmdfY29zdBgIIAEoA0IHukgEIgIoABIWCgV0b3RhbBgJIAEoA0IHukgEIgIoABI4CgVpdGVtcxgKIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbUIIukgFkgECCAE6C5K1GAcKBQECAwQFIkEKE09yZGVyQ3JlYXRlUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJ0ChBPcmRlckxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIDBAUicgoRT3JkZXJMaXN0UmVzcG9uc2USKwoGb3JkZXJzGAEgAygLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXISMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJaChJPcmRlckRldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkEKE09yZGVyRGV0YWlsUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJbChNPcmRlckNvbmZpcm1SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJCChRPcmRlckNvbmZpcm1SZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIloKEk9yZGVyQ2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQQoTT3JkZXJDYW5jZWxSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyKnwKC09yZGVyU3RhdHVzEhwKGE9SREVSX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE09SREVSX1NUQVRVU19QTEFDRUQQARIaChZPUkRFUl9TVEFUVVNfQ09ORklSTUVEEAISGgoWT1JERVJfU1RBVFVTX0NBTkNFTExFRBADMv8DCgxPcmRlclNlcnZpY2USYgoLT3JkZXJDcmVhdGUSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZVJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZVJlc3BvbnNlElwKCU9yZGVyTGlzdBImLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdFJlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RSZXNwb25zZRJiCgtPcmRlckRldGFpbBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRGV0YWlsUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRGV0YWlsUmVzcG9uc2USZQoMT3JkZXJDb25maXJtEikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDb25maXJtUmVxdWVzdBoqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ29uZmlybVJlc3BvbnNlEmIKC09yZGVyQ2FuY2VsEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEingEKCU9yZGVySXRlbRIKCgJpZBgBIAEoBBIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhYKA3NrdRgDIAEoCUIJukgGcgQQARhAEhgKBG5hbWUYBCABKAlCCrpIB3IFEAEYyAESGQoIcXVhbnRpdHkYBSABKA1CB7pIBCoCKAESGwoKdW5pdF9wcmljZRgGIAEoA0IHukgEIgIoACLqAQoMT3JkZXJBZGRyZXNzEhUKDXByb3ZpbnNpX2NvZGUYASABKAkSFQoNcHJvdmluc2lfbmFtZRgCIAEoCRIWCg5rYWJ1cGF0ZW5fY29kZRgDIAEoCRIWCg5rYWJ1cGF0ZW5fbmFtZRgEIAEoCRIWCg5rZWNhbWF0YW5fY29kZRgFIAEoCRIWCg5rZWNhbWF0YW5fbmFtZRgGIAEoCRIRCglkZXNhX2NvZGUYByABKAkSEQoJZGVzYV9uYW1lGAggASgJEhAKCGtvZGVfcG9zGAkgASgJEhQKDGFkZHJlc3NfbGluZRgKIAEoCSL8AgoFT3JkZXISCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIPCgdzaG9wX2lkGAMgASgEEjEKBnN0YXR1cxgEIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU3RhdHVzEhUKDWN1c3RvbWVyX25hbWUYBSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYBiABKAkSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRIQCghzdWJ0b3RhbBgJIAEoAxIVCg1zaGlwcGluZ19jb3N0GAogASgDEg0KBXRvdGFsGAsgASgDEi4KBWl0ZW1zGAwgAygLMh8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJJdGVtEhcKD2NyZWF0ZWRfYXRfdW5peBgNIAEoAxIzCgdhZGRyZXNzGA4gASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzSgQIBxAIUhBjdXN0b21lcl9hZGRyZXNzIpcDChJPcmRlckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABIhCg1jdXN0b21lcl9uYW1lGAMgASgJQgq6SAdyBRABGMgBEh8KDmN1c3RvbWVyX3Bob25lGAQgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2NvZGUYBiABKAlCB7pIBHICGCgSGQoIc3VidG90YWwYByABKANCB7pIBCICKAASHgoNc2hpcHBpbmdfY29zdBgIIAEoA0IHukgEIgIoABIWCgV0b3RhbBgJIAEoA0IHukgEIgIoABI4CgVpdGVtcxgKIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbUIIukgFkgECCAESMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzczoLkrUYBwoFAQIDBAVKBAgFEAZSEGN1c3RvbWVyX2FkZHJlc3MiQQoTT3JkZXJDcmVhdGVSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyInQKEE9yZGVyTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgMEBSJyChFPcmRlckxpc3RSZXNwb25zZRIrCgZvcmRlcnMYASADKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlchIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIloKEk9yZGVyRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQQoTT3JkZXJEZXRhaWxSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIlsKE09yZGVyQ29uZmlybVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkIKFE9yZGVyQ29uZmlybVJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWgoST3JkZXJDYW5jZWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJBChNPcmRlckNhbmNlbFJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIqfAoLT3JkZXJTdGF0dXMSHAoYT1JERVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTT1JERVJfU1RBVFVTX1BMQUNFRBABEhoKFk9SREVSX1NUQVRVU19DT05GSVJNRUQQAhIaChZPUkRFUl9TVEFUVVNfQ0FOQ0VMTEVEEAMy/wMKDE9yZGVyU2VydmljZRJiCgtPcmRlckNyZWF0ZRIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ3JlYXRlUmVzcG9uc2USXAoJT3JkZXJMaXN0EiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0UmVxdWVzdBonLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdFJlc3BvbnNlEmIKC09yZGVyRGV0YWlsEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEZXRhaWxSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEZXRhaWxSZXNwb25zZRJlCgxPcmRlckNvbmZpcm0SKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNvbmZpcm1SZXF1ZXN0Gioud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDb25maXJtUmVzcG9uc2USYgoLT3JkZXJDYW5jZWwSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNhbmNlbFJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNhbmNlbFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -63,6 +63,84 @@ export const OrderItemSchema: GenMessage<OrderItem> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_order, 0);
 
 /**
+ * A customer's delivery address, FROZEN onto the order (#118).
+ *
+ * A SNAPSHOT, not a live reference. region_service's rows change — a desa is renamed, merged, split —
+ * and a historical order must keep reading exactly what was agreed, so the codes AND the names are
+ * stored. Rendering a past order therefore never needs region_service at all. This is the same
+ * decision the order already makes about its money and its line items: it freezes them.
+ *
+ * selling_service defines its OWN address shape rather than importing region_service's
+ * RegionAncestry: a snapshot is THIS service's data (HARD RULE 3), and it must not track another
+ * service's contract.
+ *
+ * @generated from message warehouse.selling.v1.OrderAddress
+ */
+export type OrderAddress = Message<"warehouse.selling.v1.OrderAddress"> & {
+  /**
+   * @generated from field: string provinsi_code = 1;
+   */
+  provinsiCode: string;
+
+  /**
+   * @generated from field: string provinsi_name = 2;
+   */
+  provinsiName: string;
+
+  /**
+   * @generated from field: string kabupaten_code = 3;
+   */
+  kabupatenCode: string;
+
+  /**
+   * @generated from field: string kabupaten_name = 4;
+   */
+  kabupatenName: string;
+
+  /**
+   * @generated from field: string kecamatan_code = 5;
+   */
+  kecamatanCode: string;
+
+  /**
+   * @generated from field: string kecamatan_name = 6;
+   */
+  kecamatanName: string;
+
+  /**
+   * @generated from field: string desa_code = 7;
+   */
+  desaCode: string;
+
+  /**
+   * @generated from field: string desa_name = 8;
+   */
+  desaName: string;
+
+  /**
+   * The desa's postcode as chosen — editable in the picker, so not necessarily the dataset's.
+   *
+   * @generated from field: string kode_pos = 9;
+   */
+  kodePos: string;
+
+  /**
+   * Jalan, no. rumah, RT/RW — the part no dataset can supply. This is what the old free-text
+   * `customer_address` carried.
+   *
+   * @generated from field: string address_line = 10;
+   */
+  addressLine: string;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderAddress.
+ * Use `create(OrderAddressSchema)` to create a new message.
+ */
+export const OrderAddressSchema: GenMessage<OrderAddress> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 1);
+
+/**
  * @generated from message warehouse.selling.v1.Order
  */
 export type Order = Message<"warehouse.selling.v1.Order"> & {
@@ -95,11 +173,6 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
    * @generated from field: string customer_phone = 6;
    */
   customerPhone: string;
-
-  /**
-   * @generated from field: string customer_address = 7;
-   */
-  customerAddress: string;
 
   /**
    * A shipping_service courier code (opaque; no FK).
@@ -137,6 +210,13 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
    * @generated from field: int64 created_at_unix = 13;
    */
   createdAtUnix: bigint;
+
+  /**
+   * The frozen delivery address (#118).
+   *
+   * @generated from field: warehouse.selling.v1.OrderAddress address = 14;
+   */
+  address?: OrderAddress;
 };
 
 /**
@@ -144,7 +224,7 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
  * Use `create(OrderSchema)` to create a new message.
  */
 export const OrderSchema: GenMessage<Order> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 1);
+  messageDesc(file_warehouse_selling_v1_order, 2);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCreateRequest
@@ -169,11 +249,6 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
    * @generated from field: string customer_phone = 4;
    */
   customerPhone: string;
-
-  /**
-   * @generated from field: string customer_address = 5;
-   */
-  customerAddress: string;
 
   /**
    * @generated from field: string shipping_code = 6;
@@ -201,6 +276,15 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
    * @generated from field: repeated warehouse.selling.v1.OrderItem items = 10;
    */
   items: OrderItem[];
+
+  /**
+   * The delivery address, snapshotted onto the order. Optional — exactly as the free text it
+   * replaces was: an order can be taken before the address is known, and forcing four region levels
+   * to place one would be a new rule, not a port of the old one.
+   *
+   * @generated from field: warehouse.selling.v1.OrderAddress address = 11;
+   */
+  address?: OrderAddress;
 };
 
 /**
@@ -208,7 +292,7 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
  * Use `create(OrderCreateRequestSchema)` to create a new message.
  */
 export const OrderCreateRequestSchema: GenMessage<OrderCreateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 2);
+  messageDesc(file_warehouse_selling_v1_order, 3);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCreateResponse
@@ -225,7 +309,7 @@ export type OrderCreateResponse = Message<"warehouse.selling.v1.OrderCreateRespo
  * Use `create(OrderCreateResponseSchema)` to create a new message.
  */
 export const OrderCreateResponseSchema: GenMessage<OrderCreateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 3);
+  messageDesc(file_warehouse_selling_v1_order, 4);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListRequest
@@ -247,7 +331,7 @@ export type OrderListRequest = Message<"warehouse.selling.v1.OrderListRequest"> 
  * Use `create(OrderListRequestSchema)` to create a new message.
  */
 export const OrderListRequestSchema: GenMessage<OrderListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 4);
+  messageDesc(file_warehouse_selling_v1_order, 5);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListResponse
@@ -271,7 +355,7 @@ export type OrderListResponse = Message<"warehouse.selling.v1.OrderListResponse"
  * Use `create(OrderListResponseSchema)` to create a new message.
  */
 export const OrderListResponseSchema: GenMessage<OrderListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 5);
+  messageDesc(file_warehouse_selling_v1_order, 6);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDetailRequest
@@ -293,7 +377,7 @@ export type OrderDetailRequest = Message<"warehouse.selling.v1.OrderDetailReques
  * Use `create(OrderDetailRequestSchema)` to create a new message.
  */
 export const OrderDetailRequestSchema: GenMessage<OrderDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 6);
+  messageDesc(file_warehouse_selling_v1_order, 7);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDetailResponse
@@ -310,7 +394,7 @@ export type OrderDetailResponse = Message<"warehouse.selling.v1.OrderDetailRespo
  * Use `create(OrderDetailResponseSchema)` to create a new message.
  */
 export const OrderDetailResponseSchema: GenMessage<OrderDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 7);
+  messageDesc(file_warehouse_selling_v1_order, 8);
 
 /**
  * OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
@@ -335,7 +419,7 @@ export type OrderConfirmRequest = Message<"warehouse.selling.v1.OrderConfirmRequ
  * Use `create(OrderConfirmRequestSchema)` to create a new message.
  */
 export const OrderConfirmRequestSchema: GenMessage<OrderConfirmRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 8);
+  messageDesc(file_warehouse_selling_v1_order, 9);
 
 /**
  * @generated from message warehouse.selling.v1.OrderConfirmResponse
@@ -352,7 +436,7 @@ export type OrderConfirmResponse = Message<"warehouse.selling.v1.OrderConfirmRes
  * Use `create(OrderConfirmResponseSchema)` to create a new message.
  */
 export const OrderConfirmResponseSchema: GenMessage<OrderConfirmResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 9);
+  messageDesc(file_warehouse_selling_v1_order, 10);
 
 /**
  * OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
@@ -377,7 +461,7 @@ export type OrderCancelRequest = Message<"warehouse.selling.v1.OrderCancelReques
  * Use `create(OrderCancelRequestSchema)` to create a new message.
  */
 export const OrderCancelRequestSchema: GenMessage<OrderCancelRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 10);
+  messageDesc(file_warehouse_selling_v1_order, 11);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCancelResponse
@@ -394,7 +478,7 @@ export type OrderCancelResponse = Message<"warehouse.selling.v1.OrderCancelRespo
  * Use `create(OrderCancelResponseSchema)` to create a new message.
  */
 export const OrderCancelResponseSchema: GenMessage<OrderCancelResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 11);
+  messageDesc(file_warehouse_selling_v1_order, 12);
 
 /**
  * Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the

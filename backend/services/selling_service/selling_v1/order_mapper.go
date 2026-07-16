@@ -53,19 +53,37 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	}
 
 	return &sellingv1.Order{
-		Id:              o.ID,
-		TeamId:          o.TeamID,
-		ShopId:          o.ShopID,
-		Status:          orderStatusFromText(o.Status),
-		CustomerName:    o.CustomerName,
-		CustomerPhone:   o.CustomerPhone,
-		CustomerAddress: o.CustomerAddress,
-		ShippingCode:    o.ShippingCode,
-		Subtotal:        o.Subtotal,
-		ShippingCost:    o.ShippingCost,
-		Total:           o.Total,
-		Items:           items,
-		CreatedAtUnix:   o.CreatedAt.Unix(),
+		Id:            o.ID,
+		TeamId:        o.TeamID,
+		ShopId:        o.ShopID,
+		Status:        orderStatusFromText(o.Status),
+		CustomerName:  o.CustomerName,
+		CustomerPhone: o.CustomerPhone,
+		Address:       orderAddressToProto(o),
+		ShippingCode:  o.ShippingCode,
+		Subtotal:      o.Subtotal,
+		ShippingCost:  o.ShippingCost,
+		Total:         o.Total,
+		Items:         items,
+		CreatedAtUnix: o.CreatedAt.Unix(),
+	}
+}
+
+// orderAddressToProto reads the frozen address off the order row. Always returns a message (never
+// nil): an order with no address is an EMPTY address, not a missing field — that keeps the client
+// from having to null-check a value it will render either way.
+func orderAddressToProto(o *selling_service_models.Order) *sellingv1.OrderAddress {
+	return &sellingv1.OrderAddress{
+		ProvinsiCode:  o.ProvinsiCode,
+		ProvinsiName:  o.ProvinsiName,
+		KabupatenCode: o.KabupatenCode,
+		KabupatenName: o.KabupatenName,
+		KecamatanCode: o.KecamatanCode,
+		KecamatanName: o.KecamatanName,
+		DesaCode:      o.DesaCode,
+		DesaName:      o.DesaName,
+		KodePos:       o.KodePos,
+		AddressLine:   o.AddressLine,
 	}
 }
 

@@ -194,8 +194,16 @@ address_line as frozen text on the order/shipment), consistent with `selling_ser
 
 ## 6. Consumers (where the component lands)
 
+> **Built (#118): the order.** Its free-text `customer_address` is gone, replaced by ten frozen
+> columns (codes **+** names + kode pos + address_line) and a `selling_service`-owned `OrderAddress`
+> message — selling defines its **own** snapshot shape rather than importing `region_service`'s
+> `RegionAncestry`, because a snapshot is the consumer's data and must not track another service's
+> contract. The migration carries the old free text into `address_line` (that is exactly what it
+> held). The address stays **optional**, as the free text was. The remaining consumers below are
+> untouched.
+
 - **`selling_service` order** — replace the free-text customer address with a structured,
-  snapshotted address (the immediate payoff).
+  snapshotted address (the immediate payoff). ✅ **#118**
 - **`shipping_service`** — destination for future rate calc (kecamatan/kota + kode pos).
 - **`team_service`** — warehouse address.
 - **`selling_service` shop** — return/pickup origin.
