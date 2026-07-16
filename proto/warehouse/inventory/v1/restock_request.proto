@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// RestockRequestService (#105): a SELLING team asks a WAREHOUSE to restock a product (with shipment
+// info). The warehouse team then FULFILS the request, which receives the stock into that warehouse.
+// This keeps each warehouse owning its own stock — a selling team never writes stock directly.
+service RestockRequestService {
+  // A selling team creates a restock request (scoped to the requesting team).
+  rpc RestockRequestCreate(RestockRequestCreateRequest) returns (RestockRequestCreateResponse);
+  // Both sides list: a team sees requests it MADE and requests TARGETING it as a warehouse.
+  rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse);
+  // The target warehouse fulfils a pending request — receives the stock and marks it fulfilled.
+  rpc RestockRequestFulfill(RestockRequestFulfillRequest) returns (RestockRequestFulfillResponse);
+  // The requesting team cancels a still-pending request.
+  rpc RestockRequestCancel(RestockRequestCancelRequest) returns (RestockRequestCancelResponse);
+}
+
+enum RestockRequestStatus {
+  RESTOCK_REQUEST_STATUS_UNSPECIFIED = 0;
+  RESTOCK_REQUEST_STATUS_PENDING = 1;
+  RESTOCK_REQUEST_STATUS_FULFILLED = 2;
+  RESTOCK_REQUEST_STATUS_CANCELLED = 3;
+}
+
+message RestockRequest {
+  uint64 id = 1;
+  uint64 requesting_team_id = 2;
+  uint64 warehouse_id = 3;
+  uint64 product_id = 4;
+  // sku/name snapshot at request time (the product may live in another team's catalogue).
+  string sku = 5;
+  string name = 6;
+  int64 quantity = 7;
+  // A shipping_service courier code (opaque) — how the goods reach the warehouse.
+  string shipping_code = 8;
+  RestockRequestStatus status = 9;
+  int64 created_at_unix = 10;
+}
+
+message RestockRequestCreateRequest {
+  // Write: the SELLING team's managers and customer service raise the request.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 product_id = 3 [(buf.validate.field).uint64.gt = 0];
+  string sku = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  int64 quantity = 6 [(buf.validate.field).int64.gt = 0];
+  string shipping_code = 7 [(buf.validate.field).string.max_len = 40];
+}
+
+message RestockRequestCreateResponse {
+  RestockRequest request = 1;
+}
+
+message RestockRequestListRequest {
+  // Read: either side — the selling team that made requests, or the warehouse they target.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message RestockRequestListResponse {
+  repeated RestockRequest requests = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message RestockRequestFulfillRequest {
+  // Write: only the target WAREHOUSE's staff/managers fulfil (receive the stock).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The fulfilling warehouse — must equal the request's warehouse_id.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestFulfillResponse {
+  RestockRequest request = 1;
+}
+
+message RestockRequestCancelRequest {
+  // Write: the requesting SELLING team cancels its own pending request.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RestockRequestCancelResponse {
+  RestockRequest request = 1;
+}

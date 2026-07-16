@@ -12,6 +12,7 @@
     "inventory": "Inventory",
     "inventories": "Inventories",
     "restock": "Restock",
+    "restockRequests": "Restock Requests",
     "placements": "Placements",
     "supplier": "Supplier",
     "users": "Users",
@@ -133,6 +134,60 @@
     "sku": "SKU",
     "name": "Name",
     "lineTotal": "Line total"
+  },
+  "restock": {
+    "title": "Restock Requests",
+    "selectTeam": "Select a team to view its restock requests.",
+    "selectTeamCreate": "Select a team to create a restock request.",
+    "newRequest": "New restock request",
+    "newRequestTitle": "New Restock Request",
+    "empty": "No restock requests yet.",
+    "back": "Back",
+    "teamRef": "Team #{{id}}",
+    "warehouseRef": "Warehouse #{{id}}",
+    "status": {
+      "pending": "Pending",
+      "fulfilled": "Fulfilled",
+      "cancelled": "Cancelled",
+      "unspecified": "Unspecified"
+    },
+    "table": {
+      "status": "Status",
+      "warehouse": "Warehouse",
+      "requestedBy": "Requested by",
+      "product": "Product",
+      "qty": "Qty",
+      "shipment": "Shipment",
+      "actions": "Actions"
+    },
+    "form": {
+      "warehouse": "Warehouse",
+      "warehouseHelp": "The warehouse that will receive the stock.",
+      "product": "Product",
+      "quantity": "Quantity",
+      "shipment": "Shipment",
+      "shipmentHelp": "How the goods reach the warehouse.",
+      "submit": "Create Request"
+    },
+    "cancel": {
+      "action": "Cancel",
+      "title": "Cancel Restock Request",
+      "message": "Cancel this restock request? This cannot be undone.",
+      "confirm": "Cancel Request"
+    },
+    "fulfil": {
+      "action": "Fulfil",
+      "title": "Fulfil Restock Request",
+      "message": "Fulfil this restock request? This receives the stock into your warehouse.",
+      "confirm": "Fulfil Request"
+    },
+    "toast": {
+      "created": "Restock request created",
+      "cancelled": "Restock request cancelled",
+      "cancelFailed": "Cancel failed",
+      "fulfilled": "Restock request fulfilled",
+      "fulfilFailed": "Fulfil failed"
+    }
   },
   "shops": {
     "title": "Shops",

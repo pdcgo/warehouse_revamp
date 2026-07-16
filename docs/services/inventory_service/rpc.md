@@ -47,3 +47,73 @@ fails, the whole transaction (dedup row included) rolls back so a redelivery rep
 > message, and Pub/Sub redelivers any non-2xx forever. Every push subscription pointed at this
 > endpoint must therefore have a dead-letter policy so a poison message is eventually parked, not
 > looped. (Push-endpoint authentication — OIDC/token — is a deployment concern, not handled in code.)
+
+---
+
+## Restock requests (#105)
+
+A **two-sided** flow across two teams and three tables. A SELLING team asks a WAREHOUSE to restock a
+product; the warehouse fulfils it, and *fulfilment is what receives the stock*. The request row and
+the stock ledger can never diverge because the fulfil does both in **one transaction**.
+
+- **`RestockRequestCreate`** — the SELLING team (`requesting_team_id`, `use_scope`) raises a `pending`
+  request naming the target `warehouse_id`, the `product_id` (+ a `sku`/`name` snapshot), a
+  `quantity` and a `shipping_code`. No stock is touched.
+- **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
+  `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
+  warehouse's "incoming" view. Paginated, newest first.
+- **`RestockRequestFulfill`** — the TARGET WAREHOUSE (`warehouse_id`, `use_scope`) receives the stock
+  and flips the status, atomically. The request is loaded `FOR UPDATE` scoped to this warehouse
+  (another warehouse's request reads as **NotFound**) and must be `pending` (a re-fulfil is
+  **FailedPrecondition**).
+- **`RestockRequestCancel`** — the REQUESTER (`requesting_team_id`, `use_scope`) cancels its own
+  still-`pending` request (another team's reads as **NotFound**; a non-pending one is
+  **FailedPrecondition**). No stock is touched.
+
+### Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: RestockRequestCreate (selling team)
+    pending --> fulfilled: RestockRequestFulfill (target warehouse) — receives stock
+    pending --> cancelled: RestockRequestCancel (requester)
+    fulfilled --> [*]
+    cancelled --> [*]
+    note right of fulfilled
+        FailedPrecondition if already
+        fulfilled/cancelled (guarded FOR UPDATE)
+    end note
+```
+
+### Fulfil transaction (the one that must not diverge)
+
+```mermaid
+sequenceDiagram
+    participant W as Warehouse staff
+    participant H as RestockRequestFulfill
+    participant DB as Postgres (one tx)
+
+    W->>H: RestockRequestFulfill{team_id=warehouse, request_id}
+    activate H
+    H->>DB: BEGIN
+    H->>DB: SELECT restock_requests<br/>WHERE id=? AND warehouse_id=? FOR UPDATE
+    alt not found for this warehouse
+        DB-->>H: ErrRecordNotFound
+        H-->>W: NotFound
+    else found but status != pending
+        H-->>W: FailedPrecondition (re-fulfil)
+    else pending
+        H->>DB: applyDelta(warehouse, product, +quantity) → balance
+        H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+        H->>DB: UPDATE restock_requests SET status='fulfilled'
+        H->>DB: COMMIT
+        DB-->>H: ok
+        H-->>W: RestockRequest{status=fulfilled}
+    end
+    deactivate H
+```
+
+`applyDelta` + `appendMovement` are the same stock primitives `StockReceive` uses (see
+[service.go](../../../backend/services/inventory_service/inventory_v1/service.go)), so a fulfilment is
+indistinguishable in the ledger from a manual receive except for its `reason` (`"restock request"`)
+and `ref` (the request's `shipping_code`).

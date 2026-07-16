@@ -55,6 +55,12 @@ const PlacementsPage = lazy(() =>
 const SuppliersPage = lazy(() =>
   import("./suppliers/SuppliersPage").then((m) => ({ default: m.SuppliersPage })),
 );
+const RestockRequestsPage = lazy(() =>
+  import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
+);
+const RestockRequestCreatePage = lazy(() =>
+  import("./restock/RestockRequestCreatePage").then((m) => ({ default: m.RestockRequestCreatePage })),
+);
 const UsersPage = lazy(() => import("./users/UsersPage").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./users/UserDetailPage").then((m) => ({ default: m.UserDetailPage })),
@@ -121,6 +127,9 @@ export const router = createBrowserRouter([
       { path: "inventories/restock", element: <InventoryPage title="Restock" restock /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
+      // Restock requests (#105): the shared list for both sides, plus the selling-side create page.
+      { path: "inventories/requests", element: <RestockRequestsPage /> },
+      { path: "inventories/requests/new", element: <RestockRequestCreatePage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
       { path: "components", element: <ComponentsPage /> },

@@ -362,6 +362,20 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    restock_requests {
+        bigserial   id                 PK
+        bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
+        bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
+        bigint      product_id         "opaque product_service id, no FK"
+        text        sku                "snapshot at request time"
+        text        name               "snapshot"
+        bigint      quantity           "CHECK > 0"
+        text        shipping_code      "opaque shipping_service courier code"
+        text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
+        timestamptz created_at
+        timestamptz updated_at
+    }
 ```
 
 - **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
@@ -377,6 +391,16 @@ erDiagram
   `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
   fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
   delete, search, pagination).
+- **`restock_requests`** — a SELLING team's request for a WAREHOUSE to restock a product (#105). The
+  flow is two-sided: `requesting_team_id` (the selling team, `use_scope` on create/cancel/list) raises
+  a `pending` request naming a `warehouse_id` (the target warehouse, `use_scope` on fulfil/list), a
+  `product_id` (opaque, with a `sku`/`name` snapshot frozen at request time), a `quantity`
+  (`CHECK > 0`) and a `shipping_code`. The warehouse **fulfils** it in one transaction — a
+  `stock_movements` RECEIVE for `quantity` plus a status flip to `fulfilled`, so the ledger and the
+  request can't diverge; the requester may **cancel** a still-pending one (`cancelled`). `status` is
+  the `RestockRequestStatus` enum **as text** (mapped in the handler, no `CHECK` IN-list, cf. #80).
+  Both team ids are opaque — no FK; indexes on `requesting_team_id` and `warehouse_id` serve the two
+  list views.
 
 ---
 

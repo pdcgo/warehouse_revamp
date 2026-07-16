@@ -27,8 +27,9 @@ type Service struct {
 // compile-time proof Service satisfies both generated handler interfaces (one inventory_service
 // impl serves InventoryService and SupplierService).
 var (
-	_ inventoryv1connect.InventoryServiceHandler = (*Service)(nil)
-	_ inventoryv1connect.SupplierServiceHandler  = (*Service)(nil)
+	_ inventoryv1connect.InventoryServiceHandler       = (*Service)(nil)
+	_ inventoryv1connect.SupplierServiceHandler        = (*Service)(nil)
+	_ inventoryv1connect.RestockRequestServiceHandler  = (*Service)(nil)
 )
 
 func NewService(db *gorm.DB) *Service {
