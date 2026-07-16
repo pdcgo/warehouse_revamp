@@ -54,12 +54,23 @@ function PasswordDemo() {
 
 function PaginationDemo() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   return (
     <Stack gap="1">
-      <Pagination count={45} pageSize={10} page={page} onPageChange={setPage} />
+      <Pagination
+        count={45}
+        pageSize={pageSize}
+        page={page}
+        onPageChange={setPage}
+        pageSizeOptions={[10, 20, 50]}
+        onPageSizeChange={(n) => {
+          setPageSize(n);
+          setPage(1);
+        }}
+      />
       <Text fontSize="xs" color="fg.muted">
-        45 items · 10 per page · page {page} of 5
+        45 items · {pageSize} per page · page {page}
       </Text>
     </Stack>
   );
