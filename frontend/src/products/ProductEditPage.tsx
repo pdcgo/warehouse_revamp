@@ -186,8 +186,9 @@ export function ProductEditPage() {
                     value={categoryId}
                     onChange={setCategoryId}
                     placeholder="Select a category"
+                    leafOnly
                   />
-                  <Field.HelperText>Every product is filed under a category.</Field.HelperText>
+                  <Field.HelperText>Every product is filed under an end category.</Field.HelperText>
                 </Field.Root>
               </Stack>
             </Card.Body>
