@@ -165,6 +165,10 @@ erDiagram
 
 ### 4.4 Access — global read reference data
 
+> **Built (#115/#116) — `allow_only_authenticated: true`.** The mechanism already existed;
+> `CategoryService` uses it for the global taxonomy. No `use_scope`, no team roles. Verified on a
+> booted server: `RegionList` without a token is **401, not 404** — mounted *and* guarded.
+
 Reads are **not team-scoped** — regions are the same for everyone. So the request messages
 carry **no `use_scope` field**, and the policy is a broad **any-authenticated read**, not a
 team role (putting a team role on an unscoped message is the dead-letter trap in CLAUDE.md).
@@ -228,7 +232,11 @@ Frontend-first order; design (§4.1, §4.2, §5, §4.4) is the gate and lives in
 - [x] **Snapshot vs live** — **snapshot** on transaction addresses (owner).
 - [x] **Kode pos** — **one-per-desa column** (agent default; flag if precise multi-postcode is
       later needed).
-- [ ] **Access policy** — how to express "any authenticated user may read" for unscoped
-      global-reference RPCs. **Agent makes a provisional call overnight (§4.4) and flags it for review.**
+- [x] **Access policy** — **`allow_only_authenticated: true`** (#115). Not a provisional call in the
+      end: the system already had the answer. `RequestPolicy` carries that flag and
+      `CategoryService` already uses it for the global taxonomy — the same shape (global reference
+      data, read by everyone, not curated through the API). So the region RPCs carry **no `use_scope`
+      field and no team roles**, which also avoids the dead-letter trap (a team-level role on an
+      unscoped message is evaluated against the root team, where almost nobody is a member).
 - [x] **Scope now** — work the whole **Ready** board overnight: region_service #113→#118 first,
       then any other Ready items, re-checking for newly-added ones (owner).
