@@ -10,6 +10,7 @@ import (
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
+	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
@@ -44,6 +45,7 @@ func InitializeApp() (*App, error) {
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,
+		region_v1.NewService,
 
 		NewServeMux,
 		NewServer,

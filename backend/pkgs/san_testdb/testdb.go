@@ -34,7 +34,10 @@ const defaultDSN = "host=localhost port=5433 user=user password=password dbname=
 // migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
 // root user that references it. There is no cross-service FK to enforce it, so order matters here
 // exactly as it does in production. Independent services (shipping_service) can go anywhere.
-var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service", "selling_service", "category_service", "document_service", "inventory_service"}
+// region_service is migrated for its SCHEMA only — the 91.599-row seed is NOT loaded here. A test
+// that needs regions inserts the handful it actually asserts on; making every test database pay for
+// the whole country would be slow and would couple unit tests to upstream reference data.
+var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service", "selling_service", "category_service", "document_service", "inventory_service", "region_service"}
 
 var (
 	once    sync.Once
