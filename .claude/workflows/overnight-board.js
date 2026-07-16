@@ -21,6 +21,7 @@ const OPT_INREVIEW = 'df73e18b'
 
 // The house rules every agent must obey (condensed from CLAUDE.md).
 const RULES = `You are in the warehouse_revamp repo (branch dev, cwd = repo root). Obey CLAUDE.md HARD RULES:
+- ORIENT WITH GRAPHIFY FIRST. For any "where is X / what calls Y / what does Z touch" question, run 'graphify query "<question>"' (also 'graphify explain "<concept>"', 'graphify path "<A>" "<B>"', 'graphify affected "<X>"') BEFORE broad grep/read — it returns a small scoped subgraph. Read raw files once oriented, or to edit specific lines. graphify is on PATH.
 - Services live in backend/services/<name>_service/; handlers in <name>_v1/ (one file per RPC + a <rpc>_test.go beside it); db models in <name>_service_models/; goose migrations in db_migrations/ (per service, never cross-service).
 - After any .proto edit: 'cd proto && buf lint && buf generate'. After changing Wire providers: 'cd backend && go tool wire ./cmd/app_development'. Generated code is committed but never hand-edited.
 - A list RPC over growing data MUST take warehouse.common.v1.PageFilter and return PageInfo. A request message with NO role policy is DENIED (deny by default).
