@@ -26,7 +26,7 @@ async function login(page: Page, username: string, password: string) {
 test("Restock requests page renders for root", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  await page.goto("/inventories/requests");
+  await page.goto("/inventories/restock");
 
   // The list always renders its table once loaded (empty for a fresh e2e DB). That is enough to
   // prove the page mounts, the client is wired, and the list RPC is reachable for root.

@@ -12,7 +12,7 @@
     "inventory": "Inventory",
     "inventories": "Inventories",
     "restock": "Restock",
-    "restockRequests": "Restock Requests",
+    "stock": "Stock",
     "placements": "Placements",
     "supplier": "Supplier",
     "users": "Users",

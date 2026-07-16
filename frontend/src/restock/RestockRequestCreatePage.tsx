@@ -84,7 +84,7 @@ export function RestockRequestCreatePage() {
       });
 
       toaster.create({ type: "success", title: t("restock.toast.created") });
-      void navigate("/inventories/requests");
+      void navigate("/inventories/restock");
     } catch (err) {
       setError(rpcError(err));
     } finally {
@@ -111,7 +111,7 @@ export function RestockRequestCreatePage() {
           variant="ghost"
           aria-label={t("restock.back")}
           data-testid="restock-create-back"
-          onClick={() => navigate("/inventories/requests")}
+          onClick={() => navigate("/inventories/restock")}
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>

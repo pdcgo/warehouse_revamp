@@ -26,13 +26,14 @@ test("Inventory: the stock screen is reachable and prompts for a warehouse", asy
   await expect(page.getByTestId("inventory-pick-warehouse")).toBeVisible();
 });
 
-// #95 — the Inventories sub-menu. The group shows for selling/warehouse teams (root reaches the
-// routes directly). Restock reuses the stock screen under its own title; Placements is a stub.
-test("Inventories: Restock reuses the stock screen", async ({ page }) => {
+// #95/#122 — the Inventories sub-menu. The group shows for selling/warehouse teams (root reaches the
+// routes directly). "Stock" is the on-hand screen; Placements is a stub. ("Restock" used to be this
+// same screen under another title — it is now the request flow, covered by restock.spec.ts.)
+test("Inventories: Stock is the on-hand screen", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  await page.goto("/inventories/restock");
-  await expect(page.getByRole("heading", { name: "Restock" })).toBeVisible();
+  await page.goto("/inventories/stock");
+  await expect(page.getByRole("heading", { name: "Stock" })).toBeVisible();
   await expect(page.getByTestId("inventory-pick-warehouse")).toBeVisible();
 });
 

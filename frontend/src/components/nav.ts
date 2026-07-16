@@ -48,14 +48,21 @@ const PRODUCTS_GROUP: MenuGroup = {
   ],
 };
 
-// Inventories is a sub-menu (#95): "restock" (receive stock) and "placements" (stock locations — a
-// stub until the warehouse core / locations are designed, plan.md §1).
+// Inventories is a sub-menu (#95).
+//
+// "Restock" is ONE entry (#122): there used to be a Restock that was really the stock list (a
+// leftover of the superseded "pick a warehouse and receive there" design) plus a separate Restock
+// Requests. They were the same job, so Restock is now the request flow itself, and it reads
+// differently depending on who you are: a SELLING team creates requests, a WAREHOUSE team accepts
+// them. The on-hand list survives under the name it actually deserves — "Stock".
+//
+// "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
 const INVENTORIES: MenuGroup = {
   label: "nav.inventories",
   icon: Boxes,
   children: [
-    { to: "/inventories/restock", label: "nav.restock", icon: PackagePlus },
-    { to: "/inventories/requests", label: "nav.restockRequests", icon: ClipboardList },
+    { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
+    { to: "/inventories/stock", label: "nav.stock", icon: PackagePlus },
     { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
     { to: "/inventories/suppliers", label: "nav.supplier", icon: Factory },
   ],

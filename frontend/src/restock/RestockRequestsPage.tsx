@@ -142,7 +142,7 @@ export function RestockRequestsPage() {
             size="xs"
             colorPalette="brand"
             data-testid="open-create-restock"
-            onClick={() => navigate("/inventories/requests/new")}
+            onClick={() => navigate("/inventories/restock/new")}
           >
             {t("restock.newRequest")}
           </Button>
