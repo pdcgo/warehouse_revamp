@@ -431,6 +431,51 @@ erDiagram
 
 ---
 
+## region_service
+
+`backend/services/region_service/db_migrations/`
+
+```mermaid
+erDiagram
+    regions ||--o{ regions : "parent_code (self-referential)"
+
+    regions {
+        varchar     code        PK "dotted kode wilayah, e.g. 32.04.14.2001"
+        varchar     parent_code FK "-> regions(code); NULL for a provinsi"
+        smallint    level       "1=provinsi 2=kabupaten/kota 3=kecamatan 4=desa; CHECK 1..4"
+        text        name        "required"
+        varchar     kode_pos    "level 4 only (CHECK), nullable"
+    }
+```
+
+- **`regions`** — Indonesia's administrative hierarchy (provinsi → kabupaten/kota → kecamatan →
+  desa/kelurahan) with a kode pos on each desa (#112/#114). **Global reference data**: unlike almost
+  every other table here there is **no `team_id`** and no `use_scope` — regions are the same for
+  everyone, so the reads are unscoped and open to any authenticated user.
+- **One self-referential table, not four typed ones** (owner call, `plans/region_service/` §4.2
+  option A). `code` — the government's dotted kode wilayah — **is** the identity, and the hierarchy is
+  derivable from it (`11` → `11.01` → `11.01.01` → `11.01.01.2001`), so the upstream source loads
+  near-verbatim and "children of X" is a single indexed predicate (`WHERE parent_code = ?`).
+  `parent_code` is a **real self-FK** (`ON DELETE CASCADE`) — an orphan is a picker that dead-ends.
+- `level` carries a range `CHECK (1..4)`: a 4-tier structure fixed by law, so unlike an enum IN-list
+  it cannot drift as the data grows (cf. #80). `kode_pos` is `CHECK`-confined to level 4 — officially
+  one postcode per desa, so it is a column, not a table.
+- **Indexes:** `parent_code` (the cascading picker's only query), `LOWER(name) text_pattern_ops`
+  (case-insensitive **prefix** typeahead — a leading-wildcard "contains" search would need `pg_trgm`),
+  and `level` (a scoped search: "find a kecamatan named X").
+- **The 91 599 rows are NOT in the migration.** They are generated from pinned upstream dumps and
+  loaded separately — `go run ./cmd/tool region build-seed` then `… region load-seed` (idempotent
+  upsert; ~5 s). Postgres runs in Docker and cannot read a host file, so a server-side `COPY … FROM
+  '<path>'` inside the migration would not work; this mirrors how the category taxonomy is seeded
+  from a file. See
+  [the seed README](../backend/services/region_service/db_migrations/seed/README.md).
+- **Consumers snapshot, they do not FK.** A saved address (an order's customer address, a warehouse
+  address) freezes the codes **+** names **+** kode pos on its own record, so history cannot mutate
+  when a desa is renamed or merged. `region_service` is reached only via its RPCs — no cross-service
+  FK (HARD RULE 3).
+
+---
+
 ## Cross-service links (logical, not enforced)
 
 ```mermaid

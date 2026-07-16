@@ -15,6 +15,26 @@ go run ./cmd/tool region build-seed
 That is the whole step — it downloads the two pinned dumps, converts them, checks the result, and
 rewrites this file. Same SHAs in, same CSV out.
 
+## Load it into a database
+
+The migration creates the empty `regions` table; the rows are loaded separately (#114):
+
+```sh
+go run ./cmd/tool migrate up --service region_service   # the table
+go run ./cmd/tool region load-seed                      # the 91.599 rows (~5s)
+```
+
+`load-seed` is an **idempotent upsert** on `code`, in one transaction — safe to re-run, and how an
+edition bump lands (regenerate, then re-load). *(A region REMOVED upstream is not deleted; a full
+sync would need a delete pass, worth building only when a bump actually drops one.)*
+
+> **Why the rows are not in the migration.** Postgres runs in Docker and cannot read a host file, so
+> a server-side `COPY … FROM '<path>'` inside a `.sql` migration would not work. A Go goose migration
+> could `//go:embed` this CSV, but it would then have to be registered into *every* binary that runs
+> goose (`cmd/tool` **and** `pkgs/san_testdb`) — a footgun the moment someone forgets the blank
+> import. Loading reference data from a file through the tool is the same shape as
+> `seed categories`. **Provisional call — flagged for review on #114.**
+
 ## Source
 
 The Kemendagri-official, actively maintained pair by cahya dsn (MIT licensed):

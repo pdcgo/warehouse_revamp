@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -99,8 +100,159 @@ func regionCommand() *cli.Command {
 				},
 				Action: buildRegionSeed,
 			},
+			{
+				Name: "load-seed",
+				Usage: "load the generated regions CSV into a database (idempotent upsert) — run " +
+					"after `migrate up --service region_service`",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "file",
+						Usage: "path to the generated regions CSV (relative to ./backend)",
+						Value: defaultRegionSeedPath(),
+					},
+					&cli.StringFlag{
+						Name:    "dsn",
+						Sources: cli.EnvVars("DATABASE_URL"),
+						Usage:   "postgres DSN; skips the Local/Production prompt",
+					},
+				},
+				Action: loadRegionSeed,
+			},
 		},
 	}
+}
+
+// regionInsertBatch is how many rows go in one multi-row INSERT. 1.000 rows x 5 columns = 5.000
+// placeholders, comfortably under Postgres's 65.535-parameter ceiling.
+const regionInsertBatch = 1000
+
+// loadRegionSeed COPYs the generated CSV into `regions`.
+//
+// Why here and not inside the goose migration: Postgres runs in Docker and cannot read a host file,
+// so a server-side `COPY ... FROM '<path>'` in a .sql migration would not work; and a Go goose
+// migration would have to be registered into every binary that runs goose (the tool AND san_testdb),
+// which is a footgun the moment someone forgets the blank import. Loading reference data from a file
+// through the tool is the same shape as `seed categories`.
+//
+// Idempotent: an upsert on the code, so re-running (or a later edition bump) updates names and adds
+// new rows in place. NOTE: a region REMOVED upstream is not deleted here — a full sync would need a
+// delete pass, which is only worth building when an edition bump actually drops one.
+func loadRegionSeed(ctx context.Context, cmd *cli.Command) error {
+	path := cmd.String("file")
+
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("opening seed (run `region build-seed` first): %w", err)
+	}
+	defer file.Close()
+
+	rows, err := readSeedCSV(file)
+	if err != nil {
+		return err
+	}
+
+	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	fmt.Printf("loading %d regions into %s\n", len(rows), target)
+
+	started := time.Now()
+
+	// One transaction: a half-loaded country is worse than none, and the self-FK means order matters
+	// (the CSV is sorted by code, so parents land before their children).
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck // rolled back only if Commit did not happen
+
+	for start := 0; start < len(rows); start += regionInsertBatch {
+		end := min(start+regionInsertBatch, len(rows))
+
+		err = insertRegionBatch(ctx, tx, rows[start:end])
+		if err != nil {
+			return fmt.Errorf("inserting rows %d..%d: %w", start, end, err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("loaded %d regions in %s\n", len(rows), time.Since(started).Round(time.Millisecond))
+
+	return nil
+}
+
+// readSeedCSV reads the generated CSV back into region rows, checking the header is the shape this
+// loader expects rather than trusting column order.
+func readSeedCSV(file io.Reader) ([]region, error) {
+	reader := csv.NewReader(file)
+
+	header, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("reading seed header: %w", err)
+	}
+
+	want := []string{"code", "parent_code", "level", "name", "kode_pos"}
+	if strings.Join(header, ",") != strings.Join(want, ",") {
+		return nil, fmt.Errorf("seed header is %v, expected %v — regenerate with `region build-seed`", header, want)
+	}
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([]region, 0, len(records))
+	for _, r := range records {
+		level, convErr := strconv.Atoi(r[2])
+		if convErr != nil {
+			return nil, fmt.Errorf("kode %q has a non-numeric level %q", r[0], r[2])
+		}
+
+		rows = append(rows, region{Code: r[0], ParentCode: r[1], Level: level, Name: r[3], KodePos: r[4]})
+	}
+
+	return rows, nil
+}
+
+// insertRegionBatch upserts one batch. Empty parent_code / kode_pos become NULL — "no parent" and
+// "no postcode" are absences, not empty strings.
+func insertRegionBatch(ctx context.Context, tx *sql.Tx, batch []region) error {
+	values := make([]string, 0, len(batch))
+	args := make([]any, 0, len(batch)*5)
+
+	for i, r := range batch {
+		base := i * 5
+		values = append(values, fmt.Sprintf("($%d,$%d,$%d,$%d,$%d)", base+1, base+2, base+3, base+4, base+5))
+		args = append(args, r.Code, nullIfEmpty(r.ParentCode), r.Level, r.Name, nullIfEmpty(r.KodePos))
+	}
+
+	query := `
+		INSERT INTO regions (code, parent_code, level, name, kode_pos)
+		VALUES ` + strings.Join(values, ",") + `
+		ON CONFLICT (code) DO UPDATE SET
+			parent_code = EXCLUDED.parent_code,
+			level       = EXCLUDED.level,
+			name        = EXCLUDED.name,
+			kode_pos    = EXCLUDED.kode_pos`
+
+	_, err := tx.ExecContext(ctx, query, args...)
+
+	return err
+}
+
+func nullIfEmpty(s string) any {
+	if s == "" {
+		return nil
+	}
+
+	return s
 }
 
 // buildRegionSeed is the whole pipeline: fetch both pinned dumps, parse them, join kode pos onto the
