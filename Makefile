@@ -12,11 +12,17 @@
 
 GRAPHIFY                  ?= graphify
 GRAPHIFY_BACKEND          ?= claude-cli
-# claude-cli defaults to Opus, which is overkill for graphify's structured
-# extraction. haiku is much faster and lighter on your plan quota. Override with
-#   make graphify-full GRAPHIFY_CLAUDE_CLI_MODEL=opus
+# Model for the claude-cli backend. Override per-run for a faster/lighter pass:
+#   make graphify-label GRAPHIFY_CLAUDE_CLI_MODEL=haiku
 GRAPHIFY_CLAUDE_CLI_MODEL ?= opus
 export GRAPHIFY_CLAUDE_CLI_MODEL
+
+# graphify skips writing graph.html above 5000 nodes, and this repo is already
+# past that — so the viz silently stops regenerating. Raise the ceiling to keep
+# it rendering, with headroom as the repo grows. Note a graph this size is heavy
+# in a browser; drop the value (or pass --no-viz) if graph.html gets sluggish.
+GRAPHIFY_VIZ_NODE_LIMIT   ?= 8000
+export GRAPHIFY_VIZ_NODE_LIMIT
 
 .PHONY: help graphify-full graphify-update graphify-label
 .DEFAULT_GOAL := help
