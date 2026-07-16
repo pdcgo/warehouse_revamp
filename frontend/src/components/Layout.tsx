@@ -14,7 +14,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ChevronDown, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
@@ -44,44 +44,61 @@ export function Layout() {
 
   const menu = menuFor(current?.teamType, current?.role);
 
-  // Flatten groups to their child links so the breadcrumb can match a sub-menu route too.
+  // Flatten groups to their child links so both the active state and the breadcrumb can match a
+  // sub-menu route.
   const flatItems: MenuItem[] = menu.flatMap((entry) => (isMenuGroup(entry) ? entry.children : [entry]));
 
-  // The current page's label, derived from the route — drives the top-bar breadcrumb/title.
-  const currentLabel =
-    flatItems.find((item) =>
-      item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to),
-    )?.label ?? "";
+  // matchesPath is a true path-segment prefix test: "/products" matches "/products" and
+  // "/products/123" but NOT "/products-x" (a bare startsWith would). "/" only matches itself.
+  const matchesPath = (to: string) =>
+    to === "/"
+      ? location.pathname === "/"
+      : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
-  // One nav link row — shared by top-level items and (indented) group children.
-  const navItem = (item: MenuItem, indent = false) => (
-    <NavLink key={item.to} to={item.to} end={item.to === "/"}>
-      {({ isActive }) => (
+  // The active route is the item whose `to` is the LONGEST matching prefix — so on /products/discover
+  // only "Discover Product" lights up, not "My Product" too, while a detail route like /products/123
+  // still lights up its parent "My Product" (#119). One winner, never a whole sub-menu at once.
+  const activeTo = flatItems
+    .filter((item) => matchesPath(item.to))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.to;
+
+  // The current page's label, derived from the active route — drives the top-bar breadcrumb/title.
+  const currentLabel = flatItems.find((item) => item.to === activeTo)?.label ?? "";
+
+  // One nav link row — shared by top-level items and group children. Active is decided by activeTo
+  // (longest-prefix winner), NOT by the link's own prefix match, so siblings don't all light up.
+  const navItem = (item: MenuItem) => {
+    const active = item.to === activeTo;
+
+    return (
+      <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined}>
         <Flex
           align="center"
           gap="2.5"
           rounded="md"
           px="3"
           py="2"
-          pl={indent && !collapsed ? "9" : "3"}
           fontSize="sm"
           fontWeight="medium"
           justify={collapsed ? "center" : "flex-start"}
-          bg={isActive ? "brand.solid" : "transparent"}
-          color={isActive ? "brand.contrast" : "fg.muted"}
-          _hover={isActive ? undefined : { bg: "brand.subtle", color: "brand.fg" }}
+          bg={active ? "brand.solid" : "transparent"}
+          color={active ? "brand.contrast" : "fg.muted"}
+          _hover={active ? undefined : { bg: "brand.subtle", color: "brand.fg" }}
         >
           <Icon as={item.icon} boxSize="4" flexShrink={0} />
           {!collapsed && <Text>{t(item.label)}</Text>}
         </Flex>
-      )}
-    </NavLink>
-  );
+      </Link>
+    );
+  };
 
   // A collapsible sub-menu group (#104): a clickable header (Capitalized, not uppercase) toggles its
   // children. When the whole sidebar is collapsed the group is forced open (children show as icons).
   const renderGroup = (group: MenuGroup) => {
     const open = collapsed || !collapsedGroups.has(group.label);
+    // Tint the header when the active route lives inside this group, so you can still tell which
+    // group you're in when it's collapsed shut (or the whole sidebar is) and its children are hidden.
+    const groupActive = group.children.some((child) => child.to === activeTo);
 
     return (
       <Stack key={group.label} gap="1" data-testid={`nav-group-${group.label}`}>
@@ -94,7 +111,7 @@ export function Layout() {
           py="2"
           fontSize="sm"
           fontWeight="medium"
-          color="fg.muted"
+          color={groupActive ? "brand.fg" : "fg.muted"}
           cursor="pointer"
           justify={collapsed ? "center" : "flex-start"}
           _hover={{ bg: "brand.subtle", color: "brand.fg" }}
@@ -122,7 +139,17 @@ export function Layout() {
           )}
         </Flex>
 
-        {open && group.children.map((child) => navItem(child, true))}
+        {open &&
+          (collapsed ? (
+            // Collapsed sidebar: children are centred icons, no rail (there's no room for one).
+            group.children.map((child) => navItem(child))
+          ) : (
+            // Expanded: children sit a step to the right under a left rail, so the sub-menu reads as
+            // a nested group rather than a flat list level with its parent (#119).
+            <Stack gap="1" ml="4" pl="2" borderLeftWidth="1px" borderColor="border">
+              {group.children.map((child) => navItem(child))}
+            </Stack>
+          ))}
       </Stack>
     );
   };
