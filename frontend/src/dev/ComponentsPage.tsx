@@ -31,6 +31,12 @@ import {
   description as productSelectDescription,
   type PickedProduct,
 } from "../components/ProductSelect";
+import {
+  AddressPicker,
+  emptyAddress,
+  description as addressPickerDescription,
+  type AddressValue,
+} from "../components/AddressPicker";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
@@ -255,6 +261,20 @@ function ProductSelectDemo() {
   );
 }
 
+function AddressPickerDemo() {
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
+
+  return (
+    <>
+      <AddressPicker value={address} onChange={setAddress} />
+      <Text fontSize="xs" color="fg.muted">
+        Picked: {address.desaCode ? `${address.desaName} (${address.desaCode})` : "(no village yet)"}
+        {address.kodePos ? ` · ${address.kodePos}` : ""}
+      </Text>
+    </>
+  );
+}
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -364,6 +384,12 @@ const ENTRIES: Entry[] = [
     title: "ProductSelect",
     description: productSelectDescription,
     render: () => <ProductSelectDemo />,
+  },
+  {
+    id: "address-picker",
+    title: "AddressPicker",
+    description: addressPickerDescription,
+    render: () => <AddressPickerDemo />,
   },
   {
     id: "team-select",

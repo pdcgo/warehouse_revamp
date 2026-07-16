@@ -555,6 +555,31 @@
     "adjustHelper": "The difference is recorded in the ledger.",
     "adjustReasonPlaceholder": "e.g. cycle count, damage"
   },
+  "address": {
+    "loading": "Loading…",
+    "noResults": "Nothing found",
+    "provinsi": "Province",
+    "provinsiPlaceholder": "Select a province",
+    "kabupaten": "Regency or city",
+    "kabupatenPlaceholder": "Select a regency or city",
+    "kecamatan": "District",
+    "kecamatanPlaceholder": "Select a district",
+    "desa": "Village or urban village",
+    "desaPlaceholder": "Select a village",
+    "kodePos": "Postal code",
+    "kodePosPlaceholder": "5 digits",
+    "kodePosHelp": "Filled in from the village. Edit it if the parcel needs a different one.",
+    "addressLine": "Street address",
+    "addressLinePlaceholder": "Street, house number, RT/RW",
+    "addressLineHelp": "The part no dataset can supply.",
+    "search": {
+      "label": "Find an address",
+      "placeholder": "Type a village, district or city name",
+      "help": "Matches from the start of a name. Picking a result fills in all four levels below.",
+      "minChars": "Type at least {{min}} characters",
+      "noResults": "No regions found"
+    }
+  },
   "catalog": {
     "name": "Name",
     "actions": "Actions",

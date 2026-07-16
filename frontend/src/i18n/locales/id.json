@@ -555,6 +555,31 @@
     "adjustHelper": "Selisihnya dicatat dalam buku besar.",
     "adjustReasonPlaceholder": "mis. penghitungan siklus, kerusakan"
   },
+  "address": {
+    "loading": "Memuat…",
+    "noResults": "Tidak ada yang cocok",
+    "provinsi": "Provinsi",
+    "provinsiPlaceholder": "Pilih provinsi",
+    "kabupaten": "Kabupaten atau Kota",
+    "kabupatenPlaceholder": "Pilih kabupaten atau kota",
+    "kecamatan": "Kecamatan",
+    "kecamatanPlaceholder": "Pilih kecamatan",
+    "desa": "Desa atau Kelurahan",
+    "desaPlaceholder": "Pilih desa atau kelurahan",
+    "kodePos": "Kode Pos",
+    "kodePosPlaceholder": "5 digit",
+    "kodePosHelp": "Terisi otomatis dari desa atau kelurahan. Ubah jika paket memerlukan kode pos lain.",
+    "addressLine": "Alamat",
+    "addressLinePlaceholder": "Jalan, no. rumah, RT/RW",
+    "addressLineHelp": "Bagian yang tidak ada di data wilayah.",
+    "search": {
+      "label": "Cari alamat",
+      "placeholder": "Ketik nama desa, kecamatan, atau kota",
+      "help": "Pencarian dari awal nama. Memilih hasil akan mengisi keempat tingkat di bawah.",
+      "minChars": "Ketik minimal {{min}} karakter",
+      "noResults": "Wilayah tidak ditemukan"
+    }
+  },
   "catalog": {
     "name": "Nama",
     "actions": "Aksi",
