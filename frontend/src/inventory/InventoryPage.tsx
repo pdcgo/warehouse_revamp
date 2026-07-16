@@ -33,7 +33,7 @@ const LEVEL_LIMIT = 200;
 // and receive or adjust stock. It assumes a warehouse stocks its OWN team's catalogue (product
 // team_id = warehouse_id) — the cross-team-storage question is still open (see the brainstorming doc).
 // `title` lets it serve both the root/admin "Inventory" route and the "Restock" sub-menu (#95).
-export function InventoryPage({ title }: { title?: string } = {}) {
+export function InventoryPage({ title, restock = false }: { title?: string; restock?: boolean } = {}) {
   const { current } = useTeam();
   const { t } = useTranslation();
 
@@ -171,15 +171,19 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                             <Icon as={Plus} boxSize="4" />
                             {t("inventory.receive")}
                           </Button>
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            aria-label={t("inventory.adjust")}
-                            data-testid={`adjust-${product.sku}`}
-                            onClick={() => setDialog({ kind: "adjust", product })}
-                          >
-                            <Icon as={Pencil} boxSize="4" />
-                          </IconButton>
+                          {/* Restock is receive-only; correcting a counted figure (adjust) lives on
+                              the full Inventory screen, not here (#100). */}
+                          {!restock && (
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              aria-label={t("inventory.adjust")}
+                              data-testid={`adjust-${product.sku}`}
+                              onClick={() => setDialog({ kind: "adjust", product })}
+                            >
+                              <Icon as={Pencil} boxSize="4" />
+                            </IconButton>
+                          )}
                         </HStack>
                       </Table.Cell>
                     </Table.Row>
