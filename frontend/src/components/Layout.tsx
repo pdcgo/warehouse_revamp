@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Avatar,
   Box,
@@ -37,9 +37,9 @@ export function Layout() {
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
-  // Sub-menu groups are expandable (#104); a group whose label is in this set is collapsed. Empty by
-  // default, so groups start open.
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // Sub-menu groups are an ACCORDION (#123): at most ONE is expanded, so opening one closes the rest
+  // and the sidebar never turns into a wall of links. Null = all closed.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const location = useLocation();
 
   const menu = menuFor(current?.teamType, current?.role);
@@ -64,6 +64,20 @@ export function Layout() {
 
   // The current page's label, derived from the active route — drives the top-bar breadcrumb/title.
   const currentLabel = flatItems.find((item) => item.to === activeTo)?.label ?? "";
+
+  // Open the group you are actually IN. With only one group allowed open (#123), landing on a
+  // sub-menu route with every group shut would hide the very item that is highlighted. Keyed to the
+  // route, so a group the user closes by hand stays closed until they navigate somewhere else.
+  const owningGroup = menu.find(
+    (entry) => isMenuGroup(entry) && entry.children.some((child) => child.to === activeTo),
+  );
+  const owningLabel = owningGroup && isMenuGroup(owningGroup) ? owningGroup.label : undefined;
+
+  useEffect(() => {
+    if (owningLabel) {
+      setOpenGroup(owningLabel);
+    }
+  }, [owningLabel]);
 
   // One nav link row — shared by top-level items and group children. Active is decided by activeTo
   // (longest-prefix winner), NOT by the link's own prefix match, so siblings don't all light up.
@@ -95,7 +109,8 @@ export function Layout() {
   // A collapsible sub-menu group (#104): a clickable header (Capitalized, not uppercase) toggles its
   // children. When the whole sidebar is collapsed the group is forced open (children show as icons).
   const renderGroup = (group: MenuGroup) => {
-    const open = collapsed || !collapsedGroups.has(group.label);
+    // A collapsed sidebar has no labels to hide behind, so every group shows its icons.
+    const open = collapsed || openGroup === group.label;
     // Tint the header when the active route lives inside this group, so you can still tell which
     // group you're in when it's collapsed shut (or the whole sidebar is) and its children are hidden.
     const groupActive = group.children.some((child) => child.to === activeTo);
@@ -116,17 +131,8 @@ export function Layout() {
           justify={collapsed ? "center" : "flex-start"}
           _hover={{ bg: "brand.subtle", color: "brand.fg" }}
           data-testid={`nav-group-toggle-${group.label}`}
-          onClick={() =>
-            setCollapsedGroups((prev) => {
-              const next = new Set(prev);
-              if (next.has(group.label)) {
-                next.delete(group.label);
-              } else {
-                next.add(group.label);
-              }
-              return next;
-            })
-          }
+          // Opening a group closes whichever one was open; clicking the open one shuts it.
+          onClick={() => setOpenGroup((prev) => (prev === group.label ? null : group.label))}
         >
           <Icon as={group.icon} boxSize="4" flexShrink={0} />
           {!collapsed && (
