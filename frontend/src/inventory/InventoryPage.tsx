@@ -13,12 +13,13 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { inventoryClient, productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { TeamSelect } from "../components/TeamSelect";
+import { Pagination } from "../components/Pagination";
 import { ReceiveStockDialog } from "./ReceiveStockDialog";
 import { AdjustStockDialog } from "./AdjustStockDialog";
 
@@ -42,7 +43,7 @@ export function InventoryPage() {
   const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPage, setTotalPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,7 +68,7 @@ export function InventoryPage() {
       ]);
 
       setProducts(productRes.products);
-      setTotalPage(productRes.pageInfo?.totalPage ?? 1);
+      setTotalItems(Number(productRes.pageInfo?.totalItems ?? 0n));
 
       const map = new Map<string, bigint>();
       for (const level of stockRes.levels) {
@@ -184,31 +185,9 @@ export function InventoryPage() {
             </Table.Root>
           )}
 
-          {!loading && totalPage > 1 && (
-            <HStack justify="end" gap="card">
-              <IconButton
-                size="xs"
-                variant="ghost"
-                aria-label="Previous page"
-                data-testid="inventory-prev"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <Icon as={ChevronLeft} boxSize="4" />
-              </IconButton>
-              <Text fontSize="sm" color="fg.muted" data-testid="inventory-page">
-                Page {page} of {totalPage}
-              </Text>
-              <IconButton
-                size="xs"
-                variant="ghost"
-                aria-label="Next page"
-                data-testid="inventory-next"
-                disabled={page >= totalPage}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                <Icon as={ChevronRight} boxSize="4" />
-              </IconButton>
+          {!loading && (
+            <HStack justify="end">
+              <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
             </HStack>
           )}
         </>

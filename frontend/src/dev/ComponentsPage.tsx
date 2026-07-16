@@ -5,6 +5,7 @@ import { Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
 // them here so it is documentation generated from the components themselves, not a parallel list
 // that can drift.
 import { PasswordInput, description as passwordInputDescription } from "../components/PasswordInput";
+import { Pagination, description as paginationDescription } from "../components/Pagination";
 import { UserItem, description as userItemDescription } from "../components/UserItem";
 import { TeamItem, description as teamItemDescription } from "../components/TeamItem";
 import { TeamTypeSelect, description as teamTypeSelectDescription } from "../components/TeamTypeSelect";
@@ -48,6 +49,19 @@ function PasswordDemo() {
 
   return (
     <PasswordInput value={value} placeholder="Password" onChange={(e) => setValue(e.target.value)} />
+  );
+}
+
+function PaginationDemo() {
+  const [page, setPage] = useState(1);
+
+  return (
+    <Stack gap="1">
+      <Pagination count={45} pageSize={10} page={page} onPageChange={setPage} />
+      <Text fontSize="xs" color="fg.muted">
+        45 items · 10 per page · page {page} of 5
+      </Text>
+    </Stack>
   );
 }
 
@@ -220,6 +234,12 @@ const ENTRIES: Entry[] = [
     title: "PasswordInput",
     description: passwordInputDescription,
     render: () => <PasswordDemo />,
+  },
+  {
+    id: "pagination",
+    title: "Pagination",
+    description: paginationDescription,
+    render: () => <PaginationDemo />,
   },
   {
     id: "user-item",

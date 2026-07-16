@@ -5,17 +5,17 @@ import {
   HStack,
   Heading,
   Icon,
-  IconButton,
   Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { PublicUser, TeamAccessItem } from "../gen/warehouse/user/v1/user_pb";
 import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
 import { UserItem } from "../components/UserItem";
 import { TeamItem } from "../components/TeamItem";
+import { Pagination } from "../components/Pagination";
 
 const TEAM_PAGE_SIZE = 20;
 
@@ -124,35 +124,14 @@ export function UserDetailPage() {
                 ))
               )}
 
-              {pageInfo && pageInfo.totalPage > 1 && (
-                <HStack justify="end" gap="card">
-                  <IconButton
-                    size="xs"
-                    variant="ghost"
-                    aria-label="Previous page"
-                    data-testid="user-teams-prev"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    <Icon as={ChevronLeft} boxSize="4" />
-                  </IconButton>
-
-                  <Text fontSize="sm" color="fg.muted" data-testid="user-teams-page">
-                    Page {page} of {pageInfo.totalPage}
-                  </Text>
-
-                  <IconButton
-                    size="xs"
-                    variant="ghost"
-                    aria-label="Next page"
-                    data-testid="user-teams-next"
-                    disabled={page >= pageInfo.totalPage}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <Icon as={ChevronRight} boxSize="4" />
-                  </IconButton>
-                </HStack>
-              )}
+              <HStack justify="end">
+                <Pagination
+                  count={Number(pageInfo?.totalItems ?? 0n)}
+                  pageSize={TEAM_PAGE_SIZE}
+                  page={page}
+                  onPageChange={setPage}
+                />
+              </HStack>
             </Stack>
           </>
         )

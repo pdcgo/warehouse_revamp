@@ -22,6 +22,7 @@ import { productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 
 const PAGE_SIZE = 20;
@@ -36,7 +37,7 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPage, setTotalPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -58,7 +59,7 @@ export function ProductsPage() {
       });
 
       setProducts(res.products);
-      setTotalPage(res.pageInfo?.totalPage ?? 1);
+      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
     } catch (err) {
       setError(rpcError(err));
       setProducts([]);
@@ -226,31 +227,7 @@ export function ProductsPage() {
         </Text>
       )}
 
-      <HStack>
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={page <= 1}
-          data-testid="products-prev"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
-          Previous
-        </Button>
-
-        <Text fontSize="xs" color="fg.muted" data-testid="products-page">
-          Page {page} of {totalPage}
-        </Text>
-
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={page >= totalPage}
-          data-testid="products-next"
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </HStack>
+      <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
     </Stack>
   );
 }

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
-  Button,
   Flex,
   HStack,
   Heading,
@@ -22,6 +21,7 @@ import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
+import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { ShopFormDialog } from "./ShopFormDialog";
 
@@ -36,7 +36,7 @@ export function ShopsPage() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPage, setTotalPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Shop | null>(null);
@@ -55,7 +55,7 @@ export function ShopsPage() {
       const res = await shopClient.shopList({ teamId, q, page: { page, limit: PAGE_SIZE } });
 
       setShops(res.shops);
-      setTotalPage(res.pageInfo?.totalPage ?? 1);
+      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
     } catch (err) {
       setError(rpcError(err));
       setShops([]);
@@ -194,31 +194,7 @@ export function ShopsPage() {
         </Text>
       )}
 
-      <HStack>
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={page <= 1}
-          data-testid="shops-prev"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
-          Previous
-        </Button>
-
-        <Text fontSize="xs" color="fg.muted" data-testid="shops-page">
-          Page {page} of {totalPage}
-        </Text>
-
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={page >= totalPage}
-          data-testid="shops-next"
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </HStack>
+      <Pagination count={totalItems} pageSize={PAGE_SIZE} page={page} onPageChange={setPage} />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per shop. */}
       {editing && (

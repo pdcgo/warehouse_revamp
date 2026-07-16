@@ -18,12 +18,13 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, UserMinus } from "lucide-react";
+import { ArrowLeft, Pencil, UserMinus } from "lucide-react";
 import { rpcError, userClient } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
 import { useAuth } from "../auth/AuthContext";
+import { Pagination } from "../components/Pagination";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { TeamItem } from "../components/TeamItem";
@@ -255,35 +256,14 @@ export function TeamDetailCommon({
               </Table.Body>
             </Table.Root>
 
-            {memberPageInfo && memberPageInfo.totalPage > 1 && (
-              <HStack justify="end" gap="card">
-                <IconButton
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Previous page"
-                  data-testid="member-prev"
-                  disabled={memberPage <= 1}
-                  onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
-                >
-                  <Icon as={ChevronLeft} boxSize="4" />
-                </IconButton>
-
-                <Text fontSize="sm" color="fg.muted" data-testid="member-page">
-                  Page {memberPage} of {memberPageInfo.totalPage}
-                </Text>
-
-                <IconButton
-                  size="xs"
-                  variant="ghost"
-                  aria-label="Next page"
-                  data-testid="member-next"
-                  disabled={memberPage >= memberPageInfo.totalPage}
-                  onClick={() => setMemberPage((p) => p + 1)}
-                >
-                  <Icon as={ChevronRight} boxSize="4" />
-                </IconButton>
-              </HStack>
-            )}
+            <HStack justify="end">
+              <Pagination
+                count={Number(memberPageInfo?.totalItems ?? 0n)}
+                pageSize={MEMBER_PAGE_SIZE}
+                page={memberPage}
+                onPageChange={setMemberPage}
+              />
+            </HStack>
           </>
         )}
           </Stack>
