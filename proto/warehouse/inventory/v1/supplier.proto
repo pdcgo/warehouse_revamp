@@ -34,16 +34,14 @@ message Supplier {
 }
 
 message SupplierCreateRequest {
-  // Write: the team's managers (selling/warehouse). Team-level roles are legal because team_id
-  // carries use_scope.
+  // Write: only a SELLING team's managers manage suppliers (#107) — warehouse teams get read-only
+  // (list/detail) below. Team-level roles are legal because team_id carries use_scope.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_TEAM_ADMIN
     ]
   };
 
@@ -129,9 +127,7 @@ message SupplierUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_TEAM_ADMIN
     ]
   };
 
@@ -167,9 +163,7 @@ message SupplierDeleteRequest {
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_TEAM_ADMIN
     ]
   };
 

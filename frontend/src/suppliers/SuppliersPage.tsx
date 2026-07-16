@@ -17,6 +17,7 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import { rpcError, supplierClient } from "../api/clients";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
@@ -31,6 +32,8 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 export function SuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
+  // Only a selling team (and root/admin) manages suppliers; a warehouse team is read-only (#107).
+  const canManage = current?.teamType !== TeamType.WAREHOUSE;
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [q, setQ] = useState("");
@@ -100,7 +103,7 @@ export function SuppliersPage() {
         <Heading size="md">{t("suppliers.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <SupplierFormDialog onDone={() => void load()} />
+        {canManage && <SupplierFormDialog onDone={() => void load()} />}
       </Flex>
 
       <HStack>
@@ -132,7 +135,9 @@ export function SuppliersPage() {
               <Table.ColumnHeader>{t("suppliers.table.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("suppliers.table.contact")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("suppliers.table.city")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>
+              {canManage && (
+                <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>
+              )}
             </Table.Row>
           </Table.Header>
 
@@ -144,37 +149,39 @@ export function SuppliersPage() {
                 <Table.Cell>{supplier.contact}</Table.Cell>
                 <Table.Cell>{supplier.city}</Table.Cell>
 
-                <Table.Cell textAlign="end">
-                  <HStack justify="end" gap="1">
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      aria-label="Edit"
-                      data-testid={`edit-${supplier.code}`}
-                      onClick={() => setEditing(supplier)}
-                    >
-                      <Icon as={Pencil} boxSize="4" />
-                    </IconButton>
+                {canManage && (
+                  <Table.Cell textAlign="end">
+                    <HStack justify="end" gap="1">
+                      <IconButton
+                        size="xs"
+                        variant="ghost"
+                        aria-label="Edit"
+                        data-testid={`edit-${supplier.code}`}
+                        onClick={() => setEditing(supplier)}
+                      >
+                        <Icon as={Pencil} boxSize="4" />
+                      </IconButton>
 
-                    <ConfirmDialog
-                      title={t("suppliers.deleteSupplier")}
-                      message={t("suppliers.deleteConfirm", { name: supplier.name })}
-                      confirmLabel={t("suppliers.delete")}
-                      onConfirm={() => remove(supplier)}
-                      trigger={
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          colorPalette="red"
-                          aria-label="Delete"
-                          data-testid={`delete-${supplier.code}`}
-                        >
-                          <Icon as={Trash2} boxSize="4" />
-                        </IconButton>
-                      }
-                    />
-                  </HStack>
-                </Table.Cell>
+                      <ConfirmDialog
+                        title={t("suppliers.deleteSupplier")}
+                        message={t("suppliers.deleteConfirm", { name: supplier.name })}
+                        confirmLabel={t("suppliers.delete")}
+                        onConfirm={() => remove(supplier)}
+                        trigger={
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            colorPalette="red"
+                            aria-label="Delete"
+                            data-testid={`delete-${supplier.code}`}
+                          >
+                            <Icon as={Trash2} boxSize="4" />
+                          </IconButton>
+                        }
+                      />
+                    </HStack>
+                  </Table.Cell>
+                )}
               </Table.Row>
             ))}
           </Table.Body>

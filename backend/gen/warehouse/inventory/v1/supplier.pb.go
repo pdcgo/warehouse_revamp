@@ -750,7 +750,7 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\aaddress\x18\b \x01(\tR\aaddress\x12 \n" +
 	"\vdescription\x18\t \x01(\tR\vdescription\x12\x18\n" +
 	"\adeleted\x18\n" +
-	" \x01(\bR\adeleted\"\xbf\x02\n" +
+	" \x01(\bR\adeleted\"\xbd\x02\n" +
 	"\x15SupplierCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x1d\n" +
 	"\x04code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\x04code\x12\x1e\n" +
@@ -760,8 +760,9 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\bprovince\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18dR\bprovince\x12\x1b\n" +
 	"\x04city\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18dR\x04city\x12\"\n" +
 	"\aaddress\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\aaddress\x12*\n" +
-	"\vdescription\x18\b \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\vdescription:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"V\n" +
+	"\vdescription\x18\b \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\vdescription:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"V\n" +
 	"\x16SupplierCreateResponse\x12<\n" +
 	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"\x9f\x01\n" +
 	"\x13SupplierListRequest\x12$\n" +
@@ -780,7 +781,7 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"V\n" +
 	"\x16SupplierDetailResponse\x12<\n" +
-	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"\xdc\x03\n" +
+	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"\xda\x03\n" +
 	"\x15SupplierUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vsupplier_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
@@ -792,8 +793,9 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\bprovince\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18dH\x03R\bprovince\x88\x01\x01\x12 \n" +
 	"\x04city\x18\a \x01(\tB\a\xbaH\x04r\x02\x18dH\x04R\x04city\x88\x01\x01\x12'\n" +
 	"\aaddress\x18\b \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03H\x05R\aaddress\x88\x01\x01\x12/\n" +
-	"\vdescription\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03H\x06R\vdescription\x88\x01\x01:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\tB\a\n" +
+	"\vdescription\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03H\x06R\vdescription\x88\x01\x01:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04B\a\n" +
 	"\x05_codeB\a\n" +
 	"\x05_nameB\n" +
 	"\n" +
@@ -804,12 +806,13 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\b_addressB\x0e\n" +
 	"\f_description\"V\n" +
 	"\x16SupplierUpdateResponse\x12<\n" +
-	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"u\n" +
+	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"s\n" +
 	"\x15SupplierDeleteRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vsupplier_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
-	"supplierId:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"\x18\n" +
+	"supplierId:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"\x18\n" +
 	"\x16SupplierDeleteResponse2\xc0\x04\n" +
 	"\x0fSupplierService\x12o\n" +
 	"\x0eSupplierCreate\x12-.warehouse.inventory.v1.SupplierCreateRequest\x1a..warehouse.inventory.v1.SupplierCreateResponse\x12i\n" +
