@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Ban, Check } from "lucide-react";
 import { orderClient, rpcError } from "../api/clients";
 import type { Order } from "../gen/warehouse/selling/v1/order_pb";
+import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { toaster } from "../components/Toaster";
 import { formatRupiah } from "../lib/money";
 
 function parseOrderId(raw: string | undefined): bigint {
@@ -44,6 +47,7 @@ export function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [acting, setActing] = useState(false);
 
   const load = useCallback(async () => {
     if (teamId === undefined || id === 0n) {
@@ -69,6 +73,37 @@ export function OrderDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Confirm is a forward, non-destructive move (PLACED -> CONFIRMED), so it runs on a direct click.
+  async function confirmOrder() {
+    if (teamId === undefined || !order) return;
+
+    setActing(true);
+
+    try {
+      const res = await orderClient.orderConfirm({ teamId, orderId: order.id });
+      setOrder(res.order ?? order);
+      toaster.create({ type: "success", title: "Order confirmed" });
+    } catch (err) {
+      toaster.create({ type: "error", title: rpcError(err) });
+    } finally {
+      setActing(false);
+    }
+  }
+
+  // Cancel is terminal, so it goes through the ConfirmDialog. On error we surface a toast and let the
+  // dialog close; the status simply stays as it was.
+  async function cancelOrder() {
+    if (teamId === undefined || !order) return;
+
+    try {
+      const res = await orderClient.orderCancel({ teamId, orderId: order.id });
+      setOrder(res.order ?? order);
+      toaster.create({ type: "success", title: "Order cancelled" });
+    } catch (err) {
+      toaster.create({ type: "error", title: rpcError(err) });
+    }
+  }
 
   if (!current) {
     return (
@@ -124,6 +159,33 @@ export function OrderDetailPage() {
         </Heading>
         <OrderStatusBadge status={order.status} />
         <Spacer />
+
+        {order.status === OrderStatus.PLACED && (
+          <Button
+            colorPalette="brand"
+            loading={acting}
+            data-testid="order-confirm"
+            onClick={() => void confirmOrder()}
+          >
+            <Icon as={Check} boxSize="4" />
+            Confirm
+          </Button>
+        )}
+
+        {(order.status === OrderStatus.PLACED || order.status === OrderStatus.CONFIRMED) && (
+          <ConfirmDialog
+            title="Cancel Order"
+            message={`Cancel order #${order.id.toString()}? This can't be undone.`}
+            confirmLabel="Cancel Order"
+            onConfirm={cancelOrder}
+            trigger={
+              <Button variant="outline" colorPalette="red" data-testid="order-cancel">
+                <Icon as={Ban} boxSize="4" />
+                Cancel
+              </Button>
+            }
+          />
+        )}
       </Flex>
 
       <Card.Root>

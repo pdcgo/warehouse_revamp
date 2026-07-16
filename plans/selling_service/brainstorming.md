@@ -121,6 +121,22 @@ The status model is the spine of the order service. The forward path is roughly
 Until §1 is designed, we can only fix the selling-side ends (`placed`, `confirmed`, `cancel`) and
 leave the fulfillment states as a marked gap.
 
+> **Implemented — the selling-side ends (#91).** `OrderConfirm` (PLACED→CONFIRMED) and `OrderCancel`
+> (PLACED or CONFIRMED→CANCELLED, terminal) are built, with the row locked FOR UPDATE so a concurrent
+> confirm/cancel can't race, and illegal moves rejected as `FailedPrecondition`. **No stock/money is
+> reversed on cancel** — that is #70, once stock integration (#69) lands. The `picking→packed→shipped`
+> fulfillment states are still absent, pending §1.
+>
+> ```mermaid
+> stateDiagram-v2
+>     [*] --> PLACED: OrderCreate
+>     PLACED --> CONFIRMED: OrderConfirm
+>     PLACED --> CANCELLED: OrderCancel
+>     CONFIRMED --> CANCELLED: OrderCancel
+>     CONFIRMED --> fulfillment: (§1 — undesigned)
+>     CANCELLED --> [*]
+> ```
+
 ### 3.3 When does an order take stock?
 Three honest options, and it ties to the reservation question already open in
 [plans/plan.md §4.4](../plan.md):

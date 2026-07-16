@@ -671,6 +671,202 @@ func (x *OrderDetailResponse) GetOrder() *Order {
 	return nil
 }
 
+// OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
+// managers and customer service.
+type OrderConfirmRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId       uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderConfirmRequest) Reset() {
+	*x = OrderConfirmRequest{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderConfirmRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderConfirmRequest) ProtoMessage() {}
+
+func (x *OrderConfirmRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderConfirmRequest.ProtoReflect.Descriptor instead.
+func (*OrderConfirmRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *OrderConfirmRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderConfirmRequest) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+type OrderConfirmResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *Order                 `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderConfirmResponse) Reset() {
+	*x = OrderConfirmResponse{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderConfirmResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderConfirmResponse) ProtoMessage() {}
+
+func (x *OrderConfirmResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderConfirmResponse.ProtoReflect.Descriptor instead.
+func (*OrderConfirmResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *OrderConfirmResponse) GetOrder() *Order {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
+// OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
+// cancelled order is rejected. Selling-side only — no stock/money is reversed yet (that is #70).
+type OrderCancelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId       uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderCancelRequest) Reset() {
+	*x = OrderCancelRequest{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderCancelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderCancelRequest) ProtoMessage() {}
+
+func (x *OrderCancelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderCancelRequest.ProtoReflect.Descriptor instead.
+func (*OrderCancelRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *OrderCancelRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderCancelRequest) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+type OrderCancelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *Order                 `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderCancelResponse) Reset() {
+	*x = OrderCancelResponse{}
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderCancelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderCancelResponse) ProtoMessage() {}
+
+func (x *OrderCancelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderCancelResponse.ProtoReflect.Descriptor instead.
+func (*OrderCancelResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *OrderCancelResponse) GetOrder() *Order {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
 var File_warehouse_selling_v1_order_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_proto_rawDesc = "" +
@@ -729,16 +925,30 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"H\n" +
 	"\x13OrderDetailResponse\x121\n" +
+	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"l\n" +
+	"\x13OrderConfirmRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
+	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"I\n" +
+	"\x14OrderConfirmResponse\x121\n" +
+	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"k\n" +
+	"\x12OrderCancelRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
+	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"H\n" +
+	"\x13OrderCancelResponse\x121\n" +
 	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order*|\n" +
 	"\vOrderStatus\x12\x1c\n" +
 	"\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ORDER_STATUS_PLACED\x10\x01\x12\x1a\n" +
 	"\x16ORDER_STATUS_CONFIRMED\x10\x02\x12\x1a\n" +
-	"\x16ORDER_STATUS_CANCELLED\x10\x032\xb4\x02\n" +
+	"\x16ORDER_STATUS_CANCELLED\x10\x032\xff\x03\n" +
 	"\fOrderService\x12b\n" +
 	"\vOrderCreate\x12(.warehouse.selling.v1.OrderCreateRequest\x1a).warehouse.selling.v1.OrderCreateResponse\x12\\\n" +
 	"\tOrderList\x12&.warehouse.selling.v1.OrderListRequest\x1a'.warehouse.selling.v1.OrderListResponse\x12b\n" +
-	"\vOrderDetail\x12(.warehouse.selling.v1.OrderDetailRequest\x1a).warehouse.selling.v1.OrderDetailResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\vOrderDetail\x12(.warehouse.selling.v1.OrderDetailRequest\x1a).warehouse.selling.v1.OrderDetailResponse\x12e\n" +
+	"\fOrderConfirm\x12).warehouse.selling.v1.OrderConfirmRequest\x1a*.warehouse.selling.v1.OrderConfirmResponse\x12b\n" +
+	"\vOrderCancel\x12(.warehouse.selling.v1.OrderCancelRequest\x1a).warehouse.selling.v1.OrderCancelResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_proto_rawDescOnce sync.Once
@@ -753,40 +963,50 @@ func file_warehouse_selling_v1_order_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_selling_v1_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_warehouse_selling_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_warehouse_selling_v1_order_proto_goTypes = []any{
-	(OrderStatus)(0),            // 0: warehouse.selling.v1.OrderStatus
-	(*OrderItem)(nil),           // 1: warehouse.selling.v1.OrderItem
-	(*Order)(nil),               // 2: warehouse.selling.v1.Order
-	(*OrderCreateRequest)(nil),  // 3: warehouse.selling.v1.OrderCreateRequest
-	(*OrderCreateResponse)(nil), // 4: warehouse.selling.v1.OrderCreateResponse
-	(*OrderListRequest)(nil),    // 5: warehouse.selling.v1.OrderListRequest
-	(*OrderListResponse)(nil),   // 6: warehouse.selling.v1.OrderListResponse
-	(*OrderDetailRequest)(nil),  // 7: warehouse.selling.v1.OrderDetailRequest
-	(*OrderDetailResponse)(nil), // 8: warehouse.selling.v1.OrderDetailResponse
-	(*v1.PageFilter)(nil),       // 9: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),         // 10: warehouse.common.v1.PageInfo
+	(OrderStatus)(0),             // 0: warehouse.selling.v1.OrderStatus
+	(*OrderItem)(nil),            // 1: warehouse.selling.v1.OrderItem
+	(*Order)(nil),                // 2: warehouse.selling.v1.Order
+	(*OrderCreateRequest)(nil),   // 3: warehouse.selling.v1.OrderCreateRequest
+	(*OrderCreateResponse)(nil),  // 4: warehouse.selling.v1.OrderCreateResponse
+	(*OrderListRequest)(nil),     // 5: warehouse.selling.v1.OrderListRequest
+	(*OrderListResponse)(nil),    // 6: warehouse.selling.v1.OrderListResponse
+	(*OrderDetailRequest)(nil),   // 7: warehouse.selling.v1.OrderDetailRequest
+	(*OrderDetailResponse)(nil),  // 8: warehouse.selling.v1.OrderDetailResponse
+	(*OrderConfirmRequest)(nil),  // 9: warehouse.selling.v1.OrderConfirmRequest
+	(*OrderConfirmResponse)(nil), // 10: warehouse.selling.v1.OrderConfirmResponse
+	(*OrderCancelRequest)(nil),   // 11: warehouse.selling.v1.OrderCancelRequest
+	(*OrderCancelResponse)(nil),  // 12: warehouse.selling.v1.OrderCancelResponse
+	(*v1.PageFilter)(nil),        // 13: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),          // 14: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_order_proto_depIdxs = []int32{
 	0,  // 0: warehouse.selling.v1.Order.status:type_name -> warehouse.selling.v1.OrderStatus
 	1,  // 1: warehouse.selling.v1.Order.items:type_name -> warehouse.selling.v1.OrderItem
 	1,  // 2: warehouse.selling.v1.OrderCreateRequest.items:type_name -> warehouse.selling.v1.OrderItem
 	2,  // 3: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
-	9,  // 4: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	13, // 4: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	2,  // 5: warehouse.selling.v1.OrderListResponse.orders:type_name -> warehouse.selling.v1.Order
-	10, // 6: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	14, // 6: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	2,  // 7: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 8: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
-	5,  // 9: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
-	7,  // 10: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
-	4,  // 11: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
-	6,  // 12: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
-	8,  // 13: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 8: warehouse.selling.v1.OrderConfirmResponse.order:type_name -> warehouse.selling.v1.Order
+	2,  // 9: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 10: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
+	5,  // 11: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
+	7,  // 12: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
+	9,  // 13: warehouse.selling.v1.OrderService.OrderConfirm:input_type -> warehouse.selling.v1.OrderConfirmRequest
+	11, // 14: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
+	4,  // 15: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
+	6,  // 16: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
+	8,  // 17: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
+	10, // 18: warehouse.selling.v1.OrderService.OrderConfirm:output_type -> warehouse.selling.v1.OrderConfirmResponse
+	12, // 19: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
+	15, // [15:20] is the sub-list for method output_type
+	10, // [10:15] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_proto_init() }
@@ -800,7 +1020,7 @@ func file_warehouse_selling_v1_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_proto_rawDesc), len(file_warehouse_selling_v1_order_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

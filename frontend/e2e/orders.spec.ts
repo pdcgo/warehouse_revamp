@@ -31,6 +31,20 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
+// Places one order through the form (reusing the setup shop + product) and lands on its detail page.
+async function placeOrderViaForm(page: Page, customer: string) {
+  await page.goto("/orders/new");
+  await expect(page.getByTestId("order-create-page")).toBeVisible();
+  await page.getByTestId("order-create-customer-name").fill(customer);
+  await page.getByTestId("shop-select").selectOption({ label: `${SHOP_NAME} · Shopee` });
+  await page.getByTestId("product-select").locator("input").fill(SKU);
+  await page.getByTestId(`product-select-option-${SKU}`).click();
+  await page.getByTestId("order-line-qty-0").fill("1");
+  await page.getByTestId("order-line-price-0").fill("10000");
+  await page.getByTestId("order-create-save").click();
+  await expect(page.getByTestId("order-detail-page")).toBeVisible();
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("Orders: the orders screen is reachable and starts empty", async ({ page }) => {
@@ -123,4 +137,28 @@ test("Create: place an order through the form; money computes; the detail opens"
   await page.getByTestId("order-detail-back").click();
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId("orders-table")).toContainText(CUSTOMER);
+});
+
+test("Lifecycle: confirm then cancel from the detail page (#91)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await placeOrderViaForm(page, `${CUSTOMER} lifecycle`);
+  const detail = page.getByTestId("order-detail-page");
+
+  // A fresh order is PLACED and offers both actions.
+  await expect(detail).toContainText("Placed");
+  await expect(page.getByTestId("order-confirm")).toBeVisible();
+  await expect(page.getByTestId("order-cancel")).toBeVisible();
+
+  // Confirm -> CONFIRMED: the confirm action goes away, cancel remains.
+  await page.getByTestId("order-confirm").click();
+  await expect(detail).toContainText("Confirmed");
+  await expect(page.getByTestId("order-confirm")).toBeHidden();
+  await expect(page.getByTestId("order-cancel")).toBeVisible();
+
+  // Cancel goes through the confirm dialog (destructive) -> CANCELLED, a terminal state with no actions.
+  await page.getByTestId("order-cancel").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(detail).toContainText("Cancelled");
+  await expect(page.getByTestId("order-confirm")).toBeHidden();
+  await expect(page.getByTestId("order-cancel")).toBeHidden();
 });

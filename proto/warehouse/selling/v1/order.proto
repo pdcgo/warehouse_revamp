@@ -16,6 +16,12 @@ service OrderService {
   rpc OrderCreate(OrderCreateRequest) returns (OrderCreateResponse);
   rpc OrderList(OrderListRequest) returns (OrderListResponse);
   rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
+
+  // Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
+  // CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
+  // stock + money reversal once stock integration (#69) lands.
+  rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
+  rpc OrderCancel(OrderCancelRequest) returns (OrderCancelResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -151,5 +157,53 @@ message OrderDetailRequest {
 }
 
 message OrderDetailResponse {
+  Order order = 1;
+}
+
+// OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
+// managers and customer service.
+message OrderConfirmRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderConfirmResponse {
+  Order order = 1;
+}
+
+// OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
+// cancelled order is rejected. Selling-side only — no stock/money is reversed yet (that is #70).
+message OrderCancelRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderCancelResponse {
   Order order = 1;
 }
