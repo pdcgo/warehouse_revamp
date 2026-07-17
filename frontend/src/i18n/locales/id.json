@@ -39,7 +39,8 @@
     "title": "Pilih Produk",
     "selected": "{{n}} dipilih",
     "clear": "Kosongkan",
-    "noTeam": "Pilih tim untuk menjelajahi katalognya."
+    "noTeam": "Pilih tim untuk menjelajahi katalognya.",
+    "noTeamAll": "Pilih tim untuk menemukan produk."
   },
   "discover": {
     "title": "Temukan Produk",

@@ -8,27 +8,38 @@ import {
   Flex,
   Input,
   Portal,
-  Span,
   Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { productClient, rpcError } from "../api/clients";
+import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
+import { useTeam } from "../team/TeamContext";
 import { Pagination } from "./Pagination";
+import { ProductListItem } from "./ProductListItem";
 import type { PickedProduct } from "./ProductSelect";
 
 // PageFilter.limit is validated 1..200 — a dialog page stays small so the list never scrolls far.
 const PAGE_SIZE = 10;
 
+// StockList is not filterable by product, so the warehouse's levels are pulled up-front and joined
+// client-side. 200 is the proto's max limit; we page up to STOCK_MAX_PAGES of them, so a warehouse
+// with more than 1000 stocked lines shows no badge for the overflow (unknown renders nothing —
+// never a wrong "out of stock").
+const STOCK_PAGE_LIMIT = 200;
+const STOCK_MAX_PAGES = 5;
+
 export interface ProductPickerProps {
-  /** The caller's team. In "team" scope it's the catalogue browsed; in "all" scope it only
-   * authorizes the request (results are cross-team). */
-  teamId: bigint;
-  /** "team" (default) browses this team's catalogue (ProductList); "all" discovers products across
-   * ALL teams (ProductDiscover, #110). */
-  scope?: "team" | "all";
+  /** Which catalogue to browse. SET → only that team's products (ProductList). UNSET → products
+   * from ALL teams (ProductDiscover, authorized with the CURRENT team). A caller that means "this
+   * team, none selected yet" passes 0n and gets the no-team state — undefined is "all teams", so
+   * a missing team must not silently widen the browse. */
+  teamId?: bigint;
+  /** Show ready stock from THIS warehouse. Stock is per-warehouse (inventory_service owns it), so
+   * there is no "total stock" to show and `teamId` cannot stand in for one — a selling team is not
+   * a warehouse. Omit it and no stock is shown. */
+  stockWarehouseId?: bigint;
   /** The ticked product ids. Re-seeds the draft every time the dialog opens. */
   value: bigint[];
   /** Applied on Confirm with the WHOLE ticked set. An empty array means "cleared" — a legitimate
@@ -44,17 +55,18 @@ export interface ProductPickerProps {
 // search — for picking several products at once. Ticks are DRAFT state: seeded from `value` on open,
 // applied by Confirm, discarded by Cancel/Esc/close.
 export const description =
-  "Multi-select product picker in a dialog (#110): searchable, paginated, checkbox per row. Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery).";
+  "Multi-select product picker in a dialog (#110): searchable, paginated, one ProductListItem per row with a checkbox. `teamId` set browses that team's catalogue; unset discovers products across ALL teams. `stockWarehouseId` adds each product's ready stock from that warehouse. Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot.";
 
 export function ProductPicker({
   teamId,
-  scope = "team",
+  stockWarehouseId,
   value,
   onChange,
   disabled,
   trigger,
 }: ProductPickerProps) {
   const { t } = useTranslation();
+  const { current } = useTeam();
 
   const [open, setOpen] = useState(false);
 
@@ -76,6 +88,22 @@ export function ProductPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // productId -> on-hand at `stockWarehouseId`. A MAP, not a lookup on the product: 0n is falsy, so
+  // "has the id" is the only way to tell a real zero (→ "Out of stock") from unknown (→ no badge).
+  const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
+
+  // teamId -> name, for the row badge. Batched per page (TeamByIds), never per row.
+  const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
+
+  // `teamId` IS the scope: set browses one catalogue, unset discovers across all teams. Discovery
+  // still needs a team on the request — ProductDiscover's team_id is an AUTHORIZATION scope
+  // (use_scope), not a filter, so it does not narrow the results; it only says who is asking.
+  const browseAll = teamId === undefined;
+  const scopeTeamId = browseAll ? (current?.teamId ?? 0n) : teamId;
+
+  // No team to authorize with — degrade to the no-team state rather than calling with 0.
+  const noTeam = scopeTeamId <= 0n;
+
   // Read inside effects WITHOUT making them dependencies: `value` is typically an inline `.map()` (a
   // fresh array identity every render) and `known` grows as pages load — depending on either would
   // re-seed or re-resolve in the middle of an edit.
@@ -83,17 +111,17 @@ export function ProductPicker({
   valueRef.current = value;
   const knownRef = useRef(known);
   knownRef.current = known;
+  const teamNamesRef = useRef(teamNames);
+  teamNamesRef.current = teamNames;
 
   // The in-flight on-open resolve, so confirm() can wait for it instead of emitting blanks.
   const resolveRef = useRef<Promise<PickedProduct[]> | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  const noTeam = teamId <= 0n;
-
   // A seeded id has no sku/name until its product is loaded. Resolve the missing ones on open, so a
   // selection the user never scrolls to still Confirms with a real snapshot instead of a blank one.
-  // ProductDetail is team-scoped: in "all" scope a CROSS-team id cannot resolve, and that tick stays
-  // id-only (preserved — never dropped; see confirm()).
+  // ProductDetail is team-scoped: browsing ALL teams, a CROSS-team id cannot resolve, and that tick
+  // stays id-only (preserved — never dropped; see confirm()).
   //
   // The promise is kept so confirm() can AWAIT it. Confirm is live from the first frame, and a click
   // landing inside this window used to read the not-yet-populated `known` and emit {sku:"", name:""}
@@ -120,11 +148,11 @@ export function ProductPicker({
       const found = await Promise.all(
         missing.map(async (productId) => {
           try {
-            const res = await productClient.productDetail({ teamId, productId });
+            const res = await productClient.productDetail({ teamId: scopeTeamId, productId });
             const p = res.product;
             return p ? { id: p.id, sku: p.sku, name: p.name } : null;
           } catch {
-            // Cross-team in "all" scope, or deleted. The tick survives; only its label is unknown.
+            // Cross-team while browsing all, or deleted. The tick survives; only its label is unknown.
             return null;
           }
         }),
@@ -155,7 +183,7 @@ export function ProductPicker({
     return () => {
       cancelled = true;
     };
-  }, [open, teamId, noTeam]);
+  }, [open, scopeTeamId, noTeam]);
 
   // Server-side search, debounced, >= 2 characters — mirroring ProductSelect. Below the threshold the
   // term is dropped rather than sent, so the dialog falls back to BROWSING the catalogue (q: "")
@@ -189,11 +217,10 @@ export function ProductPicker({
 
     void (async () => {
       try {
-        const req = { teamId, q, page: { page, limit: PAGE_SIZE } };
-        const res =
-          scope === "all"
-            ? await productClient.productDiscover(req)
-            : await productClient.productList(req);
+        const req = { teamId: scopeTeamId, q, page: { page, limit: PAGE_SIZE } };
+        const res = browseAll
+          ? await productClient.productDiscover(req)
+          : await productClient.productList(req);
 
         if (cancelled) {
           return;
@@ -226,7 +253,116 @@ export function ProductPicker({
     return () => {
       cancelled = true;
     };
-  }, [open, teamId, noTeam, scope, q, page]);
+  }, [open, scopeTeamId, noTeam, browseAll, q, page]);
+
+  // Ready stock, loaded ONCE PER OPEN — not per row (that would be an N+1 across the page) and not
+  // per page (the levels are the whole warehouse; paging the product list doesn't change them).
+  // StockList has no product filter, so the join is client-side.
+  useEffect(() => {
+    if (stockWarehouseId === undefined || stockWarehouseId <= 0n) {
+      // No warehouse → no stock. Drop any levels a PREVIOUS warehouse left behind, so a caller that
+      // turns stock off can never keep showing the old one's numbers. Returning `prev` unchanged
+      // when it's already empty keeps the identity, so React bails out instead of re-rendering.
+      setOnHand((prev) => (prev.size === 0 ? prev : new Map()));
+
+      return;
+    }
+
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const levels = new Map<string, bigint>();
+
+      try {
+        for (let p = 1; p <= STOCK_MAX_PAGES; p++) {
+          const res = await inventoryClient.stockList({
+            warehouseId: stockWarehouseId,
+            page: { page: p, limit: STOCK_PAGE_LIMIT },
+          });
+
+          if (cancelled) {
+            return;
+          }
+
+          for (const level of res.levels) {
+            levels.set(level.productId.toString(), level.onHand);
+          }
+
+          // A short page is the last one.
+          if (res.levels.length < STOCK_PAGE_LIMIT) {
+            break;
+          }
+        }
+      } catch {
+        // Stock is DECORATION here — the job of this dialog is picking products. A stock read that
+        // fails (or that the caller lacks the warehouse role for) must not take the picker down;
+        // whatever landed is kept and the rest simply shows no badge.
+      }
+
+      if (!cancelled) {
+        setOnHand(levels);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, stockWarehouseId]);
+
+  // The owning team's NAME for the row badge. Browsing all teams, a page's rows come from many teams,
+  // so this resolves the page's ids in ONE batch and caches them for the component's life — paging
+  // back costs nothing. It deliberately does NOT gate `loading`: rows render immediately with
+  // ProductListItem's "Team #<id>" fallback and upgrade in place when the names land.
+  useEffect(() => {
+    if (products.length === 0) {
+      return;
+    }
+
+    // Unique, non-zero, not already known. TeamByIds requires min_items:1 and unique ids, so an
+    // empty set must not become a call.
+    const missing = [
+      ...new Set(
+        products
+          .map((p) => p.teamId)
+          .filter((id) => id > 0n && !teamNamesRef.current.has(id.toString())),
+      ),
+    ];
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await teamClient.teamByIds({ ids: missing });
+
+        if (cancelled) {
+          return;
+        }
+
+        setTeamNames((prev) => {
+          const next = new Map(prev);
+          for (const [id, team] of Object.entries(res.data)) {
+            next.set(id, team.name);
+          }
+
+          return next;
+        });
+      } catch {
+        // A name is decoration: ProductListItem falls back to "Team #<id>".
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
 
   // Opening re-seeds the draft from `value` and resets the browse — so a draft discarded by Cancel
   // never leaks into the next open.
@@ -349,7 +485,7 @@ export function ProductPicker({
 
                 {noTeam ? (
                   <Text color="fg.muted" data-testid="product-picker-no-team">
-                    {t("productPicker.noTeam")}
+                    {browseAll ? t("productPicker.noTeamAll") : t("productPicker.noTeam")}
                   </Text>
                 ) : (
                   <>
@@ -368,26 +504,35 @@ export function ProductPicker({
                     )}
 
                     {!loading && !error && products.length > 0 && (
-                      <Stack gap="2" data-testid="product-picker-list">
-                        {products.map((p) => (
-                          <Checkbox.Root
-                            key={p.id.toString()}
-                            checked={ticked.has(p.id.toString())}
-                            onCheckedChange={(e) => toggle(p.id, !!e.checked)}
-                            data-testid={`product-picker-option-${p.id}`}
-                          >
-                            <Checkbox.HiddenInput />
-                            <Checkbox.Control />
-                            <Checkbox.Label>
-                              <Stack gap="0">
-                                <Span fontWeight="medium">{p.sku}</Span>
-                                <Span fontSize="xs" color="fg.muted">
-                                  {p.name}
-                                </Span>
-                              </Stack>
-                            </Checkbox.Label>
-                          </Checkbox.Root>
-                        ))}
+                      <Stack gap="1" data-testid="product-picker-list">
+                        {products.map((p) => {
+                          const key = p.id.toString();
+
+                          return (
+                            <Checkbox.Root
+                              key={key}
+                              checked={ticked.has(key)}
+                              onCheckedChange={(e) => toggle(p.id, !!e.checked)}
+                              data-testid={`product-picker-option-${p.id}`}
+                              w="full"
+                              px="2"
+                              py="1"
+                              borderRadius="md"
+                              cursor="pointer"
+                              _hover={{ bg: "bg.subtle" }}
+                            >
+                              {/* Checkbox.Root is the row's <label>, so the WHOLE row toggles; the
+                                  Control rides in ProductListItem's trailing action slot. */}
+                              <Checkbox.HiddenInput />
+                              <ProductListItem
+                                product={p}
+                                stock={onHand.has(key) ? onHand.get(key) : undefined}
+                                teamName={teamNames.get(p.teamId.toString())}
+                                action={<Checkbox.Control />}
+                              />
+                            </Checkbox.Root>
+                          );
+                        })}
                       </Stack>
                     )}
 
@@ -410,9 +555,9 @@ export function ProductPicker({
               </Dialog.ActionTrigger>
 
               {/* Never disabled by `count` — confirming zero ticks is how a selection gets cleared.
-                  `loading` is the ONLY thing that ever blocks it, and only while the on-open resolve
-                  lands: that always settles, so it cannot become the dead end this component was
-                  rolled back for once already. */}
+                  `confirming` only shows a spinner while the on-open resolve lands: that always
+                  settles, so it cannot become the dead end this component was rolled back for once
+                  already. */}
               <Button
                 colorPalette="brand"
                 onClick={() => void confirm()}

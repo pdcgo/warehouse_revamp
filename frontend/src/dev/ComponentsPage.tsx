@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
+import { Button, Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
 // Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
 // them here so it is documentation generated from the components themselves, not a parallel list
 // that can drift.
@@ -299,19 +299,44 @@ function ProductSelectDemo() {
 }
 
 function ProductPickerDemo() {
-  const [picked, setPicked] = useState<PickedProduct[]>([]);
+  const [scoped, setScoped] = useState<PickedProduct[]>([]);
+  const [all, setAll] = useState<PickedProduct[]>([]);
   const { current } = useTeam();
+
+  // Stock is per WAREHOUSE, so it can only be shown when the current team IS one — a selling team
+  // has no stock of its own to show.
+  const warehouseId = current?.teamType === TeamType.WAREHOUSE ? current.teamId : undefined;
+
+  const summary = (picked: PickedProduct[]) =>
+    picked.length > 0 ? picked.map((p) => p.sku || `#${p.id}`).join(", ") : "(none)";
 
   return (
     <>
+      {/* `teamId` SET → only this team's catalogue. Passing 0n (not undefined) when there is no
+          current team is deliberate: undefined would mean "all teams". */}
       <ProductPicker
         teamId={current?.teamId ?? 0n}
-        value={picked.map((p) => p.id)}
-        onChange={setPicked}
+        stockWarehouseId={warehouseId}
+        value={scoped.map((p) => p.id)}
+        onChange={setScoped}
+        trigger={<Button variant="outline">Select products (this team)</Button>}
       />
       <Text fontSize="xs" color="fg.muted">
-        Picked: {picked.length > 0 ? picked.map((p) => p.sku || `#${p.id}`).join(", ") : "(none)"}
+        This team: {summary(scoped)}
         {current ? "" : " — select a team to browse its catalogue"}
+        {warehouseId ? " · showing stock (this team is a warehouse)" : " · no stock (not a warehouse)"}
+      </Text>
+
+      {/* `teamId` UNSET → products from every team. The current team still rides along inside the
+          picker to AUTHORIZE the discover call; it does not filter the results. */}
+      <ProductPicker
+        value={all.map((p) => p.id)}
+        onChange={setAll}
+        trigger={<Button variant="outline">Select products (all teams)</Button>}
+      />
+      <Text fontSize="xs" color="fg.muted">
+        All teams: {summary(all)}
+        {current ? "" : " — select a team to authorize discovery"}
       </Text>
     </>
   );

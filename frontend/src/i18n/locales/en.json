@@ -39,7 +39,8 @@
     "title": "Select Products",
     "selected": "{{n}} selected",
     "clear": "Clear",
-    "noTeam": "Select a team to browse its catalogue."
+    "noTeam": "Select a team to browse its catalogue.",
+    "noTeamAll": "Select a team to discover products."
   },
   "discover": {
     "title": "Discover Products",
