@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -20,10 +19,11 @@ import {
 import { ArrowLeft, Ban, PackageCheck } from "lucide-react";
 import { restockClient, rpcError, supplierClient } from "../api/clients";
 import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockPaymentType, RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
+import { paymentTypeLabel } from "../components/PaymentTypeSelect";
 import { ShippingBadge } from "../components/ShippingBadge";
 import { toaster } from "../components/Toaster";
 import { formatRupiah } from "../lib/money";
@@ -51,19 +51,6 @@ function Field({ label, value, testId }: { label: string; value: ReactNode; test
       </Text>
     </Stack>
   );
-}
-
-// The payment type (#127) as a label. UNSPECIFIED returns "" so Field renders the same muted "—" as
-// every other unrecorded field — it means "not recorded", not "a third kind of payment".
-function paymentLabel(t: TFunction, type: RestockPaymentType): string {
-  switch (type) {
-    case RestockPaymentType.SHOPEE_PAY:
-      return t("restock.form.paymentShopeePay");
-    case RestockPaymentType.BANK_ACCOUNT:
-      return t("restock.form.paymentBankAccount");
-    default:
-      return "";
-  }
 }
 
 // A line's money: whole rupiah per unit × quantity. Both are bigint, so this never loses precision.
@@ -326,7 +313,7 @@ export function RestockRequestDetailPage() {
               />
               <Field
                 label={t("restock.form.paymentType")}
-                value={paymentLabel(t, request.paymentType)}
+                value={paymentTypeLabel(t, request.paymentType)}
                 testId="restock-detail-payment-type"
               />
             </SimpleGrid>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Card, Flex, Heading, Link, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 // Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
 // them here so it is documentation generated from the components themselves, not a parallel list
@@ -25,6 +26,11 @@ import {
   description as marketplaceSelectDescription,
 } from "../components/MarketplaceSelect";
 import { MarketplaceBadge, description as marketplaceBadgeDescription } from "../components/MarketplaceBadge";
+import {
+  PaymentTypeSelect,
+  paymentTypeLabel,
+  description as paymentTypeSelectDescription,
+} from "../components/PaymentTypeSelect";
 import { ShippingBadge, description as shippingBadgeDescription } from "../components/ShippingBadge";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../components/OrderStatusBadge";
 import {
@@ -47,7 +53,7 @@ import {
 } from "../components/AddressPicker";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
-import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockPaymentType, RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 
 // Each shared component is one entry: a stable id (also the scroll anchor), a title, a description,
@@ -245,6 +251,22 @@ function MarketplaceDemo() {
       <MarketplaceSelect value={m} onChange={setM} />
       <Text fontSize="xs" color="fg.muted">
         Selected: {m ? marketplaceLabel(m) : "(none)"}
+      </Text>
+    </>
+  );
+}
+
+// Unlike the other label helpers, paymentTypeLabel takes `t` — these labels are translated, so the
+// demo resolves them through the gallery's own translator.
+function PaymentTypeDemo() {
+  const { t } = useTranslation();
+  const [type, setType] = useState<RestockPaymentType>(RestockPaymentType.UNSPECIFIED);
+
+  return (
+    <>
+      <PaymentTypeSelect value={type} onChange={setType} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected: {paymentTypeLabel(t, type) || "(not recorded)"}
       </Text>
     </>
   );
@@ -515,6 +537,12 @@ const ENTRIES: Entry[] = [
     title: "MarketplaceSelect",
     description: marketplaceSelectDescription,
     render: () => <MarketplaceDemo />,
+  },
+  {
+    id: "payment-type-select",
+    title: "PaymentTypeSelect",
+    description: paymentTypeSelectDescription,
+    render: () => <PaymentTypeDemo />,
   },
   {
     id: "marketplace-badge",

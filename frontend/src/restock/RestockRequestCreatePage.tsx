@@ -13,7 +13,6 @@ import {
   Icon,
   IconButton,
   Input,
-  NativeSelect,
   Separator,
   SimpleGrid,
   Stack,
@@ -30,6 +29,7 @@ import { ProductSelect } from "../components/ProductSelect";
 import type { PickedProduct } from "../components/ProductSelect";
 import { ProductListItem } from "../components/ProductListItem";
 import { SupplierSelect } from "../components/SupplierSelect";
+import { PaymentTypeSelect } from "../components/PaymentTypeSelect";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { formatRupiah } from "../lib/money";
 import { toaster } from "../components/Toaster";
@@ -436,35 +436,9 @@ export function RestockRequestCreatePage() {
                       <Field.HelperText>{t("restock.form.supplierHelp")}</Field.HelperText>
                     </Field.Root>
 
-                    {/* UNSPECIFIED is a legitimate value here ("not recorded"), so — unlike the
-                        pickers — the empty option stays selectable rather than being a disabled
-                        placeholder. */}
                     <Field.Root>
                       <Field.Label>{t("restock.form.paymentType")}</Field.Label>
-                      <NativeSelect.Root>
-                        <NativeSelect.Field
-                          data-testid="restock-payment-type"
-                          value={
-                            paymentType === RestockPaymentType.UNSPECIFIED ? "" : String(paymentType)
-                          }
-                          onChange={(e) =>
-                            setPaymentType(
-                              e.target.value
-                                ? (Number(e.target.value) as RestockPaymentType)
-                                : RestockPaymentType.UNSPECIFIED,
-                            )
-                          }
-                        >
-                          <option value="">{t("restock.form.paymentTypeNone")}</option>
-                          <option value={String(RestockPaymentType.SHOPEE_PAY)}>
-                            {t("restock.form.paymentShopeePay")}
-                          </option>
-                          <option value={String(RestockPaymentType.BANK_ACCOUNT)}>
-                            {t("restock.form.paymentBankAccount")}
-                          </option>
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
+                      <PaymentTypeSelect value={paymentType} onChange={setPaymentType} />
                       <Field.HelperText>{t("restock.form.paymentTypeHelp")}</Field.HelperText>
                     </Field.Root>
                   </Stack>
