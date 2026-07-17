@@ -145,16 +145,45 @@ function TeamTypeDemo() {
   );
 }
 
+// Three examples, because `teamType` is the whole point of this picker (#111): unfiltered, and
+// narrowed to each of the two team types you actually pick between.
 function TeamSelectDemo() {
-  const [id, setId] = useState(0n);
+  const [all, setAll] = useState(0n);
+  const [warehouse, setWarehouse] = useState(0n);
+  const [selling, setSelling] = useState(0n);
 
   return (
-    <>
-      <TeamSelect value={id || undefined} onChange={setId} />
-      <Text fontSize="xs" color="fg.muted">
-        Selected team id: {id.toString()}
-      </Text>
-    </>
+    <Stack gap="card">
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          All teams (default) — no <code>teamType</code>
+        </Text>
+        <TeamSelect value={all || undefined} onChange={setAll} />
+        <Text fontSize="xs" color="fg.muted">
+          Selected team id: {all.toString()}
+        </Text>
+      </Stack>
+
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          Warehouse teams only — <code>teamType={"{TeamType.WAREHOUSE}"}</code>
+        </Text>
+        <TeamSelect teamType={TeamType.WAREHOUSE} value={warehouse || undefined} onChange={setWarehouse} />
+        <Text fontSize="xs" color="fg.muted">
+          Selected team id: {warehouse.toString()}
+        </Text>
+      </Stack>
+
+      <Stack gap="1">
+        <Text fontSize="xs" fontWeight="medium">
+          Selling teams only — <code>teamType={"{TeamType.SELLING}"}</code>
+        </Text>
+        <TeamSelect teamType={TeamType.SELLING} value={selling || undefined} onChange={setSelling} />
+        <Text fontSize="xs" color="fg.muted">
+          Selected team id: {selling.toString()}
+        </Text>
+      </Stack>
+    </Stack>
   );
 }
 
