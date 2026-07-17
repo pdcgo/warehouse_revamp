@@ -522,14 +522,18 @@ export function ProductPicker({
                               _hover={{ bg: "bg.subtle" }}
                             >
                               {/* Checkbox.Root is the row's <label>, so the WHOLE row toggles; the
-                                  Control rides in ProductListItem's trailing action slot. */}
+                                  Control LEADS the row rather than trailing it (#110 review): ticking
+                                  down a list is a vertical scan of the boxes, and a box parked after
+                                  each product's name lands somewhere different on every row. */}
                               <Checkbox.HiddenInput />
-                              <ProductListItem
-                                product={p}
-                                stock={onHand.has(key) ? onHand.get(key) : undefined}
-                                teamName={teamNames.get(p.teamId.toString())}
-                                action={<Checkbox.Control />}
-                              />
+                              <Flex align="center" gap="card" w="full">
+                                <Checkbox.Control flexShrink={0} />
+                                <ProductListItem
+                                  product={p}
+                                  stock={onHand.has(key) ? onHand.get(key) : undefined}
+                                  teamName={teamNames.get(p.teamId.toString())}
+                                />
+                              </Flex>
                             </Checkbox.Root>
                           );
                         })}
