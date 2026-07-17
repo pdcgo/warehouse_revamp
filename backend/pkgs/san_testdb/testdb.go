@@ -111,6 +111,21 @@ func ensureTestDatabase(testDSN string) error {
 	return nil
 }
 
+// errMigration marks "the database is there, its migrations are broken" — as opposed to "there is no
+// database", which is the only thing DB() is allowed to skip on.
+type errMigration struct {
+	svc string
+	err error
+}
+
+func (e errMigration) Error() string {
+	return "migrating " + e.svc + ": " + e.err.Error()
+}
+
+func (e errMigration) Unwrap() error {
+	return e.err
+}
+
 func connect() (*gorm.DB, error) {
 	err := ensureTestDatabase(dsn())
 	if err != nil {
@@ -143,7 +158,11 @@ func connect() (*gorm.DB, error) {
 
 		err = goose.Up(raw, dir)
 		if err != nil {
-			return nil, err
+			// A BROKEN MIGRATION IS NOT A MISSING DATABASE. Both used to come back as one error, and
+			// DB() skips on any error — so a migration with a syntax error skipped the whole suite
+			// while `go test` printed "ok", under a message blaming an absent database. A green run
+			// that ran nothing is worse than a red one.
+			return nil, errMigration{svc: svc, err: err}
 		}
 	}
 
@@ -166,6 +185,14 @@ func DB(t *testing.T) *gorm.DB {
 	})
 
 	if initErr != nil {
+		// Skipping is for "there is no database here" — a developer without Postgres running, which is
+		// not their test's fault. A BROKEN MIGRATION is this repo's fault and must be loud: skipping it
+		// turns `go test` green while running nothing at all.
+		var migErr errMigration
+		if errors.As(initErr, &migErr) {
+			t.Fatalf("san_testdb: %v", migErr)
+		}
+
 		t.Skipf("san_testdb: no test database (%v) — set TEST_DATABASE_URL or run docker compose up -d", initErr)
 	}
 
