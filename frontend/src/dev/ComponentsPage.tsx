@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Button, Card, Flex, Heading, Link, Stack, Text } from "@chakra-ui/react";
+import { Button, Card, Flex, Heading, Link, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 // Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
 // them here so it is documentation generated from the components themselves, not a parallel list
 // that can drift.
@@ -9,6 +9,7 @@ import { Pagination, description as paginationDescription } from "../components/
 import { UserItem, description as userItemDescription } from "../components/UserItem";
 import { TeamItem, description as teamItemDescription } from "../components/TeamItem";
 import { ProductListItem, description as productListItemDescription } from "../components/ProductListItem";
+import { ProductCard, description as productCardDescription } from "../components/ProductCard";
 import { TeamTypeSelect, description as teamTypeSelectDescription } from "../components/TeamTypeSelect";
 import { TeamSelect, description as teamSelectDescription } from "../components/TeamSelect";
 import { UserSelect, description as userSelectDescription } from "../components/UserSelect";
@@ -442,6 +443,53 @@ const ENTRIES: Entry[] = [
         {/* No `teamName` resolved by the caller → falls back to "Team #<id>". */}
         <ProductListItem product={{ id: 4n, teamId: 12n, sku: "SKU-004", name: "Tas Ransel Kanvas" }} stock={7n} />
       </Stack>
+    ),
+  },
+  {
+    id: "product-card",
+    title: "ProductCard",
+    description: productCardDescription,
+    // In a grid, because that is the only place a card makes sense — and because equal card heights
+    // across a row are half of what the component is for. Same four states as ProductListItem above,
+    // so the two entries can be read against each other.
+    render: () => (
+      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap="card">
+        <ProductCard
+          product={{
+            id: 1n,
+            teamId: 7n,
+            sku: "SKU-001",
+            name: "Kaos Polos Hitam",
+            defaultImageUrl: SAMPLE_COVER,
+          }}
+          teamName="Srengat Selling"
+          stock={42n}
+        />
+        <ProductCard
+          product={{
+            id: 2n,
+            teamId: 7n,
+            sku: "SKU-002",
+            name: "Celana Chino Navy",
+            defaultImageUrl: SAMPLE_COVER,
+          }}
+          teamName="Srengat Selling"
+          stock={0n}
+        />
+        {/* No image at all → the package-icon placeholder. No `stock` → no badge. The long name also
+            shows the two-line clamp, and that a taller card doesn't drag the row's covers out of line. */}
+        <ProductCard
+          product={{
+            id: 3n,
+            teamId: 9n,
+            sku: "SKU-003",
+            name: "Topi Baseball Putih Edisi Terbatas Dengan Bordir",
+          }}
+          teamName="Jakarta Warehouse"
+        />
+        {/* No `teamName` resolved by the caller → falls back to "Team #<id>". */}
+        <ProductCard product={{ id: 4n, teamId: 12n, sku: "SKU-004", name: "Tas Ransel Kanvas" }} stock={7n} />
+      </SimpleGrid>
     ),
   },
   {

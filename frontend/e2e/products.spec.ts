@@ -202,6 +202,6 @@ test("Discover: products across teams are listed (#106)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await page.goto("/products/discover");
-  await expect(page.getByTestId("discover-table")).toBeVisible();
-  await expect(page.getByTestId(`discover-row-${SKU_IMG}`)).toBeVisible();
+  await expect(page.getByTestId("discover-grid")).toBeVisible();
+  await expect(page.getByTestId(`discover-card-${SKU_IMG}`)).toBeVisible();
 });

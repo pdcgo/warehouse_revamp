@@ -48,14 +48,7 @@
     "subtitle": "Browse products from every team.",
     "selectTeam": "Select a team to discover products.",
     "searchPlaceholder": "Search SKU or name",
-    "empty": "No products found.",
-    "teamBadge": "Team #{{id}}",
-    "table": {
-      "image": "Image",
-      "sku": "SKU",
-      "name": "Name",
-      "team": "Team"
-    }
+    "empty": "No products found."
   },
   "products": {
     "toast": {

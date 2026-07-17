@@ -48,14 +48,7 @@
     "subtitle": "Jelajahi produk dari semua tim.",
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "searchPlaceholder": "Cari SKU atau nama",
-    "empty": "Produk tidak ditemukan.",
-    "teamBadge": "Tim #{{id}}",
-    "table": {
-      "image": "Gambar",
-      "sku": "SKU",
-      "name": "Nama",
-      "team": "Tim"
-    }
+    "empty": "Produk tidak ditemukan."
   },
   "products": {
     "toast": {

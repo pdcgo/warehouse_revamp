@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Flex, HStack, Heading, Image, Input, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { productClient, rpcError } from "../api/clients";
+import { Box, Flex, HStack, Heading, Input, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
+import { productClient, rpcError, teamClient } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { useTeam } from "../team/TeamContext";
 import { Pagination } from "../components/Pagination";
+import { ProductCard } from "../components/ProductCard";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // DiscoverProductsPage lists products across ALL teams (#106) so a selling team can browse other
 // teams' catalogues (to order from, in future). Read-only; the current team is only the authorizing
-// scope, not a filter — cross-team discovery is open (owner-confirmed). Each row shows which team
-// owns the product.
+// scope, not a filter — cross-team discovery is open (owner-confirmed).
+//
+// It renders a GRID of ProductCard (#121) rather than a table: this is a browse, not a ledger — you
+// recognise a product by its picture, so the card puts the image first. Each card names the team that
+// owns the product, which on a cross-team page is the thing worth knowing about it.
 export function DiscoverProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -23,6 +27,14 @@ export function DiscoverProductsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // teamId -> name, for the card's team badge. Batched per page (TeamByIds), never per card.
+  const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
+
+  // Read inside the effect WITHOUT making it a dependency: `teamNames` grows as pages resolve, so
+  // depending on it would re-run the effect on its own result.
+  const teamNamesRef = useRef(teamNames);
+  teamNamesRef.current = teamNames;
 
   const teamId = current?.teamId;
 
@@ -49,6 +61,56 @@ export function DiscoverProductsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The owning team's NAME for each card. A discover page's products come from many teams, so this
+  // resolves the page's ids in ONE batch and caches them for the page's life — paging back, or a
+  // second page owned by the same teams, costs nothing. It deliberately does NOT gate `loading`:
+  // cards render immediately with ProductCard's "Team #<id>" fallback and upgrade in place when the
+  // names land, so a slow team lookup never holds up the products themselves.
+  useEffect(() => {
+    if (products.length === 0) {
+      return;
+    }
+
+    // Unique, non-zero, not already known. TeamByIds requires min_items:1 and unique ids, so an
+    // empty set must not become a call.
+    const missing = [
+      ...new Set(
+        products.map((p) => p.teamId).filter((id) => id > 0n && !teamNamesRef.current.has(id.toString())),
+      ),
+    ];
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await teamClient.teamByIds({ ids: missing });
+
+        if (cancelled) {
+          return;
+        }
+
+        setTeamNames((prev) => {
+          const next = new Map(prev);
+          for (const [id, team] of Object.entries(res.data)) {
+            next.set(id, team.name);
+          }
+
+          return next;
+        });
+      } catch {
+        // A name is decoration: ProductCard falls back to "Team #<id>".
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
 
   if (!current) {
     return (
@@ -92,41 +154,16 @@ export function DiscoverProductsPage() {
       {loading ? (
         <Spinner colorPalette="brand" />
       ) : (
-        <Table.Root size="sm" data-testid="discover-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader w="12">{t("discover.table.image")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("discover.table.sku")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("discover.table.name")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("discover.table.team")}</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-
-          <Table.Body>
-            {products.map((product) => {
-              const cover = product.defaultImageThumbnailUrl || product.defaultImageUrl;
-
-              return (
-                <Table.Row key={product.id.toString()} data-testid={`discover-row-${product.sku}`}>
-                  <Table.Cell>
-                    {cover ? (
-                      <Image src={cover} alt={product.name} boxSize="8" borderRadius="sm" objectFit="cover" />
-                    ) : (
-                      <Text color="fg.muted" fontSize="xs">
-                        —
-                      </Text>
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>{product.sku}</Table.Cell>
-                  <Table.Cell>{product.name}</Table.Cell>
-                  <Table.Cell>
-                    <Badge colorPalette="gray">{t("discover.teamBadge", { id: product.teamId.toString() })}</Badge>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table.Root>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} gap="card" data-testid="discover-grid">
+          {products.map((product) => (
+            // The card carries its own testid keyed by id; this cell keys the SAME card by SKU, which
+            // is what a test naming a product actually knows. It is also the grid cell, so `h="full"`
+            // on the Card inside has a stretched box to fill.
+            <Box key={product.id.toString()} data-testid={`discover-card-${product.sku}`}>
+              <ProductCard product={product} teamName={teamNames.get(product.teamId.toString())} />
+            </Box>
+          ))}
+        </SimpleGrid>
       )}
 
       {!loading && products.length === 0 && !error && (
