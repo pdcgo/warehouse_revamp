@@ -75,6 +75,24 @@ export function TeamSelect({
 
   return (
     <Combobox.Root
+      // Remounted once, the moment the team list lands — this is load-bearing, not a hack.
+      //
+      // Zag derives the input's DISPLAY TEXT exactly twice: once when the machine initialises, by
+      // looking `value` up in `collection` (combobox.machine.js — `inputValue` is a bindable whose
+      // default is `collection.stringifyMany(value)`), and thereafter only when `value` CHANGES. A
+      // collection that fills in LATER does not re-derive it.
+      //
+      // That is invisible when a picker mounts empty and the person picks (every use before #131):
+      // the value changes, so the text is derived then, with the list already loaded. But an edit
+      // form prefills from the server and mounts this with `value` ALREADY set while our own
+      // teamList fetch is still in flight — so the id is looked up in an empty collection, resolves
+      // to "", and never recovers, because the value never changes afterwards. The field renders
+      // blank while a team is in fact selected.
+      //
+      // Re-keying on `loading` re-initialises the machine against the full collection. The cost is
+      // that filter text typed during the ~100ms load is dropped; the dropdown shows a spinner for
+      // that window anyway, and a blank REQUIRED field is far worse.
+      key={loading ? "loading" : "ready"}
       collection={collection}
       disabled={disabled}
       value={value !== undefined ? [value.toString()] : []}

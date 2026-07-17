@@ -62,8 +62,8 @@ const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default:
 const RestockRequestsPage = lazy(() =>
   import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
 );
-const RestockRequestCreatePage = lazy(() =>
-  import("./restock/RestockRequestCreatePage").then((m) => ({ default: m.RestockRequestCreatePage })),
+const RestockRequestFormPage = lazy(() =>
+  import("./restock/RestockRequestFormPage").then((m) => ({ default: m.RestockRequestFormPage })),
 );
 const RestockRequestDetailPage = lazy(() =>
   import("./restock/RestockRequestDetailPage").then((m) => ({ default: m.RestockRequestDetailPage })),
@@ -137,8 +137,14 @@ export const router = createBrowserRouter([
       { path: "inventories/restock", element: <RestockRequestsPage /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
-      { path: "inventories/restock/new", element: <RestockRequestCreatePage /> },
+      //
+      // One page serves create and edit (#131): it reads the mode off :requestId. The two routes carry
+      // distinct `key`s so that switching between them REMOUNTS rather than reconciles — same component
+      // type at the same position otherwise keeps its state, which would carry a loaded request's
+      // fields into a blank create form.
+      { path: "inventories/restock/new", element: <RestockRequestFormPage key="create" /> },
       { path: "inventories/restock/:requestId", element: <RestockRequestDetailPage /> },
+      { path: "inventories/restock/:requestId/edit", element: <RestockRequestFormPage key="edit" /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },

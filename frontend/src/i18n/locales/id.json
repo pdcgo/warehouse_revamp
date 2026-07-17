@@ -150,8 +150,11 @@
     "title": "Permintaan Restok",
     "selectTeam": "Pilih tim untuk melihat permintaan restoknya.",
     "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
+    "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
     "newRequest": "Permintaan restok baru",
     "newRequestTitle": "Permintaan Restok Baru",
+    "editRequestTitle": "Ubah Permintaan Restok",
+    "edit": "Ubah",
     "empty": "Belum ada permintaan restok.",
     "emptyFiltered": "Tidak ada permintaan restok {{status}}.",
     "back": "Kembali",
@@ -227,7 +230,8 @@
       "note": "Catatan",
       "noteHelp": "Hal yang perlu diketahui gudang tentang restok ini.",
       "notePlaceholder": "Tambahkan catatan tentang restok ini…",
-      "submit": "Buat Permintaan"
+      "submit": "Buat Permintaan",
+      "saveChanges": "Simpan Perubahan"
     },
     "cancel": {
       "action": "Batalkan",
@@ -243,6 +247,7 @@
     },
     "toast": {
       "created": "Permintaan restok dibuat",
+      "updated": "Permintaan restok diperbarui",
       "cancelled": "Permintaan restok dibatalkan",
       "cancelFailed": "Pembatalan gagal",
       "fulfilled": "Permintaan restok terpenuhi",

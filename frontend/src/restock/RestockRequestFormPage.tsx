@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -15,6 +15,7 @@ import {
   Input,
   Separator,
   SimpleGrid,
+  Spinner,
   Stack,
   Text,
   Textarea,
@@ -65,10 +66,33 @@ function lineTotal(line: LineDraft): bigint {
   return BigInt(toQty(line.quantity)) * toRupiah(line.price);
 }
 
-// RestockRequestCreatePage is the selling-side "ask a warehouse to restock" form (#105, #124, #127). It
+// The same defensive parse the detail page makes: a route param is a string from the URL bar, so a
+// non-numeric one is a legitimate thing to land on, not a crash. 0n means "not a usable id".
+function parseRequestId(raw: string | undefined): bigint {
+  if (!raw) return 0n;
+  try {
+    return BigInt(raw);
+  } catch {
+    return 0n;
+  }
+}
+
+// RestockRequestFormPage is the selling-side "ask a warehouse to restock" form (#105, #124, #127). It
 // is a dedicated PAGE, not a modal: the warehouse and product pickers render their listboxes through a
 // Portal, which is inert inside a modal Dialog — a page sidesteps that entirely (same reason
 // OrderCreatePage is a page), and it carries a dynamic list of lines besides.
+//
+// It serves BOTH create and edit (#131), because the edit screen IS this form re-opened on an existing
+// row — the update RPC is a full REPLACE whose fields mirror create's one-for-one, so a second form
+// would be the same 500 lines drifting apart. The mode comes from the ROUTE, not a prop:
+//
+//   /inventories/restock/new         → no :requestId  → create → RestockRequestCreate → back to the list
+//   /inventories/restock/:id/edit    → :requestId     → edit   → RestockRequestUpdate → back to the detail
+//
+// Only a PENDING request is editable — once the warehouse has accepted it the goods have moved, and the
+// server refuses with FailedPrecondition. The detail page is what gates the way in here (it only offers
+// Edit while pending); this page does not re-check, so a hand-typed URL onto a fulfilled request loads
+// the form and is refused on submit. That is the server's answer to state that changed under us anyway.
 //
 // #127 laid it out as a two-column "cart" screen, which is what the sections below are named after:
 //
@@ -86,12 +110,21 @@ function lineTotal(line: LineDraft): bigint {
 // Money is computed here for DISPLAY only — the backend stores what it is sent. The grand total is
 // the products' total (Σ qty × per-unit price) plus the freight, which is the one number the person
 // filling this in is actually agreeing to pay.
-export function RestockRequestCreatePage() {
+export function RestockRequestFormPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
+  const { requestId } = useParams<{ requestId: string }>();
+
+  // The route param IS the mode: present ⇒ editing that row, absent ⇒ creating a new one.
+  const isEdit = requestId !== undefined;
+  const id = parseRequestId(requestId);
 
   const teamId = current?.teamId;
+
+  // Where both the back button and a successful submit go. Editing came FROM the detail page, so it
+  // returns there; creating has no row to return to, so it lands on the list.
+  const backTo = isEdit ? `/inventories/restock/${id}` : "/inventories/restock";
 
   const nextKey = useRef(1);
   const freshLine = (): LineDraft => ({
@@ -119,6 +152,87 @@ export function RestockRequestCreatePage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Two DIFFERENT failures, so two states. `error` is a rejected SUBMIT — the form stays on screen with
+  // everything typed into it. `loadError` is edit mode failing to read the row at all: there is nothing
+  // to edit, so the form must not render blank fields that a submit would then WRITE as cleared.
+  const [loading, setLoading] = useState(isEdit);
+  // Either an i18n KEY (ours) or a literal message (the server's, already translated by rpcError).
+  // Holding the key rather than the translated string is what lets the load effect below avoid
+  // depending on `t` — and as a bonus an error already on screen re-translates on a language switch.
+  const [loadError, setLoadError] = useState<{ key?: string; text?: string } | null>(null);
+
+  // Edit mode prefills from the row. Every field is set — the update RPC is a full replace, so a field
+  // this effect forgot would silently be submitted as cleared.
+  useEffect(() => {
+    if (!isEdit || teamId === undefined) return;
+
+    if (id === 0n) {
+      setLoadError({ key: "restock.detail.invalidId" });
+      setLoading(false);
+      return;
+    }
+
+    // The effect refires on team/id, so two loads can be in flight and land out of order. `ignore`
+    // retires the older one: without it a stale response overwrites what the newer one just prefilled.
+    let ignore = false;
+
+    setLoading(true);
+    setLoadError(null);
+
+    void (async () => {
+      try {
+        const res = await restockClient.restockRequestDetail({ teamId, requestId: id });
+        if (ignore) return;
+
+        const request = res.request;
+        if (!request) {
+          setLoadError({ key: "restock.detail.notFound" });
+          return;
+        }
+
+        setWarehouseId(request.warehouseId);
+        setShippingCode(request.shippingCode);
+        // Quantity and price go back to STRINGS: they are typed fields, and a bigint here would make
+        // clearing the input impossible. The contract guarantees at least one line, but a row that
+        // somehow has none still has to be editable, so it falls back to one blank line.
+        setLines(
+          request.items.length > 0
+            ? request.items.map((item) => ({
+                key: nextKey.current++,
+                productId: item.productId,
+                sku: item.sku,
+                name: item.name,
+                quantity: String(item.quantity),
+                price: String(item.price),
+              }))
+            : [freshLine()],
+        );
+        setReceipt(request.receipt);
+        setSupplierId(request.supplierId);
+        setOrderRef(request.orderRef);
+        setShippingCost(String(request.shippingCost));
+        setPaymentType(request.paymentType);
+        setNote(request.note);
+      } catch (err) {
+        if (!ignore) setLoadError({ text: rpcError(err) });
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+    // `t` is deliberately NOT a dependency, which is why the error states above are KEYS. react-i18next
+    // hands back a new `t` IDENTITY on every language change, so depending on it would refire this whole
+    // load when someone switches language mid-edit — refetching the row and overwriting every unsaved
+    // change on screen with the stored values. Nothing warns them; the work is simply gone. Storing keys
+    // means the effect never calls `t`, so it has no reason to re-run.
+    //
+    // freshLine is excluded for a duller reason: it is re-created every render and only supplies a key,
+    // so depending on it would refire the load on every keystroke.
+  }, [isEdit, teamId, id]);
 
   function patchLine(key: number, patch: Partial<LineDraft>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -168,29 +282,39 @@ export function RestockRequestCreatePage() {
     setSaving(true);
     setError("");
 
-    try {
-      await restockClient.restockRequestCreate({
-        teamId,
-        warehouseId,
-        shippingCode,
-        items: lines.map((l) => ({
-          id: 0n,
-          productId: l.productId,
-          sku: l.sku,
-          name: l.name,
-          quantity: BigInt(toQty(l.quantity)),
-          price: toRupiah(l.price),
-        })),
-        receipt: receipt.trim(),
-        supplierId,
-        orderRef: orderRef.trim(),
-        shippingCost: shippingCostValue,
-        paymentType,
-        note: note.trim(),
-      });
+    // Create and update take the SAME fields — update only adds the request_id naming the row to
+    // replace — so the payload is built once and the mode picks the RPC.
+    const fields = {
+      teamId,
+      warehouseId,
+      shippingCode,
+      items: lines.map((l) => ({
+        id: 0n,
+        productId: l.productId,
+        sku: l.sku,
+        name: l.name,
+        quantity: BigInt(toQty(l.quantity)),
+        price: toRupiah(l.price),
+      })),
+      receipt: receipt.trim(),
+      supplierId,
+      orderRef: orderRef.trim(),
+      shippingCost: shippingCostValue,
+      paymentType,
+      note: note.trim(),
+    };
 
-      toaster.create({ type: "success", title: t("restock.toast.created") });
-      void navigate("/inventories/restock");
+    try {
+      if (isEdit) {
+        await restockClient.restockRequestUpdate({ ...fields, requestId: id });
+        toaster.create({ type: "success", title: t("restock.toast.updated") });
+      } else {
+        await restockClient.restockRequestCreate(fields);
+        toaster.create({ type: "success", title: t("restock.toast.created") });
+      }
+
+      // Editing returns to the row it changed so the result is right there; creating has no row yet.
+      void navigate(backTo);
     } catch (err) {
       setError(rpcError(err));
     } finally {
@@ -198,30 +322,67 @@ export function RestockRequestCreatePage() {
     }
   }
 
+  const title = isEdit ? t("restock.editRequestTitle") : t("restock.newRequestTitle");
+
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">{t("restock.newRequestTitle")}</Heading>
+        <Heading size="md">{title}</Heading>
+        {/* Mode-aware, like the heading above it: a request is loaded and saved in a team's scope, so
+            with none chosen there is nothing to edit either — but telling someone who came to EDIT to
+            "select a team to create a request" describes a task they are not doing. */}
         <Text color="fg.muted" data-testid="restock-create-no-team">
-          {t("restock.selectTeamCreate")}
+          {isEdit ? t("restock.selectTeamEdit") : t("restock.selectTeamCreate")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  // Edit mode has nothing to show until the row is in hand — the same spinner the detail page shows.
+  if (loading) {
+    return <Spinner colorPalette="brand" />;
+  }
+
+  // The row could not be read, so there is no form: an empty one here would offer to REPLACE the
+  // request with blanks. The way back is the only thing on offer — and it goes to the LIST, not to
+  // `backTo`: whatever stopped this row loading (bad id, not found, not ours) stops its detail page too.
+  if (loadError) {
+    return (
+      <Stack gap="section">
+        <Button
+          size="xs"
+          variant="ghost"
+          alignSelf="flex-start"
+          data-testid="restock-edit-back"
+          onClick={() => navigate("/inventories/restock")}
+        >
+          <Icon as={ArrowLeft} boxSize="4" />
+          {t("restock.detail.back")}
+        </Button>
+        <Text color="red.fg" data-testid="restock-edit-load-error">
+          {loadError.key ? t(loadError.key) : loadError.text}
         </Text>
       </Stack>
     );
   }
 
   return (
-    <Stack gap="section" maxW="7xl" data-testid="restock-create-page">
+    <Stack
+      gap="section"
+      maxW="7xl"
+      data-testid={isEdit ? "restock-edit-page" : "restock-create-page"}
+    >
       <Flex align="center" gap="card">
         <IconButton
           size="xs"
           variant="ghost"
           aria-label={t("restock.back")}
-          data-testid="restock-create-back"
-          onClick={() => navigate("/inventories/restock")}
+          data-testid={isEdit ? "restock-edit-back" : "restock-create-back"}
+          onClick={() => navigate(backTo)}
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">{t("restock.newRequestTitle")}</Heading>
+        <Heading size="md">{title}</Heading>
       </Flex>
 
       {error && (
@@ -576,7 +737,7 @@ export function RestockRequestCreatePage() {
               disabled={!canSave}
               data-testid="submit-restock"
             >
-              {t("restock.form.submit")}
+              {isEdit ? t("restock.form.saveChanges") : t("restock.form.submit")}
             </Button>
           </Stack>
         </Flex>

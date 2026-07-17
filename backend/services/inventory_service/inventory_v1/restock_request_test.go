@@ -448,6 +448,343 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	}
 }
 
+// #131: while the warehouse has not accepted it, a request is freely edited — every field, lines
+// included. The lines are REPLACED, not merged: sending two lines over one leaves exactly the two.
+func TestRestockRequest_Update(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse, otherWarehouse uint64 = 2, 5, 6
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 5000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	reqID := created.Msg.GetRequest().GetId()
+
+	edit := &inventoryv1.RestockRequestUpdateRequest{
+		TeamId: sellingTeam, RequestId: reqID,
+		// Even the warehouse may change: nothing has been accepted, so nothing is committed to it.
+		WarehouseId: otherWarehouse, ShippingCode: "sicepat",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 3, Price: 1500},
+			{ProductId: 300, Sku: "SKU3", Name: "Gizmo", Quantity: 7, Price: 250},
+		},
+		Receipt: "SC9999", OrderRef: "SHP-42", ShippingCost: 12000,
+		PaymentType: inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT,
+		Note:        "edited before the warehouse took it",
+	}
+
+	// Another team cannot edit it — indistinguishable from one that does not exist.
+	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		TeamId: 9, RequestId: reqID, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: 1, Sku: "X", Name: "X", Quantity: 1}},
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("cross-team update code = %v, want NotFound", connect.CodeOf(err))
+	}
+
+	updated, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(edit))
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	got := updated.Msg.GetRequest()
+	if got.GetStatus() != pending {
+		t.Fatalf("an edit must not move the status: got %v, want PENDING", got.GetStatus())
+	}
+	if got.GetWarehouseId() != otherWarehouse || got.GetShippingCode() != "sicepat" ||
+		got.GetReceipt() != "SC9999" || got.GetOrderRef() != "SHP-42" ||
+		got.GetShippingCost() != 12000 || got.GetNote() != "edited before the warehouse took it" ||
+		got.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT {
+		t.Fatalf("edit did not round-trip: %+v", got)
+	}
+
+	// Read it back rather than trusting the response — the rows are what the next reader sees.
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: reqID,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	items := detail.Msg.GetRequest().GetItems()
+	if len(items) != 2 {
+		t.Fatalf("lines are replaced, not merged: got %d lines, want 2 (%+v)", len(items), items)
+	}
+	if items[0].GetSku() != "SKU2" || items[0].GetQuantity() != 3 || items[0].GetPrice() != 1500 ||
+		items[1].GetSku() != "SKU3" || items[1].GetQuantity() != 7 {
+		t.Fatalf("replaced lines wrong: %+v", items)
+	}
+
+	// The warehouse it MOVED TO can see it; the one it moved off can no longer.
+	for team, want := range map[uint64]int{otherWarehouse: 1, warehouse: 0} {
+		lst, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
+			TeamId: team, Page: page1(),
+		}))
+		if listErr != nil {
+			t.Fatalf("list team %d: %v", team, listErr)
+		}
+		if len(lst.Msg.GetRequests()) != want {
+			t.Fatalf("team %d sees %d requests, want %d", team, len(lst.Msg.GetRequests()), want)
+		}
+	}
+}
+
+// An edit is a full REPLACE, so emptying a field CLEARS it. This is the case a struct-based
+// Updates() would silently drop (GORM skips a struct's zero values) — leaving the old note and
+// supplier in place while the form showed them gone.
+func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam uint64 = 2
+
+	supplier := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: 5, ShippingCode: "jne",
+		SupplierId: supplier, OrderRef: "SHP-1", Receipt: "JP1", ShippingCost: 9000,
+		PaymentType: inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY,
+		Note:        "please hurry",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	reqID := created.Msg.GetRequest().GetId()
+
+	// Everything optional left out: the person cleared the lot.
+	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: reqID,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	got := detail.Msg.GetRequest()
+	if got.GetSupplierId() != 0 || got.GetOrderRef() != "" || got.GetReceipt() != "" ||
+		got.GetShippingCost() != 0 || got.GetNote() != "" || got.GetShippingCode() != "" ||
+		got.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_UNSPECIFIED {
+		t.Fatalf("cleared fields were kept: %+v", got)
+	}
+}
+
+// "when restock not accepted by warehouse. its freely edited" (#131) — the converse is the guard:
+// once it is accepted (or cancelled), it is not editable at all.
+func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	newPending := func() uint64 {
+		t.Helper()
+
+		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 4, Price: 500},
+			},
+		}))
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+
+		return created.Msg.GetRequest().GetId()
+	}
+
+	tryEdit := func(reqID uint64) error {
+		_, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			TeamId: sellingTeam, RequestId: reqID, WarehouseId: warehouse,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 999, Price: 500},
+			},
+		}))
+
+		return err
+	}
+
+	// Accepted by the warehouse: the goods have moved, so the record is history.
+	accepted := newPending()
+
+	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: accepted,
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	if code := connect.CodeOf(tryEdit(accepted)); code != connect.CodeFailedPrecondition {
+		t.Fatalf("editing an accepted request = %v, want FailedPrecondition", code)
+	}
+
+	// Cancelled: closed, and re-opening it by editing would hide that it ever was.
+	dropped := newPending()
+
+	_, err = svc.RestockRequestCancel(ctx, connect.NewRequest(&inventoryv1.RestockRequestCancelRequest{
+		TeamId: sellingTeam, RequestId: dropped,
+	}))
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	if code := connect.CodeOf(tryEdit(dropped)); code != connect.CodeFailedPrecondition {
+		t.Fatalf("editing a cancelled request = %v, want FailedPrecondition", code)
+	}
+
+	// The refused edit changed nothing — the accepted request still reads as it was received.
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: accepted,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+	if qty := detail.Msg.GetRequest().GetItems()[0].GetQuantity(); qty != 4 {
+		t.Fatalf("refused edit still wrote: quantity = %d, want 4", qty)
+	}
+}
+
+// The supplier rule holds on edit exactly as on create: it must be one of the REQUESTING team's own,
+// or the id itself would confirm another team's vendor.
+func TestRestockRequest_UpdateSupplierMustBelongToRequester(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam uint64 = 2
+
+	mine := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
+	theirs := insertSupplier(t, db, 9, "Their Vendor", "V-THEIRS")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	reqID := created.Msg.GetRequest().GetId()
+
+	edit := func(supplierID uint64) error {
+		_, updErr := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5, SupplierId: supplierID,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+			},
+		}))
+
+		return updErr
+	}
+
+	if err = edit(mine); err != nil {
+		t.Fatalf("edit to own supplier: %v", err)
+	}
+
+	if code := connect.CodeOf(edit(theirs)); code != connect.CodeNotFound {
+		t.Fatalf("cross-team supplier on edit = %v, want NotFound", code)
+	}
+
+	// The rejected edit must not have half-applied — the supplier is still ours.
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: reqID,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+	if got := detail.Msg.GetRequest().GetSupplierId(); got != mine {
+		t.Fatalf("supplier after rejected edit = %d, want %d", got, mine)
+	}
+}
+
+// Deleting a supplier must not brick the pending requests that already name it. Because an edit is a
+// full replace, the form re-sends the supplier it prefilled — so re-validating an UNCHANGED id would
+// reject the edit over a field the person never touched, and SupplierDelete is a soft delete, so the
+// id keeps resolving to a row that supplierExists() refuses.
+func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam uint64 = 2
+
+	supplier := insertSupplier(t, db, sellingTeam, "Doomed Vendor", "V-DOOM")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: 5, SupplierId: supplier,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	reqID := created.Msg.GetRequest().GetId()
+
+	_, err = svc.SupplierDelete(ctx, connect.NewRequest(&inventoryv1.SupplierDeleteRequest{
+		TeamId: sellingTeam, SupplierId: supplier,
+	}))
+	if err != nil {
+		t.Fatalf("delete supplier: %v", err)
+	}
+
+	// The edit re-sends the prefilled (now deleted) supplier and changes only the note.
+	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5, SupplierId: supplier,
+		Note: "just fixing a typo",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("editing a request whose supplier was deleted must still work, got: %v", err)
+	}
+
+	// But POINTING a request at a deleted supplier it did not already have is still refused.
+	fresh, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create fresh: %v", err)
+	}
+
+	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		TeamId: sellingTeam, RequestId: fresh.Msg.GetRequest().GetId(), WarehouseId: 5,
+		SupplierId: supplier,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeNotFound {
+		t.Fatalf("adopting a deleted supplier = %v, want NotFound", code)
+	}
+}
+
 func TestRestockRequest_Cancel(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)

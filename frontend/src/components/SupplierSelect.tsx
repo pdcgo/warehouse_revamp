@@ -61,9 +61,12 @@ export function SupplierSelect({
         value={value && value > 0n ? value.toString() : ""}
         onChange={(e) => onChange?.(e.target.value ? BigInt(e.target.value) : 0n)}
       >
-        <option value="" disabled>
-          {error ? t("suppliers.select.unavailable") : resolvedPlaceholder}
-        </option>
+        {/* Selectable, not a disabled placeholder: "no supplier" (0) is a legitimate value, not the
+            absence of an answer. A force-a-choice placeholder was harmless while this only fed a
+            create form — nothing was recorded yet — but it made the field WRITE-ONCE the moment an
+            edit form existed (#131): a supplier recorded by mistake could never be removed, though
+            the contract, the handler and its test all support clearing it. */}
+        <option value="">{error ? t("suppliers.select.unavailable") : resolvedPlaceholder}</option>
         {suppliers.map((supplier) => (
           <option key={supplier.id.toString()} value={supplier.id.toString()}>
             {supplier.code ? `${supplier.name} (${supplier.code})` : supplier.name}

@@ -32,9 +32,11 @@ export function ShippingSelect({
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
       >
-        <option value="" disabled>
-          {error ? t("catalog.shippingSelect.unavailable") : resolvedPlaceholder}
-        </option>
+        {/* Selectable, not a disabled placeholder: no courier ("") is a legitimate value — neither
+            restock nor order requires one. A force-a-choice placeholder was harmless while this only
+            fed create forms, but it made the field WRITE-ONCE once an edit form existed (#131): a
+            courier picked by mistake could never be unset, though the contract allows it. */}
+        <option value="">{error ? t("catalog.shippingSelect.unavailable") : resolvedPlaceholder}</option>
         {couriers.map((courier) => (
           <option key={courier.code} value={courier.code}>
             {courier.name}

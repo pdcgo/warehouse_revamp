@@ -18,6 +18,8 @@ service RestockRequestService {
   rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse);
   // One request in full, with its lines — the detail page (#125). Same two-sided scope as List.
   rpc RestockRequestDetail(RestockRequestDetailRequest) returns (RestockRequestDetailResponse);
+  // The requesting team edits its own request, while the warehouse has not accepted it yet (#131).
+  rpc RestockRequestUpdate(RestockRequestUpdateRequest) returns (RestockRequestUpdateResponse);
   // The target warehouse fulfils a pending request — receives the stock and marks it fulfilled.
   rpc RestockRequestFulfill(RestockRequestFulfillRequest) returns (RestockRequestFulfillResponse);
   // The requesting team cancels a still-pending request.
@@ -199,6 +201,54 @@ message RestockRequestDetailResponse {
 message RestockRequestListResponse {
   repeated RestockRequest requests = 1;
   warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message RestockRequestUpdateRequest {
+  // Write: the requesting SELLING team edits its own request — the same people who may raise one
+  // (cf. RestockRequestCreateRequest). The WAREHOUSE roles are deliberately absent: the warehouse
+  // does not edit what it is being asked for, it accepts it or it does not.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // Scoped to the REQUESTING team: a request another team raised reads as NotFound, exactly as it
+  // does for Cancel. Editing is only legal while the request is still PENDING — once the warehouse
+  // has accepted (fulfilled) it, the goods have moved and the record is history, so a fulfilled or
+  // cancelled request is refused with FailedPrecondition rather than quietly rewritten (#131).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // A full REPLACE, not a patch — every field below mirrors RestockRequestCreateRequest, because the
+  // edit screen IS the create form re-opened on an existing row. So a field left empty means the
+  // person CLEARED it, and there is no "absent means keep" case to encode: what the form shows is
+  // what the request becomes.
+  uint64 warehouse_id = 3 [(buf.validate.field).uint64.gt = 0];
+  string shipping_code = 4 [(buf.validate.field).string.max_len = 40];
+
+  // Replaces the whole set of lines; at least one, and `id` on each is ignored (the rows are rewritten,
+  // so a caller does not get to choose or preserve a line's identity).
+  repeated RestockRequestItem items = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  string receipt = 6 [(buf.validate.field).string.max_len = 100];
+  // Must be a supplier of the REQUESTING team, as on create; 0 clears it.
+  uint64 supplier_id = 7;
+  string order_ref = 8 [(buf.validate.field).string.max_len = 100];
+  int64 shipping_cost = 9 [(buf.validate.field).int64.gte = 0];
+  RestockPaymentType payment_type = 10 [(buf.validate.field).enum.defined_only = true];
+  string note = 11 [(buf.validate.field).string.max_len = 1000];
+}
+
+message RestockRequestUpdateResponse {
+  RestockRequest request = 1;
 }
 
 message RestockRequestFulfillRequest {

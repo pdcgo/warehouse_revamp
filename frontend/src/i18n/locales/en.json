@@ -150,8 +150,11 @@
     "title": "Restock Requests",
     "selectTeam": "Select a team to view its restock requests.",
     "selectTeamCreate": "Select a team to create a restock request.",
+    "selectTeamEdit": "Select a team to edit a restock request.",
     "newRequest": "New restock request",
     "newRequestTitle": "New Restock Request",
+    "editRequestTitle": "Edit Restock Request",
+    "edit": "Edit",
     "empty": "No restock requests yet.",
     "emptyFiltered": "No {{status}} restock requests.",
     "back": "Back",
@@ -227,7 +230,8 @@
       "note": "Note",
       "noteHelp": "Anything the warehouse should know about this restock.",
       "notePlaceholder": "Add a note about this restock…",
-      "submit": "Create Request"
+      "submit": "Create Request",
+      "saveChanges": "Save Changes"
     },
     "cancel": {
       "action": "Cancel",
@@ -243,6 +247,7 @@
     },
     "toast": {
       "created": "Restock request created",
+      "updated": "Restock request updated",
       "cancelled": "Restock request cancelled",
       "cancelFailed": "Cancel failed",
       "fulfilled": "Restock request fulfilled",

@@ -77,22 +77,50 @@ the stock ledger can never diverge because the fulfil does both in **one transac
   **FailedPrecondition**). **Every line is received inside the one transaction** (#124) — a request
   half-received would be worse than one not received at all, and the status flip has to mean all of
   it landed. A request with no lines is refused rather than "fulfilled" having moved nothing.
+- **`RestockRequestUpdate`** — the REQUESTER edits its own request **while the warehouse has not
+  accepted it** (#131). Until then nothing has physically happened, so there is nothing to protect and
+  the request is freely editable — the warehouse it targets included. Once it is `fulfilled` the goods
+  have moved, and once `cancelled` it is closed, so both are **FailedPrecondition**; another team's
+  request is **NotFound**, as for Cancel.
+  - It is a **full replace, not a patch** — the edit screen is the create form re-opened, so it
+    submits every field back and an empty one means *cleared*. The handler writes with a **column
+    map, not a struct**: GORM skips a struct's zero values, which would silently keep the old note or
+    supplier while the form showed them gone.
+  - **Lines are rewritten, not diffed** (delete + re-insert in the transaction). While a request is
+    pending nothing references a line — stock only moves at fulfil — so their ids are not worth
+    preserving, and a rewrite cannot drift the way a partial diff can.
+  - Guarded `FOR UPDATE` **inside the transaction**, like Fulfil and Cancel: the status check and the
+    write must be atomic, or an edit racing the warehouse's acceptance could land just after the stock
+    was received and change the quantities that were accepted. Both take the same row lock, so the
+    loser sees the other's committed status and bails.
+  - **The supplier is only re-validated when it CHANGES.** A full replace re-sends the supplier the
+    form prefilled, so an unchanged id is the request *preserving* a reference it already holds, not
+    making a new one. Since `SupplierDelete` is a **soft** delete and `supplierExists()` requires
+    `deleted = false`, re-checking an untouched id would make deleting a supplier permanently brick
+    every pending request that names it — rejecting the edit over a field the person never touched.
+    *Adopting* a deleted supplier is still **NotFound**; *keeping* one that predates the deletion is
+    not.
 - **`RestockRequestCancel`** — the REQUESTER (`requesting_team_id`, `use_scope`) cancels its own
   still-`pending` request (another team's reads as **NotFound**; a non-pending one is
   **FailedPrecondition**). No stock is touched.
 
 ### Lifecycle
 
+`pending` is the only writable state: it is where the requester still owns the request, and it is why
+edit and cancel both live there and nowhere else.
+
 ```mermaid
 stateDiagram-v2
     [*] --> pending: RestockRequestCreate (selling team)
+    pending --> pending: RestockRequestUpdate (requester) — freely edited, not yet accepted (#131)
     pending --> fulfilled: RestockRequestFulfill (target warehouse) — receives stock
     pending --> cancelled: RestockRequestCancel (requester)
     fulfilled --> [*]
     cancelled --> [*]
     note right of fulfilled
         FailedPrecondition if already
-        fulfilled/cancelled (guarded FOR UPDATE)
+        fulfilled/cancelled (guarded FOR UPDATE) —
+        for Update as much as for Fulfil/Cancel
     end note
 ```
 

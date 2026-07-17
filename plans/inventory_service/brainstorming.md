@@ -306,3 +306,30 @@ flow (§1) and is not built.
   supplier. Recorded the owner's call to **promote `Marketplace` to a shared proto**
   (`warehouse.marketplace.v1`) referenced by both selling and inventory, with the text encoding in
   `pkgs/san_marketplace`. Supplier now has a detail page reached by clicking the row.
+- **2026-07-17** — Restock editability (#131), from the owner's rule *"when restock not accepted by
+  warehouse, it's freely edited"*. This settles a question the lifecycle had left implicit: **which
+  state is writable**. The answer is that **`pending` is the only one**, and the reason is physical —
+  before acceptance nothing has moved, so a request is still just an *intention* its author owns and
+  may rewrite in full (the target warehouse included). Acceptance is the point of no return: it *is*
+  the stock movement, so a `fulfilled` request is a record of something that physically happened and
+  editing it would be rewriting history, not changing a plan. `cancelled` is closed for the same
+  reason in reverse — editing it would quietly un-close it.
+  - The consequence worth remembering: **edit is a full replace, not a patch**, because the edit
+    screen is the create form re-opened. That makes "the person cleared this field" expressible at
+    all — a patch shape would have to invent an absent-vs-empty distinction the form does not have.
+  - **A lesson that generalises past restock: adding an edit form re-judges every picker on it.** Two
+    habits that are harmless on a create-only form turn into bugs the moment the same form re-opens on
+    a saved row, and both bit here:
+    1. **A "force a choice" placeholder becomes a WRITE-ONCE field.** `SupplierSelect` and
+       `ShippingSelect` rendered their empty option `disabled`. Nothing is recorded yet on a create
+       form, so that reads as helpful; on an edit form it means a supplier or courier recorded by
+       mistake can never be removed — while the contract, the handler and its test all support
+       clearing it. The rule: **if "none" is a legal value, its option must be selectable.**
+    2. **A picker whose options arrive over the network cannot display a value prefilled at mount.**
+       The combobox derives its display text once, against a collection that is still empty, and never
+       re-derives — so the field renders blank though a value is set. Every use before this one
+       mounted empty and let the person pick, which is why it had never shown.
+    Both are worth re-checking on the next edit screen (`#133` and after), not re-discovering.
+  - Still open, and deliberately not settled here: whether the warehouse should be able to **request a
+    change** rather than only accept/refuse (today it has no say short of refusing). That only
+    matters once §1 says who is accountable for a wrong restock — see the §0 blocker.

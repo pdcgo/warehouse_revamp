@@ -16,7 +16,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, Ban, PackageCheck } from "lucide-react";
+import { ArrowLeft, Ban, PackageCheck, Pencil } from "lucide-react";
 import { restockClient, rpcError, supplierClient } from "../api/clients";
 import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
@@ -239,6 +239,21 @@ export function RestockRequestDetailPage() {
               </Button>
             }
           />
+        )}
+
+        {/* Editing is gated exactly as Cancel is, and for the same two reasons: RestockRequestUpdate
+            is scoped to the REQUESTING team (the warehouse asking gets NotFound), and it is refused
+            with FailedPrecondition once the request leaves PENDING — the goods have moved by then.
+            Offering a button that can only fail is worse than not offering it. */}
+        {isPending && isRequester && (
+          <Button
+            variant="outline"
+            data-testid="restock-detail-edit"
+            onClick={() => navigate(`/inventories/restock/${request.id}/edit`)}
+          >
+            <Icon as={Pencil} boxSize="4" />
+            {t("restock.edit")}
+          </Button>
         )}
 
         {isPending && isRequester && (
