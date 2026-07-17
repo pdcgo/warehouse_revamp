@@ -171,7 +171,10 @@
       "name": "Nama",
       "unitPrice": "Harga satuan",
       "lineTotal": "Total baris",
-      "supplierRef": "Pemasok #{{id}}"
+      "supplierRef": "Pemasok #{{id}}",
+      "asked": "Diminta",
+      "arrived": "Tiba",
+      "receivedTotal": "Diterima ke stok"
     },
     "summary": {
       "totalProducts": "Total produk",
@@ -239,19 +242,26 @@
       "message": "Batalkan permintaan restok ini? Tindakan ini tidak dapat dibatalkan.",
       "confirm": "Batalkan Permintaan"
     },
-    "fulfil": {
-      "action": "Penuhi",
-      "title": "Penuhi Permintaan Restok",
-      "message": "Penuhi permintaan restok ini? Ini akan menerima stok ke gudang Anda.",
-      "confirm": "Penuhi Permintaan"
+    "receive": {
+      "title": "Terima Restok",
+      "intro": "Hitung barang yang benar-benar tiba. Gudang Anda menerima jumlah ini, bukan jumlah yang diminta — kekurangan tetap memenuhi permintaan, dan kedua angka tetap dicatat.",
+      "asked": "Diminta",
+      "arrived": "Tiba",
+      "arrivedFor": "Tiba, {{sku}}",
+      "uncounted": "Belum dihitung",
+      "short": "kurang {{n}}",
+      "over": "lebih {{n}}",
+      "summary": "{{asked}} diminta · {{arrived}} tiba",
+      "differing": "{{n}} tidak sesuai permintaan",
+      "matches": "Semua barang tiba",
+      "confirm": "Terima Restok"
     },
     "toast": {
       "created": "Permintaan restok dibuat",
       "updated": "Permintaan restok diperbarui",
       "cancelled": "Permintaan restok dibatalkan",
       "cancelFailed": "Pembatalan gagal",
-      "fulfilled": "Permintaan restok terpenuhi",
-      "fulfilFailed": "Pemenuhan gagal"
+      "fulfilled": "Permintaan restok terpenuhi"
     }
   },
   "shops": {

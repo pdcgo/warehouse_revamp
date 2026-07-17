@@ -132,14 +132,26 @@ type RestockRequestItem struct {
 	Id        uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// sku/name snapshot at request time (the product may live in another team's catalogue).
-	Sku      string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name     string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Quantity int64  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Sku  string `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// How many were ASKED FOR. What actually turned up is received_quantity.
+	Quantity int64 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// Whole rupiah, PER UNIT — what this product is expected to cost from the supplier. Zero is
 	// legitimate (a transfer, a sample), so it is gte 0, not gt 0.
-	Price         int64 `protobuf:"varint,6,opt,name=price,proto3" json:"price,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Price int64 `protobuf:"varint,6,opt,name=price,proto3" json:"price,omitempty"`
+	// What actually ARRIVED, counted by the warehouse as it accepted (#133). A request is a promise;
+	// this is the delivery. Stock receives THIS number, not `quantity` — the warehouse opens the box
+	// and counts, and 9 of the 10 asked for is an ordinary Tuesday.
+	//
+	// Both numbers are kept forever rather than the asked-for being overwritten: the gap between them
+	// is the whole point — it is what someone chases the supplier about, and a record that quietly
+	// said 9 was asked for would erase the discrepancy it exists to show.
+	//
+	// 0 until the request is accepted. It stays 0 for a line that never turned up at all, which is why
+	// reading this only makes sense once status is FULFILLED.
+	ReceivedQuantity int64 `protobuf:"varint,7,opt,name=received_quantity,json=receivedQuantity,proto3" json:"received_quantity,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *RestockRequestItem) Reset() {
@@ -210,6 +222,13 @@ func (x *RestockRequestItem) GetQuantity() int64 {
 func (x *RestockRequestItem) GetPrice() int64 {
 	if x != nil {
 		return x.Price
+	}
+	return 0
+}
+
+func (x *RestockRequestItem) GetReceivedQuantity() int64 {
+	if x != nil {
+		return x.ReceivedQuantity
 	}
 	return 0
 }
@@ -920,8 +939,16 @@ func (x *RestockRequestUpdateResponse) GetRequest() *RestockRequest {
 type RestockRequestFulfillRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The fulfilling warehouse — must equal the request's warehouse_id.
-	TeamId        uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	RequestId     uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	TeamId    uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	RequestId uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	// What ACTUALLY arrived, one entry per line (#133). Accepting IS the count, so this is required:
+	// there is no "accept it as asked" shortcut, because that shortcut is precisely how a warehouse
+	// ends up holding stock it never actually received.
+	//
+	// It must name EVERY line of the request, exactly once. A line left out would have to mean either
+	// "all of it came" or "none of it did", and a system that guesses which is a system whose stock
+	// drifts — so an incomplete count is refused rather than interpreted.
+	Lines         []*RestockRequestReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -970,6 +997,72 @@ func (x *RestockRequestFulfillRequest) GetRequestId() uint64 {
 	return 0
 }
 
+func (x *RestockRequestFulfillRequest) GetLines() []*RestockRequestReceivedLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+// One line's count at acceptance (#133): the warehouse says how many of this line actually turned up.
+type RestockRequestReceivedLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The RestockRequestItem being counted.
+	ItemId uint64 `protobuf:"varint,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	// How many arrived. Zero is legitimate and means the line did not turn up at all — it is a COUNT,
+	// not a quantity to move, so it has no lower bound to defend beyond being non-negative.
+	//
+	// There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
+	// and a cap would only force the person counting to write down a number they can see is wrong.
+	ReceivedQuantity int64 `protobuf:"varint,2,opt,name=received_quantity,json=receivedQuantity,proto3" json:"received_quantity,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RestockRequestReceivedLine) Reset() {
+	*x = RestockRequestReceivedLine{}
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestockRequestReceivedLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestockRequestReceivedLine) ProtoMessage() {}
+
+func (x *RestockRequestReceivedLine) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestockRequestReceivedLine.ProtoReflect.Descriptor instead.
+func (*RestockRequestReceivedLine) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RestockRequestReceivedLine) GetItemId() uint64 {
+	if x != nil {
+		return x.ItemId
+	}
+	return 0
+}
+
+func (x *RestockRequestReceivedLine) GetReceivedQuantity() int64 {
+	if x != nil {
+		return x.ReceivedQuantity
+	}
+	return 0
+}
+
 type RestockRequestFulfillResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Request       *RestockRequest        `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
@@ -979,7 +1072,7 @@ type RestockRequestFulfillResponse struct {
 
 func (x *RestockRequestFulfillResponse) Reset() {
 	*x = RestockRequestFulfillResponse{}
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1084,7 @@ func (x *RestockRequestFulfillResponse) String() string {
 func (*RestockRequestFulfillResponse) ProtoMessage() {}
 
 func (x *RestockRequestFulfillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1097,7 @@ func (x *RestockRequestFulfillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockRequestFulfillResponse.ProtoReflect.Descriptor instead.
 func (*RestockRequestFulfillResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RestockRequestFulfillResponse) GetRequest() *RestockRequest {
@@ -1024,7 +1117,7 @@ type RestockRequestCancelRequest struct {
 
 func (x *RestockRequestCancelRequest) Reset() {
 	*x = RestockRequestCancelRequest{}
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1036,7 +1129,7 @@ func (x *RestockRequestCancelRequest) String() string {
 func (*RestockRequestCancelRequest) ProtoMessage() {}
 
 func (x *RestockRequestCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1049,7 +1142,7 @@ func (x *RestockRequestCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockRequestCancelRequest.ProtoReflect.Descriptor instead.
 func (*RestockRequestCancelRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RestockRequestCancelRequest) GetTeamId() uint64 {
@@ -1075,7 +1168,7 @@ type RestockRequestCancelResponse struct {
 
 func (x *RestockRequestCancelResponse) Reset() {
 	*x = RestockRequestCancelResponse{}
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1087,7 +1180,7 @@ func (x *RestockRequestCancelResponse) String() string {
 func (*RestockRequestCancelResponse) ProtoMessage() {}
 
 func (x *RestockRequestCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_restock_request_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1100,7 +1193,7 @@ func (x *RestockRequestCancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockRequestCancelResponse.ProtoReflect.Descriptor instead.
 func (*RestockRequestCancelResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RestockRequestCancelResponse) GetRequest() *RestockRequest {
@@ -1114,7 +1207,7 @@ var File_warehouse_inventory_v1_restock_request_proto protoreflect.FileDescripto
 
 const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\n" +
-	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xcd\x01\n" +
+	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x83\x02\n" +
 	"\x12RestockRequestItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -1123,7 +1216,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12\x1d\n" +
-	"\x05price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05price\"\xef\x04\n" +
+	"\x05price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05price\x124\n" +
+	"\x11received_quantity\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\"\xef\x04\n" +
 	"\x0eRestockRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12,\n" +
 	"\x12requesting_team_id\x18\x02 \x01(\x04R\x10requestingTeamId\x12!\n" +
@@ -1193,12 +1287,16 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x04note\x18\v \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"`\n" +
 	"\x1cRestockRequestUpdateResponse\x12@\n" +
-	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"y\n" +
+	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\xcd\x01\n" +
 	"\x1cRestockRequestFulfillRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
-	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"a\n" +
+	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId\x12R\n" +
+	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"t\n" +
+	"\x1aRestockRequestReceivedLine\x12 \n" +
+	"\aitem_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06itemId\x124\n" +
+	"\x11received_quantity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\"a\n" +
 	"\x1dRestockRequestFulfillResponse\x12@\n" +
 	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"x\n" +
 	"\x1bRestockRequestCancelRequest\x12$\n" +
@@ -1238,7 +1336,7 @@ func file_warehouse_inventory_v1_restock_request_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_inventory_v1_restock_request_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_inventory_v1_restock_request_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_warehouse_inventory_v1_restock_request_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_warehouse_inventory_v1_restock_request_proto_goTypes = []any{
 	(RestockRequestStatus)(0),             // 0: warehouse.inventory.v1.RestockRequestStatus
 	(RestockPaymentType)(0),               // 1: warehouse.inventory.v1.RestockPaymentType
@@ -1253,11 +1351,12 @@ var file_warehouse_inventory_v1_restock_request_proto_goTypes = []any{
 	(*RestockRequestUpdateRequest)(nil),   // 10: warehouse.inventory.v1.RestockRequestUpdateRequest
 	(*RestockRequestUpdateResponse)(nil),  // 11: warehouse.inventory.v1.RestockRequestUpdateResponse
 	(*RestockRequestFulfillRequest)(nil),  // 12: warehouse.inventory.v1.RestockRequestFulfillRequest
-	(*RestockRequestFulfillResponse)(nil), // 13: warehouse.inventory.v1.RestockRequestFulfillResponse
-	(*RestockRequestCancelRequest)(nil),   // 14: warehouse.inventory.v1.RestockRequestCancelRequest
-	(*RestockRequestCancelResponse)(nil),  // 15: warehouse.inventory.v1.RestockRequestCancelResponse
-	(*v1.PageFilter)(nil),                 // 16: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),                   // 17: warehouse.common.v1.PageInfo
+	(*RestockRequestReceivedLine)(nil),    // 13: warehouse.inventory.v1.RestockRequestReceivedLine
+	(*RestockRequestFulfillResponse)(nil), // 14: warehouse.inventory.v1.RestockRequestFulfillResponse
+	(*RestockRequestCancelRequest)(nil),   // 15: warehouse.inventory.v1.RestockRequestCancelRequest
+	(*RestockRequestCancelResponse)(nil),  // 16: warehouse.inventory.v1.RestockRequestCancelResponse
+	(*v1.PageFilter)(nil),                 // 17: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                   // 18: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_restock_request_proto_depIdxs = []int32{
 	0,  // 0: warehouse.inventory.v1.RestockRequest.status:type_name -> warehouse.inventory.v1.RestockRequestStatus
@@ -1266,33 +1365,34 @@ var file_warehouse_inventory_v1_restock_request_proto_depIdxs = []int32{
 	2,  // 3: warehouse.inventory.v1.RestockRequestCreateRequest.items:type_name -> warehouse.inventory.v1.RestockRequestItem
 	1,  // 4: warehouse.inventory.v1.RestockRequestCreateRequest.payment_type:type_name -> warehouse.inventory.v1.RestockPaymentType
 	3,  // 5: warehouse.inventory.v1.RestockRequestCreateResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
-	16, // 6: warehouse.inventory.v1.RestockRequestListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	17, // 6: warehouse.inventory.v1.RestockRequestListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	0,  // 7: warehouse.inventory.v1.RestockRequestListRequest.status:type_name -> warehouse.inventory.v1.RestockRequestStatus
 	3,  // 8: warehouse.inventory.v1.RestockRequestDetailResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
 	3,  // 9: warehouse.inventory.v1.RestockRequestListResponse.requests:type_name -> warehouse.inventory.v1.RestockRequest
-	17, // 10: warehouse.inventory.v1.RestockRequestListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	18, // 10: warehouse.inventory.v1.RestockRequestListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	2,  // 11: warehouse.inventory.v1.RestockRequestUpdateRequest.items:type_name -> warehouse.inventory.v1.RestockRequestItem
 	1,  // 12: warehouse.inventory.v1.RestockRequestUpdateRequest.payment_type:type_name -> warehouse.inventory.v1.RestockPaymentType
 	3,  // 13: warehouse.inventory.v1.RestockRequestUpdateResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
-	3,  // 14: warehouse.inventory.v1.RestockRequestFulfillResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
-	3,  // 15: warehouse.inventory.v1.RestockRequestCancelResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
-	4,  // 16: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:input_type -> warehouse.inventory.v1.RestockRequestCreateRequest
-	6,  // 17: warehouse.inventory.v1.RestockRequestService.RestockRequestList:input_type -> warehouse.inventory.v1.RestockRequestListRequest
-	7,  // 18: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:input_type -> warehouse.inventory.v1.RestockRequestDetailRequest
-	10, // 19: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:input_type -> warehouse.inventory.v1.RestockRequestUpdateRequest
-	12, // 20: warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill:input_type -> warehouse.inventory.v1.RestockRequestFulfillRequest
-	14, // 21: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:input_type -> warehouse.inventory.v1.RestockRequestCancelRequest
-	5,  // 22: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:output_type -> warehouse.inventory.v1.RestockRequestCreateResponse
-	9,  // 23: warehouse.inventory.v1.RestockRequestService.RestockRequestList:output_type -> warehouse.inventory.v1.RestockRequestListResponse
-	8,  // 24: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:output_type -> warehouse.inventory.v1.RestockRequestDetailResponse
-	11, // 25: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:output_type -> warehouse.inventory.v1.RestockRequestUpdateResponse
-	13, // 26: warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill:output_type -> warehouse.inventory.v1.RestockRequestFulfillResponse
-	15, // 27: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:output_type -> warehouse.inventory.v1.RestockRequestCancelResponse
-	22, // [22:28] is the sub-list for method output_type
-	16, // [16:22] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	13, // 14: warehouse.inventory.v1.RestockRequestFulfillRequest.lines:type_name -> warehouse.inventory.v1.RestockRequestReceivedLine
+	3,  // 15: warehouse.inventory.v1.RestockRequestFulfillResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
+	3,  // 16: warehouse.inventory.v1.RestockRequestCancelResponse.request:type_name -> warehouse.inventory.v1.RestockRequest
+	4,  // 17: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:input_type -> warehouse.inventory.v1.RestockRequestCreateRequest
+	6,  // 18: warehouse.inventory.v1.RestockRequestService.RestockRequestList:input_type -> warehouse.inventory.v1.RestockRequestListRequest
+	7,  // 19: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:input_type -> warehouse.inventory.v1.RestockRequestDetailRequest
+	10, // 20: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:input_type -> warehouse.inventory.v1.RestockRequestUpdateRequest
+	12, // 21: warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill:input_type -> warehouse.inventory.v1.RestockRequestFulfillRequest
+	15, // 22: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:input_type -> warehouse.inventory.v1.RestockRequestCancelRequest
+	5,  // 23: warehouse.inventory.v1.RestockRequestService.RestockRequestCreate:output_type -> warehouse.inventory.v1.RestockRequestCreateResponse
+	9,  // 24: warehouse.inventory.v1.RestockRequestService.RestockRequestList:output_type -> warehouse.inventory.v1.RestockRequestListResponse
+	8,  // 25: warehouse.inventory.v1.RestockRequestService.RestockRequestDetail:output_type -> warehouse.inventory.v1.RestockRequestDetailResponse
+	11, // 26: warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate:output_type -> warehouse.inventory.v1.RestockRequestUpdateResponse
+	14, // 27: warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill:output_type -> warehouse.inventory.v1.RestockRequestFulfillResponse
+	16, // 28: warehouse.inventory.v1.RestockRequestService.RestockRequestCancel:output_type -> warehouse.inventory.v1.RestockRequestCancelResponse
+	23, // [23:29] is the sub-list for method output_type
+	17, // [17:23] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_restock_request_proto_init() }
@@ -1306,7 +1406,7 @@ func file_warehouse_inventory_v1_restock_request_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_restock_request_proto_rawDesc), len(file_warehouse_inventory_v1_restock_request_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

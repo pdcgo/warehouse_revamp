@@ -171,7 +171,10 @@
       "name": "Name",
       "unitPrice": "Unit price",
       "lineTotal": "Line total",
-      "supplierRef": "Supplier #{{id}}"
+      "supplierRef": "Supplier #{{id}}",
+      "asked": "Asked",
+      "arrived": "Arrived",
+      "receivedTotal": "Received into stock"
     },
     "summary": {
       "totalProducts": "Total products",
@@ -239,19 +242,26 @@
       "message": "Cancel this restock request? This cannot be undone.",
       "confirm": "Cancel Request"
     },
-    "fulfil": {
-      "action": "Fulfil",
-      "title": "Fulfil Restock Request",
-      "message": "Fulfil this restock request? This receives the stock into your warehouse.",
-      "confirm": "Fulfil Request"
+    "receive": {
+      "title": "Accept Restock",
+      "intro": "Count what actually arrived. Your warehouse receives these numbers, not the ones asked for — a short count still accepts the request, and both numbers are kept.",
+      "asked": "Asked",
+      "arrived": "Arrived",
+      "arrivedFor": "Arrived, {{sku}}",
+      "uncounted": "Not counted",
+      "short": "short by {{n}}",
+      "over": "over by {{n}}",
+      "summary": "{{asked}} asked · {{arrived}} arriving",
+      "differing": "{{n}} not as asked",
+      "matches": "Everything arrived",
+      "confirm": "Accept Restock"
     },
     "toast": {
       "created": "Restock request created",
       "updated": "Restock request updated",
       "cancelled": "Restock request cancelled",
       "cancelFailed": "Cancel failed",
-      "fulfilled": "Restock request fulfilled",
-      "fulfilFailed": "Fulfil failed"
+      "fulfilled": "Restock request fulfilled"
     }
   },
   "shops": {

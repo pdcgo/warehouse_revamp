@@ -55,6 +55,10 @@ var (
 	// Proto validation requires min_items 1, so this can only be a row that predates #124 or was
 	// written around the API — fulfilling it would receive nothing while claiming success.
 	errRestockNoItems = errors.New("restock request has no items")
+	// Accepting IS the count (#133), so the count must cover the request exactly: every line named,
+	// once, and no line that is not on it. Refused rather than interpreted — reading an omitted line
+	// as "all of it came" or "none of it did" is a guess, and a guess here is stock drift.
+	errRestockCountIncomplete = errors.New("every line of the request must be counted exactly once")
 )
 
 // restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
@@ -89,12 +93,13 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(r.Items))
 	for i := range r.Items {
 		items = append(items, &inventoryv1.RestockRequestItem{
-			Id:        r.Items[i].ID,
-			ProductId: r.Items[i].ProductID,
-			Sku:       r.Items[i].SKU,
-			Name:      r.Items[i].Name,
-			Quantity:  r.Items[i].Quantity,
-			Price:     r.Items[i].Price,
+			Id:               r.Items[i].ID,
+			ProductId:        r.Items[i].ProductID,
+			Sku:              r.Items[i].SKU,
+			Name:             r.Items[i].Name,
+			Quantity:         r.Items[i].Quantity,
+			Price:            r.Items[i].Price,
+			ReceivedQuantity: r.Items[i].ReceivedQuantity,
 		})
 	}
 
@@ -121,8 +126,17 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 	return out
 }
 
-// restockItemModels turns request lines into rows; `id` on the input is ignored (a caller does not
-// get to choose a row's identity).
+// restockItemModels turns request lines into rows. Two fields on the input message are deliberately
+// NOT read, and both omissions are load-bearing:
+//
+//   - `id` — a caller does not get to choose a row's identity.
+//   - `received_quantity` — it is on the shared line message because a line READS back what arrived,
+//     but only the WAREHOUSE may ever write it, and only by counting at acceptance (#133). Copying it
+//     here would let the requesting team declare its own delivery received on create or edit: stock
+//     the warehouse never saw, written by the party that benefits from claiming it arrived. It is
+//     ignored on the way in, exactly like `id`.
+//
+// Do not "complete" this mapping by adding either.
 func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service_models.RestockRequestItem {
 	out := make([]inventory_service_models.RestockRequestItem, 0, len(in))
 	for _, item := range in {
@@ -152,6 +166,10 @@ func restockErr(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errRestockNotPending)
 	case errors.Is(err, errRestockNoItems):
 		return connect.NewError(connect.CodeFailedPrecondition, errRestockNoItems)
+	case errors.Is(err, errRestockCountIncomplete):
+		// InvalidArgument, not FailedPrecondition: the request is in a perfectly good state — it is the
+		// COUNT that is malformed, and the caller fixes it by sending a complete one.
+		return connect.NewError(connect.CodeInvalidArgument, errRestockCountIncomplete)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}

@@ -434,8 +434,9 @@ erDiagram
         bigint      product_id         "opaque product_service id, no FK"
         text        sku                "snapshot at request time"
         text        name               "snapshot"
-        bigint      quantity           "CHECK > 0"
+        bigint      quantity           "how many were ASKED FOR, CHECK > 0"
         bigint      price              "whole rupiah PER UNIT, CHECK >= 0"
+        bigint      received_quantity  "what ARRIVED, counted at acceptance; stock receives THIS; 0 until fulfilled; no CHECK vs quantity"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -488,6 +489,19 @@ erDiagram
   another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `price`
   (whole rupiah **per unit**, `CHECK >= 0` — zero is legitimate for a transfer or a sample).
   `ON DELETE CASCADE`.
+- **`quantity` is what was ASKED FOR; `received_quantity` is what ARRIVED** (#133), and the two are
+  different facts, which is why both are stored. A request is a *promise*; the delivery is a *fact*,
+  and they disagree often enough — 9 of the 10, one line that never turned up, occasionally 11 — that
+  conflating them would mean recording stock the warehouse does not physically have. **Stock receives
+  `received_quantity`**, counted by the warehouse at acceptance. The asked-for is never overwritten by
+  it: the **gap between the two is the point**, being what someone chases the supplier about, and a row
+  that quietly said 9 were asked for would erase the discrepancy it exists to record.
+  - `received_quantity` is `0` until acceptance and stays `0` for a line that never arrived, so it only
+    means anything once `status = 'fulfilled'` — on a pending request it reads as *uncounted*, not as
+    *nothing came*.
+  - **No `CHECK` against `quantity`.** A short delivery is ordinary and an over-delivery is real; the
+    column records what was counted, and the person counting is the authority. A constraint here would
+    only force them to write down a number they can see is wrong.
 - **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
   **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
   who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the

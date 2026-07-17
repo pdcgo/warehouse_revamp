@@ -15,6 +15,21 @@ const (
 	cancelled = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
 )
 
+// allArrived is the "everything turned up as asked" count — the ordinary case, and what a test that
+// is not about a shortfall means when it accepts. Accepting is a COUNT now (#133), with no "accept it
+// as asked" shortcut, so even these have to say so out loud.
+func allArrived(r *inventoryv1.RestockRequest) []*inventoryv1.RestockRequestReceivedLine {
+	lines := make([]*inventoryv1.RestockRequestReceivedLine, 0, len(r.GetItems()))
+	for _, item := range r.GetItems() {
+		lines = append(lines, &inventoryv1.RestockRequestReceivedLine{
+			ItemId:           item.GetId(),
+			ReceivedQuantity: item.GetQuantity(),
+		})
+	}
+
+	return lines
+}
+
 func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -58,14 +73,19 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 		t.Fatalf("unrelated team should see 0 requests, got %d", len(other.Msg.GetRequests()))
 	}
 
-	// A non-target warehouse cannot fulfil it (reads as NotFound).
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{TeamId: 9, RequestId: reqID}))
+	// A non-target warehouse cannot fulfil it (reads as NotFound). The count is valid, so this proves
+	// the SCOPE is what refuses it, not a malformed count.
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: 9, RequestId: reqID, Lines: allArrived(created.Msg.GetRequest()),
+	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-warehouse fulfil code = %v, want NotFound", connect.CodeOf(err))
 	}
 
 	// The target warehouse fulfils: status FULFILLED and the stock is received.
-	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{TeamId: warehouse, RequestId: reqID}))
+	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: reqID, Lines: allArrived(created.Msg.GetRequest()),
+	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
 	}
@@ -82,7 +102,9 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	}
 
 	// Re-fulfilling a fulfilled request is rejected.
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{TeamId: warehouse, RequestId: reqID}))
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: reqID, Lines: allArrived(created.Msg.GetRequest()),
+	}))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("re-fulfil code = %v, want FailedPrecondition", connect.CodeOf(err))
 	}
@@ -97,7 +119,8 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	const sellingTeam, warehouse uint64 = 2, 5
 
-	newRequest := func() uint64 {
+	// Returns the whole request, not just its id: accepting one needs its LINES to count (#133).
+	newRequest := func() *inventoryv1.RestockRequest {
 		t.Helper()
 
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
@@ -110,7 +133,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 			t.Fatalf("create: %v", err)
 		}
 
-		return resp.Msg.GetRequest().GetId()
+		return resp.Msg.GetRequest()
 	}
 
 	// One of each status: pending, fulfilled, cancelled.
@@ -118,7 +141,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	toFulfil := newRequest()
 	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: toFulfil,
+		TeamId: warehouse, RequestId: toFulfil.GetId(), Lines: allArrived(toFulfil),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -126,7 +149,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	toCancel := newRequest()
 	_, err = svc.RestockRequestCancel(ctx, connect.NewRequest(&inventoryv1.RestockRequestCancelRequest{
-		TeamId: sellingTeam, RequestId: toCancel,
+		TeamId: sellingTeam, RequestId: toCancel.GetId(),
 	}))
 	if err != nil {
 		t.Fatalf("cancel: %v", err)
@@ -152,15 +175,15 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	// Each status tab returns only its own.
 	onlyPending := list(sellingTeam, pending)
-	if len(onlyPending) != 1 || onlyPending[0].GetId() != stillPending {
+	if len(onlyPending) != 1 || onlyPending[0].GetId() != stillPending.GetId() {
 		t.Fatalf("pending tab = %+v, want just the pending one", onlyPending)
 	}
 
-	if only := list(sellingTeam, fulfilled); len(only) != 1 || only[0].GetId() != toFulfil {
+	if only := list(sellingTeam, fulfilled); len(only) != 1 || only[0].GetId() != toFulfil.GetId() {
 		t.Fatalf("fulfilled tab = %+v", only)
 	}
 
-	if only := list(sellingTeam, cancelled); len(only) != 1 || only[0].GetId() != toCancel {
+	if only := list(sellingTeam, cancelled); len(only) != 1 || only[0].GetId() != toCancel.GetId() {
 		t.Fatalf("cancelled tab = %+v", only)
 	}
 
@@ -168,7 +191,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 	// filter that leg too. This is what catches the operator-precedence trap: an unparenthesised
 	// `requesting_team_id = ? OR warehouse_id = ? AND status = ?` binds the AND to the warehouse leg
 	// only, so the selling team's list would quietly ignore the tab.
-	if only := list(warehouse, pending); len(only) != 1 || only[0].GetId() != stillPending {
+	if only := list(warehouse, pending); len(only) != 1 || only[0].GetId() != stillPending.GetId() {
 		t.Fatalf("warehouse pending tab = %+v, want just the pending one", only)
 	}
 
@@ -351,7 +374,7 @@ func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	}
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: got.GetId(),
+		TeamId: warehouse, RequestId: got.GetId(), Lines: allArrived(got),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -445,6 +468,228 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	got := created.Msg.GetRequest()
 	if got.GetSupplierId() != 0 || got.GetOrderRef() != "" || got.GetReceipt() != "" {
 		t.Fatalf("absent context should be zero, got %+v", got)
+	}
+}
+
+// #133 — the heart of it: STOCK RECEIVES WHAT WAS COUNTED, never what was asked for. A request is a
+// promise; the delivery is a fact, and receiving the promise would be inventing stock the warehouse
+// does not have.
+func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Short", Quantity: 10, Price: 5000},
+			{ProductId: 200, Sku: "SKU2", Name: "Exact", Quantity: 3, Price: 1000},
+			{ProductId: 300, Sku: "SKU3", Name: "Over", Quantity: 5, Price: 200},
+			{ProductId: 400, Sku: "SKU4", Name: "Missing", Quantity: 2, Price: 900},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+	items := req.GetItems()
+
+	// The four things a delivery can do to a line: come up short, match, over-deliver, not turn up.
+	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{ItemId: items[0].GetId(), ReceivedQuantity: 9},
+			{ItemId: items[1].GetId(), ReceivedQuantity: 3},
+			{ItemId: items[2].GetId(), ReceivedQuantity: 6},
+			{ItemId: items[3].GetId(), ReceivedQuantity: 0},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	// A short count still FULFILS: the delivery happened, and the request has done its job.
+	if ful.Msg.GetRequest().GetStatus() != fulfilled {
+		t.Fatalf("a short delivery still fulfils, got %v", ful.Msg.GetRequest().GetStatus())
+	}
+
+	// BOTH numbers survive — the gap is the record's whole point.
+	//
+	// Read back through Detail, which is a FRESH DB read. Asserting this on the fulfil RESPONSE would
+	// prove nothing: the response is built by restockRequestToProto(&rr) from the very struct the
+	// handler assigns in memory, so it reports the count whether or not the column was ever written.
+	// Only a re-read witnesses persistence — without this, deleting the handler's received_quantity
+	// UPDATE leaves every test in this file green while the row keeps its DEFAULT 0.
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: sellingTeam, RequestId: req.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	got := detail.Msg.GetRequest().GetItems()
+	for i, want := range []struct{ asked, arrived int64 }{{10, 9}, {3, 3}, {5, 6}, {2, 0}} {
+		if got[i].GetQuantity() != want.asked || got[i].GetReceivedQuantity() != want.arrived {
+			t.Fatalf("line %d AS STORED: asked=%d arrived=%d, want asked=%d arrived=%d",
+				i, got[i].GetQuantity(), got[i].GetReceivedQuantity(), want.asked, want.arrived)
+		}
+	}
+
+	// And the response must AGREE with the row — it is what the screen renders the instant the dialog
+	// closes, so a response that flatters the stored truth would be a lie with a short shelf life.
+	for i, item := range ful.Msg.GetRequest().GetItems() {
+		if item.GetReceivedQuantity() != got[i].GetReceivedQuantity() {
+			t.Fatalf("line %d: the response says %d arrived, the stored row says %d",
+				i, item.GetReceivedQuantity(), got[i].GetReceivedQuantity())
+		}
+	}
+
+	// Stock holds what was COUNTED. The line that never turned up holds nothing at all — not a zero
+	// row, because "received none" and "never received" must not read the same.
+	levels, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouse, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+
+	onHand := map[uint64]int64{}
+	for _, lvl := range levels.Msg.GetLevels() {
+		onHand[lvl.GetProductId()] = lvl.GetOnHand()
+	}
+
+	for product, want := range map[uint64]int64{100: 9, 200: 3, 300: 6} {
+		if onHand[product] != want {
+			t.Fatalf("product %d on-hand = %d, want %d (the COUNT, not the ask)", product, onHand[product], want)
+		}
+	}
+
+	if _, present := onHand[400]; present {
+		t.Fatalf("a line that never arrived must not create a stock level, got %+v", levels.Msg.GetLevels())
+	}
+}
+
+// received_quantity rides the SHARED line message (a line reads back what arrived), so create and edit
+// can both be TOLD one — and must both ignore it. Only the warehouse writes it, and only by counting.
+// Honouring it here would let the requesting team declare its own delivery received: stock the
+// warehouse never saw, written by the party that benefits from claiming it turned up (#133).
+func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	// The requester claims 10 already arrived, at create time.
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500, ReceivedQuantity: 10},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+	if got := req.GetItems()[0].GetReceivedQuantity(); got != 0 {
+		t.Fatalf("create honoured a claimed receipt: received = %d, want 0", got)
+	}
+
+	// And again on edit.
+	updated, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500, ReceivedQuantity: 10},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if got := updated.Msg.GetRequest().GetItems()[0].GetReceivedQuantity(); got != 0 {
+		t.Fatalf("edit honoured a claimed receipt: received = %d, want 0", got)
+	}
+
+	// Nothing reached stock, either — the claim moved no goods.
+	levels, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouse, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+	if len(levels.Msg.GetLevels()) != 0 {
+		t.Fatalf("a claimed receipt must move no stock, got %+v", levels.Msg.GetLevels())
+	}
+}
+
+// Accepting IS the count (#133), so a count that does not cover the request exactly is refused rather
+// than interpreted: reading an omitted line as "all of it came" or "none did" is a guess, and a guess
+// about stock is drift.
+func TestRestockRequest_FulfilRefusesAnIncompleteCount(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 4, Price: 500},
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 6, Price: 700},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+	items := req.GetItems()
+
+	tryCount := func(lines []*inventoryv1.RestockRequestReceivedLine) error {
+		_, fulErr := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+			TeamId: warehouse, RequestId: req.GetId(), Lines: lines,
+		}))
+
+		return fulErr
+	}
+
+	cases := map[string][]*inventoryv1.RestockRequestReceivedLine{
+		"a line left uncounted": {
+			{ItemId: items[0].GetId(), ReceivedQuantity: 4},
+		},
+		"the same line counted twice": {
+			{ItemId: items[0].GetId(), ReceivedQuantity: 4},
+			{ItemId: items[0].GetId(), ReceivedQuantity: 4},
+		},
+		"a line that is not on this request": {
+			{ItemId: items[0].GetId(), ReceivedQuantity: 4},
+			{ItemId: 999999, ReceivedQuantity: 6},
+		},
+	}
+
+	for name, lines := range cases {
+		if code := connect.CodeOf(tryCount(lines)); code != connect.CodeInvalidArgument {
+			t.Fatalf("%s: code = %v, want InvalidArgument", name, code)
+		}
+	}
+
+	// Every refusal left the request untouched — no stock moved, and it is still acceptable.
+	levels, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouse, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+	if len(levels.Msg.GetLevels()) != 0 {
+		t.Fatalf("a refused count must move no stock, got %+v", levels.Msg.GetLevels())
+	}
+
+	if err = tryCount(allArrived(req)); err != nil {
+		t.Fatalf("a complete count must still be accepted afterwards: %v", err)
 	}
 }
 
@@ -598,7 +843,7 @@ func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
 
 	const sellingTeam, warehouse uint64 = 2, 5
 
-	newPending := func() uint64 {
+	newPending := func() *inventoryv1.RestockRequest {
 		t.Helper()
 
 		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
@@ -611,7 +856,8 @@ func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
 			t.Fatalf("create: %v", err)
 		}
 
-		return created.Msg.GetRequest().GetId()
+		// The whole request, not just its id: accepting one needs its lines to count (#133).
+		return created.Msg.GetRequest()
 	}
 
 	tryEdit := func(reqID uint64) error {
@@ -629,13 +875,13 @@ func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
 	accepted := newPending()
 
 	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: accepted,
+		TeamId: warehouse, RequestId: accepted.GetId(), Lines: allArrived(accepted),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
 	}
 
-	if code := connect.CodeOf(tryEdit(accepted)); code != connect.CodeFailedPrecondition {
+	if code := connect.CodeOf(tryEdit(accepted.GetId())); code != connect.CodeFailedPrecondition {
 		t.Fatalf("editing an accepted request = %v, want FailedPrecondition", code)
 	}
 
@@ -643,19 +889,19 @@ func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
 	dropped := newPending()
 
 	_, err = svc.RestockRequestCancel(ctx, connect.NewRequest(&inventoryv1.RestockRequestCancelRequest{
-		TeamId: sellingTeam, RequestId: dropped,
+		TeamId: sellingTeam, RequestId: dropped.GetId(),
 	}))
 	if err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
 
-	if code := connect.CodeOf(tryEdit(dropped)); code != connect.CodeFailedPrecondition {
+	if code := connect.CodeOf(tryEdit(dropped.GetId())); code != connect.CodeFailedPrecondition {
 		t.Fatalf("editing a cancelled request = %v, want FailedPrecondition", code)
 	}
 
 	// The refused edit changed nothing — the accepted request still reads as it was received.
 	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
-		TeamId: sellingTeam, RequestId: accepted,
+		TeamId: sellingTeam, RequestId: accepted.GetId(),
 	}))
 	if err != nil {
 		t.Fatalf("detail: %v", err)

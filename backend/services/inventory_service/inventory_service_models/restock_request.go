@@ -56,9 +56,17 @@ type RestockRequestItem struct {
 	ProductID uint64
 	SKU       string
 	Name      string
-	Quantity  int64
+	// Quantity is what was ASKED FOR; ReceivedQuantity is what actually turned up.
+	Quantity int64
 	// Whole rupiah, PER UNIT.
-	Price     int64
+	Price int64
+
+	// What the warehouse COUNTED when it accepted the request (#133) — the number stock actually
+	// receives. Kept alongside Quantity rather than replacing it: the gap between asked and arrived is
+	// the record's whole value, and overwriting the ask would erase the discrepancy. 0 until accepted,
+	// and 0 for a line that never turned up, so it only means anything once Status is fulfilled.
+	ReceivedQuantity int64
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

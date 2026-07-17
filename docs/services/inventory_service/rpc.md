@@ -77,6 +77,20 @@ the stock ledger can never diverge because the fulfil does both in **one transac
   **FailedPrecondition**). **Every line is received inside the one transaction** (#124) — a request
   half-received would be worse than one not received at all, and the status flip has to mean all of
   it landed. A request with no lines is refused rather than "fulfilled" having moved nothing.
+  - **Accepting IS counting** (#133). The call carries `lines` — one `RestockRequestReceivedLine`
+    per item — and **stock receives `received_quantity`, never the requested `quantity`**. A request
+    is a promise and a delivery is a fact; receiving the promise on the warehouse's behalf would be
+    inventing stock it does not have.
+  - **The count must cover the request exactly**: every line named once, nothing omitted, nothing
+    extra. An incomplete count is **InvalidArgument** — refused, not interpreted. Reading a missing
+    line as "all of it came" or "none did" is a guess, and a guess about stock is drift. There is
+    deliberately **no "accept as asked" shortcut**, because that shortcut is how a warehouse ends up
+    holding stock nobody ever counted.
+  - **A short count still fulfils.** The goods arrived and the request has done its job. Nothing is
+    hidden by that: `quantity` (asked) and `received_quantity` (arrived) both stay on the line, so the
+    shortfall remains on the record for whoever chases the supplier.
+  - **A line counted `0` moves no stock at all** — no zero-quantity movement is appended. A ledger row
+    saying nothing happened is worse than no row, because it reads as a receipt.
 - **`RestockRequestUpdate`** — the REQUESTER edits its own request **while the warehouse has not
   accepted it** (#131). Until then nothing has physically happened, so there is nothing to protect and
   the request is freely editable — the warehouse it targets included. Once it is `fulfilled` the goods
@@ -113,7 +127,7 @@ edit and cancel both live there and nowhere else.
 stateDiagram-v2
     [*] --> pending: RestockRequestCreate (selling team)
     pending --> pending: RestockRequestUpdate (requester) — freely edited, not yet accepted (#131)
-    pending --> fulfilled: RestockRequestFulfill (target warehouse) — receives stock
+    pending --> fulfilled: RestockRequestFulfill (target warehouse) — COUNTS what arrived, receives that (#133)
     pending --> cancelled: RestockRequestCancel (requester)
     fulfilled --> [*]
     cancelled --> [*]
@@ -126,13 +140,16 @@ stateDiagram-v2
 
 ### Fulfil transaction (the one that must not diverge)
 
+The warehouse arrives at this with a **count**, not a confirmation: it has opened the box, and `lines`
+says how many of each line actually turned up. Everything below moves that number — never the ask.
+
 ```mermaid
 sequenceDiagram
     participant W as Warehouse staff
     participant H as RestockRequestFulfill
     participant DB as Postgres (one tx)
 
-    W->>H: RestockRequestFulfill{team_id=warehouse, request_id}
+    W->>H: RestockRequestFulfill{team_id=warehouse, request_id,<br/>lines=[{item_id, received_quantity}, …]} (#133)
     activate H
     H->>DB: BEGIN
     H->>DB: SELECT restock_requests<br/>WHERE id=? AND warehouse_id=? FOR UPDATE
@@ -141,12 +158,21 @@ sequenceDiagram
         H-->>W: NotFound
     else found but status != pending
         H-->>W: FailedPrecondition (re-fulfil)
-    else pending
+    else count does not cover the request exactly
+        Note over H: a line omitted, counted twice,<br/>or not on this request
+        H-->>W: InvalidArgument — refused, never interpreted (#133)
+    else pending, count complete
         loop every line of the request (#124)
-            H->>DB: applyDelta(warehouse, line.product, +line.quantity) → balance
-            H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+            H->>DB: UPDATE restock_request_items<br/>SET received_quantity = counted
+            alt counted == 0 (never turned up)
+                Note over H,DB: no movement — a zero row<br/>would read as a receipt
+            else counted > 0
+                H->>DB: applyDelta(warehouse, line.product, +COUNTED) → balance
+                H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+            end
         end
         H->>DB: UPDATE restock_requests SET status='fulfilled'
+        Note over H,DB: a SHORT count still fulfils — both<br/>asked and arrived stay on the line
         H->>DB: COMMIT
         DB-->>H: ok
         H-->>W: RestockRequest{status=fulfilled}

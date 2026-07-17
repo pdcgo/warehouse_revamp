@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Badge,
   Button,
   Card,
   Flex,
@@ -22,6 +23,7 @@ import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/invent
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { RestockReceiveDialog, deltaLabel } from "./RestockReceiveDialog";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
 import { paymentTypeLabel } from "../components/PaymentTypeSelect";
 import { ShippingBadge } from "../components/ShippingBadge";
@@ -137,23 +139,23 @@ export function RestockRequestDetailPage() {
     [request],
   );
 
+  // Pieces, not money: what was asked for against what the count actually put on the shelf. Only
+  // meaningful once the request is fulfilled — see `isFulfilled` below, which gates the display.
+  const askedTotal = useMemo(
+    () => (request?.items ?? []).reduce((sum, item) => sum + item.quantity, 0n),
+    [request],
+  );
+  const receivedTotal = useMemo(
+    () => (request?.items ?? []).reduce((sum, item) => sum + item.receivedQuantity, 0n),
+    [request],
+  );
+
   // The same arithmetic the create form's G does (#127): the goods, plus the freight on top.
   const grandTotal = productsTotal + (request?.shippingCost ?? 0n);
 
-  // Both actions return the updated request, so the page re-renders off the response rather than
-  // re-fetching — the same move OrderDetailPage makes.
-  async function fulfilRequest() {
-    if (teamId === undefined || !request) return;
-
-    try {
-      const res = await restockClient.restockRequestFulfill({ teamId, requestId: request.id });
-      setRequest(res.request ?? request);
-      toaster.create({ type: "success", title: t("restock.toast.fulfilled") });
-    } catch (err) {
-      toaster.create({ type: "error", title: t("restock.toast.fulfilFailed"), description: rpcError(err) });
-    }
-  }
-
+  // Cancel returns the updated request, so the page re-renders off the response rather than
+  // re-fetching — the same move OrderDetailPage makes. (Accepting goes through
+  // RestockReceiveDialog, which owns its own call and asks us to reload when it lands.)
   async function cancelRequest() {
     if (teamId === undefined || !request) return;
 
@@ -202,6 +204,10 @@ export function RestockRequestDetailPage() {
   }
 
   const isPending = request.status === RestockRequestStatus.PENDING;
+  // Only a FULFILLED request has been counted, so it is the only one whose `receivedQuantity` means
+  // anything. On a cancelled request it is 0 for the same reason it is 0 on a pending one — nobody
+  // ever counted — so neither gets an Arrived column.
+  const isFulfilled = request.status === RestockRequestStatus.FULFILLED;
   const isRequester = request.requestingTeamId === current.teamId;
   const isWarehouse = request.warehouseId === current.teamId;
 
@@ -225,17 +231,17 @@ export function RestockRequestDetailPage() {
         <RestockStatusBadge status={request.status} />
         <Spacer />
 
-        {isPending && isWarehouse && (
-          <ConfirmDialog
-            title={t("restock.fulfil.title")}
-            message={t("restock.fulfil.message")}
-            confirmLabel={t("restock.fulfil.confirm")}
-            destructive={false}
-            onConfirm={fulfilRequest}
+        {/* Accepting is COUNTING (#133): the warehouse opens the box and says what actually turned
+            up, so this opens the receive dialog rather than a confirm. */}
+        {isPending && isWarehouse && teamId !== undefined && (
+          <RestockReceiveDialog
+            request={request}
+            teamId={teamId}
+            onDone={() => void load()}
             trigger={
               <Button colorPalette="brand" data-testid="restock-detail-fulfil">
                 <Icon as={PackageCheck} boxSize="4" />
-                {t("restock.fulfil.action")}
+                {t("restock.receive.title")}
               </Button>
             }
           />
@@ -358,29 +364,68 @@ export function RestockRequestDetailPage() {
               {t("restock.form.products")}
             </Text>
 
+            {/* The Arrived column exists only once the count HAS been made. `receivedQuantity` is 0
+                on a pending request because nobody has opened the box yet — rendering that would
+                read as "nothing came", when the truth is "not counted yet". So the asked quantity
+                is the only meaningful number until the request is fulfilled, and it keeps its
+                neutral "Qty" heading until there is a second number to tell it apart from. */}
             <Table.Root size="sm" data-testid="restock-detail-items">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("restock.detail.sku")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("restock.detail.name")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("restock.table.qty")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">
+                    {isFulfilled ? t("restock.detail.asked") : t("restock.table.qty")}
+                  </Table.ColumnHeader>
+                  {isFulfilled && (
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.detail.arrived")}
+                    </Table.ColumnHeader>
+                  )}
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.unitPrice")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.lineTotal")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {request.items.map((item) => (
-                  <Table.Row
-                    key={item.id.toString()}
-                    data-testid={`restock-detail-item-${item.productId}`}
-                  >
-                    <Table.Cell>{item.sku}</Table.Cell>
-                    <Table.Cell>{item.name}</Table.Cell>
-                    <Table.Cell textAlign="end">{item.quantity.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">{formatRupiah(item.price)}</Table.Cell>
-                    <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
-                  </Table.Row>
-                ))}
+                {request.items.map((item) => {
+                  const delta = isFulfilled ? deltaLabel(t, item.quantity, item.receivedQuantity) : "";
+
+                  return (
+                    <Table.Row
+                      key={item.id.toString()}
+                      data-testid={`restock-detail-item-${item.productId}`}
+                    >
+                      <Table.Cell>{item.sku}</Table.Cell>
+                      <Table.Cell>{item.name}</Table.Cell>
+                      <Table.Cell textAlign="end">{item.quantity.toString()}</Table.Cell>
+                      {isFulfilled && (
+                        <Table.Cell
+                          textAlign="end"
+                          data-testid={`restock-detail-received-${item.productId}`}
+                        >
+                          <Flex align="center" justify="end" gap="2" wrap="wrap">
+                            <Text as="span" fontWeight={delta ? "semibold" : "normal"}>
+                              {item.receivedQuantity.toString()}
+                            </Text>
+                            {/* Short and over are BOTH worth chasing, but they are not the same
+                                problem: red is stock that never arrived, orange is stock that
+                                arrived unasked. */}
+                            {delta && (
+                              <Badge
+                                colorPalette={item.receivedQuantity < item.quantity ? "red" : "orange"}
+                                data-testid={`restock-detail-delta-${item.productId}`}
+                              >
+                                {delta}
+                              </Badge>
+                            )}
+                          </Flex>
+                        </Table.Cell>
+                      )}
+                      <Table.Cell textAlign="end">{formatRupiah(item.price)}</Table.Cell>
+                      <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
+                    </Table.Row>
+                  );
+                })}
               </Table.Body>
             </Table.Root>
 
@@ -388,6 +433,16 @@ export function RestockRequestDetailPage() {
 
             {/* The create form's E/F/G breakdown, read back: the goods, the freight, the sum. */}
             <Stack gap="1" align="end">
+              {/* What the warehouse is actually holding because of this restock — the one number
+                  the money breakdown below cannot tell you, since the money is what was ORDERED. */}
+              {isFulfilled && (
+                <Text fontSize="sm" color="fg.muted">
+                  {t("restock.detail.receivedTotal")}:{" "}
+                  <Text as="span" fontWeight="medium" data-testid="restock-detail-received-total">
+                    {receivedTotal.toString()} / {askedTotal.toString()}
+                  </Text>
+                </Text>
+              )}
               <Text fontSize="sm" color="fg.muted">
                 {t("restock.summary.productsTotal")}:{" "}
                 <Text as="span" data-testid="restock-detail-products-total">

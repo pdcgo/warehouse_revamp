@@ -27,6 +27,7 @@ import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_requ
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { RestockReceiveDialog } from "./RestockReceiveDialog";
 import { Pagination } from "../components/Pagination";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
 import { ShippingBadge } from "../components/ShippingBadge";
@@ -167,20 +168,6 @@ export function RestockRequestsPage() {
     }
   }
 
-  async function fulfilRequest(request: RestockRequest) {
-    if (teamId === undefined) {
-      return;
-    }
-
-    try {
-      await restockClient.restockRequestFulfill({ teamId, requestId: request.id });
-      toaster.create({ type: "success", title: t("restock.toast.fulfilled") });
-      await load();
-    } catch (err) {
-      toaster.create({ type: "error", title: t("restock.toast.fulfilFailed"), description: rpcError(err) });
-    }
-  }
-
   if (!current) {
     return (
       <Stack gap="section">
@@ -303,19 +290,20 @@ export function RestockRequestsPage() {
                               />
                             )}
 
-                            {isPending && isWarehouse && (
-                              <ConfirmDialog
-                                title={t("restock.fulfil.title")}
-                                message={t("restock.fulfil.message")}
-                                confirmLabel={t("restock.fulfil.confirm")}
-                                destructive={false}
-                                onConfirm={() => fulfilRequest(request)}
+                            {/* Accepting is COUNTING (#133), so the row action opens the receive
+                                dialog rather than a confirm: there is no one-click "as asked"
+                                any more, because the contract has no such call. */}
+                            {isPending && isWarehouse && teamId !== undefined && (
+                              <RestockReceiveDialog
+                                request={request}
+                                teamId={teamId}
+                                onDone={() => void load()}
                                 trigger={
                                   <IconButton
                                     size="xs"
                                     variant="ghost"
                                     colorPalette="green"
-                                    aria-label={t("restock.fulfil.action")}
+                                    aria-label={t("restock.receive.title")}
                                     data-testid={`fulfil-${request.id}`}
                                   >
                                     <Icon as={PackageCheck} boxSize="4" />

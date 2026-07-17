@@ -330,6 +330,31 @@ flow (§1) and is not built.
        re-derives — so the field renders blank though a value is set. Every use before this one
        mounted empty and let the person pick, which is why it had never shown.
     Both are worth re-checking on the next edit screen (`#133` and after), not re-discovering.
+- **2026-07-17** — Accepting a restock is **counting** (#133), settled with the owner. This is a bigger
+  call than it looks, so it is recorded as a principle rather than a feature: **a request is a promise;
+  a delivery is a fact, and the system must never let one stand in for the other.** Until now,
+  accepting received exactly the quantities that were asked for — which quietly assumed the promise
+  always comes true. It does not: 9 of the 10 arrive, one is damaged, a line never turns up, and
+  occasionally 11 come. Receiving the ask on the warehouse's behalf is *inventing stock it does not
+  physically have*, and stock that exists only in the database is the one thing an inventory system
+  must never produce.
+  - **Stock receives `received_quantity`, counted by the warehouse.** `quantity` (asked) stays on the
+    line untouched. Both are kept because **the gap between them is the point** — it is what someone
+    chases the supplier about; a record that quietly said 9 were asked for would erase the discrepancy
+    it exists to show.
+  - **A short count still fulfils** (the owner's call). The goods arrived and the request has done its
+    job; the shortfall lives on the line rather than in the status. The alternative — a
+    `partially_received` state that stays open for a second delivery — was considered and **not**
+    taken: it needs a new state and a rule for when it finally closes, and no one has asked for a
+    restock to arrive in two deliveries yet.
+  - **An incomplete count is refused, not interpreted.** A line left out would have to mean "all of it
+    came" or "none did", and a system that guesses which is a system whose stock drifts. There is
+    deliberately no "accept as asked" shortcut — that shortcut is precisely how a warehouse ends up
+    holding stock nobody counted.
+  - **Still open** (not settled here): what a discrepancy should *trigger*. Today it is recorded and
+    visible, and nothing else happens — nobody is notified, and no one is accountable for the missing
+    one. Who chases it, and whether the selling team is told, is a §1 question about accountability —
+    see the §0 blocker.
   - Still open, and deliberately not settled here: whether the warehouse should be able to **request a
     change** rather than only accept/refuse (today it has no say short of refusing). That only
     matters once §1 says who is accountable for a wrong restock — see the §0 blocker.
