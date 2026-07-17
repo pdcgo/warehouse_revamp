@@ -84,6 +84,11 @@ func (MovementKind) EnumDescriptor() ([]byte, []int) {
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
+// StockLevel — how much of a product a WAREHOUSE holds. Always the warehouse's TOTAL, summed across
+// the product's places (#135): a product on three shelves is one StockLevel holding the lot, because
+// "how much of X do we have here?" has never meant "on which shelf". It deliberately carries no rack —
+// "what is on rack A-01-3" is a different question with its own screen (#138). A per-place figure is
+// reported by the movement that produced it (StockMovement.rack_id / .balance).
 type StockLevel struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProductId     uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
@@ -146,18 +151,26 @@ func (x *StockLevel) GetOnHand() int64 {
 
 // StockMovement — one row of the ledger. Append-only; `balance` is the on-hand AFTER this movement,
 // so the history reads as a running total.
+//
+// A movement is a statement about ONE PLACE (#135): "this shelf went from 40 to 49". Both `delta` and
+// `balance` are that place's, never the warehouse's total for the product — a warehouse total is a SUM
+// across places, and reading `balance` as one would under-report every product that sits on more than
+// one shelf.
 type StockMovement struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProductId     uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	WarehouseId   uint64                 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	Delta         int64                  `protobuf:"varint,4,opt,name=delta,proto3" json:"delta,omitempty"`     // signed: + in, - out
-	Balance       int64                  `protobuf:"varint,5,opt,name=balance,proto3" json:"balance,omitempty"` // on-hand after this movement
-	Kind          MovementKind           `protobuf:"varint,6,opt,name=kind,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kind,omitempty"`
-	Reason        string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
-	Ref           string                 `protobuf:"bytes,8,opt,name=ref,proto3" json:"ref,omitempty"` // opaque external reference (e.g. an order id); optional
-	ActorUserId   uint64                 `protobuf:"varint,9,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	WarehouseId uint64                 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	Delta       int64                  `protobuf:"varint,4,opt,name=delta,proto3" json:"delta,omitempty"`     // signed: + in, - out
+	Balance     int64                  `protobuf:"varint,5,opt,name=balance,proto3" json:"balance,omitempty"` // THIS PLACE's on-hand after this movement
+	Kind        MovementKind           `protobuf:"varint,6,opt,name=kind,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kind,omitempty"`
+	Reason      string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	Ref         string                 `protobuf:"bytes,8,opt,name=ref,proto3" json:"ref,omitempty"` // opaque external reference (e.g. an order id); optional
+	ActorUserId uint64                 `protobuf:"varint,9,opt,name=actor_user_id,json=actorUserId,proto3" json:"actor_user_id,omitempty"`
+	CreatedAt   string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
+	// The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
+	// arrived before anyone shelved it, and every movement written before racks carried stock at all.
+	RackId        uint64 `protobuf:"varint,11,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -260,6 +273,13 @@ func (x *StockMovement) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *StockMovement) GetRackId() uint64 {
+	if x != nil {
+		return x.RackId
+	}
+	return 0
 }
 
 type StockListRequest struct {
@@ -602,9 +622,25 @@ type StockAdjustRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WarehouseId uint64                 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// The counted on-hand to correct TO (absolute, not a delta). The handler records the difference.
-	OnHand        int64  `protobuf:"varint,3,opt,name=on_hand,json=onHand,proto3" json:"on_hand,omitempty"`
-	Reason        string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The counted on-hand to correct TO (absolute, not a delta) — for the ONE place named below, not
+	// for the warehouse. The handler records the difference.
+	OnHand int64  `protobuf:"varint,3,opt,name=on_hand,json=onHand,proto3" json:"on_hand,omitempty"`
+	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
+	// in front of A-01-3 and counts what is on it, and this says which shelf that was.
+	//
+	// It is a REQUIRED oneof rather than a plain `rack_id` where 0 would mean unplaced, because those
+	// two encodings fail differently. With a plain field, a caller that simply FORGOT to say where
+	// would silently correct the unplaced pile while the racks hold the rest — the exact bug this
+	// field exists to prevent, and it would correct the wrong number quietly, which is worse than
+	// failing, because a stock-take is believed. Refuse, do not interpret (cf. the per-line count in
+	// RestockRequestFulfill).
+	//
+	// Types that are valid to be assigned to Place:
+	//
+	//	*StockAdjustRequest_RackId
+	//	*StockAdjustRequest_Unplaced
+	Place         isStockAdjustRequest_Place `protobuf_oneof:"place"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -666,6 +702,52 @@ func (x *StockAdjustRequest) GetReason() string {
 	}
 	return ""
 }
+
+func (x *StockAdjustRequest) GetPlace() isStockAdjustRequest_Place {
+	if x != nil {
+		return x.Place
+	}
+	return nil
+}
+
+func (x *StockAdjustRequest) GetRackId() uint64 {
+	if x != nil {
+		if x, ok := x.Place.(*StockAdjustRequest_RackId); ok {
+			return x.RackId
+		}
+	}
+	return 0
+}
+
+func (x *StockAdjustRequest) GetUnplaced() bool {
+	if x != nil {
+		if x, ok := x.Place.(*StockAdjustRequest_Unplaced); ok {
+			return x.Unplaced
+		}
+	}
+	return false
+}
+
+type isStockAdjustRequest_Place interface {
+	isStockAdjustRequest_Place()
+}
+
+type StockAdjustRequest_RackId struct {
+	// The shelf that was counted. Must be a rack of warehouse_id — another warehouse's rack reads as
+	// NotFound, like every other cross-scope id here.
+	RackId uint64 `protobuf:"varint,5,opt,name=rack_id,json=rackId,proto3,oneof"`
+}
+
+type StockAdjustRequest_Unplaced struct {
+	// The not-yet-shelved pile was counted. A real place, not an absence: it is where stock sits
+	// before it is put away — today, everything — and it can be miscounted like any shelf. Only
+	// `true` is meaningful; `unplaced: false` would be a way of saying nothing.
+	Unplaced bool `protobuf:"varint,6,opt,name=unplaced,proto3,oneof"`
+}
+
+func (*StockAdjustRequest_RackId) isStockAdjustRequest_Place() {}
+
+func (*StockAdjustRequest_Unplaced) isStockAdjustRequest_Place() {}
 
 type StockAdjustResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -858,7 +940,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04R\vwarehouseId\x12\x17\n" +
-	"\aon_hand\x18\x03 \x01(\x03R\x06onHand\"\xb8\x02\n" +
+	"\aon_hand\x18\x03 \x01(\x03R\x06onHand\"\xd1\x02\n" +
 	"\rStockMovement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
@@ -872,7 +954,8 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\ractor_user_id\x18\t \x01(\x04R\vactorUserId\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\tR\tcreatedAt\"\x8c\x01\n" +
+	" \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\arack_id\x18\v \x01(\x04R\x06rackId\"\x8c\x01\n" +
 	"\x10StockListRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12;\n" +
 	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
@@ -898,15 +981,18 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x03ref\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18dR\x03ref:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"Y\n" +
 	"\x14StockReceiveResponse\x12A\n" +
-	"\bmovement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\bmovement\"\xbc\x01\n" +
+	"\bmovement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\bmovement\"\x97\x02\n" +
 	"\x12StockAdjustRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12&\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12 \n" +
 	"\aon_hand\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x06onHand\x12 \n" +
-	"\x06reason\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason:\n" +
+	"\x06reason\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason\x12\"\n" +
+	"\arack_id\x18\x05 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +
+	"\bunplaced\x18\x06 \x01(\bB\a\xbaH\x04j\x02\b\x01H\x00R\bunplaced:\n" +
 	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x06\t\"\x92\x01\n" +
+	"\x04\x01\x02\x06\tB\x0e\n" +
+	"\x05place\x12\x05\xbaH\x02\b\x01\"\x92\x01\n" +
 	"\x13StockAdjustResponse\x12A\n" +
 	"\bmovement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\bmovement\x128\n" +
 	"\x05level\x18\x02 \x01(\v2\".warehouse.inventory.v1.StockLevelR\x05level\"\xfb\x01\n" +
@@ -1002,6 +1088,10 @@ func init() { file_warehouse_inventory_v1_inventory_proto_init() }
 func file_warehouse_inventory_v1_inventory_proto_init() {
 	if File_warehouse_inventory_v1_inventory_proto != nil {
 		return
+	}
+	file_warehouse_inventory_v1_inventory_proto_msgTypes[8].OneofWrappers = []any{
+		(*StockAdjustRequest_RackId)(nil),
+		(*StockAdjustRequest_Unplaced)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

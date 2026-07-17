@@ -39,6 +39,7 @@ import {
 } from "../components/RestockStatusBadge";
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
+import { RackSelect, UNPLACED, description as rackSelectDescription } from "../components/RackSelect";
 import {
   ProductSelect,
   description as productSelectDescription,
@@ -297,6 +298,26 @@ function SupplierSelectDemo() {
       <Text fontSize="xs" color="fg.muted">
         Selected supplier id: {id.toString()}
         {current ? "" : " — select a team to load suppliers"}
+      </Text>
+    </>
+  );
+}
+
+// The demo reads the selected place back in words, because the three states this picker
+// distinguishes are exactly what is easy to get wrong: nothing chosen yet, the unplaced pile, and a
+// rack. Only the first of those blocks a stock-take.
+function RackSelectDemo() {
+  const [place, setPlace] = useState("");
+  const { current } = useTeam();
+
+  return (
+    <>
+      <RackSelect warehouseId={current?.teamId ?? 0n} value={place} onChange={setPlace} />
+      <Text fontSize="xs" color="fg.muted">
+        {place === "" ? "No place chosen yet — a stock-take would be refused" : null}
+        {place === UNPLACED ? "The unplaced pile (a real place)" : null}
+        {place !== "" && place !== UNPLACED ? `Rack id: ${place}` : null}
+        {current ? "" : " — select a warehouse team to load racks"}
       </Text>
     </>
   );
@@ -633,6 +654,12 @@ const ENTRIES: Entry[] = [
     title: "SupplierSelect",
     description: supplierSelectDescription,
     render: () => <SupplierSelectDemo />,
+  },
+  {
+    id: "rack-select",
+    title: "RackSelect",
+    description: rackSelectDescription,
+    render: () => <RackSelectDemo />,
   },
   {
     id: "product-select",

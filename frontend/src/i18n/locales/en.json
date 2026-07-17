@@ -351,6 +351,11 @@
       "cancel": "Cancel",
       "save": "Save",
       "create": "Create"
+    },
+    "select": {
+      "placeholder": "Select a place",
+      "unplaced": "Unplaced (not yet shelved)",
+      "unavailable": "Racks unavailable"
     }
   },
   "suppliers": {
@@ -656,11 +661,14 @@
     "receiveReasonPlaceholder": "e.g. PO #123, supplier delivery",
     "cancel": "Cancel",
     "countedOnHandError": "Counted on-hand must be zero or a positive whole number.",
-    "adjustedToast": "Adjusted {{sku}} to {{counted}}",
+    "placeRequiredError": "Choose the place you counted — a rack, or the unplaced pile.",
+    "adjustedToast": "Adjusted {{sku}} to {{counted}} at this place",
     "adjustStockTitle": "Adjust Stock",
-    "adjustProductSummary": "{{name}} ({{sku}}) — current on-hand {{onHand}}",
+    "adjustProductSummary": "{{name}} ({{sku}}) — {{onHand}} on hand across every place in this warehouse",
+    "placeCounted": "Place counted",
+    "placeCountedHelper": "The rack you stood at and counted, or the unplaced pile.",
     "countedOnHand": "Counted on-hand",
-    "adjustHelper": "The difference is recorded in the ledger.",
+    "adjustHelper": "How many you counted at that one place — not the warehouse total. The difference is recorded in the ledger.",
     "adjustReasonPlaceholder": "e.g. cycle count, damage"
   },
   "address": {

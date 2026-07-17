@@ -12,10 +12,29 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { inventoryClient, rpcError } from "../api/clients";
+import type { StockAdjustRequest } from "../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../components/Toaster";
+import { RackSelect, UNPLACED } from "../components/RackSelect";
 
-// AdjustStockDialog corrects on-hand to a counted figure (absolute) for one product at a warehouse.
+// placeToOneof turns RackSelect's plain string into the request's `place` oneof. It is total over the
+// picker's two legal answers only — `""` (unanswered) has no encoding, which is the point: the
+// contract has no way to say "somewhere", so submit is blocked before it gets here.
+function placeToOneof(place: string): StockAdjustRequest["place"] {
+  if (place === UNPLACED) {
+    return { case: "unplaced", value: true };
+  }
+
+  return { case: "rackId", value: BigInt(place) };
+}
+
+// AdjustStockDialog corrects the on-hand of one product at ONE PLACE in a warehouse to a counted
+// figure (absolute).
+//
+// A stock-take is physically a count of a shelf: someone stands at A-01-3 and counts what is on it.
+// So the place is required (#139) — the server refuses a count that does not say where, and this
+// dialog refuses to send one, because a correction applied to the wrong shelf is worse than no
+// correction at all: it is believed.
 export function AdjustStockDialog({
   warehouseId,
   product,
@@ -33,12 +52,20 @@ export function AdjustStockDialog({
 }) {
   const { t } = useTranslation();
   const [onHand, setOnHand] = useState(currentOnHand.toString());
+  const [place, setPlace] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+
+    // Checked before the figure: without a place there is nothing a count could correct, so this is
+    // the more fundamental of the two answers.
+    if (place === "") {
+      setError(t("inventory.placeRequiredError"));
+      return;
+    }
 
     const counted = Number(onHand);
     if (!Number.isInteger(counted) || counted < 0) {
@@ -55,6 +82,7 @@ export function AdjustStockDialog({
         productId: product.id,
         onHand: BigInt(counted),
         reason,
+        place: placeToOneof(place),
       });
 
       toaster.create({
@@ -97,6 +125,15 @@ export function AdjustStockDialog({
                     })}
                   </Text>
 
+                  {/* Where, then how many — the order someone actually works in: you stand at the
+                      shelf before you count it. It also puts the field that scopes the whole
+                      correction above the figure it scopes. */}
+                  <Field.Root required>
+                    <Field.Label>{t("inventory.placeCounted")}</Field.Label>
+                    <RackSelect warehouseId={warehouseId} value={place} onChange={setPlace} />
+                    <Field.HelperText>{t("inventory.placeCountedHelper")}</Field.HelperText>
+                  </Field.Root>
+
                   <Field.Root required>
                     <Field.Label>{t("inventory.countedOnHand")}</Field.Label>
                     <Input
@@ -126,7 +163,16 @@ export function AdjustStockDialog({
                   <Button variant="outline">{t("inventory.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
-                <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-adjust">
+                {/* Belt and braces with the check in submit(): the button is disabled so the dialog
+                    never LOOKS submittable without a place, and submit() still guards it so a form
+                    submitted by Enter cannot slip past. */}
+                <Button
+                  type="submit"
+                  colorPalette="brand"
+                  loading={busy}
+                  disabled={place === ""}
+                  data-testid="submit-adjust"
+                >
                   {t("inventory.adjust")}
                 </Button>
               </Dialog.Footer>

@@ -36,6 +36,11 @@ enum MovementKind {
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
+// StockLevel — how much of a product a WAREHOUSE holds. Always the warehouse's TOTAL, summed across
+// the product's places (#135): a product on three shelves is one StockLevel holding the lot, because
+// "how much of X do we have here?" has never meant "on which shelf". It deliberately carries no rack —
+// "what is on rack A-01-3" is a different question with its own screen (#138). A per-place figure is
+// reported by the movement that produced it (StockMovement.rack_id / .balance).
 message StockLevel {
   uint64 product_id = 1;
   uint64 warehouse_id = 2;
@@ -44,17 +49,26 @@ message StockLevel {
 
 // StockMovement — one row of the ledger. Append-only; `balance` is the on-hand AFTER this movement,
 // so the history reads as a running total.
+//
+// A movement is a statement about ONE PLACE (#135): "this shelf went from 40 to 49". Both `delta` and
+// `balance` are that place's, never the warehouse's total for the product — a warehouse total is a SUM
+// across places, and reading `balance` as one would under-report every product that sits on more than
+// one shelf.
 message StockMovement {
   uint64 id = 1;
   uint64 product_id = 2;
   uint64 warehouse_id = 3;
   int64 delta = 4; // signed: + in, - out
-  int64 balance = 5; // on-hand after this movement
+  int64 balance = 5; // THIS PLACE's on-hand after this movement
   MovementKind kind = 6;
   string reason = 7;
   string ref = 8; // opaque external reference (e.g. an order id); optional
   uint64 actor_user_id = 9;
   string created_at = 10; // RFC3339
+
+  // The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
+  // arrived before anyone shelved it, and every movement written before racks carried stock at all.
+  uint64 rack_id = 11;
 }
 
 // -------------------------------------------------------------------------- reads
@@ -151,9 +165,32 @@ message StockAdjustRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // The counted on-hand to correct TO (absolute, not a delta). The handler records the difference.
+  // The counted on-hand to correct TO (absolute, not a delta) — for the ONE place named below, not
+  // for the warehouse. The handler records the difference.
   int64 on_hand = 3 [(buf.validate.field).int64.gte = 0];
   string reason = 4 [(buf.validate.field).string.max_len = 200];
+
+  // WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
+  // in front of A-01-3 and counts what is on it, and this says which shelf that was.
+  //
+  // It is a REQUIRED oneof rather than a plain `rack_id` where 0 would mean unplaced, because those
+  // two encodings fail differently. With a plain field, a caller that simply FORGOT to say where
+  // would silently correct the unplaced pile while the racks hold the rest — the exact bug this
+  // field exists to prevent, and it would correct the wrong number quietly, which is worse than
+  // failing, because a stock-take is believed. Refuse, do not interpret (cf. the per-line count in
+  // RestockRequestFulfill).
+  oneof place {
+    option (buf.validate.oneof).required = true;
+
+    // The shelf that was counted. Must be a rack of warehouse_id — another warehouse's rack reads as
+    // NotFound, like every other cross-scope id here.
+    uint64 rack_id = 5 [(buf.validate.field).uint64.gt = 0];
+
+    // The not-yet-shelved pile was counted. A real place, not an absence: it is where stock sits
+    // before it is put away — today, everything — and it can be miscounted like any shelf. Only
+    // `true` is meaningful; `unplaced: false` would be a way of saying nothing.
+    bool unplaced = 6 [(buf.validate.field).bool.const = true];
+  }
 }
 
 message StockAdjustResponse {

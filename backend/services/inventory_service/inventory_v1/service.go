@@ -48,6 +48,13 @@ func writeError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errInsufficientStock)
 	}
 
+	if errors.Is(err, errRackMissing) {
+		// NotFound, not PermissionDenied: another warehouse's rack must be indistinguishable from one
+		// that does not exist, or the error itself confirms the id — the same rule every scoped id in
+		// this system follows.
+		return connect.NewError(connect.CodeNotFound, errRackMissing)
+	}
+
 	return connect.NewError(connect.CodeInternal, err)
 }
 
@@ -197,7 +204,7 @@ func levelToProto(l *inventory_service_models.StockLevel) *inventoryv1.StockLeve
 }
 
 func movementToProto(m *inventory_service_models.StockMovement) *inventoryv1.StockMovement {
-	return &inventoryv1.StockMovement{
+	out := &inventoryv1.StockMovement{
 		Id:          m.ID,
 		ProductId:   m.ProductID,
 		WarehouseId: m.WarehouseID,
@@ -209,4 +216,11 @@ func movementToProto(m *inventory_service_models.StockMovement) *inventoryv1.Sto
 		ActorUserId: m.ActorUserID,
 		CreatedAt:   m.CreatedAt.UTC().Format(time.RFC3339),
 	}
+
+	// An unplaced movement carries 0 on the wire, not a null — the same shape supplier_id uses.
+	if m.RackID != nil {
+		out.RackId = *m.RackID
+	}
+
+	return out
 }

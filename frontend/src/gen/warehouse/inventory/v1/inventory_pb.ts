@@ -14,10 +14,15 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/inventory.proto.
  */
 export const file_warehouse_inventory_v1_inventory: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi4QEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkieQoQU3RvY2tMaXN0UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgieQoRU3RvY2tMaXN0UmVzcG9uc2USMgoGbGV2ZWxzGAEgAygLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0xldmVsEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8imQEKE1N0b2NrSGlzdG9yeVJlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgiggEKFFN0b2NrSGlzdG9yeVJlc3BvbnNlEjgKCW1vdmVtZW50cxgBIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIq0BChNTdG9ja1JlY2VpdmVSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIZCghxdWFudGl0eRgDIAEoA0IHukgEIgIgABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBEhQKA3JlZhgFIAEoCUIHukgEcgIYZDoLkrUYBwoFAQIGCQgiTwoUU3RvY2tSZWNlaXZlUmVzcG9uc2USNwoIbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQilAEKElN0b2NrQWRqdXN0UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASGAoHb25faGFuZBgDIAEoA0IHukgEIgIoABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBOgqStRgGCgQBAgYJIoEBChNTdG9ja0FkanVzdFJlc3BvbnNlEjcKCG1vdmVtZW50GAEgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjEKBWxldmVsGAIgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0xldmVsIr4BChRTdG9ja1RyYW5zZmVyUmVxdWVzdBImChFmcm9tX3dhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPdG9fd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEhsKCnByb2R1Y3RfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASGAoGcmVhc29uGAUgASgJQgi6SAVyAxjIAToKkrUYBgoEAQIGCSKQAQoVU3RvY2tUcmFuc2ZlclJlc3BvbnNlEjsKDG91dF9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgtpbl9tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCq5AQoMTW92ZW1lbnRLaW5kEh0KGU1PVkVNRU5UX0tJTkRfVU5TUEVDSUZJRUQQABIZChVNT1ZFTUVOVF9LSU5EX1JFQ0VJVkUQARIYChRNT1ZFTUVOVF9LSU5EX0FESlVTVBACEh4KGk1PVkVNRU5UX0tJTkRfVFJBTlNGRVJfT1VUEAMSHQoZTU9WRU1FTlRfS0lORF9UUkFOU0ZFUl9JThAEEhYKEk1PVkVNRU5UX0tJTkRfUElDSxAFMqAEChBJbnZlbnRvcnlTZXJ2aWNlEmAKCVN0b2NrTGlzdBIoLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVxdWVzdBopLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVzcG9uc2USaQoMU3RvY2tIaXN0b3J5Eisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXNwb25zZRJpCgxTdG9ja1JlY2VpdmUSKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlcXVlc3QaLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlc3BvbnNlEmYKC1N0b2NrQWRqdXN0Eioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlcXVlc3QaKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrQWRqdXN0UmVzcG9uc2USbAoNU3RvY2tUcmFuc2ZlchIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tUcmFuc2ZlclJlcXVlc3QaLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi8gEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkSDwoHcmFja19pZBgLIAEoBCJ5ChBTdG9ja0xpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ5ChFTdG9ja0xpc3RSZXNwb25zZRIyCgZsZXZlbHMYASADKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGV2ZWwSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKZAQoTU3RvY2tIaXN0b3J5UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCKCAQoUU3RvY2tIaXN0b3J5UmVzcG9uc2USOAoJbW92ZW1lbnRzGAEgAygLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8irQEKE1N0b2NrUmVjZWl2ZVJlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAMgASgDQge6SAQiAiAAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESFAoDcmVmGAUgASgJQge6SARyAhhkOguStRgHCgUBAgYJCCJPChRTdG9ja1JlY2VpdmVSZXNwb25zZRI3Cghtb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCLdAQoSU3RvY2tBZGp1c3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIYCgdvbl9oYW5kGAMgASgDQge6SAQiAigAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESGgoHcmFja19pZBgFIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAYgASgIQge6SARqAggBSAA6CpK1GAYKBAECBglCDgoFcGxhY2USBbpIAggBIoEBChNTdG9ja0FkanVzdFJlc3BvbnNlEjcKCG1vdmVtZW50GAEgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjEKBWxldmVsGAIgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0xldmVsIr4BChRTdG9ja1RyYW5zZmVyUmVxdWVzdBImChFmcm9tX3dhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPdG9fd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEhsKCnByb2R1Y3RfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASGAoGcmVhc29uGAUgASgJQgi6SAVyAxjIAToKkrUYBgoEAQIGCSKQAQoVU3RvY2tUcmFuc2ZlclJlc3BvbnNlEjsKDG91dF9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgtpbl9tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCq5AQoMTW92ZW1lbnRLaW5kEh0KGU1PVkVNRU5UX0tJTkRfVU5TUEVDSUZJRUQQABIZChVNT1ZFTUVOVF9LSU5EX1JFQ0VJVkUQARIYChRNT1ZFTUVOVF9LSU5EX0FESlVTVBACEh4KGk1PVkVNRU5UX0tJTkRfVFJBTlNGRVJfT1VUEAMSHQoZTU9WRU1FTlRfS0lORF9UUkFOU0ZFUl9JThAEEhYKEk1PVkVNRU5UX0tJTkRfUElDSxAFMqAEChBJbnZlbnRvcnlTZXJ2aWNlEmAKCVN0b2NrTGlzdBIoLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVxdWVzdBopLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVzcG9uc2USaQoMU3RvY2tIaXN0b3J5Eisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXNwb25zZRJpCgxTdG9ja1JlY2VpdmUSKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlcXVlc3QaLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlc3BvbnNlEmYKC1N0b2NrQWRqdXN0Eioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlcXVlc3QaKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrQWRqdXN0UmVzcG9uc2USbAoNU3RvY2tUcmFuc2ZlchIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tUcmFuc2ZlclJlcXVlc3QaLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
+ * StockLevel — how much of a product a WAREHOUSE holds. Always the warehouse's TOTAL, summed across
+ * the product's places (#135): a product on three shelves is one StockLevel holding the lot, because
+ * "how much of X do we have here?" has never meant "on which shelf". It deliberately carries no rack —
+ * "what is on rack A-01-3" is a different question with its own screen (#138). A per-place figure is
+ * reported by the movement that produced it (StockMovement.rack_id / .balance).
  *
  * @generated from message warehouse.inventory.v1.StockLevel
  */
@@ -49,6 +54,11 @@ export const StockLevelSchema: GenMessage<StockLevel> = /*@__PURE__*/
  * StockMovement — one row of the ledger. Append-only; `balance` is the on-hand AFTER this movement,
  * so the history reads as a running total.
  *
+ * A movement is a statement about ONE PLACE (#135): "this shelf went from 40 to 49". Both `delta` and
+ * `balance` are that place's, never the warehouse's total for the product — a warehouse total is a SUM
+ * across places, and reading `balance` as one would under-report every product that sits on more than
+ * one shelf.
+ *
  * @generated from message warehouse.inventory.v1.StockMovement
  */
 export type StockMovement = Message<"warehouse.inventory.v1.StockMovement"> & {
@@ -75,7 +85,7 @@ export type StockMovement = Message<"warehouse.inventory.v1.StockMovement"> & {
   delta: bigint;
 
   /**
-   * on-hand after this movement
+   * THIS PLACE's on-hand after this movement
    *
    * @generated from field: int64 balance = 5;
    */
@@ -109,6 +119,14 @@ export type StockMovement = Message<"warehouse.inventory.v1.StockMovement"> & {
    * @generated from field: string created_at = 10;
    */
   createdAt: string;
+
+  /**
+   * The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
+   * arrived before anyone shelved it, and every movement written before racks carried stock at all.
+   *
+   * @generated from field: uint64 rack_id = 11;
+   */
+  rackId: bigint;
 };
 
 /**
@@ -280,7 +298,8 @@ export type StockAdjustRequest = Message<"warehouse.inventory.v1.StockAdjustRequ
   productId: bigint;
 
   /**
-   * The counted on-hand to correct TO (absolute, not a delta). The handler records the difference.
+   * The counted on-hand to correct TO (absolute, not a delta) — for the ONE place named below, not
+   * for the warehouse. The handler records the difference.
    *
    * @generated from field: int64 on_hand = 3;
    */
@@ -290,6 +309,40 @@ export type StockAdjustRequest = Message<"warehouse.inventory.v1.StockAdjustRequ
    * @generated from field: string reason = 4;
    */
   reason: string;
+
+  /**
+   * WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
+   * in front of A-01-3 and counts what is on it, and this says which shelf that was.
+   *
+   * It is a REQUIRED oneof rather than a plain `rack_id` where 0 would mean unplaced, because those
+   * two encodings fail differently. With a plain field, a caller that simply FORGOT to say where
+   * would silently correct the unplaced pile while the racks hold the rest — the exact bug this
+   * field exists to prevent, and it would correct the wrong number quietly, which is worse than
+   * failing, because a stock-take is believed. Refuse, do not interpret (cf. the per-line count in
+   * RestockRequestFulfill).
+   *
+   * @generated from oneof warehouse.inventory.v1.StockAdjustRequest.place
+   */
+  place: {
+    /**
+     * The shelf that was counted. Must be a rack of warehouse_id — another warehouse's rack reads as
+     * NotFound, like every other cross-scope id here.
+     *
+     * @generated from field: uint64 rack_id = 5;
+     */
+    value: bigint;
+    case: "rackId";
+  } | {
+    /**
+     * The not-yet-shelved pile was counted. A real place, not an absence: it is where stock sits
+     * before it is put away — today, everything — and it can be miscounted like any shelf. Only
+     * `true` is meaningful; `unplaced: false` would be a way of saying nothing.
+     *
+     * @generated from field: bool unplaced = 6;
+     */
+    value: boolean;
+    case: "unplaced";
+  } | { case: undefined; value?: undefined };
 };
 
 /**

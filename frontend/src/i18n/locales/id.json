@@ -351,6 +351,11 @@
       "cancel": "Batal",
       "save": "Simpan",
       "create": "Buat"
+    },
+    "select": {
+      "placeholder": "Pilih tempat",
+      "unplaced": "Belum ditempatkan (belum masuk rak)",
+      "unavailable": "Rak tidak tersedia"
     }
   },
   "suppliers": {
@@ -656,11 +661,14 @@
     "receiveReasonPlaceholder": "mis. PO #123, pengiriman pemasok",
     "cancel": "Batal",
     "countedOnHandError": "Stok terhitung harus nol atau bilangan bulat positif.",
-    "adjustedToast": "Menyesuaikan {{sku}} menjadi {{counted}}",
+    "placeRequiredError": "Pilih tempat yang Anda hitung — sebuah rak, atau tumpukan yang belum ditempatkan.",
+    "adjustedToast": "Menyesuaikan {{sku}} menjadi {{counted}} di tempat ini",
     "adjustStockTitle": "Sesuaikan Stok",
-    "adjustProductSummary": "{{name}} ({{sku}}) — stok saat ini {{onHand}}",
+    "adjustProductSummary": "{{name}} ({{sku}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
+    "placeCounted": "Tempat yang dihitung",
+    "placeCountedHelper": "Rak yang Anda hitung, atau tumpukan yang belum ditempatkan.",
     "countedOnHand": "Stok terhitung",
-    "adjustHelper": "Selisihnya dicatat dalam buku besar.",
+    "adjustHelper": "Berapa yang Anda hitung di tempat itu saja — bukan total gudang. Selisihnya dicatat dalam buku besar.",
     "adjustReasonPlaceholder": "mis. penghitungan siklus, kerusakan"
   },
   "address": {

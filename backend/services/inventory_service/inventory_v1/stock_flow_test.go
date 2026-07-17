@@ -213,7 +213,8 @@ func TestStockHistory_RunningBalance(t *testing.T) {
 	}
 }
 
-// Adjust corrects on-hand to a counted figure and records the difference.
+// Adjust corrects on-hand to a counted figure and records the difference. A receive lands unplaced
+// (#135), so counting the unplaced pile is what corrects it — said explicitly (#139).
 func TestStockAdjust_ToCountedFigure(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -223,6 +224,7 @@ func TestStockAdjust_ToCountedFigure(t *testing.T) {
 
 	res, err := svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
 		WarehouseId: warehouseA, ProductId: productX, OnHand: 90, Reason: "cycle count",
+		Place: &inventoryv1.StockAdjustRequest_Unplaced{Unplaced: true},
 	}))
 	if err != nil {
 		t.Fatalf("StockAdjust: %v", err)
@@ -235,6 +237,143 @@ func TestStockAdjust_ToCountedFigure(t *testing.T) {
 	// The correction is recorded as a −10 movement.
 	if got := res.Msg.GetMovement().GetDelta(); got != -10 {
 		t.Errorf("adjust delta = %d, want -10", got)
+	}
+}
+
+// #139 — a stock-take counts a SHELF. Correcting one shelf must leave the product's OTHER shelves
+// exactly as they were: the whole reason a warehouse-level adjust was rejected is that it would have
+// had to spread a correction across shelves by a rule that invents a fact nobody observed.
+func TestStockAdjust_CountsOneShelfAndLeavesTheOthers(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	rackA := insertRack(t, db, warehouseA, "A-01-3")
+	rackB := insertRack(t, db, warehouseA, "A-02-1")
+
+	place := func(rackID *uint64, onHand int64) {
+		t.Helper()
+
+		err := db.Exec(`
+			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
+			VALUES (?, ?, ?, ?, NOW())`,
+			warehouseA, productX, rackID, onHand,
+		).Error
+		if err != nil {
+			t.Fatalf("seed place: %v", err)
+		}
+	}
+
+	place(&rackA, 40)
+	place(&rackB, 60)
+	place(nil, 7)
+
+	// Someone stands at A-01-3 and counts 37 — four short of what the system believed.
+	res, err := svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouseA, ProductId: productX, OnHand: 37, Reason: "cycle count A-01-3",
+		Place: &inventoryv1.StockAdjustRequest_RackId{RackId: rackA},
+	}))
+	if err != nil {
+		t.Fatalf("StockAdjust: %v", err)
+	}
+
+	// The movement is about the SHELF: -3, and that shelf now holds 37.
+	if delta := res.Msg.GetMovement().GetDelta(); delta != -3 {
+		t.Fatalf("adjust delta = %d, want -3 (40 believed, 37 counted)", delta)
+	}
+	if bal := res.Msg.GetMovement().GetBalance(); bal != 37 {
+		t.Fatalf("movement balance = %d, want 37 — the SHELF's new figure", bal)
+	}
+	if got := res.Msg.GetMovement().GetRackId(); got != rackA {
+		t.Fatalf("the ledger must say WHICH shelf was corrected: rack = %d, want %d", got, rackA)
+	}
+
+	// The Level is the WAREHOUSE's total, a different question: 37 + 60 + 7.
+	if total := res.Msg.GetLevel().GetOnHand(); total != 104 {
+		t.Fatalf("warehouse total = %d, want 104 (37 + 60 + 7)", total)
+	}
+
+	// And the shelves nobody counted are untouched.
+	for rack, want := range map[uint64]int64{rackB: 60} {
+		var on int64
+
+		err = db.Raw(`SELECT on_hand FROM stock_levels WHERE warehouse_id = ? AND product_id = ? AND rack_id = ?`,
+			warehouseA, productX, rack).Scan(&on).Error
+		if err != nil {
+			t.Fatalf("read rack %d: %v", rack, err)
+		}
+
+		if on != want {
+			t.Fatalf("counting one shelf changed another: rack %d = %d, want %d", rack, on, want)
+		}
+	}
+
+	var unplacedOn int64
+
+	err = db.Raw(`SELECT on_hand FROM stock_levels WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NULL`,
+		warehouseA, productX).Scan(&unplacedOn).Error
+	if err != nil {
+		t.Fatalf("read unplaced: %v", err)
+	}
+
+	if unplacedOn != 7 {
+		t.Fatalf("counting a shelf changed the unplaced pile: %d, want 7", unplacedOn)
+	}
+}
+
+// #139 — a stock-take that does not say WHERE it counted is refused, never interpreted. Reading
+// silence as "the unplaced pile" is how a stock-take corrects a pile nobody counted, and a stock-take
+// is believed.
+func TestStockAdjust_RefusesACountWithNoPlace(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	receive(t, svc, ctx, warehouseA, productX, 100)
+
+	_, err := svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouseA, ProductId: productX, OnHand: 5, Reason: "no idea where",
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+		t.Fatalf("a placeless stock-take = %v, want InvalidArgument", code)
+	}
+
+	// And it corrected nothing.
+	got, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouseA, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+	if on := got.Msg.GetLevels()[0].GetOnHand(); on != 100 {
+		t.Fatalf("a refused stock-take still wrote: on_hand = %d, want 100", on)
+	}
+}
+
+// #139 — the shelf must belong to the warehouse doing the counting. Another warehouse's rack reads as
+// NotFound, never PermissionDenied: a permission error would confirm the id exists.
+func TestStockAdjust_CrossWarehouseRackIsNotFound(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	theirs := insertRack(t, db, warehouseB, "B-01-1")
+
+	_, err := svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouseA, ProductId: productX, OnHand: 5, Reason: "wrong building",
+		Place: &inventoryv1.StockAdjustRequest_RackId{RackId: theirs},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeNotFound {
+		t.Fatalf("another warehouse's rack = %v, want NotFound", code)
+	}
+
+	// A rack that exists nowhere is the same NotFound — indistinguishable, on purpose.
+	_, err = svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouseA, ProductId: productX, OnHand: 5, Reason: "nonexistent",
+		Place: &inventoryv1.StockAdjustRequest_RackId{RackId: 999999},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeNotFound {
+		t.Fatalf("unknown rack = %v, want NotFound", code)
 	}
 }
 

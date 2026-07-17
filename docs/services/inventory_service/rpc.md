@@ -184,3 +184,67 @@ sequenceDiagram
 [service.go](../../../backend/services/inventory_service/inventory_v1/service.go)), so a fulfilment is
 indistinguishable in the ledger from a manual receive except for its `reason` (`"restock request"`)
 and `ref` (the request's `shipping_code`).
+
+---
+
+## Stock lives in a PLACE (#135) — and what that changes about reads
+
+Since #135 the grain is **(warehouse, rack, product)**. One idea explains most of the surprises here:
+
+> **A movement is a statement about ONE PLACE; a level is a statement about ONE WAREHOUSE.**
+
+- `applyDelta`/`appendMovement` take a place. A movement's `delta` and `balance` are **that place's** —
+  "this shelf went from 40 to 49" — never the warehouse's total for the product.
+- `StockList` **sums across a product's places** and returns one line per product: "how much of X do we
+  have here?" has never meant "on which shelf". Its page total counts **products**, not rows, or a
+  warehouse spreading one product over more shelves would silently shrink its own page.
+- **`rack_id IS NULL` = unplaced** — a real place ("somewhere in this warehouse, not yet shelved"),
+  not a missing value. Every query matches it with **`IS NOT DISTINCT FROM`, never `=`**: `rack_id =
+  NULL` is never true in SQL, so a plain `=` reports a phantom shortage for goods sitting right there.
+
+### A stock-take counts a SHELF (#139)
+
+`StockAdjust` corrects **one place** to a counted figure, and the request must **say which** — a rack,
+or explicitly the unplaced pile. It is a **required `oneof`**, and the handler re-checks it rather than
+reading the zero value, because `GetRackId()` returns 0 both for *"unplaced"* and for *"said nothing"*.
+Silently treating the second as the first is the bug the field exists to prevent: a stock-take that
+corrects a pile nobody counted. **Refuse, do not interpret** — the same rule as the per-line count in
+`RestockRequestFulfill`.
+
+The rejected alternative was a warehouse-level figure. It needed a rule for spreading a correction
+across a product's shelves (proportionally? onto unplaced? refuse?) and **every such rule invents a
+fact nobody observed**. A stock-take that corrects the wrong shelf is worse than no stock-take, because
+it is believed.
+
+```mermaid
+sequenceDiagram
+    participant W as Warehouse manager
+    participant H as StockAdjust
+    participant DB as Postgres (one tx)
+
+    W->>H: StockAdjust{warehouse, product, on_hand: 37,<br/>place: rack_id=A-01-3 | unplaced: true}
+    activate H
+    alt no place named
+        H-->>W: InvalidArgument — a stock-take must say where it counted (#139)
+    else place named
+        H->>DB: BEGIN
+        opt place is a rack
+            H->>DB: rackExists(warehouse, rack)?
+            Note over H,DB: another warehouse's rack → NotFound,<br/>never PermissionDenied
+        end
+        H->>DB: SELECT on_hand … rack_id IS NOT DISTINCT FROM ? FOR UPDATE
+        Note over H,DB: THAT place's figure, locked
+        H->>DB: UPSERT stock_levels SET on_hand = counted
+        Note over H,DB: set TO the count, not += delta —<br/>the count is authoritative
+        H->>DB: INSERT stock_movements (ADJUST, rack, delta, balance=counted)
+        H->>DB: SELECT SUM(on_hand) … WHERE warehouse, product
+        Note over H,DB: the warehouse's total AFTER, read back —<br/>not this handler's opinion of it
+        H->>DB: COMMIT
+        H-->>W: Movement{rack, balance: 37} + Level{on_hand: 104}
+        Note over W: "this shelf is now 37" AND<br/>"the warehouse holds 104" —<br/>two different questions
+    end
+    deactivate H
+```
+
+Correcting one shelf leaves the product's other shelves **exactly as they were** — that is the point,
+and it is what the warehouse-level alternative could not promise.
