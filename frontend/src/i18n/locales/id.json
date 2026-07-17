@@ -153,6 +153,7 @@
     "newRequest": "Permintaan restok baru",
     "newRequestTitle": "Permintaan Restok Baru",
     "empty": "Belum ada permintaan restok.",
+    "emptyFiltered": "Tidak ada permintaan restok {{status}}.",
     "back": "Kembali",
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
@@ -175,6 +176,9 @@
       "grandTotal": "Total",
       "perPiece": "{{qty}} × {{price}} / pcs",
       "noProducts": "Belum ada produk dipilih."
+    },
+    "tab": {
+      "allStatus": "Semua Status"
     },
     "status": {
       "pending": "Menunggu",

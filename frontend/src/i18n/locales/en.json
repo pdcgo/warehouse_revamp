@@ -153,6 +153,7 @@
     "newRequest": "New restock request",
     "newRequestTitle": "New Restock Request",
     "empty": "No restock requests yet.",
+    "emptyFiltered": "No {{status}} restock requests.",
     "back": "Back",
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
@@ -175,6 +176,9 @@
       "grandTotal": "Total",
       "perPiece": "{{qty}} × {{price}} / pc",
       "noProducts": "No products picked yet."
+    },
+    "tab": {
+      "allStatus": "All Status"
     },
     "status": {
       "pending": "Pending",

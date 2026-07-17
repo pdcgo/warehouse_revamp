@@ -88,6 +88,103 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	}
 }
 
+// The list's tabs (#130): filter to one status, or all of them. Server-side, because the list is
+// paginated — a client-side tab would filter one page and still report the unfiltered total.
+func TestRestockRequestList_FilterByStatus(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	newRequest := func() uint64 {
+		t.Helper()
+
+		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+			},
+		}))
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+
+		return resp.Msg.GetRequest().GetId()
+	}
+
+	// One of each status: pending, fulfilled, cancelled.
+	stillPending := newRequest()
+
+	toFulfil := newRequest()
+	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: toFulfil,
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	toCancel := newRequest()
+	_, err = svc.RestockRequestCancel(ctx, connect.NewRequest(&inventoryv1.RestockRequestCancelRequest{
+		TeamId: sellingTeam, RequestId: toCancel,
+	}))
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	list := func(team uint64, status inventoryv1.RestockRequestStatus) []*inventoryv1.RestockRequest {
+		t.Helper()
+
+		resp, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
+			TeamId: team, Page: page1(), Status: status,
+		}))
+		if listErr != nil {
+			t.Fatalf("list: %v", listErr)
+		}
+
+		return resp.Msg.GetRequests()
+	}
+
+	// UNSPECIFIED is the "All Status" tab.
+	if all := list(sellingTeam, inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED); len(all) != 3 {
+		t.Fatalf("all-status tab = %d, want 3", len(all))
+	}
+
+	// Each status tab returns only its own.
+	onlyPending := list(sellingTeam, pending)
+	if len(onlyPending) != 1 || onlyPending[0].GetId() != stillPending {
+		t.Fatalf("pending tab = %+v, want just the pending one", onlyPending)
+	}
+
+	if only := list(sellingTeam, fulfilled); len(only) != 1 || only[0].GetId() != toFulfil {
+		t.Fatalf("fulfilled tab = %+v", only)
+	}
+
+	if only := list(sellingTeam, cancelled); len(only) != 1 || only[0].GetId() != toCancel {
+		t.Fatalf("cancelled tab = %+v", only)
+	}
+
+	// The WAREHOUSE side sees the same requests through its own leg of the OR, and the tab must
+	// filter that leg too. This is what catches the operator-precedence trap: an unparenthesised
+	// `requesting_team_id = ? OR warehouse_id = ? AND status = ?` binds the AND to the warehouse leg
+	// only, so the selling team's list would quietly ignore the tab.
+	if only := list(warehouse, pending); len(only) != 1 || only[0].GetId() != stillPending {
+		t.Fatalf("warehouse pending tab = %+v, want just the pending one", only)
+	}
+
+	// And the counts must be the FILTERED totals, or the pager lies.
+	resp, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
+		TeamId: sellingTeam, Page: page1(), Status: pending,
+	}))
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if resp.Msg.GetPageInfo().GetTotalItems() != 1 {
+		t.Fatalf("pending total = %d, want 1 (the pager must count the FILTERED set)",
+			resp.Msg.GetPageInfo().GetTotalItems())
+	}
+}
+
 // The detail page's read (#125): BOTH sides can open a request in full, with its lines; anyone else
 // gets NotFound rather than a permission error that would confirm the id exists.
 func TestRestockRequest_Detail(t *testing.T) {

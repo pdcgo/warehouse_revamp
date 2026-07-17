@@ -23,7 +23,16 @@ func (s *Service) RestockRequestList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&inventory_service_models.RestockRequest{}).
-		Where("requesting_team_id = ? OR warehouse_id = ?", teamID, teamID)
+		// The parentheses are load-bearing: without them the AND of the status filter below would
+		// bind to only the warehouse_id side, and a selling team's own requests would ignore the tab.
+		Where("(requesting_team_id = ? OR warehouse_id = ?)", teamID, teamID)
+
+	// One status, or all of them (#130). Filtered HERE and not in the client because the list is
+	// paginated: a client-side tab would filter this page only, and the count would still be the
+	// unfiltered total.
+	if status := restockStatusToText(req.Msg.GetStatus()); status != "" {
+		query = query.Where("status = ?", status)
+	}
 
 	var total int64
 

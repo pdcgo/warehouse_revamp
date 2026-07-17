@@ -57,6 +57,21 @@ var (
 	errRestockNoItems = errors.New("restock request has no items")
 )
 
+// restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
+// Empty for UNSPECIFIED, which the filter reads as "no filter" rather than as a status to match.
+func restockStatusToText(status inventoryv1.RestockRequestStatus) string {
+	switch status {
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_PENDING:
+		return restockStatusPending
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_FULFILLED:
+		return restockStatusFulfilled
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED:
+		return restockStatusCancelled
+	default:
+		return ""
+	}
+}
+
 func restockStatusFromText(text string) inventoryv1.RestockRequestStatus {
 	switch text {
 	case restockStatusPending:

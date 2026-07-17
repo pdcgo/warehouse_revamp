@@ -161,6 +161,12 @@ message RestockRequestListRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Filter to ONE status; UNSPECIFIED (the default) means ALL statuses — the list's tabs (#130).
+  //
+  // Server-side on purpose: the list is PAGINATED, so filtering the loaded page in the client would
+  // show only the pending rows that happened to land in this page, and count them wrong.
+  RestockRequestStatus status = 3 [(buf.validate.field).enum.defined_only = true];
 }
 
 message RestockRequestDetailRequest {
