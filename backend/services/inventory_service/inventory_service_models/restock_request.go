@@ -17,13 +17,21 @@ type RestockRequest struct {
 	ShippingCode     string
 	Status           string
 
-	// Optional context (#124). OrderID is the selling order this restock is FOR — an opaque
-	// selling_service id, 0 when untied. Receipt is the courier's tracking number (resi), empty until
-	// there is one. SupplierID points at a supplier of the REQUESTING team — suppliers is the same
-	// service, so unlike the ids above it is a real FK; nil when none was recorded.
-	OrderID    uint64
+	// Optional context (#124/#127). OrderRef is the order this restock is FOR, as free text — it is
+	// written down from a marketplace or a chat elsewhere, never a row here, so it is a reference and
+	// not an id. Receipt is the courier's tracking number (resi), empty until there is one.
+	// SupplierID points at a supplier of the REQUESTING team — suppliers is the same service, so
+	// unlike the opaque ids above it is a real FK; nil when none was recorded.
+	OrderRef   string
 	Receipt    string
 	SupplierID *uint64
+
+	// #127. ShippingCost is the freight, whole rupiah — the goods' cost is per line (Item.Price), and
+	// this is what the summary adds on top. PaymentType is stored as text and mapped in the handler
+	// layer (no DB CHECK IN-list, cf. #80).
+	ShippingCost int64
+	PaymentType  string
+	Note         string
 
 	// The lines. GORM loads them via RestockRequestID.
 	Items []RestockRequestItem `gorm:"foreignKey:RestockRequestID"`

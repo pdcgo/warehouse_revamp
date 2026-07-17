@@ -26,8 +26,11 @@ func (s *Service) RestockRequestCreate(
 		WarehouseID:      req.Msg.GetWarehouseId(),
 		ShippingCode:     req.Msg.GetShippingCode(),
 		Status:           restockStatusPending,
-		OrderID:          req.Msg.GetOrderId(),
+		OrderRef:         req.Msg.GetOrderRef(),
 		Receipt:          req.Msg.GetReceipt(),
+		ShippingCost:     req.Msg.GetShippingCost(),
+		PaymentType:      restockPaymentToText(req.Msg.GetPaymentType()),
+		Note:             req.Msg.GetNote(),
 		Items:            restockItemModels(req.Msg.GetItems()),
 	}
 

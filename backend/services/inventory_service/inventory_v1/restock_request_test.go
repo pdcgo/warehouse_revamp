@@ -145,6 +145,85 @@ func TestRestockRequest_Detail(t *testing.T) {
 	}
 }
 
+// The restock's own money and context (#127): a free-text order REFERENCE (not an id — it names an
+// order in someone else's system), what the freight cost, how it was paid, and a note.
+func TestRestockRequest_OrderRefPaymentAndNote(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: 2, WarehouseId: 5, ShippingCode: "jne",
+		// Deliberately NOT numeric: the reference is whatever the marketplace calls it, and the old
+		// uint64 could not hold this at all.
+		OrderRef:     "SHP-2026-ABC/01",
+		ShippingCost: 18000,
+		PaymentType:  inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY,
+		Note:         "titip ke driver, jangan ditinggal di pos",
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3, Price: 4000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	got := created.Msg.GetRequest()
+	if got.GetOrderRef() != "SHP-2026-ABC/01" {
+		t.Fatalf("order ref = %q, want the non-numeric reference back", got.GetOrderRef())
+	}
+	if got.GetShippingCost() != 18000 {
+		t.Fatalf("shipping cost = %d, want 18000", got.GetShippingCost())
+	}
+	if got.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY {
+		t.Fatalf("payment type = %v, want SHOPEE_PAY", got.GetPaymentType())
+	}
+	if got.GetNote() != "titip ke driver, jangan ditinggal di pos" {
+		t.Fatalf("note did not round-trip: %q", got.GetNote())
+	}
+
+	// It survives the DB round trip too — the enum is stored as text, so a broken mapper would only
+	// show up on the way back out.
+	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: 2, RequestId: got.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	back := detail.Msg.GetRequest()
+	if back.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY ||
+		back.GetOrderRef() != "SHP-2026-ABC/01" || back.GetShippingCost() != 18000 {
+		t.Fatalf("context did not survive the round trip: %+v", back)
+	}
+}
+
+// None of #127's context is required: no order, no freight, no payment type, no note is a perfectly
+// good request. An unset payment type comes back UNSPECIFIED, not a guess.
+func TestRestockRequest_PaymentContextOptional(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: 2, WarehouseId: 5,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create without #127 context: %v", err)
+	}
+
+	got := created.Msg.GetRequest()
+	if got.GetOrderRef() != "" || got.GetShippingCost() != 0 || got.GetNote() != "" {
+		t.Fatalf("absent context should be zero, got %+v", got)
+	}
+	if got.GetPaymentType() != inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_UNSPECIFIED {
+		t.Fatalf("payment type = %v, want UNSPECIFIED", got.GetPaymentType())
+	}
+}
+
 // A request carries MANY priced lines, and fulfilling it receives EVERY one of them (#124).
 func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -214,7 +293,7 @@ func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
 	create := func(supplierID uint64) error {
 		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: 5, SupplierId: supplierID,
-			OrderId: 77, Receipt: "JP1234567890",
+			OrderRef: "SHP-77", Receipt: "JP1234567890",
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
 			},
@@ -226,7 +305,7 @@ func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
 	// Our own supplier is fine, and the optional context round-trips.
 	resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5, SupplierId: mine,
-		OrderId: 77, Receipt: "JP1234567890",
+		OrderRef: "SHP-77", Receipt: "JP1234567890",
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, Price: 100},
 		},
@@ -234,7 +313,7 @@ func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create with own supplier: %v", err)
 	}
-	if got := resp.Msg.GetRequest(); got.GetSupplierId() != mine || got.GetOrderId() != 77 ||
+	if got := resp.Msg.GetRequest(); got.GetSupplierId() != mine || got.GetOrderRef() != "SHP-77" ||
 		got.GetReceipt() != "JP1234567890" {
 		t.Fatalf("optional context did not round-trip: %+v", got)
 	}
@@ -267,7 +346,7 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	}
 
 	got := created.Msg.GetRequest()
-	if got.GetSupplierId() != 0 || got.GetOrderId() != 0 || got.GetReceipt() != "" {
+	if got.GetSupplierId() != 0 || got.GetOrderRef() != "" || got.GetReceipt() != "" {
 		t.Fatalf("absent context should be zero, got %+v", got)
 	}
 }

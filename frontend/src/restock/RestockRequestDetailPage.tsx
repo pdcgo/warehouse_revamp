@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -19,7 +20,7 @@ import {
 import { ArrowLeft, Ban, PackageCheck } from "lucide-react";
 import { restockClient, rpcError, supplierClient } from "../api/clients";
 import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockPaymentType, RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
@@ -39,17 +40,30 @@ function parseRequestId(raw: string | undefined): bigint {
 // `value` is a ReactNode, not a string: most fields are plain text, but some render a component (the
 // courier is a ShippingBadge). An empty string still falls back to the muted "—" every other detail
 // page shows; a component decides its own empty state.
-function Field({ label, value }: { label: string; value: ReactNode }) {
+function Field({ label, value, testId }: { label: string; value: ReactNode; testId?: string }) {
   return (
     <Stack gap="0.5" minW="0">
       <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
         {label}
       </Text>
-      <Text as="div" fontSize="sm" lineClamp={3}>
+      <Text as="div" fontSize="sm" lineClamp={3} data-testid={testId}>
         {value || "—"}
       </Text>
     </Stack>
   );
+}
+
+// The payment type (#127) as a label. UNSPECIFIED returns "" so Field renders the same muted "—" as
+// every other unrecorded field — it means "not recorded", not "a third kind of payment".
+function paymentLabel(t: TFunction, type: RestockPaymentType): string {
+  switch (type) {
+    case RestockPaymentType.SHOPEE_PAY:
+      return t("restock.form.paymentShopeePay");
+    case RestockPaymentType.BANK_ACCOUNT:
+      return t("restock.form.paymentBankAccount");
+    default:
+      return "";
+  }
 }
 
 // A line's money: whole rupiah per unit × quantity. Both are bigint, so this never loses precision.
@@ -131,10 +145,13 @@ export function RestockRequestDetailPage() {
     };
   }, [teamId, supplierId, requestingTeamId]);
 
-  const total = useMemo(
+  const productsTotal = useMemo(
     () => (request?.items ?? []).reduce((sum, item) => sum + lineTotal(item), 0n),
     [request],
   );
+
+  // The same arithmetic the create form's G does (#127): the goods, plus the freight on top.
+  const grandTotal = productsTotal + (request?.shippingCost ?? 0n);
 
   // Both actions return the updated request, so the page re-renders off the response rather than
   // re-fetching — the same move OrderDetailPage makes.
@@ -277,13 +294,13 @@ export function RestockRequestDetailPage() {
         </Card.Body>
       </Card.Root>
 
-      {/* The three #124 optionals get their own card, mirroring the create form. Each is legitimately
+      {/* The order the goods came from, mirroring the create form's B. Each field is legitimately
           absent (0n / ""), and an absent one renders the same muted "—" as anywhere else. */}
       <Card.Root>
         <Card.Body>
           <Stack gap="card">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.optionalDetails")}
+              {t("restock.form.orderDetails")}
             </Text>
             <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
               <Field
@@ -295,15 +312,39 @@ export function RestockRequestDetailPage() {
                 }
               />
               <Field label={t("restock.form.receipt")} value={request.receipt} />
+              {/* #127: a free-text reference to an order living somewhere else (a marketplace, a
+                  chat), not an id into this system — so it is shown verbatim, not as "Order #n". */}
               <Field
-                label={t("restock.form.orderId")}
-                value={
-                  request.orderId === 0n
-                    ? ""
-                    : t("restock.detail.orderRef", { id: request.orderId.toString() })
-                }
+                label={t("restock.form.orderRef")}
+                value={request.orderRef}
+                testId="restock-detail-order-ref"
+              />
+              <Field
+                label={t("restock.form.shippingCost")}
+                value={formatRupiah(request.shippingCost)}
+                testId="restock-detail-shipping-cost"
+              />
+              <Field
+                label={t("restock.form.paymentType")}
+                value={paymentLabel(t, request.paymentType)}
+                testId="restock-detail-payment-type"
               />
             </SimpleGrid>
+          </Stack>
+        </Card.Body>
+      </Card.Root>
+
+      {/* The restock note (#127) — the create form's C. Free text up to 1000 chars, so it gets its
+          own full-width card rather than a cell in the grid above. */}
+      <Card.Root>
+        <Card.Body>
+          <Stack gap="card">
+            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+              {t("restock.form.note")}
+            </Text>
+            <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="restock-detail-note">
+              {request.note || "—"}
+            </Text>
           </Stack>
         </Card.Body>
       </Card.Root>
@@ -343,9 +384,22 @@ export function RestockRequestDetailPage() {
 
             <Separator />
 
+            {/* The create form's E/F/G breakdown, read back: the goods, the freight, the sum. */}
             <Stack gap="1" align="end">
+              <Text fontSize="sm" color="fg.muted">
+                {t("restock.summary.productsTotal")}:{" "}
+                <Text as="span" data-testid="restock-detail-products-total">
+                  {formatRupiah(productsTotal)}
+                </Text>
+              </Text>
+              <Text fontSize="sm" color="fg.muted">
+                {t("restock.form.shippingCost")}:{" "}
+                <Text as="span" data-testid="restock-detail-shipping">
+                  {formatRupiah(request.shippingCost)}
+                </Text>
+              </Text>
               <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.form.total")}: {formatRupiah(total)}
+                {t("restock.summary.grandTotal")}: {formatRupiah(grandTotal)}
               </Text>
             </Stack>
           </Stack>

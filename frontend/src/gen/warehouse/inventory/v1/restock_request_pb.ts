@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/restock_request.proto.
  */
 export const file_warehouse_inventory_v1_restock_request: GenFile = /*@__PURE__*/
-  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSKiAQoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIWCgVwcmljZRgGIAEoA0IHukgEIgIoACLoAgoOUmVzdG9ja1JlcXVlc3QSCgoCaWQYASABKAQSGgoScmVxdWVzdGluZ190ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIVCg1zaGlwcGluZ19jb2RlGAggASgJEjwKBnN0YXR1cxgJIAEoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RTdGF0dXMSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEjkKBWl0ZW1zGAsgAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW0SEAoIb3JkZXJfaWQYDCABKAQSDwoHcmVjZWlwdBgNIAEoCRITCgtzdXBwbGllcl9pZBgOIAEoBEoECAQQBUoECAUQBkoECAYQB0oECAcQCFIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eSLGAgobUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIeCg1zaGlwcGluZ19jb2RlGAcgASgJQge6SARyAhgoEkMKBWl0ZW1zGAggAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW1CCLpIBZIBAggBEhAKCG9yZGVyX2lkGAkgASgEEhgKB3JlY2VpcHQYCiABKAlCB7pIBHICGGQSEwoLc3VwcGxpZXJfaWQYCyABKAQ6C5K1GAcKBQECAwQFSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5IlcKHFJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QigAEKGVJlc3RvY2tSZXF1ZXN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOg6StRgKCggBAgMEBQYJCCJoChtSZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiVwocUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKIAQoaUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USOAoIcmVxdWVzdHMYASADKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iZgocUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCJYCh1SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCquAQoUUmVzdG9ja1JlcXVlc3RTdGF0dXMSJgoiUkVTVE9DS19SRVFVRVNUX1NUQVRVU19VTlNQRUNJRklFRBAAEiIKHlJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfUEVORElORxABEiQKIFJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfRlVMRklMTEVEEAISJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19DQU5DRUxMRUQQAzKnBQoVUmVzdG9ja1JlcXVlc3RTZXJ2aWNlEoEBChRSZXN0b2NrUmVxdWVzdENyZWF0ZRIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlc3BvbnNlEnsKElJlc3RvY2tSZXF1ZXN0TGlzdBIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0RGV0YWlsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVzcG9uc2UShAEKFVJlc3RvY2tSZXF1ZXN0RnVsZmlsbBI0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBo1LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0Q2FuY2VsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSKiAQoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIWCgVwcmljZRgGIAEoA0IHukgEIgIoACLgAwoOUmVzdG9ja1JlcXVlc3QSCgoCaWQYASABKAQSGgoScmVxdWVzdGluZ190ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIVCg1zaGlwcGluZ19jb2RlGAggASgJEjwKBnN0YXR1cxgJIAEoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RTdGF0dXMSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEjkKBWl0ZW1zGAsgAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW0SDwoHcmVjZWlwdBgNIAEoCRITCgtzdXBwbGllcl9pZBgOIAEoBBIRCglvcmRlcl9yZWYYDyABKAkSFQoNc2hpcHBpbmdfY29zdBgQIAEoAxJACgxwYXltZW50X3R5cGUYESABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZRIMCgRub3RlGBIgASgJSgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQIDBANUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5UghvcmRlcl9pZCLkAwobUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIeCg1zaGlwcGluZ19jb2RlGAcgASgJQge6SARyAhgoEkMKBWl0ZW1zGAggAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW1CCLpIBZIBAggBEhgKB3JlY2VpcHQYCiABKAlCB7pIBHICGGQSEwoLc3VwcGxpZXJfaWQYCyABKAQSGgoJb3JkZXJfcmVmGAwgASgJQge6SARyAhhkEh4KDXNoaXBwaW5nX2Nvc3QYDSABKANCB7pIBCICKAASSgoMcGF5bWVudF90eXBlGA4gASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGVCCLpIBYIBAhABEhYKBG5vdGUYDyABKAlCCLpIBXIDGOgHOguStRgHCgUBAgMEBUoECAMQBEoECAQQBUoECAUQBkoECAYQB0oECAkQClIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eVIIb3JkZXJfaWQiVwocUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKAAQoZUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIImgKG1Jlc3RvY2tSZXF1ZXN0RGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOg6StRgKCggBAgMEBQYJCCJXChxSZXN0b2NrUmVxdWVzdERldGFpbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0IogBChpSZXN0b2NrUmVxdWVzdExpc3RSZXNwb25zZRI4CghyZXF1ZXN0cxgBIAMoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJmChxSZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIlgKHVJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0ImUKG1Jlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJXChxSZXN0b2NrUmVxdWVzdENhbmNlbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Kq4BChRSZXN0b2NrUmVxdWVzdFN0YXR1cxImCiJSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIgoeUkVTVE9DS19SRVFVRVNUX1NUQVRVU19QRU5ESU5HEAESJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19GVUxGSUxMRUQQAhIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0NBTkNFTExFRBADKoYBChJSZXN0b2NrUGF5bWVudFR5cGUSJAogUkVTVE9DS19QQVlNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9SRVNUT0NLX1BBWU1FTlRfVFlQRV9TSE9QRUVfUEFZEAESJQohUkVTVE9DS19QQVlNRU5UX1RZUEVfQkFOS19BQ0NPVU5UEAIypwUKFVJlc3RvY2tSZXF1ZXN0U2VydmljZRKBAQoUUmVzdG9ja1JlcXVlc3RDcmVhdGUSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXNwb25zZRJ7ChJSZXN0b2NrUmVxdWVzdExpc3QSMS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlcXVlc3QaMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlEoEBChRSZXN0b2NrUmVxdWVzdERldGFpbBIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3REZXRhaWxSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdERldGFpbFJlc3BvbnNlEoQBChVSZXN0b2NrUmVxdWVzdEZ1bGZpbGwSNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlcXVlc3QaNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlc3BvbnNlEoEBChRSZXN0b2NrUmVxdWVzdENhbmNlbBIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENhbmNlbFJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One line of a restock request: a product, how much of it, and what it costs.
@@ -109,16 +109,6 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
   items: RestockRequestItem[];
 
   /**
-   * All three are OPTIONAL context (#124) — a request is legitimate without any of them.
-   *
-   * order_id: the selling order this restock is FOR ("we need stock to fill that order"). An opaque
-   * selling_service id — no FK, it is another service's row. 0 = not tied to an order.
-   *
-   * @generated from field: uint64 order_id = 12;
-   */
-  orderId: bigint;
-
-  /**
    * The courier's tracking number (resi) for the shipment, once there is one. Empty = none yet.
    *
    * @generated from field: string receipt = 13;
@@ -132,6 +122,35 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
    * @generated from field: uint64 supplier_id = 14;
    */
   supplierId: bigint;
+
+  /**
+   * The order this restock is FOR, as a plain reference string (#127). Empty = not tied to one.
+   *
+   * @generated from field: string order_ref = 15;
+   */
+  orderRef: string;
+
+  /**
+   * What the shipment itself cost, whole rupiah (#127). The goods' cost is per line (item.price);
+   * this is the freight on top, and it is what the summary adds to the products' total.
+   *
+   * @generated from field: int64 shipping_cost = 16;
+   */
+  shippingCost: bigint;
+
+  /**
+   * How it was paid for (#127).
+   *
+   * @generated from field: warehouse.inventory.v1.RestockPaymentType payment_type = 17;
+   */
+  paymentType: RestockPaymentType;
+
+  /**
+   * A free-text note about this restock (#127).
+   *
+   * @generated from field: string note = 18;
+   */
+  note: string;
 };
 
 /**
@@ -168,14 +187,6 @@ export type RestockRequestCreateRequest = Message<"warehouse.inventory.v1.Restoc
   items: RestockRequestItem[];
 
   /**
-   * Optional context — see RestockRequest. supplier_id, when set, must be a supplier of the
-   * REQUESTING team (the handler checks; a supplier from another team reads as NotFound).
-   *
-   * @generated from field: uint64 order_id = 9;
-   */
-  orderId: bigint;
-
-  /**
    * @generated from field: string receipt = 10;
    */
   receipt: string;
@@ -184,6 +195,28 @@ export type RestockRequestCreateRequest = Message<"warehouse.inventory.v1.Restoc
    * @generated from field: uint64 supplier_id = 11;
    */
   supplierId: bigint;
+
+  /**
+   * @generated from field: string order_ref = 12;
+   */
+  orderRef: string;
+
+  /**
+   * Whole rupiah. Zero is legitimate (free shipping, collected in person), so gte 0, not gt 0.
+   *
+   * @generated from field: int64 shipping_cost = 13;
+   */
+  shippingCost: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.RestockPaymentType payment_type = 14;
+   */
+  paymentType: RestockPaymentType;
+
+  /**
+   * @generated from field: string note = 15;
+   */
+  note: string;
 };
 
 /**
@@ -403,6 +436,34 @@ export enum RestockRequestStatus {
  */
 export const RestockRequestStatusSchema: GenEnum<RestockRequestStatus> = /*@__PURE__*/
   enumDesc(file_warehouse_inventory_v1_restock_request, 0);
+
+/**
+ * How the restock was paid for (#127). Two ways today; append-only, like every enum here.
+ *
+ * @generated from enum warehouse.inventory.v1.RestockPaymentType
+ */
+export enum RestockPaymentType {
+  /**
+   * @generated from enum value: RESTOCK_PAYMENT_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RESTOCK_PAYMENT_TYPE_SHOPEE_PAY = 1;
+   */
+  SHOPEE_PAY = 1,
+
+  /**
+   * @generated from enum value: RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT = 2;
+   */
+  BANK_ACCOUNT = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.RestockPaymentType.
+ */
+export const RestockPaymentTypeSchema: GenEnum<RestockPaymentType> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_restock_request, 1);
 
 /**
  * RestockRequestService (#105): a SELLING team asks a WAREHOUSE to restock a product (with shipment

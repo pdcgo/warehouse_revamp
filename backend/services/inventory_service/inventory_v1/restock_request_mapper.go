@@ -18,6 +18,35 @@ const (
 	restockStatusCancelled = "cancelled"
 )
 
+// How the restock was paid for, as stored in the `payment_type` TEXT column (#127). Mapped here, not
+// by a DB CHECK IN-list (cf. #80). Empty text = none recorded.
+const (
+	restockPaymentShopeePay   = "shopee_pay"
+	restockPaymentBankAccount = "bank_account"
+)
+
+func restockPaymentToText(p inventoryv1.RestockPaymentType) string {
+	switch p {
+	case inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY:
+		return restockPaymentShopeePay
+	case inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT:
+		return restockPaymentBankAccount
+	default:
+		return ""
+	}
+}
+
+func restockPaymentFromText(text string) inventoryv1.RestockPaymentType {
+	switch text {
+	case restockPaymentShopeePay:
+		return inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY
+	case restockPaymentBankAccount:
+		return inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT
+	default:
+		return inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_UNSPECIFIED
+	}
+}
+
 var (
 	errRestockMissing    = errors.New("restock request not found")
 	errRestockNotPending = errors.New("restock request is not pending")
@@ -62,8 +91,11 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		Status:           restockStatusFromText(r.Status),
 		CreatedAtUnix:    r.CreatedAt.Unix(),
 		Items:            items,
-		OrderId:          r.OrderID,
+		OrderRef:         r.OrderRef,
 		Receipt:          r.Receipt,
+		ShippingCost:     r.ShippingCost,
+		PaymentType:      restockPaymentFromText(r.PaymentType),
+		Note:             r.Note,
 	}
 
 	// A nil supplier is "none recorded" — the wire carries 0 rather than a null.

@@ -31,6 +31,13 @@ enum RestockRequestStatus {
   RESTOCK_REQUEST_STATUS_CANCELLED = 3;
 }
 
+// How the restock was paid for (#127). Two ways today; append-only, like every enum here.
+enum RestockPaymentType {
+  RESTOCK_PAYMENT_TYPE_UNSPECIFIED = 0;
+  RESTOCK_PAYMENT_TYPE_SHOPEE_PAY = 1;
+  RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT = 2;
+}
+
 // One line of a restock request: a product, how much of it, and what it costs.
 message RestockRequestItem {
   uint64 id = 1;
@@ -65,16 +72,28 @@ message RestockRequest {
   // The lines. At least one.
   repeated RestockRequestItem items = 11;
 
-  // All three are OPTIONAL context (#124) — a request is legitimate without any of them.
+  // OPTIONAL context — a request is legitimate without any of it.
   //
-  // order_id: the selling order this restock is FOR ("we need stock to fill that order"). An opaque
-  // selling_service id — no FK, it is another service's row. 0 = not tied to an order.
-  uint64 order_id = 12;
+  // was `uint64 order_id` — the order is now a free-text REFERENCE, not an id (#127): it is written
+  // down from a marketplace/order somewhere else, so it was never ours to resolve, and typing one
+  // that happens to be numeric never meant it pointed at a row here.
+  reserved 12;
+  reserved "order_id";
   // The courier's tracking number (resi) for the shipment, once there is one. Empty = none yet.
   string receipt = 13;
   // Who the goods are bought from — an inventory_service supplier owned by the REQUESTING team.
   // Same service, so this one is a real FK. 0 = no supplier recorded.
   uint64 supplier_id = 14;
+
+  // The order this restock is FOR, as a plain reference string (#127). Empty = not tied to one.
+  string order_ref = 15;
+  // What the shipment itself cost, whole rupiah (#127). The goods' cost is per line (item.price);
+  // this is the freight on top, and it is what the summary adds to the products' total.
+  int64 shipping_cost = 16;
+  // How it was paid for (#127).
+  RestockPaymentType payment_type = 17;
+  // A free-text note about this restock (#127).
+  string note = 18;
 }
 
 message RestockRequestCreateRequest {
@@ -104,9 +123,18 @@ message RestockRequestCreateRequest {
 
   // Optional context — see RestockRequest. supplier_id, when set, must be a supplier of the
   // REQUESTING team (the handler checks; a supplier from another team reads as NotFound).
-  uint64 order_id = 9;
+  //
+  // was `uint64 order_id` — the order is a free-text reference now (#127); see `order_ref`.
+  reserved 9;
+  reserved "order_id";
   string receipt = 10 [(buf.validate.field).string.max_len = 100];
   uint64 supplier_id = 11;
+
+  string order_ref = 12 [(buf.validate.field).string.max_len = 100];
+  // Whole rupiah. Zero is legitimate (free shipping, collected in person), so gte 0, not gt 0.
+  int64 shipping_cost = 13 [(buf.validate.field).int64.gte = 0];
+  RestockPaymentType payment_type = 14 [(buf.validate.field).enum.defined_only = true];
+  string note = 15 [(buf.validate.field).string.max_len = 1000];
 }
 
 message RestockRequestCreateResponse {

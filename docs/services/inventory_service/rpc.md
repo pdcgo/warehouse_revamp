@@ -58,9 +58,11 @@ the stock ledger can never diverge because the fulfil does both in **one transac
 
 - **`RestockRequestCreate`** — the SELLING team (`requesting_team_id`, `use_scope`) raises a `pending`
   request naming the target `warehouse_id`, a `shipping_code`, and **one or more priced lines**
-  (product + `sku`/`name` snapshot + quantity + per-unit price, #124). Optionally an `order_id`, a
-  `receipt` (resi), and a `supplier_id` — the supplier must be the requesting team's own, else
-  **NotFound**. No stock is touched.
+  (product + `sku`/`name` snapshot + quantity + per-unit price, #124). Optionally an `order_ref` (free
+  text — the order lives in someone else's system, #127), a `receipt` (resi), a `supplier_id` (must be
+  the requesting team's own, else **NotFound**), plus the restock's own money and context: a
+  `shipping_cost` (the freight, on top of the per-line prices), a `payment_type`, and a `note`.
+  No stock is touched.
 - **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
   `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
   warehouse's "incoming" view. Paginated, newest first. Lines are **preloaded** in one extra query

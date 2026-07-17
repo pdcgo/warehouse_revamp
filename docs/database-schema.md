@@ -407,9 +407,12 @@ erDiagram
         bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
         text        shipping_code      "opaque shipping_service courier code"
         text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
-        bigint      order_id           "optional: the selling order it is for, opaque, no FK; 0 = none"
+        text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
         text        receipt            "optional: courier tracking number (resi)"
         bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
+        bigint      shipping_cost      "the freight, whole rupiah, CHECK >= 0"
+        text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
+        text        note               "optional free text"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -464,13 +467,21 @@ erDiagram
   another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `price`
   (whole rupiah **per unit**, `CHECK >= 0` — zero is legitimate for a transfer or a sample).
   `ON DELETE CASCADE`.
-- Three **optional** context columns on the header (#124): `order_id` — the selling order the restock
-  is *for* (an opaque `selling_service` id, **no FK**, `0` = untied); `receipt` — the courier's
-  tracking number (resi); and `supplier_id` — who the goods are bought from. `supplier_id` is the one
-  **real FK** of the three, because `suppliers` is the *same service* (`ON DELETE SET NULL`, so a
-  request keeps its history if a supplier is ever hard-deleted). The handler additionally requires the
-  supplier to belong to the **requesting team** — another team's supplier reads as `NotFound`, so the
-  error can't be used to confirm an id exists.
+- **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
+  **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
+  who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the
+  *same service* (`ON DELETE SET NULL`, so a request keeps its history if a supplier is ever
+  hard-deleted). The handler additionally requires the supplier to belong to the **requesting team** —
+  another team's supplier reads as `NotFound`, so the error can't be used to confirm an id exists.
+- `order_ref` **was** a `uint64 order_id` (#124) and became text in #127. That was a shape fix, not a
+  rename: the order is written down from a marketplace or a chat *elsewhere*, so it was never a row in
+  this system — a reference that happens to be numeric never pointed at anything here, and a real one
+  like `SHP-2026-ABC/01` could not be stored at all. The migration carries the old ids across as text.
+- The restock's own money (#127): `shipping_cost` is the **freight** (whole rupiah, `CHECK >= 0`) —
+  the goods' cost lives per line in `restock_request_items.price`, and this sits on top, which is what
+  the create screen's summary adds to the products' total. `payment_type` is the `RestockPaymentType`
+  enum **as text** (`shopee_pay` / `bank_account`, mapped in the handler, no `CHECK` IN-list per #80;
+  `''` = none recorded), and `note` is free text.
 
 ---
 
