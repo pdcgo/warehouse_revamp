@@ -9,6 +9,7 @@
 package san_testdb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"os"
@@ -30,6 +31,11 @@ import (
 // ("postgres") the owner reviews on — same Postgres instance, different database. It is created on
 // demand (see ensureTestDatabase), and per-test transactions roll back, so it self-cleans.
 const defaultDSN = "host=localhost port=5433 user=user password=password dbname=warehouse_test sslmode=disable"
+
+// The advisory-lock key every test process takes before migrating (see connect). The value is
+// arbitrary — its only job is to be the SAME in every process, so that they queue behind each other
+// instead of all migrating at once.
+const migrationLockKey = 8748301
 
 // migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
 // root user that references it. There is no cross-service FK to enforce it, so order matters here
@@ -138,6 +144,37 @@ func connect() (*gorm.DB, error) {
 	}
 
 	err = raw.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	// Serialise the migration across PROCESSES, not just goroutines.
+	//
+	// `once` guards one process; `go test ./...` runs one process PER PACKAGE, in parallel, all against
+	// this same database. goose has no cross-process lock of its own, so without this every process
+	// reads the version table, every one sees a new migration as unapplied, and every one runs it: the
+	// winner records it and the losers die on whatever their own statement already created ("column
+	// ... already exists").
+	//
+	// It only bites when a migration is NEW — against an up-to-date database goose.Up is a no-op and
+	// the race has nothing to race over. That is exactly why it hid for so long locally, and exactly
+	// why CI would meet it EVERY run: a fresh Postgres service container plus `go test ./...` means
+	// every migration is new.
+	//
+	// The lock is taken on a PINNED connection, not on the pool: pg_advisory_lock is SESSION-scoped, so
+	// a lock and an unlock issued through *sql.DB could land on two different connections — leaving the
+	// lock held by an idle session forever and every later process waiting on it.
+	lockConn, err := raw.Conn(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_, _ = lockConn.ExecContext(context.Background(), `SELECT pg_advisory_unlock($1)`, migrationLockKey)
+		_ = lockConn.Close()
+	}()
+
+	_, err = lockConn.ExecContext(context.Background(), `SELECT pg_advisory_lock($1)`, migrationLockKey)
 	if err != nil {
 		return nil, err
 	}
