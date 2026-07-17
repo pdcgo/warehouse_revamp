@@ -370,6 +370,17 @@ erDiagram
 
     suppliers ||--o{ supplier_channels : "supplier_id"
 
+    racks {
+        bigserial   id           PK
+        bigint      warehouse_id "the WAREHOUSE team it stands in, opaque, no FK"
+        text        code         "the label on the shelf (A-01-3); unique per warehouse among active"
+        text        name         "optional human name"
+        text        description
+        boolean     deleted      "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     suppliers {
         bigserial   id          PK
         bigint      team_id     "owning team, opaque cross-service id, no FK"
@@ -443,6 +454,16 @@ erDiagram
   `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
   fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
   delete, search, pagination).
+- **`racks`** — the physical places inside one warehouse (#129). Scoped to the `warehouse_id`, which
+  **is** a team (a warehouse is a team), carrying `use_scope`; opaque, no FK. `code` is the label
+  someone reads off the shelf and is unique per warehouse **among active racks only**
+  (`UNIQUE (warehouse_id, code) WHERE deleted = FALSE`), so a soft-deleted rack frees its label for
+  re-use — a shelf gets re-labelled — and two warehouses may both have an `A-01-3`. Only **warehouse**
+  teams have racks; a selling team has nowhere to put a shelf.
+- **`racks` is the REGISTRY, not a location model.** Nothing references a rack yet: stock is still
+  counted per `(warehouse_id, product_id)` in `stock_levels`. Putting stock **on** a rack is
+  `plans/inventory_service/` §3's open decision (warehouse-level vs bin-level), and writing down the
+  racks a warehouse has does not settle it — it is the prerequisite, not the answer.
 - **`supplier_channels`** — the ways a team can reach or order from a supplier (#120): an **online**
   channel (a store on a marketplace) or an **offline** channel (a physical shop). `supplier_id` is a
   **real FK** to `suppliers` (same service, `ON DELETE CASCADE`); scope to a team is enforced by the

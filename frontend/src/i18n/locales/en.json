@@ -15,6 +15,7 @@
     "stock": "Stock",
     "placements": "Placements",
     "supplier": "Supplier",
+    "racks": "Racks",
     "users": "Users",
     "settings": "Settings",
     "profile": "Profile"
@@ -305,6 +306,39 @@
       "edit": "Edit",
       "code": "Code",
       "description": "Description"
+    }
+  },
+  "racks": {
+    "title": "Racks",
+    "selectTeam": "Select a team to manage its racks.",
+    "searchPlaceholder": "Search code or name",
+    "deleted": "Rack \"{{code}}\" deleted",
+    "deleteFailed": "Delete failed",
+    "deleteRack": "Delete Rack",
+    "deleteConfirm": "Delete \"{{code}}\"? This cannot be undone.",
+    "delete": "Delete",
+    "empty": "No racks found.",
+    "table": {
+      "code": "Code",
+      "name": "Name",
+      "description": "Description",
+      "actions": "Actions"
+    },
+    "form": {
+      "saved": "Rack saved",
+      "created": "Rack \"{{code}}\" created",
+      "duplicateCode": "A rack with code \"{{code}}\" already exists in this warehouse.",
+      "newRack": "New rack",
+      "editTitle": "Edit Rack",
+      "createTitle": "New Rack",
+      "code": "Code",
+      "codeHelp": "What is painted on the rack, like \"A-01-3\". Unique within the warehouse.",
+      "name": "Name",
+      "nameHelp": "Optional, for when the code alone is not obvious.",
+      "description": "Description",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create"
     }
   },
   "suppliers": {

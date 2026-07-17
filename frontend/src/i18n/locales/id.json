@@ -15,6 +15,7 @@
     "stock": "Stok",
     "placements": "Penempatan",
     "supplier": "Pemasok",
+    "racks": "Rak",
     "users": "Pengguna",
     "settings": "Pengaturan",
     "profile": "Profil"
@@ -305,6 +306,39 @@
       "edit": "Ubah",
       "code": "Kode",
       "description": "Deskripsi"
+    }
+  },
+  "racks": {
+    "title": "Rak",
+    "selectTeam": "Pilih tim untuk mengelola raknya.",
+    "searchPlaceholder": "Cari kode atau nama",
+    "deleted": "Rak \"{{code}}\" dihapus",
+    "deleteFailed": "Gagal menghapus",
+    "deleteRack": "Hapus Rak",
+    "deleteConfirm": "Hapus \"{{code}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "delete": "Hapus",
+    "empty": "Tidak ada rak ditemukan.",
+    "table": {
+      "code": "Kode",
+      "name": "Nama",
+      "description": "Deskripsi",
+      "actions": "Aksi"
+    },
+    "form": {
+      "saved": "Rak disimpan",
+      "created": "Rak \"{{code}}\" dibuat",
+      "duplicateCode": "Rak dengan kode \"{{code}}\" sudah ada di gudang ini.",
+      "newRack": "Rak baru",
+      "editTitle": "Ubah Rak",
+      "createTitle": "Rak Baru",
+      "code": "Kode",
+      "codeHelp": "Kode yang tertulis pada rak, misalnya \"A-01-3\". Unik dalam gudang.",
+      "name": "Nama",
+      "nameHelp": "Opsional, untuk saat kode saja belum cukup jelas.",
+      "description": "Deskripsi",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "create": "Buat"
     }
   },
   "suppliers": {

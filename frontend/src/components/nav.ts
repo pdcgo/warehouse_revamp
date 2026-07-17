@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
+import { Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -57,16 +57,25 @@ const PRODUCTS_GROUP: MenuGroup = {
 // them. The on-hand list survives under the name it actually deserves — "Stock".
 //
 // "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
-const INVENTORIES: MenuGroup = {
-  label: "nav.inventories",
-  icon: Boxes,
-  children: [
+//
+// The group is BUILT PER TEAM TYPE rather than being a fixed const, because "Racks" (#129) is not
+// common to both: a rack is a shelf in a warehouse, and a selling team has nowhere to put one. Every
+// other child is shared by the two team types that work with stock.
+function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
+  const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
     { to: "/inventories/stock", label: "nav.stock", icon: PackagePlus },
     { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
     { to: "/inventories/suppliers", label: "nav.supplier", icon: Factory },
-  ],
-};
+  ];
+
+  // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/racks", label: "nav.racks", icon: Grid3x3 });
+  }
+
+  return { label: "nav.inventories", icon: Boxes, children };
+}
 
 // menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
 //
@@ -103,8 +112,9 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   }
 
   // Inventories sub-menu — restock + placements — for the two team types that work with stock (#95).
+  // Its children depend on the team type: a warehouse also gets Racks (#129).
   if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
-    menu.push(INVENTORIES);
+    menu.push(inventoriesFor(teamType));
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend

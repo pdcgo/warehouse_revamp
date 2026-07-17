@@ -23,6 +23,7 @@ func NewRegister(
 		mux.Handle(inventoryv1connect.NewSupplierServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewSupplierChannelServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))
+		mux.Handle(inventoryv1connect.NewRackServiceHandler(inventory, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
 		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
@@ -33,6 +34,7 @@ func NewRegister(
 			inventoryv1connect.SupplierServiceName,
 			inventoryv1connect.SupplierChannelServiceName,
 			inventoryv1connect.RestockRequestServiceName,
+			inventoryv1connect.RackServiceName,
 		}
 	}
 }

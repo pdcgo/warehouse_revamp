@@ -58,6 +58,7 @@ const SuppliersPage = lazy(() =>
 const SupplierDetailPage = lazy(() =>
   import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
 );
+const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
 const RestockRequestsPage = lazy(() =>
   import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
 );
@@ -142,6 +143,9 @@ export const router = createBrowserRouter([
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
+      // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
+      // only, but the route is open and the server's policy is what actually decides.
+      { path: "inventories/racks", element: <RacksPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
       { path: "components", element: <ComponentsPage /> },

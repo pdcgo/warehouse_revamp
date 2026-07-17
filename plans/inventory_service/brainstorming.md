@@ -110,6 +110,16 @@ Directly hostage to §1 (are there racks? is anything labelled?).
 without a rewrite (nullable now, meaning "somewhere in the warehouse"). Do not build B until §1
 says racks and labels exist.
 
+> **Update (#129): racks exist.** The owner asked for rack management — a warehouse writes down its
+> racks (`code`, the label on the shelf; CRUD + soft delete). So the question this section says is
+> "hostage to §1" — *are there racks, is anything labelled?* — is answered **yes** for the registry.
+>
+> **It does NOT decide option B.** #129 asked for "essential first", and that is what was built: a
+> LIST of racks. Nothing points at one, and stock is still counted per (warehouse, product). Whether
+> a movement carries a `location_id` — whether stock lives ON a rack — is still the open call here,
+> and it is a bigger one: it changes the ledger, the put-away job, and every stock read. Racks being
+> real is the **prerequisite** for asking it, not the answer.
+
 ---
 
 ## 4. Whose product is in whose warehouse?
@@ -220,7 +230,10 @@ lands first and the §1-blocked parts wait. Each is small enough to be one PR-si
 - [ ] **Scope:** is v1 warehouse-only (on-hand + movements), or does it reach into the selling/order
       side (reservations, picking)? (`plan.md` §4 open question.)
 - [ ] **Location granularity:** warehouse-level to start (recommended), or bins from day one?
-      Driven by "is anything barcoded / are there labelled racks?".
+      Driven by "is anything barcoded / are there labelled racks?" — **racks are labelled and now
+      exist as a registry (#129), so the premise is settled; the granularity call is not.** The open
+      part is whether a stock movement carries a `location_id`, which changes the ledger and every
+      stock read. Still the owner's.
 - [ ] **Cross-team storage:** may a warehouse hold another team's products (3PL-style), or only its
       own team's? (§4)
 - [ ] **Core model:** confirm ledger + derived snapshot (§2 option C) is the direction.

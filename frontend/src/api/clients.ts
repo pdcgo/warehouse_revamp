@@ -10,6 +10,7 @@ import { DocumentService } from "../gen/warehouse/document/v1/document_pb";
 import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { SupplierService } from "../gen/warehouse/inventory/v1/supplier_pb";
 import { SupplierChannelService } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
+import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
 import { transport } from "../transport";
@@ -28,6 +29,8 @@ export const documentClient = createClient(DocumentService, transport);
 export const inventoryClient = createClient(InventoryService, transport);
 export const supplierClient = createClient(SupplierService, transport);
 export const supplierChannelClient = createClient(SupplierChannelService, transport);
+// Racks belong to ONE warehouse — the team in the request body IS that warehouse (#129).
+export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
