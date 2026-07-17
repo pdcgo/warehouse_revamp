@@ -106,9 +106,24 @@ func ensureTestDatabase(testDSN string) error {
 	_, err = admin.Exec(`CREATE DATABASE "` + cfg.Database + `"`)
 	if err != nil {
 		// A parallel test package may have created it between our check and this CREATE — success.
+		//
+		// Postgres says "it is already there" in TWO ways, and they are not interchangeable:
+		//
+		//   42P04 duplicate_database — it already existed when this CREATE ran.
+		//   23505 unique_violation on pg_database_datname_index — two CREATEs raced and this one lost
+		//         at the index. This is what an ACTUAL race produces, and only 42P04 was handled.
+		//
+		// Missing the second was worse than it sounds, because DB() reports any setup failure as "no
+		// test database" and SKIPS: the losing process's whole package silently vanished while the run
+		// still printed ok. A green suite that ran nothing is the failure mode this package exists to
+		// prevent (cf. errMigration below). It needs a fresh database AND parallel packages to bite —
+		// i.e. `db reset-test` then `go test ./...`, which is exactly what CI does on every run.
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "42P04" { // duplicate_database
-			return nil
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "42P04" ||
+				(pgErr.Code == "23505" && pgErr.ConstraintName == "pg_database_datname_index") {
+				return nil
+			}
 		}
 
 		return err
@@ -222,15 +237,27 @@ func DB(t *testing.T) *gorm.DB {
 	})
 
 	if initErr != nil {
-		// Skipping is for "there is no database here" — a developer without Postgres running, which is
-		// not their test's fault. A BROKEN MIGRATION is this repo's fault and must be loud: skipping it
-		// turns `go test` green while running nothing at all.
-		var migErr errMigration
-		if errors.As(initErr, &migErr) {
-			t.Fatalf("san_testdb: %v", migErr)
+		// SKIP means exactly one thing: there is no Postgres on this machine — a developer without
+		// docker up, which is not their test's fault. Every OTHER setup failure is this repo's fault and
+		// must be loud, because skipping turns `go test` green while running nothing at all, and a green
+		// run that ran nothing is worse than a red one.
+		//
+		// This used to be the other way round: skip on anything that was not a broken migration. That
+		// catch-all hid two real bugs, and each was invisible until someone went looking —
+		//
+		//   • a migration with a syntax error (#127) — reported as "no test database", suite skipped;
+		//   • a CREATE DATABASE race between parallel test packages (#138) — same message, ten tests
+		//     silently gone, and it only bites on a fresh database, which is every CI run.
+		//
+		// Both were fixed at their source, but the catch-all is what made them SILENT, so it goes too:
+		// only an unreachable server skips now. If a third one ever appears, it fails, in the open.
+		var connErr *pgconn.ConnectError
+		if errors.As(initErr, &connErr) {
+			t.Skipf("san_testdb: no test database (%v) — set TEST_DATABASE_URL or run docker compose up -d", initErr)
 		}
 
-		t.Skipf("san_testdb: no test database (%v) — set TEST_DATABASE_URL or run docker compose up -d", initErr)
+		t.Fatalf("san_testdb: the database is reachable but setup failed — this is not a missing "+
+			"database, and skipping it would run nothing while printing ok: %v", initErr)
 	}
 
 	tx := shared.Begin()
