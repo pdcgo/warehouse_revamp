@@ -36,6 +36,7 @@ import {
   description as productSelectDescription,
   type PickedProduct,
 } from "../components/ProductSelect";
+import { ProductPicker, description as productPickerDescription } from "../components/ProductPicker";
 import {
   AddressPicker,
   emptyAddress,
@@ -267,6 +268,25 @@ function ProductSelectDemo() {
   );
 }
 
+function ProductPickerDemo() {
+  const [picked, setPicked] = useState<PickedProduct[]>([]);
+  const { current } = useTeam();
+
+  return (
+    <>
+      <ProductPicker
+        teamId={current?.teamId ?? 0n}
+        value={picked.map((p) => p.id)}
+        onChange={setPicked}
+      />
+      <Text fontSize="xs" color="fg.muted">
+        Picked: {picked.length > 0 ? picked.map((p) => p.sku || `#${p.id}`).join(", ") : "(none)"}
+        {current ? "" : " — select a team to browse its catalogue"}
+      </Text>
+    </>
+  );
+}
+
 function AddressPickerDemo() {
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
 
@@ -436,6 +456,12 @@ const ENTRIES: Entry[] = [
     title: "ProductSelect",
     description: productSelectDescription,
     render: () => <ProductSelectDemo />,
+  },
+  {
+    id: "product-picker",
+    title: "ProductPicker",
+    description: productPickerDescription,
+    render: () => <ProductPickerDemo />,
   },
   {
     id: "address-picker",

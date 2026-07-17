@@ -24,7 +24,16 @@
     "signOut": "Keluar"
   },
   "common": {
-    "perPage": "Per halaman"
+    "perPage": "Per halaman",
+    "cancel": "Batal",
+    "confirm": "Konfirmasi"
+  },
+  "productPicker": {
+    "trigger": "Pilih produk",
+    "title": "Pilih Produk",
+    "selected": "{{n}} dipilih",
+    "clear": "Kosongkan",
+    "noTeam": "Pilih tim untuk menjelajahi katalognya."
   },
   "discover": {
     "title": "Temukan Produk",

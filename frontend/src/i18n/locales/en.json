@@ -24,7 +24,16 @@
     "signOut": "Sign out"
   },
   "common": {
-    "perPage": "Per page"
+    "perPage": "Per page",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "productPicker": {
+    "trigger": "Select products",
+    "title": "Select Products",
+    "selected": "{{n}} selected",
+    "clear": "Clear",
+    "noTeam": "Select a team to browse its catalogue."
   },
   "discover": {
     "title": "Discover Products",
