@@ -146,18 +146,44 @@ meaning *"somewhere in this warehouse, unplaced"*. Existing rows become unplaced
 forced onto an invented rack — the system must not fabricate a location it was never told. "Unplaced"
 is then a real, visible state a warehouse can work off (a put-away queue), not a migration artefact.
 
-**Follow-up questions this decision opens — owner input needed, NOT settled here:**
+**Follow-up questions this decision opens:**
 
-- [ ] **How does stock get onto a rack?** Is put-away part of accepting (name the rack as you count),
-      or a separate job afterwards (accept into "unplaced", then place it)? The second is more steps
-      but matches a real receiving bay, where goods land before anyone shelves them.
-- [ ] **May one product sit on several racks?** Physically yes, so presumably yes — but it means every
-      "how many do we have" read is a SUM across racks, and every pick chooses a rack.
+- [x] **How does stock get onto a rack?** — **DECIDED (owner, 2026-07-17): put-away is PART OF
+      ACCEPTING.** The warehouse names the rack as it counts, in one step, so nothing routinely sits
+      unplaced. This is #137, and it makes #137 the primary path rather than an alternative to #136.
+      - The rejected option was a separate shelving job afterwards. Worth remembering *why* it was
+        rejected, because it will come back: it matches a receiving bay (goods land, someone shelves
+        them later, often a different person) but it costs a second job and a second screen, and it
+        leaves an unplaced pile as the normal state rather than the exception.
+      - **The consequence:** counting and placing become one act. Whoever counts at the door must know
+        which shelf it goes on — a real operational assumption, and the first thing to revisit if the
+        accept screen starts feeling wrong.
+      - **#136 does not disappear**, it narrows: something must still move stock that is ALREADY
+        unplaced (which today is *everything* — #135 left every row unplaced) and shift stock rack→rack
+        when a shelf is re-organised. It is no longer how stock normally lands.
+- [x] **Does a stock-take name a rack?** — **DECIDED (owner, 2026-07-17): YES, a stock-take counts a
+      SHELF.** `StockAdjust` grows a `rack_id`; you stand at A-01-3, count what is on it, and correct
+      that shelf. Every correction is then unambiguous.
+      - The rejected option — a warehouse-level figure — needed a rule for spreading a correction
+        across a product's shelves (proportionally? onto unplaced? refuse?), and **every such rule
+        invents a fact nobody observed.** A stock-take that corrects the wrong shelf is worse than no
+        stock-take, because it is believed.
+      - **This must land BEFORE anything places stock** (#137), or the existing warehouse-level adjust
+        silently corrects the unplaced pile while the racks hold the rest.
+
+**Still open — owner input needed, NOT settled here:**
+
+- [ ] **May one product sit on several racks?** Physically yes, and the model built in #135 allows it
+      (that is what option B means). Narrowing it later is a unique index, not a rewrite — but it is
+      worth saying out loud, because it is why every "how many do we have" read is a SUM.
 - [ ] **What happens to stock that is never placed?** Does unplaced stock count as on-hand and
-      sellable, or is it invisible until shelved? This one has real money attached.
+      sellable, or is it invisible until shelved? This one has real money attached. Less urgent now
+      that accepting places stock directly — unplaced becomes the exception rather than the rule — but
+      it still decides what happens to everything #135 left unplaced.
 - [ ] **Does a rack's stock block its deletion?** `RackDelete` is a soft delete today and nothing
       referenced a rack; once stock sits on one, deleting a rack with stock on it must either be
-      refused or move the stock somewhere.
+      refused or move the stock somewhere. The FK is `ON DELETE RESTRICT` so the database refuses a
+      hard delete, but a SOFT delete would still strand the goods. See #138.
 
 ---
 
