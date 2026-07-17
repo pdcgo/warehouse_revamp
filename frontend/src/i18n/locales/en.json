@@ -28,6 +28,12 @@
     "cancel": "Cancel",
     "confirm": "Confirm"
   },
+  "productListItem": {
+    "stock": "Stock {{n}}",
+    "outOfStock": "Out of stock",
+    "teamFallback": "Team #{{id}}",
+    "productFallback": "Product #{{id}}"
+  },
   "productPicker": {
     "trigger": "Select products",
     "title": "Select Products",

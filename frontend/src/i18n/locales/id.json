@@ -28,6 +28,12 @@
     "cancel": "Batal",
     "confirm": "Konfirmasi"
   },
+  "productListItem": {
+    "stock": "Stok {{n}}",
+    "outOfStock": "Stok habis",
+    "teamFallback": "Tim #{{id}}",
+    "productFallback": "Produk #{{id}}"
+  },
   "productPicker": {
     "trigger": "Pilih produk",
     "title": "Pilih Produk",

@@ -8,6 +8,7 @@ import { PasswordInput, description as passwordInputDescription } from "../compo
 import { Pagination, description as paginationDescription } from "../components/Pagination";
 import { UserItem, description as userItemDescription } from "../components/UserItem";
 import { TeamItem, description as teamItemDescription } from "../components/TeamItem";
+import { ProductListItem, description as productListItemDescription } from "../components/ProductListItem";
 import { TeamTypeSelect, description as teamTypeSelectDescription } from "../components/TeamTypeSelect";
 import { TeamSelect, description as teamSelectDescription } from "../components/TeamSelect";
 import { UserSelect, description as userSelectDescription } from "../components/UserSelect";
@@ -330,6 +331,18 @@ function AddressPickerDemo() {
   );
 }
 
+// A sample product cover for the gallery, inline as a data URI: the gallery is static sample data, so
+// it must not depend on a network fetch to show what "has an image" looks like.
+const SAMPLE_COVER =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">` +
+      `<rect width="64" height="64" fill="#3b82f6"/>` +
+      `<circle cx="32" cy="25" r="11" fill="#fff" fill-opacity=".85"/>` +
+      `<rect x="13" y="41" width="38" height="10" rx="3" fill="#fff" fill-opacity=".85"/>` +
+      `</svg>`,
+  );
+
 const ENTRIES: Entry[] = [
   {
     id: "password-input",
@@ -364,6 +377,46 @@ const ENTRIES: Entry[] = [
         <TeamItem team={{ teamName: "Srengat Selling", teamType: TeamType.SELLING }} />
         <TeamItem team={{ teamName: "Root Team", teamType: TeamType.ROOT }} />
       </>
+    ),
+  },
+  {
+    id: "product-list-item",
+    title: "ProductListItem",
+    description: productListItemDescription,
+    render: () => (
+      <Stack gap="card">
+        {/* Ready stock is the OPTIONAL half of the spec (#128), so all three states are here:
+            in stock, zero (the case worth seeing), and omitted entirely. */}
+        <ProductListItem
+          product={{
+            id: 1n,
+            teamId: 7n,
+            sku: "SKU-001",
+            name: "Kaos Polos Hitam",
+            defaultImageThumbnailUrl: SAMPLE_COVER,
+          }}
+          teamName="Srengat Selling"
+          stock={42n}
+        />
+        <ProductListItem
+          product={{
+            id: 2n,
+            teamId: 7n,
+            sku: "SKU-002",
+            name: "Celana Chino Navy",
+            defaultImageThumbnailUrl: SAMPLE_COVER,
+          }}
+          teamName="Srengat Selling"
+          stock={0n}
+        />
+        {/* No image at all → the package-icon placeholder. No `stock` → no badge. */}
+        <ProductListItem
+          product={{ id: 3n, teamId: 9n, sku: "SKU-003", name: "Topi Baseball Putih" }}
+          teamName="Jakarta Warehouse"
+        />
+        {/* No `teamName` resolved by the caller → falls back to "Team #<id>". */}
+        <ProductListItem product={{ id: 4n, teamId: 12n, sku: "SKU-004", name: "Tas Ransel Kanvas" }} stock={7n} />
+      </Stack>
     ),
   },
   {
