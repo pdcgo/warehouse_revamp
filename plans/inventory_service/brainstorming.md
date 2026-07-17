@@ -120,6 +120,45 @@ says racks and labels exist.
 > and it is a bigger one: it changes the ledger, the put-away job, and every stock read. Racks being
 > real is the **prerequisite** for asking it, not the answer.
 
+### ✅ DECIDED (2026-07-17, owner, via #134): **option B — stock lives ON a rack.**
+
+#134 asked for a rack to show "what product inside of it and stock count info", which is not a screen
+question but this one: a per-rack count cannot be *displayed* unless it is *kept*. The owner chose B
+knowingly, over a placement-map alternative that would only have recorded which products belong on a
+rack while leaving counts warehouse-level. That alternative was rejected for a good reason: with a
+product on two racks it could never answer *"how many are on this shelf?"* — only *"where might I
+look?"* — and a rack page showing the warehouse total next to a shelf would read as a per-shelf count
+and be a lie.
+
+**So the grain becomes `(warehouse, rack, product)`.** This is the biggest model change since the
+ledger itself, and it is emphatically **not one issue** — it changes:
+
+| What | How it changes |
+| --- | --- |
+| `stock_levels` | PK grows a `rack_id`; today it is `(warehouse_id, product_id)` |
+| `stock_movements` | every movement names the rack it moved stock **onto / off** |
+| **Receiving** | acceptance must say WHICH rack the goods go on — including **#133's accept screen**, which grows a rack per line |
+| **Picking** | an order picks from a *named* rack, which is the point of doing this at all |
+| Every stock read | `StockList`, the on-hand summaries, the product detail's stock |
+
+**The migration path §3 already proposed still holds and should be used**: `rack_id` **nullable**,
+meaning *"somewhere in this warehouse, unplaced"*. Existing rows become unplaced rather than being
+forced onto an invented rack — the system must not fabricate a location it was never told. "Unplaced"
+is then a real, visible state a warehouse can work off (a put-away queue), not a migration artefact.
+
+**Follow-up questions this decision opens — owner input needed, NOT settled here:**
+
+- [ ] **How does stock get onto a rack?** Is put-away part of accepting (name the rack as you count),
+      or a separate job afterwards (accept into "unplaced", then place it)? The second is more steps
+      but matches a real receiving bay, where goods land before anyone shelves them.
+- [ ] **May one product sit on several racks?** Physically yes, so presumably yes — but it means every
+      "how many do we have" read is a SUM across racks, and every pick chooses a rack.
+- [ ] **What happens to stock that is never placed?** Does unplaced stock count as on-hand and
+      sellable, or is it invisible until shelved? This one has real money attached.
+- [ ] **Does a rack's stock block its deletion?** `RackDelete` is a soft delete today and nothing
+      referenced a rack; once stock sits on one, deleting a rack with stock on it must either be
+      refused or move the stock somewhere.
+
 ---
 
 ## 4. Whose product is in whose warehouse?
