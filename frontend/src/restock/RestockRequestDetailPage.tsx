@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -18,7 +19,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, Pencil } from "lucide-react";
-import { restockClient, rpcError, supplierClient } from "../api/clients";
+import { rackClient, restockClient, rpcError, supplierClient } from "../api/clients";
 import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
@@ -60,6 +61,26 @@ function lineTotal(item: RestockRequestItem): bigint {
   return item.quantity * item.price;
 }
 
+// Where a line's goods ended up, as a person would say it (#137). Three cases, and collapsing any
+// two of them would misreport where the stock physically is:
+//
+//   nothing arrived → "" (rendered "—"). `receivedRackId` is 0 here for want of a value, NOT because
+//                     the goods are in the unplaced pile: the proto is explicit that 0 is told apart
+//                     from the pile by `receivedQuantity`, never read alone. Saying "Unplaced" would
+//                     invent a pile of nothing for someone to go looking for.
+//   arrived, id 0   → the unplaced pile — a REAL place, not an absence. Worded by RackSelect's own
+//                     key, so the receive dialog and this page cannot phrase one state two ways.
+//   arrived, an id  → the rack's CODE. "A-01-3" is painted on the aisle; "7" is not, so an id we
+//                     cannot resolve (the list failed, or the rack has since been deleted) says
+//                     exactly that instead of showing a number nobody can walk to. It must not fall
+//                     back to "Unplaced" either — that is a different fact, and it would send
+//                     someone to the wrong end of the warehouse.
+function rackLabel(t: TFunction, item: RestockRequestItem, codes: Record<string, string>): string {
+  if (item.receivedQuantity === 0n) return "";
+  if (item.receivedRackId === 0n) return t("racks.select.unplaced");
+  return codes[item.receivedRackId.toString()] ?? t("restock.detail.rackUnknown");
+}
+
 // RestockRequestDetailPage is the dedicated detail route for a restock request (#125) — a PAGE, not a
 // dialog. It is the ONE screen both sides of a restock read: RestockRequestDetail is scoped to the
 // requester AND the target warehouse, so the same route serves both, and the actions are gated on
@@ -80,6 +101,7 @@ export function RestockRequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [supplierName, setSupplierName] = useState("");
+  const [rackCodes, setRackCodes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (teamId === undefined || id === 0n) {
@@ -109,6 +131,29 @@ export function RestockRequestDetailPage() {
   const supplierId = request?.supplierId ?? 0n;
   const requestingTeamId = request?.requestingTeamId ?? 0n;
 
+  // Only a FULFILLED request has been counted, so it is the only one whose `receivedQuantity` and
+  // `receivedRackId` mean anything. On a cancelled request they are 0 for the same reason they are 0
+  // on a pending one — nobody ever counted — so neither gets an Arrived column.
+  //
+  // Read off the optional `request` rather than the narrowed one below, because the rack lookup is a
+  // hook: it has to be declared above the early returns, where `request` may still be null.
+  const isFulfilled = request?.status === RestockRequestStatus.FULFILLED;
+  const warehouseId = request?.warehouseId ?? 0n;
+
+  // Both sides read this page, and they are NOT symmetric here. Compared explicitly against 0n/
+  // undefined rather than `request?.warehouseId === current?.teamId`, which is true when both are
+  // undefined — the loading state would briefly claim the viewer owns the warehouse.
+  const isWarehouse = teamId !== undefined && warehouseId !== 0n && warehouseId === teamId;
+
+  // The PLACE is the warehouse's own business, and the mirror image of the supplier above: racks
+  // belong to the warehouse, RackList is scoped to it and demands a role IN it, so the requester
+  // asking gets refused — the same reason the warehouse does not ask about the supplier. So it is
+  // shown to the warehouse only. That is not merely a permission dodge: which shelf inside someone
+  // else's building a line went on is not a fact the requester acts on, and rendering "Unknown rack"
+  // down the column for them would report a broken lookup where the truth is "not your aisle". What
+  // the requester wants to know — did my stock arrive — is the Arrived column, and it stays.
+  const showPlaces = isFulfilled && isWarehouse;
+
   // The supplier belongs to the REQUESTING team's catalogue, and SupplierDetail is team-scoped — so
   // only the requester can resolve the name. The warehouse side asking would get NotFound, so it
   // doesn't ask: it shows "Supplier #<id>", and so does a lookup that fails for any other reason.
@@ -134,13 +179,51 @@ export function RestockRequestDetailPage() {
     };
   }, [teamId, supplierId, requestingTeamId]);
 
+  // A line records WHERE it was put as a rack id, and an id is unreadable — so the warehouse's racks
+  // are fetched once to turn each `receivedRackId` into the code someone can actually walk to.
+  //
+  // Scoped to the racks of the request's OWN warehouse, which is the only warehouse a line of it can
+  // have been shelved in (the server refuses another's rack outright). Asked for only when the column
+  // is actually shown: not before the request is fulfilled (nothing has been counted, so there is no
+  // place to resolve), and not for the requester (see `showPlaces` — the call would only be denied).
+  useEffect(() => {
+    if (!showPlaces) {
+      setRackCodes({});
+      return;
+    }
+
+    let ignore = false;
+
+    rackClient
+      .rackList({ teamId: warehouseId, q: "", page: { page: 1, limit: 200 } })
+      .then((res) => {
+        if (ignore) return;
+
+        const codes: Record<string, string> = {};
+        for (const rack of res.racks) {
+          codes[rack.id.toString()] = rack.code;
+        }
+        setRackCodes(codes);
+      })
+      .catch(() => {
+        // Swallowed on purpose. The places are a detail OF this page, not the page — a rack list that
+        // fails must not take the request down with it, and every line degrades on its own to
+        // `rackLabel`'s unresolved wording.
+        if (!ignore) setRackCodes({});
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [showPlaces, warehouseId]);
+
   const productsTotal = useMemo(
     () => (request?.items ?? []).reduce((sum, item) => sum + lineTotal(item), 0n),
     [request],
   );
 
   // Pieces, not money: what was asked for against what the count actually put on the shelf. Only
-  // meaningful once the request is fulfilled — see `isFulfilled` below, which gates the display.
+  // meaningful once the request is fulfilled — see `isFulfilled` above, which gates the display.
   const askedTotal = useMemo(
     () => (request?.items ?? []).reduce((sum, item) => sum + item.quantity, 0n),
     [request],
@@ -204,12 +287,7 @@ export function RestockRequestDetailPage() {
   }
 
   const isPending = request.status === RestockRequestStatus.PENDING;
-  // Only a FULFILLED request has been counted, so it is the only one whose `receivedQuantity` means
-  // anything. On a cancelled request it is 0 for the same reason it is 0 on a pending one — nobody
-  // ever counted — so neither gets an Arrived column.
-  const isFulfilled = request.status === RestockRequestStatus.FULFILLED;
   const isRequester = request.requestingTeamId === current.teamId;
-  const isWarehouse = request.warehouseId === current.teamId;
 
   return (
     <Stack gap="section" data-testid="restock-detail-page">
@@ -382,6 +460,12 @@ export function RestockRequestDetailPage() {
                       {t("restock.detail.arrived")}
                     </Table.ColumnHeader>
                   )}
+                  {/* Fulfilled AND the warehouse's own — see `showPlaces`. Counting and shelving are
+                      one act (#137), so Place sits beside Arrived; but only one of the two teams
+                      reading this page can resolve a rack, or has any use for one. */}
+                  {showPlaces && (
+                    <Table.ColumnHeader>{t("restock.detail.place")}</Table.ColumnHeader>
+                  )}
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.unitPrice")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.lineTotal")}</Table.ColumnHeader>
                 </Table.Row>
@@ -419,6 +503,11 @@ export function RestockRequestDetailPage() {
                               </Badge>
                             )}
                           </Flex>
+                        </Table.Cell>
+                      )}
+                      {showPlaces && (
+                        <Table.Cell data-testid={`restock-detail-place-${item.productId}`}>
+                          {rackLabel(t, item, rackCodes) || "—"}
                         </Table.Cell>
                       )}
                       <Table.Cell textAlign="end">{formatRupiah(item.price)}</Table.Cell>

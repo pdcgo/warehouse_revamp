@@ -15,15 +15,20 @@ const (
 	cancelled = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
 )
 
-// allArrived is the "everything turned up as asked" count — the ordinary case, and what a test that
-// is not about a shortfall means when it accepts. Accepting is a COUNT now (#133), with no "accept it
-// as asked" shortcut, so even these have to say so out loud.
+// allArrived is the "everything turned up as asked, and went to the unplaced pile" count — what a test
+// that is about neither a shortfall nor a shelf means when it accepts.
+//
+// Accepting is a COUNT (#133) that also says WHERE (#137), and neither has a shortcut: there is no
+// "accept it as asked" and no "put it somewhere". So even the tests that do not care have to say both
+// out loud — and "unplaced" is the honest answer for a test with no shelf in it, not a way of saying
+// nothing.
 func allArrived(r *inventoryv1.RestockRequest) []*inventoryv1.RestockRequestReceivedLine {
 	lines := make([]*inventoryv1.RestockRequestReceivedLine, 0, len(r.GetItems()))
 	for _, item := range r.GetItems() {
 		lines = append(lines, &inventoryv1.RestockRequestReceivedLine{
 			ItemId:           item.GetId(),
 			ReceivedQuantity: item.GetQuantity(),
+			Place:            &inventoryv1.RestockRequestReceivedLine_Unplaced{Unplaced: true},
 		})
 	}
 
@@ -497,13 +502,24 @@ func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	req := created.Msg.GetRequest()
 	items := req.GetItems()
 
+	shelf := insertRack(t, db, warehouse, "A-01-3")
+
 	// The four things a delivery can do to a line: come up short, match, over-deliver, not turn up.
+	// Each that ARRIVED also says where it went (#137); the one that never turned up names no place,
+	// because there is nowhere to put goods that are not there.
+	onShelf := func(id uint64, qty int64) *inventoryv1.RestockRequestReceivedLine {
+		return &inventoryv1.RestockRequestReceivedLine{
+			ItemId: id, ReceivedQuantity: qty,
+			Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: shelf},
+		}
+	}
+
 	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: warehouse, RequestId: req.GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
-			{ItemId: items[0].GetId(), ReceivedQuantity: 9},
-			{ItemId: items[1].GetId(), ReceivedQuantity: 3},
-			{ItemId: items[2].GetId(), ReceivedQuantity: 6},
+			onShelf(items[0].GetId(), 9),
+			onShelf(items[1].GetId(), 3),
+			onShelf(items[2].GetId(), 6),
 			{ItemId: items[3].GetId(), ReceivedQuantity: 0},
 		},
 	}))
@@ -572,6 +588,210 @@ func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	}
 }
 
+// #137 — counting and shelving are ONE act: the goods land on the shelf the warehouse NAMED, not in an
+// unplaced pile someone has to work through afterwards.
+func TestRestockRequest_FulfilPutsGoodsOnTheNamedShelf(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	rackA := insertRack(t, db, warehouse, "A-01-3")
+	rackB := insertRack(t, db, warehouse, "A-02-1")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500},
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 4, Price: 700},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+	items := req.GetItems()
+
+	// Two lines, two different shelves — a delivery does not all go to one place.
+	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{
+				ItemId: items[0].GetId(), ReceivedQuantity: 10,
+				Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rackA},
+			},
+			{
+				ItemId: items[1].GetId(), ReceivedQuantity: 4,
+				Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rackB},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	// The request remembers where each line was put.
+	for i, want := range []uint64{rackA, rackB} {
+		if got := ful.Msg.GetRequest().GetItems()[i].GetReceivedRackId(); got != want {
+			t.Fatalf("line %d recorded rack %d, want %d", i, got, want)
+		}
+	}
+
+	// The stock is ON those shelves — and nothing landed unplaced, which is the whole point of
+	// shelving as you count.
+	for _, c := range []struct {
+		product uint64
+		rack    uint64
+		want    int64
+	}{{100, rackA, 10}, {200, rackB, 4}} {
+		var on int64
+
+		err = db.Raw(`SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels
+		              WHERE warehouse_id = ? AND product_id = ? AND rack_id = ?`,
+			warehouse, c.product, c.rack).Scan(&on).Error
+		if err != nil {
+			t.Fatalf("read shelf: %v", err)
+		}
+
+		if on != c.want {
+			t.Fatalf("product %d on rack %d = %d, want %d", c.product, c.rack, on, c.want)
+		}
+	}
+
+	var unplacedRows int64
+
+	err = db.Raw(`SELECT COUNT(*) FROM stock_levels WHERE warehouse_id = ? AND rack_id IS NULL`,
+		warehouse).Scan(&unplacedRows).Error
+	if err != nil {
+		t.Fatalf("count unplaced: %v", err)
+	}
+
+	if unplacedRows != 0 {
+		t.Fatalf("shelving as you count must leave nothing unplaced, got %d unplaced rows", unplacedRows)
+	}
+
+	// And the ledger says which shelf each receipt went to.
+	var placedMovements int64
+
+	err = db.Raw(`SELECT COUNT(*) FROM stock_movements WHERE warehouse_id = ? AND rack_id IS NOT NULL`,
+		warehouse).Scan(&placedMovements).Error
+	if err != nil {
+		t.Fatalf("count movements: %v", err)
+	}
+
+	if placedMovements != 2 {
+		t.Fatalf("both receipts must name their shelf in the ledger, got %d placed", placedMovements)
+	}
+}
+
+// #137 — goods that ARRIVED are somewhere, so the warehouse must say where. Silence is refused, never
+// read as "unplaced": guessing a place for real goods is how stock ends up somewhere nobody looked.
+// A line that did NOT arrive owes no place — there is nothing to put anywhere.
+func TestRestockRequest_FulfilRefusesArrivedGoodsWithNoPlace(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	create := func() *inventoryv1.RestockRequest {
+		t.Helper()
+
+		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+			TeamId: sellingTeam, WarehouseId: warehouse,
+			Items: []*inventoryv1.RestockRequestItem{
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3, Price: 500},
+			},
+		}))
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+
+		return created.Msg.GetRequest()
+	}
+
+	// Arrived, but no place named → refused.
+	req := create()
+
+	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 3},
+		},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+		t.Fatalf("arrived goods with no place = %v, want InvalidArgument", code)
+	}
+
+	// Nothing moved — a refused acceptance must leave the request acceptable.
+	levels, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouse, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+	if len(levels.Msg.GetLevels()) != 0 {
+		t.Fatalf("a refused acceptance must move no stock, got %+v", levels.Msg.GetLevels())
+	}
+
+	// A line that did NOT arrive owes no place — nothing is there to put anywhere.
+	nothingCame := create()
+
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: nothingCame.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{ItemId: nothingCame.GetItems()[0].GetId(), ReceivedQuantity: 0},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("a line that never turned up owes no place, got: %v", err)
+	}
+}
+
+// #137 — the shelf must belong to the ACCEPTING warehouse. Another warehouse's rack reads as NotFound,
+// never PermissionDenied: a permission error would confirm the id exists.
+func TestRestockRequest_FulfilCrossWarehouseRackIsNotFound(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse, otherWarehouse uint64 = 2, 5, 6
+
+	theirShelf := insertRack(t, db, otherWarehouse, "B-01-1")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 3, Price: 500},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+
+	for name, rack := range map[string]uint64{
+		"another warehouse's shelf":   theirShelf,
+		"a shelf that exists nowhere": 999999,
+	} {
+		_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+			TeamId: warehouse, RequestId: req.GetId(),
+			Lines: []*inventoryv1.RestockRequestReceivedLine{
+				{
+					ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 3,
+					Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rack},
+				},
+			},
+		}))
+		if code := connect.CodeOf(err); code != connect.CodeNotFound {
+			t.Fatalf("%s = %v, want NotFound", name, code)
+		}
+	}
+}
+
 // received_quantity rides the SHARED line message (a line reads back what arrived), so create and edit
 // can both be TOLD one — and must both ignore it. Only the warehouse writes it, and only by counting.
 // Honouring it here would let the requesting team declare its own delivery received: stock the
@@ -583,11 +803,17 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 
 	const sellingTeam, warehouse uint64 = 2, 5
 
-	// The requester claims 10 already arrived, at create time.
+	// A shelf in the warehouse the requester is asking — it knows the id, and that must not help.
+	shelf := insertRack(t, db, warehouse, "A-01-3")
+
+	// The requester claims 10 already arrived AND that they are on a shelf, at create time.
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500, ReceivedQuantity: 10},
+			{
+				ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500,
+				ReceivedQuantity: 10, ReceivedRackId: shelf,
+			},
 		},
 	}))
 	if err != nil {
@@ -598,12 +824,18 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 	if got := req.GetItems()[0].GetReceivedQuantity(); got != 0 {
 		t.Fatalf("create honoured a claimed receipt: received = %d, want 0", got)
 	}
+	if got := req.GetItems()[0].GetReceivedRackId(); got != 0 {
+		t.Fatalf("create honoured a claimed SHELF: rack = %d, want 0 (#137)", got)
+	}
 
 	// And again on edit.
 	updated, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500, ReceivedQuantity: 10},
+			{
+				ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, Price: 500,
+				ReceivedQuantity: 10, ReceivedRackId: shelf,
+			},
 		},
 	}))
 	if err != nil {
@@ -611,6 +843,9 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 	}
 	if got := updated.Msg.GetRequest().GetItems()[0].GetReceivedQuantity(); got != 0 {
 		t.Fatalf("edit honoured a claimed receipt: received = %d, want 0", got)
+	}
+	if got := updated.Msg.GetRequest().GetItems()[0].GetReceivedRackId(); got != 0 {
+		t.Fatalf("edit honoured a claimed SHELF: rack = %d, want 0 (#137)", got)
 	}
 
 	// Nothing reached stock, either — the claim moved no goods.

@@ -150,8 +150,16 @@ type RestockRequestItem struct {
 	// 0 until the request is accepted. It stays 0 for a line that never turned up at all, which is why
 	// reading this only makes sense once status is FULFILLED.
 	ReceivedQuantity int64 `protobuf:"varint,7,opt,name=received_quantity,json=receivedQuantity,proto3" json:"received_quantity,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// WHERE the goods were put when the warehouse accepted them (#137). Read-only, exactly like
+	// received_quantity: only the warehouse writes it, and only by shelving as it counts — a requesting
+	// team that could set this on create or edit would be declaring where a delivery it never made had
+	// been put away.
+	//
+	// 0 means the unplaced pile, which is both "received, not shelved yet" and "not accepted yet". Those
+	// are told apart by `status` and `received_quantity`, not by this field alone.
+	ReceivedRackId uint64 `protobuf:"varint,8,opt,name=received_rack_id,json=receivedRackId,proto3" json:"received_rack_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RestockRequestItem) Reset() {
@@ -229,6 +237,13 @@ func (x *RestockRequestItem) GetPrice() int64 {
 func (x *RestockRequestItem) GetReceivedQuantity() int64 {
 	if x != nil {
 		return x.ReceivedQuantity
+	}
+	return 0
+}
+
+func (x *RestockRequestItem) GetReceivedRackId() uint64 {
+	if x != nil {
+		return x.ReceivedRackId
 	}
 	return 0
 }
@@ -1004,7 +1019,8 @@ func (x *RestockRequestFulfillRequest) GetLines() []*RestockRequestReceivedLine 
 	return nil
 }
 
-// One line's count at acceptance (#133): the warehouse says how many of this line actually turned up.
+// One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,
+// and where it put them (#137).
 type RestockRequestReceivedLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The RestockRequestItem being counted.
@@ -1015,8 +1031,29 @@ type RestockRequestReceivedLine struct {
 	// There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
 	// and a cap would only force the person counting to write down a number they can see is wrong.
 	ReceivedQuantity int64 `protobuf:"varint,2,opt,name=received_quantity,json=receivedQuantity,proto3" json:"received_quantity,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// WHERE the goods were put (#137, owner's call). Counting and shelving are ONE act: the warehouse
+	// says how many turned up and which shelf they went on in the same breath, so nothing routinely
+	// sits unplaced.
+	//
+	// Unlike StockAdjust's place this oneof is NOT proto-required, because whether an answer is owed
+	// depends on the count beside it, which proto cannot express:
+	//
+	//	received_quantity > 0  → a place is REQUIRED. Goods that arrived are somewhere, and the system
+	//	                         must be told where rather than guess (the handler refuses otherwise).
+	//	received_quantity == 0 → a place is IGNORED. Nothing turned up, so there is nowhere to put it;
+	//	                         a picker left pre-filled beside a zeroed count is an ordinary screen
+	//	                         state, not a contradiction worth refusing.
+	//
+	// `unplaced` stays available for a warehouse that genuinely does not know yet — it is a legal place
+	// (the not-yet-shelved pile), not an absence, and #136 is how that pile gets shelved later.
+	//
+	// Types that are valid to be assigned to Place:
+	//
+	//	*RestockRequestReceivedLine_RackId
+	//	*RestockRequestReceivedLine_Unplaced
+	Place         isRestockRequestReceivedLine_Place `protobuf_oneof:"place"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RestockRequestReceivedLine) Reset() {
@@ -1062,6 +1099,50 @@ func (x *RestockRequestReceivedLine) GetReceivedQuantity() int64 {
 	}
 	return 0
 }
+
+func (x *RestockRequestReceivedLine) GetPlace() isRestockRequestReceivedLine_Place {
+	if x != nil {
+		return x.Place
+	}
+	return nil
+}
+
+func (x *RestockRequestReceivedLine) GetRackId() uint64 {
+	if x != nil {
+		if x, ok := x.Place.(*RestockRequestReceivedLine_RackId); ok {
+			return x.RackId
+		}
+	}
+	return 0
+}
+
+func (x *RestockRequestReceivedLine) GetUnplaced() bool {
+	if x != nil {
+		if x, ok := x.Place.(*RestockRequestReceivedLine_Unplaced); ok {
+			return x.Unplaced
+		}
+	}
+	return false
+}
+
+type isRestockRequestReceivedLine_Place interface {
+	isRestockRequestReceivedLine_Place()
+}
+
+type RestockRequestReceivedLine_RackId struct {
+	// The shelf the goods went on. Must be a rack of the ACCEPTING warehouse — another warehouse's
+	// rack reads as NotFound, like every other cross-scope id here.
+	RackId uint64 `protobuf:"varint,3,opt,name=rack_id,json=rackId,proto3,oneof"`
+}
+
+type RestockRequestReceivedLine_Unplaced struct {
+	// Received, but not shelved yet. Only `true` is meaningful.
+	Unplaced bool `protobuf:"varint,4,opt,name=unplaced,proto3,oneof"`
+}
+
+func (*RestockRequestReceivedLine_RackId) isRestockRequestReceivedLine_Place() {}
+
+func (*RestockRequestReceivedLine_Unplaced) isRestockRequestReceivedLine_Place() {}
 
 type RestockRequestFulfillResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1207,7 +1288,7 @@ var File_warehouse_inventory_v1_restock_request_proto protoreflect.FileDescripto
 
 const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\n" +
-	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x83\x02\n" +
+	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xad\x02\n" +
 	"\x12RestockRequestItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -1217,7 +1298,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12\x1d\n" +
 	"\x05price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05price\x124\n" +
-	"\x11received_quantity\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\"\xef\x04\n" +
+	"\x11received_quantity\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\x12(\n" +
+	"\x10received_rack_id\x18\b \x01(\x04R\x0ereceivedRackId\"\xef\x04\n" +
 	"\x0eRestockRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12,\n" +
 	"\x12requesting_team_id\x18\x02 \x01(\x04R\x10requestingTeamId\x12!\n" +
@@ -1293,10 +1375,13 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId\x12R\n" +
 	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"t\n" +
+	"\x05\x01\x02\x06\t\b\"\xc8\x01\n" +
 	"\x1aRestockRequestReceivedLine\x12 \n" +
 	"\aitem_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06itemId\x124\n" +
-	"\x11received_quantity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\"a\n" +
+	"\x11received_quantity\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\x12\"\n" +
+	"\arack_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +
+	"\bunplaced\x18\x04 \x01(\bB\a\xbaH\x04j\x02\b\x01H\x00R\bunplacedB\a\n" +
+	"\x05place\"a\n" +
 	"\x1dRestockRequestFulfillResponse\x12@\n" +
 	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"x\n" +
 	"\x1bRestockRequestCancelRequest\x12$\n" +
@@ -1399,6 +1484,10 @@ func init() { file_warehouse_inventory_v1_restock_request_proto_init() }
 func file_warehouse_inventory_v1_restock_request_proto_init() {
 	if File_warehouse_inventory_v1_restock_request_proto != nil {
 		return
+	}
+	file_warehouse_inventory_v1_restock_request_proto_msgTypes[11].OneofWrappers = []any{
+		(*RestockRequestReceivedLine_RackId)(nil),
+		(*RestockRequestReceivedLine_Unplaced)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

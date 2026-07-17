@@ -59,6 +59,9 @@ var (
 	// once, and no line that is not on it. Refused rather than interpreted — reading an omitted line
 	// as "all of it came" or "none of it did" is a guess, and a guess here is stock drift.
 	errRestockCountIncomplete = errors.New("every line of the request must be counted exactly once")
+	// #137: counting and shelving are one act, so a line that ARRIVED must say where it went. Goods
+	// that turned up are somewhere; the system is told, or it refuses — it does not guess a shelf.
+	errRestockLineNoPlace = errors.New("a line that arrived must say which place it was put")
 )
 
 // restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
@@ -92,7 +95,7 @@ func restockStatusFromText(text string) inventoryv1.RestockRequestStatus {
 func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventoryv1.RestockRequest {
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(r.Items))
 	for i := range r.Items {
-		items = append(items, &inventoryv1.RestockRequestItem{
+		item := &inventoryv1.RestockRequestItem{
 			Id:               r.Items[i].ID,
 			ProductId:        r.Items[i].ProductID,
 			Sku:              r.Items[i].SKU,
@@ -100,7 +103,15 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 			Quantity:         r.Items[i].Quantity,
 			Price:            r.Items[i].Price,
 			ReceivedQuantity: r.Items[i].ReceivedQuantity,
-		})
+		}
+
+		// Where it was shelved (#137). The wire carries 0 for the unplaced pile rather than a null —
+		// the same shape supplier_id uses.
+		if r.Items[i].ReceivedRackID != nil {
+			item.ReceivedRackId = *r.Items[i].ReceivedRackID
+		}
+
+		items = append(items, item)
 	}
 
 	out := &inventoryv1.RestockRequest{
@@ -126,17 +137,19 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 	return out
 }
 
-// restockItemModels turns request lines into rows. Two fields on the input message are deliberately
-// NOT read, and both omissions are load-bearing:
+// restockItemModels turns request lines into rows. Three fields on the input message are deliberately
+// NOT read, and every omission is load-bearing:
 //
 //   - `id` — a caller does not get to choose a row's identity.
 //   - `received_quantity` — it is on the shared line message because a line READS back what arrived,
 //     but only the WAREHOUSE may ever write it, and only by counting at acceptance (#133). Copying it
 //     here would let the requesting team declare its own delivery received on create or edit: stock
-//     the warehouse never saw, written by the party that benefits from claiming it arrived. It is
-//     ignored on the way in, exactly like `id`.
+//     the warehouse never saw, written by the party that benefits from claiming it arrived.
+//   - `received_rack_id` — the same rule for the same reason (#137): only the warehouse says where the
+//     goods were put, and only by shelving them as it counts. A requesting team that could set this
+//     would be declaring which shelf a delivery it never made had been placed on.
 //
-// Do not "complete" this mapping by adding either.
+// All three are ignored on the way in. Do not "complete" this mapping by adding any of them.
 func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service_models.RestockRequestItem {
 	out := make([]inventory_service_models.RestockRequestItem, 0, len(in))
 	for _, item := range in {
@@ -170,6 +183,12 @@ func restockErr(err error) error {
 		// InvalidArgument, not FailedPrecondition: the request is in a perfectly good state — it is the
 		// COUNT that is malformed, and the caller fixes it by sending a complete one.
 		return connect.NewError(connect.CodeInvalidArgument, errRestockCountIncomplete)
+	case errors.Is(err, errRestockLineNoPlace):
+		return connect.NewError(connect.CodeInvalidArgument, errRestockLineNoPlace)
+	case errors.Is(err, errRackMissing):
+		// NotFound, not PermissionDenied: another warehouse's rack must be indistinguishable from one
+		// that does not exist, or the error itself confirms the id.
+		return connect.NewError(connect.CodeNotFound, errRackMissing)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}

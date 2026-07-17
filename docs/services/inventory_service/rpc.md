@@ -77,10 +77,17 @@ the stock ledger can never diverge because the fulfil does both in **one transac
   **FailedPrecondition**). **Every line is received inside the one transaction** (#124) — a request
   half-received would be worse than one not received at all, and the status flip has to mean all of
   it landed. A request with no lines is refused rather than "fulfilled" having moved nothing.
-  - **Accepting IS counting** (#133). The call carries `lines` — one `RestockRequestReceivedLine`
-    per item — and **stock receives `received_quantity`, never the requested `quantity`**. A request
-    is a promise and a delivery is a fact; receiving the promise on the warehouse's behalf would be
-    inventing stock it does not have.
+  - **Accepting IS counting** (#133) **AND shelving** (#137). The call carries `lines` — one
+    `RestockRequestReceivedLine` per item, each saying how many turned up **and which shelf they went
+    on** — and **stock receives `received_quantity`, never the requested `quantity`**, onto the rack
+    named. A request is a promise and a delivery is a fact; receiving the promise on the warehouse's
+    behalf would be inventing stock it does not have.
+  - **A line that arrived must say WHERE it went** (#137). Goods that turned up are somewhere, and the
+    system is told rather than guessing: a placeless arrived line is **InvalidArgument**. A line
+    counted `0` owes no place — nothing is there to put anywhere — and one left pre-filled beside a
+    zeroed count is an ordinary screen state, not a contradiction worth refusing. `unplaced` stays a
+    legal answer for a warehouse that has not shelved yet; #136 is how that pile gets shelved later.
+    The rack must belong to the **accepting** warehouse (another's reads as **NotFound**).
   - **The count must cover the request exactly**: every line named once, nothing omitted, nothing
     extra. An incomplete count is **InvalidArgument** — refused, not interpreted. Reading a missing
     line as "all of it came" or "none did" is a guess, and a guess about stock is drift. There is
@@ -141,7 +148,8 @@ stateDiagram-v2
 ### Fulfil transaction (the one that must not diverge)
 
 The warehouse arrives at this with a **count**, not a confirmation: it has opened the box, and `lines`
-says how many of each line actually turned up. Everything below moves that number — never the ask.
+says how many of each line actually turned up **and which shelf each went on**. Everything below moves
+that number, onto that shelf — never the ask, never a guessed place.
 
 ```mermaid
 sequenceDiagram
@@ -149,7 +157,7 @@ sequenceDiagram
     participant H as RestockRequestFulfill
     participant DB as Postgres (one tx)
 
-    W->>H: RestockRequestFulfill{team_id=warehouse, request_id,<br/>lines=[{item_id, received_quantity}, …]} (#133)
+    W->>H: RestockRequestFulfill{team_id=warehouse, request_id,<br/>lines=[{item_id, received_quantity,<br/>place: rack_id | unplaced}, …]} (#133/#137)
     activate H
     H->>DB: BEGIN
     H->>DB: SELECT restock_requests<br/>WHERE id=? AND warehouse_id=? FOR UPDATE
@@ -161,14 +169,19 @@ sequenceDiagram
     else count does not cover the request exactly
         Note over H: a line omitted, counted twice,<br/>or not on this request
         H-->>W: InvalidArgument — refused, never interpreted (#133)
-    else pending, count complete
+    else a line ARRIVED but named no place
+        H-->>W: InvalidArgument — goods that turned up are<br/>somewhere; say where (#137)
+    else a named rack is not this warehouse's
+        H-->>W: NotFound — never PermissionDenied
+    else pending, count complete, places named
         loop every line of the request (#124)
-            H->>DB: UPDATE restock_request_items<br/>SET received_quantity = counted
+            H->>DB: UPDATE restock_request_items<br/>SET received_quantity, received_rack_id
             alt counted == 0 (never turned up)
-                Note over H,DB: no movement — a zero row<br/>would read as a receipt
+                Note over H,DB: no movement — a zero row<br/>would read as a receipt.<br/>No place owed either.
             else counted > 0
-                H->>DB: applyDelta(warehouse, line.product, +COUNTED) → balance
-                H->>DB: INSERT stock_movements (RECEIVE, ref=shipping_code)
+                H->>DB: applyDelta(warehouse, product, RACK, +COUNTED) → balance
+                H->>DB: INSERT stock_movements (RECEIVE, rack, ref=shipping_code)
+                Note over H,DB: straight onto the named shelf —<br/>counting and shelving are ONE act
             end
         end
         H->>DB: UPDATE restock_requests SET status='fulfilled'

@@ -58,14 +58,46 @@ func (s *Service) RestockRequestFulfill(
 		}
 
 		// The count must cover the request EXACTLY: every line, once, and nothing that is not on it.
-		counted := make(map[uint64]int64, len(req.Msg.GetLines()))
+		type countedLine struct {
+			quantity int64
+			rack     *uint64
+		}
+
+		counted := make(map[uint64]countedLine, len(req.Msg.GetLines()))
 
 		for _, line := range req.Msg.GetLines() {
 			if _, dup := counted[line.GetItemId()]; dup {
 				return errRestockCountIncomplete
 			}
 
-			counted[line.GetItemId()] = line.GetReceivedQuantity()
+			cl := countedLine{quantity: line.GetReceivedQuantity()}
+
+			// A line that ARRIVED must say where it went (#137): goods that turned up are somewhere,
+			// and the system must be told rather than guess. A line counted 0 turned up nowhere, so a
+			// place is not owed — and a picker left pre-filled beside a zeroed count is an ordinary
+			// screen state, not a contradiction worth refusing.
+			if cl.quantity > 0 {
+				if line.GetPlace() == nil {
+					return errRestockLineNoPlace
+				}
+
+				if id := line.GetRackId(); id != 0 {
+					// The shelf must belong to the ACCEPTING warehouse — another warehouse's rack reads
+					// as NotFound, or the error itself would confirm the id exists.
+					exists, checkErr := rackExists(tx, warehouseID, id)
+					if checkErr != nil {
+						return checkErr
+					}
+
+					if !exists {
+						return errRackMissing
+					}
+
+					cl.rack = &id
+				}
+			}
+
+			counted[line.GetItemId()] = cl
 		}
 
 		if len(counted) != len(rr.Items) {
@@ -79,19 +111,24 @@ func (s *Service) RestockRequestFulfill(
 		for i := range rr.Items {
 			item := rr.Items[i]
 
-			received, ok := counted[item.ID]
+			line, ok := counted[item.ID]
 			if !ok {
 				// The lengths match but the ids do not, so the caller counted a line belonging to some
 				// other request while leaving one of this request's uncounted.
 				return errRestockCountIncomplete
 			}
 
-			rr.Items[i].ReceivedQuantity = received
+			rr.Items[i].ReceivedQuantity = line.quantity
+			rr.Items[i].ReceivedRackID = line.rack
 
 			countErr := tx.
 				Model(&inventory_service_models.RestockRequestItem{}).
 				Where("id = ?", item.ID).
-				Updates(map[string]any{"received_quantity": received, "updated_at": time.Now()}).
+				Updates(map[string]any{
+					"received_quantity": line.quantity,
+					"received_rack_id":  line.rack,
+					"updated_at":        time.Now(),
+				}).
 				Error
 			if countErr != nil {
 				return countErr
@@ -100,15 +137,15 @@ func (s *Service) RestockRequestFulfill(
 			// A line that did not turn up moves no stock. It is still counted (0 is recorded above and
 			// stays on the record), but a zero movement would be a ledger entry saying nothing happened
 			// — which is worse than no entry, because it reads as a receipt.
-			if received == 0 {
+			if line.quantity == 0 {
 				continue
 			}
 
-			// Received UNPLACED (#135): accepting says what arrived, not where it was shelved. Whether
-			// the warehouse names a rack while counting is #137's open call — until it is answered, the
-			// goods land "somewhere in this warehouse", which is the truth, and put-away (#136) is what
-			// moves them onto a shelf.
-			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, unplaced, received)
+			// Straight onto the shelf the warehouse named (#137): counting and shelving are ONE act, so
+			// the goods land where they were actually put rather than in an unplaced pile someone would
+			// have to work through afterwards. A nil rack here is the warehouse saying "unplaced" out
+			// loud — a legal answer for goods it has not shelved yet — not a value nobody supplied.
+			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, line.rack, line.quantity)
 			if applyErr != nil {
 				return applyErr
 			}
@@ -117,8 +154,8 @@ func (s *Service) RestockRequestFulfill(
 				tx,
 				rr.WarehouseID,
 				item.ProductID,
-				unplaced,
-				received,
+				line.rack,
+				line.quantity,
 				balance,
 				inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
 				"restock request",

@@ -70,6 +70,15 @@ message RestockRequestItem {
   // 0 until the request is accepted. It stays 0 for a line that never turned up at all, which is why
   // reading this only makes sense once status is FULFILLED.
   int64 received_quantity = 7 [(buf.validate.field).int64.gte = 0];
+
+  // WHERE the goods were put when the warehouse accepted them (#137). Read-only, exactly like
+  // received_quantity: only the warehouse writes it, and only by shelving as it counts — a requesting
+  // team that could set this on create or edit would be declaring where a delivery it never made had
+  // been put away.
+  //
+  // 0 means the unplaced pile, which is both "received, not shelved yet" and "not accepted yet". Those
+  // are told apart by `status` and `received_quantity`, not by this field alone.
+  uint64 received_rack_id = 8;
 }
 
 message RestockRequest {
@@ -293,7 +302,8 @@ message RestockRequestFulfillRequest {
   repeated RestockRequestReceivedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
-// One line's count at acceptance (#133): the warehouse says how many of this line actually turned up.
+// One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,
+// and where it put them (#137).
 message RestockRequestReceivedLine {
   // The RestockRequestItem being counted.
   uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
@@ -303,6 +313,29 @@ message RestockRequestReceivedLine {
   // There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
   // and a cap would only force the person counting to write down a number they can see is wrong.
   int64 received_quantity = 2 [(buf.validate.field).int64.gte = 0];
+
+  // WHERE the goods were put (#137, owner's call). Counting and shelving are ONE act: the warehouse
+  // says how many turned up and which shelf they went on in the same breath, so nothing routinely
+  // sits unplaced.
+  //
+  // Unlike StockAdjust's place this oneof is NOT proto-required, because whether an answer is owed
+  // depends on the count beside it, which proto cannot express:
+  //
+  //   received_quantity > 0  → a place is REQUIRED. Goods that arrived are somewhere, and the system
+  //                            must be told where rather than guess (the handler refuses otherwise).
+  //   received_quantity == 0 → a place is IGNORED. Nothing turned up, so there is nowhere to put it;
+  //                            a picker left pre-filled beside a zeroed count is an ordinary screen
+  //                            state, not a contradiction worth refusing.
+  //
+  // `unplaced` stays available for a warehouse that genuinely does not know yet — it is a legal place
+  // (the not-yet-shelved pile), not an absence, and #136 is how that pile gets shelved later.
+  oneof place {
+    // The shelf the goods went on. Must be a rack of the ACCEPTING warehouse — another warehouse's
+    // rack reads as NotFound, like every other cross-scope id here.
+    uint64 rack_id = 3 [(buf.validate.field).uint64.gt = 0];
+    // Received, but not shelved yet. Only `true` is meaningful.
+    bool unplaced = 4 [(buf.validate.field).bool.const = true];
+  }
 }
 
 message RestockRequestFulfillResponse {

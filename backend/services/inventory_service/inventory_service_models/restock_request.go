@@ -67,6 +67,11 @@ type RestockRequestItem struct {
 	// and 0 for a line that never turned up, so it only means anything once Status is fulfilled.
 	ReceivedQuantity int64
 
+	// WHERE the goods were put as the warehouse counted them (#137) — counting and shelving are one
+	// act. nil = the unplaced pile, which covers both "received but not shelved yet" and "not accepted
+	// yet"; Status and ReceivedQuantity are what tell those apart. Real FK — racks are this service's.
+	ReceivedRackID *uint64
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -439,6 +439,7 @@ erDiagram
         bigint      quantity           "how many were ASKED FOR, CHECK > 0"
         bigint      price              "whole rupiah PER UNIT, CHECK >= 0"
         bigint      received_quantity  "what ARRIVED, counted at acceptance; stock receives THIS; 0 until fulfilled; no CHECK vs quantity"
+        bigint      received_rack_id   FK "-> racks(id) ON DELETE RESTRICT; WHERE it was shelved (#137); NULL = unplaced / not accepted"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -524,6 +525,14 @@ erDiagram
   - **No `CHECK` against `quantity`.** A short delivery is ordinary and an over-delivery is real; the
     column records what was counted, and the person counting is the authority. A constraint here would
     only force them to write down a number they can see is wrong.
+  - **`received_rack_id` says WHERE it was shelved** (#137) — counting and shelving are one act, so
+    acceptance records both. `NULL` covers two situations this column does not distinguish on its own:
+    *received but not shelved yet*, and *not accepted yet*. `status` and `received_quantity` tell those
+    apart, and duplicating that here would just be a third thing to keep in sync.
+  - Both `received_quantity` and `received_rack_id` are **write-only-by-the-warehouse**. They ride the
+    shared line message so a line can READ back what happened to it, and `restockItemModels` therefore
+    ignores both on the way in — a requesting team that could set them would be declaring its own
+    delivery received, and saying which shelf it went on, for goods the warehouse never saw.
 - **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
   **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
   who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the
