@@ -17,6 +17,135 @@ const (
 	productX   = 300
 )
 
+// #135 — stock is located ON a rack, and a warehouse total is a SUM across a product's places.
+//
+// Nothing places stock yet (that is #136/#137), so this seeds the rows directly: the point is to prove
+// the READS are right the moment placed stock exists, rather than to discover it later through a
+// warehouse total that quietly went wrong.
+func TestStockList_SumsAcrossRacksAsOneProduct(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	rackA := insertRack(t, db, warehouseA, "A-01-3")
+	rackB := insertRack(t, db, warehouseA, "A-02-1")
+
+	// The same product in three places: two shelves and the unplaced pile.
+	place := func(rackID *uint64, onHand int64) {
+		t.Helper()
+
+		err := db.Exec(`
+			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
+			VALUES (?, ?, ?, ?, NOW())`,
+			warehouseA, productX, rackID, onHand,
+		).Error
+		if err != nil {
+			t.Fatalf("seed place: %v", err)
+		}
+	}
+
+	place(&rackA, 40)
+	place(&rackB, 60)
+	place(nil, 7) // arrived, not yet shelved
+
+	got, err := svc.StockList(ctx, connect.NewRequest(&inventoryv1.StockListRequest{
+		WarehouseId: warehouseA, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("StockList: %v", err)
+	}
+
+	// ONE line, not three. A product on two shelves is one product — "how much of X is here?" has
+	// never meant "on which shelf". Three lines here would also make the page size count PLACES.
+	if len(got.Msg.GetLevels()) != 1 {
+		t.Fatalf("a product across 3 places must read as ONE line, got %d: %+v",
+			len(got.Msg.GetLevels()), got.Msg.GetLevels())
+	}
+
+	if on := got.Msg.GetLevels()[0].GetOnHand(); on != 107 {
+		t.Fatalf("warehouse total = %d, want 107 (40 + 60 + 7 unplaced)", on)
+	}
+
+	// The paged total counts PRODUCTS, not places — else a warehouse spreading one product over more
+	// shelves would silently shrink its own page.
+	if total := got.Msg.GetPageInfo().GetTotalItems(); total != 1 {
+		t.Fatalf("page total = %d, want 1 product", total)
+	}
+}
+
+// #135 — one product may have only ONE unplaced pile. The unique index carries NULLS NOT DISTINCT
+// precisely because Postgres would otherwise treat every NULL rack as a different place, and a
+// warehouse would accumulate several "somewhere" rows for one product, double-counting it on read.
+func TestStockLevels_OnlyOneUnplacedPilePerProduct(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	insert := func() error {
+		return db.Exec(`
+			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
+			VALUES (?, ?, NULL, 5, NOW())`,
+			warehouseB, productX,
+		).Error
+	}
+
+	err := insert()
+	if err != nil {
+		t.Fatalf("first unplaced row: %v", err)
+	}
+
+	err = insert()
+	if err == nil {
+		t.Fatal("a SECOND unplaced row for the same (warehouse, product) must be refused — " +
+			"without NULLS NOT DISTINCT the same goods count twice")
+	}
+}
+
+// Receiving lands stock UNPLACED (#135): a receive says what arrived, not which shelf it went on.
+// "Unplaced" must be a real, findable state — it is the put-away queue (#136) — and not a null that
+// reads as missing.
+func TestStockReceive_LandsUnplaced(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	_, err := svc.StockReceive(ctx, connect.NewRequest(&inventoryv1.StockReceiveRequest{
+		WarehouseId: warehouseB, ProductId: productX, Quantity: 12,
+	}))
+	if err != nil {
+		t.Fatalf("StockReceive: %v", err)
+	}
+
+	var unplacedRows int64
+
+	err = db.Raw(`
+		SELECT COUNT(*) FROM stock_levels
+		WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NULL AND on_hand = 12`,
+		warehouseB, productX,
+	).Scan(&unplacedRows).Error
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	if unplacedRows != 1 {
+		t.Fatalf("a receive must land as exactly one UNPLACED row, got %d", unplacedRows)
+	}
+
+	// And the ledger row says the same — the movement happened "somewhere in this warehouse".
+	var movementRacks int64
+
+	err = db.Raw(`
+		SELECT COUNT(*) FROM stock_movements
+		WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NOT NULL`,
+		warehouseB, productX,
+	).Scan(&movementRacks).Error
+	if err != nil {
+		t.Fatalf("count movements: %v", err)
+	}
+
+	if movementRacks != 0 {
+		t.Fatalf("a receive must not invent a rack, got %d placed movements", movementRacks)
+	}
+}
+
 // Receive raises on-hand, and StockList reads the derived snapshot back.
 func TestStockReceive_ThenList(t *testing.T) {
 	db := san_testdb.DB(t)

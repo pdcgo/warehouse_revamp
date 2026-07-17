@@ -104,7 +104,11 @@ func (s *Service) RestockRequestFulfill(
 				continue
 			}
 
-			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, received)
+			// Received UNPLACED (#135): accepting says what arrived, not where it was shelved. Whether
+			// the warehouse names a rack while counting is #137's open call — until it is answered, the
+			// goods land "somewhere in this warehouse", which is the truth, and put-away (#136) is what
+			// moves them onto a shelf.
+			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, unplaced, received)
 			if applyErr != nil {
 				return applyErr
 			}
@@ -113,6 +117,7 @@ func (s *Service) RestockRequestFulfill(
 				tx,
 				rr.WarehouseID,
 				item.ProductID,
+				unplaced,
 				received,
 				balance,
 				inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,

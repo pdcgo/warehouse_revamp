@@ -349,9 +349,10 @@ erDiagram
 ```mermaid
 erDiagram
     stock_levels {
-        bigint      warehouse_id PK "opaque team_service id (a WAREHOUSE team), no FK"
-        bigint      product_id   PK "opaque product_service id, no FK"
-        bigint      on_hand      "derived running total, CHECK >= 0"
+        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id   "opaque product_service id, no FK"
+        bigint      rack_id      FK "-> racks(id) ON DELETE RESTRICT; NULL = UNPLACED (#135)"
+        bigint      on_hand      "THIS PLACE's running total, CHECK >= 0; a warehouse total is a SUM"
         timestamptz updated_at
     }
 
@@ -359,8 +360,9 @@ erDiagram
         bigserial   id            PK
         bigint      warehouse_id  "opaque, no FK"
         bigint      product_id    "opaque, no FK"
+        bigint      rack_id       FK "-> racks(id); the place moved onto/off; NULL = unplaced (#135)"
         bigint      delta         "signed: + in, - out"
-        bigint      balance       "on-hand after this movement"
+        bigint      balance       "THIS PLACE's on-hand after this movement"
         smallint    kind          "MovementKind enum number"
         text        reason
         text        ref
@@ -447,7 +449,27 @@ erDiagram
   cache of the running on-hand, maintained inside each movement's transaction, with a
   `CHECK (on_hand >= 0)` that turns an over-draw into a failed movement rather than a negative on-hand.
   Scoped by `warehouse_id` (`use_scope`); `product_id` is an opaque `product_service` id. Both ids are
-  opaque cross-service ids — no FK.
+  opaque cross-service ids — no FK. `rack_id` **is** a real FK: racks live in the same service.
+- **Stock is located ON a rack** (#135) — the grain is **(warehouse, rack, product)**, and a row's
+  `on_hand` is **that place's**, not the warehouse's total for the product. A warehouse total is a
+  **SUM across a product's places** (`StockList` groups by `(warehouse_id, product_id)`); a ledger
+  row's `balance` is likewise that place's running balance, because a movement is a statement about
+  one place — "this shelf went from 40 to 49".
+  - **`rack_id IS NULL` means UNPLACED** — "somewhere in this warehouse, not yet on a shelf". It is a
+    real, workable state (the put-away queue, #136), not a missing value: it is what arrived before
+    anyone shelved it. Every row predating #135 is unplaced, which is the truth — the system had never
+    been told where anything sits, and it must not invent a location it was never given.
+  - **The identity is a UNIQUE INDEX, not a PK**, because a PK column may not be NULL and "unplaced"
+    must be. `stock_levels_place_unique` carries **`NULLS NOT DISTINCT`** (Postgres 15+; compose pins
+    17) and that clause is load-bearing: by default Postgres treats every NULL as distinct from every
+    other, so a plain unique index would accept *many* unplaced rows for one (warehouse, product) —
+    each a separate "somewhere", silently double-counting the same goods on every read.
+  - **Consequently every query matches the rack with `IS NOT DISTINCT FROM`, never `=`.** In SQL
+    `rack_id = NULL` is never true, not even against a NULL row, so a plain `=` would fail to find
+    unplaced stock and report a phantom shortage for goods sitting right there. This is also why
+    writes to `stock_levels` go through raw SQL rather than GORM's primary-key path — see the model.
+  - **`ON DELETE RESTRICT`** on both `rack_id` FKs: stock on a rack being deleted must be dealt with
+    explicitly (#138), never stranded at a location nobody can reach.
 - **`suppliers`** — a team's vendors (who it buys stock from). Team-scoped (`team_id` carries
   `use_scope`), so a supplier is only ever reachable within its owning team. `code` is unique per team
   **among active suppliers only** (`UNIQUE (team_id, code) WHERE deleted = FALSE`), so a soft-deleted

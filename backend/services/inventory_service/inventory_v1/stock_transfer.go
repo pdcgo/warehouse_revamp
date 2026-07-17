@@ -33,23 +33,27 @@ func (s *Service) StockTransfer(
 	var outMv, inMv *inventory_service_models.StockMovement
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		outBalance, err := applyDelta(tx, from, productID, -qty)
+		// Both legs move UNPLACED stock (#135): a transfer between warehouses says the goods left one
+		// building and entered another, which is a different fact from which shelf they sat on at
+		// either end. Taking it off a named rack at the source is put-away's business (#136), and
+		// this deliberately does not guess a shelf for the goods it has just delivered.
+		outBalance, err := applyDelta(tx, from, productID, unplaced, -qty)
 		if err != nil {
 			return err
 		}
 
-		outMv, err = appendMovement(tx, from, productID, -qty, outBalance,
+		outMv, err = appendMovement(tx, from, productID, unplaced, -qty, outBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_TRANSFER_OUT, req.Msg.GetReason(), "", actor)
 		if err != nil {
 			return err
 		}
 
-		inBalance, err := applyDelta(tx, to, productID, qty)
+		inBalance, err := applyDelta(tx, to, productID, unplaced, qty)
 		if err != nil {
 			return err
 		}
 
-		inMv, err = appendMovement(tx, to, productID, qty, inBalance,
+		inMv, err = appendMovement(tx, to, productID, unplaced, qty, inBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_TRANSFER_IN, req.Msg.GetReason(), "", actor)
 
 		return err

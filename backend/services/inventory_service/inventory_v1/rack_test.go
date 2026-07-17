@@ -6,10 +6,27 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
+
+// insertRack seeds an active rack in a warehouse directly and returns its id. Stock tests need a rack
+// to place stock ON (#135) without going through the rack RPCs.
+func insertRack(t *testing.T, db *gorm.DB, warehouseID uint64, code string) uint64 {
+	t.Helper()
+
+	r := inventory_service_models.Rack{WarehouseID: warehouseID, Code: code}
+
+	err := db.Create(&r).Error
+	if err != nil {
+		t.Fatalf("insert rack: %v", err)
+	}
+
+	return r.ID
+}
 
 // createRack is the happy path, used as the fixture for the rest.
 func createRack(t *testing.T, svc rackCreator, warehouse uint64, code, name string) uint64 {
