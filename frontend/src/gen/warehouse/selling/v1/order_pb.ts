@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order.proto.
  */
 export const file_warehouse_selling_v1_order: GenFile = /*@__PURE__*/
-  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEisQEKCU9yZGVySXRlbRIKCgJpZBgBIAEoBBIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhYKA3NrdRgDIAEoCUIJukgGcgQQARhAEhgKBG5hbWUYBCABKAlCCrpIB3IFEAEYyAESGQoIcXVhbnRpdHkYBSABKA1CB7pIBCoCKAESGwoKdW5pdF9wcmljZRgGIAEoA0IHukgEIgIoABIRCgl1bml0X2Nvc3QYByABKAMi6gEKDE9yZGVyQWRkcmVzcxIVCg1wcm92aW5zaV9jb2RlGAEgASgJEhUKDXByb3ZpbnNpX25hbWUYAiABKAkSFgoOa2FidXBhdGVuX2NvZGUYAyABKAkSFgoOa2FidXBhdGVuX25hbWUYBCABKAkSFgoOa2VjYW1hdGFuX2NvZGUYBSABKAkSFgoOa2VjYW1hdGFuX25hbWUYBiABKAkSEQoJZGVzYV9jb2RlGAcgASgJEhEKCWRlc2FfbmFtZRgIIAEoCRIQCghrb2RlX3BvcxgJIAEoCRIUCgxhZGRyZXNzX2xpbmUYCiABKAkioAMKBU9yZGVyEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIxCgZzdGF0dXMYBCABKA4yIS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclN0YXR1cxIVCg1jdXN0b21lcl9uYW1lGAUgASgJEhYKDmN1c3RvbWVyX3Bob25lGAYgASgJEhUKDXNoaXBwaW5nX2NvZGUYCCABKAkSEAoIc3VidG90YWwYCSABKAMSFQoNc2hpcHBpbmdfY29zdBgKIAEoAxINCgV0b3RhbBgLIAEoAxIuCgVpdGVtcxgMIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDSABKAMSMwoHYWRkcmVzcxgOIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIMCgRjb2dzGBAgASgDEhQKDHdhcmVob3VzZV9pZBgPIAEoBEoECAcQCFIQY3VzdG9tZXJfYWRkcmVzcyK2AwoST3JkZXJDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAwgASgEQge6SAQyAiAAEiEKDWN1c3RvbWVyX25hbWUYAyABKAlCCrpIB3IFEAEYyAESHwoOY3VzdG9tZXJfcGhvbmUYBCABKAlCB7pIBHICGCgSHgoNc2hpcHBpbmdfY29kZRgGIAEoCUIHukgEcgIYKBIZCghzdWJ0b3RhbBgHIAEoA0IHukgEIgIoABIeCg1zaGlwcGluZ19jb3N0GAggASgDQge6SAQiAigAEhYKBXRvdGFsGAkgASgDQge6SAQiAigAEjgKBWl0ZW1zGAogAygLMh8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJJdGVtQgi6SAWSAQIIARIzCgdhZGRyZXNzGAsgASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzOguStRgHCgUBAgMEBUoECAUQBlIQY3VzdG9tZXJfYWRkcmVzcyJBChNPcmRlckNyZWF0ZVJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIidAoQT3JkZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFInIKEU9yZGVyTGlzdFJlc3BvbnNlEisKBm9yZGVycxgBIAMoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iWgoST3JkZXJEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJBChNPcmRlckRldGFpbFJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWwoTT3JkZXJDb25maXJtUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQgoUT3JkZXJDb25maXJtUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJaChJPcmRlckNhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkEKE09yZGVyQ2FuY2VsUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlcip8CgtPcmRlclN0YXR1cxIcChhPUkRFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNPUkRFUl9TVEFUVVNfUExBQ0VEEAESGgoWT1JERVJfU1RBVFVTX0NPTkZJUk1FRBACEhoKFk9SREVSX1NUQVRVU19DQU5DRUxMRUQQAzL/AwoMT3JkZXJTZXJ2aWNlEmIKC09yZGVyQ3JlYXRlEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXNwb25zZRJcCglPcmRlckxpc3QSJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0UmVzcG9uc2USYgoLT3JkZXJEZXRhaWwSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlc3BvbnNlEmUKDE9yZGVyQ29uZmlybRIpLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ29uZmlybVJlcXVlc3QaKi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNvbmZpcm1SZXNwb25zZRJiCgtPcmRlckNhbmNlbBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEisQEKCU9yZGVySXRlbRIKCgJpZBgBIAEoBBIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhYKA3NrdRgDIAEoCUIJukgGcgQQARhAEhgKBG5hbWUYBCABKAlCCrpIB3IFEAEYyAESGQoIcXVhbnRpdHkYBSABKA1CB7pIBCoCKAESGwoKdW5pdF9wcmljZRgGIAEoA0IHukgEIgIoABIRCgl1bml0X2Nvc3QYByABKAMi6gEKDE9yZGVyQWRkcmVzcxIVCg1wcm92aW5zaV9jb2RlGAEgASgJEhUKDXByb3ZpbnNpX25hbWUYAiABKAkSFgoOa2FidXBhdGVuX2NvZGUYAyABKAkSFgoOa2FidXBhdGVuX25hbWUYBCABKAkSFgoOa2VjYW1hdGFuX2NvZGUYBSABKAkSFgoOa2VjYW1hdGFuX25hbWUYBiABKAkSEQoJZGVzYV9jb2RlGAcgASgJEhEKCWRlc2FfbmFtZRgIIAEoCRIQCghrb2RlX3BvcxgJIAEoCRIUCgxhZGRyZXNzX2xpbmUYCiABKAkioAMKBU9yZGVyEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIxCgZzdGF0dXMYBCABKA4yIS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclN0YXR1cxIVCg1jdXN0b21lcl9uYW1lGAUgASgJEhYKDmN1c3RvbWVyX3Bob25lGAYgASgJEhUKDXNoaXBwaW5nX2NvZGUYCCABKAkSEAoIc3VidG90YWwYCSABKAMSFQoNc2hpcHBpbmdfY29zdBgKIAEoAxINCgV0b3RhbBgLIAEoAxIuCgVpdGVtcxgMIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDSABKAMSMwoHYWRkcmVzcxgOIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIMCgRjb2dzGBAgASgDEhQKDHdhcmVob3VzZV9pZBgPIAEoBEoECAcQCFIQY3VzdG9tZXJfYWRkcmVzcyK2AwoST3JkZXJDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAwgASgEQge6SAQyAiAAEiEKDWN1c3RvbWVyX25hbWUYAyABKAlCCrpIB3IFEAEYyAESHwoOY3VzdG9tZXJfcGhvbmUYBCABKAlCB7pIBHICGCgSHgoNc2hpcHBpbmdfY29kZRgGIAEoCUIHukgEcgIYKBIZCghzdWJ0b3RhbBgHIAEoA0IHukgEIgIoABIeCg1zaGlwcGluZ19jb3N0GAggASgDQge6SAQiAigAEhYKBXRvdGFsGAkgASgDQge6SAQiAigAEjgKBWl0ZW1zGAogAygLMh8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJJdGVtQgi6SAWSAQIIARIzCgdhZGRyZXNzGAsgASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzOguStRgHCgUBAgMEBUoECAUQBlIQY3VzdG9tZXJfYWRkcmVzcyJBChNPcmRlckNyZWF0ZVJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIidAoQT3JkZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFInIKEU9yZGVyTGlzdFJlc3BvbnNlEisKBm9yZGVycxgBIAMoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iWgoST3JkZXJEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJBChNPcmRlckRldGFpbFJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWwoTT3JkZXJDb25maXJtUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQgoUT3JkZXJDb25maXJtUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJaChJPcmRlckNhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkEKE09yZGVyQ2FuY2VsUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJYChBPcmRlclBpY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCI/ChFPcmRlclBpY2tSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIlgKEE9yZGVyUGFja1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIj8KEU9yZGVyUGFja1Jlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWAoQT3JkZXJTaGlwUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgiPwoRT3JkZXJTaGlwUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlcirJAQoLT3JkZXJTdGF0dXMSHAoYT1JERVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTT1JERVJfU1RBVFVTX1BMQUNFRBABEhoKFk9SREVSX1NUQVRVU19DT05GSVJNRUQQAhIaChZPUkRFUl9TVEFUVVNfQ0FOQ0VMTEVEEAMSGAoUT1JERVJfU1RBVFVTX1BJQ0tJTkcQBBIXChNPUkRFUl9TVEFUVVNfUEFDS0VEEAUSGAoUT1JERVJfU1RBVFVTX1NISVBQRUQQBjKZBgoMT3JkZXJTZXJ2aWNlEmIKC09yZGVyQ3JlYXRlEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXNwb25zZRJcCglPcmRlckxpc3QSJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0UmVzcG9uc2USYgoLT3JkZXJEZXRhaWwSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlc3BvbnNlEmUKDE9yZGVyQ29uZmlybRIpLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ29uZmlybVJlcXVlc3QaKi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNvbmZpcm1SZXNwb25zZRJiCgtPcmRlckNhbmNlbBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ2FuY2VsUmVzcG9uc2USXAoJT3JkZXJQaWNrEiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQaWNrUmVxdWVzdBonLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUGlja1Jlc3BvbnNlElwKCU9yZGVyUGFjaxImLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUGFja1JlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBhY2tSZXNwb25zZRJcCglPcmRlclNoaXASJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclNoaXBSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTaGlwUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -538,6 +538,125 @@ export const OrderCancelResponseSchema: GenMessage<OrderCancelResponse> = /*@__P
   messageDesc(file_warehouse_selling_v1_order, 12);
 
 /**
+ * @generated from message warehouse.selling.v1.OrderPickRequest
+ */
+export type OrderPickRequest = Message<"warehouse.selling.v1.OrderPickRequest"> & {
+  /**
+   * The WAREHOUSE doing the work — not the team that placed the order.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 2;
+   */
+  orderId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderPickRequest.
+ * Use `create(OrderPickRequestSchema)` to create a new message.
+ */
+export const OrderPickRequestSchema: GenMessage<OrderPickRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 13);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderPickResponse
+ */
+export type OrderPickResponse = Message<"warehouse.selling.v1.OrderPickResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.Order order = 1;
+   */
+  order?: Order;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderPickResponse.
+ * Use `create(OrderPickResponseSchema)` to create a new message.
+ */
+export const OrderPickResponseSchema: GenMessage<OrderPickResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 14);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderPackRequest
+ */
+export type OrderPackRequest = Message<"warehouse.selling.v1.OrderPackRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 2;
+   */
+  orderId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderPackRequest.
+ * Use `create(OrderPackRequestSchema)` to create a new message.
+ */
+export const OrderPackRequestSchema: GenMessage<OrderPackRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 15);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderPackResponse
+ */
+export type OrderPackResponse = Message<"warehouse.selling.v1.OrderPackResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.Order order = 1;
+   */
+  order?: Order;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderPackResponse.
+ * Use `create(OrderPackResponseSchema)` to create a new message.
+ */
+export const OrderPackResponseSchema: GenMessage<OrderPackResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 16);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderShipRequest
+ */
+export type OrderShipRequest = Message<"warehouse.selling.v1.OrderShipRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 2;
+   */
+  orderId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderShipRequest.
+ * Use `create(OrderShipRequestSchema)` to create a new message.
+ */
+export const OrderShipRequestSchema: GenMessage<OrderShipRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 17);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderShipResponse
+ */
+export type OrderShipResponse = Message<"warehouse.selling.v1.OrderShipResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.Order order = 1;
+   */
+  order?: Order;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderShipResponse.
+ * Use `create(OrderShipResponseSchema)` to create a new message.
+ */
+export const OrderShipResponseSchema: GenMessage<OrderShipResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 18);
+
+/**
  * Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
  * warehouse core.
  *
@@ -563,6 +682,30 @@ export enum OrderStatus {
    * @generated from enum value: ORDER_STATUS_CANCELLED = 3;
    */
   CANCELLED = 3,
+
+  /**
+   * The warehouse's states (#150). Each is an action a person STARTS AND FINISHES, so an order being
+   * worked on right now is visibly different from one nobody has touched — which is the whole reason
+   * "just record it shipped" was rejected.
+   *
+   *   CONFIRMED → PICKING → PACKED → SHIPPED
+   *
+   * Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
+   * somebody is guessing at what happened.
+   *
+   * @generated from enum value: ORDER_STATUS_PICKING = 4;
+   */
+  PICKING = 4,
+
+  /**
+   * @generated from enum value: ORDER_STATUS_PACKED = 5;
+   */
+  PACKED = 5,
+
+  /**
+   * @generated from enum value: ORDER_STATUS_SHIPPED = 6;
+   */
+  SHIPPED = 6,
 }
 
 /**
@@ -623,6 +766,35 @@ export const OrderService: GenService<{
     methodKind: "unary";
     input: typeof OrderCancelRequestSchema;
     output: typeof OrderCancelResponseSchema;
+  },
+  /**
+   * The WAREHOUSE's side of an order (#150): the crew records what it has done.
+   *
+   * These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
+   * why that is the only scope that can work.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderService.OrderPick
+   */
+  orderPick: {
+    methodKind: "unary";
+    input: typeof OrderPickRequestSchema;
+    output: typeof OrderPickResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.OrderService.OrderPack
+   */
+  orderPack: {
+    methodKind: "unary";
+    input: typeof OrderPackRequestSchema;
+    output: typeof OrderPackResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.OrderService.OrderShip
+   */
+  orderShip: {
+    methodKind: "unary";
+    input: typeof OrderShipRequestSchema;
+    output: typeof OrderShipResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_order, 0);

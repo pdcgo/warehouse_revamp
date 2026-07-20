@@ -11,6 +11,11 @@ const (
 	orderStatusPlaced    = "placed"
 	orderStatusConfirmed = "confirmed"
 	orderStatusCancelled = "cancelled"
+
+	// The warehouse's states (#150): CONFIRMED -> PICKING -> PACKED -> SHIPPED.
+	orderStatusPicking = "picking"
+	orderStatusPacked  = "packed"
+	orderStatusShipped = "shipped"
 )
 
 func orderStatusToText(s sellingv1.OrderStatus) string {
@@ -21,6 +26,12 @@ func orderStatusToText(s sellingv1.OrderStatus) string {
 		return orderStatusConfirmed
 	case sellingv1.OrderStatus_ORDER_STATUS_CANCELLED:
 		return orderStatusCancelled
+	case sellingv1.OrderStatus_ORDER_STATUS_PICKING:
+		return orderStatusPicking
+	case sellingv1.OrderStatus_ORDER_STATUS_PACKED:
+		return orderStatusPacked
+	case sellingv1.OrderStatus_ORDER_STATUS_SHIPPED:
+		return orderStatusShipped
 	default:
 		return ""
 	}
@@ -34,6 +45,12 @@ func orderStatusFromText(text string) sellingv1.OrderStatus {
 		return sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED
 	case orderStatusCancelled:
 		return sellingv1.OrderStatus_ORDER_STATUS_CANCELLED
+	case orderStatusPicking:
+		return sellingv1.OrderStatus_ORDER_STATUS_PICKING
+	case orderStatusPacked:
+		return sellingv1.OrderStatus_ORDER_STATUS_PACKED
+	case orderStatusShipped:
+		return sellingv1.OrderStatus_ORDER_STATUS_SHIPPED
 	default:
 		return sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED
 	}

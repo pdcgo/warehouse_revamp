@@ -42,6 +42,17 @@ func (s *Service) OrderCancel(
 			return errAlreadyCancelled
 		}
 
+		// CANCEL UP TO PACKED; REFUSED ONCE SHIPPED (#150, owner's call). While the goods are still in
+		// the building a cancel is honest: the stock goes back on the books and the physical goods get
+		// re-shelved (#136). Once the courier has them, putting the stock back would book goods onto a
+		// shelf while they are on a van — the count would say something untrue until a human noticed.
+		//
+		// What comes back after shipping is a RETURN: a different event with different money, and
+		// calling it a cancel would hide that distinction rather than record it.
+		if order.Status == orderStatusShipped {
+			return errShippedCannotCancel
+		}
+
 		statusErr := setOrderStatus(tx, &order, orderStatusCancelled)
 		if statusErr != nil {
 			return statusErr

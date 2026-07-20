@@ -16,6 +16,9 @@ var (
 	errOrderMissing     = errors.New("order not found")
 	errNotPlaced        = errors.New("only a placed order can be confirmed")
 	errAlreadyCancelled = errors.New("order is already cancelled")
+	// #150: once the courier has it, the goods have left the building. Putting the stock back would
+	// book them onto a shelf while they are on a van — what comes back now is a RETURN, not a cancel.
+	errShippedCannotCancel = errors.New("a shipped order cannot be cancelled — it has already left")
 )
 
 // loadScopedOrder loads one order (with its lines) FOR UPDATE, constrained to the team. The team_id
@@ -53,7 +56,8 @@ func mapOrderErr(err error) error {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errOrderMissing)
-	case errors.Is(err, errNotPlaced), errors.Is(err, errAlreadyCancelled):
+	case errors.Is(err, errNotPlaced), errors.Is(err, errAlreadyCancelled),
+		errors.Is(err, errShippedCannotCancel), errors.Is(err, errWrongStateForStep):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)

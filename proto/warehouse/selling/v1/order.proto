@@ -22,6 +22,14 @@ service OrderService {
   // stock + money reversal once stock integration (#69) lands.
   rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
   rpc OrderCancel(OrderCancelRequest) returns (OrderCancelResponse);
+
+  // The WAREHOUSE's side of an order (#150): the crew records what it has done.
+  //
+  // These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
+  // why that is the only scope that can work.
+  rpc OrderPick(OrderPickRequest) returns (OrderPickResponse);
+  rpc OrderPack(OrderPackRequest) returns (OrderPackResponse);
+  rpc OrderShip(OrderShipRequest) returns (OrderShipResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -31,6 +39,18 @@ enum OrderStatus {
   ORDER_STATUS_PLACED = 1;
   ORDER_STATUS_CONFIRMED = 2;
   ORDER_STATUS_CANCELLED = 3;
+
+  // The warehouse's states (#150). Each is an action a person STARTS AND FINISHES, so an order being
+  // worked on right now is visibly different from one nobody has touched — which is the whole reason
+  // "just record it shipped" was rejected.
+  //
+  //   CONFIRMED → PICKING → PACKED → SHIPPED
+  //
+  // Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
+  // somebody is guessing at what happened.
+  ORDER_STATUS_PICKING = 4;
+  ORDER_STATUS_PACKED = 5;
+  ORDER_STATUS_SHIPPED = 6;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -284,5 +304,86 @@ message OrderCancelRequest {
 }
 
 message OrderCancelResponse {
+  Order order = 1;
+}
+
+message OrderPickRequest {
+  // Write: the WAREHOUSE crew, staff included — staff are the ones who actually walk the aisles, so
+  // excluding them would leave the people doing the work unable to record it.
+  //
+  // ⚠ THE SCOPE IS THE ORDER'S WAREHOUSE, NOT ITS SELLING TEAM (#150, owner's call), and this is the
+  // only scope that can work: the crew holds no role in the selling team that owns the order, so
+  // scoping to the selling team would deny every real caller. Scoping to the warehouse asks the
+  // question that matters — "do you work in the building this order ships from?"
+  //
+  // The handler finds the order by (order_id, warehouse_id), so a crew can only ever touch orders
+  // shipping from its own warehouse; another warehouse's reads as NotFound. Same shape as
+  // RestockRequestFulfill, where the warehouse also acts on a record a selling team created.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The WAREHOUSE doing the work — not the team that placed the order.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderPickResponse {
+  Order order = 1;
+}
+
+message OrderPackRequest {
+  // Same crew, same scope as OrderPick — see there for why the warehouse and not the selling team.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderPackResponse {
+  Order order = 1;
+}
+
+message OrderShipRequest {
+  // Same crew, same scope. Handing to the courier is the last thing the warehouse does with an order —
+  // after this it has left the building, and a cancel is refused (#70/#150).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderShipResponse {
   Order order = 1;
 }
