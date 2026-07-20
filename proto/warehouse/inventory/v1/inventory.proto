@@ -23,6 +23,8 @@ service InventoryService {
   rpc StockReceive(StockReceiveRequest) returns (StockReceiveResponse);
   rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
   rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
+  // Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
+  rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -33,6 +35,14 @@ enum MovementKind {
   MOVEMENT_KIND_TRANSFER_OUT = 3;
   MOVEMENT_KIND_TRANSFER_IN = 4;
   MOVEMENT_KIND_PICK = 5; // reserved for the future order/pick flow
+  // Stock moved from one place to another INSIDE one warehouse (#136) — shelving what arrived, or
+  // re-organising a shelf. The warehouse's total does not change; only where it sits does, which is
+  // what makes it a different fact from a receive.
+  //
+  // ONE kind, not an OUT/IN pair like a transfer. A transfer needs two because its legs are in two
+  // WAREHOUSES, and each side only ever sees its own; both legs of a move are in the same warehouse,
+  // so a reader sees the pair together and the rack plus the sign already tell the story.
+  MOVEMENT_KIND_MOVE = 6;
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -196,6 +206,60 @@ message StockAdjustRequest {
 message StockAdjustResponse {
   StockMovement movement = 1;
   StockLevel level = 2;
+}
+
+// One end of a move (#136): a shelf, or the not-yet-shelved pile. Both are real PLACES — "unplaced" is
+// where stock sits before anyone puts it away, not an absence.
+message StockPlace {
+  oneof place {
+    option (buf.validate.oneof).required = true;
+
+    // Must be a rack of the scoped warehouse — another warehouse's rack reads as NotFound.
+    uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
+    // The not-yet-shelved pile. Only `true` is meaningful.
+    bool unplaced = 2 [(buf.validate.field).bool.const = true];
+  }
+}
+
+message StockMoveRequest {
+  // Moving stock around inside a warehouse is warehouse work, staff included — they are the ones
+  // carrying the box. Unlike StockTransfer (which moves stock OUT of a warehouse, and is a manager
+  // action), nothing leaves the building here and the total does not change.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Where it is now, and where it is going. Both required — a move has two ends, and the whole point
+  // of this RPC is that it never guesses either of them.
+  //
+  // The two cases the issue names are both just values here: `from: unplaced, to: rack` is shelving
+  // what arrived, and `from: rack, to: rack` is re-organising. One verb, because they are one act.
+  StockPlace from = 3 [(buf.validate.field).required = true];
+  StockPlace to = 4 [(buf.validate.field).required = true];
+
+  // How much to move. Moving MORE than the source holds is refused — the ledger must never record
+  // goods leaving a place that did not have them.
+  int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
+  string reason = 6 [(buf.validate.field).string.max_len = 200];
+}
+
+message StockMoveResponse {
+  // Both legs, in order: off the source, onto the destination. Each carries its own place's new
+  // balance — that is what a movement means now (#135).
+  StockMovement from_movement = 1;
+  StockMovement to_movement = 2;
 }
 
 message StockTransferRequest {

@@ -173,13 +173,17 @@ is then a real, visible state a warehouse can work off (a put-away queue), not a
 
 **Still open — owner input needed, NOT settled here:**
 
-- [ ] **May one product sit on several racks?** Physically yes, and the model built in #135 allows it
-      (that is what option B means). Narrowing it later is a unique index, not a rewrite — but it is
-      worth saying out loud, because it is why every "how many do we have" read is a SUM.
+- [x] **May one product sit on several racks?** — **YES, and it is now load-bearing rather than
+      theoretical.** #135 allowed it, #137 can put two lines of one delivery on two shelves, and #136
+      lets a person split a pile across shelves deliberately. Every "how many do we have" read is a SUM
+      for this reason, and narrowing it now would be a real change rather than an index.
 - [ ] **What happens to stock that is never placed?** Does unplaced stock count as on-hand and
       sellable, or is it invisible until shelved? This one has real money attached. Less urgent now
-      that accepting places stock directly — unplaced becomes the exception rather than the rule — but
-      it still decides what happens to everything #135 left unplaced.
+      that accepting places stock directly (#137) and #136 gives a way to shelve the backlog — unplaced
+      is the exception rather than the rule — but **it is still unanswered, and today the answer is
+      "yes, sellable" by default**: `StockList` sums across places, unplaced included, so every screen
+      already treats it as ordinary on-hand. That is a decision that was made by omission rather than
+      on purpose, which is why it stays on this list.
 - [x] **Does a rack's stock block its deletion?** — **DECIDED (owner, 2026-07-17): YES, refuse it.**
       Deleting a rack that still holds stock is **FailedPrecondition** — empty the shelf first.
       - This was a **live bug**, not a hypothetical: `RackDelete` is a SOFT delete, so the FK's
@@ -471,3 +475,18 @@ flow (§1) and is not built.
   - Still open, and deliberately not settled here: whether the warehouse should be able to **request a
     change** rather than only accept/refuse (today it has no say short of refusing). That only
     matters once §1 says who is accountable for a wrong restock — see the §0 blocker.
+- **2026-07-17/20** — **§3 built out: stock now lives on racks, end to end** (#134's family). The owner
+  settled four calls in sequence, each forced by the next screen rather than asked in the abstract:
+  stock is located on a rack (§3, #135), a stock-take counts a shelf (#139), put-away is part of
+  accepting (#137), and a warehouse may read the products it holds (§4, #138). Moving stock between
+  places inside a warehouse closes the set (#136) — it shelves the pile #135 left behind, re-organises
+  shelves, and is the escape hatch for #138's rule that a rack holding stock cannot be deleted.
+  - **The principle that kept recurring, in five costumes: refuse, do not interpret.** An incomplete
+    count (#133), a placeless stock-take (#139), arrived goods with no shelf (#137), a move with one
+    end unnamed (#136), a rack deleted out from under its stock (#138). Each was the same temptation —
+    accept a convenient default and quietly write a number nobody observed — and the same answer.
+    Stock that exists only in the database is the one thing this system must never produce.
+  - **A second recurring shape: a place is not an absence.** `unplaced` is where goods sit before
+    anyone shelves them, so it is a selectable value everywhere, while *unanswered* is refused. The two
+    look identical in a nullable column and mean opposite things, which is why every query matches with
+    `IS NOT DISTINCT FROM` and every picker separates "unplaced" from its placeholder.

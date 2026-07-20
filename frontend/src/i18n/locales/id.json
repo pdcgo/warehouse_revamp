@@ -684,7 +684,20 @@
     "placeCountedHelper": "Rak yang Anda hitung, atau tumpukan yang belum ditempatkan.",
     "countedOnHand": "Stok terhitung",
     "adjustHelper": "Berapa yang Anda hitung di tempat itu saja — bukan total gudang. Selisihnya dicatat dalam buku besar.",
-    "adjustReasonPlaceholder": "mis. penghitungan siklus, kerusakan"
+    "adjustReasonPlaceholder": "mis. penghitungan siklus, kerusakan",
+    "move": "Pindahkan",
+    "rowActions": "Aksi",
+    "moveStockTitle": "Pindahkan Stok",
+    "moveProductSummary": "{{name}} ({{sku}}) — {{onHand}} tersedia di seluruh tempat di gudang ini",
+    "moveFrom": "Dari",
+    "moveFromHelper": "Tempat stok berada sekarang — sebuah rak, atau tumpukan yang belum ditempatkan.",
+    "moveTo": "Ke",
+    "moveToHelper": "Tempat tujuannya. Total gudang tidak berubah — hanya letak barangnya.",
+    "moveQuantityHelper": "Berapa banyak yang dipindahkan. Memindahkan lebih dari isi tempat asal akan ditolak.",
+    "moveReasonPlaceholder": "mis. penempatan barang, penataan ulang rak",
+    "movePlacesRequiredError": "Pilih kedua tempat — lokasi stok sekarang, dan tujuannya.",
+    "moveSamePlaceError": "Pilih dua tempat yang berbeda — pemindahan harus menuju tempat lain.",
+    "movedToast": "Memindahkan {{qty}} × {{sku}}"
   },
   "address": {
     "loading": "Memuat…",

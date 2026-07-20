@@ -684,7 +684,20 @@
     "placeCountedHelper": "The rack you stood at and counted, or the unplaced pile.",
     "countedOnHand": "Counted on-hand",
     "adjustHelper": "How many you counted at that one place — not the warehouse total. The difference is recorded in the ledger.",
-    "adjustReasonPlaceholder": "e.g. cycle count, damage"
+    "adjustReasonPlaceholder": "e.g. cycle count, damage",
+    "move": "Move",
+    "rowActions": "Actions",
+    "moveStockTitle": "Move Stock",
+    "moveProductSummary": "{{name}} ({{sku}}) — {{onHand}} on hand across every place in this warehouse",
+    "moveFrom": "From",
+    "moveFromHelper": "Where the stock sits now — a rack, or the unplaced pile.",
+    "moveTo": "To",
+    "moveToHelper": "Where it is going. The warehouse total does not change — only where the goods sit.",
+    "moveQuantityHelper": "How many to move. Moving more than the source place holds is refused.",
+    "moveReasonPlaceholder": "e.g. put away, shelf reorganised",
+    "movePlacesRequiredError": "Choose both places — where the stock is now, and where it is going.",
+    "moveSamePlaceError": "Pick two different places — a move has to go somewhere else.",
+    "movedToast": "Moved {{qty}} × {{sku}}"
   },
   "address": {
     "loading": "Loading…",

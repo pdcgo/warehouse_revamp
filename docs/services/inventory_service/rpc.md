@@ -284,8 +284,36 @@ this screen could exist. See `plans/inventory_service/brainstorming.md` §4, inc
 is honest about: it is **new exposure for warehouse roles**, and *"only what it holds"* is **not
 enforced** and cannot be by `product_service`, which does not know what any warehouse holds.
 
+### Moving stock inside a warehouse (#136)
+
+`StockMove` changes **where** stock sits, never **how much** there is. That invariant is the definition
+of a move, and it is what makes it a different fact from a receive: the warehouse's total for the
+product is identical before and after.
+
+**One verb for both jobs**, because they are one act with different arguments:
+
+| | |
+| --- | --- |
+| `from: unplaced → to: rack` | **shelving** what arrived — the pile #135 left behind, which is everything predating #137 |
+| `from: rack → to: rack` | **re-organising** a shelf |
+
+- **Both ends are required, and must differ.** Moving stock onto the place it already sits is a
+  mistake, not a no-op worth recording — honouring it would write a ledger pair saying nothing
+  happened, twice. `InvalidArgument`.
+- **The source is decremented FIRST**, deliberately. `applyDelta`'s guard refuses to take a place
+  below zero, so taking first means an over-move is rejected *before* anything is credited anywhere.
+  Crediting first and then discovering the source was short would still roll back — but it would have
+  written a positive movement for goods that were never there.
+- **Both legs commit together.** A move that took stock off a shelf without putting it anywhere would
+  destroy goods that are physically in the building.
+- **One `MOVEMENT_KIND_MOVE`, not an OUT/IN pair** like a transfer. A transfer needs two kinds because
+  its legs are in two *warehouses* and each side only ever sees its own; both legs of a move are in the
+  same warehouse, so a reader sees the pair together and the rack plus the sign already tell the story.
+- Staff may do it, unlike `StockTransfer` (a manager action): nothing leaves the building, and the
+  person carrying the box is the one who knows where it went.
+
 **A rack that still holds stock cannot be deleted** (#138) — `FailedPrecondition`, empty the shelf
-first. The check lives in the handler because the FK cannot do it: `stock_levels.rack_id` is
+first, and **`StockMove` is how you empty it**. The check lives in the handler because the FK cannot do it: `stock_levels.rack_id` is
 `ON DELETE RESTRICT`, but `RackDelete` is a **soft** delete, so the row is never removed and the
 constraint never fires. Unguarded, #137 made this a live bug — the goods were **stranded**, still in
 `stock_levels` at a location that had vanished from every list, where nobody could find or fix them.

@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/inventory.proto.
  */
 export const file_warehouse_inventory_v1_inventory: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi8gEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkSDwoHcmFja19pZBgLIAEoBCJ5ChBTdG9ja0xpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ5ChFTdG9ja0xpc3RSZXNwb25zZRIyCgZsZXZlbHMYASADKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGV2ZWwSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKZAQoTU3RvY2tIaXN0b3J5UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCKCAQoUU3RvY2tIaXN0b3J5UmVzcG9uc2USOAoJbW92ZW1lbnRzGAEgAygLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8irQEKE1N0b2NrUmVjZWl2ZVJlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAMgASgDQge6SAQiAiAAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESFAoDcmVmGAUgASgJQge6SARyAhhkOguStRgHCgUBAgYJCCJPChRTdG9ja1JlY2VpdmVSZXNwb25zZRI3Cghtb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCLdAQoSU3RvY2tBZGp1c3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIYCgdvbl9oYW5kGAMgASgDQge6SAQiAigAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESGgoHcmFja19pZBgFIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAYgASgIQge6SARqAggBSAA6CpK1GAYKBAECBglCDgoFcGxhY2USBbpIAggBIoEBChNTdG9ja0FkanVzdFJlc3BvbnNlEjcKCG1vdmVtZW50GAEgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjEKBWxldmVsGAIgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0xldmVsIr4BChRTdG9ja1RyYW5zZmVyUmVxdWVzdBImChFmcm9tX3dhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPdG9fd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEhsKCnByb2R1Y3RfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASGAoGcmVhc29uGAUgASgJQgi6SAVyAxjIAToKkrUYBgoEAQIGCSKQAQoVU3RvY2tUcmFuc2ZlclJlc3BvbnNlEjsKDG91dF9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgtpbl9tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCq5AQoMTW92ZW1lbnRLaW5kEh0KGU1PVkVNRU5UX0tJTkRfVU5TUEVDSUZJRUQQABIZChVNT1ZFTUVOVF9LSU5EX1JFQ0VJVkUQARIYChRNT1ZFTUVOVF9LSU5EX0FESlVTVBACEh4KGk1PVkVNRU5UX0tJTkRfVFJBTlNGRVJfT1VUEAMSHQoZTU9WRU1FTlRfS0lORF9UUkFOU0ZFUl9JThAEEhYKEk1PVkVNRU5UX0tJTkRfUElDSxAFMqAEChBJbnZlbnRvcnlTZXJ2aWNlEmAKCVN0b2NrTGlzdBIoLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVxdWVzdBopLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMaXN0UmVzcG9uc2USaQoMU3RvY2tIaXN0b3J5Eisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0hpc3RvcnlSZXNwb25zZRJpCgxTdG9ja1JlY2VpdmUSKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlcXVlc3QaLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmVjZWl2ZVJlc3BvbnNlEmYKC1N0b2NrQWRqdXN0Eioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlcXVlc3QaKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrQWRqdXN0UmVzcG9uc2USbAoNU3RvY2tUcmFuc2ZlchIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tUcmFuc2ZlclJlcXVlc3QaLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi8gEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkSDwoHcmFja19pZBgLIAEoBCJ5ChBTdG9ja0xpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ5ChFTdG9ja0xpc3RSZXNwb25zZRIyCgZsZXZlbHMYASADKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGV2ZWwSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKZAQoTU3RvY2tIaXN0b3J5UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCKCAQoUU3RvY2tIaXN0b3J5UmVzcG9uc2USOAoJbW92ZW1lbnRzGAEgAygLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8irQEKE1N0b2NrUmVjZWl2ZVJlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAMgASgDQge6SAQiAiAAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESFAoDcmVmGAUgASgJQge6SARyAhhkOguStRgHCgUBAgYJCCJPChRTdG9ja1JlY2VpdmVSZXNwb25zZRI3Cghtb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCLdAQoSU3RvY2tBZGp1c3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIYCgdvbl9oYW5kGAMgASgDQge6SAQiAigAEhgKBnJlYXNvbhgEIAEoCUIIukgFcgMYyAESGgoHcmFja19pZBgFIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAYgASgIQge6SARqAggBSAA6CpK1GAYKBAECBglCDgoFcGxhY2USBbpIAggBIoEBChNTdG9ja0FkanVzdFJlc3BvbnNlEjcKCG1vdmVtZW50GAEgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50EjEKBWxldmVsGAIgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0xldmVsIlUKClN0b2NrUGxhY2USGgoHcmFja19pZBgBIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAIgASgIQge6SARqAggBSABCDgoFcGxhY2USBbpIAggBIoYCChBTdG9ja01vdmVSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABI4CgRmcm9tGAMgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1BsYWNlQga6SAPIAQESNgoCdG8YBCABKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUGxhY2VCBrpIA8gBARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIYCgZyZWFzb24YBiABKAlCCLpIBXIDGMgBOguStRgHCgUBAgYJCCKNAQoRU3RvY2tNb3ZlUmVzcG9uc2USPAoNZnJvbV9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgt0b19tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCK+AQoUU3RvY2tUcmFuc2ZlclJlcXVlc3QSJgoRZnJvbV93YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEiAKD3RvX3dhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIbCgpwcm9kdWN0X2lkGAMgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAQgASgDQge6SAQiAiAAEhgKBnJlYXNvbhgFIAEoCUIIukgFcgMYyAE6CpK1GAYKBAECBgkikAEKFVN0b2NrVHJhbnNmZXJSZXNwb25zZRI7CgxvdXRfbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQSOgoLaW5fbW92ZW1lbnQYAiABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQq0QEKDE1vdmVtZW50S2luZBIdChlNT1ZFTUVOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTU9WRU1FTlRfS0lORF9SRUNFSVZFEAESGAoUTU9WRU1FTlRfS0lORF9BREpVU1QQAhIeChpNT1ZFTUVOVF9LSU5EX1RSQU5TRkVSX09VVBADEh0KGU1PVkVNRU5UX0tJTkRfVFJBTlNGRVJfSU4QBBIWChJNT1ZFTUVOVF9LSU5EX1BJQ0sQBRIWChJNT1ZFTUVOVF9LSU5EX01PVkUQBjKCBQoQSW52ZW50b3J5U2VydmljZRJgCglTdG9ja0xpc3QSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlc3BvbnNlEmkKDFN0b2NrSGlzdG9yeRIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVxdWVzdBosLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVzcG9uc2USaQoMU3RvY2tSZWNlaXZlEisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXNwb25zZRJmCgtTdG9ja0FkanVzdBIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tBZGp1c3RSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlc3BvbnNlEmwKDVN0b2NrVHJhbnNmZXISLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXF1ZXN0Gi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1RyYW5zZmVyUmVzcG9uc2USYAoJU3RvY2tNb3ZlEigud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -375,6 +375,118 @@ export const StockAdjustResponseSchema: GenMessage<StockAdjustResponse> = /*@__P
   messageDesc(file_warehouse_inventory_v1_inventory, 9);
 
 /**
+ * One end of a move (#136): a shelf, or the not-yet-shelved pile. Both are real PLACES — "unplaced" is
+ * where stock sits before anyone puts it away, not an absence.
+ *
+ * @generated from message warehouse.inventory.v1.StockPlace
+ */
+export type StockPlace = Message<"warehouse.inventory.v1.StockPlace"> & {
+  /**
+   * @generated from oneof warehouse.inventory.v1.StockPlace.place
+   */
+  place: {
+    /**
+     * Must be a rack of the scoped warehouse — another warehouse's rack reads as NotFound.
+     *
+     * @generated from field: uint64 rack_id = 1;
+     */
+    value: bigint;
+    case: "rackId";
+  } | {
+    /**
+     * The not-yet-shelved pile. Only `true` is meaningful.
+     *
+     * @generated from field: bool unplaced = 2;
+     */
+    value: boolean;
+    case: "unplaced";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.StockPlace.
+ * Use `create(StockPlaceSchema)` to create a new message.
+ */
+export const StockPlaceSchema: GenMessage<StockPlace> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 10);
+
+/**
+ * @generated from message warehouse.inventory.v1.StockMoveRequest
+ */
+export type StockMoveRequest = Message<"warehouse.inventory.v1.StockMoveRequest"> & {
+  /**
+   * @generated from field: uint64 warehouse_id = 1;
+   */
+  warehouseId: bigint;
+
+  /**
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+
+  /**
+   * Where it is now, and where it is going. Both required — a move has two ends, and the whole point
+   * of this RPC is that it never guesses either of them.
+   *
+   * The two cases the issue names are both just values here: `from: unplaced, to: rack` is shelving
+   * what arrived, and `from: rack, to: rack` is re-organising. One verb, because they are one act.
+   *
+   * @generated from field: warehouse.inventory.v1.StockPlace from = 3;
+   */
+  from?: StockPlace;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.StockPlace to = 4;
+   */
+  to?: StockPlace;
+
+  /**
+   * How much to move. Moving MORE than the source holds is refused — the ledger must never record
+   * goods leaving a place that did not have them.
+   *
+   * @generated from field: int64 quantity = 5;
+   */
+  quantity: bigint;
+
+  /**
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.StockMoveRequest.
+ * Use `create(StockMoveRequestSchema)` to create a new message.
+ */
+export const StockMoveRequestSchema: GenMessage<StockMoveRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 11);
+
+/**
+ * @generated from message warehouse.inventory.v1.StockMoveResponse
+ */
+export type StockMoveResponse = Message<"warehouse.inventory.v1.StockMoveResponse"> & {
+  /**
+   * Both legs, in order: off the source, onto the destination. Each carries its own place's new
+   * balance — that is what a movement means now (#135).
+   *
+   * @generated from field: warehouse.inventory.v1.StockMovement from_movement = 1;
+   */
+  fromMovement?: StockMovement;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.StockMovement to_movement = 2;
+   */
+  toMovement?: StockMovement;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.StockMoveResponse.
+ * Use `create(StockMoveResponseSchema)` to create a new message.
+ */
+export const StockMoveResponseSchema: GenMessage<StockMoveResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 12);
+
+/**
  * @generated from message warehouse.inventory.v1.StockTransferRequest
  */
 export type StockTransferRequest = Message<"warehouse.inventory.v1.StockTransferRequest"> & {
@@ -411,7 +523,7 @@ export type StockTransferRequest = Message<"warehouse.inventory.v1.StockTransfer
  * Use `create(StockTransferRequestSchema)` to create a new message.
  */
 export const StockTransferRequestSchema: GenMessage<StockTransferRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory, 10);
+  messageDesc(file_warehouse_inventory_v1_inventory, 13);
 
 /**
  * @generated from message warehouse.inventory.v1.StockTransferResponse
@@ -433,7 +545,7 @@ export type StockTransferResponse = Message<"warehouse.inventory.v1.StockTransfe
  * Use `create(StockTransferResponseSchema)` to create a new message.
  */
 export const StockTransferResponseSchema: GenMessage<StockTransferResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_inventory, 11);
+  messageDesc(file_warehouse_inventory_v1_inventory, 14);
 
 /**
  * MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -472,6 +584,19 @@ export enum MovementKind {
    * @generated from enum value: MOVEMENT_KIND_PICK = 5;
    */
   PICK = 5,
+
+  /**
+   * Stock moved from one place to another INSIDE one warehouse (#136) — shelving what arrived, or
+   * re-organising a shelf. The warehouse's total does not change; only where it sits does, which is
+   * what makes it a different fact from a receive.
+   *
+   * ONE kind, not an OUT/IN pair like a transfer. A transfer needs two because its legs are in two
+   * WAREHOUSES, and each side only ever sees its own; both legs of a move are in the same warehouse,
+   * so a reader sees the pair together and the rack plus the sign already tell the story.
+   *
+   * @generated from enum value: MOVEMENT_KIND_MOVE = 6;
+   */
+  MOVE = 6,
 }
 
 /**
@@ -533,6 +658,16 @@ export const InventoryService: GenService<{
     methodKind: "unary";
     input: typeof StockTransferRequestSchema;
     output: typeof StockTransferResponseSchema;
+  },
+  /**
+   * Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
+   *
+   * @generated from rpc warehouse.inventory.v1.InventoryService.StockMove
+   */
+  stockMove: {
+    methodKind: "unary";
+    input: typeof StockMoveRequestSchema;
+    output: typeof StockMoveResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_inventory_v1_inventory, 0);

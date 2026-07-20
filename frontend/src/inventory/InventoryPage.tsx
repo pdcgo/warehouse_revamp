@@ -8,13 +8,15 @@ import {
   Icon,
   IconButton,
   Input,
+  Menu,
+  Portal,
   Spacer,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Pencil, Plus } from "lucide-react";
+import { ArrowRightLeft, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { inventoryClient, productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -23,6 +25,7 @@ import { TeamSelect } from "../components/TeamSelect";
 import { Pagination } from "../components/Pagination";
 import { ReceiveStockDialog } from "./ReceiveStockDialog";
 import { AdjustStockDialog } from "./AdjustStockDialog";
+import { MoveStockDialog } from "./MoveStockDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // StockList is not filterable by product, so we pull a generous page of levels and join client-side.
@@ -55,9 +58,10 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [dialog, setDialog] = useState<{ kind: "receive" | "adjust"; product: Product } | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<{
+    kind: "receive" | "adjust" | "move";
+    product: Product;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (warehouseId === undefined) {
@@ -164,6 +168,11 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                       <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.sku}`}>
                         {stock.toString()}
                       </Table.Cell>
+                      {/* Receive stays inline — it is the one action someone comes to this row to do,
+                          and burying the common case behind a kebab costs a click every time. Adjust
+                          and Move collapse into the overflow: three actions is where the house rule
+                          says a row stops being a row and starts being a toolbar, and #136's Move is
+                          what pushed this one over. */}
                       <Table.Cell textAlign="end">
                         <HStack justify="end" gap="1">
                           <Button
@@ -175,15 +184,43 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                             <Icon as={Plus} boxSize="4" />
                             {t("inventory.receive")}
                           </Button>
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            aria-label={t("inventory.adjust")}
-                            data-testid={`adjust-${product.sku}`}
-                            onClick={() => setDialog({ kind: "adjust", product })}
-                          >
-                            <Icon as={Pencil} boxSize="4" />
-                          </IconButton>
+
+                          <Menu.Root>
+                            <Menu.Trigger asChild>
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                aria-label={t("inventory.rowActions")}
+                                data-testid={`row-actions-${product.sku}`}
+                              >
+                                <Icon as={MoreHorizontal} boxSize="4" />
+                              </IconButton>
+                            </Menu.Trigger>
+
+                            <Portal>
+                              <Menu.Positioner>
+                                <Menu.Content>
+                                  <Menu.Item
+                                    value="adjust"
+                                    data-testid={`adjust-${product.sku}`}
+                                    onClick={() => setDialog({ kind: "adjust", product })}
+                                  >
+                                    <Icon as={Pencil} boxSize="4" />
+                                    {t("inventory.adjust")}
+                                  </Menu.Item>
+
+                                  <Menu.Item
+                                    value="move"
+                                    data-testid={`move-${product.sku}`}
+                                    onClick={() => setDialog({ kind: "move", product })}
+                                  >
+                                    <Icon as={ArrowRightLeft} boxSize="4" />
+                                    {t("inventory.move")}
+                                  </Menu.Item>
+                                </Menu.Content>
+                              </Menu.Positioner>
+                            </Portal>
+                          </Menu.Root>
                         </HStack>
                       </Table.Cell>
                     </Table.Row>
@@ -226,6 +263,20 @@ export function InventoryPage({ title }: { title?: string } = {}) {
 
       {dialog?.kind === "adjust" && warehouseId !== undefined && (
         <AdjustStockDialog
+          key={dialog.product.id.toString()}
+          warehouseId={warehouseId}
+          product={dialog.product}
+          currentOnHand={onHand.get(dialog.product.id.toString()) ?? 0n}
+          open
+          onOpenChange={(o) => {
+            if (!o) setDialog(null);
+          }}
+          onDone={() => void load()}
+        />
+      )}
+
+      {dialog?.kind === "move" && warehouseId !== undefined && (
+        <MoveStockDialog
           key={dialog.product.id.toString()}
           warehouseId={warehouseId}
           product={dialog.product}
