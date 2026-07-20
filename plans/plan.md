@@ -101,8 +101,19 @@ For each: who does it, what triggers it, what they touch, what can go wrong.
       - Batch picking was considered and not chosen: far more efficient at volume, but it needs a
         sorting step and guards against one order's goods being confused with another's. Worth
         revisiting when volume demands it; the per-order data does not change if it is.
-- [ ] **Packing** — what gets checked? what gets printed?
-- [ ] **Handover to courier** — what's recorded?
+- [x] **What the crew RECORDS as they work** — **PICKING → PACKED → SHIPPED** (owner, 2026-07-20).
+      Three states, each an action a person starts and finishes, so an order being worked on right now
+      is visibly different from one nobody has touched. An order today has only PLACED / CONFIRMED /
+      CANCELLED, so these are genuinely new (#71).
+      - **DELIVERED was considered and not taken**: it needs a source of truth for "it arrived" — a
+        courier webhook, or someone updating it by hand — and neither exists. Add it when there is
+        something to populate it, not before.
+      - "Just record it shipped" was also rejected: it is the smallest build, but an order mid-pick
+        would look identical to one nobody had started, which is exactly the thing a crew needs to see.
+- [ ] **Packing** — what gets *checked*? what gets *printed*? *(The STATE is decided above; what
+      physically happens at the packing bench — a label, a checklist, a weight — is still open.)*
+- [ ] **Handover to courier** — what's recorded? *(SHIPPED exists as a state; whether a resi/tracking
+      number is captured at that moment is still open.)*
 - [x] **Counting / stock-take** — how often, who, how is it reconciled? → **It counts a SHELF** (#139).
       Someone stands at A-01-3, counts what is on it, and corrects *that place*; the correction is an
       ADJUST movement in the ledger naming the shelf, so it is auditable. Warehouse owners/admins do

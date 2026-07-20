@@ -85,6 +85,33 @@ before the margin numbers are trusted. **Owner input welcome, but it does not bl
 
 ---
 
+## ✅ DECIDED (owner, 2026-07-20): revenue is a **stored record in its own service** (#75)
+
+`revenue_service` becomes real: one row per order, written when the order is placed, holding the
+**expected** margin. Not computed on read.
+
+That is a deliberate choice against the cheaper option, and the reasoning matters because the cheaper
+one is genuinely tempting: **#74 already froze everything margin needs** (`total`, `cogs`,
+`shipping_cost`), so a screen could compute `total − cogs − shipping` with no new table at all. What
+the stored record buys is a **home for #76** — settlement compares *expected* against what the payout
+actually was, and "actual" has nowhere to live without a row to put it beside. Computing on read would
+mean building that home later anyway, and migrating the history into it.
+
+**The cost, named rather than glossed:** it is a second copy of numbers the order already holds, so it
+*can* drift. Two things keep it honest —
+
+- it is written **once, at order time**, from figures that are themselves frozen (#74), so there is no
+  ongoing sync to get wrong; and
+- when they disagree, **the order is the source of truth for what was charged** and the revenue row is
+  the source of truth for what was *expected* — they answer different questions, which is why both
+  exist rather than one being a cache of the other.
+
+**Still open, and #77 says to settle it first:** whether revenue is a per-order margin only, or a
+**ledger** (per-team receivable/payable, payouts, team-to-team fees). That decides whether #77 exists
+at all, and it is not answered by this.
+
+---
+
 ## 3. Proposed decomposition (confirm before creating issues)
 
 1. **Order money model** — settle what an order freezes for revenue (jointly with #23 §3.7).
