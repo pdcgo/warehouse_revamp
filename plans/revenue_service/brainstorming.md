@@ -49,6 +49,42 @@ has to track *expected* vs *actual* and reconcile the gap.
 
 ---
 
+## ✅ DECIDED (owner, 2026-07-20): an order freezes **COGS**, and nothing else new (#74)
+
+The order already freezes `subtotal`, `shipping_cost` and `total`. It gains **what the goods cost us**,
+and margin is then computable without any data the system does not have:
+
+```
+margin = total − COGS − shipping_cost
+```
+
+That answers *"did we make money on this order"* today, which is the question actually being asked.
+
+**The full breakdown was considered and deferred**, not rejected: explicit `discount`, `marketplace_fee`,
+`payment_fee` and `warehouse_fee` fields are what #76 (settlement — expected vs actual) will eventually
+need, and they are what would let the server enforce an arithmetic invariant. They were not taken now
+because **nothing can populate them yet**: intake is manual-only (#73), so every one would sit at zero
+while pretending to model something. Add them when marketplace import arrives — which is exactly when
+`total ≠ subtotal + shipping` starts happening for real (§3.7 of the selling doc).
+
+### ⚠ One sub-choice this leaves open, flagged rather than buried
+
+**Which cost?** A product can arrive on several restocks at different prices, so "what the goods cost
+us" is not a single number the system already holds. The options are the usual ones:
+
+| | |
+| --- | --- |
+| **Latest restock price** | simplest; wrong when prices move and old stock is still on the shelf |
+| **Weighted average** | truer; needs a running average maintained per product per warehouse |
+| **FIFO layers** | truest; needs cost layers on stock, which is a real model |
+
+**Implemented as the latest restock price for now**, because it needs nothing new and is right whenever
+prices are stable — and it is recorded on the order line, so changing the *rule* later does not rewrite
+what past orders already froze. If restock prices for the same product vary much, this wants revisiting
+before the margin numbers are trusted. **Owner input welcome, but it does not block #74.**
+
+---
+
 ## 3. Proposed decomposition (confirm before creating issues)
 
 1. **Order money model** — settle what an order freezes for revenue (jointly with #23 §3.7).

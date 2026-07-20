@@ -91,9 +91,16 @@ For each: who does it, what triggers it, what they touch, what can go wrong.
       shelf as it counts, in one step, so nothing routinely sits unplaced. Stock that has arrived but
       is not yet shelved is a real state ("unplaced"), and #136 is how it gets shelved later or moved
       shelf-to-shelf.
-- [ ] **An order needs picking** — how does a person know what to pick and where it is?
-      *(Half-answered: **where it is** is now known — stock is located on a rack (#135) and a rack page
-      shows its contents (#138). **What to pick**, and how a picker is told, is still undesigned.)*
+- [x] **An order needs picking** — how does a person know what to pick and where it is? → **ONE ORDER
+      AT A TIME** (owner, 2026-07-20). A picker takes a single order, walks to the shelves it needs,
+      collects it, packs it. Not batch picking — no collecting for several orders in one trip and
+      sorting them at a bench.
+      - **This maps straight onto what already exists**: the order names its lines, and #135–#138 know
+        which shelf each product sits on, so "here is the order, here is where each line lives" needs
+        no new model — only a screen. That is #71.
+      - Batch picking was considered and not chosen: far more efficient at volume, but it needs a
+        sorting step and guards against one order's goods being confused with another's. Worth
+        revisiting when volume demands it; the per-order data does not change if it is.
 - [ ] **Packing** — what gets checked? what gets printed?
 - [ ] **Handover to courier** — what's recorded?
 - [x] **Counting / stock-take** — how often, who, how is it reconciled? → **It counts a SHELF** (#139).
