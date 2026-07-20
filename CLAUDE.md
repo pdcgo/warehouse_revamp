@@ -387,6 +387,22 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 
 ### The design system
 
+**BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
+`frontend/src/components/` holds 26 of them, 22 previewed with their own description at
+[`/components`](frontend/src/dev/ComponentsPage.tsx) — that gallery is the fastest way to see what
+exists, and it is generated from the components themselves so it cannot drift. `graphify query "what
+shared components exist for <the thing>"` works too.
+
+This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
+The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
+"unplaced" *selectable* while its placeholder stays disabled, because a place is not an absence
+(#136/#139); `SupplierSelect` and `ShippingSelect` had that exact bug and were fixed in #131;
+`ProductListItem`'s stock badge means the **warehouse** total, so a per-shelf number does not belong in
+it (#138). A fresh `<select>` gets none of that.
+
+If nothing fits, prefer **extending the shared component over forking it** — and if you do add one,
+it needs an `export const description` and a gallery entry in the same change (see below).
+
 **Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
 request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
 `Select`/`NativeSelect`, `Table`, `Dialog`, `Stack`, …), never a hand-rolled `<button>`, `<input>`,
