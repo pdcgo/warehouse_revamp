@@ -215,6 +215,41 @@ team that has an arrangement with this warehouse, do this on that team's behalf"
 exempting service calls from the scope check — would have silently weakened the ACL that the entire
 authorization model rests on, in a system whose stance everywhere else is *refuse, do not interpret*.
 
+#### ✅ DECIDED (owner, 2026-07-20): **a stored warehouse ↔ selling-team arrangement.**
+
+A link saying *"selling team A may draw stock from warehouse B"*, which the scope check consults. The
+ACL stays about **who may do what**; it just learns a fact it did not have.
+
+Why this over the alternatives, since all three would have worked:
+
+- **A machine identity** would solve every future cross-service call at once, which is its appeal —
+  but it authorizes a call with **no human accountable on it**. In a system where every stock movement
+  records an actor, that is a real loss, and it would have been taken for convenience rather than need.
+- **Flipping who calls** (the warehouse consumes the order) needs no new auth at all and reuses a
+  pattern that already works — but it makes the deduct **asynchronous**, which brings back exactly the
+  oversell that "deduct at placement" was chosen to prevent. It would have quietly undone an earlier
+  decision, which is the worst kind of change.
+- The arrangement is a **real business fact** — a selling team genuinely does have a relationship with
+  a warehouse — so it is **visible and revocable**, and it fails closed: no link, no draw.
+
+**This is #134-shaped and is being decomposed into sub-issues rather than built in one pass.** It
+touches the access interceptor, which is the most sensitive code in the repo: every RPC's authorization
+runs through it, and a mistake there is silent. The order is deliberate — the model and the scope check
+land and are proven *before* anything depends on them.
+
+**One thing to get right when it is built:** the link must be consulted **in addition to** the existing
+scope check, never instead of it. It widens who may draw stock from a warehouse; it must not widen
+anything else about that warehouse, and a team with a link must still not be able to, say, edit the
+warehouse's racks.
+
+#### ✅ DECIDED (owner, 2026-07-20): `ProductByIds` stays as-is (§4).
+
+Warehouse roles keep the by-ids lookup across teams. A by-ids lookup is not a browse — the caller must
+already know the id, and what comes back is a catalogue label, not money or customers. Warehouses
+physically hold other teams' goods, so reading the label on a box on their own shelf is unremarkable.
+Moving the lookup behind `inventory_service` to enforce "only what it holds" was considered and **not**
+taken: it is real machinery for a bound that is not currently worth its cost.
+
 - The cost is real and accepted: **a cancel must put the stock back**, which is #70. It is a small
   cost, and unlike an oversell it is a thing the system can do correctly.
 - **Reservation was rejected for now, not forever.** It is the truest model — goods sit on the shelf
