@@ -41,3 +41,30 @@ test("the showcase loads, is navigable, and includes the shipping and nested-cat
   await nav.getByRole("link", { name: "CategorySelect" }).click();
   await expect(page).toHaveURL(/#category-select$/);
 });
+
+// #146 — ShippingSelect is a searchable Combobox, and it can be CLEARED back to no courier.
+//
+// The clear is the part worth pinning. No courier is a legitimate value — neither a restock nor an
+// order requires one — and a picker that swallows the empty case is WRITE-ONCE: a courier chosen by
+// mistake can never be removed, though the contract allows it. That exact bug was found in #131, and
+// the combobox conversion is a fresh chance to reintroduce it.
+test("ShippingSelect: search picks a courier, and clearing returns to none (#146)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/components");
+
+  const select = page.getByTestId("shipping-select");
+  await expect(select).toBeVisible();
+
+  // Searchable: typing narrows the list. "sicepat" is one of the seeded couriers.
+  await select.locator("input").fill("sicepat");
+  await page.getByTestId("shipping-select-option-sicepat").click();
+
+  // The gallery demo echoes the emitted CODE — a stable key, not the display name.
+  await expect(page.getByText("Selected code: sicepat")).toBeVisible();
+
+  // And back to none. This is the assertion the write-once bug would fail.
+  await select.locator("input").clear();
+  await select.getByRole("button", { name: /clear/i }).click();
+
+  await expect(page.getByText("Selected code: (none)")).toBeVisible();
+});

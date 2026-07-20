@@ -778,7 +778,8 @@
     },
     "shippingSelect": {
       "placeholder": "Pilih kurir",
-      "unavailable": "Kurir tidak tersedia"
+      "unavailable": "Kurir tidak tersedia",
+      "empty": "Kurir tidak ditemukan"
     }
   },
   "account": {

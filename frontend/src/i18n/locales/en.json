@@ -778,7 +778,8 @@
     },
     "shippingSelect": {
       "placeholder": "Select a courier",
-      "unavailable": "Couriers unavailable"
+      "unavailable": "Couriers unavailable",
+      "empty": "No couriers found"
     }
   },
   "account": {
