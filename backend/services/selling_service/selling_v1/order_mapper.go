@@ -56,6 +56,7 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		Id:            o.ID,
 		TeamId:        o.TeamID,
 		ShopId:        o.ShopID,
+		WarehouseId:   o.WarehouseID,
 		Status:        orderStatusFromText(o.Status),
 		CustomerName:  o.CustomerName,
 		CustomerPhone: o.CustomerPhone,

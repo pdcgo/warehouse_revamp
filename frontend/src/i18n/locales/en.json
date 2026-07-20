@@ -129,6 +129,8 @@
     "deliveryAddress": "Delivery address",
     "customerName": "Customer name",
     "shop": "Shop",
+    "warehouse": "Warehouse",
+    "warehouseHelp": "Which warehouse ships this order. Its stock is taken from here when the order is placed.",
     "addLine": "Add line",
     "shippingCost": "Shipping cost",
     "createOrder": "Create Order",

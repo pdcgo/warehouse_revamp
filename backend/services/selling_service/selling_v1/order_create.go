@@ -20,6 +20,15 @@ func (s *Service) OrderCreate(
 	teamID := req.Msg.GetTeamId()
 	shopID := req.Msg.GetShopId()
 
+	// An order must say which warehouse fulfils it (#72). Proto validation requires it, but this
+	// re-checks rather than trusting the zero value: unit tests bypass the validation interceptor, and
+	// from #69 this id is what stock is deducted FROM — an order that reached the database saying
+	// "warehouse 0" would be an order the system cannot honour, discovered only when someone tries to
+	// ship it. 0 is reserved for rows that predate #72 and must never be written again.
+	if req.Msg.GetWarehouseId() == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errOrderNoWarehouse)
+	}
+
 	var order selling_service_models.Order
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -36,8 +45,11 @@ func (s *Service) OrderCreate(
 		address := req.Msg.GetAddress()
 
 		order = selling_service_models.Order{
-			TeamID:        teamID,
-			ShopID:        shopID,
+			TeamID: teamID,
+			ShopID: shopID,
+			// The warehouse this order ships from (#72), as chosen by whoever typed it — copied onto
+			// the order, never looked up later, so it reads the same forever.
+			WarehouseID:   req.Msg.GetWarehouseId(),
 			Status:        orderStatusPlaced,
 			CustomerName:  req.Msg.GetCustomerName(),
 			CustomerPhone: req.Msg.GetCustomerPhone(),

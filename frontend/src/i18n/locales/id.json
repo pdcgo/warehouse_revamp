@@ -129,6 +129,8 @@
     "deliveryAddress": "Alamat pengiriman",
     "customerName": "Nama pelanggan",
     "shop": "Toko",
+    "warehouse": "Gudang",
+    "warehouseHelp": "Gudang yang mengirim pesanan ini. Stoknya diambil dari sini saat pesanan dibuat.",
     "addLine": "Tambah baris",
     "shippingCost": "Biaya pengiriman",
     "createOrder": "Buat Pesanan",

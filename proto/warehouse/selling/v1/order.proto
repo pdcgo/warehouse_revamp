@@ -104,6 +104,17 @@ message Order {
 
   // The frozen delivery address (#118).
   OrderAddress address = 14;
+
+  // WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
+  // here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
+  //
+  // It is on the ORDER, not looked up from the shop, on purpose: a shop's default changing later
+  // would otherwise silently make old orders read as if they had shipped from a building they never
+  // shipped from. What an order says happened must stay what happened.
+  //
+  // This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
+  // says which warehouse to deduct FROM.
+  uint64 warehouse_id = 15;
 }
 
 message OrderCreateRequest {
@@ -123,6 +134,12 @@ message OrderCreateRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Which warehouse fulfils it (#72). REQUIRED, and deliberately so: from #69 an order takes its
+  // stock out of this warehouse at placement, and an order that cannot say where its goods come from
+  // is not an order the system can honour. Making it optional would mean inventing a default at the
+  // moment stock moves, which is the guess this whole design refuses.
+  uint64 warehouse_id = 12 [(buf.validate.field).uint64.gt = 0];
 
   string customer_name = 3 [(buf.validate.field).string = {
     min_len: 1

@@ -19,7 +19,7 @@ func TestOrder_CreateThenDetail(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S1", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID,
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", CustomerPhone: "0812-000",
 		Address: &sellingv1.OrderAddress{
 			ProvinsiCode: "11", ProvinsiName: "Aceh",
@@ -79,7 +79,7 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S-NOADDR", "shopee")
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 2, ShopId: shopID,
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Tanpa Alamat", ShippingCode: "jne",
 		Subtotal: 10000, ShippingCost: 0, Total: 10000,
 		Items: []*sellingv1.OrderItem{
@@ -107,7 +107,7 @@ func TestOrder_CreateShopNotInTeam(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "S2", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
-		TeamId: 3, ShopId: shopID, CustomerName: "X", Subtotal: 1, Total: 1,
+		TeamId: 3, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: "X", Subtotal: 1, Total: 1,
 		Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 1}},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -124,7 +124,7 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 
 	create := func(name string) uint64 {
 		r, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
-			TeamId: 2, ShopId: shopID, CustomerName: name, Subtotal: 100, Total: 100,
+			TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse, CustomerName: name, Subtotal: 100, Total: 100,
 			Items: []*sellingv1.OrderItem{{ProductId: 1, Sku: "S", Name: "N", Quantity: 1, UnitPrice: 100}},
 		}))
 		if err != nil {
@@ -154,5 +154,54 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 	_, err = svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{TeamId: 3, OrderId: id1}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team detail code = %v, want NotFound", connect.CodeOf(err))
+	}
+}
+
+// #72 — an order names the warehouse that fulfils it, chosen per order and stored rather than
+// inferred. It round-trips, and an order that names none is refused: from #69 this id is what stock
+// is deducted FROM, so an order without one is one the system cannot honour.
+func TestOrderCreate_NamesItsWarehouse(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse,
+		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if got := created.Msg.GetOrder().GetWarehouseId(); got != testWarehouse {
+		t.Fatalf("warehouse did not round-trip on create: %d, want %d", got, testWarehouse)
+	}
+
+	// And it is STORED, not just echoed — read it back through Detail.
+	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	if got := detail.Msg.GetOrder().GetWarehouseId(); got != testWarehouse {
+		t.Fatalf("warehouse as STORED = %d, want %d", got, testWarehouse)
+	}
+
+	// An order that names no warehouse is refused. Proto validation rejects it at the boundary, but
+	// unit tests bypass the interceptor — which is exactly why the handler re-checks.
+	_, err = svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shop,
+		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 1, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+		t.Fatalf("an order with no warehouse = %v, want InvalidArgument", code)
 	}
 }

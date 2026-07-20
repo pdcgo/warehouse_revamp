@@ -17,6 +17,10 @@ const SHOP_NAME = `E2E Order Shop ${SUFFIX}`;
 const SKU = `OP${SUFFIX}`;
 const PRODUCT_NAME = `E2E Order Product ${SUFFIX}`;
 const CUSTOMER = `E2E Customer ${SUFFIX}`;
+// An order names the warehouse that ships it (#72), so this spec creates its own rather than
+// depending on warehouses.spec.ts having run first.
+const WH_CODE = `OWH${SUFFIX}`.slice(0, 10);
+const WH_NAME = `E2E Order Warehouse ${SUFFIX}`;
 const STREET = "Jl. E2E No. 1";
 
 // The one region chain the e2e DB is seeded with (e2e/fixtures/regions.csv) — five rows, enough to
@@ -74,6 +78,9 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await page.getByTestId(`product-select-option-${SKU}`).click();
   await page.getByTestId("order-line-qty-0").fill("1");
   await page.getByTestId("order-line-price-0").fill("10000");
+  // Which warehouse ships it (#72) — required, so the form cannot submit without it.
+  await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
+  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
   await page.getByTestId("order-create-save").click();
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
 }
@@ -87,6 +94,26 @@ test("Orders: the orders screen is reachable and starts empty", async ({ page })
 
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId("orders-empty")).toBeVisible();
+});
+
+// An order names the warehouse that ships it (#72), so this spec creates its own rather than
+// depending on warehouses.spec.ts having run first.
+//
+// It runs BEFORE the shop/product setup deliberately: creating a team leaves the app on the Teams
+// screen, and the shop/product setup is what puts the selling team back in context for the order
+// form. Doing it the other way round left the form pointed at the new warehouse, which has no shops.
+test("setup: a warehouse for the order to ship from (#72)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Warehouses live on a TAB of the Teams page, not their own route. The sidebar link is scoped to
+  // the nav because a detail page carries a breadcrumb "Teams" link too.
+  await page.getByRole("navigation").first().getByRole("link", { name: "Teams", exact: true }).click();
+  await page.getByTestId("teams-tab-warehouse").click();
+  await page.getByTestId("open-create-warehouse").click();
+  await page.getByTestId("new-team-name").fill(WH_NAME);
+  await page.getByTestId("new-team-code").fill(WH_CODE);
+  await page.getByTestId("submit-create-team").click();
+  await expect(page.getByTestId(`team-row-${WH_CODE}`)).toBeVisible();
 });
 
 test("setup: a category, a shop, and a product for the order to reference", async ({ page }) => {
@@ -159,6 +186,13 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Shipping adds on top: total = subtotal + shipping.
   await page.getByTestId("order-create-shipping-cost").fill("5000");
   await expect(page.getByTestId("order-create-total")).toHaveText("Rp 35.000");
+
+  // Everything else is filled, but the order still cannot be placed: it has not said WHICH warehouse
+  // ships it (#72), and from #69 that is the building the stock actually leaves.
+  await expect(page.getByTestId("order-create-save")).toBeDisabled();
+
+  await page.getByTestId("order-warehouse").locator("input").fill(WH_CODE);
+  await page.getByTestId(`team-select-option-${WH_CODE}`).click();
 
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
   await page.getByTestId("order-create-save").click();

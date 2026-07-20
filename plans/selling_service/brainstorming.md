@@ -143,9 +143,45 @@ Three honest options, and it ties to the reservation question already open in
 
 | Option | When stock leaves | Trade-off |
 | --- | --- | --- |
-| Deduct at placement | immediately | simplest; oversell impossible; but a cancel must return stock |
+| **Deduct at placement** ✅ | immediately | simplest; oversell impossible; but a cancel must return stock |
 | **Reserve** at placement, deduct at pick | held, then taken | needs a reservation concept inventory doesn't have yet |
 | Deduct at pick only | when the warehouse picks | stock looks available until picked → oversell risk |
+
+**✅ DECIDED (owner, 2026-07-20): deduct at PLACEMENT.** Stock leaves the moment the order is placed
+(#69), so **the number on screen is the number you have** — oversell is impossible by construction
+rather than by luck. That is the same stance the warehouse side has taken throughout: never let a
+number say something nobody observed.
+
+**✅ And how the two services talk (owner, 2026-07-20): SYNCHRONOUS RPC, stock first, then the order.**
+This is the **first service-to-service call in the system** — nothing called anything before it — so it
+sets the pattern the next one inherits, and it was chosen deliberately rather than by default.
+
+The decision only looks like plumbing. It is actually what makes "deduct at placement" *true*:
+
+| | |
+| --- | --- |
+| **Sync RPC** ✅ | the deduct happens **before** the order exists. Not enough stock → no order. The guarantee holds. |
+| Event (Pub/Sub) | the order is written, the deduct lands moments later — so two orders placed in the same second are both accepted, and **that is an oversell**. It would have quietly undone the decision above. |
+
+The event path was tempting because `pkgs/event_source` already exists and it keeps the services more
+independent. It was rejected for this call specifically, **not in general** — an event is right for
+telling other services something *has happened*; it is wrong for asking permission, and a stock deduct
+is asking permission.
+
+**The cost, stated plainly:** two databases, no shared transaction. If the order write fails *after* a
+successful deduct, stock is decremented for an order that does not exist. That is recoverable — the
+movement is in the ledger with a reason, so it can be found and reversed — but it needs a compensating
+reversal rather than a rollback, and #70's cancel path is the same machinery. This is the classic
+distributed-write trade, taken with open eyes: a rare recoverable inconsistency beats a routine
+oversell.
+
+- The cost is real and accepted: **a cancel must put the stock back**, which is #70. It is a small
+  cost, and unlike an oversell it is a thing the system can do correctly.
+- **Reservation was rejected for now, not forever.** It is the truest model — goods sit on the shelf
+  until someone picks them — but inventory has no reservation concept, so it means a new on-hand vs
+  available split touching every stock read. Revisit it if picking (§1, #71) ever needs to know what
+  is spoken for. Until then, "available" and "on hand" being the same number is a simplification the
+  system is honest about rather than a thing it gets wrong.
 
 ### 3.4 Where do orders come from (intake)?
 - Manual entry (a CS person types it in).
@@ -155,6 +191,18 @@ Three honest options, and it ties to the reservation question already open in
 
 Each implies different `OrderCreate` ergonomics and a different `source`/`ref_id` story.
 
+**✅ DECIDED (owner, 2026-07-20): manual entry only, for now** (#73). A CS person types the order in,
+which is exactly what `OrderCreate` + the #90 form already do — so **#73 needs no new code**, and its
+value was in the decision rather than the build.
+
+- **Marketplace import and a public API are NOT rejected, just not now.** Both remain in §3.4 as
+  future paths, and the `source`/`ref_id` story stays unwritten until one is chosen — inventing it
+  ahead of a real import would be guessing at a shape nobody has seen.
+- Worth remembering when import does arrive: the implementation finding in §3.7 below says the server
+  cannot safely assert `total == subtotal + shipping`, because a marketplace's buyer-paid total
+  legitimately differs (vouchers, subsidies, coins). Manual entry is the case where that arithmetic
+  *would* hold — so an import is what forces the `discount`/`fee` fields, not the other way round.
+
 ### 3.5 Shops — what is a shop, and does selling own it?
 A selling team likely operates several marketplace shops. Minimum shape: name, marketplace type,
 maybe credentials/metadata. Does `shop` belong to a new `selling_service`, or is it its own
@@ -163,6 +211,23 @@ service? Who can manage shops (team owner/admin)?
 ### 3.6 Which warehouse fulfils an order, and how does the crew see it?
 Per-order choice? A shop default? Auto-pick by stock? And the warehouse crew's fulfillment
 screen is **§1 territory** again.
+
+**✅ DECIDED (owner, 2026-07-20): chosen PER ORDER** (#72). Whoever types the order picks the
+warehouse, and the order stores it. Nothing is inferred.
+
+This had to be settled before #69 could exist at all: "deduct at placement" is meaningless until an
+order says *which warehouse to deduct from*, and an `Order` had no `warehouse_id` — the proto said so
+explicitly, deferring it to §1.
+
+- **A shop default was the tempting alternative** and was not taken: it is less typing, but it infers
+  a physical fact from a configuration value, and a shop's default changing later would silently make
+  old orders read as if they had shipped from somewhere they did not. Per-order is one more field and
+  no inference.
+- **Auto-by-stock was rejected as underspecified rather than wrong.** It needs rules nobody has: what
+  if two warehouses qualify, what if none can fill the order alone, is a split across warehouses one
+  order or two. Those are worth answering when volume demands it — and the per-order field is what an
+  auto-picker would *fill in* later, so this decision does not block it.
+- The warehouse crew's **fulfilment screen** is still §1 territory (#71) and untouched by this.
 
 ### 3.7 The money the order records (feeds #32)
 What does an order freeze for the revenue side — buyer-paid total, COGS, shipping cost, warehouse

@@ -10,6 +10,14 @@ type Order struct {
 	TeamID uint64
 	ShopID uint64
 
+	// WHICH WAREHOUSE fulfils this order (#72) — chosen per order, stored here rather than inferred
+	// from the shop, so a shop's default changing later cannot rewrite where past orders shipped from.
+	// Opaque team_service id; no FK. 0 means "recorded before orders named a warehouse" and is not a
+	// valid warehouse — the contract requires one on create, so zeros are historical only.
+	//
+	// #69 takes this order's stock out of THIS warehouse at placement; #70 puts it back on cancel.
+	WarehouseID uint64
+
 	// The OrderStatus enum stored as text ("placed", …) — mapped in selling_v1/order_mapper.go. No
 	// DB CHECK (the mapper + proto validation guard it; cf. #80).
 	Status string

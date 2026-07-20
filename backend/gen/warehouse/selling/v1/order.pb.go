@@ -313,7 +313,17 @@ type Order struct {
 	Items         []*OrderItem `protobuf:"bytes,12,rep,name=items,proto3" json:"items,omitempty"`
 	CreatedAtUnix int64        `protobuf:"varint,13,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	// The frozen delivery address (#118).
-	Address       *OrderAddress `protobuf:"bytes,14,opt,name=address,proto3" json:"address,omitempty"`
+	Address *OrderAddress `protobuf:"bytes,14,opt,name=address,proto3" json:"address,omitempty"`
+	// WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
+	// here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
+	//
+	// It is on the ORDER, not looked up from the shop, on purpose: a shop's default changing later
+	// would otherwise silently make old orders read as if they had shipped from a building they never
+	// shipped from. What an order says happened must stay what happened.
+	//
+	// This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
+	// says which warehouse to deduct FROM.
+	WarehouseId   uint64 `protobuf:"varint,15,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -439,16 +449,28 @@ func (x *Order) GetAddress() *OrderAddress {
 	return nil
 }
 
+func (x *Order) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
+}
+
 type OrderCreateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ShopId        uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	CustomerName  string                 `protobuf:"bytes,3,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
-	CustomerPhone string                 `protobuf:"bytes,4,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	ShippingCode  string                 `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
-	Subtotal      int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	ShippingCost  int64                  `protobuf:"varint,8,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
-	Total         int64                  `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// Which warehouse fulfils it (#72). REQUIRED, and deliberately so: from #69 an order takes its
+	// stock out of this warehouse at placement, and an order that cannot say where its goods come from
+	// is not an order the system can honour. Making it optional would mean inventing a default at the
+	// moment stock moves, which is the guess this whole design refuses.
+	WarehouseId   uint64 `protobuf:"varint,12,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	CustomerName  string `protobuf:"bytes,3,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
+	CustomerPhone string `protobuf:"bytes,4,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
+	ShippingCode  string `protobuf:"bytes,6,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
+	Subtotal      int64  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
+	ShippingCost  int64  `protobuf:"varint,8,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
+	Total         int64  `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
 	// At least one line; `id` on each is ignored.
 	Items []*OrderItem `protobuf:"bytes,10,rep,name=items,proto3" json:"items,omitempty"`
 	// The delivery address, snapshotted onto the order. Optional — exactly as the free text it
@@ -499,6 +521,13 @@ func (x *OrderCreateRequest) GetTeamId() uint64 {
 func (x *OrderCreateRequest) GetShopId() uint64 {
 	if x != nil {
 		return x.ShopId
+	}
+	return 0
+}
+
+func (x *OrderCreateRequest) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
 	}
 	return 0
 }
@@ -1026,7 +1055,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\tdesa_name\x18\b \x01(\tR\bdesaName\x12\x19\n" +
 	"\bkode_pos\x18\t \x01(\tR\akodePos\x12!\n" +
 	"\faddress_line\x18\n" +
-	" \x01(\tR\vaddressLine\"\x81\x04\n" +
+	" \x01(\tR\vaddressLine\"\xa4\x04\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1041,10 +1070,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x05total\x18\v \x01(\x03R\x05total\x125\n" +
 	"\x05items\x18\f \x03(\v2\x1f.warehouse.selling.v1.OrderItemR\x05items\x12&\n" +
 	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\x12<\n" +
-	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddressJ\x04\b\a\x10\bR\x10customer_address\"\x81\x04\n" +
+	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12!\n" +
+	"\fwarehouse_id\x18\x0f \x01(\x04R\vwarehouseIdJ\x04\b\a\x10\bR\x10customer_address\"\xad\x04\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
-	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12/\n" +
+	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
+	"\fwarehouse_id\x18\f \x01(\x04B\a\xbaH\x042\x02 \x00R\vwarehouseId\x12/\n" +
 	"\rcustomer_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\fcustomerName\x12.\n" +
 	"\x0ecustomer_phone\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(R\rcustomerPhone\x12,\n" +

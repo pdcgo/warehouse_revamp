@@ -20,6 +20,8 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { orderClient, rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
 import { ShopSelect } from "../components/ShopSelect";
+import { TeamSelect } from "../components/TeamSelect";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { ProductSelect } from "../components/ProductSelect";
 import type { PickedProduct } from "../components/ProductSelect";
 import { AddressPicker, emptyAddress } from "../components/AddressPicker";
@@ -89,6 +91,11 @@ export function OrderCreatePage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [shopId, setShopId] = useState<bigint>(0n);
+
+  // Which warehouse fulfils this order (#72). Chosen per order and required: from #69 the order takes
+  // its stock out of this warehouse the moment it is placed, so there is no sensible default to fall
+  // back on — a guess here would move real goods out of the wrong building.
+  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   const [shippingCode, setShippingCode] = useState("");
   const [shippingCost, setShippingCost] = useState("0");
   const [lines, setLines] = useState<LineDraft[]>(() => [freshLine()]);
@@ -116,7 +123,8 @@ export function OrderCreatePage() {
   const total = subtotal + toRupiah(shippingCost);
 
   const linesValid = lines.every((l) => l.productId > 0n && toQty(l.quantity) >= 1);
-  const canSave = customerName.trim() !== "" && shopId > 0n && lines.length >= 1 && linesValid;
+  const canSave =
+    customerName.trim() !== "" && shopId > 0n && warehouseId > 0n && lines.length >= 1 && linesValid;
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -132,6 +140,7 @@ export function OrderCreatePage() {
       const res = await orderClient.orderCreate({
         teamId,
         shopId,
+        warehouseId,
         customerName,
         customerPhone,
         address: addressTouched(address) ? address : undefined,
@@ -219,6 +228,21 @@ export function OrderCreatePage() {
                 <Field.Root required>
                   <Field.Label>{t("orders.shop")}</Field.Label>
                   <ShopSelect teamId={teamId ?? 0n} value={shopId} onChange={setShopId} />
+                </Field.Root>
+
+                {/* Which warehouse ships it (#72). Required, and starts unchosen: from #69 this is
+                    the building the stock actually leaves, so a default would move real goods out of
+                    somewhere nobody picked. */}
+                <Field.Root required>
+                  <Field.Label>{t("orders.warehouse")}</Field.Label>
+                  <Box w="full" data-testid="order-warehouse">
+                    <TeamSelect
+                      teamType={TeamType.WAREHOUSE}
+                      value={warehouseId}
+                      onChange={setWarehouseId}
+                    />
+                  </Box>
+                  <Field.HelperText>{t("orders.warehouseHelp")}</Field.HelperText>
                 </Field.Root>
 
                 <Field.Root>

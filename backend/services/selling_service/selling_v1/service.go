@@ -35,6 +35,10 @@ func NewService(db *gorm.DB) *Service {
 
 var errShopMissing = errors.New("shop not found")
 
+// #72: an order must say which warehouse fulfils it. From #69 that id is what stock is deducted from,
+// so an order without one is an order the system cannot honour.
+var errOrderNoWarehouse = errors.New("an order must say which warehouse fulfils it")
+
 func notFound() error {
 	return connect.NewError(connect.CodeNotFound, errShopMissing)
 }
