@@ -32,6 +32,9 @@ service InventoryService {
   // What products COST this warehouse, for an order to freeze as its COGS (#74).
   rpc StockCost(StockCostRequest) returns (StockCostResponse);
 
+  // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
+  rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse);
+
   // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
   rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
 }
@@ -506,4 +509,40 @@ message StockPickLocationsResponse {
   // that grows. It is a detail-of-one-entity read, the same category as RestockRequestDetail's items.
   // The moment it could serve many picks at once it stops being exempt and takes a page filter.
   repeated StockPickLocation locations = 1;
+}
+
+// WarehouseProductList — the products THIS WAREHOUSE HANDLES (#142).
+//
+// A warehouse must not see the whole catalogue. It holds no products of its own — products belong to
+// selling teams — so the ordinary team-scoped ProductList shows a warehouse team nothing useful. What
+// it should see is what somebody has asked it to hold, which today means the products named on a
+// restock request sent to it (owner, 2026-07-20).
+message WarehouseProductListRequest {
+  // Read: the warehouse's own people. This is their catalogue.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Grows with every product the warehouse is asked to handle, so it pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message WarehouseProductListResponse {
+  // Product IDS, not products — and that is deliberate.
+  //
+  // inventory_service does not own the catalogue and must not mirror it (HARD RULE 3). The names and
+  // SKUs come from product_service via ProductByIds, in one follow-up call. Returning copies here would
+  // put a product's name in two places, and the copy would go stale the first time somebody renamed it.
+  repeated uint64 product_ids = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
 }

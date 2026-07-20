@@ -19,7 +19,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { productClient, rpcError } from "../api/clients";
+import { inventoryClient, productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
@@ -46,6 +46,8 @@ export function ProductsPage() {
   const [error, setError] = useState("");
 
   const teamId = current?.teamId;
+  // A warehouse reads a different list entirely — see load().
+  const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
 
   const load = useCallback(async () => {
     if (teamId === undefined) {
@@ -56,6 +58,38 @@ export function ProductsPage() {
     setError("");
 
     try {
+      // A WAREHOUSE's catalogue is a different question (#142).
+      //
+      // It owns no products — products belong to selling teams — so ProductList, scoped to the team
+      // that OWNS them, correctly returns nothing for a warehouse. What a warehouse should see is what
+      // somebody has asked it to hold, which is inventory_service's arrangement list.
+      //
+      // Two calls, deliberately: inventory returns product IDS and product_service turns them into
+      // names. Mirroring the catalogue into inventory would put a product's name in two places, and the
+      // copy would go stale the first time anyone renamed it.
+      if (isWarehouse) {
+        const arrangement = await inventoryClient.warehouseProductList({
+          warehouseId: teamId,
+          page: { page, limit: pageSize },
+        });
+
+        setTotalItems(Number(arrangement.pageInfo?.totalItems ?? 0n));
+
+        // No ids means no second call — ProductByIds with an empty list is a request for nothing.
+        if (arrangement.productIds.length === 0) {
+          setProducts([]);
+          return;
+        }
+
+        const resolved = await productClient.productByIds({
+          teamId,
+          productIds: arrangement.productIds,
+        });
+
+        setProducts(resolved.products);
+        return;
+      }
+
       const res = await productClient.productList({
         teamId,
         q,
@@ -70,7 +104,7 @@ export function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, q, page, pageSize]);
+  }, [teamId, isWarehouse, q, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -121,18 +155,22 @@ export function ProductsPage() {
         )}
       </Flex>
 
-      <HStack>
-        <Input
-          maxW="sm"
-          placeholder={t("products.searchPlaceholder")}
-          value={q}
-          data-testid="product-search"
-          onChange={(e) => {
-            setPage(1);
-            setQ(e.target.value);
-          }}
-        />
-      </HStack>
+      {/* No search for a warehouse (#142): WarehouseProductList takes no query, so the box would look
+          like a working control and do nothing. A dead input is worse than an absent one. */}
+      {!isWarehouse && (
+        <HStack>
+          <Input
+            maxW="sm"
+            placeholder={t("products.searchPlaceholder")}
+            value={q}
+            data-testid="product-search"
+            onChange={(e) => {
+              setPage(1);
+              setQ(e.target.value);
+            }}
+          />
+        </HStack>
+      )}
 
       {error && (
         <Text color="red.fg" data-testid="products-error">
@@ -191,7 +229,12 @@ export function ProductsPage() {
 
                   {/* Row-action clicks must not bubble to the row's navigate. */}
                   <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                    {/* A warehouse HANDLES these products; it does not own them (#142). Editing or
+                        deleting somebody else's catalogue entry is not its call — and ProductUpdate /
+                        ProductDelete are scoped to the OWNING team, so these would only ever produce a
+                        refusal. Offering an action that cannot work is worse than omitting it. */}
                     <HStack justify="end" gap="1">
+                      {!isWarehouse && (
                       <IconButton
                         size="xs"
                         variant="ghost"
@@ -201,7 +244,9 @@ export function ProductsPage() {
                       >
                         <Icon as={Pencil} boxSize="4" />
                       </IconButton>
+                      )}
 
+                      {!isWarehouse && (
                       <ConfirmDialog
                         title={t("products.deleteDialog.title")}
                         message={t("products.deleteDialog.message", { sku: product.sku })}
@@ -219,6 +264,7 @@ export function ProductsPage() {
                           </IconButton>
                         }
                       />
+                      )}
                     </HStack>
                   </Table.Cell>
                 </Table.Row>

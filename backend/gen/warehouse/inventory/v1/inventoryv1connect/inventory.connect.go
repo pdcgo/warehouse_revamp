@@ -60,6 +60,9 @@ const (
 	// InventoryServiceStockCostProcedure is the fully-qualified name of the InventoryService's
 	// StockCost RPC.
 	InventoryServiceStockCostProcedure = "/warehouse.inventory.v1.InventoryService/StockCost"
+	// InventoryServiceWarehouseProductListProcedure is the fully-qualified name of the
+	// InventoryService's WarehouseProductList RPC.
+	InventoryServiceWarehouseProductListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductList"
 	// InventoryServiceStockPickLocationsProcedure is the fully-qualified name of the InventoryService's
 	// StockPickLocations RPC.
 	InventoryServiceStockPickLocationsProcedure = "/warehouse.inventory.v1.InventoryService/StockPickLocations"
@@ -80,6 +83,8 @@ type InventoryServiceClient interface {
 	StockReturn(context.Context, *connect.Request[v1.StockReturnRequest]) (*connect.Response[v1.StockReturnResponse], error)
 	// What products COST this warehouse, for an order to freeze as its COGS (#74).
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
+	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
+	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 }
@@ -149,6 +154,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
 			connect.WithClientOptions(opts...),
 		),
+		warehouseProductList: connect.NewClient[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse](
+			httpClient,
+			baseURL+InventoryServiceWarehouseProductListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
+			connect.WithClientOptions(opts...),
+		),
 		stockPickLocations: connect.NewClient[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse](
 			httpClient,
 			baseURL+InventoryServiceStockPickLocationsProcedure,
@@ -160,16 +171,17 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // inventoryServiceClient implements InventoryServiceClient.
 type inventoryServiceClient struct {
-	stockList          *connect.Client[v1.StockListRequest, v1.StockListResponse]
-	stockHistory       *connect.Client[v1.StockHistoryRequest, v1.StockHistoryResponse]
-	stockReceive       *connect.Client[v1.StockReceiveRequest, v1.StockReceiveResponse]
-	stockAdjust        *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
-	stockTransfer      *connect.Client[v1.StockTransferRequest, v1.StockTransferResponse]
-	stockMove          *connect.Client[v1.StockMoveRequest, v1.StockMoveResponse]
-	stockPick          *connect.Client[v1.StockPickRequest, v1.StockPickResponse]
-	stockReturn        *connect.Client[v1.StockReturnRequest, v1.StockReturnResponse]
-	stockCost          *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
-	stockPickLocations *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
+	stockList            *connect.Client[v1.StockListRequest, v1.StockListResponse]
+	stockHistory         *connect.Client[v1.StockHistoryRequest, v1.StockHistoryResponse]
+	stockReceive         *connect.Client[v1.StockReceiveRequest, v1.StockReceiveResponse]
+	stockAdjust          *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
+	stockTransfer        *connect.Client[v1.StockTransferRequest, v1.StockTransferResponse]
+	stockMove            *connect.Client[v1.StockMoveRequest, v1.StockMoveResponse]
+	stockPick            *connect.Client[v1.StockPickRequest, v1.StockPickResponse]
+	stockReturn          *connect.Client[v1.StockReturnRequest, v1.StockReturnResponse]
+	stockCost            *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
+	warehouseProductList *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
+	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -217,6 +229,11 @@ func (c *inventoryServiceClient) StockCost(ctx context.Context, req *connect.Req
 	return c.stockCost.CallUnary(ctx, req)
 }
 
+// WarehouseProductList calls warehouse.inventory.v1.InventoryService.WarehouseProductList.
+func (c *inventoryServiceClient) WarehouseProductList(ctx context.Context, req *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
+	return c.warehouseProductList.CallUnary(ctx, req)
+}
+
 // StockPickLocations calls warehouse.inventory.v1.InventoryService.StockPickLocations.
 func (c *inventoryServiceClient) StockPickLocations(ctx context.Context, req *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error) {
 	return c.stockPickLocations.CallUnary(ctx, req)
@@ -238,6 +255,8 @@ type InventoryServiceHandler interface {
 	StockReturn(context.Context, *connect.Request[v1.StockReturnRequest]) (*connect.Response[v1.StockReturnResponse], error)
 	// What products COST this warehouse, for an order to freeze as its COGS (#74).
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
+	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
+	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 }
@@ -303,6 +322,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("StockCost")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceWarehouseProductListHandler := connect.NewUnaryHandler(
+		InventoryServiceWarehouseProductListProcedure,
+		svc.WarehouseProductList,
+		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	inventoryServiceStockPickLocationsHandler := connect.NewUnaryHandler(
 		InventoryServiceStockPickLocationsProcedure,
 		svc.StockPickLocations,
@@ -329,6 +354,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockReturnHandler.ServeHTTP(w, r)
 		case InventoryServiceStockCostProcedure:
 			inventoryServiceStockCostHandler.ServeHTTP(w, r)
+		case InventoryServiceWarehouseProductListProcedure:
+			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
 			inventoryServiceStockPickLocationsHandler.ServeHTTP(w, r)
 		default:
@@ -374,6 +401,10 @@ func (UnimplementedInventoryServiceHandler) StockReturn(context.Context, *connec
 
 func (UnimplementedInventoryServiceHandler) StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockCost is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductList is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error) {

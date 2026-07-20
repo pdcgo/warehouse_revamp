@@ -464,8 +464,30 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    warehouse_products {
+        bigserial   id           PK
+        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id   "opaque product_service id, no FK"
+        timestamptz created_at
+    }
 ```
 
+- **`warehouse_products`** (#142) — WHICH PRODUCTS A WAREHOUSE HANDLES. A warehouse must not see the
+  whole catalogue: it holds no products of its own (products belong to selling teams), so a
+  team-scoped product list shows it nothing useful. This is the list it should see instead.
+  - **Written by `RestockRequestCreate`**, in the same transaction as the request (owner,
+    2026-07-20): asking a warehouse to stock something is what makes that product visible there, and a
+    request whose products the crew cannot see is one nobody can act on. That is the only writer today.
+  - **Not derivable from `stock_levels`**, which is why it is its own table rather than a query over
+    that one. A product asked for but not yet received has no stock level at all, and the crew
+    expecting it still have to be able to find it. "Handles" and "currently holds" are two facts.
+  - `UNIQUE (warehouse_id, product_id)` — the arrangement exists once. Writers upsert with
+    `ON CONFLICT DO NOTHING`, because a second restock request for a product a warehouse already
+    stocks is the normal case, not an error worth failing the request over.
+  - It lives in **inventory_service** because this service already owns warehouse×product facts
+    (`stock_levels` is keyed on exactly that pair) and owns the restock flow that writes it — so no
+    cross-service write is needed to maintain it (HARD RULE 3).
 - **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
   `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
   cache of the running on-hand, maintained inside each movement's transaction, with a

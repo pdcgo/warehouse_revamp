@@ -52,7 +52,15 @@ func (s *Service) RestockRequestCreate(
 
 		// GORM inserts the request and its lines in this transaction, stamping their
 		// RestockRequestID — a request without its lines is not a request.
-		return tx.Create(&rr).Error
+		createErr := tx.Create(&rr).Error
+		if createErr != nil {
+			return createErr
+		}
+
+		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the
+		// same transaction, because a request whose products the warehouse cannot see is a request
+		// nobody there can act on — the two facts have to land together or not at all.
+		return linkWarehouseProducts(tx, rr.WarehouseID, rr.Items)
 	})
 	if err != nil {
 		return nil, restockErr(err)

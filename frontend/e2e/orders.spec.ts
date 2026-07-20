@@ -365,3 +365,71 @@ test("Picking: a selling team is told the queue is a warehouse screen (#151)", a
   await expect(page.getByTestId("pick-queue-not-warehouse")).toBeVisible();
   await expect(page.getByTestId("pick-queue-table")).toBeHidden();
 });
+
+// #142 — a WAREHOUSE's Products screen shows what it has been ASKED to handle.
+//
+// Before this, a warehouse team opened Products and saw nothing: ProductList is scoped to the team that
+// OWNS the products, and a warehouse owns none. The restock request is what creates the arrangement, so
+// this places one and then looks at the screen from the warehouse's seat.
+test("Products: a warehouse sees the products it was asked to stock (#142)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Ask this warehouse to stock the product — the API, because the restock create form is a different
+  // issue's surface and what is under test here is the warehouse's product list.
+  await page.evaluate(
+    async ([whCode, sku]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+
+      // Searched by SKU rather than scanned out of a page: this test runs late in a serial suite, and
+      // relying on the wanted product being inside an arbitrary first page is a fuse waiting to blow.
+      const products = await call("product.v1.ProductService/ProductDiscover", {
+        teamId: "1",
+        q: sku,
+        page: { page: 1, limit: 50 },
+      });
+      const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+      if (!product) {
+        throw new Error(
+          `product ${sku} not found among ${(products.products ?? []).length} results for q=${sku}`,
+        );
+      }
+
+      // RestockRequestService, not InventoryService — restock requests are their own proto service, and
+      // the wrong path is a 404 rather than a helpful error.
+      await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: "1",
+        warehouseId: warehouse.id,
+        items: [{ productId: product.id, sku, name: "e2e", quantity: "1", price: "1000" }],
+      });
+    },
+    [WH_CODE, SKU],
+  );
+
+  await switchToWarehouse(page);
+  await page.goto("/products");
+
+  // The product the warehouse was asked to stock is on ITS list, even though a selling team owns it.
+  await expect(page.getByTestId("products-table")).toContainText(SKU);
+
+  // And the actions that belong to the OWNER are not offered: a warehouse handles these products, it
+  // does not own them, so edit/delete would only ever be refused by the server.
+  await expect(page.getByTestId(`edit-${SKU}`)).toBeHidden();
+  await expect(page.getByTestId(`delete-${SKU}`)).toBeHidden();
+  await expect(page.getByTestId("open-create-product")).toBeHidden();
+  await expect(page.getByTestId("product-search")).toBeHidden();
+});
