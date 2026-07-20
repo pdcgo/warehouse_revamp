@@ -120,7 +120,7 @@ sequenceDiagram
         I-->>UI: per product, per rack, how much
     end
 
-    Note over UI: joined on product_id;<br/>a product drawn from 3 shelves = 3 stops
+    Note over UI: joined on product_id —<br/>a product drawn from 3 shelves = 3 stops
 ```
 
 **From the ledger, not from stock levels — this is the whole design.** The goods were drawn at

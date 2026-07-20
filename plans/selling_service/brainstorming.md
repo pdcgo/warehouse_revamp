@@ -82,7 +82,7 @@ flowchart LR
       C
       O
     end
-    subgraph warehouse side — undesigned §1
+    subgraph "warehouse side — undesigned §1"
       W
     end
 ```

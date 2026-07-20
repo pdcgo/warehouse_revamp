@@ -507,7 +507,7 @@ precisely the coupling this project bans. team_service never reads or writes the
           else grant failed
               US-->>TS: error
               TS->>TS: COMPENSATE — soft-delete the team (deleted = TRUE)
-              TS-->>A: Internal("team created but owner grant failed; rolled back")
+              TS-->>A: Internal("team created but owner grant failed — rolled back")
           end
       ```
 

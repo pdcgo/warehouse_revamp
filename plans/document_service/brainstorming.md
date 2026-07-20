@@ -77,12 +77,12 @@ sequenceDiagram
   participant API as document_service
   participant S as Object storage
   UI->>API: RequestUpload(team_id, type, content_type, size, filename)
-  API->>API: authorize team; insert row status=pending
+  API->>API: authorize team, then insert row status=pending
   API-->>UI: signed PUT url + upload_token + headers
   UI->>S: PUT raw bytes (echo headers) — bytes skip the API
   UI->>API: ConfirmUpload(upload_token)
   API->>S: Stat + Move incoming/ → assets/
-  API->>API: validate size/type; status=active
+  API->>API: validate size/type, then status=active
   API-->>UI: document_id (+ public_url for public types)
   Note over UI,API: later…
   UI->>API: GetDownloadUrl(document_id)

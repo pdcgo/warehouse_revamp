@@ -170,7 +170,7 @@ sequenceDiagram
         Note over H: a line omitted, counted twice,<br/>or not on this request
         H-->>W: InvalidArgument — refused, never interpreted (#133)
     else a line ARRIVED but named no place
-        H-->>W: InvalidArgument — goods that turned up are<br/>somewhere; say where (#137)
+        H-->>W: InvalidArgument — goods that turned up are<br/>somewhere, so say where (#137)
     else a named rack is not this warehouse's
         H-->>W: NotFound — never PermissionDenied
     else pending, count complete, places named

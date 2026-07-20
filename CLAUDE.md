@@ -89,6 +89,18 @@ backend/services/<service_name>/
 - Applied state is tracked per service in its own `<service_name>_version` table.
 - A model belongs to exactly one service. If two services need the same data, that is a
   contract question (an RPC), not a reason to share a model package.
+- **A mermaid diagram must PARSE — run `npm run lint:mermaid` after writing one.** (owner, #152)
+  Characters that are ordinary in prose are syntax to mermaid, and the worst of them is **`;`**: in a
+  `sequenceDiagram` message or `Note` it ends the statement, and the whole diagram renders as an error
+  box instead of a picture. A broken diagram is invisible in review — the markdown looks fine in the
+  diff — so it is checked, not eyeballed.
+  - **Do not grep for the dangerous characters; parse the diagram.** Whether `;` breaks anything
+    depends on where it sits: inside a QUOTED `erDiagram` comment it is harmless, in a sequence
+    message it is fatal. When this check was introduced, a grep flagged 24 lines of which 5 were real,
+    and it missed a broken `subgraph` title that contained no semicolon at all.
+  - In sequence messages and notes, use **`—`** or **`,`** where you would naturally write `;`.
+  - A `subgraph` title containing punctuation (`—`, `§`, `(`) must be **quoted**:
+    `subgraph "warehouse side — undesigned §1"`.
 - **Document every schema change.** A migration that changes the schema updates
   [docs/database-schema.md](docs/database-schema.md) **in the same commit** — one section per
   service, each with a **mermaid** `erDiagram` of the tables and their relations. The migrations
@@ -261,6 +273,7 @@ it once a real domain service replaces it.
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
 | E2E (starts both servers) | `cd frontend && npm run e2e` |
+| Check every mermaid diagram parses | `cd frontend && npm run lint:mermaid` |
 
 Both must run for the UI to reach the API. The server allows CORS from
 `http://localhost:5174`; the client base URL is overridable via `VITE_API_URL`.
