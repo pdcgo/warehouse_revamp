@@ -25,6 +25,8 @@ service InventoryService {
   rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
   // Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
   rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
+  // Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
+  rpc StockPick(StockPickRequest) returns (StockPickResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -260,6 +262,58 @@ message StockMoveResponse {
   // balance — that is what a movement means now (#135).
   StockMovement from_movement = 1;
   StockMovement to_movement = 2;
+}
+
+// One line of a pick: how much of a product an order takes.
+message StockPickLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+message StockPickRequest {
+  // Write: the SELLING team's people, because placing the order is what takes the stock — the same
+  // roles that may call OrderCreate.
+  //
+  // ⚠ THE SCOPE IS THE SELLING TEAM, NOT THE WAREHOUSE, and that is the whole design (#149).
+  //
+  // Any team may draw stock from any warehouse (owner, 2026-07-20), so there is no per-warehouse
+  // permission to check — and there could not be one anyway: nobody in a selling team will ever hold a
+  // role inside a warehouse, so scoping this to `warehouse_id` would deny every real caller. The
+  // question worth asking is "are you a legitimate member of the team placing this order?", which is
+  // exactly what scoping to team_id asks.
+  //
+  // It must stay scoped to SOMETHING. A team-level role on a message with no `use_scope` field is
+  // evaluated against the root team and becomes a DEAD LETTER — an unscoped StockPick would quietly
+  // authorize nobody while looking like working code (see CLAUDE.md, authorization).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // The SELLING team whose order this is — the caller must have a role here.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // Whose stock is being drawn. An ordinary parameter, deliberately NOT use_scope — see above.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  repeated StockPickLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // What this draw is for, written onto every movement so the ledger can be traced back to the order.
+  string ref = 4 [(buf.validate.field).string.max_len = 100];
+}
+
+message StockPickResponse {
+  // Every movement the pick produced — one per PLACE drawn, so a line satisfied from two shelves
+  // yields two. This is what makes the drain auditable: it says exactly which shelves were emptied.
+  repeated StockMovement movements = 1;
 }
 
 message StockTransferRequest {

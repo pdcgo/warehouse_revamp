@@ -51,6 +51,9 @@ const (
 	// InventoryServiceStockMoveProcedure is the fully-qualified name of the InventoryService's
 	// StockMove RPC.
 	InventoryServiceStockMoveProcedure = "/warehouse.inventory.v1.InventoryService/StockMove"
+	// InventoryServiceStockPickProcedure is the fully-qualified name of the InventoryService's
+	// StockPick RPC.
+	InventoryServiceStockPickProcedure = "/warehouse.inventory.v1.InventoryService/StockPick"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -62,6 +65,8 @@ type InventoryServiceClient interface {
 	StockTransfer(context.Context, *connect.Request[v1.StockTransferRequest]) (*connect.Response[v1.StockTransferResponse], error)
 	// Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
 	StockMove(context.Context, *connect.Request[v1.StockMoveRequest]) (*connect.Response[v1.StockMoveResponse], error)
+	// Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
+	StockPick(context.Context, *connect.Request[v1.StockPickRequest]) (*connect.Response[v1.StockPickResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -111,6 +116,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("StockMove")),
 			connect.WithClientOptions(opts...),
 		),
+		stockPick: connect.NewClient[v1.StockPickRequest, v1.StockPickResponse](
+			httpClient,
+			baseURL+InventoryServiceStockPickProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("StockPick")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -122,6 +133,7 @@ type inventoryServiceClient struct {
 	stockAdjust   *connect.Client[v1.StockAdjustRequest, v1.StockAdjustResponse]
 	stockTransfer *connect.Client[v1.StockTransferRequest, v1.StockTransferResponse]
 	stockMove     *connect.Client[v1.StockMoveRequest, v1.StockMoveResponse]
+	stockPick     *connect.Client[v1.StockPickRequest, v1.StockPickResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -154,6 +166,11 @@ func (c *inventoryServiceClient) StockMove(ctx context.Context, req *connect.Req
 	return c.stockMove.CallUnary(ctx, req)
 }
 
+// StockPick calls warehouse.inventory.v1.InventoryService.StockPick.
+func (c *inventoryServiceClient) StockPick(ctx context.Context, req *connect.Request[v1.StockPickRequest]) (*connect.Response[v1.StockPickResponse], error) {
+	return c.stockPick.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -164,6 +181,8 @@ type InventoryServiceHandler interface {
 	StockTransfer(context.Context, *connect.Request[v1.StockTransferRequest]) (*connect.Response[v1.StockTransferResponse], error)
 	// Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
 	StockMove(context.Context, *connect.Request[v1.StockMoveRequest]) (*connect.Response[v1.StockMoveResponse], error)
+	// Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
+	StockPick(context.Context, *connect.Request[v1.StockPickRequest]) (*connect.Response[v1.StockPickResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -209,6 +228,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("StockMove")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceStockPickHandler := connect.NewUnaryHandler(
+		InventoryServiceStockPickProcedure,
+		svc.StockPick,
+		connect.WithSchema(inventoryServiceMethods.ByName("StockPick")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -223,6 +248,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockTransferHandler.ServeHTTP(w, r)
 		case InventoryServiceStockMoveProcedure:
 			inventoryServiceStockMoveHandler.ServeHTTP(w, r)
+		case InventoryServiceStockPickProcedure:
+			inventoryServiceStockPickHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -254,4 +281,8 @@ func (UnimplementedInventoryServiceHandler) StockTransfer(context.Context, *conn
 
 func (UnimplementedInventoryServiceHandler) StockMove(context.Context, *connect.Request[v1.StockMoveRequest]) (*connect.Response[v1.StockMoveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockMove is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) StockPick(context.Context, *connect.Request[v1.StockPickRequest]) (*connect.Response[v1.StockPickResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockPick is not implemented"))
 }
