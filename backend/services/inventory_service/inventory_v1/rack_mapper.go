@@ -23,6 +23,11 @@ func rackToProto(r *inventory_service_models.Rack) *inventoryv1.Rack {
 
 var errRackMissing = errors.New("rack not found")
 
+// #138: a shelf with goods on it cannot be deleted — empty it first. The FK cannot enforce this
+// because RackDelete is a SOFT delete, so the constraint never fires and the stock would be stranded
+// at a location that no longer appears in any list.
+var errRackHoldsStock = errors.New("this rack still holds stock — move it off the rack first")
+
 func rackNotFound() error {
 	return connect.NewError(connect.CodeNotFound, errRackMissing)
 }

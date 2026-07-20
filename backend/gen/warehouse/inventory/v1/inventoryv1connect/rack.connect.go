@@ -37,6 +37,10 @@ const (
 	RackServiceRackCreateProcedure = "/warehouse.inventory.v1.RackService/RackCreate"
 	// RackServiceRackListProcedure is the fully-qualified name of the RackService's RackList RPC.
 	RackServiceRackListProcedure = "/warehouse.inventory.v1.RackService/RackList"
+	// RackServiceRackDetailProcedure is the fully-qualified name of the RackService's RackDetail RPC.
+	RackServiceRackDetailProcedure = "/warehouse.inventory.v1.RackService/RackDetail"
+	// RackServiceRackStockProcedure is the fully-qualified name of the RackService's RackStock RPC.
+	RackServiceRackStockProcedure = "/warehouse.inventory.v1.RackService/RackStock"
 	// RackServiceRackUpdateProcedure is the fully-qualified name of the RackService's RackUpdate RPC.
 	RackServiceRackUpdateProcedure = "/warehouse.inventory.v1.RackService/RackUpdate"
 	// RackServiceRackDeleteProcedure is the fully-qualified name of the RackService's RackDelete RPC.
@@ -47,6 +51,10 @@ const (
 type RackServiceClient interface {
 	RackCreate(context.Context, *connect.Request[v1.RackCreateRequest]) (*connect.Response[v1.RackCreateResponse], error)
 	RackList(context.Context, *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error)
+	// One rack in full, for the detail page (#138).
+	RackDetail(context.Context, *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error)
+	// What is physically ON one rack, and how much of it (#138).
+	RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
 }
@@ -74,6 +82,18 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(rackServiceMethods.ByName("RackList")),
 			connect.WithClientOptions(opts...),
 		),
+		rackDetail: connect.NewClient[v1.RackDetailRequest, v1.RackDetailResponse](
+			httpClient,
+			baseURL+RackServiceRackDetailProcedure,
+			connect.WithSchema(rackServiceMethods.ByName("RackDetail")),
+			connect.WithClientOptions(opts...),
+		),
+		rackStock: connect.NewClient[v1.RackStockRequest, v1.RackStockResponse](
+			httpClient,
+			baseURL+RackServiceRackStockProcedure,
+			connect.WithSchema(rackServiceMethods.ByName("RackStock")),
+			connect.WithClientOptions(opts...),
+		),
 		rackUpdate: connect.NewClient[v1.RackUpdateRequest, v1.RackUpdateResponse](
 			httpClient,
 			baseURL+RackServiceRackUpdateProcedure,
@@ -93,6 +113,8 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type rackServiceClient struct {
 	rackCreate *connect.Client[v1.RackCreateRequest, v1.RackCreateResponse]
 	rackList   *connect.Client[v1.RackListRequest, v1.RackListResponse]
+	rackDetail *connect.Client[v1.RackDetailRequest, v1.RackDetailResponse]
+	rackStock  *connect.Client[v1.RackStockRequest, v1.RackStockResponse]
 	rackUpdate *connect.Client[v1.RackUpdateRequest, v1.RackUpdateResponse]
 	rackDelete *connect.Client[v1.RackDeleteRequest, v1.RackDeleteResponse]
 }
@@ -105,6 +127,16 @@ func (c *rackServiceClient) RackCreate(ctx context.Context, req *connect.Request
 // RackList calls warehouse.inventory.v1.RackService.RackList.
 func (c *rackServiceClient) RackList(ctx context.Context, req *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error) {
 	return c.rackList.CallUnary(ctx, req)
+}
+
+// RackDetail calls warehouse.inventory.v1.RackService.RackDetail.
+func (c *rackServiceClient) RackDetail(ctx context.Context, req *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error) {
+	return c.rackDetail.CallUnary(ctx, req)
+}
+
+// RackStock calls warehouse.inventory.v1.RackService.RackStock.
+func (c *rackServiceClient) RackStock(ctx context.Context, req *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error) {
+	return c.rackStock.CallUnary(ctx, req)
 }
 
 // RackUpdate calls warehouse.inventory.v1.RackService.RackUpdate.
@@ -121,6 +153,10 @@ func (c *rackServiceClient) RackDelete(ctx context.Context, req *connect.Request
 type RackServiceHandler interface {
 	RackCreate(context.Context, *connect.Request[v1.RackCreateRequest]) (*connect.Response[v1.RackCreateResponse], error)
 	RackList(context.Context, *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error)
+	// One rack in full, for the detail page (#138).
+	RackDetail(context.Context, *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error)
+	// What is physically ON one rack, and how much of it (#138).
+	RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
 }
@@ -144,6 +180,18 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(rackServiceMethods.ByName("RackList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rackServiceRackDetailHandler := connect.NewUnaryHandler(
+		RackServiceRackDetailProcedure,
+		svc.RackDetail,
+		connect.WithSchema(rackServiceMethods.ByName("RackDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rackServiceRackStockHandler := connect.NewUnaryHandler(
+		RackServiceRackStockProcedure,
+		svc.RackStock,
+		connect.WithSchema(rackServiceMethods.ByName("RackStock")),
+		connect.WithHandlerOptions(opts...),
+	)
 	rackServiceRackUpdateHandler := connect.NewUnaryHandler(
 		RackServiceRackUpdateProcedure,
 		svc.RackUpdate,
@@ -162,6 +210,10 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 			rackServiceRackCreateHandler.ServeHTTP(w, r)
 		case RackServiceRackListProcedure:
 			rackServiceRackListHandler.ServeHTTP(w, r)
+		case RackServiceRackDetailProcedure:
+			rackServiceRackDetailHandler.ServeHTTP(w, r)
+		case RackServiceRackStockProcedure:
+			rackServiceRackStockHandler.ServeHTTP(w, r)
 		case RackServiceRackUpdateProcedure:
 			rackServiceRackUpdateHandler.ServeHTTP(w, r)
 		case RackServiceRackDeleteProcedure:
@@ -181,6 +233,14 @@ func (UnimplementedRackServiceHandler) RackCreate(context.Context, *connect.Requ
 
 func (UnimplementedRackServiceHandler) RackList(context.Context, *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackList is not implemented"))
+}
+
+func (UnimplementedRackServiceHandler) RackDetail(context.Context, *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackDetail is not implemented"))
+}
+
+func (UnimplementedRackServiceHandler) RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackStock is not implemented"))
 }
 
 func (UnimplementedRackServiceHandler) RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error) {

@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/rack.proto.
  */
 export const file_warehouse_inventory_v1_rack: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2sihwEKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgicQoQUmFja0xpc3RSZXNwb25zZRIrCgVyYWNrcxgBIAMoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjaxIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvItgBChFSYWNrVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAEhwKBGNvZGUYAyABKAlCCbpIBnIEEAEYIEgAiAEBEhsKBG5hbWUYBCABKAlCCLpIBXIDGMgBSAGIAQESIgoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGPQDSAKIAQE6CpK1GAYKBAECBglCBwoFX2NvZGVCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uIkAKElJhY2tVcGRhdGVSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrIlcKEVJhY2tEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECBgkiFAoSUmFja0RlbGV0ZVJlc3BvbnNlMpsDCgtSYWNrU2VydmljZRJjCgpSYWNrQ3JlYXRlEikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrQ3JlYXRlUmVxdWVzdBoqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlc3BvbnNlEl0KCFJhY2tMaXN0Eicud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlcXVlc3QaKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0UmVzcG9uc2USYwoKUmFja1VwZGF0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1VwZGF0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXNwb25zZRJjCgpSYWNrRGVsZXRlEikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrRGVsZXRlUmVxdWVzdBoqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2sihwEKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgicQoQUmFja0xpc3RSZXNwb25zZRIrCgVyYWNrcxgBIAMoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjaxIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIlgKEVJhY2tEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIkAKElJhY2tEZXRhaWxSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrIjQKDVJhY2tTdG9ja0xpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIPCgdvbl9oYW5kGAIgASgDIo4BChBSYWNrU3RvY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ7ChFSYWNrU3RvY2tSZXNwb25zZRI0CgVsaW5lcxgBIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N0b2NrTGluZRIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvItgBChFSYWNrVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAEhwKBGNvZGUYAyABKAlCCbpIBnIEEAEYIEgAiAEBEhsKBG5hbWUYBCABKAlCCLpIBXIDGMgBSAGIAQESIgoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGPQDSAKIAQE6CpK1GAYKBAECBglCBwoFX2NvZGVCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uIkAKElJhY2tVcGRhdGVSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrIlcKEVJhY2tEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECBgkiFAoSUmFja0RlbGV0ZVJlc3BvbnNlMuIECgtSYWNrU2VydmljZRJjCgpSYWNrQ3JlYXRlEikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrQ3JlYXRlUmVxdWVzdBoqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlc3BvbnNlEl0KCFJhY2tMaXN0Eicud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlcXVlc3QaKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0UmVzcG9uc2USYwoKUmFja0RldGFpbBIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RldGFpbFJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZXRhaWxSZXNwb25zZRJgCglSYWNrU3RvY2sSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja1JlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja1Jlc3BvbnNlEmMKClJhY2tVcGRhdGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVXBkYXRlUmVzcG9uc2USYwoKUmFja0RlbGV0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.inventory.v1.Rack
@@ -164,6 +164,130 @@ export const RackListResponseSchema: GenMessage<RackListResponse> = /*@__PURE__*
   messageDesc(file_warehouse_inventory_v1_rack, 4);
 
 /**
+ * @generated from message warehouse.inventory.v1.RackDetailRequest
+ */
+export type RackDetailRequest = Message<"warehouse.inventory.v1.RackDetailRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * A rack of another warehouse reads as NotFound — the scope IS the WHERE clause.
+   *
+   * @generated from field: uint64 rack_id = 2;
+   */
+  rackId: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackDetailRequest.
+ * Use `create(RackDetailRequestSchema)` to create a new message.
+ */
+export const RackDetailRequestSchema: GenMessage<RackDetailRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 5);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackDetailResponse
+ */
+export type RackDetailResponse = Message<"warehouse.inventory.v1.RackDetailResponse"> & {
+  /**
+   * @generated from field: warehouse.inventory.v1.Rack rack = 1;
+   */
+  rack?: Rack;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackDetailResponse.
+ * Use `create(RackDetailResponseSchema)` to create a new message.
+ */
+export const RackDetailResponseSchema: GenMessage<RackDetailResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 6);
+
+/**
+ * One product sitting on a rack, and how many (#138).
+ *
+ * @generated from message warehouse.inventory.v1.RackStockLine
+ */
+export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
+  /**
+   * Opaque product_service id. The product may belong to ANOTHER team's catalogue — a warehouse holds
+   * other teams' goods — so its sku/name are resolved separately (ProductByIds), never assumed to be
+   * in this warehouse's own catalogue.
+   *
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * How many of it are on THIS rack. Not the warehouse's total for the product, which is a SUM across
+   * the product's racks and a different question (StockList).
+   *
+   * @generated from field: int64 on_hand = 2;
+   */
+  onHand: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackStockLine.
+ * Use `create(RackStockLineSchema)` to create a new message.
+ */
+export const RackStockLineSchema: GenMessage<RackStockLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 7);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackStockRequest
+ */
+export type RackStockRequest = Message<"warehouse.inventory.v1.RackStockRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 rack_id = 2;
+   */
+  rackId: bigint;
+
+  /**
+   * A rack's contents grow with the catalogue, so this pages: it is a browse/management screen, not a
+   * picker feed (HARD RULE 9).
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   */
+  page?: PageFilter;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackStockRequest.
+ * Use `create(RackStockRequestSchema)` to create a new message.
+ */
+export const RackStockRequestSchema: GenMessage<RackStockRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 8);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackStockResponse
+ */
+export type RackStockResponse = Message<"warehouse.inventory.v1.RackStockResponse"> & {
+  /**
+   * @generated from field: repeated warehouse.inventory.v1.RackStockLine lines = 1;
+   */
+  lines: RackStockLine[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackStockResponse.
+ * Use `create(RackStockResponseSchema)` to create a new message.
+ */
+export const RackStockResponseSchema: GenMessage<RackStockResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 9);
+
+/**
  * @generated from message warehouse.inventory.v1.RackUpdateRequest
  */
 export type RackUpdateRequest = Message<"warehouse.inventory.v1.RackUpdateRequest"> & {
@@ -200,7 +324,7 @@ export type RackUpdateRequest = Message<"warehouse.inventory.v1.RackUpdateReques
  * Use `create(RackUpdateRequestSchema)` to create a new message.
  */
 export const RackUpdateRequestSchema: GenMessage<RackUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 5);
+  messageDesc(file_warehouse_inventory_v1_rack, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.RackUpdateResponse
@@ -217,7 +341,7 @@ export type RackUpdateResponse = Message<"warehouse.inventory.v1.RackUpdateRespo
  * Use `create(RackUpdateResponseSchema)` to create a new message.
  */
 export const RackUpdateResponseSchema: GenMessage<RackUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 6);
+  messageDesc(file_warehouse_inventory_v1_rack, 11);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteRequest
@@ -239,7 +363,7 @@ export type RackDeleteRequest = Message<"warehouse.inventory.v1.RackDeleteReques
  * Use `create(RackDeleteRequestSchema)` to create a new message.
  */
 export const RackDeleteRequestSchema: GenMessage<RackDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 7);
+  messageDesc(file_warehouse_inventory_v1_rack, 12);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteResponse
@@ -252,7 +376,7 @@ export type RackDeleteResponse = Message<"warehouse.inventory.v1.RackDeleteRespo
  * Use `create(RackDeleteResponseSchema)` to create a new message.
  */
 export const RackDeleteResponseSchema: GenMessage<RackDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 8);
+  messageDesc(file_warehouse_inventory_v1_rack, 13);
 
 /**
  * RackService owns `racks` — the physical places inside ONE warehouse (#129).
@@ -283,6 +407,26 @@ export const RackService: GenService<{
     methodKind: "unary";
     input: typeof RackListRequestSchema;
     output: typeof RackListResponseSchema;
+  },
+  /**
+   * One rack in full, for the detail page (#138).
+   *
+   * @generated from rpc warehouse.inventory.v1.RackService.RackDetail
+   */
+  rackDetail: {
+    methodKind: "unary";
+    input: typeof RackDetailRequestSchema;
+    output: typeof RackDetailResponseSchema;
+  },
+  /**
+   * What is physically ON one rack, and how much of it (#138).
+   *
+   * @generated from rpc warehouse.inventory.v1.RackService.RackStock
+   */
+  rackStock: {
+    methodKind: "unary";
+    input: typeof RackStockRequestSchema;
+    output: typeof RackStockResponseSchema;
   },
   /**
    * @generated from rpc warehouse.inventory.v1.RackService.RackUpdate

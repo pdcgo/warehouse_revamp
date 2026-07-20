@@ -59,6 +59,9 @@ const SupplierDetailPage = lazy(() =>
   import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
+const RackDetailPage = lazy(() =>
+  import("./racks/RackDetailPage").then((m) => ({ default: m.RackDetailPage })),
+);
 const RestockRequestsPage = lazy(() =>
   import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
 );
@@ -152,6 +155,8 @@ export const router = createBrowserRouter([
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
       // only, but the route is open and the server's policy is what actually decides.
       { path: "inventories/racks", element: <RacksPage /> },
+      // What is on one shelf, and how much (#138) — reached by clicking a rack in the list.
+      { path: "inventories/racks/:rackId", element: <RackDetailPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
       { path: "components", element: <ComponentsPage /> },

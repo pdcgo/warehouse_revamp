@@ -20,6 +20,10 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 service RackService {
   rpc RackCreate(RackCreateRequest) returns (RackCreateResponse);
   rpc RackList(RackListRequest) returns (RackListResponse);
+  // One rack in full, for the detail page (#138).
+  rpc RackDetail(RackDetailRequest) returns (RackDetailResponse);
+  // What is physically ON one rack, and how much of it (#138).
+  rpc RackStock(RackStockRequest) returns (RackStockResponse);
   rpc RackUpdate(RackUpdateRequest) returns (RackUpdateResponse);
   rpc RackDelete(RackDeleteRequest) returns (RackDeleteResponse);
 }
@@ -86,6 +90,68 @@ message RackListRequest {
 
 message RackListResponse {
   repeated Rack racks = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message RackDetailRequest {
+  // Read: anyone who works in the warehouse, staff included — same as RackList.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A rack of another warehouse reads as NotFound — the scope IS the WHERE clause.
+  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RackDetailResponse {
+  Rack rack = 1;
+}
+
+// One product sitting on a rack, and how many (#138).
+message RackStockLine {
+  // Opaque product_service id. The product may belong to ANOTHER team's catalogue — a warehouse holds
+  // other teams' goods — so its sku/name are resolved separately (ProductByIds), never assumed to be
+  // in this warehouse's own catalogue.
+  uint64 product_id = 1;
+  // How many of it are on THIS rack. Not the warehouse's total for the product, which is a SUM across
+  // the product's racks and a different question (StockList).
+  int64 on_hand = 2;
+}
+
+message RackStockRequest {
+  // Read: anyone who works in the warehouse, staff included — they are the ones standing at the rack.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A rack's contents grow with the catalogue, so this pages: it is a browse/management screen, not a
+  // picker feed (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message RackStockResponse {
+  repeated RackStockLine lines = 1;
   warehouse.common.v1.PageInfo page_info = 2;
 }
 

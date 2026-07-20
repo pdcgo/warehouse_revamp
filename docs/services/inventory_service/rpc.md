@@ -261,3 +261,33 @@ sequenceDiagram
 
 Correcting one shelf leaves the product's other shelves **exactly as they were** — that is the point,
 and it is what the warehouse-level alternative could not promise.
+
+### Reading a rack, and why it needs another service (#138)
+
+`RackStock` answers the question a person standing at a shelf actually has: **what is on THIS rack, and
+how much of each**. It is the mirror of `StockList` — that one sums a product *across* its racks
+("how much of X does this warehouse hold"), this one reads a single rack.
+
+Two things it refuses to conflate:
+
+- **Another warehouse's rack is NotFound, never an empty shelf.** If "not yours" looked like "nothing
+  on it", a probe could map another warehouse's rack ids by which came back empty.
+- **A line counted to zero is not on the rack.** A level can fall to 0 without being deleted (a
+  stock-take zeroing a shelf), and listing it would show a product that is not there.
+
+**It returns product ids only — never names.** That is not laziness, it is the service boundary: a
+warehouse holds **other teams' goods** (a selling team's restock puts its product on this shelf), so
+the ids belong to catalogues `inventory_service` does not own, and inventing a name for them would be
+guessing. The caller resolves them through `product_service`'s **`ProductByIds`** — added for exactly
+this, and the reason the §4 question ("whose product is in whose warehouse") had to be settled before
+this screen could exist. See `plans/inventory_service/brainstorming.md` §4, including the two things it
+is honest about: it is **new exposure for warehouse roles**, and *"only what it holds"* is **not
+enforced** and cannot be by `product_service`, which does not know what any warehouse holds.
+
+**A rack that still holds stock cannot be deleted** (#138) — `FailedPrecondition`, empty the shelf
+first. The check lives in the handler because the FK cannot do it: `stock_levels.rack_id` is
+`ON DELETE RESTRICT`, but `RackDelete` is a **soft** delete, so the row is never removed and the
+constraint never fires. Unguarded, #137 made this a live bug — the goods were **stranded**, still in
+`stock_levels` at a location that had vanished from every list, where nobody could find or fix them.
+Moving them to unplaced instead was rejected: the boxes are still physically on that shelf until a
+person moves them, so recording them as "somewhere" would invent a location nobody observed.

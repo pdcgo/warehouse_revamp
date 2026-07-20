@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Flex,
@@ -29,14 +30,15 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // a warehouse IS a team. Every RPC carries `current.teamId` in its body: the team is the scope, and
 // a warehouse only ever sees its own racks.
 //
-// This is the registry only — write down the shelves you have. It is deliberately a list, with no
-// detail page: a rack is a code, a name, and a note. (Rack DETAIL is a separate ask, #120.)
+// This is the registry — write down the shelves you have. A row opens the rack's detail page (#138),
+// which is where the interesting question is answered: what is actually ON that shelf, and how much.
 //
 // The Racks menu shows for warehouse teams only, but the page is not gated here — root/admin reach
 // the route directly and the server's policy is the real gate.
 export function RacksPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [racks, setRacks] = useState<Rack[]>([]);
   const [q, setQ] = useState("");
@@ -144,14 +146,21 @@ export function RacksPage() {
 
           <Table.Body>
             {racks.map((rack) => (
-              <Table.Row key={rack.id.toString()} data-testid={`rack-row-${rack.code}`}>
+              <Table.Row
+                key={rack.id.toString()}
+                data-testid={`rack-row-${rack.code}`}
+                cursor="pointer"
+                _hover={{ bg: "bg.subtle" }}
+                onClick={() => navigate(`/inventories/racks/${rack.id}`)}
+              >
                 {/* The code is what is painted on the shelf — it IS the rack's identity, so it
                     carries the row. */}
                 <Table.Cell fontWeight="medium">{rack.code}</Table.Cell>
                 <Table.Cell>{rack.name}</Table.Cell>
                 <Table.Cell color="fg.muted">{rack.description}</Table.Cell>
 
-                <Table.Cell textAlign="end">
+                {/* Stop the row's navigate from firing when a row action is used. */}
+                <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                   <HStack justify="end" gap="1">
                     <IconButton
                       size="xs"

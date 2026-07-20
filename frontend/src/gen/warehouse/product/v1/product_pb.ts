@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/product/v1/product.proto.
  */
 export const file_warehouse_product_v1_product: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLwAQoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIu8BChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFOgyStRgICgYBAgMEBgkiRwoVUHJvZHVjdENyZWF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Io0BChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIngKE1Byb2R1Y3RMaXN0UmVzcG9uc2USLwoIcHJvZHVjdHMYASADKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8ijgEKFlByb2R1Y3REaXNjb3ZlclJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFInwKF1Byb2R1Y3REaXNjb3ZlclJlc3BvbnNlEi8KCHByb2R1Y3RzGAEgAygLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIsgCChRQcm9kdWN0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhsKA3NrdRgDIAEoCUIJukgGcgQQARhASACIAQESHQoEbmFtZRgEIAEoCUIKukgHcgUQARjIAUgBiAEBEiIKC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxjoB0gCiAEBEiEKC2NhdGVnb3J5X2lkGAYgASgEQge6SAQyAiAASAOIAQESMwoGaW1hZ2VzGAcgASgLMiMud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEltYWdlczoMkrUYCAoGAQIDBAYJQgYKBF9za3VCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQg4KDF9jYXRlZ29yeV9pZCJHChVQcm9kdWN0VXBkYXRlUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiYQoUUHJvZHVjdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiRwoVUHJvZHVjdERldGFpbFJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Il8KFFByb2R1Y3REZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6DJK1GAgKBgECAwQGCSIXChVQcm9kdWN0RGVsZXRlUmVzcG9uc2UyjAUKDlByb2R1Y3RTZXJ2aWNlEmgKDVByb2R1Y3RDcmVhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RDcmVhdGVSZXNwb25zZRJiCgtQcm9kdWN0TGlzdBIoLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVxdWVzdBopLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0UmVzcG9uc2USbgoPUHJvZHVjdERpc2NvdmVyEiwud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERpc2NvdmVyUmVxdWVzdBotLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlc3BvbnNlEmgKDVByb2R1Y3REZXRhaWwSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGV0YWlsUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZXRhaWxSZXNwb25zZRJoCg1Qcm9kdWN0VXBkYXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFVwZGF0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVzcG9uc2USaAoNUHJvZHVjdERlbGV0ZRIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZWxldGVSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERlbGV0ZVJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvcHJvZHVjdC92MTtwcm9kdWN0djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLwAQoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIu8BChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFOgyStRgICgYBAgMEBgkiRwoVUHJvZHVjdENyZWF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Io0BChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIngKE1Byb2R1Y3RMaXN0UmVzcG9uc2USLwoIcHJvZHVjdHMYASADKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8ijgEKFlByb2R1Y3REaXNjb3ZlclJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFInwKF1Byb2R1Y3REaXNjb3ZlclJlc3BvbnNlEi8KCHByb2R1Y3RzGAEgAygLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIm0KE1Byb2R1Y3RCeUlkc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESKAoLcHJvZHVjdF9pZHMYAiADKARCE7pIEJIBDQgBEMgBGAEiBDICIAA6DpK1GAoKCAECAwQFBgkIIkcKFFByb2R1Y3RCeUlkc1Jlc3BvbnNlEi8KCHByb2R1Y3RzGAEgAygLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCLIAgoUUHJvZHVjdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIbCgNza3UYAyABKAlCCbpIBnIEEAEYQEgAiAEBEh0KBG5hbWUYBCABKAlCCrpIB3IFEAEYyAFIAYgBARIiCgtkZXNjcmlwdGlvbhgFIAEoCUIIukgFcgMY6AdIAogBARIhCgtjYXRlZ29yeV9pZBgGIAEoBEIHukgEMgIgAEgDiAEBEjMKBmltYWdlcxgHIAEoCzIjLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZXM6DJK1GAgKBgECAwQGCUIGCgRfc2t1QgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbkIOCgxfY2F0ZWdvcnlfaWQiRwoVUHJvZHVjdFVwZGF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0ImEKFFByb2R1Y3REZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkcKFVByb2R1Y3REZXRhaWxSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJfChRQcm9kdWN0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOgyStRgICgYBAgMEBgkiFwoVUHJvZHVjdERlbGV0ZVJlc3BvbnNlMvMFCg5Qcm9kdWN0U2VydmljZRJoCg1Qcm9kdWN0Q3JlYXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVzcG9uc2USYgoLUHJvZHVjdExpc3QSKC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlcXVlc3QaKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlEm4KD1Byb2R1Y3REaXNjb3ZlchIsLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlcXVlc3QaLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGlzY292ZXJSZXNwb25zZRJlCgxQcm9kdWN0QnlJZHMSKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXF1ZXN0Gioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2USaAoNUHJvZHVjdERldGFpbBIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZXRhaWxSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERldGFpbFJlc3BvbnNlEmgKDVByb2R1Y3RVcGRhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXNwb25zZRJoCg1Qcm9kdWN0RGVsZXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERlbGV0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9wcm9kdWN0L3YxO3Byb2R1Y3R2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.product.v1.Product
@@ -300,6 +300,65 @@ export const ProductDiscoverResponseSchema: GenMessage<ProductDiscoverResponse> 
   messageDesc(file_warehouse_product_v1_product, 8);
 
 /**
+ * ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
+ *
+ * It exists because a warehouse physically holds other teams' goods: a selling team raises a restock
+ * for its own product, and fulfilling it puts that product on the warehouse's shelf. So "what is on
+ * rack A-01-3" starts from stock rows whose product ids belong to somebody else's catalogue, and a
+ * screen that could only name the warehouse's OWN products would silently omit half the shelf.
+ *
+ * @generated from message warehouse.product.v1.ProductByIdsRequest
+ */
+export type ProductByIdsRequest = Message<"warehouse.product.v1.ProductByIdsRequest"> & {
+  /**
+   * The team the CALLER holds a role in — not the team whose products come back. A warehouse asking
+   * about a selling team's product passes its own id, exactly as it does for every other scoped call.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The ids to resolve. It does not page and does not need to: the caller supplies the set, so the
+   * response can never be larger than what was asked for — which is why max_items is the whole story
+   * here, and a page cursor would be ceremony. The cap is what stops this becoming a bulk export.
+   *
+   * @generated from field: repeated uint64 product_ids = 2;
+   */
+  productIds: bigint[];
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductByIdsRequest.
+ * Use `create(ProductByIdsRequestSchema)` to create a new message.
+ */
+export const ProductByIdsRequestSchema: GenMessage<ProductByIdsRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 9);
+
+/**
+ * @generated from message warehouse.product.v1.ProductByIdsResponse
+ */
+export type ProductByIdsResponse = Message<"warehouse.product.v1.ProductByIdsResponse"> & {
+  /**
+   * The products that exist, in no guaranteed order — match them by id, not by position.
+   *
+   * An id that resolves to nothing is simply ABSENT rather than an error: a caller holding a stock row
+   * for a product that was since deleted is asking a reasonable question, and failing the whole lookup
+   * would blank a rack over one dead id. The caller renders what it cannot resolve as unknown.
+   *
+   * @generated from field: repeated warehouse.product.v1.Product products = 1;
+   */
+  products: Product[];
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductByIdsResponse.
+ * Use `create(ProductByIdsResponseSchema)` to create a new message.
+ */
+export const ProductByIdsResponseSchema: GenMessage<ProductByIdsResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 10);
+
+/**
  * @generated from message warehouse.product.v1.ProductUpdateRequest
  */
 export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRequest"> & {
@@ -351,7 +410,7 @@ export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRe
  * Use `create(ProductUpdateRequestSchema)` to create a new message.
  */
 export const ProductUpdateRequestSchema: GenMessage<ProductUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 9);
+  messageDesc(file_warehouse_product_v1_product, 11);
 
 /**
  * @generated from message warehouse.product.v1.ProductUpdateResponse
@@ -368,7 +427,7 @@ export type ProductUpdateResponse = Message<"warehouse.product.v1.ProductUpdateR
  * Use `create(ProductUpdateResponseSchema)` to create a new message.
  */
 export const ProductUpdateResponseSchema: GenMessage<ProductUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 10);
+  messageDesc(file_warehouse_product_v1_product, 12);
 
 /**
  * @generated from message warehouse.product.v1.ProductDetailRequest
@@ -390,7 +449,7 @@ export type ProductDetailRequest = Message<"warehouse.product.v1.ProductDetailRe
  * Use `create(ProductDetailRequestSchema)` to create a new message.
  */
 export const ProductDetailRequestSchema: GenMessage<ProductDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 11);
+  messageDesc(file_warehouse_product_v1_product, 13);
 
 /**
  * @generated from message warehouse.product.v1.ProductDetailResponse
@@ -407,7 +466,7 @@ export type ProductDetailResponse = Message<"warehouse.product.v1.ProductDetailR
  * Use `create(ProductDetailResponseSchema)` to create a new message.
  */
 export const ProductDetailResponseSchema: GenMessage<ProductDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 12);
+  messageDesc(file_warehouse_product_v1_product, 14);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteRequest
@@ -429,7 +488,7 @@ export type ProductDeleteRequest = Message<"warehouse.product.v1.ProductDeleteRe
  * Use `create(ProductDeleteRequestSchema)` to create a new message.
  */
 export const ProductDeleteRequestSchema: GenMessage<ProductDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 13);
+  messageDesc(file_warehouse_product_v1_product, 15);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteResponse
@@ -442,13 +501,21 @@ export type ProductDeleteResponse = Message<"warehouse.product.v1.ProductDeleteR
  * Use `create(ProductDeleteResponseSchema)` to create a new message.
  */
 export const ProductDeleteResponseSchema: GenMessage<ProductDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 14);
+  messageDesc(file_warehouse_product_v1_product, 16);
 
 /**
- * ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team
- * owns its own catalogue), so every RPC is team-scoped: `team_id` carries (use_scope), and the
- * handler only ever touches rows with that team_id — you cannot reach another team's product by
- * passing its id.
+ * ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team owns
+ * its own catalogue), and every WRITE is team-scoped: `team_id` carries (use_scope), and the handler
+ * only ever touches rows with that team_id — you cannot create, edit or delete another team's product
+ * by passing its id.
+ *
+ * READS are not all so narrow, and deliberately: `team_id` on those means "the team you hold a role in"
+ * and NOT "the team whose products you get back".
+ *
+ *   - ProductList     — this team's own catalogue. Narrow.
+ *   - ProductDiscover — every team's catalogue, for SELLING roles: a selling team browses to find
+ *                       things to sell (#106).
+ *   - ProductByIds    — a KNOWN set of ids, across any team, for selling AND warehouse roles (#138).
  *
  * @generated from service warehouse.product.v1.ProductService
  */
@@ -478,6 +545,16 @@ export const ProductService: GenService<{
     methodKind: "unary";
     input: typeof ProductDiscoverRequestSchema;
     output: typeof ProductDiscoverResponseSchema;
+  },
+  /**
+   * ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
+   *
+   * @generated from rpc warehouse.product.v1.ProductService.ProductByIds
+   */
+  productByIds: {
+    methodKind: "unary";
+    input: typeof ProductByIdsRequestSchema;
+    output: typeof ProductByIdsResponseSchema;
   },
   /**
    * @generated from rpc warehouse.product.v1.ProductService.ProductDetail

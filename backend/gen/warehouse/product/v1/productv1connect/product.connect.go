@@ -42,6 +42,9 @@ const (
 	// ProductServiceProductDiscoverProcedure is the fully-qualified name of the ProductService's
 	// ProductDiscover RPC.
 	ProductServiceProductDiscoverProcedure = "/warehouse.product.v1.ProductService/ProductDiscover"
+	// ProductServiceProductByIdsProcedure is the fully-qualified name of the ProductService's
+	// ProductByIds RPC.
+	ProductServiceProductByIdsProcedure = "/warehouse.product.v1.ProductService/ProductByIds"
 	// ProductServiceProductDetailProcedure is the fully-qualified name of the ProductService's
 	// ProductDetail RPC.
 	ProductServiceProductDetailProcedure = "/warehouse.product.v1.ProductService/ProductDetail"
@@ -59,6 +62,8 @@ type ProductServiceClient interface {
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
 	// ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
 	ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error)
+	// ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
+	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
@@ -93,6 +98,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(productServiceMethods.ByName("ProductDiscover")),
 			connect.WithClientOptions(opts...),
 		),
+		productByIds: connect.NewClient[v1.ProductByIdsRequest, v1.ProductByIdsResponse](
+			httpClient,
+			baseURL+ProductServiceProductByIdsProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductByIds")),
+			connect.WithClientOptions(opts...),
+		),
 		productDetail: connect.NewClient[v1.ProductDetailRequest, v1.ProductDetailResponse](
 			httpClient,
 			baseURL+ProductServiceProductDetailProcedure,
@@ -119,6 +130,7 @@ type productServiceClient struct {
 	productCreate   *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
 	productList     *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
 	productDiscover *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
+	productByIds    *connect.Client[v1.ProductByIdsRequest, v1.ProductByIdsResponse]
 	productDetail   *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
 	productUpdate   *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
 	productDelete   *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
@@ -137,6 +149,11 @@ func (c *productServiceClient) ProductList(ctx context.Context, req *connect.Req
 // ProductDiscover calls warehouse.product.v1.ProductService.ProductDiscover.
 func (c *productServiceClient) ProductDiscover(ctx context.Context, req *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error) {
 	return c.productDiscover.CallUnary(ctx, req)
+}
+
+// ProductByIds calls warehouse.product.v1.ProductService.ProductByIds.
+func (c *productServiceClient) ProductByIds(ctx context.Context, req *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error) {
+	return c.productByIds.CallUnary(ctx, req)
 }
 
 // ProductDetail calls warehouse.product.v1.ProductService.ProductDetail.
@@ -160,6 +177,8 @@ type ProductServiceHandler interface {
 	ProductList(context.Context, *connect.Request[v1.ProductListRequest]) (*connect.Response[v1.ProductListResponse], error)
 	// ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
 	ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error)
+	// ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
+	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
@@ -190,6 +209,12 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		connect.WithSchema(productServiceMethods.ByName("ProductDiscover")),
 		connect.WithHandlerOptions(opts...),
 	)
+	productServiceProductByIdsHandler := connect.NewUnaryHandler(
+		ProductServiceProductByIdsProcedure,
+		svc.ProductByIds,
+		connect.WithSchema(productServiceMethods.ByName("ProductByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	productServiceProductDetailHandler := connect.NewUnaryHandler(
 		ProductServiceProductDetailProcedure,
 		svc.ProductDetail,
@@ -216,6 +241,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductListHandler.ServeHTTP(w, r)
 		case ProductServiceProductDiscoverProcedure:
 			productServiceProductDiscoverHandler.ServeHTTP(w, r)
+		case ProductServiceProductByIdsProcedure:
+			productServiceProductByIdsHandler.ServeHTTP(w, r)
 		case ProductServiceProductDetailProcedure:
 			productServiceProductDetailHandler.ServeHTTP(w, r)
 		case ProductServiceProductUpdateProcedure:
@@ -241,6 +268,10 @@ func (UnimplementedProductServiceHandler) ProductList(context.Context, *connect.
 
 func (UnimplementedProductServiceHandler) ProductDiscover(context.Context, *connect.Request[v1.ProductDiscoverRequest]) (*connect.Response[v1.ProductDiscoverResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDiscover is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductByIds is not implemented"))
 }
 
 func (UnimplementedProductServiceHandler) ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {

@@ -360,6 +360,17 @@
       "placeholder": "Select a place",
       "unplaced": "Unplaced (not yet shelved)",
       "unavailable": "Racks unavailable"
+    },
+    "detail": {
+      "title": "Rack",
+      "back": "Back to Racks",
+      "notFound": "Rack not found.",
+      "invalidId": "Invalid rack id.",
+      "contents": "Contents",
+      "product": "Product",
+      "onThisRack": "On this rack",
+      "empty": "Nothing on this rack.",
+      "productUnknown": "Unknown product #{{id}}"
     }
   },
   "suppliers": {

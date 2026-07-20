@@ -360,6 +360,17 @@
       "placeholder": "Pilih tempat",
       "unplaced": "Belum ditempatkan (belum masuk rak)",
       "unavailable": "Rak tidak tersedia"
+    },
+    "detail": {
+      "title": "Rak",
+      "back": "Kembali ke Rak",
+      "notFound": "Rak tidak ditemukan.",
+      "invalidId": "ID rak tidak valid.",
+      "contents": "Isi rak",
+      "product": "Produk",
+      "onThisRack": "Di rak ini",
+      "empty": "Tidak ada apa pun di rak ini.",
+      "productUnknown": "Produk tidak diketahui #{{id}}"
     }
   },
   "suppliers": {

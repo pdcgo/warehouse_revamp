@@ -180,10 +180,20 @@ is then a real, visible state a warehouse can work off (a put-away queue), not a
       sellable, or is it invisible until shelved? This one has real money attached. Less urgent now
       that accepting places stock directly — unplaced becomes the exception rather than the rule — but
       it still decides what happens to everything #135 left unplaced.
-- [ ] **Does a rack's stock block its deletion?** `RackDelete` is a soft delete today and nothing
-      referenced a rack; once stock sits on one, deleting a rack with stock on it must either be
-      refused or move the stock somewhere. The FK is `ON DELETE RESTRICT` so the database refuses a
-      hard delete, but a SOFT delete would still strand the goods. See #138.
+- [x] **Does a rack's stock block its deletion?** — **DECIDED (owner, 2026-07-17): YES, refuse it.**
+      Deleting a rack that still holds stock is **FailedPrecondition** — empty the shelf first.
+      - This was a **live bug**, not a hypothetical: `RackDelete` is a SOFT delete, so the FK's
+        `ON DELETE RESTRICT` never fires, and #137 made it reachable by putting stock on shelves. The
+        goods would have been *stranded* — still in `stock_levels`, at a location that had vanished
+        from every list, so nobody could find them or fix them.
+      - The rejected option was moving the stock to unplaced and deleting anyway. It has no dead end,
+        but it **invents a location**: the boxes are still physically on that shelf until a person
+        moves them, and the record would say "somewhere" with nobody having looked. Same reasoning
+        that refuses a placeless stock-take (#139) and an incomplete count (#133) — refuse, do not
+        interpret.
+      - **Known rough edge until #136 ships:** there is no move-stock-off-a-rack screen yet, so the
+        only way to empty a shelf today is a stock-take (#139) zeroing it. Refusing is still right —
+        it is reversible, and un-stranding goods would not be.
 
 ---
 
@@ -205,6 +215,44 @@ selling or warehouse team), while a warehouse is a **different** team.
 **Leaning:** scope stock operations by **`warehouse_id`** (that is where the person stands and what
 they have a role in), and treat `product_id` as an opaque reference resolved via `product_service`.
 Whether cross-team storage is allowed is an **owner call** (§8).
+
+### ✅ DECIDED (2026-07-17, owner, forced by #138): **a warehouse may read the products it holds.**
+
+Cross-team storage is not hypothetical — **it already happens**. `ProductSelect scope="all"` is
+cross-team discovery (#110), so a selling team raises a restock for **its own** product and fulfilling
+it (#137) puts that product on the **warehouse's** shelf. `stock_levels` therefore already holds rows
+whose `product_id` belongs to somebody else's catalogue. The first table row above is answered by the
+running system: **yes**.
+
+#138 is what forced the second row. "What is on this rack" must start from the **rack's stock rows**,
+and their product ids may belong to anyone — so a rack page that could only name the warehouse's *own*
+products would silently omit half the shelf, which is worse than no page at all.
+
+**The decision: a new `ProductByIds` lookup in `product_service`, callable by WAREHOUSE roles.** Names
+stay **live** (a rename shows through), and it is the pattern this repo already names — *"resolved over
+RPC (`ProductByIds`-style, `TeamByIds`)"*.
+
+The rejected alternative was snapshotting `sku`/`name` onto the stock row, the way a restock line
+already snapshots them. It has a real argument — the box's printed label *is* the old name after a
+rename, so a snapshot is arguably truer to the shelf — but `stock_levels` is a **derived cache of the
+ledger**, and denormalising a cache means a name that drifts from the catalogue forever with nothing to
+rebuild it from.
+
+**Two consequences to be honest about:**
+
+- **This is genuinely new exposure for warehouse roles.** `ProductDiscover` already lets *selling*
+  roles browse every team's catalogue, so for them a by-ids lookup adds nothing — but it has **no
+  warehouse roles**, so today a warehouse cannot read another team's product names at all. After this,
+  it can. The bound is that a by-ids lookup is not a browse: you must already know the id.
+- **"Only what it holds" is NOT enforced, and cannot be by `product_service`** — it does not know what
+  any warehouse holds. Enforcing it would mean moving the lookup behind `inventory_service` (which does
+  know) and having *it* call `product_service`. That is real machinery, and it is only worth building
+  if a warehouse reading a product name it does not stock is actually a problem. **Flagged, not
+  hidden** — say the word and it moves.
+- **It also fixes a gap nobody had noticed:** the Stock page is *product-driven*
+  (`productList({teamId: warehouseId})` joined with stock), so it can only ever show the warehouse's
+  **own** products — meaning **it cannot display the stock the restock flow creates**. That predates
+  #138 and is not caused by it.
 
 ---
 
