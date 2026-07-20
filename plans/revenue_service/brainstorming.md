@@ -5,6 +5,18 @@
 
 > **Decisions so far**
 > - Planning only; every fork is open and needs the owner. (2026-07-15)
+> - **§2.4 — revenue is PER-ORDER MARGIN ROWS, not a ledger.** (owner, 2026-07-20) revenue_service
+>   stays a small reporting service: one row per order holding what we expected to earn. No per-team
+>   receivable/payable, no payouts, no withdrawals, no team-to-team transfers. **#77 is out of scope
+>   and closed.** A ledger is a real accounting subsystem — every movement double-entered, balances
+>   that must reconcile — and nothing yet needs one. It can be added when a payout problem actually
+>   demands it; it cannot easily be removed once reports depend on it.
+> - **§2.3 — expected now, reconciliation LATER.** (owner, 2026-07-20) The revenue row records what we
+>   EXPECTED to earn, which is what #75 already writes. Settlement against real marketplace payouts is
+>   wanted, but waits: **there is no payout data in this system yet**, and its shape — manual entry, a
+>   CSV upload, a marketplace API — is what would drive the whole settlement design. Building it now
+>   would mean guessing at that shape and rebuilding once the real feed arrives. **#76 is parked in
+>   Backlog until a payout source exists.**
 
 ---
 
@@ -37,10 +49,12 @@ has to track *expected* vs *actual* and reconcile the gap.
       Clean-slate by default; "Adapt" needs an explicit source and your go-ahead (HARD RULE 1).
 - [ ] **2.2 What does an order hand revenue?** — the seam with #23 §3.7. Revenue can only be
       designed once we know what an order freezes (buyer total, COGS, fees).
-- [ ] **2.3 Expected vs actual** — does revenue record an *estimate* at order time and reconcile
+- [x] **2.3 Expected vs actual** — ✅ ANSWERED (owner, 2026-07-20): expected now, reconciliation later.
+      Original framing: — does revenue record an *estimate* at order time and reconcile
       against the real marketplace payout later? Almost certainly yes — but that's a ledger with a
       settlement lifecycle, which is the bulk of the work.
-- [ ] **2.4 Is there a ledger / balance model?** — per-team receivable/payable, payouts,
+- [x] **2.4 Is there a ledger / balance model?** — ✅ ANSWERED (owner, 2026-07-20): NO. Per-order
+      margin rows only. Original framing: — per-team receivable/payable, payouts,
       withdrawals? Or just per-order margin rows? This decides whether revenue is a small reporting
       service or a full accounting subsystem.
 - [ ] **2.5 Team-to-team fees** — when one team's product sells through another team, or a
@@ -106,9 +120,9 @@ mean building that home later anyway, and migrating the history into it.
   the source of truth for what was *expected* — they answer different questions, which is why both
   exist rather than one being a cache of the other.
 
-**Still open, and #77 says to settle it first:** whether revenue is a per-order margin only, or a
-**ledger** (per-team receivable/payable, payouts, team-to-team fees). That decides whether #77 exists
-at all, and it is not answered by this.
+**SETTLED (owner, 2026-07-20):** revenue is **per-order margin only**. Not a ledger — no per-team
+receivable/payable, no payouts, no team-to-team fees. #77 is closed as out of scope. See the decision
+log at the top for why.
 
 ---
 
