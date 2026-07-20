@@ -18,10 +18,27 @@ func (s *Service) OrderList(
 ) (*connect.Response[sellingv1.OrderListResponse], error) {
 	page := req.Msg.GetPage()
 
+	teamID := req.Msg.GetTeamId()
+
 	query := s.db.
 		WithContext(ctx).
 		Model(&selling_service_models.Order{}).
-		Where("team_id = ?", req.Msg.GetTeamId())
+		// BOTH SIDES (#151): the team that placed the order, or the warehouse shipping it. The latter is
+		// the pick queue.
+		//
+		// The parentheses are written explicitly even though GORM does not need them here — it wraps a
+		// chained Where containing an OR before AND-ing the next one, so the generated SQL is already
+		// `(team_id = ? OR warehouse_id = ?) AND status = ?`. (Verified against the emitted SQL, not
+		// assumed.) They stay because the correctness of the status filter below should be readable
+		// from THIS line rather than resting on an ORM behaviour: precedence is what makes an OR-plus-
+		// filter go wrong, and hand-built SQL a refactor away would not be so forgiving.
+		Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID)
+
+	// One status, or all of them. Server-side because the list is PAGINATED: a client-side filter would
+	// narrow the loaded page only, and the count would still be the unfiltered total.
+	if status := orderStatusToText(req.Msg.GetStatus()); status != "" {
+		query = query.Where("status = ?", status)
+	}
 
 	var total int64
 

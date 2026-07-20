@@ -213,14 +213,22 @@ message OrderCreateResponse {
 }
 
 message OrderListRequest {
-  // Read: anyone in the selling team.
+  // Read: BOTH SIDES of an order (#151). A selling team sees the orders it placed; a WAREHOUSE sees the
+  // orders shipping FROM it, which is the queue its crew picks from.
+  //
+  // One RPC rather than two, following RestockRequestList: it is the same order approached from
+  // whichever end you stand at, and two RPCs would drift apart. So `team_id` means "the team you hold a
+  // role in", and the handler matches it against EITHER side — not "the team whose orders you get".
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
       ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
     ]
   };
 
@@ -229,6 +237,13 @@ message OrderListRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Filter to ONE status; UNSPECIFIED (the default) means ALL of them (#151).
+  //
+  // Server-side because the list is PAGINATED: filtering the loaded page in the client would show only
+  // the confirmed orders that happened to land in this page, and count them wrong. It is what makes a
+  // pick queue possible — "the CONFIRMED orders shipping from my warehouse".
+  OrderStatus status = 3 [(buf.validate.field).enum.defined_only = true];
 }
 
 message OrderListResponse {

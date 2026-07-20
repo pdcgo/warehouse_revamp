@@ -23,8 +23,11 @@ func (s *Service) RestockRequestList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&inventory_service_models.RestockRequest{}).
-		// The parentheses are load-bearing: without them the AND of the status filter below would
-		// bind to only the warehouse_id side, and a selling team's own requests would ignore the tab.
+		// The parentheses are explicit, not load-bearing here: GORM wraps a chained Where containing an
+		// OR before AND-ing the next one, so the status filter below already applies to both legs.
+		// (Verified against the emitted SQL — an earlier comment here claimed they were required, and
+		// that was wrong.) They stay because precedence is what makes an OR-plus-filter go wrong, and
+		// this should be readable from the line rather than resting on ORM behaviour.
 		Where("(requesting_team_id = ? OR warehouse_id = ?)", teamID, teamID)
 
 	// One status, or all of them (#130). Filtered HERE and not in the client because the list is

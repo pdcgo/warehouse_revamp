@@ -31,6 +31,9 @@ service InventoryService {
   rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
   // What products COST this warehouse, for an order to freeze as its COGS (#74).
   rpc StockCost(StockCostRequest) returns (StockCostResponse);
+
+  // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
+  rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -434,4 +437,73 @@ message StockTransferRequest {
 message StockTransferResponse {
   StockMovement out_movement = 1;
   StockMovement in_movement = 2;
+}
+
+// StockPickLocations answers the pick screen's only hard question (#151): WHICH SHELF does the picker
+// walk to, when a product can sit on several racks (#135)?
+//
+// It answers from the LEDGER, not from current stock levels — and that distinction is the whole design.
+// The order's stock was already drawn at placement (#149), and StockPick recorded, per rack, exactly how
+// much it took from each. Those movements are what this order HOLDS. Current levels are a different
+// question ("what is on that shelf now") whose answer keeps moving: another order draws from the same
+// rack, a stock-take shifts goods, and a screen built on levels would send the picker to a shelf whose
+// goods are earmarked for somebody else. The ledger cannot drift like that, because it is a record of
+// what happened rather than a snapshot of what is.
+//
+// So the shelf column is not a suggestion the screen computes. It is what the system already committed.
+message StockPickLocationsRequest {
+  // Read: the WAREHOUSE crew — the people who walk to the shelf. Scoped to the warehouse, like the rest
+  // of the crew's work (#150), because the crew holds no role in the selling team that placed the order.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The pick's reference — `order:<id>` for an order (selling_service builds it). Naming the ref rather
+  // than the order id keeps inventory_service ignorant of what a selling order IS: it recorded movements
+  // under a string, and it hands back the movements under that string.
+  string ref = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+// One product, on one rack, in the quantity taken FROM THAT RACK for this pick.
+//
+// A product drawn from two shelves appears TWICE — once per shelf — rather than once with a chosen
+// shelf. #151 asked for "a shelf, or all of them with quantities, rather than silently picking one";
+// this is the second, and it is the only honest answer when the goods genuinely are in two places. The
+// screen groups them under the product.
+message StockPickLocation {
+  uint64 product_id = 1;
+
+  // The shelf. 0 means UNPLACED — stock that was never shelved (#135), which is a real place in this
+  // system and not a missing value. The screen says so in words rather than showing a blank, because a
+  // blank reads as "we do not know" when the truth is "it is not on a shelf yet".
+  uint64 rack_id = 2;
+  string rack_code = 3;
+
+  // How much to take from THIS shelf. Positive.
+  int64 quantity = 4;
+}
+
+message StockPickLocationsResponse {
+  // Ordered product, then the UNPLACED pile, then shelves by label — the same order StockPick drained
+  // in (#149), so the list reads as the walk the system already planned.
+  //
+  // UNPAGINATED, deliberately, and this is the HARD RULE 9 exemption stated out loud: it is bounded by
+  // ONE pick's committed movements — an order's lines, each on a handful of shelves — not by a table
+  // that grows. It is a detail-of-one-entity read, the same category as RestockRequestDetail's items.
+  // The moment it could serve many picks at once it stops being exempt and takes a page filter.
+  repeated StockPickLocation locations = 1;
 }

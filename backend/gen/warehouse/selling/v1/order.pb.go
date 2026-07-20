@@ -686,9 +686,15 @@ func (x *OrderCreateResponse) GetOrder() *Order {
 }
 
 type OrderListRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Page   *v1.PageFilter         `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	// Filter to ONE status; UNSPECIFIED (the default) means ALL of them (#151).
+	//
+	// Server-side because the list is PAGINATED: filtering the loaded page in the client would show only
+	// the confirmed orders that happened to land in this page, and count them wrong. It is what makes a
+	// pick queue possible — "the CONFIRMED orders shipping from my warehouse".
+	Status        OrderStatus `protobuf:"varint,3,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -735,6 +741,13 @@ func (x *OrderListRequest) GetPage() *v1.PageFilter {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *OrderListRequest) GetStatus() OrderStatus {
+	if x != nil {
+		return x.Status
+	}
+	return OrderStatus_ORDER_STATUS_UNSPECIFIED
 }
 
 type OrderListResponse struct {
@@ -1432,11 +1445,13 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05J\x04\b\x05\x10\x06R\x10customer_address\"H\n" +
 	"\x13OrderCreateResponse\x121\n" +
-	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"\x82\x01\n" +
+	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"\xca\x01\n" +
 	"\x10OrderListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12;\n" +
-	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"\x84\x01\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12C\n" +
+	"\x06status\x18\x03 \x01(\x0e2!.warehouse.selling.v1.OrderStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x84\x01\n" +
 	"\x11OrderListResponse\x123\n" +
 	"\x06orders\x18\x01 \x03(\v2\x1b.warehouse.selling.v1.OrderR\x06orders\x12:\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"k\n" +
@@ -1540,35 +1555,36 @@ var file_warehouse_selling_v1_order_proto_depIdxs = []int32{
 	2,  // 4: warehouse.selling.v1.OrderCreateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
 	3,  // 5: warehouse.selling.v1.OrderCreateResponse.order:type_name -> warehouse.selling.v1.Order
 	20, // 6: warehouse.selling.v1.OrderListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	3,  // 7: warehouse.selling.v1.OrderListResponse.orders:type_name -> warehouse.selling.v1.Order
-	21, // 8: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	3,  // 9: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 10: warehouse.selling.v1.OrderConfirmResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 11: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 12: warehouse.selling.v1.OrderPickResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 13: warehouse.selling.v1.OrderPackResponse.order:type_name -> warehouse.selling.v1.Order
-	3,  // 14: warehouse.selling.v1.OrderShipResponse.order:type_name -> warehouse.selling.v1.Order
-	4,  // 15: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
-	6,  // 16: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
-	8,  // 17: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
-	10, // 18: warehouse.selling.v1.OrderService.OrderConfirm:input_type -> warehouse.selling.v1.OrderConfirmRequest
-	12, // 19: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
-	14, // 20: warehouse.selling.v1.OrderService.OrderPick:input_type -> warehouse.selling.v1.OrderPickRequest
-	16, // 21: warehouse.selling.v1.OrderService.OrderPack:input_type -> warehouse.selling.v1.OrderPackRequest
-	18, // 22: warehouse.selling.v1.OrderService.OrderShip:input_type -> warehouse.selling.v1.OrderShipRequest
-	5,  // 23: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
-	7,  // 24: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
-	9,  // 25: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
-	11, // 26: warehouse.selling.v1.OrderService.OrderConfirm:output_type -> warehouse.selling.v1.OrderConfirmResponse
-	13, // 27: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
-	15, // 28: warehouse.selling.v1.OrderService.OrderPick:output_type -> warehouse.selling.v1.OrderPickResponse
-	17, // 29: warehouse.selling.v1.OrderService.OrderPack:output_type -> warehouse.selling.v1.OrderPackResponse
-	19, // 30: warehouse.selling.v1.OrderService.OrderShip:output_type -> warehouse.selling.v1.OrderShipResponse
-	23, // [23:31] is the sub-list for method output_type
-	15, // [15:23] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	0,  // 7: warehouse.selling.v1.OrderListRequest.status:type_name -> warehouse.selling.v1.OrderStatus
+	3,  // 8: warehouse.selling.v1.OrderListResponse.orders:type_name -> warehouse.selling.v1.Order
+	21, // 9: warehouse.selling.v1.OrderListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	3,  // 10: warehouse.selling.v1.OrderDetailResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 11: warehouse.selling.v1.OrderConfirmResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 12: warehouse.selling.v1.OrderCancelResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 13: warehouse.selling.v1.OrderPickResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 14: warehouse.selling.v1.OrderPackResponse.order:type_name -> warehouse.selling.v1.Order
+	3,  // 15: warehouse.selling.v1.OrderShipResponse.order:type_name -> warehouse.selling.v1.Order
+	4,  // 16: warehouse.selling.v1.OrderService.OrderCreate:input_type -> warehouse.selling.v1.OrderCreateRequest
+	6,  // 17: warehouse.selling.v1.OrderService.OrderList:input_type -> warehouse.selling.v1.OrderListRequest
+	8,  // 18: warehouse.selling.v1.OrderService.OrderDetail:input_type -> warehouse.selling.v1.OrderDetailRequest
+	10, // 19: warehouse.selling.v1.OrderService.OrderConfirm:input_type -> warehouse.selling.v1.OrderConfirmRequest
+	12, // 20: warehouse.selling.v1.OrderService.OrderCancel:input_type -> warehouse.selling.v1.OrderCancelRequest
+	14, // 21: warehouse.selling.v1.OrderService.OrderPick:input_type -> warehouse.selling.v1.OrderPickRequest
+	16, // 22: warehouse.selling.v1.OrderService.OrderPack:input_type -> warehouse.selling.v1.OrderPackRequest
+	18, // 23: warehouse.selling.v1.OrderService.OrderShip:input_type -> warehouse.selling.v1.OrderShipRequest
+	5,  // 24: warehouse.selling.v1.OrderService.OrderCreate:output_type -> warehouse.selling.v1.OrderCreateResponse
+	7,  // 25: warehouse.selling.v1.OrderService.OrderList:output_type -> warehouse.selling.v1.OrderListResponse
+	9,  // 26: warehouse.selling.v1.OrderService.OrderDetail:output_type -> warehouse.selling.v1.OrderDetailResponse
+	11, // 27: warehouse.selling.v1.OrderService.OrderConfirm:output_type -> warehouse.selling.v1.OrderConfirmResponse
+	13, // 28: warehouse.selling.v1.OrderService.OrderCancel:output_type -> warehouse.selling.v1.OrderCancelResponse
+	15, // 29: warehouse.selling.v1.OrderService.OrderPick:output_type -> warehouse.selling.v1.OrderPickResponse
+	17, // 30: warehouse.selling.v1.OrderService.OrderPack:output_type -> warehouse.selling.v1.OrderPackResponse
+	19, // 31: warehouse.selling.v1.OrderService.OrderShip:output_type -> warehouse.selling.v1.OrderShipResponse
+	24, // [24:32] is the sub-list for method output_type
+	16, // [16:24] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_proto_init() }
