@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// StockAccessService owns `stock_access_grants` (#147) — the arrangement by which a WAREHOUSE lets a
+// SELLING team draw stock from it.
+//
+// It exists because of a hole nobody had named until #69 hit it. A CS person places an order and holds
+// a role in the SELLING team; the stock belongs to the WAREHOUSE team. The access interceptor's rule is
+// deliberately absolute — "a role in ANOTHER team must not authorize this one" — so the deduct is
+// denied, correctly. The selling team has no role in the warehouse and should not be given one.
+//
+// What was missing is the ARRANGEMENT: the real business fact that this warehouse stores goods for that
+// selling team. It is recorded here rather than inferred, so it is visible and revocable, and it FAILS
+// CLOSED — no grant, no draw.
+//
+// The WAREHOUSE grants and revokes, because it is the warehouse's stock being made drawable: `team_id`
+// is the warehouse and carries (use_scope). A selling team cannot grant itself access to anyone.
+//
+// ⚠ THIS SERVICE IS INERT ON PURPOSE. Nothing consults these rows yet — teaching the scope check to
+// read them is #148, and it is kept separate because that change touches the access interceptor, where
+// every RPC's authorization runs and a mistake is SILENT. The model lands and is proven first.
+service StockAccessService {
+  // The warehouse grants a selling team the right to draw its stock.
+  rpc StockAccessGrant(StockAccessGrantRequest) returns (StockAccessGrantResponse);
+  // …and takes it back. Soft, so a revocation is auditable rather than a vanished row.
+  rpc StockAccessRevoke(StockAccessRevokeRequest) returns (StockAccessRevokeResponse);
+  // Who may currently draw from this warehouse.
+  rpc StockAccessList(StockAccessListRequest) returns (StockAccessListResponse);
+}
+
+// One arrangement: this warehouse lets this selling team draw its stock.
+message StockAccessGrant {
+  uint64 id = 1;
+  // The warehouse whose stock may be drawn. Opaque team_service id (a WAREHOUSE team); no FK.
+  uint64 warehouse_id = 2;
+  // The selling team allowed to draw it. Opaque team_service id; no FK.
+  uint64 selling_team_id = 3;
+  int64 created_at_unix = 4;
+}
+
+message StockAccessGrantRequest {
+  // Write: only the warehouse's OWNER or ADMIN may grant. Deliberately not staff — staff move stock,
+  // they do not decide who is allowed to take it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The granting warehouse — you can only give away access to stock you hold.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The selling team being let in. A warehouse granting ITSELF is refused: it already has full access
+  // through its own roles, so the row would be a no-op that looks like a permission.
+  uint64 selling_team_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message StockAccessGrantResponse {
+  StockAccessGrant grant = 1;
+}
+
+message StockAccessRevokeRequest {
+  // Write: same as granting — if you may let a team in, you may put them out.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Revoked by the PAIR, not by row id: "stop letting team 7 draw from us" is the sentence a person
+  // actually means, and it stays correct even if the row was re-created since they last looked.
+  uint64 selling_team_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message StockAccessRevokeResponse {}
+
+message StockAccessListRequest {
+  // Read: anyone who works in the warehouse, staff included. Knowing who may draw from here is part of
+  // understanding your own stock, even if you cannot change it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Grants grow with the number of selling teams a warehouse serves, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message StockAccessListResponse {
+  repeated StockAccessGrant grants = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
