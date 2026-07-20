@@ -117,4 +117,29 @@ message RevenueListRequest {
 message RevenueListResponse {
   repeated OrderRevenue revenues = 1;
   warehouse.common.v1.PageInfo page_info = 2;
+
+  // The totals across the WHOLE team, not the loaded page (#78).
+  //
+  // Server-side because a page total is a different number wearing the same label: summing the twenty
+  // rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
+  // it silently changes when somebody picks a different page size. A report's headline figure has to
+  // mean the same thing whatever page you are on.
+  RevenueTotals totals = 3;
+}
+
+// The team's expected money, summed over every one of its orders.
+message RevenueTotals {
+  int64 revenue = 1;
+  int64 cogs = 2;
+  int64 shipping_cost = 3;
+  int64 expected_margin = 4;
+
+  // How many of the summed orders had an UNKNOWN cost (#74) — rows whose margin reads as if the goods
+  // were free.
+  //
+  // The count is reported rather than the rows being excluded, because both alternatives lie: dropping
+  // them understates revenue that genuinely happened, and including them silently overstates margin.
+  // Naming the number lets a reader judge how much of the total to trust, which is the only honest
+  // option while some costs are unknown.
+  uint64 unknown_cost_orders = 5;
 }

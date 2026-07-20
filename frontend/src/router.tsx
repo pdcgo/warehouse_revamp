@@ -59,6 +59,9 @@ const SupplierDetailPage = lazy(() =>
   import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
+const RevenuePage = lazy(() =>
+  import("./revenue/RevenuePage").then((m) => ({ default: m.RevenuePage })),
+);
 const PickQueuePage = lazy(() =>
   import("./picking/PickQueuePage").then((m) => ({ default: m.PickQueuePage })),
 );
@@ -136,6 +139,8 @@ export const router = createBrowserRouter([
       { path: "shops", element: <ShopsPage /> },
       { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "orders", element: <OrdersPage /> },
+      // What the team's orders were expected to make (#78).
+      { path: "revenue", element: <RevenuePage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },

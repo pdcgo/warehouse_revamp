@@ -19,7 +19,8 @@
     "users": "Pengguna",
     "settings": "Pengaturan",
     "profile": "Profil",
-    "picking": "Pengambilan"
+    "picking": "Pengambilan",
+    "revenue": "Pendapatan"
   },
   "menu": {
     "language": "Bahasa",
@@ -872,6 +873,25 @@
       "packed": "Ditandai dikemas",
       "shipped": "Ditandai dikirim",
       "stepFailed": "Tidak dapat mencatat langkah itu"
+    }
+  },
+  "revenue": {
+    "title": "Pendapatan",
+    "selectTeam": "Pilih tim untuk melihat pendapatannya.",
+    "empty": "Belum ada pendapatan tercatat.",
+    "expectedNotice": "Ini angka PERKIRAAN, dibekukan saat pesanan dibuat — bukan uang yang sudah dibayarkan dan direkonsiliasi.",
+    "table": {
+      "order": "Pesanan",
+      "revenue": "Pendapatan",
+      "cogs": "HPP",
+      "shipping": "Ongkir",
+      "margin": "Perkiraan Margin",
+      "unknown": "Tidak diketahui"
+    },
+    "totals": {
+      "heading": "Semua Pesanan",
+      "unknownCost_one": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis.",
+      "unknownCost_other": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis."
     }
   }
 }

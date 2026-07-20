@@ -19,7 +19,8 @@
     "users": "Users",
     "settings": "Settings",
     "profile": "Profile",
-    "picking": "Picking"
+    "picking": "Picking",
+    "revenue": "Revenue"
   },
   "menu": {
     "language": "Language",
@@ -872,6 +873,25 @@
       "packed": "Marked packed",
       "shipped": "Marked shipped",
       "stepFailed": "Could not record that step"
+    }
+  },
+  "revenue": {
+    "title": "Revenue",
+    "selectTeam": "Select a team to view its revenue.",
+    "empty": "No revenue recorded yet.",
+    "expectedNotice": "These are EXPECTED figures, frozen when each order was placed — not money that has been paid out and reconciled.",
+    "table": {
+      "order": "Order",
+      "revenue": "Revenue",
+      "cogs": "COGS",
+      "shipping": "Shipping",
+      "margin": "Expected Margin",
+      "unknown": "Unknown"
+    },
+    "totals": {
+      "heading": "All Orders",
+      "unknownCost_one": "{{count}} order has an unknown cost — its margin reads as if the goods were free.",
+      "unknownCost_other": "{{count}} orders have an unknown cost — their margin reads as if the goods were free."
     }
   }
 }

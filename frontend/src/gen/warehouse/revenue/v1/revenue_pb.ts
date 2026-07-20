@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/revenue/v1/revenue.proto.
  */
 export const file_warehouse_revenue_v1_revenue: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSK5AQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDIsEBChRSZXZlbnVlUmVjb3JkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgABIYCgdyZXZlbnVlGAMgASgDQge6SAQiAigAEhUKBGNvZ3MYBCABKANCB7pIBCICKAASHgoNc2hpcHBpbmdfY29zdBgFIAEoA0IHukgEIgIoABISCgpjb3N0X2tub3duGAYgASgIOguStRgHCgUBAgMEBSJMChVSZXZlbnVlUmVjb3JkUmVzcG9uc2USMwoHcmV2ZW51ZRgBIAEoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZSJ1ChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgqStRgGCgQBAgMEIn0KE1JldmVudWVMaXN0UmVzcG9uc2USNAoIcmV2ZW51ZXMYASADKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbzLeAQoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3JldmVudWUvdjE7cmV2ZW51ZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSK5AQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDIsEBChRSZXZlbnVlUmVjb3JkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgABIYCgdyZXZlbnVlGAMgASgDQge6SAQiAigAEhUKBGNvZ3MYBCABKANCB7pIBCICKAASHgoNc2hpcHBpbmdfY29zdBgFIAEoA0IHukgEIgIoABISCgpjb3N0X2tub3duGAYgASgIOguStRgHCgUBAgMEBSJMChVSZXZlbnVlUmVjb3JkUmVzcG9uc2USMwoHcmV2ZW51ZRgBIAEoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZSJ1ChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgqStRgGCgQBAgMEIrIBChNSZXZlbnVlTGlzdFJlc3BvbnNlEjQKCHJldmVudWVzGAEgAygLMiIud2FyZWhvdXNlLnJldmVudWUudjEuT3JkZXJSZXZlbnVlEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SMwoGdG90YWxzGAMgASgLMiMud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVRvdGFscyJ7Cg1SZXZlbnVlVG90YWxzEg8KB3JldmVudWUYASABKAMSDAoEY29ncxgCIAEoAxIVCg1zaGlwcGluZ19jb3N0GAMgASgDEhcKD2V4cGVjdGVkX21hcmdpbhgEIAEoAxIbChN1bmtub3duX2Nvc3Rfb3JkZXJzGAUgASgEMt4BCg5SZXZlbnVlU2VydmljZRJoCg1SZXZlbnVlUmVjb3JkEioud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlcXVlc3QaKy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlUmVjb3JkUmVzcG9uc2USYgoLUmV2ZW51ZUxpc3QSKC53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlcXVlc3QaKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvcmV2ZW51ZS92MTtyZXZlbnVldjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * What one order was expected to make.
@@ -198,6 +198,18 @@ export type RevenueListResponse = Message<"warehouse.revenue.v1.RevenueListRespo
    * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
    */
   pageInfo?: PageInfo;
+
+  /**
+   * The totals across the WHOLE team, not the loaded page (#78).
+   *
+   * Server-side because a page total is a different number wearing the same label: summing the twenty
+   * rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
+   * it silently changes when somebody picks a different page size. A report's headline figure has to
+   * mean the same thing whatever page you are on.
+   *
+   * @generated from field: warehouse.revenue.v1.RevenueTotals totals = 3;
+   */
+  totals?: RevenueTotals;
 };
 
 /**
@@ -206,6 +218,53 @@ export type RevenueListResponse = Message<"warehouse.revenue.v1.RevenueListRespo
  */
 export const RevenueListResponseSchema: GenMessage<RevenueListResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_revenue_v1_revenue, 4);
+
+/**
+ * The team's expected money, summed over every one of its orders.
+ *
+ * @generated from message warehouse.revenue.v1.RevenueTotals
+ */
+export type RevenueTotals = Message<"warehouse.revenue.v1.RevenueTotals"> & {
+  /**
+   * @generated from field: int64 revenue = 1;
+   */
+  revenue: bigint;
+
+  /**
+   * @generated from field: int64 cogs = 2;
+   */
+  cogs: bigint;
+
+  /**
+   * @generated from field: int64 shipping_cost = 3;
+   */
+  shippingCost: bigint;
+
+  /**
+   * @generated from field: int64 expected_margin = 4;
+   */
+  expectedMargin: bigint;
+
+  /**
+   * How many of the summed orders had an UNKNOWN cost (#74) — rows whose margin reads as if the goods
+   * were free.
+   *
+   * The count is reported rather than the rows being excluded, because both alternatives lie: dropping
+   * them understates revenue that genuinely happened, and including them silently overstates margin.
+   * Naming the number lets a reader judge how much of the total to trust, which is the only honest
+   * option while some costs are unknown.
+   *
+   * @generated from field: uint64 unknown_cost_orders = 5;
+   */
+  unknownCostOrders: bigint;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueTotals.
+ * Use `create(RevenueTotalsSchema)` to create a new message.
+ */
+export const RevenueTotalsSchema: GenMessage<RevenueTotals> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 5);
 
 /**
  * RevenueService owns `order_revenues` (#75) — one row per order, holding what we EXPECTED to make on
