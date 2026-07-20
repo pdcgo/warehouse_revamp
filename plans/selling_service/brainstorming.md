@@ -175,6 +175,46 @@ reversal rather than a rollback, and #70's cancel path is the same machinery. Th
 distributed-write trade, taken with open eyes: a rare recoverable inconsistency beats a routine
 oversell.
 
+**Which shelf the stock comes off (owner, 2026-07-20): unplaced first, then shelves by label.** At
+placement nobody has physically walked to a rack, but stock lives on specific shelves (#135), so
+something has to be drawn down. The drain order is arbitrary *and documented*: what is **not** invented
+is the record — the ledger names exactly which shelves were drawn, so a picker later sees the truth
+rather than a guess. #70 puts it back the same way. When §1 says how picking actually works (#71), the
+physical order can replace this one without changing what was recorded.
+
+---
+
+### 🚧 #69 IS BLOCKED, and on something nobody had named: **service-to-service authorization**
+
+Everything above is decided and #72 has shipped, but #69 cannot be built, and the blocker is worth
+stating precisely because it is not a missing decision about orders — it is a missing capability.
+
+**The problem.** A CS person places the order. They hold a role in the **selling** team. The stock
+belongs to the **warehouse** team. Any `StockPick` would carry `warehouse_id` as its `use_scope`
+field — and the access interceptor's own test states the rule:
+
+> *"A role in ANOTHER team must not authorize this one. This is the whole point of `use_scope`."*
+
+So the call is **denied**, correctly, by the system working as designed. The selling team has no role
+in the warehouse and should not be given one.
+
+**What is actually missing.** The system has no way to express *"this selling team may draw stock from
+that warehouse"*, and no notion of a call made **by a service** rather than by a person. Every policy
+today answers "which human roles may call this"; nothing answers "may `selling_service`, acting for a
+team that has an arrangement with this warehouse, do this on that team's behalf".
+
+**Three shapes it could take — an OWNER/architecture call, deliberately not made here:**
+
+| | | |
+| --- | --- | --- |
+| **A machine identity** | services authenticate as themselves; a policy admits a service the way it admits a role | the general answer; the biggest change |
+| **A stored arrangement** | a `warehouse ↔ selling team` relationship the scope check consults, so a role in the selling team authorizes a draw from a warehouse it is linked to | models the real 3PL relationship; needs a new table and a scope-check change |
+| **Flip who calls** | the warehouse consumes the order rather than the order consuming stock — as `RestockRequestFulfill` already does, where the warehouse acts | no new auth at all, but it makes the deduct *asynchronous*, which is exactly what "deduct at placement" rejected |
+
+**Nothing was built against a guess.** The temptation — quietly widening `StockPick`'s policy, or
+exempting service calls from the scope check — would have silently weakened the ACL that the entire
+authorization model rests on, in a system whose stance everywhere else is *refuse, do not interpret*.
+
 - The cost is real and accepted: **a cancel must put the stock back**, which is #70. It is a small
   cost, and unlike an oversell it is a thing the system can do correctly.
 - **Reservation was rejected for now, not forever.** It is the truest model — goods sit on the shelf
