@@ -40,6 +40,17 @@ func (s *Service) OrderCreate(
 		return nil, notFound()
 	}
 
+	// What the goods COST us, frozen onto the order (#74). Read before the transaction — it is a read,
+	// and doing it inside would hold the order's row lock across another service's call for nothing.
+	//
+	// A product with no known cost is ABSENT from this map, which becomes a 0 on the line: "we do not
+	// know what this cost". That is deliberately not the same as free, and the contract says so — a
+	// margin computed over an unknown cost reads as pure profit, so 0 is a flag rather than a figure.
+	costs, err := s.stock.UnitCosts(ctx, teamID, req.Msg.GetWarehouseId(), orderProductIDs(req.Msg.GetItems()))
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	var (
 		order selling_service_models.Order
 		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
@@ -76,6 +87,14 @@ func (s *Service) OrderCreate(
 			ShippingCost:  req.Msg.GetShippingCost(),
 			Total:         req.Msg.GetTotal(),
 			Items:         orderItemModels(req.Msg.GetItems()),
+		}
+
+		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
+		// orderItemModels because the cost comes from the WAREHOUSE, not from the request — a client
+		// supplying it would be writing its own margin.
+		for i := range order.Items {
+			order.Items[i].UnitCost = costs[order.Items[i].ProductID]
+			order.COGS += int64(order.Items[i].Quantity) * order.Items[i].UnitCost
 		}
 
 		// GORM inserts the order and its items in this transaction, stamping their OrderID.

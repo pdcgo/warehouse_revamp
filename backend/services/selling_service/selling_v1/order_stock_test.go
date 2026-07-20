@@ -199,3 +199,82 @@ func itoa(n uint64) string {
 
 	return string(b)
 }
+
+// #74 — an order FREEZES what its goods cost, per line and totalled on the header, so margin is
+// computable from the order alone: margin = total − cogs − shipping.
+func TestOrderCreate_FreezesCOGS(t *testing.T) {
+	db := san_testdb.DB(t)
+	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	svc := newServiceWithPicker(t, db, picker)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	// 3 × sold at 10.000, cost 6.000 each.
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if got := created.Msg.GetOrder().GetCogs(); got != 18000 {
+		t.Fatalf("order cogs = %d, want 18000 (3 × 6000)", got)
+	}
+
+	// Read it back: the header total and the per-line cost are both stored, not just echoed.
+	detail, err := svc.OrderDetail(context.Background(), connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	if got := detail.Msg.GetOrder().GetCogs(); got != 18000 {
+		t.Fatalf("stored cogs = %d, want 18000", got)
+	}
+	if got := detail.Msg.GetOrder().GetItems()[0].GetUnitCost(); got != 6000 {
+		t.Fatalf("stored unit cost = %d, want 6000", got)
+	}
+}
+
+// #74 — a product with NO known cost freezes 0, and that means "unknown" rather than "free". The
+// distinction is the whole reason the lookup omits unknown products instead of reporting zero for
+// them: a margin computed over an unknown cost reads as pure profit.
+func TestOrderCreate_UnknownCostFreezesZero(t *testing.T) {
+	db := san_testdb.DB(t)
+	// The warehouse has no restock history for product 100, so it is absent from the map.
+	picker := &fakePicker{costs: map[uint64]int64{}}
+	svc := newServiceWithPicker(t, db, picker)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("an unknown cost must not block the order: %v", err)
+	}
+
+	if got := created.Msg.GetOrder().GetCogs(); got != 0 {
+		t.Fatalf("cogs = %d, want 0 for an unknown cost", got)
+	}
+}
+
+// #74 — the cost comes from the WAREHOUSE, never from the request. A client supplying it would be
+// writing its own margin, which is the one number nobody placing an order should get to choose.
+func TestOrderCreate_ClientCannotSetItsOwnCost(t *testing.T) {
+	db := san_testdb.DB(t)
+	picker := &fakePicker{costs: map[uint64]int64{100: 6000}}
+	svc := newServiceWithPicker(t, db, picker)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	req := orderReq(shop)
+	req.Items[0].UnitCost = 1 // "these cost us almost nothing"
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// The warehouse's figure won, not the caller's.
+	if got := created.Msg.GetOrder().GetItems()[0].GetUnitCost(); got != 6000 {
+		t.Fatalf("unit cost = %d, want the warehouse's 6000 — a client set its own margin", got)
+	}
+	if got := created.Msg.GetOrder().GetCogs(); got != 18000 {
+		t.Fatalf("cogs = %d, want 18000", got)
+	}
+}

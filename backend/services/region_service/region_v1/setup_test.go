@@ -6,8 +6,8 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
-	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_service_models"
+	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 )
 
 func newService(t *testing.T, db *gorm.DB) *region_v1.Service {

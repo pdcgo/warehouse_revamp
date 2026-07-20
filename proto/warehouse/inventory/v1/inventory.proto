@@ -29,6 +29,8 @@ service InventoryService {
   rpc StockPick(StockPickRequest) returns (StockPickResponse);
   // Put a pick BACK: a cancelled order (#70), or an order that died after its stock was taken (#149).
   rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
+  // What products COST this warehouse, for an order to freeze as its COGS (#74).
+  rpc StockCost(StockCostRequest) returns (StockCostResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -360,6 +362,51 @@ message StockReturnRequest {
 message StockReturnResponse {
   // The RETURN movements written — one per place the stock went back to.
   repeated StockMovement movements = 1;
+}
+
+// What one product cost a warehouse, per unit.
+message StockCostLine {
+  uint64 product_id = 1;
+  // Whole rupiah. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
+  int64 unit_cost = 2;
+}
+
+message StockCostRequest {
+  // Read: the selling roles that place orders, since freezing an order's COGS is what this serves.
+  // Scoped to the SELLING team exactly as StockPick is, and for the same reason: nobody in a selling
+  // team holds a role inside a warehouse, so scoping to the warehouse would deny every real caller.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Whose costs. An ordinary parameter, not use_scope — see above.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  repeated uint64 product_ids = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message StockCostResponse {
+  // One line per product that HAS a known cost. A product with no restock history is simply absent —
+  // "we do not know what this cost" and "this cost nothing" are different facts, and a zero row would
+  // conflate them.
+  repeated StockCostLine costs = 1;
 }
 
 message StockTransferRequest {

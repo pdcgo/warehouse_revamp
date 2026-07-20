@@ -49,6 +49,18 @@ message OrderItem {
   }];
   uint32 quantity = 5 [(buf.validate.field).uint32.gte = 1];
   int64 unit_price = 6 [(buf.validate.field).int64.gte = 0];
+
+  // What this product COST us, per unit, frozen when the order was placed (#74). `unit_price` is what
+  // the buyer pays; this is what we paid, and the gap between them is the margin.
+  //
+  // SERVER-SET AND IGNORED ON INPUT. The cost is looked up from the warehouse's restock history at
+  // order time — a client supplying it would be writing its own margin, which is the one number
+  // nobody placing an order should get to choose.
+  //
+  // 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
+  // say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
+  // flag that the number is not to be trusted rather than a value to compute with.
+  int64 unit_cost = 7;
 }
 
 // A customer's delivery address, FROZEN onto the order (#118).
@@ -104,6 +116,18 @@ message Order {
 
   // The frozen delivery address (#118).
   OrderAddress address = 14;
+
+  // What the whole order's goods COST us, frozen at order time (#74) — the sum of every line's
+  // quantity × unit_cost.
+  //
+  // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that
+  // wants to show margin would otherwise have to load every order's items. It is frozen exactly like
+  // `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
+  //
+  //   margin = total − cogs − shipping_cost
+  //
+  // 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
+  int64 cogs = 16;
 
   // WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
   // here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.

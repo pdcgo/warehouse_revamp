@@ -19,10 +19,11 @@ import (
 // on demand, which a real warehouse would only do after elaborate seeding — and it records what it was
 // asked to do, so a test can assert that a compensation actually happened rather than inferring it.
 type fakePicker struct {
-	picked    []string // refs picked, in order
-	returned  []string // refs returned, in order
-	pickErr   error    // if set, Pick refuses
-	returnErr error    // if set, Return refuses
+	picked    []string         // refs picked, in order
+	returned  []string         // refs returned, in order
+	pickErr   error            // if set, Pick refuses
+	costs     map[uint64]int64 // what UnitCosts reports; a product ABSENT here has no known cost
+	returnErr error            // if set, Return refuses
 }
 
 func (f *fakePicker) Pick(
@@ -38,6 +39,14 @@ func (f *fakePicker) Pick(
 	f.picked = append(f.picked, ref)
 
 	return nil
+}
+
+func (f *fakePicker) UnitCosts(
+	_ context.Context,
+	_, _ uint64,
+	_ []uint64,
+) (map[uint64]int64, error) {
+	return f.costs, nil
 }
 
 func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {

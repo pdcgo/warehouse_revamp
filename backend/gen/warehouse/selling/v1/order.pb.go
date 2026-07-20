@@ -82,13 +82,24 @@ func (OrderStatus) EnumDescriptor() ([]byte, []int) {
 // SNAPSHOT taken at order time, so later catalogue edits never rewrite an order's history. Money is
 // whole rupiah (int64). Used for both input (create; `id` ignored) and output.
 type OrderItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProductId     uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Sku           string                 `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Quantity      uint32                 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	UnitPrice     int64                  `protobuf:"varint,6,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Sku       string                 `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
+	Name      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Quantity  uint32                 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	UnitPrice int64                  `protobuf:"varint,6,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
+	// What this product COST us, per unit, frozen when the order was placed (#74). `unit_price` is what
+	// the buyer pays; this is what we paid, and the gap between them is the margin.
+	//
+	// SERVER-SET AND IGNORED ON INPUT. The cost is looked up from the warehouse's restock history at
+	// order time — a client supplying it would be writing its own margin, which is the one number
+	// nobody placing an order should get to choose.
+	//
+	// 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
+	// say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
+	// flag that the number is not to be trusted rather than a value to compute with.
+	UnitCost      int64 `protobuf:"varint,7,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -161,6 +172,13 @@ func (x *OrderItem) GetQuantity() uint32 {
 func (x *OrderItem) GetUnitPrice() int64 {
 	if x != nil {
 		return x.UnitPrice
+	}
+	return 0
+}
+
+func (x *OrderItem) GetUnitCost() int64 {
+	if x != nil {
+		return x.UnitCost
 	}
 	return 0
 }
@@ -314,6 +332,17 @@ type Order struct {
 	CreatedAtUnix int64        `protobuf:"varint,13,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	// The frozen delivery address (#118).
 	Address *OrderAddress `protobuf:"bytes,14,opt,name=address,proto3" json:"address,omitempty"`
+	// What the whole order's goods COST us, frozen at order time (#74) — the sum of every line's
+	// quantity × unit_cost.
+	//
+	// Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that
+	// wants to show margin would otherwise have to load every order's items. It is frozen exactly like
+	// `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
+	//
+	//	margin = total − cogs − shipping_cost
+	//
+	// 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
+	Cogs int64 `protobuf:"varint,16,opt,name=cogs,proto3" json:"cogs,omitempty"`
 	// WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
 	// here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
 	//
@@ -447,6 +476,13 @@ func (x *Order) GetAddress() *OrderAddress {
 		return x.Address
 	}
 	return nil
+}
+
+func (x *Order) GetCogs() int64 {
+	if x != nil {
+		return x.Cogs
+	}
+	return 0
 }
 
 func (x *Order) GetWarehouseId() uint64 {
@@ -1033,7 +1069,7 @@ var File_warehouse_selling_v1_order_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
-	" warehouse/selling/v1/order.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xcd\x01\n" +
+	" warehouse/selling/v1/order.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xea\x01\n" +
 	"\tOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -1043,7 +1079,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
 	"\bquantity\x18\x05 \x01(\rB\a\xbaH\x04*\x02(\x01R\bquantity\x12&\n" +
 	"\n" +
-	"unit_price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\"\xec\x02\n" +
+	"unit_price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\tunitPrice\x12\x1b\n" +
+	"\tunit_cost\x18\a \x01(\x03R\bunitCost\"\xec\x02\n" +
 	"\fOrderAddress\x12#\n" +
 	"\rprovinsi_code\x18\x01 \x01(\tR\fprovinsiCode\x12#\n" +
 	"\rprovinsi_name\x18\x02 \x01(\tR\fprovinsiName\x12%\n" +
@@ -1055,7 +1092,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\tdesa_name\x18\b \x01(\tR\bdesaName\x12\x19\n" +
 	"\bkode_pos\x18\t \x01(\tR\akodePos\x12!\n" +
 	"\faddress_line\x18\n" +
-	" \x01(\tR\vaddressLine\"\xa4\x04\n" +
+	" \x01(\tR\vaddressLine\"\xb8\x04\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1070,7 +1107,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x05total\x18\v \x01(\x03R\x05total\x125\n" +
 	"\x05items\x18\f \x03(\v2\x1f.warehouse.selling.v1.OrderItemR\x05items\x12&\n" +
 	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\x12<\n" +
-	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12!\n" +
+	"\aaddress\x18\x0e \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress\x12\x12\n" +
+	"\x04cogs\x18\x10 \x01(\x03R\x04cogs\x12!\n" +
 	"\fwarehouse_id\x18\x0f \x01(\x04R\vwarehouseIdJ\x04\b\a\x10\bR\x10customer_address\"\xad\x04\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +

@@ -11,7 +11,7 @@ import (
 )
 
 // An EMPTY parent_code means the top level — the provinsi. It must mean `parent_code IS NULL`, not
-// `parent_code = ''`; getting that wrong returns nothing at all.
+// `parent_code = ”`; getting that wrong returns nothing at all.
 func TestRegionList_EmptyParentIsProvinsi(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)

@@ -43,7 +43,11 @@ type Order struct {
 	ShippingCode string
 
 	// Frozen money, whole rupiah.
-	Subtotal     int64
+	Subtotal int64
+	// The goods' cost for the whole order, frozen at order time (#74) — the sum of every line's
+	// quantity x UnitCost. Denormalised onto the header because OrderList returns a summary without
+	// lines. margin = Total - COGS - ShippingCost. 0 means unknown, not free.
+	COGS         int64 `gorm:"column:cogs"`
 	ShippingCost int64
 	Total        int64
 

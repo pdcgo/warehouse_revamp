@@ -12,9 +12,9 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"gorm.io/gorm"
 )
 

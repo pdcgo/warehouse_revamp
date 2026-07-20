@@ -13,6 +13,9 @@ type OrderItem struct {
 	Name      string
 	Quantity  uint32
 	UnitPrice int64
+	// What this product COST us, per unit, frozen at order time (#74). UnitPrice is what the buyer
+	// pays; this is what we paid. 0 means UNKNOWN (never restocked), not free.
+	UnitCost  int64
 	CreatedAt time.Time
 }
 

@@ -235,6 +235,7 @@ erDiagram
         text        shipping_code    "opaque shipping_service courier code"
         bigint      subtotal         "whole rupiah"
         bigint      shipping_cost
+        bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
         bigint      total
         timestamptz created_at
         timestamptz updated_at
@@ -248,6 +249,7 @@ erDiagram
         text        name       "snapshot"
         int         quantity   ">= 1"
         bigint      unit_price "whole rupiah snapshot"
+        bigint      unit_cost     "per-unit cost frozen at order time (#74); server-set, 0 = unknown"
         timestamptz created_at
     }
 ```
@@ -267,6 +269,25 @@ erDiagram
   through the shop's team (the request carries the team_id, and the handler verifies the shop
   belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
   the grants when a shop is hard-deleted.
+- **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
+  as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
+  **`margin = total − cogs − shipping_cost`** is computable from the order alone.
+  - **Server-set, ignored on input.** The cost is looked up from the warehouse's restock history at
+    order time (`StockCost`), because a client supplying it would be writing its own margin — the one
+    number nobody placing an order should get to choose. `orderItemModels` deliberately does not read
+    it, the same way it ignores `id`.
+  - **The rule is the LATEST FULFILLED restock's price** for that product into that warehouse. Only
+    fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
+    That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
+    model nothing has yet — and it is safe to change because the answer is **frozen onto the line**, so
+    a new rule changes future orders and never rewrites what past ones recorded. See
+    `plans/revenue_service/brainstorming.md`.
+  - **0 means UNKNOWN, not free.** A product never restocked has no recorded cost, and every row
+    predating this column is in that position. A margin computed over an unknown cost reads as pure
+    profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
+    rather than returning zero for them, precisely to keep the two apart.
+  - `cogs` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
+    cannot drift, because the lines it was computed from are frozen too — exactly like `subtotal`.
 - **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
   shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
   (same service). `status` is the `OrderStatus` enum as text (`placed`/`confirmed`/`cancelled` —

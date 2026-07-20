@@ -49,6 +49,7 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 			Name:      o.Items[i].Name,
 			Quantity:  o.Items[i].Quantity,
 			UnitPrice: o.Items[i].UnitPrice,
+			UnitCost:  o.Items[i].UnitCost,
 		})
 	}
 
@@ -63,6 +64,7 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		Address:       orderAddressToProto(o),
 		ShippingCode:  o.ShippingCode,
 		Subtotal:      o.Subtotal,
+		Cogs:          o.COGS,
 		ShippingCost:  o.ShippingCost,
 		Total:         o.Total,
 		Items:         items,
@@ -89,6 +91,9 @@ func orderAddressToProto(o *selling_service_models.Order) *sellingv1.OrderAddres
 }
 
 // orderItemModels turns request lines into rows; `id` on the input is ignored.
+// It deliberately does NOT read unit_cost from the request (#74): what the goods cost comes from the
+// WAREHOUSE at order time, and a client supplying it would be writing its own margin — the one number
+// nobody placing an order should get to choose. OrderCreate stamps it after building these.
 func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderItem {
 	out := make([]selling_service_models.OrderItem, 0, len(in))
 	for _, it := range in {

@@ -5,8 +5,8 @@ import (
 
 	"gorm.io/gorm"
 
-	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
+	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 )
 
 func newService(t *testing.T, db *gorm.DB) *product_v1.Service {

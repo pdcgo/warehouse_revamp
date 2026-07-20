@@ -37,6 +37,13 @@ type StockPicker interface {
 	//
 	// Returning a ref twice is refused there, which is what makes a retry safe from here.
 	Return(ctx context.Context, sellingTeamID, warehouseID uint64, ref string) error
+
+	// UnitCosts reports what each product COST the warehouse, so an order can freeze its COGS (#74).
+	//
+	// A product with NO known cost is absent from the map rather than present as 0 — "we do not know
+	// what this cost" and "this cost nothing" are different facts, and collapsing them would let an
+	// order book a margin as if the goods were free.
+	UnitCosts(ctx context.Context, sellingTeamID, warehouseID uint64, productIDs []uint64) (map[uint64]int64, error)
 }
 
 // isNothingToReturn reports whether a Return failed because there was nothing to give back.
@@ -76,6 +83,26 @@ func pickLines(items []*sellingv1.OrderItem) []PickLine {
 			// so there is nothing to lose here.
 			Quantity: int64(item.GetQuantity()),
 		})
+	}
+
+	return out
+}
+
+// orderProductIDs is the DEDUPLICATED set of products an order touches, which is what a cost lookup
+// wants: the contract caps the id list and requires it unique, and an order may legitimately name the
+// same product on two lines.
+func orderProductIDs(items []*sellingv1.OrderItem) []uint64 {
+	seen := make(map[uint64]struct{}, len(items))
+	out := make([]uint64, 0, len(items))
+
+	for _, item := range items {
+		id := item.GetProductId()
+		if _, dup := seen[id]; dup {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		out = append(out, id)
 	}
 
 	return out

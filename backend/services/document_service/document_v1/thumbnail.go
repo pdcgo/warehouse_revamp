@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	_ "image/gif"  // register decoders
+	_ "image/gif" // register decoders
 	"image/jpeg"
 	_ "image/png"
 	"io"

@@ -11,7 +11,7 @@ import (
 
 // RegionList returns the children of one region — the cascading picker's only query. An EMPTY
 // parent_code means the top level (the 38 provinsi), which is `parent_code IS NULL`, not
-// `parent_code = ''`: "no parent" is an absence.
+// `parent_code = ”`: "no parent" is an absence.
 //
 // Ordered by name, because this feeds a human picking from a list, not a machine.
 func (s *Service) RegionList(

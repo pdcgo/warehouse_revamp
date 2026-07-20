@@ -29,8 +29,8 @@ import (
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
-	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 // NewServeMux mounts every service handler.
