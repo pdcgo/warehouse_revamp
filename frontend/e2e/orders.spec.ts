@@ -299,3 +299,69 @@ test("Lifecycle: confirm then cancel from the detail page (#91)", async ({ page 
   await expect(page.getByTestId("order-confirm")).toBeHidden();
   await expect(page.getByTestId("order-cancel")).toBeHidden();
 });
+
+// Switches the app to the WAREHOUSE team — the crew's seat (#151).
+//
+// The pick screens are scoped to the warehouse, not to the selling team, so nothing about them can be
+// exercised from the seat that placed the order. This is the switch that makes the crew's view real.
+async function switchToWarehouse(page: Page) {
+  await page.getByTestId("team-switcher").click();
+  await page.getByTestId("team-search").fill(WH_NAME);
+  await page.getByTestId(/^team-option-/).first().click();
+  await expect(page.getByTestId("team-switcher")).toContainText(WH_NAME);
+}
+
+// #151 — the crew's whole job, end to end: find the order in the queue, open it, read WHICH SHELF to
+// walk to, and walk it through picking → packed → shipped.
+test("Picking: the warehouse works a confirmed order through to shipped (#151)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Place and confirm from the SELLING seat — an order only reaches the queue once it is confirmed.
+  await placeOrderViaForm(page, `${CUSTOMER} picking`);
+  await page.getByTestId("order-confirm").click();
+  await expect(page.getByTestId("order-detail-page")).toContainText("Confirmed");
+
+  await switchToWarehouse(page);
+
+  await page.goto("/inventories/picking");
+
+  // The queue opens on To Pick, which is the tab a picker wants: the next job, not a history.
+  const row = page.getByTestId("pick-queue-table").getByText(`${CUSTOMER} picking`);
+  await expect(row).toBeVisible();
+  await row.click();
+
+  // THE POINT OF THE SCREEN: the line names a shelf. The e2e's stock was received without a rack, so
+  // the honest answer is the unplaced pile — a real place in this system (#135), named in words rather
+  // than left blank. A blank would read as "we forgot" instead of "it is not on a shelf yet".
+  const pickList = page.getByTestId("pick-list-table");
+  await expect(pickList).toBeVisible();
+  await expect(pickList).toContainText(PRODUCT_NAME);
+  await expect(pickList).toContainText("Unplaced");
+
+  // Forward, one step at a time — and the button always reads as the single next thing that happened.
+  const advance = page.getByTestId("pick-order-advance");
+
+  await expect(advance).toContainText("Start Picking");
+  await advance.click();
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Packed");
+
+  await page.getByTestId("pick-order-advance").click();
+  await expect(page.getByTestId("pick-order-advance")).toContainText("Mark Shipped");
+
+  await page.getByTestId("pick-order-advance").click();
+
+  // SHIPPED is the end of the warehouse's work: the goods have left the building, so there is no next
+  // step to offer and the button goes away entirely.
+  await expect(page.getByTestId("pick-order-advance")).toBeHidden();
+});
+
+// #151 — the queue belongs to a WAREHOUSE. A selling team places orders but has no shelves and nobody
+// to walk to them, so the screen says so rather than showing an empty table that looks like a quiet day.
+test("Picking: a selling team is told the queue is a warehouse screen (#151)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/inventories/picking");
+
+  await expect(page.getByTestId("pick-queue-not-warehouse")).toBeVisible();
+  await expect(page.getByTestId("pick-queue-table")).toBeHidden();
+});

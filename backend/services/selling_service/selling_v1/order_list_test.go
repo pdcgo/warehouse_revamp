@@ -157,3 +157,33 @@ func TestOrderList_TheStatusFilterAppliesToTheSellingSideToo(t *testing.T) {
 			got.GetOrders()[0].GetId(), confirmed, placed.Msg.GetOrder().GetId())
 	}
 }
+
+// #151 — the warehouse can OPEN an order shipping from it, lines and all. Listing the queue is useless
+// without this: the pick list IS the order's lines.
+func TestOrderDetail_TheWarehouseCanOpenItsOrders(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	id := confirmedOrder(t, svc, shop)
+
+	got, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: testWarehouse, OrderId: id,
+	}))
+	if err != nil {
+		t.Fatalf("the warehouse opening its own order: %v", err)
+	}
+
+	if len(got.Msg.GetOrder().GetItems()) == 0 {
+		t.Fatal("the warehouse got an order with no lines — there is nothing to pick from that")
+	}
+
+	// A team that is neither end still cannot: NotFound, so it cannot probe for which ids exist.
+	_, err = svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 902, OrderId: id,
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeNotFound {
+		t.Fatalf("an unrelated team opening the order = %v, want NotFound", code)
+	}
+}

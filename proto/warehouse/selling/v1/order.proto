@@ -253,13 +253,19 @@ message OrderListResponse {
 }
 
 message OrderDetailRequest {
+  // Read: BOTH SIDES, exactly as OrderList (#151). The warehouse needs this one more than anybody — the
+  // PICK LIST IS THE ORDER'S LINES, and nothing else returns them. A crew that can list its queue but
+  // cannot open an order can see there is work and not what the work is.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
       ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
     ]
   };
 

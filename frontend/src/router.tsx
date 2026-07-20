@@ -59,6 +59,12 @@ const SupplierDetailPage = lazy(() =>
   import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
+const PickQueuePage = lazy(() =>
+  import("./picking/PickQueuePage").then((m) => ({ default: m.PickQueuePage })),
+);
+const PickOrderPage = lazy(() =>
+  import("./picking/PickOrderPage").then((m) => ({ default: m.PickOrderPage })),
+);
 const RackDetailPage = lazy(() =>
   import("./racks/RackDetailPage").then((m) => ({ default: m.RackDetailPage })),
 );
@@ -154,6 +160,9 @@ export const router = createBrowserRouter([
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
       // only, but the route is open and the server's policy is what actually decides.
+      // The crew's pick screens (#151). Static segment before the dynamic one.
+      { path: "inventories/picking", element: <PickQueuePage /> },
+      { path: "inventories/picking/:orderId", element: <PickOrderPage /> },
       { path: "inventories/racks", element: <RacksPage /> },
       // What is on one shelf, and how much (#138) — reached by clicking a rack in the list.
       { path: "inventories/racks/:rackId", element: <RackDetailPage /> },

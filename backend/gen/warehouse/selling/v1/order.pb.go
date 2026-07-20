@@ -1454,11 +1454,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x84\x01\n" +
 	"\x11OrderListResponse\x123\n" +
 	"\x06orders\x18\x01 \x03(\v2\x1b.warehouse.selling.v1.OrderR\x06orders\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"k\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"n\n" +
 	"\x12OrderDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
-	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"H\n" +
+	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"H\n" +
 	"\x13OrderDetailResponse\x121\n" +
 	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order\"l\n" +
 	"\x13OrderConfirmRequest\x12$\n" +

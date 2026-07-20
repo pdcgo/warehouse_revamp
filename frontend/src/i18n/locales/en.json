@@ -18,7 +18,8 @@
     "racks": "Racks",
     "users": "Users",
     "settings": "Settings",
-    "profile": "Profile"
+    "profile": "Profile",
+    "picking": "Picking"
   },
   "menu": {
     "language": "Language",
@@ -830,5 +831,47 @@
     "code": "Code",
     "passwordReset": "Password reset",
     "signInWithNewPassword": "Sign in with your new password."
+  },
+  "picking": {
+    "title": "Picking",
+    "selectTeam": "Select a team to view its picking queue.",
+    "warehouseOnly": "Picking happens in a warehouse. Switch to a warehouse team to see its queue.",
+    "empty": "No orders to pick.",
+    "emptyFiltered": "No {{status}} orders.",
+    "tab": {
+      "toPick": "To Pick",
+      "picking": "Picking",
+      "packed": "Packed",
+      "shipped": "Shipped",
+      "all": "All"
+    },
+    "table": {
+      "order": "Order",
+      "customer": "Customer",
+      "status": "Status",
+      "product": "Product",
+      "qty": "Qty",
+      "shelf": "Shelf",
+      "unplaced": "Unplaced",
+      "noRecordedShelf": "No recorded shelf"
+    },
+    "action": {
+      "startPicking": "Start Picking",
+      "markPacked": "Mark Packed",
+      "markShipped": "Mark Shipped"
+    },
+    "detail": {
+      "title": "Pick Order #{{id}}",
+      "back": "Back to Picking",
+      "notFound": "That order is not shipping from this warehouse.",
+      "customer": "Customer",
+      "pickList": "Pick List"
+    },
+    "toast": {
+      "picking": "Picking started",
+      "packed": "Marked packed",
+      "shipped": "Marked shipped",
+      "stepFailed": "Could not record that step"
+    }
   }
 }

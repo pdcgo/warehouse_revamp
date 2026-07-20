@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
+import {
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Settings, ShoppingCart, Store, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -68,6 +69,12 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
     { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
     { to: "/inventories/suppliers", label: "nav.supplier", icon: Factory },
   ];
+
+  // Picking is the WAREHOUSE crew's own queue (#151): the orders shipping from THIS building. A
+  // selling team places orders but nobody there walks to a shelf, so it has no queue to show.
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/picking", label: "nav.picking", icon: PackageSearch });
+  }
 
   // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
   if (teamType === TeamType.WAREHOUSE) {

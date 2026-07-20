@@ -75,3 +75,68 @@ would hide that rather than record it.
 > A cancel mid-pick leaves physical goods in a picker's hands that the books have already returned to
 > their shelves. Re-shelving them is `StockMove`'s job (#136). The books are right; the shelf needs a
 > person.
+
+---
+
+## The pick screen's reads (#151)
+
+The crew's screen is a join of things that already existed — but two of the reads it needs were
+**selling-scoped only**, so the warehouse could not perform its own work.
+
+### Both ends of an order
+
+`OrderList` and `OrderDetail` matched `team_id` alone. The write side landed in #150 (`OrderPick` /
+`OrderPack` / `OrderShip`, all scoped to the **warehouse**) without the read side following, so a crew
+could record work on an order it was not allowed to look at.
+
+Both now match **either end**, and `team_id` means *"the team you hold a role in"* rather than *"the
+team whose orders you get"*:
+
+```sql
+WHERE (team_id = ? OR warehouse_id = ?)
+```
+
+`OrderList` also takes a **status filter**, which is what makes it a queue rather than a list.
+Server-side, because the list is paginated: a client-side filter narrows the loaded page only and
+still reports the unfiltered total.
+
+### Which shelf to walk to — `StockPickLocations`
+
+The screen's one hard question: a product can sit on several racks (#135), so which does the picker
+walk to? Answered by **inventory_service**, from the **ledger**:
+
+```mermaid
+sequenceDiagram
+    participant UI as Pick screen (warehouse seat)
+    participant S as selling_service
+    participant I as inventory_service
+
+    Note over UI: the two reads are issued together —<br/>lines without shelves are useless, and<br/>shelves without lines are meaningless
+    par
+        UI->>S: OrderDetail(team_id=warehouse, order_id)
+        S-->>UI: the order + its lines
+    and
+        UI->>I: StockPickLocations(warehouse_id, ref="order:<id>")
+        I-->>UI: per product, per rack, how much
+    end
+
+    Note over UI: joined on product_id;<br/>a product drawn from 3 shelves = 3 stops
+```
+
+**From the ledger, not from stock levels — this is the whole design.** The goods were drawn at
+placement (#149) and `StockPick` recorded, per rack, exactly how much it took under `ref =
+order:<id>`. Those movements are what the order *holds*. Current levels answer a question whose answer
+keeps moving — another order draws from the same shelf, a stock-take shifts goods — and a picker sent
+by current levels can arrive at a shelf whose stock is spoken for.
+
+`PICK` and `RETURN` rows are **netted**, and only a positive remainder is a stop on the walk. Reading
+`PICK` alone looks right and is not: the ledger is append-only, so a cancelled order's `PICK` rows
+survive its return and the screen would send a picker after goods that are back on the shelf.
+
+The walk is ordered as `StockPick` drained it (#149) — the unplaced pile first, then shelves by label —
+so it reads as the route the system already planned.
+
+> A product on two shelves appears **twice**, each with its own quantity. #151 asked for "a shelf, or
+> all of them with quantities, rather than silently picking one"; when the goods genuinely are in two
+> places, listing both is the only honest answer. `rack_id = 0` is the **unplaced pile** — a real place
+> (#135), named in words on screen, never a blank cell.

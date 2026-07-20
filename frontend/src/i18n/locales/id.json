@@ -18,7 +18,8 @@
     "racks": "Rak",
     "users": "Pengguna",
     "settings": "Pengaturan",
-    "profile": "Profil"
+    "profile": "Profil",
+    "picking": "Pengambilan"
   },
   "menu": {
     "language": "Bahasa",
@@ -830,5 +831,47 @@
     "code": "Kode",
     "passwordReset": "Kata sandi diatur ulang",
     "signInWithNewPassword": "Masuk dengan kata sandi baru Anda."
+  },
+  "picking": {
+    "title": "Pengambilan",
+    "selectTeam": "Pilih tim untuk melihat antrean pengambilannya.",
+    "warehouseOnly": "Pengambilan dilakukan di gudang. Ganti ke tim gudang untuk melihat antreannya.",
+    "empty": "Tidak ada pesanan untuk diambil.",
+    "emptyFiltered": "Tidak ada pesanan {{status}}.",
+    "tab": {
+      "toPick": "Perlu Diambil",
+      "picking": "Sedang Diambil",
+      "packed": "Sudah Dikemas",
+      "shipped": "Sudah Dikirim",
+      "all": "Semua"
+    },
+    "table": {
+      "order": "Pesanan",
+      "customer": "Pelanggan",
+      "status": "Status",
+      "product": "Produk",
+      "qty": "Jml",
+      "shelf": "Rak",
+      "unplaced": "Belum Dirakkan",
+      "noRecordedShelf": "Rak tidak tercatat"
+    },
+    "action": {
+      "startPicking": "Mulai Ambil",
+      "markPacked": "Tandai Dikemas",
+      "markShipped": "Tandai Dikirim"
+    },
+    "detail": {
+      "title": "Ambil Pesanan #{{id}}",
+      "back": "Kembali ke Pengambilan",
+      "notFound": "Pesanan itu tidak dikirim dari gudang ini.",
+      "customer": "Pelanggan",
+      "pickList": "Daftar Ambil"
+    },
+    "toast": {
+      "picking": "Pengambilan dimulai",
+      "packed": "Ditandai dikemas",
+      "shipped": "Ditandai dikirim",
+      "stepFailed": "Tidak dapat mencatat langkah itu"
+    }
   }
 }
