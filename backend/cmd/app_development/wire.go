@@ -42,6 +42,8 @@ func InitializeApp() (*App, error) {
 		shipping_v1.NewService,
 		product_v1.NewService,
 		selling_v1.NewService,
+		// Joins selling to inventory (#149/#70) — see stock_picker.go.
+		NewStockPicker,
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,

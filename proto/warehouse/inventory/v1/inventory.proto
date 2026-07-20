@@ -27,6 +27,8 @@ service InventoryService {
   rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
   // Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
   rpc StockPick(StockPickRequest) returns (StockPickResponse);
+  // Put a pick BACK: a cancelled order (#70), or an order that died after its stock was taken (#149).
+  rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -45,6 +47,13 @@ enum MovementKind {
   // WAREHOUSES, and each side only ever sees its own; both legs of a move are in the same warehouse,
   // so a reader sees the pair together and the rack plus the sign already tell the story.
   MOVEMENT_KIND_MOVE = 6;
+  // Stock put BACK after a pick was undone (#70/#149) — a cancelled order, or an order write that
+  // failed after its stock had already been taken.
+  //
+  // A distinct kind rather than a positive PICK, because "we took 10 for an order" and "we gave 10
+  // back because the order died" are different events, and a ledger that could not tell them apart
+  // would make a cancelled order look like a delivery that never happened.
+  MOVEMENT_KIND_RETURN = 7;
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -313,6 +322,43 @@ message StockPickRequest {
 message StockPickResponse {
   // Every movement the pick produced — one per PLACE drawn, so a line satisfied from two shelves
   // yields two. This is what makes the drain auditable: it says exactly which shelves were emptied.
+  repeated StockMovement movements = 1;
+}
+
+message StockReturnRequest {
+  // Write: the same selling-team roles that may pick, for the same reason — the team that took the
+  // stock is the team that gives it back. Scoped to the SELLING team, exactly as StockPick is.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // WHICH pick to undo. The caller names the reference it picked under, and every PICK movement
+  // carrying it is reversed — same product, same shelf, same quantity, opposite sign.
+  //
+  // Reversing the RECORDED movements rather than being told quantities is what makes this exact: the
+  // stock goes back precisely where it came from, including the split across shelves that the drain
+  // order produced. A caller passing its own numbers could disagree with what was actually taken, and
+  // the ledger would have no way to notice.
+  string ref = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+message StockReturnResponse {
+  // The RETURN movements written — one per place the stock went back to.
   repeated StockMovement movements = 1;
 }
 

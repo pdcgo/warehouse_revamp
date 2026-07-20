@@ -12,10 +12,55 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
+// fakePicker stands in for inventory_service in these tests (#149/#70).
+//
+// A fake rather than the real thing on purpose: it makes the FAILURE paths reachable. "Not enough
+// stock means no order" and "a failed order write puts the stock back" both need the picker to refuse
+// on demand, which a real warehouse would only do after elaborate seeding — and it records what it was
+// asked to do, so a test can assert that a compensation actually happened rather than inferring it.
+type fakePicker struct {
+	picked    []string // refs picked, in order
+	returned  []string // refs returned, in order
+	pickErr   error    // if set, Pick refuses
+	returnErr error    // if set, Return refuses
+}
+
+func (f *fakePicker) Pick(
+	_ context.Context,
+	_, _ uint64,
+	_ []selling_v1.PickLine,
+	ref string,
+) error {
+	if f.pickErr != nil {
+		return f.pickErr
+	}
+
+	f.picked = append(f.picked, ref)
+
+	return nil
+}
+
+func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
+	if f.returnErr != nil {
+		return f.returnErr
+	}
+
+	f.returned = append(f.returned, ref)
+
+	return nil
+}
+
 func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db)
+	return selling_v1.NewService(db, &fakePicker{})
+}
+
+// newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
+func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
+	t.Helper()
+
+	return selling_v1.NewService(db, picker)
 }
 
 // insertShop seeds an active shop directly and returns its id.

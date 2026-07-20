@@ -148,6 +148,64 @@ test("setup: a category, a shop, and a product for the order to reference", asyn
   await expect(page.getByTestId(`product-row-${SKU}`)).toBeVisible();
 });
 
+// Stock for the order to take (#149). Placing an order now DEDUCTS from its warehouse, and a warehouse
+// with nothing in it refuses the order — correctly, and that is the whole point of the feature. So the
+// order flow below needs goods on the shelf before it can succeed, exactly as it would in life.
+//
+// Seeded through the API rather than the Stock screen, and the reason is a real gap worth naming: that
+// screen is PRODUCT-DRIVEN (it lists the warehouse's own catalogue and joins stock onto it), so it
+// cannot show — or receive — a product belonging to a selling team. Which is precisely this case: the
+// order's product belongs to the ordering team while the stock sits in the warehouse. See
+// plans/inventory_service/brainstorming.md §4; fixing that screen is its own piece of work, not this
+// spec's job to route around.
+test("setup: stock in the warehouse for the order to draw", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // The ids the API needs are not on screen, so read them back the same way the app would.
+  const ids = await page.evaluate(async ([whCode, sku]) => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const call = async (method: string, body: unknown) => {
+      const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+      return res.json();
+    };
+
+    const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+    const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+
+    // No `q`: Connect's JSON omits empty arrays, so a search that matches nothing comes back with no
+    // `products` key at all — indistinguishable from a broken call. Listing and matching here fails
+    // loudly and obviously instead.
+    const products = await call("product.v1.ProductService/ProductDiscover", {
+      teamId: "1",
+      page: { page: 1, limit: 200 },
+    });
+    const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+    if (!product) {
+      throw new Error(`product ${sku} not found among ${(products.products ?? []).length} discovered`);
+    }
+
+    await call("inventory.v1.InventoryService/StockReceive", {
+      warehouseId: warehouse.id,
+      productId: product.id,
+      quantity: "50",
+      reason: "e2e seed",
+    });
+
+    return { warehouse: warehouse.id, product: product.id };
+  }, [WH_CODE, SKU]);
+
+  expect(ids.warehouse).toBeTruthy();
+  expect(ids.product).toBeTruthy();
+});
+
 test("Create: place an order through the form; money computes; the detail opens", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 

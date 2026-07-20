@@ -20,6 +20,9 @@ import (
 
 type Service struct {
 	db *gorm.DB
+	// How an order moves stock when it is placed or cancelled (#149/#70). An interface this service
+	// owns, so selling_service never imports inventory_service — see stock_picker.go.
+	stock StockPicker
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -29,8 +32,8 @@ var (
 	_ sellingv1connect.OrderServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+func NewService(db *gorm.DB, stock StockPicker) *Service {
+	return &Service{db: db, stock: stock}
 }
 
 var errShopMissing = errors.New("shop not found")
