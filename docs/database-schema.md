@@ -632,3 +632,45 @@ erDiagram
 `team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
 services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
 the owning service resolves them over Connect RPC.
+
+---
+
+## revenue_service
+
+`backend/services/revenue_service/db_migrations/`
+
+```mermaid
+erDiagram
+    order_revenues {
+        bigserial   id              PK
+        bigint      team_id         "the SELLING team, opaque cross-service id, no FK"
+        bigint      order_id        UK "the order, opaque; UNIQUE — one record per order"
+        bigint      revenue         "what the buyer paid, copied from the order"
+        bigint      cogs            "what the goods cost us, copied"
+        bigint      shipping_cost   "copied"
+        bigint      expected_margin "revenue - cogs - shipping_cost, computed once and stored"
+        boolean     cost_known      "false = cogs is a stand-in for UNKNOWN, not a real 0 (#74)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`order_revenues`** — what each order was **expected** to make, frozen when it was placed (#75).
+  - **A stored record rather than a calculation**, which is the owner's call against a genuinely
+    cheaper option: #74 already froze `total`, `cogs` and `shipping_cost` onto the order, so a screen
+    could compute the margin with no table at all. What this buys is a **home for #76** — settlement
+    compares expected against what the payout actually was, and "actual" has nowhere to live without a
+    row beside it.
+  - **The money is COPIED, not referenced.** If the order is later edited, or #74's cost rule is
+    replaced (it is explicitly replaceable), this row must still say what was expected *at the time* —
+    which is the only thing it is for. That it duplicates the order's numbers is the accepted cost;
+    what keeps it honest is that it is written **once**, from figures that are themselves frozen.
+  - **`expected_margin` is stored, not derived on read**, because #76 reconciles against it — and a
+    number you reconcile against has to be the one you actually promised, not one recomputed later
+    from inputs that may since have been corrected.
+  - **`cost_known = false` means the cost was UNKNOWN** (#74), not zero. A margin over an unknown cost
+    reads as pure profit, so the flag is what stops that being mistaken for a good month. The row is
+    kept anyway — an order with no revenue record at all is a worse kind of missing than one marked
+    untrustworthy.
+  - `UNIQUE (order_id)`: recording twice would **double** every total computed from this table, which
+    is the kind of error that looks like good news.

@@ -43,7 +43,7 @@ const migrationLockKey = 8748301
 // region_service is migrated for its SCHEMA only — the 91.599-row seed is NOT loaded here. A test
 // that needs regions inserts the handful it actually asserts on; making every test database pay for
 // the whole country would be slow and would couple unit tests to upstream reference data.
-var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service", "selling_service", "category_service", "document_service", "inventory_service", "region_service"}
+var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service", "selling_service", "category_service", "document_service", "inventory_service", "region_service", "revenue_service"}
 
 var (
 	once    sync.Once
