@@ -32,7 +32,6 @@ var (
 	_ inventoryv1connect.SupplierChannelServiceHandler = (*Service)(nil)
 	_ inventoryv1connect.RestockRequestServiceHandler  = (*Service)(nil)
 	_ inventoryv1connect.RackServiceHandler            = (*Service)(nil)
-	_ inventoryv1connect.StockAccessServiceHandler     = (*Service)(nil)
 )
 
 func NewService(db *gorm.DB) *Service {

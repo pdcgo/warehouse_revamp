@@ -383,15 +383,6 @@ erDiagram
         timestamptz updated_at
     }
 
-    stock_access_grants {
-        bigserial   id              PK
-        bigint      warehouse_id    "the warehouse GRANTING, opaque, no FK"
-        bigint      selling_team_id "the selling team allowed to draw, opaque, no FK"
-        boolean     revoked         "soft, so a revocation is auditable"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
     suppliers {
         bigserial   id          PK
         bigint      team_id     "owning team, opaque cross-service id, no FK"
@@ -454,23 +445,6 @@ erDiagram
     }
 ```
 
-- **`stock_access_grants`** — the arrangement by which a WAREHOUSE lets a SELLING team draw its stock
-  (#147). It exists because of a hole #69 found: a CS person placing an order holds a role in the
-  *selling* team while the stock belongs to the *warehouse* team, and the access interceptor's rule is
-  absolute — a role in another team does not authorize this one. What was missing is the **real business
-  fact** that this warehouse stores goods for that selling team, recorded rather than inferred so it is
-  visible, revocable, and **fails closed**: no grant, no draw.
-  - The **warehouse grants**, so `warehouse_id` is the scoped team — it is that warehouse's stock being
-    made drawable, and a selling team cannot grant itself access to anyone.
-  - **Soft delete** (`revoked`), because *"who was allowed to take our stock, and when did that stop"* is
-    exactly the question asked after a discrepancy, and a deleted row cannot answer it. The unique index
-    is **partial on `revoked = FALSE`**, so revoking frees the pair to be granted again — the same shape
-    as `racks_warehouse_code_active_unique`, and for the same reason.
-  - `CHECK (warehouse_id <> selling_team_id)`: a warehouse already has full access to its own stock
-    through its own roles, so a self-grant would be a no-op that reads like a permission.
-  - ⚠ **Nothing consults these rows yet.** Teaching the scope check to read them is #148, deliberately a
-    separate change because it touches the access interceptor every RPC's authorization runs through,
-    where a mistake is silent. A test pins the inertness so the two cannot quietly entangle.
 - **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
   `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
   cache of the running on-hand, maintained inside each movement's transaction, with a

@@ -215,7 +215,35 @@ team that has an arrangement with this warehouse, do this on that team's behalf"
 exempting service calls from the scope check — would have silently weakened the ACL that the entire
 authorization model rests on, in a system whose stance everywhere else is *refuse, do not interpret*.
 
-#### ✅ DECIDED (owner, 2026-07-20): **a stored warehouse ↔ selling-team arrangement.**
+#### ✅ SUPERSEDED (owner, 2026-07-20): **any team may draw stock from any warehouse.**
+
+**This replaces the arrangement decision below.** There is no per-warehouse permission: a selling team
+does not need to be granted access to a warehouse's stock, because in this operation every warehouse
+serves every selling team. The arrangement was built (#147) and then **reverted** once the owner saw
+it — the right call, and cheap because it had shipped *inert* by design.
+
+**What this changes technically, and it is the whole point:** without a per-warehouse permission there
+is nothing for the scope check to consult, so **#148 disappears entirely** — the change to the access
+interceptor, the most dangerous work in the chain, is simply not needed.
+
+`StockPick` is then scoped to the **caller's own selling team**, not the warehouse: `team_id`
+(`use_scope`) is the team placing the order, which the caller demonstrably has a role in, and
+`warehouse_id` rides as an ordinary unscoped parameter. The authorization question becomes *"are you
+a legitimate member of the team placing this order?"* — which is the question that actually matters —
+rather than *"do you have rights inside that warehouse?"*, which nobody in the selling team ever will.
+
+⚠ **Note the CLAUDE.md trap this avoids:** a team-level role on a message with **no** `use_scope` field
+is evaluated against the root team and becomes a dead letter. Scoping to the selling team keeps the
+policy live; making `StockPick` unscoped would have quietly authorized nobody.
+
+**The cost, stated honestly:** any selling team can now draw down any warehouse's stock. That is a real
+exposure, accepted deliberately because it matches how this business runs — the warehouses and the
+selling teams are the same operation, not arms-length parties. If that ever stops being true, the
+arrangement below is the shape to bring back, and it is in git (`434eadf`, reverted).
+
+---
+
+#### ~~DECIDED (owner, 2026-07-20): a stored warehouse ↔ selling-team arrangement.~~ *(superseded above — kept for the reasoning, which still holds if per-warehouse permission is ever wanted)*
 
 A link saying *"selling team A may draw stock from warehouse B"*, which the scope check consults. The
 ACL stays about **who may do what**; it just learns a fact it did not have.
