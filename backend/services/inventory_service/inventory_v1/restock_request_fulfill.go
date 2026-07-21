@@ -58,9 +58,15 @@ func (s *Service) RestockRequestFulfill(
 		}
 
 		// The count must cover the request EXACTLY: every line, once, and nothing that is not on it.
-		type countedLine struct {
-			quantity int64
+		type placement struct {
 			rack     *uint64
+			quantity int64
+		}
+
+		type countedLine struct {
+			quantity   int64
+			placements []placement
+			damaged    []inventory_service_models.RestockDamagedUnit
 		}
 
 		counted := make(map[uint64]countedLine, len(req.Msg.GetLines()))
@@ -72,16 +78,30 @@ func (s *Service) RestockRequestFulfill(
 
 			cl := countedLine{quantity: line.GetReceivedQuantity()}
 
-			// A line that ARRIVED must say where it went (#137): goods that turned up are somewhere,
-			// and the system must be told rather than guess. A line counted 0 turned up nowhere, so a
-			// place is not owed — and a picker left pre-filled beside a zeroed count is an ordinary
-			// screen state, not a contradiction worth refusing.
-			if cl.quantity > 0 {
-				if line.GetPlace() == nil {
-					return errRestockLineNoPlace
-				}
+			// WHERE IT WENT (#137/#154). Goods that arrived are somewhere, and the system is told
+			// rather than left to guess — but a line can now name SEVERAL shelves, because a delivery
+			// of 100 does not go on one.
+			//
+			// The placements must SUM to the count beside them. A person who says "8 arrived" and then
+			// puts 7 away has made a mistake in one of the two, and which one is not knowable from
+			// here: refused, never interpreted, exactly as an incomplete count is (#133).
+			var placed int64
 
-				if id := line.GetRackId(); id != 0 {
+			seenRack := make(map[uint64]struct{}, len(line.GetPlacements()))
+			// The unplaced pile is a place like any other, so it also gets named at most once — and
+			// nil cannot be a map key, so it is tracked separately.
+			var seenUnplaced bool
+
+			for _, p := range line.GetPlacements() {
+				var rack *uint64
+
+				if id := p.GetRackId(); id != 0 {
+					if _, dup := seenRack[id]; dup {
+						return errRestockPlacementDuplicate
+					}
+
+					seenRack[id] = struct{}{}
+
 					// The shelf must belong to the ACCEPTING warehouse — another warehouse's rack reads
 					// as NotFound, or the error itself would confirm the id exists.
 					exists, checkErr := rackExists(tx, warehouseID, id)
@@ -93,8 +113,45 @@ func (s *Service) RestockRequestFulfill(
 						return errRackMissing
 					}
 
-					cl.rack = &id
+					rack = &id
+				} else {
+					if !p.GetUnplaced() {
+						// Neither arm of the oneof was set: a placement that names no place at all.
+						return errRestockLineNoPlace
+					}
+
+					if seenUnplaced {
+						return errRestockPlacementDuplicate
+					}
+
+					seenUnplaced = true
 				}
+
+				placed += p.GetQuantity()
+
+				cl.placements = append(cl.placements, placement{rack: rack, quantity: p.GetQuantity()})
+			}
+
+			// Checked BEFORE the sum, so the clearer error wins. Naming no place at all and naming
+			// places that come up short are different mistakes, and "you did not say where it went"
+			// is what the person actually needs to hear.
+			if cl.quantity > 0 && len(cl.placements) == 0 {
+				return errRestockLineNoPlace
+			}
+
+			// A line counted 0 owes no placement — and must not have one either, which the sum check
+			// enforces without needing a case of its own: 0 placed against 0 counted agrees.
+			if placed != cl.quantity {
+				return errRestockPlacementMismatch
+			}
+
+			// WHAT ARRIVED BROKEN (#154). Never enters stock, so it is recorded and nothing else.
+			for _, d := range line.GetDamaged() {
+				cl.damaged = append(cl.damaged, inventory_service_models.RestockDamagedUnit{
+					Quantity: d.GetQuantity(),
+					Reason:   d.GetReason(),
+					Value:    d.GetValue(),
+				})
 			}
 
 			counted[line.GetItemId()] = cl
@@ -119,14 +176,12 @@ func (s *Service) RestockRequestFulfill(
 			}
 
 			rr.Items[i].ReceivedQuantity = line.quantity
-			rr.Items[i].ReceivedRackID = line.rack
 
 			countErr := tx.
 				Model(&inventory_service_models.RestockRequestItem{}).
 				Where("id = ?", item.ID).
 				Updates(map[string]any{
 					"received_quantity": line.quantity,
-					"received_rack_id":  line.rack,
 					"updated_at":        time.Now(),
 				}).
 				Error
@@ -134,36 +189,67 @@ func (s *Service) RestockRequestFulfill(
 				return countErr
 			}
 
-			// A line that did not turn up moves no stock. It is still counted (0 is recorded above and
-			// stays on the record), but a zero movement would be a ledger entry saying nothing happened
-			// — which is worse than no entry, because it reads as a receipt.
+			// WHAT ARRIVED BROKEN (#154), recorded before the stock moves so a failure here cannot
+			// leave goods on a shelf with their losses unwritten. These units never enter stock: they
+			// are not sellable, and stock that cannot be sold is stock that fails at the shelf.
+			for _, d := range line.damaged {
+				d.RestockRequestItemID = item.ID
+
+				damageErr := tx.Create(&d).Error
+				if damageErr != nil {
+					return damageErr
+				}
+
+				rr.Items[i].Damaged = append(rr.Items[i].Damaged, d)
+			}
+
+			// A line that brought nothing usable moves no stock. It is still counted (0 is recorded
+			// above and stays on the record), but a zero movement would be a ledger entry saying
+			// nothing happened — worse than no entry, because it reads as a receipt.
 			if line.quantity == 0 {
 				continue
 			}
 
-			// Straight onto the shelf the warehouse named (#137): counting and shelving are ONE act, so
-			// the goods land where they were actually put rather than in an unplaced pile someone would
-			// have to work through afterwards. A nil rack here is the warehouse saying "unplaced" out
-			// loud — a legal answer for goods it has not shelved yet — not a value nobody supplied.
-			balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, line.rack, line.quantity)
-			if applyErr != nil {
-				return applyErr
-			}
+			// ONE MOVEMENT PER PLACE (#154). Straight onto the shelves the warehouse named, because
+			// counting and shelving are one act (#137) — and a delivery of 100 across three shelves is
+			// three ledger rows, not one row averaging a location it never sat in.
+			//
+			// A nil rack is the warehouse saying "unplaced" out loud — a legal answer for goods it has
+			// not shelved yet — not a value nobody supplied.
+			for _, p := range line.placements {
+				balance, applyErr := applyDelta(tx, rr.WarehouseID, item.ProductID, p.rack, p.quantity)
+				if applyErr != nil {
+					return applyErr
+				}
 
-			_, moveErr := appendMovement(
-				tx,
-				rr.WarehouseID,
-				item.ProductID,
-				line.rack,
-				line.quantity,
-				balance,
-				inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
-				"restock request",
-				rr.ShippingCode,
-				actor,
-			)
-			if moveErr != nil {
-				return moveErr
+				_, moveErr := appendMovement(
+					tx,
+					rr.WarehouseID,
+					item.ProductID,
+					p.rack,
+					p.quantity,
+					balance,
+					inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
+					"restock request",
+					rr.ShippingCode,
+					actor,
+				)
+				if moveErr != nil {
+					return moveErr
+				}
+
+				stored := inventory_service_models.RestockReceivedPlacement{
+					RestockRequestItemID: item.ID,
+					RackID:               p.rack,
+					Quantity:             p.quantity,
+				}
+
+				placeErr := tx.Create(&stored).Error
+				if placeErr != nil {
+					return placeErr
+				}
+
+				rr.Items[i].Placements = append(rr.Items[i].Placements, stored)
 			}
 		}
 

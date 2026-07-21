@@ -62,6 +62,12 @@ var (
 	// #137: counting and shelving are one act, so a line that ARRIVED must say where it went. Goods
 	// that turned up are somewhere; the system is told, or it refuses — it does not guess a shelf.
 	errRestockLineNoPlace = errors.New("a line that arrived must say which place it was put")
+	// #154: the places a line names must add up to the count beside them. A person who says "8 arrived"
+	// and then puts 7 away has made a mistake in one of the two, and which one is not knowable here.
+	errRestockPlacementMismatch = errors.New("the placements must add up to the received quantity")
+	// #154: a line names each place once. Two rows for the same shelf is one placement written twice,
+	// and summing them is not the same as the person having meant it.
+	errRestockPlacementDuplicate = errors.New("a line may name each place only once")
 )
 
 // restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
@@ -105,10 +111,17 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 			ReceivedQuantity: r.Items[i].ReceivedQuantity,
 		}
 
-		// Where it was shelved (#137). The wire carries 0 for the unplaced pile rather than a null —
-		// the same shape supplier_id uses.
-		if r.Items[i].ReceivedRackID != nil {
-			item.ReceivedRackId = *r.Items[i].ReceivedRackID
+		// Where it was shelved, one entry per place (#137/#154), and what arrived broken.
+		for p := range r.Items[i].Placements {
+			item.Placements = append(item.Placements, placementToProto(&r.Items[i].Placements[p]))
+		}
+
+		for d := range r.Items[i].Damaged {
+			item.Damaged = append(item.Damaged, &inventoryv1.RestockDamagedUnits{
+				Quantity: r.Items[i].Damaged[d].Quantity,
+				Reason:   r.Items[i].Damaged[d].Reason,
+				Value:    r.Items[i].Damaged[d].Value,
+			})
 		}
 
 		items = append(items, item)
@@ -145,11 +158,12 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 //     but only the WAREHOUSE may ever write it, and only by counting at acceptance (#133). Copying it
 //     here would let the requesting team declare its own delivery received on create or edit: stock
 //     the warehouse never saw, written by the party that benefits from claiming it arrived.
-//   - `received_rack_id` — the same rule for the same reason (#137): only the warehouse says where the
-//     goods were put, and only by shelving them as it counts. A requesting team that could set this
-//     would be declaring which shelf a delivery it never made had been placed on.
+//   - `placements` / `damaged` — the same rule for the same reason (#137/#154): only the warehouse
+//     says where the goods went and what arrived broken, and only by counting and shelving as it
+//     accepts. A requesting team that could set these would be declaring which shelf a delivery it
+//     never made had been placed on, or writing off goods it never handled.
 //
-// All three are ignored on the way in. Do not "complete" this mapping by adding any of them.
+// All of them are ignored on the way in. Do not "complete" this mapping by adding any of them.
 func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service_models.RestockRequestItem {
 	out := make([]inventory_service_models.RestockRequestItem, 0, len(in))
 	for _, item := range in {
@@ -185,6 +199,10 @@ func restockErr(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, errRestockCountIncomplete)
 	case errors.Is(err, errRestockLineNoPlace):
 		return connect.NewError(connect.CodeInvalidArgument, errRestockLineNoPlace)
+	case errors.Is(err, errRestockPlacementMismatch):
+		return connect.NewError(connect.CodeInvalidArgument, errRestockPlacementMismatch)
+	case errors.Is(err, errRestockPlacementDuplicate):
+		return connect.NewError(connect.CodeInvalidArgument, errRestockPlacementDuplicate)
 	case errors.Is(err, errRackMissing):
 		// NotFound, not PermissionDenied: another warehouse's rack must be indistinguishable from one
 		// that does not exist, or the error itself confirms the id.
@@ -192,4 +210,21 @@ func restockErr(err error) error {
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}
+}
+
+// placementToProto carries one placement over the wire (#154).
+//
+// The oneof is what makes "unplaced" say itself out loud. A nil rack becomes `unplaced: true` rather
+// than `rack_id: 0`, because 0 is what an unset number looks like and the pile is a real place — the
+// same distinction RackSelect keeps on screen (#136/#139) and the one #139 was written to defend.
+func placementToProto(p *inventory_service_models.RestockReceivedPlacement) *inventoryv1.RestockPlacement {
+	out := &inventoryv1.RestockPlacement{Quantity: p.Quantity}
+
+	if p.RackID != nil {
+		out.Place = &inventoryv1.RestockPlacement_RackId{RackId: *p.RackID}
+	} else {
+		out.Place = &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}
+	}
+
+	return out
 }

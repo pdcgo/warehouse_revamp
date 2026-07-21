@@ -77,14 +77,20 @@ message RestockRequestItem {
   // reading this only makes sense once status is FULFILLED.
   int64 received_quantity = 7 [(buf.validate.field).int64.gte = 0];
 
-  // WHERE the goods were put when the warehouse accepted them (#137). Read-only, exactly like
-  // received_quantity: only the warehouse writes it, and only by shelving as it counts — a requesting
-  // team that could set this on create or edit would be declaring where a delivery it never made had
-  // been put away.
+  // WHERE the goods were put when the warehouse accepted them (#137/#154), and WHAT ARRIVED BROKEN.
   //
-  // 0 means the unplaced pile, which is both "received, not shelved yet" and "not accepted yet". Those
-  // are told apart by `status` and `received_quantity`, not by this field alone.
-  uint64 received_rack_id = 8;
+  // Both are read-only here, exactly like received_quantity: only the warehouse writes them, and only
+  // by counting and shelving as it accepts. A requesting team that could set either would be declaring
+  // where a delivery it never made had been put away, or writing off goods it never handled.
+  //
+  // Empty until the request is accepted, and empty forever for a line that never turned up.
+  repeated RestockPlacement placements = 9;
+  repeated RestockDamagedUnits damaged = 10;
+
+  // 8 was `received_rack_id`, one place per line — superseded by `placements` (#154). A line's goods
+  // can go on several shelves, and a single column could only record that by being wrong.
+  reserved 8;
+  reserved "received_rack_id";
 }
 
 message RestockRequest {
@@ -310,38 +316,84 @@ message RestockRequestFulfillRequest {
 
 // One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,
 // and where it put them (#137).
+
+// RestockPlacement — how many of a received line's units went to ONE place (#154).
+//
+// A delivery of 100 does not go on one shelf, so a line carries a LIST of these. The quantities must
+// add up to the line's received_quantity: the person counting says how many are sellable and then says
+// where they put them, and a mismatch means one of the two is wrong. It is refused rather than
+// interpreted — the same rule as the incomplete count in #133.
+message RestockPlacement {
+  // WHERE. Required here, unlike the line-level place it replaces: a placement that names no place is
+  // not a partial answer, it is an empty row.
+  oneof place {
+    // A shelf of the ACCEPTING warehouse — another warehouse's rack reads as NotFound.
+    uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
+    // Received, not shelved yet (#135). A real place, not an absence — it is what a partial put-away
+    // looks like, and #136 is how the pile gets shelved later.
+    bool unplaced = 2 [(buf.validate.field).bool.const = true];
+  }
+
+  // How many went HERE. A placement of zero is not a placement.
+  int64 quantity = 3 [(buf.validate.field).int64.gt = 0];
+}
+
+// RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
+//
+// They NEVER ENTER STOCK (owner, 2026-07-20). Received counts what is sellable; this counts what is
+// not, so nobody can pick a box that is already crushed. It is deliberately not a StockAdjust after
+// the fact: the goods never became stock, and adjusting them out would claim they sat on a shelf for
+// an instant when they never did.
+message RestockDamagedUnits {
+  int64 quantity = 1 [(buf.validate.field).int64.gt = 0];
+
+  // WHY. Required and non-empty — a loss with no reason is a number nobody can act on, and it is the
+  // difference between a record that gets chased and one that gets written once and forgotten.
+  string reason = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // What those units were worth, whole rupiah. 0 is legitimate: a free sample can still arrive crushed.
+  int64 value = 3 [(buf.validate.field).int64.gte = 0];
+}
+
 message RestockRequestReceivedLine {
   // The RestockRequestItem being counted.
   uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
-  // How many arrived. Zero is legitimate and means the line did not turn up at all — it is a COUNT,
-  // not a quantity to move, so it has no lower bound to defend beyond being non-negative.
+  // How many are SELLABLE and enter stock. Zero is legitimate and means nothing usable turned up — it
+  // is a COUNT, not a quantity to move, so it has no lower bound beyond being non-negative.
   //
   // There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
   // and a cap would only force the person counting to write down a number they can see is wrong.
+  //
+  // ⚠ It EXCLUDES damaged units (#154, owner). What physically arrived is
+  // `received_quantity + Σ damaged.quantity`; what the warehouse can sell — and the only thing stock
+  // ever hears about — is this number.
   int64 received_quantity = 2 [(buf.validate.field).int64.gte = 0];
 
-  // WHERE the goods were put (#137, owner's call). Counting and shelving are ONE act: the warehouse
-  // says how many turned up and which shelf they went on in the same breath, so nothing routinely
-  // sits unplaced.
+  // WHERE the goods were put (#137/#154). Counting and shelving are ONE act: the warehouse says how
+  // many turned up and where they went in the same breath, so nothing routinely sits unplaced.
   //
-  // Unlike StockAdjust's place this oneof is NOT proto-required, because whether an answer is owed
-  // depends on the count beside it, which proto cannot express:
+  // A LIST, because a delivery of 100 does not go on one shelf. The quantities must sum to
+  // `received_quantity` exactly, and the handler refuses anything else rather than interpreting it:
   //
-  //   received_quantity > 0  → a place is REQUIRED. Goods that arrived are somewhere, and the system
-  //                            must be told where rather than guess (the handler refuses otherwise).
-  //   received_quantity == 0 → a place is IGNORED. Nothing turned up, so there is nowhere to put it;
-  //                            a picker left pre-filled beside a zeroed count is an ordinary screen
-  //                            state, not a contradiction worth refusing.
+  //   received_quantity > 0  → placements are REQUIRED and must total it. Goods that arrived are
+  //                            somewhere, and the system is told rather than left to guess.
+  //   received_quantity == 0 → placements must be EMPTY. Nothing usable turned up, so there is
+  //                            nothing to put anywhere.
   //
-  // `unplaced` stays available for a warehouse that genuinely does not know yet — it is a legal place
-  // (the not-yet-shelved pile), not an absence, and #136 is how that pile gets shelved later.
-  oneof place {
-    // The shelf the goods went on. Must be a rack of the ACCEPTING warehouse — another warehouse's
-    // rack reads as NotFound, like every other cross-scope id here.
-    uint64 rack_id = 3 [(buf.validate.field).uint64.gt = 0];
-    // Received, but not shelved yet. Only `true` is meaningful.
-    bool unplaced = 4 [(buf.validate.field).bool.const = true];
-  }
+  // `unplaced` stays available for a warehouse that has not shelved yet — a legal place, not an
+  // absence (#135), and #136 is how that pile gets shelved later.
+  repeated RestockPlacement placements = 5;
+
+  // What arrived broken, or never arrived (#154). Never enters stock; recorded so the loss is a number
+  // somebody can total rather than a story in a note field. Empty is the ordinary case.
+  repeated RestockDamagedUnits damaged = 6;
+
+  // 3 and 4 were the single `place` oneof, superseded by `placements` above.
+  reserved 3, 4;
+  reserved "rack_id", "unplaced", "place";
 }
 
 message RestockRequestFulfillResponse {

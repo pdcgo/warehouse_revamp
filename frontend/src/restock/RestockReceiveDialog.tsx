@@ -15,10 +15,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { restockClient, rpcError } from "../api/clients";
-import type {
-  RestockRequest,
-  RestockRequestReceivedLine,
-} from "../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockRequest } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { toaster } from "../components/Toaster";
 import { RackSelect, UNPLACED } from "../components/RackSelect";
 
@@ -72,16 +69,27 @@ function noneArrived(raw: string): boolean {
   return isCounted(raw) && toReceived(raw) === 0n;
 }
 
-// placeToOneof turns RackSelect's plain string into the line's `place` oneof — the same conversion
-// AdjustStockDialog makes for StockAdjust. Total over the picker's two legal answers only: `""`
-// (unanswered) has no encoding, because the contract cannot say "somewhere", and `complete` blocks
-// Confirm long before a blank could reach here.
-function placeToOneof(place: string): RestockRequestReceivedLine["place"] {
-  if (place === UNPLACED) {
-    return { case: "unplaced", value: true };
-  }
+// onePlacement turns RackSelect's plain string into the line's placements (#154).
+//
+// The contract takes a LIST now — a delivery of 100 does not go on one shelf — but this dialog still
+// asks for one place per line, so it sends a list of one. Splitting a line across several shelves is
+// the Accept SCREEN's job (#157); building it here would mean designing that screen inside a dialog.
+//
+// Total over the picker's two legal answers only: `""` (unanswered) has no encoding, because the
+// contract cannot say "somewhere", and `complete` blocks Confirm long before a blank could reach here.
+// A placement as the request builder wants it — a plain init object, like every other message here.
+type PlacementInit = {
+  place: { case: "unplaced"; value: true } | { case: "rackId"; value: bigint };
+  quantity: bigint;
+};
 
-  return { case: "rackId", value: BigInt(place) };
+function onePlacement(place: string, quantity: bigint): PlacementInit[] {
+  const where: PlacementInit["place"] =
+    place === UNPLACED
+      ? { case: "unplaced", value: true }
+      : { case: "rackId", value: BigInt(place) };
+
+  return [{ place: where, quantity }];
 }
 
 function prefill(request: RestockRequest): Record<string, string> {
@@ -177,7 +185,11 @@ export function RestockReceiveDialog({ request, teamId, onDone, trigger }: Resto
             return { itemId: item.id, receivedQuantity };
           }
 
-          return { itemId: item.id, receivedQuantity, place: placeToOneof(places[key] ?? "") };
+          return {
+            itemId: item.id,
+            receivedQuantity,
+            placements: onePlacement(places[key] ?? "", receivedQuantity),
+          };
         }),
       });
 

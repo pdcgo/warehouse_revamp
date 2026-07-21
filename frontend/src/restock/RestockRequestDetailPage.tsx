@@ -74,21 +74,30 @@ function unitPrice(item: RestockRequestItem): bigint {
 // Where a line's goods ended up, as a person would say it (#137). Three cases, and collapsing any
 // two of them would misreport where the stock physically is:
 //
-//   nothing arrived → "" (rendered "—"). `receivedRackId` is 0 here for want of a value, NOT because
-//                     the goods are in the unplaced pile: the proto is explicit that 0 is told apart
-//                     from the pile by `receivedQuantity`, never read alone. Saying "Unplaced" would
+//   nothing arrived → "" (rendered "—"). There are no placements at all, and saying "Unplaced" would
 //                     invent a pile of nothing for someone to go looking for.
-//   arrived, id 0   → the unplaced pile — a REAL place, not an absence. Worded by RackSelect's own
-//                     key, so the receive dialog and this page cannot phrase one state two ways.
-//   arrived, an id  → the rack's CODE. "A-01-3" is painted on the aisle; "7" is not, so an id we
+//   unplaced        → the not-yet-shelved pile — a REAL place, not an absence. Worded by RackSelect's
+//                     own key, so the receive dialog and this page cannot phrase one state two ways.
+//   a rack id       → the rack's CODE. "A-01-3" is painted on the aisle; "7" is not, so an id we
 //                     cannot resolve (the list failed, or the rack has since been deleted) says
 //                     exactly that instead of showing a number nobody can walk to. It must not fall
-//                     back to "Unplaced" either — that is a different fact, and it would send
-//                     someone to the wrong end of the warehouse.
+//                     back to "Unplaced" either — that is a different fact, and it would send someone
+//                     to the wrong end of the warehouse.
+//
+// SEVERAL PLACES ARE ORDINARY NOW (#154): a delivery of 100 across three shelves reads as
+// "A-01-1 (60), B-02-1 (30), Unplaced (10)". The quantity is shown per place because "it is on three
+// shelves" without saying how many are on each is not enough to go and pick it.
 function rackLabel(t: TFunction, item: RestockRequestItem, codes: Record<string, string>): string {
-  if (item.receivedQuantity === 0n) return "";
-  if (item.receivedRackId === 0n) return t("racks.select.unplaced");
-  return codes[item.receivedRackId.toString()] ?? t("restock.detail.rackUnknown");
+  return item.placements
+    .map((p) => {
+      const where =
+        p.place.case === "rackId"
+          ? (codes[p.place.value.toString()] ?? t("restock.detail.rackUnknown"))
+          : t("racks.select.unplaced");
+
+      return `${where} (${p.quantity})`;
+    })
+    .join(", ");
 }
 
 // RestockRequestDetailPage is the dedicated detail route for a restock request (#125) — a PAGE, not a

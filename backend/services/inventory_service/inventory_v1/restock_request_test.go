@@ -7,6 +7,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"gorm.io/gorm"
 )
 
 const (
@@ -28,7 +29,37 @@ func allArrived(r *inventoryv1.RestockRequest) []*inventoryv1.RestockRequestRece
 		lines = append(lines, &inventoryv1.RestockRequestReceivedLine{
 			ItemId:           item.GetId(),
 			ReceivedQuantity: item.GetQuantity(),
-			Place:            &inventoryv1.RestockRequestReceivedLine_Unplaced{Unplaced: true},
+			// One placement, the whole line, unplaced (#154). The list shape allows several; a test with
+			// no shelf in it means all of it went to the same (un)place.
+			Placements: []*inventoryv1.RestockPlacement{
+				{
+					Place:    &inventoryv1.RestockPlacement_Unplaced{Unplaced: true},
+					Quantity: item.GetQuantity(),
+				},
+			},
+		})
+	}
+
+	return lines
+}
+
+// onePlace is the count for a test that cares WHERE, but only about one shelf: everything arrived and
+// all of it went to `rack` (nil = the unplaced pile).
+func onePlace(r *inventoryv1.RestockRequest, rack *uint64) []*inventoryv1.RestockRequestReceivedLine {
+	lines := make([]*inventoryv1.RestockRequestReceivedLine, 0, len(r.GetItems()))
+	for _, item := range r.GetItems() {
+		p := &inventoryv1.RestockPlacement{Quantity: item.GetQuantity()}
+
+		if rack != nil {
+			p.Place = &inventoryv1.RestockPlacement_RackId{RackId: *rack}
+		} else {
+			p.Place = &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}
+		}
+
+		lines = append(lines, &inventoryv1.RestockRequestReceivedLine{
+			ItemId:           item.GetId(),
+			ReceivedQuantity: item.GetQuantity(),
+			Placements:       []*inventoryv1.RestockPlacement{p},
 		})
 	}
 
@@ -510,7 +541,7 @@ func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	onShelf := func(id uint64, qty int64) *inventoryv1.RestockRequestReceivedLine {
 		return &inventoryv1.RestockRequestReceivedLine{
 			ItemId: id, ReceivedQuantity: qty,
-			Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: shelf},
+			Placements: placedOn(shelf, qty),
 		}
 	}
 
@@ -618,14 +649,8 @@ func TestRestockRequest_FulfilPutsGoodsOnTheNamedShelf(t *testing.T) {
 	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: warehouse, RequestId: req.GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
-			{
-				ItemId: items[0].GetId(), ReceivedQuantity: 10,
-				Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rackA},
-			},
-			{
-				ItemId: items[1].GetId(), ReceivedQuantity: 4,
-				Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rackB},
-			},
+			{ItemId: items[0].GetId(), ReceivedQuantity: 10, Placements: placedOn(rackA, 10)},
+			{ItemId: items[1].GetId(), ReceivedQuantity: 4, Placements: placedOn(rackB, 4)},
 		},
 	}))
 	if err != nil {
@@ -634,7 +659,11 @@ func TestRestockRequest_FulfilPutsGoodsOnTheNamedShelf(t *testing.T) {
 
 	// The request remembers where each line was put.
 	for i, want := range []uint64{rackA, rackB} {
-		if got := ful.Msg.GetRequest().GetItems()[i].GetReceivedRackId(); got != want {
+		places := ful.Msg.GetRequest().GetItems()[i].GetPlacements()
+		if len(places) != 1 {
+			t.Fatalf("line %d recorded %d placements, want 1", i, len(places))
+		}
+		if got := places[0].GetRackId(); got != want {
 			t.Fatalf("line %d recorded rack %d, want %d", i, got, want)
 		}
 	}
@@ -782,7 +811,7 @@ func TestRestockRequest_FulfilCrossWarehouseRackIsNotFound(t *testing.T) {
 			Lines: []*inventoryv1.RestockRequestReceivedLine{
 				{
 					ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 3,
-					Place: &inventoryv1.RestockRequestReceivedLine_RackId{RackId: rack},
+					Placements: placedOn(rack, 3),
 				},
 			},
 		}))
@@ -812,7 +841,12 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 		Items: []*inventoryv1.RestockRequestItem{
 			{
 				ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 500,
-				ReceivedQuantity: 10, ReceivedRackId: shelf,
+				ReceivedQuantity: 10,
+				Placements:       placedOn(shelf, 10),
+				// And writes off two of its own goods while it is at it (#154).
+				Damaged: []*inventoryv1.RestockDamagedUnits{
+					{Quantity: 2, Reason: "claimed by the requester", Value: 100},
+				},
 			},
 		},
 	}))
@@ -824,8 +858,11 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 	if got := req.GetItems()[0].GetReceivedQuantity(); got != 0 {
 		t.Fatalf("create honoured a claimed receipt: received = %d, want 0", got)
 	}
-	if got := req.GetItems()[0].GetReceivedRackId(); got != 0 {
-		t.Fatalf("create honoured a claimed SHELF: rack = %d, want 0 (#137)", got)
+	if got := req.GetItems()[0].GetPlacements(); len(got) != 0 {
+		t.Fatalf("create honoured a claimed SHELF: placements = %v, want none (#137/#154)", got)
+	}
+	if got := req.GetItems()[0].GetDamaged(); len(got) != 0 {
+		t.Fatalf("create honoured a claimed WRITE-OFF: damaged = %v, want none (#154)", got)
 	}
 
 	// And again on edit.
@@ -834,7 +871,12 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 		Items: []*inventoryv1.RestockRequestItem{
 			{
 				ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 500,
-				ReceivedQuantity: 10, ReceivedRackId: shelf,
+				ReceivedQuantity: 10,
+				Placements:       placedOn(shelf, 10),
+				// And writes off two of its own goods while it is at it (#154).
+				Damaged: []*inventoryv1.RestockDamagedUnits{
+					{Quantity: 2, Reason: "claimed by the requester", Value: 100},
+				},
 			},
 		},
 	}))
@@ -844,8 +886,11 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 	if got := updated.Msg.GetRequest().GetItems()[0].GetReceivedQuantity(); got != 0 {
 		t.Fatalf("edit honoured a claimed receipt: received = %d, want 0", got)
 	}
-	if got := updated.Msg.GetRequest().GetItems()[0].GetReceivedRackId(); got != 0 {
-		t.Fatalf("edit honoured a claimed SHELF: rack = %d, want 0 (#137)", got)
+	if got := updated.Msg.GetRequest().GetItems()[0].GetPlacements(); len(got) != 0 {
+		t.Fatalf("edit honoured a claimed SHELF: placements = %v, want none (#137/#154)", got)
+	}
+	if got := updated.Msg.GetRequest().GetItems()[0].GetDamaged(); len(got) != 0 {
+		t.Fatalf("edit honoured a claimed WRITE-OFF: damaged = %v, want none (#154)", got)
 	}
 
 	// Nothing reached stock, either — the claim moved no goods.
@@ -1302,4 +1347,228 @@ func TestRestockRequest_Cancel(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("re-cancel code = %v, want FailedPrecondition", connect.CodeOf(err))
 	}
+}
+
+// placedOn is the ordinary single-placement case: all of it went to one shelf (#154). Named apart from
+// stock_move_test.go's onRack, which builds a StockPlace for a different RPC.
+func placedOn(rack uint64, qty int64) []*inventoryv1.RestockPlacement {
+	return []*inventoryv1.RestockPlacement{
+		{Place: &inventoryv1.RestockPlacement_RackId{RackId: rack}, Quantity: qty},
+	}
+}
+
+// #154 — A DELIVERY OF 100 DOES NOT GO ON ONE SHELF. A line's goods can be split across several
+// places, and each split is its own ledger row rather than one row averaging a location the goods
+// never sat in.
+func TestRestockRequest_FulfilSplitsALineAcrossSeveralShelves(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	rackA := insertRack(t, db, warehouse, "A-01-1")
+	rackB := insertRack(t, db, warehouse, "B-02-1")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 100, TotalPrice: 1000000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+
+	// 100 arrived: 60 on A, 30 on B, and 10 not shelved yet — a real, ordinary put-away.
+	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{
+				ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 100,
+				Placements: []*inventoryv1.RestockPlacement{
+					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackA}, Quantity: 60},
+					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackB}, Quantity: 30},
+					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 10},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	places := ful.Msg.GetRequest().GetItems()[0].GetPlacements()
+	if len(places) != 3 {
+		t.Fatalf("recorded %d placements, want 3: %v", len(places), places)
+	}
+
+	// The stock is where it was actually put — checked per shelf, because a total alone would pass
+	// even if all 100 had landed in one place.
+	for _, want := range []struct {
+		rack *uint64
+		qty  int64
+	}{{&rackA, 60}, {&rackB, 30}, {nil, 10}} {
+		got := onHandAt(t, db, warehouse, 100, want.rack)
+		if got != want.qty {
+			label := "unplaced"
+			if want.rack != nil {
+				label = "a rack"
+			}
+
+			t.Fatalf("%s holds %d, want %d", label, got, want.qty)
+		}
+	}
+}
+
+// #154 — the placements must ADD UP to the count beside them.
+//
+// Somebody who says "8 arrived" and then puts 7 away has made a mistake in one of the two, and which
+// one is not knowable from here. Refused, never interpreted — the same rule as an incomplete count
+// (#133). Guessing would put the difference somewhere nobody chose.
+func TestRestockRequest_FulfilRefusesPlacementsThatDoNotAddUp(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	rack := insertRack(t, db, warehouse, "A-01-1")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 50000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+
+	for name, placements := range map[string][]*inventoryv1.RestockPlacement{
+		"placed less than counted": {
+			{Place: &inventoryv1.RestockPlacement_RackId{RackId: rack}, Quantity: 7},
+		},
+		"placed more than counted": {
+			{Place: &inventoryv1.RestockPlacement_RackId{RackId: rack}, Quantity: 9},
+		},
+	} {
+		_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+			TeamId: warehouse, RequestId: req.GetId(),
+			Lines: []*inventoryv1.RestockRequestReceivedLine{
+				{ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 8, Placements: placements},
+			},
+		}))
+		if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+			t.Fatalf("%s = %v, want InvalidArgument", name, code)
+		}
+	}
+
+	// The same shelf twice is refused too: that is one placement written down twice, and adding them
+	// together is not the same as the person having meant it.
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{
+				ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 8,
+				Placements: []*inventoryv1.RestockPlacement{
+					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rack}, Quantity: 5},
+					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rack}, Quantity: 3},
+				},
+			},
+		},
+	}))
+	if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+		t.Fatalf("the same shelf twice = %v, want InvalidArgument", code)
+	}
+}
+
+// #154 — BROKEN UNITS NEVER ENTER STOCK (owner, 2026-07-20).
+//
+// 10 arrived and 2 are crushed: 8 are sellable and 8 is what stock hears about. The 2 are recorded
+// with their reason and value so the loss is a number somebody can total, but they are never on-hand —
+// stock that cannot be sold is stock that fails at the shelf, in front of a customer.
+func TestRestockRequest_FulfilRecordsDamageWithoutStockingIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	rack := insertRack(t, db, warehouse, "A-01-1")
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+
+	ful, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{
+				ItemId: req.GetItems()[0].GetId(),
+				// SELLABLE, not "arrived": 10 turned up, 2 of them broken.
+				ReceivedQuantity: 8,
+				Placements:       placedOn(rack, 8),
+				Damaged: []*inventoryv1.RestockDamagedUnits{
+					{Quantity: 2, Reason: "crushed in transit", Value: 20000},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	item := ful.Msg.GetRequest().GetItems()[0]
+
+	if got := item.GetReceivedQuantity(); got != 8 {
+		t.Fatalf("received = %d, want 8 — the sellable count", got)
+	}
+
+	damaged := item.GetDamaged()
+	if len(damaged) != 1 {
+		t.Fatalf("recorded %d damage rows, want 1", len(damaged))
+	}
+	if damaged[0].GetQuantity() != 2 || damaged[0].GetValue() != 20000 {
+		t.Fatalf("damage row = %+v, want 2 units worth 20000", damaged[0])
+	}
+	if damaged[0].GetReason() == "" {
+		t.Fatal("the reason was dropped — a loss with no reason is a number nobody can act on")
+	}
+
+	// 8 ON THE SHELF, NOT 10. This is the assertion the whole decision rests on: the broken pair must
+	// not be pickable.
+	if got := onHandAt(t, db, warehouse, 100, &rack); got != 8 {
+		t.Fatalf("the shelf holds %d, want 8 — the damaged units entered stock", got)
+	}
+}
+
+// onHandAt reads what one PLACE holds. `rack == nil` is the unplaced pile, and IS NOT DISTINCT FROM is
+// what makes that work: `rack_id = NULL` is never true in SQL, so the ordinary comparison would report
+// the pile as empty however much sits in it (#135).
+func onHandAt(t *testing.T, db *gorm.DB, warehouse, product uint64, rack *uint64) int64 {
+	t.Helper()
+
+	var on int64
+
+	err := db.Raw(`SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels
+	               WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NOT DISTINCT FROM ?`,
+		warehouse, product, rack).Scan(&on).Error
+	if err != nil {
+		t.Fatalf("read place: %v", err)
+	}
+
+	return on
 }

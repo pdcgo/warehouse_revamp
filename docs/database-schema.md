@@ -465,10 +465,26 @@ erDiagram
         text        name               "snapshot"
         bigint      quantity           "how many were ASKED FOR, CHECK > 0"
         bigint      total_price        "whole rupiah, THE LINE TOTAL (#140), CHECK >= 0"
-        bigint      received_quantity  "what ARRIVED, counted at acceptance; stock receives THIS; 0 until fulfilled; no CHECK vs quantity"
-        bigint      received_rack_id   FK "-> racks(id) ON DELETE RESTRICT; WHERE it was shelved (#137); NULL = unplaced / not accepted"
+        bigint      received_quantity  "what is SELLABLE and entered stock, counted at acceptance; EXCLUDES damage (#154); 0 until fulfilled"
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    restock_received_placements {
+        bigserial   id                      PK
+        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
+        bigint      rack_id                 FK "-> racks(id) ON DELETE RESTRICT; NULL = the unplaced pile (#135)"
+        bigint      quantity                "how many went to THIS place, CHECK > 0"
+        timestamptz created_at
+    }
+
+    restock_damaged_units {
+        bigserial   id                      PK
+        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
+        bigint      quantity                "CHECK > 0"
+        text        reason                  "required, CHECK <> empty"
+        bigint      value                   "whole rupiah, CHECK >= 0"
+        timestamptz created_at
     }
 
     warehouse_products {
@@ -574,14 +590,25 @@ erDiagram
   - **No `CHECK` against `quantity`.** A short delivery is ordinary and an over-delivery is real; the
     column records what was counted, and the person counting is the authority. A constraint here would
     only force them to write down a number they can see is wrong.
-  - **`received_rack_id` says WHERE it was shelved** (#137) — counting and shelving are one act, so
-    acceptance records both. `NULL` covers two situations this column does not distinguish on its own:
-    *received but not shelved yet*, and *not accepted yet*. `status` and `received_quantity` tell those
-    apart, and duplicating that here would just be a third thing to keep in sync.
-  - Both `received_quantity` and `received_rack_id` are **write-only-by-the-warehouse**. They ride the
-    shared line message so a line can READ back what happened to it, and `restockItemModels` therefore
-    ignores both on the way in — a requesting team that could set them would be declaring its own
-    delivery received, and saying which shelf it went on, for goods the warehouse never saw.
+  - **`restock_received_placements` says WHERE it went** (#137/#154) — counting and shelving are one
+    act, so acceptance records both. A LIST, because a delivery of 100 does not go on one shelf: the
+    quantities must sum to `received_quantity` exactly, and a mismatch is refused rather than
+    interpreted (somebody who counts 8 and places 7 has erred in one of the two, and which is not
+    knowable). `rack_id IS NULL` is the **unplaced pile** — a real place (#135), not a missing answer —
+    and `UNIQUE NULLS NOT DISTINCT` is what stops a line naming that pile, or any shelf, twice.
+    Each placement is its **own ledger row**, so the movements say where the goods actually sat rather
+    than averaging a location they never occupied.
+  - **`restock_damaged_units` says what NEVER became stock** (#154, owner). Units that arrived broken
+    are recorded with a reason and a value and are **never on-hand** — `received_quantity` counts what
+    is sellable, so what physically arrived is `received_quantity + Σ damaged.quantity`. Rows rather
+    than a note, because the point is that breakage is a **number something can total**. Deliberately
+    not a `StockAdjust` afterwards: the goods never became stock, and adjusting them out would claim
+    they sat on a shelf for an instant when they never did.
+  - `received_quantity`, the placements and the damage are all **write-only-by-the-warehouse**. They
+    ride the shared line message so a line can READ back what happened to it, and `restockItemModels`
+    therefore ignores every one of them on the way in — a requesting team that could set them would be
+    declaring its own delivery received, saying which shelf it went on, and writing off goods the
+    warehouse never saw.
 - **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
   **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
   who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the

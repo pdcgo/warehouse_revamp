@@ -26,6 +26,10 @@ func (s *Service) RestockRequestDetail(
 	err := s.db.
 		WithContext(ctx).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		// Where each line went and what arrived broken (#154). The DETAIL carries them because this is
+		// the screen that shows them; the LIST deliberately does not — see restock_request_list.go.
+		Preload("Items.Placements", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		Preload("Items.Damaged", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Where("id = ? AND (requesting_team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
 		First(&rr).
 		Error

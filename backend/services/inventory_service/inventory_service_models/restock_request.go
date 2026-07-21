@@ -71,10 +71,10 @@ type RestockRequestItem struct {
 	// and 0 for a line that never turned up, so it only means anything once Status is fulfilled.
 	ReceivedQuantity int64
 
-	// WHERE the goods were put as the warehouse counted them (#137) — counting and shelving are one
-	// act. nil = the unplaced pile, which covers both "received but not shelved yet" and "not accepted
-	// yet"; Status and ReceivedQuantity are what tell those apart. Real FK — racks are this service's.
-	ReceivedRackID *uint64
+	// WHERE the goods went and WHAT arrived broken (#154). Loaded with the line; written only by the
+	// warehouse as it accepts.
+	Placements []RestockReceivedPlacement `gorm:"foreignKey:RestockRequestItemID"`
+	Damaged    []RestockDamagedUnit       `gorm:"foreignKey:RestockRequestItemID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -82,4 +82,45 @@ type RestockRequestItem struct {
 
 func (RestockRequestItem) TableName() string {
 	return "restock_request_items"
+}
+
+// RestockReceivedPlacement is a row of `restock_received_placements` (#154) — how many of a received
+// line's units went to ONE place.
+//
+// A line carries a LIST of these, because a delivery of 100 does not go on one shelf. They must sum to
+// the line's ReceivedQuantity; the handler refuses anything else rather than interpreting it.
+type RestockReceivedPlacement struct {
+	ID                   uint64 `gorm:"primaryKey"`
+	RestockRequestItemID uint64
+	// nil is the UNPLACED PILE (#135) — "received, not shelved yet". A real place, not a missing
+	// answer: it is what a partial put-away looks like.
+	RackID    *uint64
+	Quantity  int64
+	CreatedAt time.Time
+}
+
+func (RestockReceivedPlacement) TableName() string {
+	return "restock_received_placements"
+}
+
+// RestockDamagedUnit is a row of `restock_damaged_units` (#154) — units that arrived broken or never
+// arrived at all.
+//
+// They NEVER ENTER STOCK (owner, 2026-07-20): ReceivedQuantity counts what is sellable, and this counts
+// what is not, so nobody can pick a box that is already crushed. Rows rather than a note on the line,
+// because the point is that breakage is a NUMBER something can total — "what does this supplier cost us
+// in damage" only has an answer if the losses were counted.
+type RestockDamagedUnit struct {
+	ID                   uint64 `gorm:"primaryKey"`
+	RestockRequestItemID uint64
+	Quantity             int64
+	// Required and non-empty (DB CHECK). A loss with no reason is a number nobody can act on.
+	Reason string
+	// What those units were worth, whole rupiah. 0 is legitimate — a free sample can arrive crushed.
+	Value     int64
+	CreatedAt time.Time
+}
+
+func (RestockDamagedUnit) TableName() string {
+	return "restock_damaged_units"
 }

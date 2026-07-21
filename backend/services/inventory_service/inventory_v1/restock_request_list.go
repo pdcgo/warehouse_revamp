@@ -49,6 +49,9 @@ func (s *Service) RestockRequestList(
 	err = query.
 		// Preload, not a join: GORM fetches this page's lines in ONE extra query keyed by request id,
 		// so a page of requests costs 2 queries rather than N+1 (#124).
+		// Items only — NOT their placements or damage (#154). The list shows product names; loading
+		// every line's shelves for twenty requests would be weight nobody renders. A caller that needs
+		// them opens the request, where RestockRequestDetail loads them.
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Order("id DESC").
 		Offset(pageOffset(page)).

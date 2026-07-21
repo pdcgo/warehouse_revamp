@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/restock_request.proto.
  */
 export const file_warehouse_inventory_v1_restock_request: GenFile = /*@__PURE__*/
-  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLmAQoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABIYChByZWNlaXZlZF9yYWNrX2lkGAggASgEIuADCg5SZXN0b2NrUmVxdWVzdBIKCgJpZBgBIAEoBBIaChJyZXF1ZXN0aW5nX3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhUKDXNoaXBwaW5nX2NvZGUYCCABKAkSPAoGc3RhdHVzGAkgASgOMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFN0YXR1cxIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSOQoFaXRlbXMYCyADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbRIPCgdyZWNlaXB0GA0gASgJEhMKC3N1cHBsaWVyX2lkGA4gASgEEhEKCW9yZGVyX3JlZhgPIAEoCRIVCg1zaGlwcGluZ19jb3N0GBAgASgDEkAKDHBheW1lbnRfdHlwZRgRIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1BheW1lbnRUeXBlEgwKBG5vdGUYEiABKAlKBAgEEAVKBAgFEAZKBAgGEAdKBAgHEAhKBAgMEA1SCnByb2R1Y3RfaWRSA3NrdVIEbmFtZVIIcXVhbnRpdHlSCG9yZGVyX2lkIuQDChtSZXN0b2NrUmVxdWVzdENyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHQoMd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEh4KDXNoaXBwaW5nX2NvZGUYByABKAlCB7pIBHICGCgSQwoFaXRlbXMYCCADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbUIIukgFkgECCAESGAoHcmVjZWlwdBgKIAEoCUIHukgEcgIYZBITCgtzdXBwbGllcl9pZBgLIAEoBBIaCglvcmRlcl9yZWYYDCABKAlCB7pIBHICGGQSHgoNc2hpcHBpbmdfY29zdBgNIAEoA0IHukgEIgIoABJKCgxwYXltZW50X3R5cGUYDiABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZUIIukgFggECEAESFgoEbm90ZRgPIAEoCUIIukgFcgMY6Ac6C5K1GAcKBQECAwQFSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHSgQICRAKUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5UghvcmRlcl9pZCJXChxSZXN0b2NrUmVxdWVzdENyZWF0ZVJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0IsgBChlSZXN0b2NrUmVxdWVzdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBARJGCgZzdGF0dXMYAyABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0U3RhdHVzQgi6SAWCAQIQAToOkrUYCgoIAQIDBAUGCQgiaAobUmVzdG9ja1JlcXVlc3REZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIlcKHFJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QiiAEKGlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlEjgKCHJlcXVlc3RzGAEgAygLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrgDChtSZXN0b2NrUmVxdWVzdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgABIdCgx3YXJlaG91c2VfaWQYAyABKARCB7pIBDICIAASHgoNc2hpcHBpbmdfY29kZRgEIAEoCUIHukgEcgIYKBJDCgVpdGVtcxgFIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtQgi6SAWSAQIIARIYCgdyZWNlaXB0GAYgASgJQge6SARyAhhkEhMKC3N1cHBsaWVyX2lkGAcgASgEEhoKCW9yZGVyX3JlZhgIIAEoCUIHukgEcgIYZBIeCg1zaGlwcGluZ19jb3N0GAkgASgDQge6SAQiAigAEkoKDHBheW1lbnRfdHlwZRgKIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1BheW1lbnRUeXBlQgi6SAWCAQIQARIWCgRub3RlGAsgASgJQgi6SAVyAxjoBzoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKzAQocUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAEksKBWxpbmVzGAMgAygLMjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFJlY2VpdmVkTGluZUIIukgFkgECCAE6C5K1GAcKBQECBgkIIpwBChpSZXN0b2NrUmVxdWVzdFJlY2VpdmVkTGluZRIYCgdpdGVtX2lkGAEgASgEQge6SAQyAiAAEiIKEXJlY2VpdmVkX3F1YW50aXR5GAIgASgDQge6SAQiAigAEhoKB3JhY2tfaWQYAyABKARCB7pIBDICIABIABIbCgh1bnBsYWNlZBgEIAEoCEIHukgEagIIAUgAQgcKBXBsYWNlIlgKHVJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0ImUKG1Jlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJXChxSZXN0b2NrUmVxdWVzdENhbmNlbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Kq4BChRSZXN0b2NrUmVxdWVzdFN0YXR1cxImCiJSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIgoeUkVTVE9DS19SRVFVRVNUX1NUQVRVU19QRU5ESU5HEAESJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19GVUxGSUxMRUQQAhIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0NBTkNFTExFRBADKoYBChJSZXN0b2NrUGF5bWVudFR5cGUSJAogUkVTVE9DS19QQVlNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9SRVNUT0NLX1BBWU1FTlRfVFlQRV9TSE9QRUVfUEFZEAESJQohUkVTVE9DS19QQVlNRU5UX1RZUEVfQkFOS19BQ0NPVU5UEAIyqwYKFVJlc3RvY2tSZXF1ZXN0U2VydmljZRKBAQoUUmVzdG9ja1JlcXVlc3RDcmVhdGUSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXNwb25zZRJ7ChJSZXN0b2NrUmVxdWVzdExpc3QSMS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlcXVlc3QaMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlEoEBChRSZXN0b2NrUmVxdWVzdERldGFpbBIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3REZXRhaWxSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdERldGFpbFJlc3BvbnNlEoEBChRSZXN0b2NrUmVxdWVzdFVwZGF0ZRIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFVwZGF0ZVJlc3BvbnNlEoQBChVSZXN0b2NrUmVxdWVzdEZ1bGZpbGwSNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlcXVlc3QaNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlc3BvbnNlEoEBChRSZXN0b2NrUmVxdWVzdENhbmNlbBIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENhbmNlbFJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLgAgoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAkgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYCiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgIEAlSEHJlY2VpdmVkX3JhY2tfaWQi4AMKDlJlc3RvY2tSZXF1ZXN0EgoKAmlkGAEgASgEEhoKEnJlcXVlc3RpbmdfdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRI8CgZzdGF0dXMYCSABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0U3RhdHVzEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAxI5CgVpdGVtcxgLIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtEg8KB3JlY2VpcHQYDSABKAkSEwoLc3VwcGxpZXJfaWQYDiABKAQSEQoJb3JkZXJfcmVmGA8gASgJEhUKDXNoaXBwaW5nX2Nvc3QYECABKAMSQAoMcGF5bWVudF90eXBlGBEgASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGUSDAoEbm90ZRgSIAEoCUoECAQQBUoECAUQBkoECAYQB0oECAcQCEoECAwQDVIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eVIIb3JkZXJfaWQi5AMKG1Jlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgx3YXJlaG91c2VfaWQYAiABKARCB7pIBDICIAASHgoNc2hpcHBpbmdfY29kZRgHIAEoCUIHukgEcgIYKBJDCgVpdGVtcxgIIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtQgi6SAWSAQIIARIYCgdyZWNlaXB0GAogASgJQge6SARyAhhkEhMKC3N1cHBsaWVyX2lkGAsgASgEEhoKCW9yZGVyX3JlZhgMIAEoCUIHukgEcgIYZBIeCg1zaGlwcGluZ19jb3N0GA0gASgDQge6SAQiAigAEkoKDHBheW1lbnRfdHlwZRgOIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1BheW1lbnRUeXBlQgi6SAWCAQIQARIWCgRub3RlGA8gASgJQgi6SAVyAxjoBzoLkrUYBwoFAQIDBAVKBAgDEARKBAgEEAVKBAgFEAZKBAgGEAdKBAgJEApSCnByb2R1Y3RfaWRSA3NrdVIEbmFtZVIIcXVhbnRpdHlSCG9yZGVyX2lkIlcKHFJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QiyAEKGVJlc3RvY2tSZXF1ZXN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEkYKBnN0YXR1cxgDIAEoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RTdGF0dXNCCLpIBYIBAhABOg6StRgKCggBAgMEBQYJCCJoChtSZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiVwocUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKIAQoaUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USOAoIcmVxdWVzdHMYASADKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iuAMKG1Jlc3RvY2tSZXF1ZXN0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAEh0KDHdhcmVob3VzZV9pZBgDIAEoBEIHukgEMgIgABIeCg1zaGlwcGluZ19jb2RlGAQgASgJQge6SARyAhgoEkMKBWl0ZW1zGAUgAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW1CCLpIBZIBAggBEhgKB3JlY2VpcHQYBiABKAlCB7pIBHICGGQSEwoLc3VwcGxpZXJfaWQYByABKAQSGgoJb3JkZXJfcmVmGAggASgJQge6SARyAhhkEh4KDXNoaXBwaW5nX2Nvc3QYCSABKANCB7pIBCICKAASSgoMcGF5bWVudF90eXBlGAogASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGVCCLpIBYIBAhABEhYKBG5vdGUYCyABKAlCCLpIBXIDGOgHOguStRgHCgUBAgMEBSJXChxSZXN0b2NrUmVxdWVzdFVwZGF0ZVJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0IrMBChxSZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAASSwoFbGluZXMYAyADKAsyMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0UmVjZWl2ZWRMaW5lQgi6SAWSAQIIAToLkrUYBwoFAQIGCQgibwoQUmVzdG9ja1BsYWNlbWVudBIaCgdyYWNrX2lkGAEgASgEQge6SAQyAiAASAASGwoIdW5wbGFjZWQYAiABKAhCB7pIBGoCCAFIABIZCghxdWFudGl0eRgDIAEoA0IHukgEIgIgAEIHCgVwbGFjZSJkChNSZXN0b2NrRGFtYWdlZFVuaXRzEhkKCHF1YW50aXR5GAEgASgDQge6SAQiAiAAEhoKBnJlYXNvbhgCIAEoCUIKukgHcgUQARjIARIWCgV2YWx1ZRgDIAEoA0IHukgEIgIoACL8AQoaUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmUSGAoHaXRlbV9pZBgBIAEoBEIHukgEMgIgABIiChFyZWNlaXZlZF9xdWFudGl0eRgCIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAUgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYBiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgDEARKBAgEEAVSB3JhY2tfaWRSCHVucGxhY2VkUgVwbGFjZSJYCh1SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCquAQoUUmVzdG9ja1JlcXVlc3RTdGF0dXMSJgoiUkVTVE9DS19SRVFVRVNUX1NUQVRVU19VTlNQRUNJRklFRBAAEiIKHlJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfUEVORElORxABEiQKIFJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfRlVMRklMTEVEEAISJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19DQU5DRUxMRUQQAyqGAQoSUmVzdG9ja1BheW1lbnRUeXBlEiQKIFJFU1RPQ0tfUEFZTUVOVF9UWVBFX1VOU1BFQ0lGSUVEEAASIwofUkVTVE9DS19QQVlNRU5UX1RZUEVfU0hPUEVFX1BBWRABEiUKIVJFU1RPQ0tfUEFZTUVOVF9UWVBFX0JBTktfQUNDT1VOVBACMqsGChVSZXN0b2NrUmVxdWVzdFNlcnZpY2USgQEKFFJlc3RvY2tSZXF1ZXN0Q3JlYXRlEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USewoSUmVzdG9ja1JlcXVlc3RMaXN0EjEud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXF1ZXN0GjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3REZXRhaWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RVcGRhdGUSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXNwb25zZRKEAQoVUmVzdG9ja1JlcXVlc3RGdWxmaWxsEjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXF1ZXN0GjUud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RDYW5jZWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One line of a restock request: a product, how much of it, and what it costs.
@@ -82,17 +82,22 @@ export type RestockRequestItem = Message<"warehouse.inventory.v1.RestockRequestI
   receivedQuantity: bigint;
 
   /**
-   * WHERE the goods were put when the warehouse accepted them (#137). Read-only, exactly like
-   * received_quantity: only the warehouse writes it, and only by shelving as it counts — a requesting
-   * team that could set this on create or edit would be declaring where a delivery it never made had
-   * been put away.
+   * WHERE the goods were put when the warehouse accepted them (#137/#154), and WHAT ARRIVED BROKEN.
    *
-   * 0 means the unplaced pile, which is both "received, not shelved yet" and "not accepted yet". Those
-   * are told apart by `status` and `received_quantity`, not by this field alone.
+   * Both are read-only here, exactly like received_quantity: only the warehouse writes them, and only
+   * by counting and shelving as it accepts. A requesting team that could set either would be declaring
+   * where a delivery it never made had been put away, or writing off goods it never handled.
    *
-   * @generated from field: uint64 received_rack_id = 8;
+   * Empty until the request is accepted, and empty forever for a line that never turned up.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RestockPlacement placements = 9;
    */
-  receivedRackId: bigint;
+  placements: RestockPlacement[];
+
+  /**
+   * @generated from field: repeated warehouse.inventory.v1.RestockDamagedUnits damaged = 10;
+   */
+  damaged: RestockDamagedUnits[];
 };
 
 /**
@@ -510,9 +515,96 @@ export const RestockRequestFulfillRequestSchema: GenMessage<RestockRequestFulfil
   messageDesc(file_warehouse_inventory_v1_restock_request, 10);
 
 /**
- * One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,
- * and where it put them (#137).
+ * RestockPlacement — how many of a received line's units went to ONE place (#154).
  *
+ * A delivery of 100 does not go on one shelf, so a line carries a LIST of these. The quantities must
+ * add up to the line's received_quantity: the person counting says how many are sellable and then says
+ * where they put them, and a mismatch means one of the two is wrong. It is refused rather than
+ * interpreted — the same rule as the incomplete count in #133.
+ *
+ * @generated from message warehouse.inventory.v1.RestockPlacement
+ */
+export type RestockPlacement = Message<"warehouse.inventory.v1.RestockPlacement"> & {
+  /**
+   * WHERE. Required here, unlike the line-level place it replaces: a placement that names no place is
+   * not a partial answer, it is an empty row.
+   *
+   * @generated from oneof warehouse.inventory.v1.RestockPlacement.place
+   */
+  place: {
+    /**
+     * A shelf of the ACCEPTING warehouse — another warehouse's rack reads as NotFound.
+     *
+     * @generated from field: uint64 rack_id = 1;
+     */
+    value: bigint;
+    case: "rackId";
+  } | {
+    /**
+     * Received, not shelved yet (#135). A real place, not an absence — it is what a partial put-away
+     * looks like, and #136 is how the pile gets shelved later.
+     *
+     * @generated from field: bool unplaced = 2;
+     */
+    value: boolean;
+    case: "unplaced";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * How many went HERE. A placement of zero is not a placement.
+   *
+   * @generated from field: int64 quantity = 3;
+   */
+  quantity: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockPlacement.
+ * Use `create(RestockPlacementSchema)` to create a new message.
+ */
+export const RestockPlacementSchema: GenMessage<RestockPlacement> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
+
+/**
+ * RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
+ *
+ * They NEVER ENTER STOCK (owner, 2026-07-20). Received counts what is sellable; this counts what is
+ * not, so nobody can pick a box that is already crushed. It is deliberately not a StockAdjust after
+ * the fact: the goods never became stock, and adjusting them out would claim they sat on a shelf for
+ * an instant when they never did.
+ *
+ * @generated from message warehouse.inventory.v1.RestockDamagedUnits
+ */
+export type RestockDamagedUnits = Message<"warehouse.inventory.v1.RestockDamagedUnits"> & {
+  /**
+   * @generated from field: int64 quantity = 1;
+   */
+  quantity: bigint;
+
+  /**
+   * WHY. Required and non-empty — a loss with no reason is a number nobody can act on, and it is the
+   * difference between a record that gets chased and one that gets written once and forgotten.
+   *
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+
+  /**
+   * What those units were worth, whole rupiah. 0 is legitimate: a free sample can still arrive crushed.
+   *
+   * @generated from field: int64 value = 3;
+   */
+  value: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockDamagedUnits.
+ * Use `create(RestockDamagedUnitsSchema)` to create a new message.
+ */
+export const RestockDamagedUnitsSchema: GenMessage<RestockDamagedUnits> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
+
+/**
  * @generated from message warehouse.inventory.v1.RestockRequestReceivedLine
  */
 export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.RestockRequestReceivedLine"> & {
@@ -524,53 +616,46 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
   itemId: bigint;
 
   /**
-   * How many arrived. Zero is legitimate and means the line did not turn up at all — it is a COUNT,
-   * not a quantity to move, so it has no lower bound to defend beyond being non-negative.
+   * How many are SELLABLE and enter stock. Zero is legitimate and means nothing usable turned up — it
+   * is a COUNT, not a quantity to move, so it has no lower bound beyond being non-negative.
    *
    * There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
    * and a cap would only force the person counting to write down a number they can see is wrong.
+   *
+   * ⚠ It EXCLUDES damaged units (#154, owner). What physically arrived is
+   * `received_quantity + Σ damaged.quantity`; what the warehouse can sell — and the only thing stock
+   * ever hears about — is this number.
    *
    * @generated from field: int64 received_quantity = 2;
    */
   receivedQuantity: bigint;
 
   /**
-   * WHERE the goods were put (#137, owner's call). Counting and shelving are ONE act: the warehouse
-   * says how many turned up and which shelf they went on in the same breath, so nothing routinely
-   * sits unplaced.
+   * WHERE the goods were put (#137/#154). Counting and shelving are ONE act: the warehouse says how
+   * many turned up and where they went in the same breath, so nothing routinely sits unplaced.
    *
-   * Unlike StockAdjust's place this oneof is NOT proto-required, because whether an answer is owed
-   * depends on the count beside it, which proto cannot express:
+   * A LIST, because a delivery of 100 does not go on one shelf. The quantities must sum to
+   * `received_quantity` exactly, and the handler refuses anything else rather than interpreting it:
    *
-   *   received_quantity > 0  → a place is REQUIRED. Goods that arrived are somewhere, and the system
-   *                            must be told where rather than guess (the handler refuses otherwise).
-   *   received_quantity == 0 → a place is IGNORED. Nothing turned up, so there is nowhere to put it;
-   *                            a picker left pre-filled beside a zeroed count is an ordinary screen
-   *                            state, not a contradiction worth refusing.
+   *   received_quantity > 0  → placements are REQUIRED and must total it. Goods that arrived are
+   *                            somewhere, and the system is told rather than left to guess.
+   *   received_quantity == 0 → placements must be EMPTY. Nothing usable turned up, so there is
+   *                            nothing to put anywhere.
    *
-   * `unplaced` stays available for a warehouse that genuinely does not know yet — it is a legal place
-   * (the not-yet-shelved pile), not an absence, and #136 is how that pile gets shelved later.
+   * `unplaced` stays available for a warehouse that has not shelved yet — a legal place, not an
+   * absence (#135), and #136 is how that pile gets shelved later.
    *
-   * @generated from oneof warehouse.inventory.v1.RestockRequestReceivedLine.place
+   * @generated from field: repeated warehouse.inventory.v1.RestockPlacement placements = 5;
    */
-  place: {
-    /**
-     * The shelf the goods went on. Must be a rack of the ACCEPTING warehouse — another warehouse's
-     * rack reads as NotFound, like every other cross-scope id here.
-     *
-     * @generated from field: uint64 rack_id = 3;
-     */
-    value: bigint;
-    case: "rackId";
-  } | {
-    /**
-     * Received, but not shelved yet. Only `true` is meaningful.
-     *
-     * @generated from field: bool unplaced = 4;
-     */
-    value: boolean;
-    case: "unplaced";
-  } | { case: undefined; value?: undefined };
+  placements: RestockPlacement[];
+
+  /**
+   * What arrived broken, or never arrived (#154). Never enters stock; recorded so the loss is a number
+   * somebody can total rather than a story in a note field. Empty is the ordinary case.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RestockDamagedUnits damaged = 6;
+   */
+  damaged: RestockDamagedUnits[];
 };
 
 /**
@@ -578,7 +663,7 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
  * Use `create(RestockRequestReceivedLineSchema)` to create a new message.
  */
 export const RestockRequestReceivedLineSchema: GenMessage<RestockRequestReceivedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestFulfillResponse
@@ -595,7 +680,7 @@ export type RestockRequestFulfillResponse = Message<"warehouse.inventory.v1.Rest
  * Use `create(RestockRequestFulfillResponseSchema)` to create a new message.
  */
 export const RestockRequestFulfillResponseSchema: GenMessage<RestockRequestFulfillResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelRequest
@@ -617,7 +702,7 @@ export type RestockRequestCancelRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestCancelRequestSchema)` to create a new message.
  */
 export const RestockRequestCancelRequestSchema: GenMessage<RestockRequestCancelRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 15);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelResponse
@@ -634,7 +719,7 @@ export type RestockRequestCancelResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestCancelResponseSchema)` to create a new message.
  */
 export const RestockRequestCancelResponseSchema: GenMessage<RestockRequestCancelResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 16);
 
 /**
  * @generated from enum warehouse.inventory.v1.RestockRequestStatus
