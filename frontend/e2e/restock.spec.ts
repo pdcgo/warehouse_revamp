@@ -149,15 +149,16 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // TWO lines from ONE dialog — the thing a per-line combobox could not do.
   await expect(page.getByTestId("restock-line-0")).toBeVisible();
   await expect(page.getByTestId("restock-line-1")).toBeVisible();
-  await expect(page.getByTestId("restock-product-count")).toContainText("2");
+  await expect(page.getByTestId("restock-summary-count")).toContainText("2");
 
   await page.getByTestId("restock-qty-0").fill("4");
   await page.getByTestId("restock-total-price-0").fill("40000");
   await page.getByTestId("restock-qty-1").fill("2");
   await page.getByTestId("restock-total-price-1").fill("30000");
 
-  // The money adds up across both lines — Rp 70.000.
-  await expect(page.getByTestId("restock-total")).toContainText("70.000");
+  // The money adds up across both lines — Rp 70.000. Read from the SIDEBAR: the left column no
+  // longer repeats the count or the total (#165) — the sidebar already carries both.
+  await expect(page.getByTestId("restock-summary-products")).toContainText("70.000");
 
   // The warehouse that receives the goods.
   await page.getByTestId("restock-warehouse").locator("input").fill(whCode);

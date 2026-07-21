@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -412,15 +411,16 @@ export function RestockRequestFormPage() {
             reads as the tail of the form, which is the right order to fill it in anyway. */}
         <Flex direction={{ base: "column", lg: "row" }} align="start" gap="section">
           <Stack flex="2" minW="0" w="full" gap="section">
-            {/* ─── A — the picked products, with the count and the products' total ─────────── */}
+            {/* ─── A — the picked products ─────────────────────────────────────────────────── */}
+            {/* No count and no total here (#165, owner): the sidebar already carries both, and the
+                two columns sit side by side on a wide screen — so the same two numbers appeared
+                twice, a hand's width apart. When they agree the repetition is noise, and if they
+                ever disagree the screen has no way to say which one is right. */}
             <Card.Root>
               <Card.Body>
                 <Stack gap="card">
                   <Flex align="center" gap="card">
                     <Text fontWeight="medium">{t("restock.form.products")}</Text>
-                    <Badge colorPalette="gray" data-testid="restock-product-count">
-                      {t("restock.form.productCount", { n: lines.length })}
-                    </Badge>
                     <Spacer />
 
                     {/* THE way products get onto this request (#165, owner: "not product select but
@@ -522,15 +522,6 @@ export function RestockRequestFormPage() {
                       </Box>
                     ))}
                   </Stack>
-
-                  <Separator />
-
-                  <Flex align="center" justify="space-between" gap="card">
-                    <Text fontWeight="semibold">{t("restock.form.total")}</Text>
-                    <Text fontWeight="semibold" data-testid="restock-total">
-                      {formatRupiah(productsTotal)}
-                    </Text>
-                  </Flex>
                 </Stack>
               </Card.Body>
             </Card.Root>
