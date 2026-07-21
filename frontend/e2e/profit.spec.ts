@@ -4,21 +4,21 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
 // #172 — the profit screen: expected margin minus costs, for one month.
 //
-// This is the destination of the whole cost service, and the subtraction happens on the CLIENT (§2.4):
-// revenue_service and cost_service are independent, so neither may own a number derived from the
+// This is the destination of the whole expense service, and the subtraction happens on the CLIENT (§2.4):
+// revenue_service and expense_service are independent, so neither may own a number derived from the
 // other's data. The screen asks both for the same period and does the arithmetic itself — which is
 // exactly what these tests are here to check, because a sign error or a mis-read field would produce a
 // perfectly plausible-looking number.
 //
 // Root is a ROOT team, so the Profit menu item is not offered (it is a selling-team surface), but root
 // holds ROLE_ROOT and both list RPCs are authorised in team 1 — so the route is reached directly, the
-// same way costs.spec.ts and revenue.spec.ts reach theirs. The menu gate is UX only.
+// same way expenses.spec.ts and revenue.spec.ts reach theirs. The menu gate is UX only.
 
 const SUFFIX = Date.now().toString().slice(-6);
 
 // ⚠ THE FIGURES ARE CHECKED AS DELTAS, NOT ABSOLUTES, and that is deliberate.
 //
-// Every spec in this suite shares one database and root's team 1, so costs.spec.ts and revenue.spec.ts
+// Every spec in this suite shares one database and root's team 1, so expenses.spec.ts and revenue.spec.ts
 // have both put money in this very month by the time this runs. An absolute expectation ("profit is
 // Rp 50.000") would therefore be a test that passes only while it happens to run first. What this
 // screen actually promises is a RELATIONSHIP between three numbers, and a delta tests the relationship
@@ -60,19 +60,19 @@ async function recordCost(page: Page, amount: number, note: string) {
         now.getDate(),
       ).padStart(2, "0")}`;
 
-      const res = await fetch("http://localhost:8081/warehouse.cost.v1.CostService/CostCreate", {
+      const res = await fetch("http://localhost:8081/warehouse.expense.v1.ExpenseService/ExpenseCreate", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           teamId: "1",
-          kind: 3, // COST_KIND_OPERATIONAL
+          kind: 3, // EXPENSE_KIND_OPERATIONAL
           amount: String(amt),
           occurredAt: today,
           note: text,
         }),
       });
 
-      if (!res.ok) throw new Error(`CostCreate: ${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`ExpenseCreate: ${res.status} ${await res.text()}`);
     },
     [amount, note] as const,
   );

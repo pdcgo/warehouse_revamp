@@ -772,17 +772,17 @@ erDiagram
 
 ---
 
-## cost_service
+## expense_service
 
-`backend/services/cost_service/db_migrations/`
+`backend/services/expense_service/db_migrations/`
 
 ```mermaid
 erDiagram
-    cost_records {
+    expense_records {
         bigserial   id          PK
         bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
         bigint      shop_id     "optional on ANY kind, opaque; 0 = not attributed to one shop"
-        int         kind        "CostKind enum number — mapped in the handler, no DB CHECK"
+        int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
         bigint      amount      "whole rupiah, CHECK > 0 — the kind carries the direction"
         date        occurred_at "the date the cost BELONGS TO, chosen by the person"
         text        note        "what it actually was"
@@ -793,7 +793,7 @@ erDiagram
     }
 ```
 
-- **`cost_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
+- **`expense_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
   payroll, rent. `revenue_service` already knows what an order earned; this is everything else.
   - **A PERSON TYPES IT**, and every decision here follows from that. A revenue row is written by the
     system from an order and frozen (#153); a cost row is entered by hand about a period, so it can be

@@ -21,7 +21,7 @@
     "profile": "Profil",
     "picking": "Pengambilan",
     "revenue": "Pendapatan",
-    "costs": "Biaya",
+    "expenses": "Biaya",
     "profit": "Laba"
   },
   "menu": {
@@ -995,7 +995,7 @@
     "unknownCost": "{{count}} pesanan dengan biaya tidak diketahui dihitung sebagai laba penuh — angka di atas lebih tinggi dari seharusnya sebesar biaya barang tersebut.",
     "breakdown": "Rincian biaya"
   },
-  "costs": {
+  "expenses": {
     "title": "Biaya",
     "selectTeam": "Pilih tim untuk melihat biayanya.",
     "empty": "Belum ada biaya bulan ini.",

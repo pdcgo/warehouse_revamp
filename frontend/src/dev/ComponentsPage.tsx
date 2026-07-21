@@ -40,8 +40,8 @@ import {
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
 import { CurrencyInput, description as currencyInputDescription } from "../components/CurrencyInput";
-import { CostKindSelect, costKindLabel, description as costKindSelectDescription } from "../components/CostKindSelect";
-import { CostKind } from "../gen/warehouse/cost/v1/cost_pb";
+import { ExpenseKindSelect, expenseKindLabel, description as costKindSelectDescription } from "../components/ExpenseKindSelect";
+import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
 import { RackSelect, UNPLACED, description as rackSelectDescription } from "../components/RackSelect";
 import {
   ProductSelect,
@@ -291,15 +291,15 @@ function ShopSelectDemo() {
   );
 }
 
-function CostKindDemo() {
+function ExpenseKindDemo() {
   const { t } = useTranslation();
-  const [kind, setKind] = useState<CostKind>(CostKind.UNSPECIFIED);
+  const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
 
   return (
     <>
-      <CostKindSelect value={kind} onChange={setKind} />
+      <ExpenseKindSelect value={kind} onChange={setKind} />
       <Text fontSize="xs" color="fg.muted">
-        Selected: {costKindLabel(t, kind) || "(none yet)"}
+        Selected: {expenseKindLabel(t, kind) || "(none yet)"}
       </Text>
     </>
   );
@@ -694,10 +694,10 @@ const ENTRIES: Entry[] = [
     render: () => <CurrencyInputDemo />,
   },
   {
-    id: "cost-kind-select",
-    title: "CostKindSelect",
+    id: "expense-kind-select",
+    title: "ExpenseKindSelect",
     description: costKindSelectDescription,
-    render: () => <CostKindDemo />,
+    render: () => <ExpenseKindDemo />,
   },
   {
     id: "rack-select",

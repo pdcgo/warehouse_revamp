@@ -135,7 +135,7 @@ func teamTotals(
 	}, nil
 }
 
-// The layout a period bound crosses the wire in — a DATE, matching CostList so the profit screen can
+// The layout a period bound crosses the wire in — a DATE, matching ExpenseList so the profit screen can
 // hand the same pair to both services (#171/#172).
 const dateLayout = "2006-01-02"
 
@@ -145,7 +145,7 @@ var errBadDate = errors.New("a date must be YYYY-MM-DD")
 //
 // ⚠ THE UPPER BOUND IS HALF-OPEN, and that is the whole subtlety of this function.
 //
-// `created_at` is a TIMESTAMPTZ, not a DATE — unlike cost_records.occurred_at, where an inclusive
+// `created_at` is a TIMESTAMPTZ, not a DATE — unlike expense_records.occurred_at, where an inclusive
 // `<= to` is simply correct. Here `created_at <= '2026-07-31'` means `<= 2026-07-31 00:00:00`, so it
 // silently drops every order placed after midnight on the last day of the period: almost the whole
 // day, every month, for a filter that looks right.

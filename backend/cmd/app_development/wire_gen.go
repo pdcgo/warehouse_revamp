@@ -8,8 +8,8 @@ package main
 
 import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/cost_service/cost_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
@@ -55,8 +55,8 @@ func InitializeApp() (*App, error) {
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
 	region_v1Service := region_v1.NewService(db)
-	cost_v1Service := cost_v1.NewService(db)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, revenue_v1Service, cost_v1Service, docstoreConfig, roleResolver, signer)
+	expense_v1Service := expense_v1.NewService(db)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, revenue_v1Service, expense_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

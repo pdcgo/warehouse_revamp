@@ -34,7 +34,7 @@ const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
 const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
 const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
-const COSTS: MenuItem = { to: "/costs", label: "nav.costs", icon: Receipt };
+const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
 const PROFIT: MenuItem = { to: "/profit", label: "nav.profit", icon: Scale };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
@@ -129,7 +129,7 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // business seeing the payroll number.
     if (isTeamManager(role)) {
       menu.push(REVENUE);
-      menu.push(COSTS);
+      menu.push(EXPENSES);
       // Profit is those two subtracted (#172) — the same gate, necessarily: it is made ENTIRELY of
       // the numbers on the other two screens, so anyone who may not read them may not read this.
       menu.push(PROFIT);

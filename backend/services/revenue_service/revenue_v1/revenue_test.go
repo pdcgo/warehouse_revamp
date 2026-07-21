@@ -298,7 +298,7 @@ func TestRevenueList_FiltersByPeriodAndTotalsTheWholeOfIt(t *testing.T) {
 
 // #171 — THE LAST DAY OF THE PERIOD COUNTS IN FULL, and this is the trap the filter exists around.
 //
-// `created_at` is a TIMESTAMPTZ, not a DATE like cost_records.occurred_at. So `created_at <= to` means
+// `created_at` is a TIMESTAMPTZ, not a DATE like expense_records.occurred_at. So `created_at <= to` means
 // `<= midnight`, which silently drops almost the whole last day of every month — a filter that looks
 // right and quietly under-reports. The handler uses a half-open `< to + 1 day` instead, and this is
 // what proves it.

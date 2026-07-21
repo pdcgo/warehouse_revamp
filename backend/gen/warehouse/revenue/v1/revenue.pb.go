@@ -304,8 +304,9 @@ type RevenueListRequest struct {
 	// it unfiltered — a headline figure that is right on a page big enough to hold everything and
 	// quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
 	//
-	// WHAT THE PERIOD SELECTS: a revenue row is dated by its , which is the moment the order
-	// was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose (#161).
+	// WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
+	// order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
+	// (#161).
 	// Those are two different senses of "belongs to July", and they are close enough to subtract only
 	// because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
 	// exactly that, so it is worth knowing before anybody reconciles the result against a bank

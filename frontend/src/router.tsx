@@ -65,14 +65,14 @@ const WarehouseProductPage = lazy(() =>
 const RestockAcceptPage = lazy(() =>
   import("./restock/RestockAcceptPage").then((m) => ({ default: m.RestockAcceptPage })),
 );
-const CostsPage = lazy(() =>
-  import("./costs/CostsPage").then((m) => ({ default: m.CostsPage })),
+const ExpensesPage = lazy(() =>
+  import("./expenses/ExpensesPage").then((m) => ({ default: m.ExpensesPage })),
 );
 const RevenuePage = lazy(() =>
   import("./revenue/RevenuePage").then((m) => ({ default: m.RevenuePage })),
 );
 const ProfitPage = lazy(() =>
-  import("./costs/ProfitPage").then((m) => ({ default: m.ProfitPage })),
+  import("./expenses/ProfitPage").then((m) => ({ default: m.ProfitPage })),
 );
 const PickQueuePage = lazy(() =>
   import("./picking/PickQueuePage").then((m) => ({ default: m.PickQueuePage })),
@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
       // What the team's orders were expected to make (#78).
       { path: "revenue", element: <RevenuePage /> },
       // What the team spent that no order caused (#170).
-      { path: "costs", element: <CostsPage /> },
+      { path: "expenses", element: <ExpensesPage /> },
       // The two above, subtracted (#172) — the arithmetic happens on the client because neither
       // service may own a number derived from the other's data.
       { path: "profit", element: <ProfitPage /> },

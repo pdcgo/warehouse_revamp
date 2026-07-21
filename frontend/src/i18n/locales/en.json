@@ -21,7 +21,7 @@
     "profile": "Profile",
     "picking": "Picking",
     "revenue": "Revenue",
-    "costs": "Costs",
+    "expenses": "Expenses",
     "profit": "Profit"
   },
   "menu": {
@@ -997,19 +997,19 @@
     "unknownCost_other": "{{count}} orders with an unknown cost are counted as pure profit — the figure above is overstated by whatever those goods cost.",
     "breakdown": "What the costs were"
   },
-  "costs": {
-    "title": "Costs",
-    "selectTeam": "Select a team to view its costs.",
-    "empty": "No costs recorded this month.",
+  "expenses": {
+    "title": "Expenses",
+    "selectTeam": "Select a team to view its expenses.",
+    "empty": "No expenses recorded this month.",
     "total": "Total",
-    "record": "Record Cost",
-    "recordTitle": "Record Cost",
-    "editTitle": "Edit Cost",
+    "record": "Record Expense",
+    "recordTitle": "Record Expense",
+    "editTitle": "Edit Expense",
     "save": "Save",
     "edit": "Edit",
     "void": "Void",
     "voided": "Voided",
-    "dateHelp": "The date the cost belongs to — payroll paid on the 5th is last month's cost.",
+    "dateHelp": "The date the expense belongs to — payroll paid on the 5th is last month's expense.",
     "table": {
       "date": "Date",
       "kind": "Kind",
@@ -1027,15 +1027,15 @@
       "choose": "Choose a kind"
     },
     "voidDialog": {
-      "title": "Void Cost Record",
-      "message": "This cost will stop counting toward the totals. It stays on the list so the retraction is visible.",
+      "title": "Void Expense Record",
+      "message": "This expense will stop counting toward the totals. It stays on the list so the retraction is visible.",
       "confirm": "Void"
     },
     "toast": {
-      "recorded": "Cost recorded",
-      "updated": "Cost updated",
-      "voided": "Cost voided",
-      "voidFailed": "Could not void the cost"
+      "recorded": "Expense recorded",
+      "updated": "Expense updated",
+      "voided": "Expense voided",
+      "voidFailed": "Could not void the expense"
     }
   }
 }
