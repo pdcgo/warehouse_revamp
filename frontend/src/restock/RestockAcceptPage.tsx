@@ -27,6 +27,7 @@ import type {
 } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CurrencyInput } from "../components/CurrencyInput";
+import { ProductListItem } from "../components/ProductListItem";
 import { RackSelect, UNPLACED } from "../components/RackSelect";
 import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -195,6 +196,18 @@ export function RestockAcceptPage() {
 
   const ready = items.length > 0 && items.every(lineReady);
 
+  // WHY Accept is disabled, in the two words the person actually needs (#157 relayout).
+  //
+  // The per-line warnings were already there, but on a delivery of ten products they are ten screens
+  // apart: a disabled button with no explanation makes somebody scroll the whole page hunting for the
+  // line they have not finished. Counted and placed are separated because they are different jobs —
+  // "I have not opened that box yet" and "I opened it but have not said which shelf" send you to
+  // different places.
+  const counted = items.filter((item) => isCounted(counts[item.id.toString()] ?? "")).length;
+  const unplaced = items.filter(
+    (item) => isCounted(counts[item.id.toString()] ?? "") && !lineReady(item),
+  ).length;
+
   function patchCount(key: string, value: string) {
     setCounts((prev) => ({ ...prev, [key]: value }));
   }
@@ -360,10 +373,19 @@ export function RestockAcceptPage() {
     <Stack gap="section">
       {back}
 
-      <Flex align="center" gap="card">
+      <Flex align="center" gap="card" wrap="wrap">
         <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
         <Badge colorPalette="brand">{current.teamName}</Badge>
         <Spacer />
+
+        {/* What is left to do, beside the button it is stopping. Silent once everything is ready —
+            a bar that congratulates you on finishing is noise at the moment you want to press Accept. */}
+        {!ready && (
+          <Text fontSize="sm" color="fg.muted" data-testid="accept-progress">
+            {t("restock.accept.progress", { counted, total: items.length })}
+            {unplaced > 0 && ` · ${t("restock.accept.progressUnplaced", { count: unplaced })}`}
+          </Text>
+        )}
 
         {/* H — accepting moves stock and cannot be undone, so it confirms first. */}
         <ConfirmDialog
@@ -446,33 +468,25 @@ export function RestockAcceptPage() {
           <Card.Root key={key} data-testid={`accept-line-${item.productId}`}>
             <Card.Body>
               <Stack gap="card">
-                {/* A — the product. */}
-                <Flex align="center" gap="card" wrap="wrap">
-                  <Stack gap="0">
-                    <Text fontWeight="medium">{item.name}</Text>
-                    <Text fontSize="xs" color="fg.muted">
-                      {item.sku}
-                    </Text>
-                  </Stack>
-                  <Spacer />
-
-                  {/* D — what a unit of this line actually cost, freight included (#155). */}
-                  <Stack gap="0" textAlign="end">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("restock.accept.hpp")}
-                    </Text>
-                    <Text fontWeight="medium" data-testid={`accept-hpp-${item.productId}`}>
-                      {t("restock.accept.perPiece", { price: formatRupiah(hpp) })}
-                    </Text>
-                  </Stack>
-                </Flex>
-
-                {/* B — where it already lives, so today's delivery joins yesterday's pile. */}
-                {hint && (
-                  <Text fontSize="sm" color="fg.muted" data-testid={`accept-recommend-${item.productId}`}>
-                    {t("restock.accept.alreadyOn", { places: hint })}
-                  </Text>
-                )}
+                {/* A — the product, through the SHARED component (#143/#157). It was hand-rolled here
+                    as a name over a SKU, which is the same picture drawn a second way: this screen
+                    then had its own idea of how a product looks, and the cover image every other
+                    screen shows was simply missing. No `stock` is passed — that badge means the
+                    warehouse's total (#138), and nothing here has loaded one. */}
+                <ProductListItem
+                  product={{ id: item.productId, sku: item.sku, name: item.name }}
+                  action={
+                    /* D — what a unit of this line actually cost, freight included (#155). */
+                    <Stack gap="0" textAlign="end">
+                      <Text fontSize="xs" color="fg.muted">
+                        {t("restock.accept.hpp")}
+                      </Text>
+                      <Text fontWeight="medium" data-testid={`accept-hpp-${item.productId}`}>
+                        {t("restock.accept.perPiece", { price: formatRupiah(hpp) })}
+                      </Text>
+                    </Stack>
+                  }
+                />
 
                 <Separator />
 
@@ -527,6 +541,20 @@ export function RestockAcceptPage() {
                       {t("restock.accept.placements")}
                     </Text>
 
+                    {/* B — where it already lives (#157 relayout). This used to sit up beside the
+                        product, which is where you read ABOUT a product; it is really advice about
+                        WHERE TO PUT one, so it belongs at the decision it informs. Today's delivery
+                        joining yesterday's pile is the whole point of showing it. */}
+                    {hint && (
+                      <Text
+                        fontSize="xs"
+                        color="fg.muted"
+                        data-testid={`accept-recommend-${item.productId}`}
+                      >
+                        {t("restock.accept.alreadyOn", { places: hint })}
+                      </Text>
+                    )}
+
                     {rows.map((row) => (
                       <Flex key={row.key} align="center" gap="2" wrap="wrap">
                         <Stack gap="0" flex="1" minW="48">
@@ -570,7 +598,25 @@ export function RestockAcceptPage() {
                   </Stack>
                 )}
 
-                {/* F — what arrived broken. Never enters stock (#154). */}
+                {/* F — what arrived broken. Never enters stock (#154).
+
+                    COLLAPSED UNTIL IT IS NEEDED (#157 relayout). Breakage is the exception: most
+                    deliveries have none, and an always-open "Broken / lost" heading with an empty
+                    Add button under EVERY line pushed the real work — count, then place — down the
+                    page on every single one. Now it is one small action until somebody has something
+                    to report, and the full section the moment they do. */}
+                {damageRows.length === 0 ? (
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    alignSelf="flex-start"
+                    data-testid={`accept-add-damage-${item.productId}`}
+                    onClick={() => addDamage(key)}
+                  >
+                    <Icon as={Plus} boxSize="4" />
+                    {t("restock.accept.reportDamage")}
+                  </Button>
+                ) : (
                 <Stack gap="2">
                   <Text fontSize="sm" fontWeight="medium">
                     {t("restock.accept.damage")}
@@ -616,13 +662,14 @@ export function RestockAcceptPage() {
                     size="xs"
                     variant="outline"
                     alignSelf="flex-start"
-                    data-testid={`accept-add-damage-${item.productId}`}
+                    data-testid={`accept-add-more-damage-${item.productId}`}
                     onClick={() => addDamage(key)}
                   >
                     <Icon as={Plus} boxSize="4" />
                     {t("restock.accept.addDamage")}
                   </Button>
                 </Stack>
+                )}
               </Stack>
             </Card.Body>
           </Card.Root>

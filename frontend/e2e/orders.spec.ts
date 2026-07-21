@@ -537,6 +537,12 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeVisible();
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
 
+  // #157 relayout — the disabled button SAYS WHY, beside itself. On a delivery of ten products the
+  // per-line warning above can be several screens away, and a button that refuses without a reason
+  // makes somebody scroll the whole page hunting for the line they have not finished.
+  await expect(page.getByTestId("accept-progress")).toContainText("1 of 1 counted");
+  await expect(page.getByTestId("accept-progress")).toContainText("1 still to place");
+
   // Split it: 5 on the first shelf, 3 on the second.
   const firstQty = line.getByTestId(/^accept-placement-qty-/).first();
   await firstQty.fill("5");
@@ -548,7 +554,13 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeHidden();
 
-  // The breakage — never enters stock, but it is recorded with a reason.
+  // …and once nothing is blocking, the progress line goes away rather than congratulating anybody.
+  await expect(page.getByTestId("accept-progress")).toBeHidden();
+
+  // The breakage — never enters stock, but it is recorded with a reason. The damage section is
+  // COLLAPSED until asked for (#157 relayout): most deliveries break nothing, and an always-open
+  // empty section under every line pushed the counting and placing down the page on every one.
+  await expect(line.getByTestId(/^accept-damage-qty-/)).toHaveCount(0);
   await page.getByTestId(`accept-add-damage-${seeded.productId}`).click();
   await line.getByTestId(/^accept-damage-qty-/).first().fill("2");
   await line.getByTestId(/^accept-damage-reason-/).first().fill("crushed in transit");
