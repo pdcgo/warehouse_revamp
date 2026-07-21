@@ -47,19 +47,44 @@ func (s *Service) StockCost(
 		Raw(`
 			SELECT DISTINCT ON (i.product_id)
 			       i.product_id AS product_id,
-			       -- DERIVED, and openly a rounding (#140). The line stores what the WHOLE line cost,
-			       -- because that is the number a person reads off an invoice; the per-unit figure an
-			       -- order needs is computed here and nowhere written back. 10.000 over 3 pieces is
-			       -- 3.333 a piece, and the rupiah the division drops stays dropped rather than
-			       -- corrupting the stored total.
+			       -- HPP — WHAT THE GOODS COST TO GET HERE (#155, owner's formula):
 			       --
-			       -- quantity has CHECK > 0, so this cannot divide by zero.
-			       (i.total_price / i.quantity) AS unit_cost
+			       --   additional = (shipping_cost + cod_shipping_fee) / sellable units on the request
+			       --   hpp        = (line total / line's sellable units) + additional
+			       --
+			       -- Freight is part of what a product costs, so an order's COGS carries it. Before
+			       -- this it did not, and every margin was quietly optimistic by the freight.
+			       --
+			       -- Divided by SELLABLE units, not by everything that arrived (owner, 2026-07-20).
+			       -- You paid to ship the broken ones too, and that cost has to land somewhere: the
+			       -- good units carry it, so a damaged delivery correctly reads as more expensive per
+			       -- piece rather than hiding the loss.
+			       --
+			       -- Both divisions are integer and round DOWN, deliberately: an order that rounded up
+			       -- would claim to have paid more than the invoice says. The dropped rupiah is never
+			       -- written back over the stored totals (#140).
+			       ((i.total_price / i.received_quantity) + COALESCE(f.additional, 0)) AS unit_cost
 			FROM restock_request_items i
 			JOIN restock_requests r ON r.id = i.restock_request_id
+			-- The freight share is a property of the WHOLE REQUEST, so it is computed once per request
+			-- and applies to each of its lines. Spread by UNIT COUNT (owner): every unit carries the
+			-- same freight whichever line it sits on, which is what "all stock count" means.
+			LEFT JOIN LATERAL (
+			    -- SUM() returns NUMERIC, and bigint / numeric is a numeric — a decimal that will not
+			      -- scan into an int64 and would not have floored anyway. Cast the divisor back to
+			      -- BIGINT so this stays integer division, rounding down like every other figure here.
+			    SELECT (r.shipping_cost + r.cod_shipping_fee)
+			           / NULLIF(SUM(x.received_quantity)::BIGINT, 0) AS additional
+			    FROM restock_request_items x
+			    WHERE x.restock_request_id = r.id
+			) f ON TRUE
 			WHERE r.warehouse_id = ?
 			  AND r.status = ?
 			  AND i.product_id IN ?
+			  -- A line that brought nothing has no cost basis: dividing by its zero would fail, and
+			  -- "what did the units cost" has no answer when no units came. Such a line is skipped, so
+			  -- the product falls back to its previous delivery rather than to a fabricated figure.
+			  AND i.received_quantity > 0
 			ORDER BY i.product_id, r.id DESC`,
 			req.Msg.GetWarehouseId(), restockStatusFulfilled, req.Msg.GetProductIds(),
 		).

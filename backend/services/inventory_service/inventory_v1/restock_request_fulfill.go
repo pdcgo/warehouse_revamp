@@ -254,10 +254,17 @@ func (s *Service) RestockRequestFulfill(
 		}
 
 		rr.Status = restockStatusFulfilled
+		// What the courier charged at the door (#155). Written by the WAREHOUSE at acceptance, because it
+		// is the side that paid it — and it lands in the same transaction as the goods it belongs to.
+		rr.CODShippingFee = req.Msg.GetCodShippingFee()
 
 		return tx.
 			Model(&rr).
-			Updates(map[string]any{"status": restockStatusFulfilled, "updated_at": time.Now()}).
+			Updates(map[string]any{
+				"status":           restockStatusFulfilled,
+				"cod_shipping_fee": rr.CODShippingFee,
+				"updated_at":       time.Now(),
+			}).
 			Error
 	})
 	if err != nil {

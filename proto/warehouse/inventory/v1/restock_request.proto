@@ -126,6 +126,12 @@ message RestockRequest {
   // What the shipment itself cost, whole rupiah (#127). The goods' cost is per line (item.price);
   // this is the freight on top, and it is what the summary adds to the products' total.
   int64 shipping_cost = 16;
+  // The courier's fee collected ON DELIVERY (#155), paid by the WAREHOUSE and entered when it accepts.
+  // The requesting team cannot know it in advance, which is why it is not on create or update.
+  //
+  // Summed with shipping_cost and spread across the units that arrived sellable — getting the goods
+  // here is part of what they cost, so both feed the HPP that becomes an order's COGS.
+  int64 cod_shipping_fee = 19;
   // How it was paid for (#127).
   RestockPaymentType payment_type = 17;
   // A free-text note about this restock (#127).
@@ -312,6 +318,12 @@ message RestockRequestFulfillRequest {
   // "all of it came" or "none of it did", and a system that guesses which is a system whose stock
   // drifts — so an incomplete count is refused rather than interpreted.
   repeated RestockRequestReceivedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // What the courier charged AT THE DOOR (#155). Entered here rather than on the request because the
+  // warehouse is the side that pays it, and it only exists once the goods actually turn up.
+  //
+  // 0 is the ordinary case — most deliveries are not COD.
+  int64 cod_shipping_fee = 4 [(buf.validate.field).int64.gte = 0];
 }
 
 // One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,

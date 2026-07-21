@@ -187,3 +187,163 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, rounded down)", got)
 	}
 }
+
+// #155 — HPP: WHAT THE GOODS COST TO GET HERE, using the owner's own worked example.
+//
+//	product 10.000/pc × 10   = 100.000
+//	shipping 15.000 + cod 5.000 = 20.000
+//	additional = 20.000 / 10  = 2.000
+//	hpp        = 10.000 + 2.000 = 12.000 / pc
+//
+// Freight is part of what a product cost, so an order's COGS carries it. Before this it did not, and
+// every margin in the revenue report was quietly optimistic by exactly the freight.
+func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		ShippingCost: 15000,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
+		Lines: allArrived(created.Msg.GetRequest()),
+		// The fee the courier took at the door — known only now, and only to the warehouse.
+		CodShippingFee: 5000,
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+	}))
+	if err != nil {
+		t.Fatalf("StockCost: %v", err)
+	}
+
+	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 12000 {
+		t.Fatalf("HPP = %d, want 12000 (10.000 goods + 2.000 freight share)", got)
+	}
+}
+
+// #155/#154 — freight is spread over the SELLABLE units, not over everything that arrived.
+//
+// You paid to ship the broken ones too, and that cost has to land somewhere. Putting it on the good
+// units means a damaged delivery correctly reads as more expensive per piece; dividing by 10 instead
+// would leave the freight paid on the broken pair absorbed by nobody, and the margin quietly optimistic.
+func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		ShippingCost: 20000,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	req := created.Msg.GetRequest()
+
+	// 10 turned up, 2 crushed: 8 sellable.
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: req.GetId(),
+		Lines: []*inventoryv1.RestockRequestReceivedLine{
+			{
+				ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 8,
+				Placements: []*inventoryv1.RestockPlacement{
+					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 8},
+				},
+				Damaged: []*inventoryv1.RestockDamagedUnits{
+					{Quantity: 2, Reason: "crushed in transit", Value: 20000},
+				},
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+	}))
+	if err != nil {
+		t.Fatalf("StockCost: %v", err)
+	}
+
+	// goods 100.000 / 8 = 12.500 ; freight 20.000 / 8 = 2.500 ; HPP = 15.000.
+	// Dividing the freight by 10 instead would give 12.500 + 2.000 = 14.500.
+	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 15000 {
+		t.Fatalf("HPP = %d, want 15000 — freight over the 8 SELLABLE units, not over all 10", got)
+	}
+}
+
+// #155 — one shipping cost, several lines: every unit carries the same freight whichever line it is
+// on (owner: split by unit count, which is what "all stock count" means).
+func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+	const productY uint64 = 301
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		ShippingCost: 20000,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 8, TotalPrice: 80000},
+			{ProductId: productY, Sku: "SKU2", Name: "Gadget", Quantity: 2, TotalPrice: 40000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
+		Lines: allArrived(created.Msg.GetRequest()),
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX, productY},
+	}))
+	if err != nil {
+		t.Fatalf("StockCost: %v", err)
+	}
+
+	// 10 units on the request, so every unit carries 20.000 / 10 = 2.000 of freight.
+	//   Widget: 80.000 / 8 = 10.000 + 2.000 = 12.000
+	//   Gadget: 40.000 / 2 = 20.000 + 2.000 = 22.000
+	want := map[uint64]int64{productX: 12000, productY: 22000}
+
+	for _, c := range res.Msg.GetCosts() {
+		if got := c.GetUnitCost(); got != want[c.GetProductId()] {
+			t.Fatalf("product %d HPP = %d, want %d", c.GetProductId(), got, want[c.GetProductId()])
+		}
+	}
+
+	if len(res.Msg.GetCosts()) != 2 {
+		t.Fatalf("costs = %+v, want both products", res.Msg.GetCosts())
+	}
+}

@@ -30,6 +30,10 @@ type RestockRequest struct {
 	// this is what the summary adds on top. PaymentType is stored as text and mapped in the handler
 	// layer (no DB CHECK IN-list, cf. #80).
 	ShippingCost int64
+	// The courier fee paid AT THE DOOR (#155) — entered by the warehouse when it accepts, because it
+	// is the side that pays it and it only exists once the goods turn up. Summed with ShippingCost and
+	// spread across the units that arrived sellable.
+	CODShippingFee int64 `gorm:"column:cod_shipping_fee"`
 	PaymentType  string
 	Note         string
 

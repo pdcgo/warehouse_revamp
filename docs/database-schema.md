@@ -282,6 +282,36 @@ erDiagram
     total is therefore the stored truth, and **StockCost DERIVES** the per-unit cost as
     `total_price / quantity`, rounded down. That rounding happens at READ time and is never written
     back: 10.000 over 3 pieces reports 3.333 a piece while the stored total stays 10.000.
+  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
+    product cost, so an order's COGS carries it:
+
+    
+
+    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken
+    ones too (#154), and that cost lands on the good units, so a damaged delivery correctly reads as
+    more expensive per piece. Spread by **unit count** across the request's lines, so every unit
+    carries the same freight whichever line it is on. Both divisions round DOWN — rounding up would
+    have an order claim it paid more than the invoice says.
+  - A line that received **nothing is skipped**: dividing by its zero would fail, and "what did the
+    units cost" has no answer when none came. The product falls back to its previous delivery rather
+    than to a fabricated figure.
+  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
+    product cost, so an order's COGS carries it. Before this it did not, and every margin in the
+    revenue report was optimistic by exactly the freight.
+
+    ```
+    additional = (shipping_cost + cod_shipping_fee) / sellable units on the request
+    hpp        = (line total / that line's sellable units) + additional
+    ```
+
+    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken ones
+    too (#154), and that cost lands on the good units — so a damaged delivery correctly reads as more
+    expensive per piece instead of hiding the loss. Split across the request's lines by **unit count**,
+    so every unit carries the same freight whichever line it sits on. Both divisions round **down**:
+    rounding up would have an order claim it paid more than the invoice says.
+  - A line that received **nothing is skipped**. Dividing by its zero would fail, and "what did the
+    units cost" has no answer when none came — so the product falls back to its previous delivery
+    rather than to a fabricated figure.
   - **The rule is the LATEST FULFILLED restock's price** for that product into that warehouse. Only
     fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
     That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
@@ -450,7 +480,8 @@ erDiagram
         text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
         text        receipt            "optional: courier tracking number (resi)"
         bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
-        bigint      shipping_cost      "the freight, whole rupiah, CHECK >= 0"
+        bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
+        bigint      cod_shipping_fee   "fee paid AT THE DOOR by the warehouse at acceptance (#155), CHECK >= 0"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
         text        note               "optional free text"
         timestamptz created_at

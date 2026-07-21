@@ -283,6 +283,12 @@ type RestockRequest struct {
 	// What the shipment itself cost, whole rupiah (#127). The goods' cost is per line (item.price);
 	// this is the freight on top, and it is what the summary adds to the products' total.
 	ShippingCost int64 `protobuf:"varint,16,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
+	// The courier's fee collected ON DELIVERY (#155), paid by the WAREHOUSE and entered when it accepts.
+	// The requesting team cannot know it in advance, which is why it is not on create or update.
+	//
+	// Summed with shipping_cost and spread across the units that arrived sellable — getting the goods
+	// here is part of what they cost, so both feed the HPP that becomes an order's COGS.
+	CodShippingFee int64 `protobuf:"varint,19,opt,name=cod_shipping_fee,json=codShippingFee,proto3" json:"cod_shipping_fee,omitempty"`
 	// How it was paid for (#127).
 	PaymentType RestockPaymentType `protobuf:"varint,17,opt,name=payment_type,json=paymentType,proto3,enum=warehouse.inventory.v1.RestockPaymentType" json:"payment_type,omitempty"`
 	// A free-text note about this restock (#127).
@@ -394,6 +400,13 @@ func (x *RestockRequest) GetOrderRef() string {
 func (x *RestockRequest) GetShippingCost() int64 {
 	if x != nil {
 		return x.ShippingCost
+	}
+	return 0
+}
+
+func (x *RestockRequest) GetCodShippingFee() int64 {
+	if x != nil {
+		return x.CodShippingFee
 	}
 	return 0
 }
@@ -977,9 +990,14 @@ type RestockRequestFulfillRequest struct {
 	// It must name EVERY line of the request, exactly once. A line left out would have to mean either
 	// "all of it came" or "none of it did", and a system that guesses which is a system whose stock
 	// drifts — so an incomplete count is refused rather than interpreted.
-	Lines         []*RestockRequestReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Lines []*RestockRequestReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
+	// What the courier charged AT THE DOOR (#155). Entered here rather than on the request because the
+	// warehouse is the side that pays it, and it only exists once the goods actually turn up.
+	//
+	// 0 is the ordinary case — most deliveries are not COD.
+	CodShippingFee int64 `protobuf:"varint,4,opt,name=cod_shipping_fee,json=codShippingFee,proto3" json:"cod_shipping_fee,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RestockRequestFulfillRequest) Reset() {
@@ -1031,6 +1049,13 @@ func (x *RestockRequestFulfillRequest) GetLines() []*RestockRequestReceivedLine 
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *RestockRequestFulfillRequest) GetCodShippingFee() int64 {
+	if x != nil {
+		return x.CodShippingFee
+	}
+	return 0
 }
 
 // RestockPlacement — how many of a received line's units went to ONE place (#154).
@@ -1458,7 +1483,7 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"placements\x18\t \x03(\v2(.warehouse.inventory.v1.RestockPlacementR\n" +
 	"placements\x12E\n" +
 	"\adamaged\x18\n" +
-	" \x03(\v2+.warehouse.inventory.v1.RestockDamagedUnitsR\adamagedJ\x04\b\b\x10\tR\x10received_rack_id\"\xef\x04\n" +
+	" \x03(\v2+.warehouse.inventory.v1.RestockDamagedUnitsR\adamagedJ\x04\b\b\x10\tR\x10received_rack_id\"\x99\x05\n" +
 	"\x0eRestockRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12,\n" +
 	"\x12requesting_team_id\x18\x02 \x01(\x04R\x10requestingTeamId\x12!\n" +
@@ -1472,7 +1497,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\vsupplier_id\x18\x0e \x01(\x04R\n" +
 	"supplierId\x12\x1b\n" +
 	"\torder_ref\x18\x0f \x01(\tR\borderRef\x12#\n" +
-	"\rshipping_cost\x18\x10 \x01(\x03R\fshippingCost\x12M\n" +
+	"\rshipping_cost\x18\x10 \x01(\x03R\fshippingCost\x12(\n" +
+	"\x10cod_shipping_fee\x18\x13 \x01(\x03R\x0ecodShippingFee\x12M\n" +
 	"\fpayment_type\x18\x11 \x01(\x0e2*.warehouse.inventory.v1.RestockPaymentTypeR\vpaymentType\x12\x12\n" +
 	"\x04note\x18\x12 \x01(\tR\x04noteJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\f\x10\rR\n" +
 	"product_idR\x03skuR\x04nameR\bquantityR\border_id\"\xce\x04\n" +
@@ -1528,12 +1554,13 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x04note\x18\v \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"`\n" +
 	"\x1cRestockRequestUpdateResponse\x12@\n" +
-	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\xcd\x01\n" +
+	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\x80\x02\n" +
 	"\x1cRestockRequestFulfillRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\trequestId\x12R\n" +
-	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines:\v\x92\xb5\x18\a\n" +
+	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x121\n" +
+	"\x10cod_shipping_fee\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x0ecodShippingFee:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\x8b\x01\n" +
 	"\x10RestockPlacement\x12\"\n" +
 	"\arack_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +

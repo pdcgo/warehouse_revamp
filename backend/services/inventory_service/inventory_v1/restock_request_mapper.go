@@ -138,6 +138,7 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		OrderRef:         r.OrderRef,
 		Receipt:          r.Receipt,
 		ShippingCost:     r.ShippingCost,
+		CodShippingFee:   r.CODShippingFee,
 		PaymentType:      restockPaymentFromText(r.PaymentType),
 		Note:             r.Note,
 	}
