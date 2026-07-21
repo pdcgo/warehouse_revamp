@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -35,6 +35,7 @@ const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCar
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
 const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
 const COSTS: MenuItem = { to: "/costs", label: "nav.costs", icon: Receipt };
+const PROFIT: MenuItem = { to: "/profit", label: "nav.profit", icon: Scale };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -129,6 +130,9 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     if (isTeamManager(role)) {
       menu.push(REVENUE);
       menu.push(COSTS);
+      // Profit is those two subtracted (#172) — the same gate, necessarily: it is made ENTIRELY of
+      // the numbers on the other two screens, so anyone who may not read them may not read this.
+      menu.push(PROFIT);
     }
   }
 

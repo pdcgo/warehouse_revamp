@@ -71,6 +71,9 @@ const CostsPage = lazy(() =>
 const RevenuePage = lazy(() =>
   import("./revenue/RevenuePage").then((m) => ({ default: m.RevenuePage })),
 );
+const ProfitPage = lazy(() =>
+  import("./costs/ProfitPage").then((m) => ({ default: m.ProfitPage })),
+);
 const PickQueuePage = lazy(() =>
   import("./picking/PickQueuePage").then((m) => ({ default: m.PickQueuePage })),
 );
@@ -152,6 +155,9 @@ export const router = createBrowserRouter([
       { path: "revenue", element: <RevenuePage /> },
       // What the team spent that no order caused (#170).
       { path: "costs", element: <CostsPage /> },
+      // The two above, subtracted (#172) — the arithmetic happens on the client because neither
+      // service may own a number derived from the other's data.
+      { path: "profit", element: <ProfitPage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },

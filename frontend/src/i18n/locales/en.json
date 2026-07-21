@@ -21,7 +21,8 @@
     "profile": "Profile",
     "picking": "Picking",
     "revenue": "Revenue",
-    "costs": "Costs"
+    "costs": "Costs",
+    "profit": "Profit"
   },
   "menu": {
     "language": "Language",
@@ -977,6 +978,20 @@
     "damaged": "Damaged",
     "lineCost": "Line cost",
     "noBatches": "No deliveries of this product yet."
+  },
+  "profit": {
+    "title": "Profit",
+    "selectTeam": "Select a team to view its profit.",
+    "expectedNotice": "These are EXPECTED figures, not settled money — the margin below has not been reconciled against what any marketplace actually paid out.",
+    "expectedMargin": "Expected margin",
+    "marginSource": "From orders placed this month",
+    "totalCost": "Costs",
+    "costSource": "Recorded against this month",
+    "profit": "Profit",
+    "loss": "This month spent more than it made.",
+    "unknownCost": "{{count}} order with an unknown cost is counted as pure profit — the figure above is overstated by whatever those goods cost.",
+    "unknownCost_other": "{{count}} orders with an unknown cost are counted as pure profit — the figure above is overstated by whatever those goods cost.",
+    "breakdown": "What the costs were"
   },
   "costs": {
     "title": "Costs",

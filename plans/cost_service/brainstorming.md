@@ -280,14 +280,29 @@ A focused action, so a dialog rather than a page:
 `CostKindSelect` is the one new shared component, and it needs an `export const description` plus a
 `/components` gallery entry in the same change.
 
-### 4.3 `/profit` — revenue minus cost (later)
+### 4.3 `/profit` — revenue minus cost ✅ BUILT (#172)
 
 The §2.4 screen: one month picker, two reads, three numbers — expected margin, total cost, profit.
 Carries the same "expected, not banked" warning banner `RevenuePage` already shows, because the
 revenue half of the subtraction is still unreconciled (revenue §2.3).
 
-**This is the destination, but it is the LAST piece** — it cannot be built before there are costs to
-subtract.
+**This was the destination and the LAST piece** — it could not be built before there were costs to
+subtract, or before `RevenueList` could be asked about a month (#171).
+
+Three things it settled that were not obvious from the plan:
+
+- **The arithmetic is SHOWN as arithmetic** — margin, minus, cost, equals profit, all three on screen.
+  A bottom line whose two inputs are elsewhere is a number nobody can check.
+- **The two reads are all-or-nothing** (`Promise.all`). If only the cost read failed, a screen that
+  rendered what it did get would report the month's whole margin as its profit — wrong by exactly the
+  costs, and looking perfectly healthy.
+- **The unknown-cost count is carried here too, and matters more than on `/revenue`**: an order whose
+  COGS was never recorded counts as pure profit, so it pushes this bottom line *up*. The warning names
+  how many.
+
+⚠ Still true, and worth revisiting when **#76** lands: this subtracts money that genuinely left the
+business from margin that is only *expected*. The banner is honest about it; the subtraction still
+mixes two kinds of certainty.
 
 ---
 

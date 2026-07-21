@@ -21,7 +21,8 @@
     "profile": "Profil",
     "picking": "Pengambilan",
     "revenue": "Pendapatan",
-    "costs": "Biaya"
+    "costs": "Biaya",
+    "profit": "Laba"
   },
   "menu": {
     "language": "Bahasa",
@@ -977,6 +978,19 @@
     "damaged": "Rusak",
     "lineCost": "Biaya baris",
     "noBatches": "Belum ada kiriman produk ini."
+  },
+  "profit": {
+    "title": "Laba",
+    "selectTeam": "Pilih tim untuk melihat labanya.",
+    "expectedNotice": "Angka ini adalah PERKIRAAN, bukan uang yang sudah masuk — margin di bawah belum dicocokkan dengan pembayaran nyata dari marketplace mana pun.",
+    "expectedMargin": "Perkiraan margin",
+    "marginSource": "Dari pesanan bulan ini",
+    "totalCost": "Biaya",
+    "costSource": "Tercatat pada bulan ini",
+    "profit": "Laba",
+    "loss": "Bulan ini pengeluaran melebihi pemasukan.",
+    "unknownCost": "{{count}} pesanan dengan biaya tidak diketahui dihitung sebagai laba penuh — angka di atas lebih tinggi dari seharusnya sebesar biaya barang tersebut.",
+    "breakdown": "Rincian biaya"
   },
   "costs": {
     "title": "Biaya",
