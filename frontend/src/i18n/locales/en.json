@@ -270,6 +270,37 @@
       "cancelled": "Restock request cancelled",
       "cancelFailed": "Cancel failed",
       "fulfilled": "Restock request fulfilled"
+    },
+    "accept": {
+      "title": "Accept Delivery",
+      "heading": "Accept Restock #{{id}}",
+      "back": "Back to the Request",
+      "warehouseOnly": "Only the warehouse a restock was sent to can accept it.",
+      "notFound": "That restock request is not for this warehouse.",
+      "action": "Accept Delivery",
+      "codFee": "COD Fee",
+      "freightTotal": "Freight Total",
+      "hpp": "Cost / pc (HPP)",
+      "perPiece": "{{price}} / pc",
+      "alreadyOn": "Already on: {{places}}",
+      "placements": "Where it went",
+      "addPlacement": "Add a place",
+      "removePlacement": "Remove this place",
+      "unbalanced": "Placed {{placed}} of {{counted}}",
+      "damage": "Broken or lost",
+      "addDamage": "Record breakage",
+      "removeDamage": "Remove this breakage",
+      "damageReason": "What happened?",
+      "damageValue": "Value",
+      "confirm": {
+        "title": "Accept This Delivery",
+        "message": "The stock will be received onto the shelves you named, and any breakage recorded. This cannot be undone.",
+        "label": "Accept"
+      },
+      "toast": {
+        "accepted": "Delivery accepted",
+        "failed": "Could not accept the delivery"
+      }
     }
   },
   "shops": {

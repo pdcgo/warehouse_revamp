@@ -270,6 +270,37 @@
       "cancelled": "Permintaan restok dibatalkan",
       "cancelFailed": "Pembatalan gagal",
       "fulfilled": "Permintaan restok terpenuhi"
+    },
+    "accept": {
+      "title": "Terima Kiriman",
+      "heading": "Terima Restock #{{id}}",
+      "back": "Kembali ke Permintaan",
+      "warehouseOnly": "Hanya gudang tujuan restock yang dapat menerimanya.",
+      "notFound": "Permintaan restock itu bukan untuk gudang ini.",
+      "action": "Terima Kiriman",
+      "codFee": "Biaya COD",
+      "freightTotal": "Total Ongkir",
+      "hpp": "Biaya / pcs (HPP)",
+      "perPiece": "{{price}} / pcs",
+      "alreadyOn": "Sudah ada di: {{places}}",
+      "placements": "Ditaruh di mana",
+      "addPlacement": "Tambah tempat",
+      "removePlacement": "Hapus tempat ini",
+      "unbalanced": "Ditaruh {{placed}} dari {{counted}}",
+      "damage": "Rusak atau hilang",
+      "addDamage": "Catat kerusakan",
+      "removeDamage": "Hapus kerusakan ini",
+      "damageReason": "Apa yang terjadi?",
+      "damageValue": "Nilai",
+      "confirm": {
+        "title": "Terima Kiriman Ini",
+        "message": "Stok akan diterima ke rak yang Anda sebutkan, dan kerusakan dicatat. Ini tidak dapat dibatalkan.",
+        "label": "Terima"
+      },
+      "toast": {
+        "accepted": "Kiriman diterima",
+        "failed": "Tidak dapat menerima kiriman"
+      }
     }
   },
   "shops": {

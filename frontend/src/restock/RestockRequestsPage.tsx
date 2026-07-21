@@ -27,7 +27,6 @@ import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_requ
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { RestockReceiveDialog } from "./RestockReceiveDialog";
 import { Pagination } from "../components/Pagination";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
 import { ShippingBadge } from "../components/ShippingBadge";
@@ -290,26 +289,21 @@ export function RestockRequestsPage() {
                               />
                             )}
 
-                            {/* Accepting is COUNTING (#133), so the row action opens the receive
-                                dialog rather than a confirm: there is no one-click "as asked"
-                                any more, because the contract has no such call. */}
+                            {/* Accepting is COUNTING (#133), and since #154 also placing and
+                                writing off — a form with sections, so the row action opens the
+                                Accept PAGE (#157). There is still no one-click "as asked": the
+                                contract has no such call. */}
                             {isPending && isWarehouse && teamId !== undefined && (
-                              <RestockReceiveDialog
-                                request={request}
-                                teamId={teamId}
-                                onDone={() => void load()}
-                                trigger={
-                                  <IconButton
-                                    size="xs"
-                                    variant="ghost"
-                                    colorPalette="green"
-                                    aria-label={t("restock.receive.title")}
-                                    data-testid={`fulfil-${request.id}`}
-                                  >
-                                    <Icon as={PackageCheck} boxSize="4" />
-                                  </IconButton>
-                                }
-                              />
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                colorPalette="green"
+                                aria-label={t("restock.receive.title")}
+                                data-testid={`fulfil-${request.id}`}
+                                onClick={() => navigate(`/inventories/restock/${request.id}/accept`)}
+                              >
+                                <Icon as={PackageCheck} boxSize="4" />
+                              </IconButton>
                             )}
                           </HStack>
                         </Table.Cell>

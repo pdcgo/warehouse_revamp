@@ -24,7 +24,7 @@ import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/invent
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { RestockReceiveDialog, deltaLabel } from "./RestockReceiveDialog";
+import { deltaLabel } from "./counting";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
 import { paymentTypeLabel } from "../components/PaymentTypeSelect";
 import { ShippingBadge } from "../components/ShippingBadge";
@@ -328,20 +328,18 @@ export function RestockRequestDetailPage() {
         <RestockStatusBadge status={request.status} />
         <Spacer />
 
-        {/* Accepting is COUNTING (#133): the warehouse opens the box and says what actually turned
-            up, so this opens the receive dialog rather than a confirm. */}
+        {/* Accepting is COUNTING (#133) — and since #154 it is also saying WHERE each part of a line
+            went and what arrived broken, with the COD fee (#155) changing what it all cost. That is a
+            form with sections, so it is a PAGE (#157), not a dialog. */}
         {isPending && isWarehouse && teamId !== undefined && (
-          <RestockReceiveDialog
-            request={request}
-            teamId={teamId}
-            onDone={() => void load()}
-            trigger={
-              <Button colorPalette="brand" data-testid="restock-detail-fulfil">
-                <Icon as={PackageCheck} boxSize="4" />
-                {t("restock.receive.title")}
-              </Button>
-            }
-          />
+          <Button
+            colorPalette="brand"
+            data-testid="restock-detail-fulfil"
+            onClick={() => navigate(`/inventories/restock/${request.id}/accept`)}
+          >
+            <Icon as={PackageCheck} boxSize="4" />
+            {t("restock.receive.title")}
+          </Button>
         )}
 
         {/* Editing is gated exactly as Cancel is, and for the same two reasons: RestockRequestUpdate

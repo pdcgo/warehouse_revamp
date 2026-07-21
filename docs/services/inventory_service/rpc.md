@@ -319,3 +319,56 @@ constraint never fires. Unguarded, #137 made this a live bug — the goods were 
 `stock_levels` at a location that had vanished from every list, where nobody could find or fix them.
 Moving them to unplaced instead was rejected: the boxes are still physically on that shelf until a
 person moves them, so recording them as "somewhere" would invent a location nobody observed.
+
+---
+
+## Accepting a delivery (#154, #155, #157)
+
+Accepting is **counting** (#133) — and since #154 it is also saying **where each part went** and
+**what arrived broken**, with a COD fee that changes what it all cost. That is a form with sections,
+so the warehouse's Accept surface is a **page**, not a dialog.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Warehouse crew
+    participant UI as Accept page
+    participant I as inventory_service
+
+    UI->>I: RestockRequestDetail — the lines
+    UI->>I: ProductPlaces — where these products already live (#156)
+    I-->>UI: "A-01-3 (40), Unplaced (12)"
+
+    Note over W,UI: count, split across shelves, record breakage,<br/>type the COD fee — HPP updates live
+
+    UI->>I: RestockRequestFulfill — lines + placements + damaged + cod_shipping_fee
+
+    rect rgb(240, 240, 240)
+        Note over I: ONE transaction
+        I->>I: refuse unless placements sum to the count
+        I->>I: record breakage — never enters stock
+        I->>I: one movement PER PLACE
+        I->>I: status -> FULFILLED, store the COD fee
+    end
+
+    I-->>UI: the fulfilled request
+```
+
+### The three rules the screen mirrors
+
+| Rule | Why |
+| --- | --- |
+| A blank count is **not** zero | 0 means "looked, nothing came". Blank means nobody counted — submitting it as 0 would write off a line no one examined. |
+| Placements must **sum** to the count | Counting 8 and placing 7 is an error in one of the two, and which is not knowable. Refused, never interpreted. |
+| Breakage **never** enters stock | Stock that cannot be sold is stock that fails at the shelf, in front of a customer. |
+
+The screen shows the imbalance **while typing** rather than refusing at the end — being told what is
+wrong after pressing a disabled button is how a form wastes somebody's time. But the guard is a single
+expression mirroring the server's rules: a second one beside it is how a screen's idea of "ready to
+send" drifts from the handler's idea of "acceptable".
+
+### HPP moves as you type
+
+The COD fee feeds the cost live (#155), because the person entering it is entitled to see what it does
+before committing. The screen's arithmetic mirrors `StockCost`'s SQL — same divisor (sellable units),
+same rounding (down) — so the figure on screen is the one an order will actually book.

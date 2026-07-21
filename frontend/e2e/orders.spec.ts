@@ -462,3 +462,109 @@ test("Revenue: placing an order records its expected revenue (#153)", async ({ p
   await expect(page.getByTestId(`revenue-cogs-unknown-${orderId}`)).toBeVisible();
   await expect(page.getByTestId(`revenue-margin-untrusted-${orderId}`)).toBeVisible();
 });
+
+// #157 — THE ACCEPT SCREEN, end to end: count a delivery, split it across two shelves, write off the
+// breakage, and record the COD fee.
+//
+// The accept flow had no e2e at all before this — the dialog it replaced was never covered — so this
+// is the first test that walks a delivery through the door.
+test("Accept: a delivery is counted, split across shelves, and its breakage written off (#157)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // A pending restock for 10, plus two shelves to put them on.
+  const seeded = await page.evaluate(
+    async ([whCode, sku]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+
+      const products = await call("product.v1.ProductService/ProductDiscover", {
+        teamId: "1",
+        q: sku,
+        page: { page: 1, limit: 50 },
+      });
+      const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+      if (!product) throw new Error(`product ${sku} not found`);
+
+      for (const code of ["ACC-01", "ACC-02"]) {
+        await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
+      }
+
+      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: "1",
+        warehouseId: warehouse.id,
+        shippingCost: "20000",
+        items: [
+          { productId: product.id, sku, name: "e2e accept", quantity: "10", totalPrice: "100000" },
+        ],
+      });
+
+      return { requestId: created.request.id, productId: product.id };
+    },
+    [WH_CODE, SKU],
+  );
+
+  await switchToWarehouse(page);
+  await page.goto(`/inventories/restock/${seeded.requestId}/accept`);
+
+  const line = page.getByTestId(`accept-line-${seeded.productId}`);
+  await expect(line).toBeVisible();
+
+  // 10 were asked for and the count is prefilled with it — a convenience, not an assumption.
+  const count = page.getByTestId(`accept-count-${seeded.productId}`);
+  await expect(count).toHaveValue("10");
+
+  // 8 are sellable: 2 arrived crushed.
+  await count.fill("8");
+
+  // The prefilled placement still says 10, so the screen must say so WHILE typing rather than
+  // refusing at the end — and Accept must be unavailable until it balances.
+  await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeVisible();
+  await expect(page.getByTestId("accept-submit")).toBeDisabled();
+
+  // Split it: 5 on the first shelf, 3 on the second.
+  const firstQty = line.getByTestId(/^accept-placement-qty-/).first();
+  await firstQty.fill("5");
+  await line.getByTestId("rack-select").first().selectOption({ label: "ACC-01" });
+
+  await page.getByTestId(`accept-add-placement-${seeded.productId}`).click();
+  await line.getByTestId(/^accept-placement-qty-/).nth(1).fill("3");
+  await line.getByTestId("rack-select").nth(1).selectOption({ label: "ACC-02" });
+
+  await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeHidden();
+
+  // The breakage — never enters stock, but it is recorded with a reason.
+  await page.getByTestId(`accept-add-damage-${seeded.productId}`).click();
+  await line.getByTestId(/^accept-damage-qty-/).first().fill("2");
+  await line.getByTestId(/^accept-damage-reason-/).first().fill("crushed in transit");
+
+  // The COD fee changes what everything cost, and the HPP must move as it is typed (#155).
+  const hpp = page.getByTestId(`accept-hpp-${seeded.productId}`);
+  const before = await hpp.innerText();
+  await page.getByTestId("accept-cod-fee").fill("8000");
+  await expect(hpp).not.toHaveText(before);
+
+  await expect(page.getByTestId("accept-submit")).toBeEnabled();
+  await page.getByTestId("accept-submit").click();
+  await page.getByTestId("confirm-action").click();
+
+  // It lands on the request, now fulfilled, showing BOTH shelves with their quantities (#154).
+  await expect(page.getByTestId("restock-detail-page")).toBeVisible();
+  await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-01 (5)");
+  await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-02 (3)");
+});
