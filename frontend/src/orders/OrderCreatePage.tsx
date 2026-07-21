@@ -26,6 +26,7 @@ import { ProductSelect } from "../components/ProductSelect";
 import type { PickedProduct } from "../components/ProductSelect";
 import { AddressPicker, emptyAddress } from "../components/AddressPicker";
 import type { AddressValue } from "../components/AddressPicker";
+import { CurrencyInput } from "../components/CurrencyInput";
 import { ShippingSelect } from "../shipping/ShippingSelect";
 import { formatRupiah } from "../lib/money";
 import { toaster } from "../components/Toaster";
@@ -343,12 +344,10 @@ export function OrderCreatePage() {
 
                         <Field.Root w="32">
                           <Field.Label fontSize="xs">{t("orders.unitPrice")}</Field.Label>
-                          <Input
-                            type="number"
-                            min="0"
+                          <CurrencyInput
                             value={line.unitPrice}
                             data-testid={`order-line-price-${i}`}
-                            onChange={(e) => patchLine(line.key, { unitPrice: e.target.value })}
+                            onChange={(v) => patchLine(line.key, { unitPrice: v })}
                           />
                         </Field.Root>
 
@@ -400,13 +399,11 @@ export function OrderCreatePage() {
 
                 <Field.Root>
                   <Field.Label>{t("orders.shippingCost")}</Field.Label>
-                  <Input
-                    type="number"
-                    min="0"
+                  <CurrencyInput
                     w="40"
                     value={shippingCost}
                     data-testid="order-create-shipping-cost"
-                    onChange={(e) => setShippingCost(e.target.value)}
+                    onChange={setShippingCost}
                   />
                 </Field.Root>
 

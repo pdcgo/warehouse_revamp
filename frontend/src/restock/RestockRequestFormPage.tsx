@@ -29,6 +29,7 @@ import { TeamSelect } from "../components/TeamSelect";
 import { ProductSelect } from "../components/ProductSelect";
 import type { PickedProduct } from "../components/ProductSelect";
 import { ProductListItem } from "../components/ProductListItem";
+import { CurrencyInput } from "../components/CurrencyInput";
 import { SupplierSelect } from "../components/SupplierSelect";
 import { PaymentTypeSelect } from "../components/PaymentTypeSelect";
 import { ShippingSelect } from "../shipping/ShippingSelect";
@@ -465,12 +466,10 @@ export function RestockRequestFormPage() {
 
                                 <Field.Root w="28">
                                   <Field.Label fontSize="xs">{t("restock.form.totalPrice")}</Field.Label>
-                                  <Input
-                                    type="number"
-                                    min="0"
+                                  <CurrencyInput
                                     value={line.totalPrice}
                                     data-testid={`restock-total-price-${i}`}
-                                    onChange={(e) => patchLine(line.key, { totalPrice: e.target.value })}
+                                    onChange={(v) => patchLine(line.key, { totalPrice: v })}
                                   />
                                 </Field.Root>
 
@@ -551,13 +550,11 @@ export function RestockRequestFormPage() {
 
                     <Field.Root>
                       <Field.Label>{t("restock.form.shippingCost")}</Field.Label>
-                      <Input
-                        type="number"
-                        min="0"
+                      <CurrencyInput
                         value={shippingCost}
                         placeholder="0"
                         data-testid="restock-shipping-cost"
-                        onChange={(e) => setShippingCost(e.target.value)}
+                        onChange={setShippingCost}
                       />
                       <Field.HelperText>{t("restock.form.shippingCostHelp")}</Field.HelperText>
                     </Field.Root>

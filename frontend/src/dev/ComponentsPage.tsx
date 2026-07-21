@@ -39,6 +39,7 @@ import {
 } from "../components/RestockStatusBadge";
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
+import { CurrencyInput, description as currencyInputDescription } from "../components/CurrencyInput";
 import { RackSelect, UNPLACED, description as rackSelectDescription } from "../components/RackSelect";
 import {
   ProductSelect,
@@ -283,6 +284,21 @@ function ShopSelectDemo() {
       <Text fontSize="xs" color="fg.muted">
         Selected shop id: {id.toString()}
         {current ? "" : " — select a selling team to load shops"}
+      </Text>
+    </>
+  );
+}
+
+function CurrencyInputDemo() {
+  const [amount, setAmount] = useState("");
+
+  return (
+    <>
+      <CurrencyInput value={amount} onChange={setAmount} placeholder="0" />
+      <Text fontSize="xs" color="fg.muted">
+        {/* The RAW value is what the caller holds and what every parse sees — the grouping is display
+            only, so nothing downstream has to strip a separator back off. */}
+        Raw value sent to the caller: {amount === "" ? "(empty)" : amount}
       </Text>
     </>
   );
@@ -654,6 +670,12 @@ const ENTRIES: Entry[] = [
     title: "SupplierSelect",
     description: supplierSelectDescription,
     render: () => <SupplierSelectDemo />,
+  },
+  {
+    id: "currency-input",
+    title: "CurrencyInput",
+    description: currencyInputDescription,
+    render: () => <CurrencyInputDemo />,
   },
   {
     id: "rack-select",

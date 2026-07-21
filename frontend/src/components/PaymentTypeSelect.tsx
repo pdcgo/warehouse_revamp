@@ -1,4 +1,5 @@
-import { NativeSelect } from "@chakra-ui/react";
+import { useMemo } from "react";
+import { Portal, Select, createListCollection } from "@chakra-ui/react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { RestockPaymentType } from "../gen/warehouse/inventory/v1/restock_request_pb";
@@ -27,6 +28,11 @@ export const PAYMENT_TYPES: RestockPaymentType[] = [
   RestockPaymentType.BANK_ACCOUNT,
 ];
 
+// The value used for "not recorded". A sentinel string rather than "" because Chakra's Select treats
+// an empty value array as "nothing selected", which is a different state: here, having recorded no
+// payment type is a CHOICE somebody can make and come back to.
+const NONE = "none";
+
 export interface PaymentTypeSelectProps {
   value?: RestockPaymentType;
   onChange?: (type: RestockPaymentType) => void;
@@ -35,41 +41,79 @@ export interface PaymentTypeSelectProps {
   disabled?: boolean;
 }
 
-// PaymentTypeSelect is the shared payment-type picker (#132). It emits a RestockPaymentType, so
+// PaymentTypeSelect is the shared payment-type picker (#132/#165). It emits a RestockPaymentType, so
 // callers work in the enum rather than coercing strings at every call site.
 //
-// NativeSelect, not the composable Select the other pickers use: this is a three-option list with no
-// search, and NativeSelect is already in the bundle — Select's extra weight isn't earned here.
+// Chakra's composable Select (#165, owner), not NativeSelect. An earlier note here argued NativeSelect
+// was enough for three options and that Select's weight "isn't earned" — but Select is already in the
+// bundle for the other pickers, so there is no weight to earn, and a native dropdown does not look or
+// behave like the rest of the form around it.
 export const description =
-  "Payment-type picker (Chakra NativeSelect). Emits a RestockPaymentType; the empty option is selectable and means \"not recorded\".";
+  'Payment-type picker (Chakra Select). Emits a RestockPaymentType; the "not recorded" option is selectable, because having recorded no payment is a real answer.';
 
 export function PaymentTypeSelect({ value, onChange, placeholder, disabled }: PaymentTypeSelectProps) {
   const { t } = useTranslation();
 
+  const noneLabel = placeholder ?? t("restock.form.paymentTypeNone");
+
+  const collection = useMemo(
+    () =>
+      createListCollection({
+        // "Not recorded" is an ITEM, not a disabled placeholder — unlike the pickers where an
+        // unanswered field is invalid. A person must be able to go back to having recorded no payment
+        // type, and #131 is the bug that taught this: a picker you cannot un-set is write-once.
+        items: [
+          { label: noneLabel, value: NONE },
+          ...PAYMENT_TYPES.map((type) => ({
+            label: paymentTypeLabel(t, type),
+            value: String(type),
+          })),
+        ],
+      }),
+    [t, noneLabel],
+  );
+
   return (
-    <NativeSelect.Root disabled={disabled}>
-      <NativeSelect.Field
-        data-testid="restock-payment-type"
-        value={value === undefined || value === RestockPaymentType.UNSPECIFIED ? "" : String(value)}
-        onChange={(e) =>
-          onChange?.(
-            e.target.value
-              ? (Number(e.target.value) as RestockPaymentType)
-              : RestockPaymentType.UNSPECIFIED,
-          )
-        }
-      >
-        {/* UNSPECIFIED is a legitimate value ("not recorded"), so — unlike the pickers whose empty
-            option is a disabled placeholder — this one stays selectable: a user must be able to go
-            back to having recorded no payment type. */}
-        <option value="">{placeholder ?? t("restock.form.paymentTypeNone")}</option>
-        {PAYMENT_TYPES.map((type) => (
-          <option key={type} value={String(type)}>
-            {paymentTypeLabel(t, type)}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+    <Select.Root
+      collection={collection}
+      disabled={disabled}
+      value={[
+        value === undefined || value === RestockPaymentType.UNSPECIFIED ? NONE : String(value),
+      ]}
+      onValueChange={(e) => {
+        const picked = e.value[0];
+        if (picked === undefined) return;
+
+        onChange?.(
+          picked === NONE
+            ? RestockPaymentType.UNSPECIFIED
+            : (Number(picked) as RestockPaymentType),
+        );
+      }}
+    >
+      <Select.HiddenSelect />
+
+      <Select.Control>
+        <Select.Trigger data-testid="restock-payment-type">
+          <Select.ValueText placeholder={noneLabel} />
+        </Select.Trigger>
+        <Select.IndicatorGroup>
+          <Select.Indicator />
+        </Select.IndicatorGroup>
+      </Select.Control>
+
+      <Portal>
+        <Select.Positioner>
+          <Select.Content>
+            {collection.items.map((item) => (
+              <Select.Item item={item} key={item.value} data-testid={`payment-type-${item.value}`}>
+                <Select.ItemText>{item.label}</Select.ItemText>
+                <Select.ItemIndicator />
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Positioner>
+      </Portal>
+    </Select.Root>
   );
 }

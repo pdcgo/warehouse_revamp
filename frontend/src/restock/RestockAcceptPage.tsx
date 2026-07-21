@@ -26,6 +26,7 @@ import type {
   RestockRequestItem,
 } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { CurrencyInput } from "../components/CurrencyInput";
 import { RackSelect, UNPLACED } from "../components/RackSelect";
 import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -404,12 +405,10 @@ export function RestockAcceptPage() {
               <Text fontSize="xs" color="fg.muted">
                 {t("restock.accept.codFee")}
               </Text>
-              <Input
-                type="number"
-                min="0"
+              <CurrencyInput
                 value={codFee}
                 data-testid="accept-cod-fee"
-                onChange={(e) => setCodFee(e.target.value)}
+                onChange={setCodFee}
               />
             </Stack>
             <Stack gap="0">
@@ -595,13 +594,11 @@ export function RestockAcceptPage() {
                         data-testid={`accept-damage-reason-${item.productId}-${row.key}`}
                         onChange={(e) => patchDamage(key, row.key, { reason: e.target.value })}
                       />
-                      <Input
-                        type="number"
-                        min="0"
+                      <CurrencyInput
                         maxW="28"
                         placeholder={t("restock.accept.damageValue")}
                         value={row.value}
-                        onChange={(e) => patchDamage(key, row.key, { value: e.target.value })}
+                        onChange={(v) => patchDamage(key, row.key, { value: v })}
                       />
                       <IconButton
                         size="xs"

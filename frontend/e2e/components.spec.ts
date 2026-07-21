@@ -114,3 +114,67 @@ test("SupplierSelect: search picks a supplier, and clearing returns to none (#10
 
   await expect(page.getByText("Selected supplier id: 0")).toBeVisible();
 });
+
+// #166 — CurrencyInput formats as you type and refuses what is not a price.
+//
+// The leading-zero rule is the whole reason this is not a plain number input: every money field in
+// this app starts at "0", so typing into one used to produce "020000". A person who types 20000 and
+// sees 020000 stops trusting the field.
+test("CurrencyInput: formats as you type, drops leading zeros, emits raw digits (#166)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/components");
+
+  const field = page.getByTestId("components-page").locator("#currency-input input");
+  await expect(field).toBeVisible();
+
+  // Grouped the way Indonesian money is written.
+  await field.fill("20000");
+  await expect(field).toHaveValue("20.000");
+
+  // The CALLER still sees raw digits — the grouping is display only, so nothing downstream has to
+  // strip a separator back off.
+  await expect(page.getByText("Raw value sent to the caller: 20000")).toBeVisible();
+
+  // No leading zero. Typing 0 then 5000 gives 5.000, not 05.000.
+  await field.fill("0");
+  await field.fill("05000");
+  await expect(field).toHaveValue("5.000");
+
+  // Anything that is not a digit is refused outright — a "-" or an "e" is not a price, and a plain
+  // number input would have silently accepted both.
+  await field.fill("12ab-3e4");
+  await expect(field).toHaveValue("1.234");
+
+  // Emptied is EMPTY, not 0: a person who cleared the field has not typed yet, and filling it with a
+  // zero on their behalf answers a question they were still thinking about.
+  await field.fill("");
+  await expect(field).toHaveValue("");
+  await expect(page.getByText("Raw value sent to the caller: (empty)")).toBeVisible();
+});
+
+// #165 — PaymentTypeSelect is a Chakra Select now, and "not recorded" is still SELECTABLE.
+//
+// That last part is the #131 lesson in a third costume: no payment type is a real answer, so a person
+// who records one by mistake must be able to go back to having recorded none. A picker you cannot
+// un-set is write-once.
+test("PaymentTypeSelect: pick a type, then go back to not recorded (#165)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/components");
+
+  const trigger = page.getByTestId("restock-payment-type");
+  await expect(trigger).toBeVisible();
+
+  // Starts unrecorded.
+  await expect(page.getByText("Selected: (not recorded)")).toBeVisible();
+
+  await trigger.click();
+  await page.getByTestId(`payment-type-${1}`).click(); // SHOPEE_PAY
+  await expect(page.getByText("Selected: Shopee Pay")).toBeVisible();
+
+  // And back to none — the assertion a write-once picker would fail.
+  await trigger.click();
+  await page.getByTestId("payment-type-none").click();
+  await expect(page.getByText("Selected: (not recorded)")).toBeVisible();
+});
