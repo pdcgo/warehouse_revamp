@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "warehouse/event_base/v1/event.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
+//
+// Published by selling_service after the order's transaction commits; consumed by revenue_service,
+// which turns it into the order's expected-margin row (#75). An EVENT rather than a direct call
+// because revenue is DOWNSTREAM of orders: recording what an order was expected to make must never be
+// able to fail the order itself. A shop can keep selling while the revenue service is down.
+//
+// IT CARRIES THE MONEY, not just an order id, and that is a correctness choice rather than a
+// convenience. The figures were FROZEN onto the order when it was placed (#74), so shipping them here
+// makes the event a snapshot of what was expected AT THE TIME — which is precisely what a revenue
+// record is. A thin event naming only an order would make revenue read the order back later and record
+// whatever it said then, so an edit between publish and consume would silently rewrite history.
+//
+// DELIVERY, honestly stated: the publish happens AFTER the commit, so a process that dies in between
+// leaves an order with no revenue row. That is tolerable here — and only because the order still holds
+// every figure this event carries, so a missing row is REBUILDABLE from the order rather than lost.
+// RevenueRecord refuses duplicates on order_id, which is what makes both a redelivery and a future
+// backfill safe to run. Publishing inside the transaction instead would trade this for a worse
+// failure: a rolled-back order that revenue has already recorded, which nothing would ever correct.
+message OrderPlacedEvent {
+  option (warehouse.event_base.v1.event_config).event_topic = "order-placed";
+
+  // The SELLING team that placed it, and the order. Both are what revenue scopes and de-duplicates on.
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+
+  // The frozen money, whole rupiah. `revenue` is the order's total — what the buyer paid.
+  int64 revenue = 3;
+  int64 cogs = 4;
+  int64 shipping_cost = 5;
+
+  // Whether the goods' cost was actually KNOWN (#74). 0 cogs is ambiguous on its own — it means "free"
+  // and "never recorded" equally — so the distinction travels as its own field rather than being
+  // guessed at by the consumer. A margin computed over an unknown cost reads as pure profit, and the
+  // revenue row has to be able to say so.
+  bool cost_known = 6;
+}

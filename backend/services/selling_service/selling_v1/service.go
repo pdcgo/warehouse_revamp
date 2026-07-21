@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1/sellingv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -23,6 +24,9 @@ type Service struct {
 	// How an order moves stock when it is placed or cancelled (#149/#70). An interface this service
 	// owns, so selling_service never imports inventory_service — see stock_picker.go.
 	stock StockPicker
+	// Where an OrderPlacedEvent goes (#153). selling_service does not know or care that
+	// revenue_service is listening — it announces what happened and is done.
+	events event_source.EventSender
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -32,8 +36,15 @@ var (
 	_ sellingv1connect.OrderServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, stock StockPicker) *Service {
-	return &Service{db: db, stock: stock}
+func NewService(db *gorm.DB, stock StockPicker, events event_source.EventSender) *Service {
+	// A nil sender would panic on the first order placed, which is a long way from where the mistake
+	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
+	// with no broker in sight — that is the right default for a local run, not a silent nil.
+	if events == nil {
+		events = event_source.EmptySender
+	}
+
+	return &Service{db: db, stock: stock, events: events}
 }
 
 var errShopMissing = errors.New("shop not found")

@@ -3,6 +3,7 @@ package selling_v1
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -144,5 +145,54 @@ func (s *Service) OrderCreate(
 		return nil, dbError(err)
 	}
 
+	// THE ORDER IS COMMITTED. Announce it (#153) so revenue can record what it was expected to make.
+	//
+	// After the commit, never inside it. Publishing inside would mean a rolled-back order that revenue
+	// has already recorded — a phantom nothing would ever correct. The cost of doing it here is the
+	// opposite failure: a crash between commit and publish leaves an order with no revenue row. That is
+	// the better half of the trade, and only because it is REPAIRABLE — the order still holds every
+	// figure the event carries, and RevenueRecord refuses duplicates on order_id, so a backfill can be
+	// run safely at any time.
+	//
+	// A publish failure does NOT fail the order. Revenue is downstream: a shop must be able to keep
+	// selling while the revenue service, or the broker, is down. It is logged loudly instead, because
+	// the alternative — swallowing it — is how a month-end report quietly goes wrong.
+	_, publishErr := s.events(ctx, &sellingv1.OrderPlacedEvent{
+		TeamId:       order.TeamID,
+		OrderId:      order.ID,
+		Revenue:      order.Total,
+		Cogs:         order.COGS,
+		ShippingCost: order.ShippingCost,
+		CostKnown:    costKnown(order.Items, costs),
+	})
+	if publishErr != nil {
+		slog.ErrorContext(ctx, "order placed but OrderPlacedEvent was not published — "+
+			"its revenue row must be backfilled",
+			"order_id", order.ID,
+			"team_id", order.TeamID,
+			"error", publishErr,
+		)
+	}
+
 	return connect.NewResponse(&sellingv1.OrderCreateResponse{Order: orderToProto(&order)}), nil
+}
+
+// costKnown reports whether EVERY line's cost was actually known (#74/#153).
+//
+// A product with no recorded cost is absent from the costs map and lands on its line as 0, which is
+// indistinguishable from "free" once it is written down. So the distinction is computed here, while
+// the map is still in hand, and travels with the event as its own field.
+//
+// ALL lines, not some. One unknown line understates the order's COGS, which overstates its margin —
+// and a margin that is wrong is wrong however few lines caused it. A "mostly known" cost is not a
+// thing a report can use.
+func costKnown(items []selling_service_models.OrderItem, costs map[uint64]int64) bool {
+	for i := range items {
+		_, known := costs[items[i].ProductID]
+		if !known {
+			return false
+		}
+	}
+
+	return true
 }

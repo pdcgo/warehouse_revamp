@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
@@ -62,14 +63,22 @@ func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
 func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{})
+	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
+	return selling_v1.NewService(db, &fakePicker{}, nil)
+}
+
+// newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
+func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
+	t.Helper()
+
+	return selling_v1.NewService(db, &fakePicker{}, events)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker)
+	return selling_v1.NewService(db, picker, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.

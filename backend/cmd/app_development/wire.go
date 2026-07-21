@@ -45,6 +45,8 @@ func InitializeApp() (*App, error) {
 		selling_v1.NewService,
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.
 		NewStockPicker,
+		// Where OrderPlacedEvent goes (#153) — see event_sender.go.
+		NewEventSender,
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,

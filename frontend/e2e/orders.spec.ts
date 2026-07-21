@@ -433,3 +433,32 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
   await expect(page.getByTestId("open-create-product")).toBeHidden();
   await expect(page.getByTestId("product-search")).toBeHidden();
 });
+
+// #153 — placing an order RECORDS ITS EXPECTED REVENUE, with nothing in between.
+//
+// This is the payoff test for the whole revenue chain: #74 froze the money onto the order, #75 built
+// the record, #78 built the screen, and until #153 nothing connected them — the table stayed empty and
+// the report had nothing to show. Placing an order here goes through the real publisher, the real
+// event, and the real push handler.
+test("Revenue: placing an order records its expected revenue (#153)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const customer = `${CUSTOMER} revenue`;
+  await placeOrderViaForm(page, customer);
+
+  // The order's id, from the detail page it lands on.
+  const heading = await page.getByTestId("order-detail-page").innerText();
+  const orderId = heading.match(/#(\d+)/)?.[1];
+  expect(orderId).toBeTruthy();
+
+  await page.goto("/revenue");
+
+  // A row for THIS order, put there by the event rather than by any call the screen made.
+  await expect(page.getByTestId(`revenue-row-${orderId}`)).toBeVisible();
+
+  // Its cost is unknown — the e2e's product was never restocked, so no cost was ever recorded for it
+  // (#74). That must show as "Unknown" rather than as a confident Rp 0, and the margin beside it
+  // carries the warning that says the number is not to be trusted.
+  await expect(page.getByTestId(`revenue-cogs-unknown-${orderId}`)).toBeVisible();
+  await expect(page.getByTestId(`revenue-margin-untrusted-${orderId}`)).toBeVisible();
+});

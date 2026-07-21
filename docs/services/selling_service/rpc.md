@@ -140,3 +140,19 @@ so it reads as the route the system already planned.
 > all of them with quantities, rather than silently picking one"; when the goods genuinely are in two
 > places, listing both is the only honest answer. `rack_id = 0` is the **unplaced pile** — a real place
 > (#135), named in words on screen, never a blank cell.
+
+---
+
+## Placing an order announces it (#153)
+
+After `OrderCreate` commits, selling_service publishes an **`OrderPlacedEvent`** carrying the frozen
+money. `revenue_service` consumes it and writes the order's expected-margin row.
+
+Published **after** the commit and **never inside** it, and a publish failure does **not** fail the
+order — revenue is downstream, and a shop must keep selling while it is down.
+
+selling_service does not know revenue is listening. It names no topic either: the event declares its
+own (`warehouse.event_base.v1.event_config`), so a publisher cannot send it to the wrong one.
+
+> The full flow, the delivery trade-off, and why the event carries the money rather than just an order
+> id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
