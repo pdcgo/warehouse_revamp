@@ -578,6 +578,258 @@ func (x *CostListResponse) GetTotals() *CostTotals {
 	return nil
 }
 
+// CostUpdate corrects a cost (#169).
+//
+// It exists because of the one fact that separates this service from revenue_service: a revenue row is
+// written by the system from an order and frozen, while a cost row is TYPED BY A PERSON. A person
+// mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
+// workaround — void it and enter another — loses who entered the original and when.
+//
+// A FULL REPLACE, not a patch. The edit form is the record re-opened, so it submits every field back
+// and an empty one means cleared — the same shape RestockRequestUpdate settled on (#131). A patch
+// would need a way to say "leave this alone" that the form has no way to express.
+type CostUpdateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	CostId        uint64                 `protobuf:"varint,2,opt,name=cost_id,json=costId,proto3" json:"cost_id,omitempty"`
+	Kind          CostKind               `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.cost.v1.CostKind" json:"kind,omitempty"`
+	Amount        int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	OccurredAt    string                 `protobuf:"bytes,5,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	ShopId        uint64                 `protobuf:"varint,6,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CostUpdateRequest) Reset() {
+	*x = CostUpdateRequest{}
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CostUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CostUpdateRequest) ProtoMessage() {}
+
+func (x *CostUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CostUpdateRequest.ProtoReflect.Descriptor instead.
+func (*CostUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_cost_v1_cost_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CostUpdateRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CostUpdateRequest) GetCostId() uint64 {
+	if x != nil {
+		return x.CostId
+	}
+	return 0
+}
+
+func (x *CostUpdateRequest) GetKind() CostKind {
+	if x != nil {
+		return x.Kind
+	}
+	return CostKind_COST_KIND_UNSPECIFIED
+}
+
+func (x *CostUpdateRequest) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *CostUpdateRequest) GetOccurredAt() string {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return ""
+}
+
+func (x *CostUpdateRequest) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *CostUpdateRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type CostUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cost          *CostRecord            `protobuf:"bytes,1,opt,name=cost,proto3" json:"cost,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CostUpdateResponse) Reset() {
+	*x = CostUpdateResponse{}
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CostUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CostUpdateResponse) ProtoMessage() {}
+
+func (x *CostUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CostUpdateResponse.ProtoReflect.Descriptor instead.
+func (*CostUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_cost_v1_cost_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CostUpdateResponse) GetCost() *CostRecord {
+	if x != nil {
+		return x.Cost
+	}
+	return nil
+}
+
+// CostVoid stops a cost counting (#169) — it was entered by mistake.
+//
+// VOIDED, NOT DELETED, following #164 exactly: a deleted row cannot tell you a cost was entered and
+// then retracted, and somebody looking at a profit figure that changed wants to see why. The row stays
+// on the list, struck through; every total excludes it.
+//
+// ⚠ A MISSING ROW IS NotFound HERE, unlike RevenueVoid where it is success — and the difference is who
+// calls it. RevenueVoid is driven by a Pub/Sub event, so a missing row must ACK or the message is
+// redelivered forever. This is a person clicking a button: if the cost is not there, or belongs to
+// another team, saying so is the honest answer rather than a silent success.
+type CostVoidRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	CostId        uint64                 `protobuf:"varint,2,opt,name=cost_id,json=costId,proto3" json:"cost_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CostVoidRequest) Reset() {
+	*x = CostVoidRequest{}
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CostVoidRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CostVoidRequest) ProtoMessage() {}
+
+func (x *CostVoidRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CostVoidRequest.ProtoReflect.Descriptor instead.
+func (*CostVoidRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_cost_v1_cost_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CostVoidRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CostVoidRequest) GetCostId() uint64 {
+	if x != nil {
+		return x.CostId
+	}
+	return 0
+}
+
+type CostVoidResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cost          *CostRecord            `protobuf:"bytes,1,opt,name=cost,proto3" json:"cost,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CostVoidResponse) Reset() {
+	*x = CostVoidResponse{}
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CostVoidResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CostVoidResponse) ProtoMessage() {}
+
+func (x *CostVoidResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_cost_v1_cost_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CostVoidResponse.ProtoReflect.Descriptor instead.
+func (*CostVoidResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_cost_v1_cost_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CostVoidResponse) GetCost() *CostRecord {
+	if x != nil {
+		return x.Cost
+	}
+	return nil
+}
+
 var File_warehouse_cost_v1_cost_proto protoreflect.FileDescriptor
 
 const file_warehouse_cost_v1_cost_proto_rawDesc = "" +
@@ -632,17 +884,41 @@ const file_warehouse_cost_v1_cost_proto_rawDesc = "" +
 	"\x10CostListResponse\x123\n" +
 	"\x05costs\x18\x01 \x03(\v2\x1d.warehouse.cost.v1.CostRecordR\x05costs\x12:\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x125\n" +
-	"\x06totals\x18\x03 \x01(\v2\x1d.warehouse.cost.v1.CostTotalsR\x06totals*\x7f\n" +
+	"\x06totals\x18\x03 \x01(\v2\x1d.warehouse.cost.v1.CostTotalsR\x06totals\"\xc2\x02\n" +
+	"\x11CostUpdateRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\acost_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06costId\x12;\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x1b.warehouse.cost.v1.CostKindB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
+	"\x06amount\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12D\n" +
+	"\voccurred_at\x18\x05 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
+	"occurredAt\x12\x17\n" +
+	"\ashop_id\x18\x06 \x01(\x04R\x06shopId\x12\x1c\n" +
+	"\x04note\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"G\n" +
+	"\x12CostUpdateResponse\x121\n" +
+	"\x04cost\x18\x01 \x01(\v2\x1d.warehouse.cost.v1.CostRecordR\x04cost\"e\n" +
+	"\x0fCostVoidRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\acost_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06costId:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"E\n" +
+	"\x10CostVoidResponse\x121\n" +
+	"\x04cost\x18\x01 \x01(\v2\x1d.warehouse.cost.v1.CostRecordR\x04cost*\x7f\n" +
 	"\bCostKind\x12\x19\n" +
 	"\x15COST_KIND_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rCOST_KIND_ADS\x10\x01\x12\x15\n" +
 	"\x11COST_KIND_PAYROLL\x10\x02\x12\x19\n" +
 	"\x15COST_KIND_OPERATIONAL\x10\x03\x12\x13\n" +
-	"\x0fCOST_KIND_OTHER\x10\x042\xbd\x01\n" +
+	"\x0fCOST_KIND_OTHER\x10\x042\xed\x02\n" +
 	"\vCostService\x12Y\n" +
 	"\n" +
 	"CostCreate\x12$.warehouse.cost.v1.CostCreateRequest\x1a%.warehouse.cost.v1.CostCreateResponse\x12S\n" +
-	"\bCostList\x12\".warehouse.cost.v1.CostListRequest\x1a#.warehouse.cost.v1.CostListResponseBHZFgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1;costv1b\x06proto3"
+	"\bCostList\x12\".warehouse.cost.v1.CostListRequest\x1a#.warehouse.cost.v1.CostListResponse\x12Y\n" +
+	"\n" +
+	"CostUpdate\x12$.warehouse.cost.v1.CostUpdateRequest\x1a%.warehouse.cost.v1.CostUpdateResponse\x12S\n" +
+	"\bCostVoid\x12\".warehouse.cost.v1.CostVoidRequest\x1a#.warehouse.cost.v1.CostVoidResponseBHZFgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1;costv1b\x06proto3"
 
 var (
 	file_warehouse_cost_v1_cost_proto_rawDescOnce sync.Once
@@ -657,7 +933,7 @@ func file_warehouse_cost_v1_cost_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_cost_v1_cost_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_cost_v1_cost_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_warehouse_cost_v1_cost_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_warehouse_cost_v1_cost_proto_goTypes = []any{
 	(CostKind)(0),              // 0: warehouse.cost.v1.CostKind
 	(*CostRecord)(nil),         // 1: warehouse.cost.v1.CostRecord
@@ -666,29 +942,40 @@ var file_warehouse_cost_v1_cost_proto_goTypes = []any{
 	(*CostListRequest)(nil),    // 4: warehouse.cost.v1.CostListRequest
 	(*CostTotals)(nil),         // 5: warehouse.cost.v1.CostTotals
 	(*CostListResponse)(nil),   // 6: warehouse.cost.v1.CostListResponse
-	nil,                        // 7: warehouse.cost.v1.CostTotals.ByKindEntry
-	(*v1.PageFilter)(nil),      // 8: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),        // 9: warehouse.common.v1.PageInfo
+	(*CostUpdateRequest)(nil),  // 7: warehouse.cost.v1.CostUpdateRequest
+	(*CostUpdateResponse)(nil), // 8: warehouse.cost.v1.CostUpdateResponse
+	(*CostVoidRequest)(nil),    // 9: warehouse.cost.v1.CostVoidRequest
+	(*CostVoidResponse)(nil),   // 10: warehouse.cost.v1.CostVoidResponse
+	nil,                        // 11: warehouse.cost.v1.CostTotals.ByKindEntry
+	(*v1.PageFilter)(nil),      // 12: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),        // 13: warehouse.common.v1.PageInfo
 }
 var file_warehouse_cost_v1_cost_proto_depIdxs = []int32{
 	0,  // 0: warehouse.cost.v1.CostRecord.kind:type_name -> warehouse.cost.v1.CostKind
 	0,  // 1: warehouse.cost.v1.CostCreateRequest.kind:type_name -> warehouse.cost.v1.CostKind
 	1,  // 2: warehouse.cost.v1.CostCreateResponse.cost:type_name -> warehouse.cost.v1.CostRecord
-	8,  // 3: warehouse.cost.v1.CostListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	12, // 3: warehouse.cost.v1.CostListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	0,  // 4: warehouse.cost.v1.CostListRequest.kind:type_name -> warehouse.cost.v1.CostKind
-	7,  // 5: warehouse.cost.v1.CostTotals.by_kind:type_name -> warehouse.cost.v1.CostTotals.ByKindEntry
+	11, // 5: warehouse.cost.v1.CostTotals.by_kind:type_name -> warehouse.cost.v1.CostTotals.ByKindEntry
 	1,  // 6: warehouse.cost.v1.CostListResponse.costs:type_name -> warehouse.cost.v1.CostRecord
-	9,  // 7: warehouse.cost.v1.CostListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	13, // 7: warehouse.cost.v1.CostListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	5,  // 8: warehouse.cost.v1.CostListResponse.totals:type_name -> warehouse.cost.v1.CostTotals
-	2,  // 9: warehouse.cost.v1.CostService.CostCreate:input_type -> warehouse.cost.v1.CostCreateRequest
-	4,  // 10: warehouse.cost.v1.CostService.CostList:input_type -> warehouse.cost.v1.CostListRequest
-	3,  // 11: warehouse.cost.v1.CostService.CostCreate:output_type -> warehouse.cost.v1.CostCreateResponse
-	6,  // 12: warehouse.cost.v1.CostService.CostList:output_type -> warehouse.cost.v1.CostListResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	0,  // 9: warehouse.cost.v1.CostUpdateRequest.kind:type_name -> warehouse.cost.v1.CostKind
+	1,  // 10: warehouse.cost.v1.CostUpdateResponse.cost:type_name -> warehouse.cost.v1.CostRecord
+	1,  // 11: warehouse.cost.v1.CostVoidResponse.cost:type_name -> warehouse.cost.v1.CostRecord
+	2,  // 12: warehouse.cost.v1.CostService.CostCreate:input_type -> warehouse.cost.v1.CostCreateRequest
+	4,  // 13: warehouse.cost.v1.CostService.CostList:input_type -> warehouse.cost.v1.CostListRequest
+	7,  // 14: warehouse.cost.v1.CostService.CostUpdate:input_type -> warehouse.cost.v1.CostUpdateRequest
+	9,  // 15: warehouse.cost.v1.CostService.CostVoid:input_type -> warehouse.cost.v1.CostVoidRequest
+	3,  // 16: warehouse.cost.v1.CostService.CostCreate:output_type -> warehouse.cost.v1.CostCreateResponse
+	6,  // 17: warehouse.cost.v1.CostService.CostList:output_type -> warehouse.cost.v1.CostListResponse
+	8,  // 18: warehouse.cost.v1.CostService.CostUpdate:output_type -> warehouse.cost.v1.CostUpdateResponse
+	10, // 19: warehouse.cost.v1.CostService.CostVoid:output_type -> warehouse.cost.v1.CostVoidResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_cost_v1_cost_proto_init() }
@@ -702,7 +989,7 @@ func file_warehouse_cost_v1_cost_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_cost_v1_cost_proto_rawDesc), len(file_warehouse_cost_v1_cost_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

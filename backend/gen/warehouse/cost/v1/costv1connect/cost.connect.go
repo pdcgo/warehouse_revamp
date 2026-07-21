@@ -37,6 +37,10 @@ const (
 	CostServiceCostCreateProcedure = "/warehouse.cost.v1.CostService/CostCreate"
 	// CostServiceCostListProcedure is the fully-qualified name of the CostService's CostList RPC.
 	CostServiceCostListProcedure = "/warehouse.cost.v1.CostService/CostList"
+	// CostServiceCostUpdateProcedure is the fully-qualified name of the CostService's CostUpdate RPC.
+	CostServiceCostUpdateProcedure = "/warehouse.cost.v1.CostService/CostUpdate"
+	// CostServiceCostVoidProcedure is the fully-qualified name of the CostService's CostVoid RPC.
+	CostServiceCostVoidProcedure = "/warehouse.cost.v1.CostService/CostVoid"
 )
 
 // CostServiceClient is a client for the warehouse.cost.v1.CostService service.
@@ -45,6 +49,10 @@ type CostServiceClient interface {
 	CostCreate(context.Context, *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error)
 	// A team's costs for a PERIOD, with per-kind totals (#168).
 	CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error)
+	// A cost is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
+	CostUpdate(context.Context, *connect.Request[v1.CostUpdateRequest]) (*connect.Response[v1.CostUpdateResponse], error)
+	// Stop a cost counting. Kept and visible, never deleted.
+	CostVoid(context.Context, *connect.Request[v1.CostVoidRequest]) (*connect.Response[v1.CostVoidResponse], error)
 }
 
 // NewCostServiceClient constructs a client for the warehouse.cost.v1.CostService service. By
@@ -70,6 +78,18 @@ func NewCostServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(costServiceMethods.ByName("CostList")),
 			connect.WithClientOptions(opts...),
 		),
+		costUpdate: connect.NewClient[v1.CostUpdateRequest, v1.CostUpdateResponse](
+			httpClient,
+			baseURL+CostServiceCostUpdateProcedure,
+			connect.WithSchema(costServiceMethods.ByName("CostUpdate")),
+			connect.WithClientOptions(opts...),
+		),
+		costVoid: connect.NewClient[v1.CostVoidRequest, v1.CostVoidResponse](
+			httpClient,
+			baseURL+CostServiceCostVoidProcedure,
+			connect.WithSchema(costServiceMethods.ByName("CostVoid")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -77,6 +97,8 @@ func NewCostServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type costServiceClient struct {
 	costCreate *connect.Client[v1.CostCreateRequest, v1.CostCreateResponse]
 	costList   *connect.Client[v1.CostListRequest, v1.CostListResponse]
+	costUpdate *connect.Client[v1.CostUpdateRequest, v1.CostUpdateResponse]
+	costVoid   *connect.Client[v1.CostVoidRequest, v1.CostVoidResponse]
 }
 
 // CostCreate calls warehouse.cost.v1.CostService.CostCreate.
@@ -89,12 +111,26 @@ func (c *costServiceClient) CostList(ctx context.Context, req *connect.Request[v
 	return c.costList.CallUnary(ctx, req)
 }
 
+// CostUpdate calls warehouse.cost.v1.CostService.CostUpdate.
+func (c *costServiceClient) CostUpdate(ctx context.Context, req *connect.Request[v1.CostUpdateRequest]) (*connect.Response[v1.CostUpdateResponse], error) {
+	return c.costUpdate.CallUnary(ctx, req)
+}
+
+// CostVoid calls warehouse.cost.v1.CostService.CostVoid.
+func (c *costServiceClient) CostVoid(ctx context.Context, req *connect.Request[v1.CostVoidRequest]) (*connect.Response[v1.CostVoidResponse], error) {
+	return c.costVoid.CallUnary(ctx, req)
+}
+
 // CostServiceHandler is an implementation of the warehouse.cost.v1.CostService service.
 type CostServiceHandler interface {
 	// Record money that went out (#168).
 	CostCreate(context.Context, *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error)
 	// A team's costs for a PERIOD, with per-kind totals (#168).
 	CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error)
+	// A cost is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
+	CostUpdate(context.Context, *connect.Request[v1.CostUpdateRequest]) (*connect.Response[v1.CostUpdateResponse], error)
+	// Stop a cost counting. Kept and visible, never deleted.
+	CostVoid(context.Context, *connect.Request[v1.CostVoidRequest]) (*connect.Response[v1.CostVoidResponse], error)
 }
 
 // NewCostServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -116,12 +152,28 @@ func NewCostServiceHandler(svc CostServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(costServiceMethods.ByName("CostList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	costServiceCostUpdateHandler := connect.NewUnaryHandler(
+		CostServiceCostUpdateProcedure,
+		svc.CostUpdate,
+		connect.WithSchema(costServiceMethods.ByName("CostUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	costServiceCostVoidHandler := connect.NewUnaryHandler(
+		CostServiceCostVoidProcedure,
+		svc.CostVoid,
+		connect.WithSchema(costServiceMethods.ByName("CostVoid")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.cost.v1.CostService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CostServiceCostCreateProcedure:
 			costServiceCostCreateHandler.ServeHTTP(w, r)
 		case CostServiceCostListProcedure:
 			costServiceCostListHandler.ServeHTTP(w, r)
+		case CostServiceCostUpdateProcedure:
+			costServiceCostUpdateHandler.ServeHTTP(w, r)
+		case CostServiceCostVoidProcedure:
+			costServiceCostVoidHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -137,4 +189,12 @@ func (UnimplementedCostServiceHandler) CostCreate(context.Context, *connect.Requ
 
 func (UnimplementedCostServiceHandler) CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.cost.v1.CostService.CostList is not implemented"))
+}
+
+func (UnimplementedCostServiceHandler) CostUpdate(context.Context, *connect.Request[v1.CostUpdateRequest]) (*connect.Response[v1.CostUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.cost.v1.CostService.CostUpdate is not implemented"))
+}
+
+func (UnimplementedCostServiceHandler) CostVoid(context.Context, *connect.Request[v1.CostVoidRequest]) (*connect.Response[v1.CostVoidResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.cost.v1.CostService.CostVoid is not implemented"))
 }

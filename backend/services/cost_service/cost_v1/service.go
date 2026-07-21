@@ -39,11 +39,18 @@ const dateLayout = "2006-01-02"
 var errBadDate = errors.New("a date must be YYYY-MM-DD")
 
 func costErr(err error) error {
-	if errors.Is(err, errBadDate) {
+	switch {
+	case errors.Is(err, errBadDate):
 		return connect.NewError(connect.CodeInvalidArgument, errBadDate)
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		// NotFound, never PermissionDenied: another team's cost must be indistinguishable from one that
+		// does not exist, or the error itself confirms the id.
+		return connect.NewError(connect.CodeNotFound, errCostMissing)
+	case errors.Is(err, errCostVoided):
+		return connect.NewError(connect.CodeFailedPrecondition, errCostVoided)
+	default:
+		return connect.NewError(connect.CodeInternal, err)
 	}
-
-	return connect.NewError(connect.CodeInternal, err)
 }
 
 // parseDate turns a wire date into a time.Time, in UTC.
