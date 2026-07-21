@@ -56,7 +56,16 @@ export function ProfitPage() {
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
+  // `cancelled` is checked before every setState, and on a money screen it is not a nicety (#173).
+  //
+  // Switch the picker July → June and two reads are in flight at once. Without this, a slow JULY
+  // response landing after June's paints July's figures under a picker that reads June — and there is
+  // nothing on screen to say so, because both are perfectly plausible numbers. That is the failure
+  // this whole screen was built to avoid, arriving through the back door.
+  //
+  // The same guard 11 other pages already use. #173 proposes doing it centrally with TanStack Query
+  // rather than by hand on each of the 19 that lack it.
+  const load = useCallback(async (cancelled: () => boolean) => {
     if (teamId === undefined) return;
 
     setLoading(true);
@@ -75,19 +84,32 @@ export function ProfitPage() {
         costClient.costList({ teamId, from, to, kind: CostKind.UNSPECIFIED, page: TOTALS_ONLY }),
       ]);
 
+      if (cancelled()) return;
+
       setRevenue(rev.totals);
       setCosts(cost.totals);
     } catch (err) {
+      if (cancelled()) return;
+
       setError(rpcError(err));
       setRevenue(undefined);
       setCosts(undefined);
     } finally {
-      setLoading(false);
+      // Guarded too, and it has to be: a superseded read clearing the spinner would uncover an empty
+      // screen while the read that replaced it is still in flight. The newer request set `loading`
+      // itself and will clear it, so nothing is left spinning.
+      if (!cancelled()) setLoading(false);
     }
   }, [teamId, month]);
 
   useEffect(() => {
-    void load();
+    let stale = false;
+
+    void load(() => stale);
+
+    return () => {
+      stale = true;
+    };
   }, [load]);
 
   if (!current) {

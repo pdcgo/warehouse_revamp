@@ -149,3 +149,47 @@ test("Profit: a month with nothing in it is zero on both halves (#172)", async (
   await expect(page.getByTestId("profit-cost")).toHaveText("Rp 0");
   await expect(page.getByTestId("profit-total")).toHaveText("Rp 0");
 });
+
+// #173 — A SLOW EARLIER RESPONSE MUST NOT OVERWRITE A NEWER ONE.
+//
+// The bug #173 found across 19 pages, tested here because this is the screen where it does the most
+// damage: every figure is money, and a month's profit painted under a picker reading a different
+// month is wrong in a way nobody can see. Both candidates are plausible numbers.
+//
+// #173 calls this class of bug "invisible to the e2e suite", and by accident it is — a race does not
+// reproduce on demand. So this test does not wait for one: it DELAYS the first read at the network
+// so the second is guaranteed to land first, which turns the race into a certainty.
+test("Profit: a slow earlier month cannot overwrite a newer one (#173)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Hold the FIRST revenue read — the one for this month — until well after the second has been and
+  // gone. Only the first: the reads for 2020-01 must arrive promptly or there is nothing to race.
+  let seen = 0;
+  await page.route("**/warehouse.revenue.v1.RevenueService/RevenueList", async (route) => {
+    seen += 1;
+    if (seen === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+    }
+    await route.continue();
+  });
+
+  await page.goto("/profit");
+
+  // Switch months while that first read is still in flight. The header renders before the figures do,
+  // so the picker is usable during the load — which is exactly how a real person triggers this.
+  const month = page.getByTestId("profit-month");
+  await expect(month).toBeVisible();
+  await month.fill("2020-01");
+
+  // 2020-01 is empty, so the honest answer is zero…
+  await expect(page.getByTestId("profit-total")).toHaveText("Rp 0");
+
+  // …and it MUST STILL BE ZERO after the stale read lands. Without the guard, this month's figures
+  // arrive late and paint themselves over a screen whose picker says 2020-01.
+  await page.waitForTimeout(5000);
+
+  await expect(month).toHaveValue("2020-01");
+  await expect(page.getByTestId("profit-margin")).toHaveText("Rp 0");
+  await expect(page.getByTestId("profit-cost")).toHaveText("Rp 0");
+  await expect(page.getByTestId("profit-total")).toHaveText("Rp 0");
+});
