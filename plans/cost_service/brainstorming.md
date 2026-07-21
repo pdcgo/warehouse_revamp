@@ -296,11 +296,13 @@ subtract.
 **Settled on 2026-07-21** and moved into the decision log above: the third kind's name
 (`OPERATIONAL`), shop on any kind, no recurring generation in v1, and owner/admin only. What is left:
 
-- [ ] **Do warehouse-team costs charge onward to selling teams?** A warehouse's payroll currently
-      reduces only the *warehouse team's* profit. Whether it should be recharged to the selling teams
-      it fulfils for is the same question as revenue §2.5 (team-to-team fees) and is open in both
-      docs. **Deliberately not answered here** — and it is the one open item that could change the
-      schema, since a recharge is a second team on the row.
+- [x] **Do warehouse-team costs charge onward to selling teams?** ✅ **NO** (owner, 2026-07-21). A
+      warehouse's payroll reduces the *warehouse team's* profit and nobody else's. One team per row,
+      and the schema stays as §3.1 has it — no second team, no recharge.
+      Settled before sub-issue 1 rather than after, because a recharge would have been a second
+      `team_id` on the row and therefore a migration nobody wants to write twice. It is the same
+      question revenue §2.5 (team-to-team fees) is still holding open, and both are now answered the
+      same way: costs and fees stay where they were incurred until somebody needs otherwise.
 - [ ] **Payment method on a cost row.** §2.1 rejected it as a *kind*; it could still be a *field*
       (`PaymentTypeSelect` already exists). Worth it only if somebody actually asks "what did we pay
       this from" — left out of v1.
