@@ -93,6 +93,11 @@ export function TeamSelect({
       // that filter text typed during the ~100ms load is dropped; the dropdown shows a spinner for
       // that window anyway, and a blank REQUIRED field is far worse.
       key={loading ? "loading" : "ready"}
+      // OPEN ON CLICK (#146's lesson, applied here too). The teams are already loaded, so making
+      // somebody type before they can see which ones exist is asking them to guess. Every bounded
+      // picker in the app now behaves this way; only ProductSelect withholds its list, because it
+      // searches the server over a catalogue too large to show.
+      openOnClick
       collection={collection}
       disabled={disabled}
       value={value !== undefined ? [value.toString()] : []}

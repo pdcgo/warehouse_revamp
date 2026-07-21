@@ -178,3 +178,20 @@ test("PaymentTypeSelect: pick a type, then go back to not recorded (#165)", asyn
   await page.getByTestId("payment-type-none").click();
   await expect(page.getByText("Selected: (not recorded)")).toBeVisible();
 });
+
+// #146 (owner: "show few item first before search") — clicking a bounded picker shows its options
+// straight away, rather than demanding a search first.
+//
+// The list is already loaded in every one of these, so making somebody type before they can see what
+// exists is asking them to guess. Only ProductSelect withholds its list, and that is earned: it
+// searches the server over a catalogue too large to show.
+test("Pickers: clicking a bounded picker shows its options before any search (#146)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/components");
+
+  // ShippingSelect — the couriers are seeded by a migration, so there is always something to show.
+  await page.getByTestId("shipping-select").locator("input").click();
+  await expect(page.getByTestId("shipping-select-option-jne")).toBeVisible();
+});

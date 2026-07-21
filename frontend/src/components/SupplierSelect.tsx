@@ -101,6 +101,10 @@ export function SupplierSelect({
       // It is also why the whole list is loaded rather than searched server-side: a server-side search
       // starts empty by design, so the selected supplier would not be in the collection to resolve.
       key={loading ? "loading" : "ready"}
+      // OPEN ON CLICK (#146's lesson, applied here too). Clicking the field shows the suppliers
+      // straight away rather than demanding a search first — the whole list is already loaded, so
+      // making somebody type to discover what exists is asking them to guess.
+      openOnClick
       collection={collection}
       disabled={disabled}
       value={value !== undefined && value > 0n ? [value.toString()] : []}

@@ -58,6 +58,12 @@ export function ShippingSelect({
       // flight, would look the code up in an empty collection, resolve to "", and never recover — the
       // field would read blank while a courier is in fact selected.
       key={loading ? "loading" : "ready"}
+      // OPEN ON CLICK (#146, owner: "show few item first before search"). Without it, clicking the
+      // field shows nothing until you type — reasonable for a picker over a catalogue too large to
+      // display (ProductSelect searches the server and needs 2 characters), and wrong for a bounded
+      // list somebody could simply pick from. The couriers are already loaded; there is nothing to
+      // wait for, so make them visible.
+      openOnClick
       collection={collection}
       disabled={disabled}
       // "" is NOT a selection. An empty array is what tells the combobox nothing is picked; passing
