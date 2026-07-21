@@ -595,7 +595,14 @@ type RestockRequestListRequest struct {
 	//
 	// Server-side on purpose: the list is PAGINATED, so filtering the loaded page in the client would
 	// show only the pending rows that happened to land in this page, and count them wrong.
-	Status        RestockRequestStatus `protobuf:"varint,3,opt,name=status,proto3,enum=warehouse.inventory.v1.RestockRequestStatus" json:"status,omitempty"`
+	Status RestockRequestStatus `protobuf:"varint,3,opt,name=status,proto3,enum=warehouse.inventory.v1.RestockRequestStatus" json:"status,omitempty"`
+	// Only requests carrying THIS product on one of their lines (#159). 0 = no filter.
+	//
+	// Server-side, like the status above and for the same reason: the list is paginated, so filtering
+	// in the browser would narrow the loaded page only and report the unfiltered total beside it. The
+	// question it answers — "when did this warehouse last restock this product" — is precisely the one
+	// whose answer is off page one.
+	ProductId     uint64 `protobuf:"varint,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -649,6 +656,13 @@ func (x *RestockRequestListRequest) GetStatus() RestockRequestStatus {
 		return x.Status
 	}
 	return RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED
+}
+
+func (x *RestockRequestListRequest) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
 }
 
 type RestockRequestDetailRequest struct {
@@ -1519,11 +1533,13 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"R\n" +
 	"product_idR\x03skuR\x04nameR\bquantityR\border_id\"`\n" +
 	"\x1cRestockRequestCreateResponse\x12@\n" +
-	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\xde\x01\n" +
+	"\arequest\x18\x01 \x01(\v2&.warehouse.inventory.v1.RestockRequestR\arequest\"\xfd\x01\n" +
 	"\x19RestockRequestListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12;\n" +
 	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12N\n" +
-	"\x06status\x18\x03 \x01(\x0e2,.warehouse.inventory.v1.RestockRequestStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status:\x0e\x92\xb5\x18\n" +
+	"\x06status\x18\x03 \x01(\x0e2,.warehouse.inventory.v1.RestockRequestStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x04 \x01(\x04R\tproductId:\x0e\x92\xb5\x18\n" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"{\n" +
 	"\x1bRestockRequestDetailRequest\x12$\n" +

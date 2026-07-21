@@ -40,6 +40,16 @@ func (s *Service) OrderList(
 		query = query.Where("status = ?", status)
 	}
 
+	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join
+	// against a one-to-many would return the order once PER MATCHING LINE, so an order listing the same
+	// product twice would appear twice and the paginated count would be wrong.
+	if productID := req.Msg.GetProductId(); productID != 0 {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = orders.id AND oi.product_id = ?)",
+			productID,
+		)
+	}
+
 	var total int64
 
 	err := query.Count(&total).Error

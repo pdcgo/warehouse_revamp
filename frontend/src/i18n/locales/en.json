@@ -953,7 +953,8 @@
     "tab": {
       "placement": "Placement",
       "stockHistory": "Stock History",
-      "placementHistory": "Placement History"
+      "placementHistory": "Placement History",
+      "batches": "Batches"
     },
     "kind": {
       "receive": "Received",
@@ -964,6 +965,15 @@
       "move": "Moved",
       "return": "Returned",
       "unknown": "Unknown"
-    }
+    },
+    "incoming": "On its way",
+    "lastOrder": "Last order",
+    "lastRestock": "Last delivery",
+    "none": "None",
+    "delivery": "Delivery",
+    "arrived": "Arrived",
+    "damaged": "Damaged",
+    "lineCost": "Line cost",
+    "noBatches": "No deliveries of this product yet."
   }
 }

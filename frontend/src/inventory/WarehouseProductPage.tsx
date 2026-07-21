@@ -18,10 +18,13 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
-import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
+import { inventoryClient, orderClient, productClient, restockClient, rpcError, teamClient } from "../api/clients";
 import type { ProductPlace, StockMovement } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { MovementKind } from "../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
+import type { RestockRequest } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import type { Order } from "../gen/warehouse/selling/v1/order_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
@@ -80,6 +83,9 @@ export function WarehouseProductPage() {
   const [lastOpname, setLastOpname] = useState<StockMovement | null>(null);
   const [history, setHistory] = useState<StockMovement[]>([]);
   const [placementHistory, setPlacementHistory] = useState<StockMovement[]>([]);
+  const [lastOrders, setLastOrders] = useState<Order[]>([]);
+  const [restocks, setRestocks] = useState<RestockRequest[]>([]);
+  const [incoming, setIncoming] = useState<RestockRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -124,6 +130,38 @@ export function WarehouseProductPage() {
       setLastOpname(opnameRes.movements[0] ?? null);
       setHistory(historyRes.movements);
       setPlacementHistory(moveRes.movements);
+
+      // E and G, and the batch tab (#159/#160) — all three are "this product's history", which is
+      // exactly what the product filter added. Without it these would mean paging every order and
+      // every restock the warehouse has ever had and filtering in the browser.
+      //
+      // Fetched after the block above rather than inside it: they are the lower half of the page, and
+      // a failure here should not cost the stock figures at the top.
+      const [orderRes, restockRes, incomingRes] = await Promise.all([
+        orderClient.orderList({
+          teamId: warehouseId,
+          productId,
+          page: { page: 1, limit: 5 },
+        }),
+        // Fulfilled deliveries — the BATCHES (owner, 2026-07-21: a batch is a delivery).
+        restockClient.restockRequestList({
+          teamId: warehouseId,
+          productId,
+          status: RestockRequestStatus.FULFILLED,
+          page: { page: 1, limit: 20 },
+        }),
+        // Still on its way — D's "ongoing restock".
+        restockClient.restockRequestList({
+          teamId: warehouseId,
+          productId,
+          status: RestockRequestStatus.PENDING,
+          page: { page: 1, limit: 20 },
+        }),
+      ]);
+
+      setLastOrders(orderRes.orders);
+      setRestocks(restockRes.requests);
+      setIncoming(incomingRes.requests);
 
       // ABSENT means the cost is UNKNOWN, not zero (#74). A valuation computed over an unknown cost
       // would read as "these goods are worth nothing", which is a different claim entirely.
@@ -278,6 +316,55 @@ export function WarehouseProductPage() {
         </Card.Body>
       </Card.Root>
 
+      {/* D — what is still on its way, and E/G — what happened last. All three read this product's own
+          history, which is what the #159 filter made answerable without paging everything.
+
+          A customer RETURN is deliberately not here: that event does not exist yet. #150 drew the line
+          on purpose — "what comes back after shipping is a RETURN, a different event with different
+          money" — and only the cancel half was ever built. Showing restock alone is honest; inventing
+          a returns figure from cancelled orders would not be. */}
+      <Card.Root>
+        <Card.Body>
+          <SimpleGrid columns={{ base: 1, md: 3 }} gap="card">
+            <Stack gap="0">
+              <Text fontSize="xs" color="fg.muted">
+                {t("warehouseProduct.incoming")}
+              </Text>
+              <Text fontWeight="medium" data-testid="warehouse-product-incoming">
+                {incoming
+                  .reduce(
+                    (sum, r) =>
+                      sum +
+                      r.items
+                        .filter((i) => i.productId === productId)
+                        .reduce((q, i) => q + i.quantity, 0n),
+                    0n,
+                  )
+                  .toString()}
+              </Text>
+            </Stack>
+
+            <Stack gap="0">
+              <Text fontSize="xs" color="fg.muted">
+                {t("warehouseProduct.lastOrder")}
+              </Text>
+              <Text fontWeight="medium" data-testid="warehouse-product-last-order">
+                {lastOrders[0] ? `#${lastOrders[0].id}` : t("warehouseProduct.none")}
+              </Text>
+            </Stack>
+
+            <Stack gap="0">
+              <Text fontSize="xs" color="fg.muted">
+                {t("warehouseProduct.lastRestock")}
+              </Text>
+              <Text fontWeight="medium" data-testid="warehouse-product-last-restock">
+                {restocks[0] ? `#${restocks[0].id}` : t("warehouseProduct.none")}
+              </Text>
+            </Stack>
+          </SimpleGrid>
+        </Card.Body>
+      </Card.Root>
+
       <Tabs.Root defaultValue="placement">
         <Tabs.List>
           <Tabs.Trigger value="placement" data-testid="wp-tab-placement">
@@ -288,6 +375,9 @@ export function WarehouseProductPage() {
           </Tabs.Trigger>
           <Tabs.Trigger value="placementHistory" data-testid="wp-tab-placement-history">
             {t("warehouseProduct.tab.placementHistory")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="batches" data-testid="wp-tab-batches">
+            {t("warehouseProduct.tab.batches")}
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -333,6 +423,52 @@ export function WarehouseProductPage() {
             testId="wp-placement-history-table"
             kindLabel={kindLabel}
           />
+        </Tabs.Content>
+
+        {/* Tab 1 — BATCHES. A batch IS a delivery (owner, 2026-07-21): no lot numbers, no expiry, no
+            per-batch stock. Each fulfilled restock that brought this product in is one batch, and the
+            data was already there — this is a view, not a model. */}
+        <Tabs.Content value="batches">
+          <Stack gap="card">
+            <Table.Root size="sm" data-testid="wp-batches-table">
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader>{t("warehouseProduct.delivery")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.arrived")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.damaged")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.lineCost")}</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {restocks.map((r) => {
+                  // Only THIS product's lines — a delivery usually carries several products, and the
+                  // other lines are somebody else's batch.
+                  const mine = r.items.filter((i) => i.productId === productId);
+                  const arrived = mine.reduce((sum, i) => sum + i.receivedQuantity, 0n);
+                  const broken = mine.reduce(
+                    (sum, i) => sum + i.damaged.reduce((d, x) => d + x.quantity, 0n),
+                    0n,
+                  );
+                  const cost = mine.reduce((sum, i) => sum + i.totalPrice, 0n);
+
+                  return (
+                    <Table.Row key={r.id.toString()} data-testid={`wp-batch-${r.id}`}>
+                      <Table.Cell>#{r.id.toString()}</Table.Cell>
+                      <Table.Cell textAlign="end">{arrived.toString()}</Table.Cell>
+                      <Table.Cell textAlign="end">{broken.toString()}</Table.Cell>
+                      <Table.Cell textAlign="end">{formatRupiah(cost)}</Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table.Root>
+
+            {restocks.length === 0 && (
+              <Text color="fg.muted" data-testid="wp-batches-empty">
+                {t("warehouseProduct.noBatches")}
+              </Text>
+            )}
+          </Stack>
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

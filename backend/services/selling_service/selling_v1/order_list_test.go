@@ -187,3 +187,73 @@ func TestOrderDetail_TheWarehouseCanOpenItsOrders(t *testing.T) {
 		t.Fatalf("an unrelated team opening the order = %v, want NotFound", code)
 	}
 }
+
+// #159 — narrow the list to ONE PRODUCT, so "when did this last go out" is answerable without paging
+// the whole history.
+//
+// The duplicate-line case is why the handler uses EXISTS rather than a join: an order listing the same
+// product on two lines must appear ONCE. A join against a one-to-many returns the row per matching
+// line, so it would show twice and the paginated total would be wrong with it.
+func TestOrderList_FiltersByProduct(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	const wanted, other uint64 = 100, 200
+
+	// An order for the product we are asking about, listing it TWICE.
+	twice, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse,
+		CustomerName: "Budi", Subtotal: 20000, Total: 20000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// And one for a different product entirely.
+	_, err = svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shop, WarehouseId: testWarehouse,
+		CustomerName: "Siti", Subtotal: 5000, Total: 5000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: other, Sku: "SKU2", Name: "Gadget", Quantity: 1, UnitPrice: 5000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+
+	res, err := svc.OrderList(ctx, connect.NewRequest(&sellingv1.OrderListRequest{
+		TeamId: 2,
+		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
+		// #159 — this product only.
+		ProductId: wanted,
+	}))
+	if err != nil {
+		t.Fatalf("OrderList: %v", err)
+	}
+
+	got := res.Msg.GetOrders()
+	if len(got) != 1 {
+		t.Fatalf("filtered list holds %d orders, want exactly 1 — a JOIN would return the "+
+			"two-line order twice", len(got))
+	}
+	if got[0].GetId() != twice.Msg.GetOrder().GetId() {
+		t.Fatalf("filtered list holds order %d, want %d", got[0].GetId(), twice.Msg.GetOrder().GetId())
+	}
+
+	// The COUNT must agree with the rows — it drives the pager, and a join would have inflated it too.
+	if n := res.Msg.GetPageInfo().GetTotalItems(); n != 1 {
+		t.Fatalf("filtered total = %d, want 1", n)
+	}
+
+	// 0 means no filter — the filter must not become a requirement.
+	all := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
+	if len(all.GetOrders()) != 2 {
+		t.Fatalf("unfiltered list holds %d orders, want 2", len(all.GetOrders()))
+	}
+}

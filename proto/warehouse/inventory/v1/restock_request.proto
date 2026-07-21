@@ -209,6 +209,14 @@ message RestockRequestListRequest {
   // Server-side on purpose: the list is PAGINATED, so filtering the loaded page in the client would
   // show only the pending rows that happened to land in this page, and count them wrong.
   RestockRequestStatus status = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Only requests carrying THIS product on one of their lines (#159). 0 = no filter.
+  //
+  // Server-side, like the status above and for the same reason: the list is paginated, so filtering
+  // in the browser would narrow the loaded page only and report the unfiltered total beside it. The
+  // question it answers — "when did this warehouse last restock this product" — is precisely the one
+  // whose answer is off page one.
+  uint64 product_id = 4;
 }
 
 message RestockRequestDetailRequest {

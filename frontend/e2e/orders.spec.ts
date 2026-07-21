@@ -664,4 +664,18 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   // Tab 5 — nothing has been MOVED between shelves, so this one is honestly empty.
   await page.getByTestId("wp-tab-placement-history").click();
   await expect(page.getByTestId("wp-placement-history-table-empty")).toBeVisible();
+
+  // E/G (#159) — the last order and the last delivery, answerable only because the list RPCs can now
+  // be narrowed to one product.
+  await expect(page.getByTestId("warehouse-product-last-order")).not.toHaveText("None");
+  await expect(page.getByTestId("warehouse-product-last-restock")).not.toHaveText("None");
+
+  // Tab 1 (#160) — a BATCH IS A DELIVERY. The Accept test received 8 of 10 with 2 written off, so
+  // this product has exactly one batch and it remembers both numbers.
+  await page.getByTestId("wp-tab-batches").click();
+  const batches = page.getByTestId("wp-batches-table");
+  await expect(batches).toBeVisible();
+  await expect(batches.locator("tbody tr")).toHaveCount(1);
+  await expect(batches).toContainText("8");
+  await expect(batches).toContainText("2");
 });

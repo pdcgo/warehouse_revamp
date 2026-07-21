@@ -37,6 +37,17 @@ func (s *Service) RestockRequestList(
 		query = query.Where("status = ?", status)
 	}
 
+	// Only requests carrying THIS product on a line (#159). EXISTS rather than a JOIN, for the same
+	// reason: a join against the lines would return a request once per matching line, double-counting
+	// both the rows and the paginated total.
+	if productID := req.Msg.GetProductId(); productID != 0 {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM restock_request_items i "+
+				"WHERE i.restock_request_id = restock_requests.id AND i.product_id = ?)",
+			productID,
+		)
+	}
+
 	var total int64
 
 	err := query.Count(&total).Error

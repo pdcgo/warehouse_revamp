@@ -244,6 +244,13 @@ message OrderListRequest {
   // the confirmed orders that happened to land in this page, and count them wrong. It is what makes a
   // pick queue possible — "the CONFIRMED orders shipping from my warehouse".
   OrderStatus status = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders carrying THIS product on one of their lines (#159). 0 = no filter.
+  //
+  // Server-side, like the status above: the list is paginated, so a client-side filter would narrow
+  // the loaded page only and report the unfiltered total beside it. "When did this product last go
+  // out" is exactly the question whose answer is off page one.
+  uint64 product_id = 4;
 }
 
 message OrderListResponse {

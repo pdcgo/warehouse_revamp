@@ -953,7 +953,8 @@
     "tab": {
       "placement": "Penempatan",
       "stockHistory": "Riwayat Stok",
-      "placementHistory": "Riwayat Penempatan"
+      "placementHistory": "Riwayat Penempatan",
+      "batches": "Batch"
     },
     "kind": {
       "receive": "Diterima",
@@ -964,6 +965,15 @@
       "move": "Dipindahkan",
       "return": "Dikembalikan",
       "unknown": "Tidak diketahui"
-    }
+    },
+    "incoming": "Dalam perjalanan",
+    "lastOrder": "Pesanan terakhir",
+    "lastRestock": "Kiriman terakhir",
+    "none": "Tidak ada",
+    "delivery": "Kiriman",
+    "arrived": "Tiba",
+    "damaged": "Rusak",
+    "lineCost": "Biaya baris",
+    "noBatches": "Belum ada kiriman produk ini."
   }
 }

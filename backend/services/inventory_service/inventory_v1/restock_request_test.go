@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"gorm.io/gorm"
@@ -1571,4 +1572,72 @@ func onHandAt(t *testing.T, db *gorm.DB, warehouse, product uint64, rack *uint64
 	}
 
 	return on
+}
+
+// #159 — narrow the restock list to ONE PRODUCT: "when did this warehouse last restock this".
+//
+// EXISTS rather than a join, for the same reason as OrderList: a request listing the same product on
+// two lines must appear ONCE, and a join against the lines would return it per matching line and
+// inflate the paginated count with it.
+func TestRestockRequestList_FiltersByProduct(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+	const wanted, other uint64 = 100, 200
+
+	// A request naming the product TWICE, alongside one that does not name it at all.
+	twice, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 3, TotalPrice: 3000},
+			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Quantity: 2, TotalPrice: 2000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	_, err = svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: other, Sku: "SKU2", Name: "Gadget", Quantity: 1, TotalPrice: 500},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+
+	res, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
+		TeamId:    warehouse,
+		Page:      &commonv1.PageFilter{Page: 1, Limit: 50},
+		ProductId: wanted,
+	}))
+	if err != nil {
+		t.Fatalf("RestockRequestList: %v", err)
+	}
+
+	got := res.Msg.GetRequests()
+	if len(got) != 1 {
+		t.Fatalf("filtered list holds %d requests, want exactly 1 — a JOIN would return the "+
+			"two-line request twice", len(got))
+	}
+	if got[0].GetId() != twice.Msg.GetRequest().GetId() {
+		t.Fatalf("filtered list holds request %d, want %d", got[0].GetId(), twice.Msg.GetRequest().GetId())
+	}
+	if n := res.Msg.GetPageInfo().GetTotalItems(); n != 1 {
+		t.Fatalf("filtered total = %d, want 1", n)
+	}
+
+	// 0 means no filter.
+	unfiltered, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
+		TeamId: warehouse, Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("unfiltered list: %v", err)
+	}
+	if len(unfiltered.Msg.GetRequests()) != 2 {
+		t.Fatalf("unfiltered list holds %d requests, want 2", len(unfiltered.Msg.GetRequests()))
+	}
 }
