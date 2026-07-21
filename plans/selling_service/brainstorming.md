@@ -42,6 +42,14 @@
 >   If a default/list price is ever wanted, it belongs on the product (a new field), not invented here.
 > - Still **open** and need the owner: §3.6 (which warehouse fulfils — needs §1) and the whole
 >   revenue side (#32 / §3.7 downstream).
+> - **§6 DRAFT ORDERS (#162) — planned, nothing decided.** The issue is a title with an empty body, so
+>   §6 maps the domain and the forks rather than guessing. **Seven questions are open and the owner's
+>   to settle (§6.10)**, and the first one decides the rest: a draft can mean *an order half-typed*
+>   (incomplete by definition) or *an order awaiting payment* (complete but not yet real), and a
+>   design for one is wrong for the other. The agent's one recommendation is §6.2: a **separate
+>   `order_drafts` table** rather than a status on `orders` — not for tidiness, but because a status
+>   makes every reader of `orders` responsible for remembering to exclude drafts, which is how an
+>   unfinished scribble reaches a revenue report.
 
 ---
 
@@ -382,3 +390,135 @@ first; the fulfillment half cannot be planned well until §1 is filled in with t
 1. Answer §3.1 (Create vs Adapt) — it decides whether this is a clean-slate design or a port-spec.
 2. Fill in [plans/plan.md §1](../plan.md) — the warehouse jobs — which unblocks the fulfillment
    half of every order issue, and #32.
+
+---
+
+## 6. Draft orders (#162) — PLANNING, nothing decided
+
+> #162 is titled **"Plan Feature Draft Order"** and its body is empty. So the first thing this section
+> does is refuse to guess what a draft is for — §6.1 is the question that decides everything below it,
+> and it is the owner's to answer.
+
+### 6.0 What a draft is NOT
+
+Naming these first, because each is a real thing that would be tempted onto the same table and would
+then quietly change what a draft means:
+
+| Not a… | Because |
+| --- | --- |
+| **Quotation** | A quote is shown to a buyer and has a validity period. A draft is private working state. |
+| **Reservation** | A draft holds no stock. Nothing in this system reserves stock even at placement (§3.3) — picking is what moves it (#151) — so a draft reserving anything would be the *first* reservation in the design. |
+| **Unpaid marketplace order** | That is a real order in a payment state, which belongs in `OrderStatus`. A draft was never placed by anybody. |
+| **Template / repeat order** | A template is reused many times. A draft is consumed once, when it becomes an order. |
+
+### 6.1 ⭐ What job is a draft for? *(answer this first)*
+
+Four readings, and they do not want the same feature:
+
+| Reading | The person | What they need |
+| --- | --- | --- |
+| **A. Park a half-typed order** | CS mid-chat: has the products, waiting on the address | Save anything, resume later, one keystroke to save |
+| **B. Wait for payment/confirmation** | CS who has a complete order the buyer has not paid for | A complete, validated order in a pre-placed STATE — closer to a status than a draft |
+| **C. Stage a bulk import** | Whoever imports a marketplace CSV | Many rows at once, validated in bulk, promoted in bulk (§3.4 — import is not built) |
+| **D. Repeat a common order** | CS with a regular buyer | A template, reused — explicitly not a draft (§6.0) |
+
+**These differ in the one way that matters:** in **A** a draft is *incomplete by definition*, in **B**
+it is *complete but not yet real*. A design for one is wrong for the other — B needs nothing nullable,
+and A cannot be a status on a table whose columns are all `NOT NULL`.
+
+The rest of §6 assumes **A**, because "draft" in ordinary use means "not finished yet". If the owner
+means B, §6.2 collapses to "add a status" and most of this section is moot.
+
+### 6.2 ⭐ Where does a draft live? *(the structural fork)*
+
+| Option | ✅ | ❌ |
+| --- | --- | --- |
+| **A. `ORDER_STATUS_DRAFT` on `orders`** | One table, one id — a draft "becomes" an order without changing identity, and its history is continuous | **Every `NOT NULL` on `orders` must be relaxed**, permanently, for real orders too. `shop_id`, `warehouse_id`, `customer_name` and "at least one item" are required today. The schema stops being able to say *a real order always has a warehouse* |
+| **B. A separate `order_drafts` table** ⭐ | `orders` keeps every constraint it has. A draft is a loose bag of nullable columns, which is what a draft *is*. Promoting calls the existing `OrderCreate`, so validation lives in exactly one place | Two id spaces — "draft #12" and "order #12" are different things. Promotion is two writes (create, then delete) and the gap between them needs a decision |
+| **C. Client-side only (`localStorage`)** | No backend at all. Free, instant, and genuinely enough for one person on one machine | Gone when the tab is cleared or the machine changes, and no colleague can pick it up. Viability depends **entirely** on §6.3 |
+
+**The agent's recommendation is B, and the reason is not tidiness.** Option A's real cost is not the
+migration — it is that *every* reader of `orders` must from then on remember to exclude drafts: the
+order list, the pick queue, the warehouse's view, the revenue chain, every count. That is exactly the
+shape of the bug #164 produced on the revenue screen (a row that must be listed but not totalled), and
+a draft is worse than a voided order — a voided order is a real order that stopped counting, while a
+draft was never an order at all. One forgotten `AND status != DRAFT` puts an unfinished scribble into
+somebody's revenue report.
+
+⚠ **Whatever is chosen, a draft must not publish `OrderCreatedEvent`.** Placement is what fires it
+(#153) and revenue consumes it (#75). A draft that published would put an unfinished order into the
+month's margin.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: save what has been typed
+    Draft --> Draft: keep editing
+    Draft --> Placed: promote, and OrderCreate validates
+    Draft --> [*]: discard
+    Placed --> Confirmed
+    Placed --> Cancelled
+    note right of Placed
+        Only this transition publishes
+        OrderCreatedEvent, so revenue
+        never sees a draft
+    end note
+```
+
+### 6.3 Whose draft is it?
+
+| Option | ✅ | ❌ |
+| --- | --- | --- |
+| **Personal** — only the author sees it | It is private working state, like a scratchpad. No confusion about who owns finishing it | A colleague cannot pick up the order when the author's shift ends |
+| **Team-visible** | Anybody can finish it — which is the point if drafts wait on a buyer | Two people editing one draft, and there is no design here for that. Half-typed work becomes everyone's business |
+
+This decides §6.2's option C: **a personal draft can live in the browser, a team-visible one cannot.**
+
+### 6.4 Explicit save, or autosave?
+
+Explicit is simpler and predictable. But the failure a draft exists to prevent — *the tab closed and
+the work is gone* — is exactly the one explicit saving does not fix. Autosave means a half-typed phone
+number is persisted, which is fine for a draft and would be intolerable for an order.
+
+### 6.5 What is the minimum a draft needs?
+
+If the answer is "nothing", then **"New draft" and "an empty draft" are indistinguishable**, and the
+list fills with blanks somebody has to clean up. A minimum of *something* — a customer name, or one
+line — is the cheapest guard. Which one is a real choice, not an obvious default.
+
+### 6.6 What happens when a draft goes stale?
+
+A draft names a shop, a warehouse, and products **by id, with no FK** — services do not share tables.
+Any of them can be deleted while the draft sits there. On promote, `OrderCreate` will refuse, which is
+correct, but the person needs to be told *which* reference died rather than handed a validation error.
+Worth deciding whether the draft screen checks on load or only on promote.
+
+### 6.7 Do drafts expire?
+
+A drafts list that only ever grows becomes a graveyard nobody reads. An age-out (30 days? 90?) keeps it
+useful, but deleting somebody's unfinished work on a timer needs an explicit decision, not a default.
+
+### 6.8 Where do drafts appear?
+
+A tab on the orders list, a page of their own, or a "you have an unfinished order" prompt on the create
+form. The tab is cheapest and puts them where orders already are — but it also puts not-orders inside
+the orders screen, which is the §6.2 concern in UI form.
+
+### 6.9 Proposed decomposition — CONFIRM BEFORE CREATING
+
+Assuming **A** (§6.1) and **B** (§6.2), smallest useful pieces first:
+
+1. **The draft model + migration** — `order_drafts` in `selling_service`, nearly every column nullable.
+2. **`DraftSave` / `DraftList` / `DraftDelete`** — the list pages (HARD RULE 9).
+3. **`DraftPromote`** — reads the draft, runs the same validation `OrderCreate` does, deletes on success.
+4. **The create form saves and resumes** — the #90 form gains save-as-draft and loads from one.
+5. **The drafts list screen** — §6.8's answer.
+
+### 6.10 Open — the owner's to settle
+
+- [ ] **§6.1 — which job is a draft for?** A (park a half-typed order), B (awaiting payment), C (import staging), or D (template)?
+- [ ] **§6.2 — status on `orders`, a separate table, or the browser?** (agent recommends the separate table)
+- [ ] **§6.3 — personal, or team-visible?**
+- [ ] **§6.4 — explicit save, or autosave?**
+- [ ] **§6.5 — what is the minimum a draft must have to be saved at all?**
+- [ ] **§6.7 — do drafts expire, and after how long?**
+- [ ] **§6.9 — is the decomposition right, and should the sub-issues be created?**
