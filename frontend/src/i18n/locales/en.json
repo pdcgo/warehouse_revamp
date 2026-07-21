@@ -930,5 +930,40 @@
       "unknownCost_one": "{{count}} order has an unknown cost — its margin reads as if the goods were free.",
       "unknownCost_other": "{{count}} orders have an unknown cost — their margin reads as if the goods were free."
     }
+  },
+  "warehouseProduct": {
+    "title": "Product at this Warehouse",
+    "back": "Back to Products",
+    "warehouseOnly": "This view is for a warehouse team.",
+    "notFound": "That product is not handled by this warehouse.",
+    "ownedBy": "Catalogue: {{team}}",
+    "onHand": "On hand",
+    "unitCost": "Cost / pc",
+    "valuation": "Stock value",
+    "costUnknown": "Unknown",
+    "lastOpname": "Last counted",
+    "neverCounted": "Never counted",
+    "place": "Place",
+    "when": "When",
+    "what": "What",
+    "change": "Change",
+    "after": "After",
+    "noStock": "None of this product is here.",
+    "noMovements": "Nothing has happened to this product here.",
+    "tab": {
+      "placement": "Placement",
+      "stockHistory": "Stock History",
+      "placementHistory": "Placement History"
+    },
+    "kind": {
+      "receive": "Received",
+      "adjust": "Counted",
+      "transferOut": "Transferred out",
+      "transferIn": "Transferred in",
+      "pick": "Picked",
+      "move": "Moved",
+      "return": "Returned",
+      "unknown": "Unknown"
+    }
   }
 }

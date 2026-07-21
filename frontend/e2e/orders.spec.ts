@@ -617,3 +617,51 @@ test("Settings: a default warehouse pre-fills the order form (#145)", async ({ p
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await expect(page.getByTestId("order-warehouse").locator("input")).toHaveValue(WH_NAME);
 });
+
+// #144/#158 — the WAREHOUSE's view of a product: the stock, not the catalogue entry it does not own.
+//
+// It runs after the Accept test, so this product has a real history here: received onto two shelves,
+// with two units written off. That is what the page has to show.
+test("Warehouse product: the stock view shows placement, valuation and history (#158)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await switchToWarehouse(page);
+
+  // Reached by clicking the product in the warehouse's own list (#142) — which must NOT open the
+  // selling team's catalogue page.
+  await page.goto("/products");
+  await page.getByTestId(`product-row-${SKU}`).click();
+
+  await expect(page.getByTestId("warehouse-product-page")).toBeVisible();
+
+  // A — the product, B — whose catalogue it is (a warehouse holds other teams' products).
+  await expect(page.getByTestId("warehouse-product-owner")).toBeVisible();
+
+  // C — the warehouse holds some, and the cost is known because a fulfilled restock recorded it
+  // (#155), so the valuation is a real figure rather than "Unknown".
+  //
+  // NOT asserted as an exact number on purpose: this file is serial, and by now the product has been
+  // received, ordered against, cancelled and accepted by earlier tests. Pinning the running total
+  // would make every future test that touches this product break this one, which is a test asserting
+  // the suite's history rather than the page's behaviour.
+  await expect(page.getByTestId("warehouse-product-onhand")).not.toHaveText("0");
+  await expect(page.getByTestId("warehouse-product-unitcost")).not.toHaveText("Unknown");
+  await expect(page.getByTestId("warehouse-product-valuation")).not.toHaveText("Unknown");
+
+  // F — never counted, because nothing has adjusted it. This is the assertion the server-side kind
+  // filter earns: without it, page one of the ledger would decide the answer.
+  await expect(page.getByTestId("warehouse-product-last-opname")).toHaveText("Never counted");
+
+  // Tab 2 — both shelves it was split across.
+  await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-01");
+  await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-02");
+
+  // Tab 4 — the receives that put it there.
+  await page.getByTestId("wp-tab-history").click();
+  await expect(page.getByTestId("wp-history-table")).toContainText("Received");
+
+  // Tab 5 — nothing has been MOVED between shelves, so this one is honestly empty.
+  await page.getByTestId("wp-tab-placement-history").click();
+  await expect(page.getByTestId("wp-placement-history-table-empty")).toBeVisible();
+});

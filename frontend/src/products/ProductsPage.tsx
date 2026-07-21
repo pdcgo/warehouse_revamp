@@ -201,7 +201,10 @@ export function ProductsPage() {
                   key={product.id.toString()}
                   data-testid={`product-row-${product.sku}`}
                   cursor="pointer"
-                  onClick={() => navigate(`/products/${product.id}`)}
+                  // A WAREHOUSE opens the stock view (#158), not the catalogue entry it does not own.
+                  onClick={() =>
+                    navigate(isWarehouse ? `/inventories/products/${product.id}` : `/products/${product.id}`)
+                  }
                 >
                   <Table.Cell>
                     {cover ? (

@@ -59,6 +59,9 @@ const SupplierDetailPage = lazy(() =>
   import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
+const WarehouseProductPage = lazy(() =>
+  import("./inventory/WarehouseProductPage").then((m) => ({ default: m.WarehouseProductPage })),
+);
 const RestockAcceptPage = lazy(() =>
   import("./restock/RestockAcceptPage").then((m) => ({ default: m.RestockAcceptPage })),
 );
@@ -165,6 +168,9 @@ export const router = createBrowserRouter([
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
+      // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
+      // catalogue entry it does not own.
+      { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },

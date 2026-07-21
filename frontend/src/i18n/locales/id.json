@@ -930,5 +930,40 @@
       "unknownCost_one": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis.",
       "unknownCost_other": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis."
     }
+  },
+  "warehouseProduct": {
+    "title": "Produk di Gudang Ini",
+    "back": "Kembali ke Produk",
+    "warehouseOnly": "Tampilan ini untuk tim gudang.",
+    "notFound": "Produk itu tidak ditangani gudang ini.",
+    "ownedBy": "Katalog: {{team}}",
+    "onHand": "Tersedia",
+    "unitCost": "Biaya / pcs",
+    "valuation": "Nilai stok",
+    "costUnknown": "Tidak diketahui",
+    "lastOpname": "Terakhir dihitung",
+    "neverCounted": "Belum pernah dihitung",
+    "place": "Tempat",
+    "when": "Kapan",
+    "what": "Apa",
+    "change": "Perubahan",
+    "after": "Sesudah",
+    "noStock": "Produk ini tidak ada di sini.",
+    "noMovements": "Belum ada aktivitas untuk produk ini di sini.",
+    "tab": {
+      "placement": "Penempatan",
+      "stockHistory": "Riwayat Stok",
+      "placementHistory": "Riwayat Penempatan"
+    },
+    "kind": {
+      "receive": "Diterima",
+      "adjust": "Dihitung",
+      "transferOut": "Ditransfer keluar",
+      "transferIn": "Ditransfer masuk",
+      "pick": "Diambil",
+      "move": "Dipindahkan",
+      "return": "Dikembalikan",
+      "unknown": "Tidak diketahui"
+    }
   }
 }

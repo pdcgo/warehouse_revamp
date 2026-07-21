@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -485,4 +486,63 @@ func onHand(
 	}
 
 	return 0
+}
+
+// #158 — StockHistory narrows to ONE KIND of movement, server-side.
+//
+// The ledger is paginated and grows forever, so a client-side filter would narrow the loaded page
+// only: "when was this last counted" would read as "never" the moment the last stock-take fell off
+// page one — exactly when the question is worth asking.
+func TestStockHistory_FiltersByKind(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	// A receive, then a stock-take correction on top of it.
+	_, err := svc.StockReceive(ctx, connect.NewRequest(&inventoryv1.StockReceiveRequest{
+		WarehouseId: warehouseA, ProductId: productX, Quantity: 10, Reason: "seed",
+	}))
+	if err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	_, err = svc.StockAdjust(ctx, connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouseA, ProductId: productX, OnHand: 9, Reason: "opname",
+		Place: &inventoryv1.StockAdjustRequest_Unplaced{Unplaced: true},
+	}))
+	if err != nil {
+		t.Fatalf("adjust: %v", err)
+	}
+
+	history := func(kind inventoryv1.MovementKind) []*inventoryv1.StockMovement {
+		t.Helper()
+
+		res, hErr := svc.StockHistory(ctx, connect.NewRequest(&inventoryv1.StockHistoryRequest{
+			WarehouseId: warehouseA, ProductId: productX,
+			Page: &commonv1.PageFilter{Page: 1, Limit: 50}, Kind: kind,
+		}))
+		if hErr != nil {
+			t.Fatalf("StockHistory(%v): %v", kind, hErr)
+		}
+
+		return res.Msg.GetMovements()
+	}
+
+	// UNSPECIFIED means all of them — the filter must not become a requirement.
+	if got := history(inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED); len(got) != 2 {
+		t.Fatalf("unfiltered history = %d movements, want 2", len(got))
+	}
+
+	adjusts := history(inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST)
+	if len(adjusts) != 1 {
+		t.Fatalf("ADJUST history = %d movements, want 1", len(adjusts))
+	}
+	if adjusts[0].GetReason() != "opname" {
+		t.Fatalf("ADJUST history returned %q, want the stock-take", adjusts[0].GetReason())
+	}
+
+	// A kind that never happened is empty, not an error.
+	if got := history(inventoryv1.MovementKind_MOVEMENT_KIND_MOVE); len(got) != 0 {
+		t.Fatalf("MOVE history = %d movements, want none", len(got))
+	}
 }

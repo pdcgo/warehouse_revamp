@@ -146,6 +146,14 @@ message StockHistoryRequest {
   ];
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
   warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+
+  // Narrow to ONE kind of movement, or UNSPECIFIED for all of them (#158).
+  //
+  // Server-side, for the same reason #130 filtered restocks server-side: the ledger is paginated and
+  // grows forever, so a client-side filter narrows the loaded page only. "When was this last counted"
+  // would then read as "never" whenever the last stock-take fell off page one — which is precisely
+  // when the question is worth asking.
+  MovementKind kind = 4;
 }
 
 message StockHistoryResponse {

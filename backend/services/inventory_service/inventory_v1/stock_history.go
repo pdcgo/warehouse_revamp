@@ -22,6 +22,13 @@ func (s *Service) StockHistory(
 		Model(&inventory_service_models.StockMovement{}).
 		Where("warehouse_id = ? AND product_id = ?", req.Msg.GetWarehouseId(), req.Msg.GetProductId())
 
+	// One kind, or all of them (#158). Server-side because the ledger is paginated and grows forever:
+	// a client-side filter would narrow the loaded page only, so "when was this last counted" would read
+	// as "never" the moment the last stock-take fell off page one.
+	if kind := req.Msg.GetKind(); kind != inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED {
+		query = query.Where("kind = ?", int32(kind))
+	}
+
 	var total int64
 
 	err := query.Count(&total).Error
