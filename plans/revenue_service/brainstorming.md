@@ -17,6 +17,13 @@
 >   CSV upload, a marketplace API — is what would drive the whole settlement design. Building it now
 >   would mean guessing at that shape and rebuilding once the real feed arrives. **#76 is parked in
 >   Backlog until a payout source exists.**
+> - **§5 — what would UNPARK #76, framed.** (2026-07-21) The park still holds; §5 proposes nothing be
+>   built. But "waits for a payout source" turned out to be an unmade decision with a dependency
+>   nobody had named: **the API option is gated behind #73's credential story** (#66 gave shops no
+>   credentials), so the realistic near-term choice is manual or CSV — and if the answer is "API
+>   eventually", the thing to unblock is #73, not #76. §5 also records three things knowable now
+>   whatever the source, of which one is urgent: **returns and reconciliation would both reduce the
+>   same order's revenue**, so they need one rule between them decided BEFORE either is built.
 
 ---
 
@@ -142,3 +149,79 @@ Revenue is downstream of **two** undesigned things: the **order money model** (#
 it, the **warehouse core** ([plans/plan.md §1](../plan.md)) that the order lifecycle needs. So #32
 is best **parked until #23's order shape is decided** — planning it in detail now would be building
 on a foundation that isn't poured. The one thing to settle early is §2.1 (Create vs Adapt).
+
+---
+
+## 5. Marketplace settlement (#76) — what would unpark it
+
+> #76 is parked, twice over: once by the §2.3 answer (*expected now, reconciliation later*), and again
+> by the reason recorded on the issue — **there is no payout data in this system yet, and the shape of
+> that feed is what would drive the design.** Both still hold. Nothing below proposes building it.
+>
+> But "waits for a payout source" is not a passive wait. It is **an unmade decision with a known
+> dependency**, and nobody has framed it. This section frames it, and records what is knowable now
+> regardless of which way it goes.
+
+### 5.0 ⚠ Two different things are now called "settlement"
+
+| | Counterparty | What it tracks |
+| --- | --- | --- |
+| **`settlement_service`** (owner, 2026-07-21) | **Teams only** — explicitly *"not suppliers, not marketplaces"* | What one team owes another: COD fees, warehouse fees, product fees |
+| **#76 "revenue settlement"** | A **marketplace** | Whether the payout for an order matched what we expected to make |
+
+Different counterparty, different service, different money. The settlement doc already draws the line
+itself — *"Marketplace settlement is revenue #76's parked problem"* — so the boundary is agreed; only
+the word is shared.
+
+➡ Worth renaming #76 to **reconciliation** before both exist, while it is free. This is the same
+collision that `MOVEMENT_KIND_RETURN` caused for customer returns
+([returns §2](../return_service/brainstorming.md)): a word already spoken for, meaning something
+adjacent, discovered late.
+
+### 5.1 ⭐ The decision that unparks it: where does payout data come from?
+
+| Option | ✅ | ❌ |
+| --- | --- | --- |
+| **Manual entry, per order** | **Buildable today — zero dependencies.** Somebody types what actually landed | Unusable at any real volume. Fine as a v1 that proves the model, dishonest as the end state |
+| **CSV upload of the marketplace's settlement report** | What people actually do. One upload covers a period | **One importer per marketplace** — the formats have nothing in common, so "add CSV" is really "add Shopee, then add Tokopedia, then…" |
+| **Marketplace API** | Best data, no human in the loop | ⚠ **Blocked elsewhere.** #66 decided a shop carries **no credentials or integration metadata** — *"the marketplace-integration secret story waits for import (#73)"*. So this path needs a decision that already has an owner, and it is not this issue |
+
+➡ **The finding: this is not a free three-way choice.** The API option is gated behind #73's
+credential story, so the realistic near-term choice is **manual or CSV** — and manual is the only one
+with no prerequisite at all. If the answer is "API eventually", the thing to unblock is #73, not #76.
+
+### 5.2 What is knowable NOW, whatever the source
+
+**(a) "Actual" is not "did they pay the total".** A marketplace pays the buyer's money *minus its
+cut* — commission, service fee, payment-channel fee, and shipping differences that are nobody's error.
+So a reconciliation record needs at least: what landed, what was deducted, and which order it was for.
+A design that stores only "amount received" makes every fee look like a discrepancy.
+
+**(b) ⚠ Settlement and RETURNS must agree who reduces the revenue.** The returns plan proposes writing
+a **negative revenue row** when goods come back ([returns §4.2](../return_service/brainstorming.md)).
+If reconciliation *also* records a lower actual for that same order, **the reduction can be counted
+twice** — once as the negative row, once as the gap. Two features, one number. They need a single rule
+between them, and it has to be decided before either is built rather than discovered afterwards.
+
+**(c) One order may settle more than once.** A partial refund lands later than the original payout, so
+a revenue row maps to **N** reconciliation rows, not one. That is the same shape question returns
+raised, and one answer probably serves both — another reason to decide (b) and this together.
+
+**(d) A withdrawal is not a settlement, and §2.4 already rules on it.** If funds are released per order
+to a seller balance and the seller later withdraws a lump sum to a bank — worth confirming for the
+marketplaces actually used — those are **two different facts**. §2.4 decided revenue is **not a
+ledger**: no balances, no withdrawals. So #76 can only mean *the per-order release*. Reading it as
+balance-and-withdrawal tracking would reintroduce exactly the ledger that was rejected, through a
+side door.
+
+### 5.3 What #76 is NOT waiting for
+
+Worth stating, because §4's blocker no longer applies to it. The order money model is decided (#74),
+the revenue record exists and is populated by a real event (#75/#153), and cancelled orders no longer
+inflate the totals (#164). **The only true blocker is §5.1.**
+
+### 5.4 Open — the owner's to settle
+
+- [ ] **§5.1 — where does payout data come from?** Manual (buildable now), CSV (one importer per marketplace), or API (blocked on #73's credential story)?
+- [ ] **§5.0 — rename #76 to "reconciliation"** now that `settlement_service` owns the word for team-to-team money?
+- [ ] **§5.2(b) — when a returned order is also reconciled, which one reduces the revenue?** Decide before returns or reconciliation is built.
