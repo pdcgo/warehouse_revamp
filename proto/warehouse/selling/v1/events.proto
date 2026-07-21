@@ -43,3 +43,19 @@ message OrderPlacedEvent {
   // revenue row has to be able to say so.
   bool cost_known = 6;
 }
+
+// OrderCancelledEvent announces that an order was cancelled (#164).
+//
+// Published by selling_service after the cancel commits; consumed by revenue_service, which VOIDS the
+// order's expected-margin row. Without it, revenue keeps counting money from an order that fell
+// through — the report was overstating from #153 until this landed.
+//
+// It carries only the ids. Unlike OrderPlacedEvent, which ships the frozen money because the money IS
+// the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,
+// and the figures being voided are already on the row.
+message OrderCancelledEvent {
+  option (warehouse.event_base.v1.event_config).event_topic = "order-cancelled";
+
+  uint64 team_id = 1;
+  uint64 order_id = 2;
+}

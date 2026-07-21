@@ -30,6 +30,13 @@ type OrderRevenue struct {
 	// well as the unknown marker, so the two cannot be told apart without this.
 	CostKnown bool
 
+	// When this row stopped counting (#164) — nil while it still does. The order was cancelled, so it
+	// earned nothing, and every total excludes it.
+	//
+	// A timestamp rather than a boolean because "when did this stop counting" is the next question
+	// anybody asks, and a boolean cannot answer it.
+	VoidedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

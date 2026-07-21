@@ -91,11 +91,29 @@ and it is synchronous where production is not. For those, run the emulator
 
 ---
 
-## Known gap: a cancelled order keeps its revenue row
+## A cancelled order is VOIDED, not left standing (#164)
 
-Cancel is allowed up to SHIPPED (#150), and nothing currently voids the expected-revenue row — so a
-cancelled order still counts toward the totals, which overstates them.
+A row is written when the order is placed, and an order can be cancelled right up to SHIPPED (#150).
+Until #164 nothing told revenue, so **the report counted money from orders that fell through**.
 
-Not silently patched: voiding needs a decision about *what* a voided row looks like (deleted? a
-reversing row? a flag?) and probably a schema change. It belongs with #76, where "expected vs actual"
-is settled.
+`OrderCancel` now publishes an `OrderCancelledEvent` on the same machinery as the placement, and
+revenue voids the row.
+
+**Voided, not deleted** (owner, 2026-07-21). A deleted row cannot tell you an order was placed and then
+cancelled, and that is exactly what somebody looking at the money wants to see. It mirrors the stock
+ledger, which keeps a cancelled order's PICK rows and nets them (#154) rather than erasing them.
+
+So the split matters:
+
+| | |
+| --- | --- |
+| The **list** | shows voided rows, greyed and flagged — the history is visible |
+| The **totals** | exclude them — a cancelled order earned nothing |
+
+Hiding the row from the list would make it as invisible as deleting it, which is the option that was
+not chosen.
+
+`RevenueVoid` is **idempotent**, and a missing row is **success**. Both matter for the same reason the
+record path ACKs duplicates: Pub/Sub delivers at least once, and an order placed before #153 has no row
+to void. Refusing either would NACK a message that can never succeed, and Pub/Sub would redeliver it
+forever.

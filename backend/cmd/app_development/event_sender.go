@@ -37,7 +37,8 @@ func NewEventSender(revenueService *revenue_v1.Service) event_source.EventSender
 	// Which subscription each event is delivered to. In production this mapping lives in Pub/Sub's
 	// topic→subscription configuration; here it has to be stated, because there is no Pub/Sub.
 	subscriptionFor := map[string]string{
-		"order-placed": revenue_service.OrderPlacedSubscription,
+		"order-placed":    revenue_service.OrderPlacedSubscription,
+		"order-cancelled": revenue_service.OrderCancelledSubscription,
 	}
 
 	return func(ctx context.Context, event proto.Message) (string, error) {

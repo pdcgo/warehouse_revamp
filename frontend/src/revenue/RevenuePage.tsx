@@ -175,8 +175,24 @@ export function RevenuePage() {
           </Table.Header>
           <Table.Body>
             {revenues.map((row) => (
-              <Table.Row key={String(row.id)} data-testid={`revenue-row-${row.orderId}`}>
-                <Table.Cell>#{String(row.orderId)}</Table.Cell>
+              <Table.Row
+                key={String(row.id)}
+                data-testid={`revenue-row-${row.orderId}`}
+                // A VOIDED row is shown, muted (#164). The order was cancelled so it earned nothing and
+                // the totals exclude it — but it was placed, and that is worth seeing. Greyed rather
+                // than hidden, because hidden is indistinguishable from deleted, and deleted is the
+                // option that cannot tell you an order fell through.
+                color={row.voided ? "fg.muted" : undefined}
+                textDecoration={row.voided ? "line-through" : undefined}
+              >
+                <Table.Cell>
+                  #{String(row.orderId)}
+                  {row.voided && (
+                    <Badge ml="2" colorPalette="gray" data-testid={`revenue-voided-${row.orderId}`}>
+                      {t("revenue.table.voided")}
+                    </Badge>
+                  )}
+                </Table.Cell>
                 <Table.Cell textAlign="end">{formatRupiah(row.revenue)}</Table.Cell>
                 <Table.Cell textAlign="end">
                   {/* 0 cogs means the cost is UNKNOWN, not that the goods were free (#74). Showing a

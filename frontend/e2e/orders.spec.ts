@@ -679,3 +679,42 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await expect(batches).toContainText("8");
   await expect(batches).toContainText("2");
 });
+
+// #164 — CANCELLING AN ORDER STOPS ITS REVENUE COUNTING.
+//
+// The bug: a row is written when an order is placed (#153), an order can be cancelled right up to
+// SHIPPED (#150), and nothing told revenue — so the report counted money from orders that fell
+// through. This walks the whole path: place, read the total, cancel, read it again.
+test("Revenue: cancelling an order stops it counting, but the row stays visible (#164)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const customer = `${CUSTOMER} voided`;
+  await placeOrderViaForm(page, customer);
+
+  const heading = await page.getByTestId("order-detail-page").innerText();
+  const orderId = heading.match(/#(\d+)/)?.[1];
+  expect(orderId).toBeTruthy();
+
+  // The total WITH this order counted.
+  await page.goto("/revenue");
+  await expect(page.getByTestId(`revenue-row-${orderId}`)).toBeVisible();
+  const before = await page.getByTestId("revenue-total-revenue").innerText();
+
+  // Cancel it — the goods are still in the building, so this is allowed (#150).
+  await page.goto(`/orders/${orderId}`);
+  await page.getByTestId("order-cancel").click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId("order-detail-page")).toContainText("Cancelled");
+
+  await page.goto("/revenue");
+
+  // The row is STILL THERE and flagged — voiding is not deleting, and an order that was placed then
+  // cancelled is exactly what somebody looking at the money wants to see.
+  await expect(page.getByTestId(`revenue-row-${orderId}`)).toBeVisible();
+  await expect(page.getByTestId(`revenue-voided-${orderId}`)).toBeVisible();
+
+  // But the total has DROPPED — it no longer counts an order that fell through.
+  await expect(page.getByTestId("revenue-total-revenue")).not.toHaveText(before);
+});

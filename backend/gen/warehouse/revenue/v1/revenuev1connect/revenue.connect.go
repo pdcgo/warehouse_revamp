@@ -39,6 +39,9 @@ const (
 	// RevenueServiceRevenueListProcedure is the fully-qualified name of the RevenueService's
 	// RevenueList RPC.
 	RevenueServiceRevenueListProcedure = "/warehouse.revenue.v1.RevenueService/RevenueList"
+	// RevenueServiceRevenueVoidProcedure is the fully-qualified name of the RevenueService's
+	// RevenueVoid RPC.
+	RevenueServiceRevenueVoidProcedure = "/warehouse.revenue.v1.RevenueService/RevenueVoid"
 )
 
 // RevenueServiceClient is a client for the warehouse.revenue.v1.RevenueService service.
@@ -47,6 +50,8 @@ type RevenueServiceClient interface {
 	RevenueRecord(context.Context, *connect.Request[v1.RevenueRecordRequest]) (*connect.Response[v1.RevenueRecordResponse], error)
 	// What a team's orders were expected to make, newest first.
 	RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error)
+	// Stop an order's row counting — it was cancelled (#164).
+	RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error)
 }
 
 // NewRevenueServiceClient constructs a client for the warehouse.revenue.v1.RevenueService service.
@@ -72,6 +77,12 @@ func NewRevenueServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(revenueServiceMethods.ByName("RevenueList")),
 			connect.WithClientOptions(opts...),
 		),
+		revenueVoid: connect.NewClient[v1.RevenueVoidRequest, v1.RevenueVoidResponse](
+			httpClient,
+			baseURL+RevenueServiceRevenueVoidProcedure,
+			connect.WithSchema(revenueServiceMethods.ByName("RevenueVoid")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -79,6 +90,7 @@ func NewRevenueServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type revenueServiceClient struct {
 	revenueRecord *connect.Client[v1.RevenueRecordRequest, v1.RevenueRecordResponse]
 	revenueList   *connect.Client[v1.RevenueListRequest, v1.RevenueListResponse]
+	revenueVoid   *connect.Client[v1.RevenueVoidRequest, v1.RevenueVoidResponse]
 }
 
 // RevenueRecord calls warehouse.revenue.v1.RevenueService.RevenueRecord.
@@ -91,12 +103,19 @@ func (c *revenueServiceClient) RevenueList(ctx context.Context, req *connect.Req
 	return c.revenueList.CallUnary(ctx, req)
 }
 
+// RevenueVoid calls warehouse.revenue.v1.RevenueService.RevenueVoid.
+func (c *revenueServiceClient) RevenueVoid(ctx context.Context, req *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error) {
+	return c.revenueVoid.CallUnary(ctx, req)
+}
+
 // RevenueServiceHandler is an implementation of the warehouse.revenue.v1.RevenueService service.
 type RevenueServiceHandler interface {
 	// Record what an order is expected to make. Written when the order is placed.
 	RevenueRecord(context.Context, *connect.Request[v1.RevenueRecordRequest]) (*connect.Response[v1.RevenueRecordResponse], error)
 	// What a team's orders were expected to make, newest first.
 	RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error)
+	// Stop an order's row counting — it was cancelled (#164).
+	RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error)
 }
 
 // NewRevenueServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -118,12 +137,20 @@ func NewRevenueServiceHandler(svc RevenueServiceHandler, opts ...connect.Handler
 		connect.WithSchema(revenueServiceMethods.ByName("RevenueList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	revenueServiceRevenueVoidHandler := connect.NewUnaryHandler(
+		RevenueServiceRevenueVoidProcedure,
+		svc.RevenueVoid,
+		connect.WithSchema(revenueServiceMethods.ByName("RevenueVoid")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.revenue.v1.RevenueService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RevenueServiceRevenueRecordProcedure:
 			revenueServiceRevenueRecordHandler.ServeHTTP(w, r)
 		case RevenueServiceRevenueListProcedure:
 			revenueServiceRevenueListHandler.ServeHTTP(w, r)
+		case RevenueServiceRevenueVoidProcedure:
+			revenueServiceRevenueVoidHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -139,4 +166,8 @@ func (UnimplementedRevenueServiceHandler) RevenueRecord(context.Context, *connec
 
 func (UnimplementedRevenueServiceHandler) RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.revenue.v1.RevenueService.RevenueList is not implemented"))
+}
+
+func (UnimplementedRevenueServiceHandler) RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.revenue.v1.RevenueService.RevenueVoid is not implemented"))
 }

@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/revenue/v1/revenue.proto.
  */
 export const file_warehouse_revenue_v1_revenue: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSK5AQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDIsEBChRSZXZlbnVlUmVjb3JkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgABIYCgdyZXZlbnVlGAMgASgDQge6SAQiAigAEhUKBGNvZ3MYBCABKANCB7pIBCICKAASHgoNc2hpcHBpbmdfY29zdBgFIAEoA0IHukgEIgIoABISCgpjb3N0X2tub3duGAYgASgIOguStRgHCgUBAgMEBSJMChVSZXZlbnVlUmVjb3JkUmVzcG9uc2USMwoHcmV2ZW51ZRgBIAEoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZSJ1ChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgqStRgGCgQBAgMEIrIBChNSZXZlbnVlTGlzdFJlc3BvbnNlEjQKCHJldmVudWVzGAEgAygLMiIud2FyZWhvdXNlLnJldmVudWUudjEuT3JkZXJSZXZlbnVlEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SMwoGdG90YWxzGAMgASgLMiMud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVRvdGFscyJ7Cg1SZXZlbnVlVG90YWxzEg8KB3JldmVudWUYASABKAMSDAoEY29ncxgCIAEoAxIVCg1zaGlwcGluZ19jb3N0GAMgASgDEhcKD2V4cGVjdGVkX21hcmdpbhgEIAEoAxIbChN1bmtub3duX2Nvc3Rfb3JkZXJzGAUgASgEMt4BCg5SZXZlbnVlU2VydmljZRJoCg1SZXZlbnVlUmVjb3JkEioud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlcXVlc3QaKy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlUmVjb3JkUmVzcG9uc2USYgoLUmV2ZW51ZUxpc3QSKC53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlcXVlc3QaKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvcmV2ZW51ZS92MTtyZXZlbnVldjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSLJAQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEg4KBnZvaWRlZBgKIAEoCCLBAQoUUmV2ZW51ZVJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAASGAoHcmV2ZW51ZRgDIAEoA0IHukgEIgIoABIVCgRjb2dzGAQgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYBSABKANCB7pIBCICKAASEgoKY29zdF9rbm93bhgGIAEoCDoLkrUYBwoFAQIDBAUiTAoVUmV2ZW51ZVJlY29yZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUidQoSUmV2ZW51ZUxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToKkrUYBgoEAQIDBCKyAQoTUmV2ZW51ZUxpc3RSZXNwb25zZRI0CghyZXZlbnVlcxgBIAMoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZRIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgDIAEoCzIjLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVUb3RhbHMiewoNUmV2ZW51ZVRvdGFscxIPCgdyZXZlbnVlGAEgASgDEgwKBGNvZ3MYAiABKAMSFQoNc2hpcHBpbmdfY29zdBgDIAEoAxIXCg9leHBlY3RlZF9tYXJnaW4YBCABKAMSGwoTdW5rbm93bl9jb3N0X29yZGVycxgFIAEoBCJaChJSZXZlbnVlVm9pZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkoKE1JldmVudWVWb2lkUmVzcG9uc2USMwoHcmV2ZW51ZRgBIAEoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZTLCAgoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZRJiCgtSZXZlbnVlVm9pZBIoLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVxdWVzdBopLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZXZlbnVlL3YxO3JldmVudWV2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * What one order was expected to make.
@@ -90,6 +90,17 @@ export type OrderRevenue = Message<"warehouse.revenue.v1.OrderRevenue"> & {
    * @generated from field: int64 created_at_unix = 9;
    */
   createdAtUnix: bigint;
+
+  /**
+   * Whether this row still counts (#164). An order cancelled after it was placed earned nothing, so
+   * its row is VOIDED — kept, but excluded from every total.
+   *
+   * Kept rather than deleted because a deleted row cannot tell you an order was placed and then
+   * cancelled, and that is a thing somebody looking at the money wants to see.
+   *
+   * @generated from field: bool voided = 10;
+   */
+  voided: boolean;
 };
 
 /**
@@ -267,6 +278,49 @@ export const RevenueTotalsSchema: GenMessage<RevenueTotals> = /*@__PURE__*/
   messageDesc(file_warehouse_revenue_v1_revenue, 5);
 
 /**
+ * @generated from message warehouse.revenue.v1.RevenueVoidRequest
+ */
+export type RevenueVoidRequest = Message<"warehouse.revenue.v1.RevenueVoidRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 2;
+   */
+  orderId: bigint;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueVoidRequest.
+ * Use `create(RevenueVoidRequestSchema)` to create a new message.
+ */
+export const RevenueVoidRequestSchema: GenMessage<RevenueVoidRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 6);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueVoidResponse
+ */
+export type RevenueVoidResponse = Message<"warehouse.revenue.v1.RevenueVoidResponse"> & {
+  /**
+   * The voided row. Absent when the order had no revenue row at all — which is not an error: an order
+   * placed before #153, or one whose publish was lost, has nothing to void, and refusing would make a
+   * redelivery fail forever.
+   *
+   * @generated from field: warehouse.revenue.v1.OrderRevenue revenue = 1;
+   */
+  revenue?: OrderRevenue;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueVoidResponse.
+ * Use `create(RevenueVoidResponseSchema)` to create a new message.
+ */
+export const RevenueVoidResponseSchema: GenMessage<RevenueVoidResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 7);
+
+/**
  * RevenueService owns `order_revenues` (#75) — one row per order, holding what we EXPECTED to make on
  * it, frozen when the order was placed.
  *
@@ -304,6 +358,16 @@ export const RevenueService: GenService<{
     methodKind: "unary";
     input: typeof RevenueListRequestSchema;
     output: typeof RevenueListResponseSchema;
+  },
+  /**
+   * Stop an order's row counting — it was cancelled (#164).
+   *
+   * @generated from rpc warehouse.revenue.v1.RevenueService.RevenueVoid
+   */
+  revenueVoid: {
+    methodKind: "unary";
+    input: typeof RevenueVoidRequestSchema;
+    output: typeof RevenueVoidResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_revenue_v1_revenue, 0);

@@ -151,3 +151,78 @@ func TestOrderPlacedEvent_DeclaresItsTopic(t *testing.T) {
 		t.Fatalf("topic = %q, want %q", topic, "order-placed")
 	}
 }
+
+// #164 — cancelling an order ANNOUNCES it, so revenue can stop counting a sale that fell through.
+func TestOrderCancel_PublishesTheCancellation(t *testing.T) {
+	db := san_testdb.DB(t)
+	rec := &recorder{}
+	svc := newServiceWithEvents(t, db, rec.send)
+	ctx := context.Background()
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(ctx, connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	id := created.Msg.GetOrder().GetId()
+
+	_, err = svc.OrderCancel(ctx, connect.NewRequest(&sellingv1.OrderCancelRequest{
+		TeamId: 2, OrderId: id,
+	}))
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	// Two events now: the placement, then the cancellation.
+	if len(rec.events) != 2 {
+		t.Fatalf("published %d events, want 2 (placed, then cancelled): %v", len(rec.events), rec.events)
+	}
+
+	cancelled, ok := rec.events[1].(*sellingv1.OrderCancelledEvent)
+	if !ok {
+		t.Fatalf("second event is %T, want an OrderCancelledEvent", rec.events[1])
+	}
+
+	if cancelled.GetOrderId() != id || cancelled.GetTeamId() != 2 {
+		t.Fatalf("cancelled event = order %d team %d, want order %d team 2",
+			cancelled.GetOrderId(), cancelled.GetTeamId(), id)
+	}
+}
+
+// #164 — a publish failure must not fail the CANCEL either.
+//
+// The same reasoning as the placement (#153): the cancel is committed by then, and refusing it
+// afterwards would tell the caller something untrue about what happened. The row can be re-voided
+// safely, so a lost publish is repairable.
+func TestOrderCancel_SurvivesAPublishFailure(t *testing.T) {
+	db := san_testdb.DB(t)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+	ctx := context.Background()
+
+	// Placement must succeed, so the sender only starts failing once the order exists.
+	rec := &recorder{}
+	svc := newServiceWithEvents(t, db, func(c context.Context, e proto.Message) (string, error) {
+		if _, isCancel := e.(*sellingv1.OrderCancelledEvent); isCancel {
+			return "", errors.New("broker unavailable")
+		}
+
+		return rec.send(c, e)
+	})
+
+	created, err := svc.OrderCreate(ctx, connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	res, err := svc.OrderCancel(ctx, connect.NewRequest(&sellingv1.OrderCancelRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("a broker outage must not fail the cancel: %v", err)
+	}
+
+	if res.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
+		t.Fatalf("order status = %v, want CANCELLED", res.Msg.GetOrder().GetStatus())
+	}
+}

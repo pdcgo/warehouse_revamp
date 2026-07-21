@@ -163,3 +163,98 @@ func TestRevenuePush_NacksAnUndecodablePayload(t *testing.T) {
 		t.Fatal("an undecodable payload was ACKed — it would be silently discarded")
 	}
 }
+
+// #164 — A CANCELLED ORDER STOPS COUNTING. This is the bug the void fixes: revenue recorded a row when
+// the order was placed, the order was then cancelled, and nothing told revenue — so the report counted
+// money from an order that fell through.
+func TestRevenuePush_ACancelledOrderIsVoidedAndStopsCounting(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := revenue_v1.NewService(db)
+	h := revenue_service.NewRevenuePushHandler(svc)
+	ctx := context.Background()
+
+	err := deliver(t, h, revenue_service.OrderPlacedSubscription, placedEvent())
+	if err != nil {
+		t.Fatalf("placed: %v", err)
+	}
+
+	list := func() *revenuev1.RevenueListResponse {
+		t.Helper()
+
+		res, lErr := svc.RevenueList(ctx, connect.NewRequest(&revenuev1.RevenueListRequest{
+			TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 10},
+		}))
+		if lErr != nil {
+			t.Fatalf("list: %v", lErr)
+		}
+
+		return res.Msg
+	}
+
+	// Before: it counts.
+	if got := list().GetTotals().GetRevenue(); got != 35000 {
+		t.Fatalf("before the cancel, total revenue = %d, want 35000", got)
+	}
+
+	// The cancel arrives.
+	data, err := protojson.Marshal(&sellingv1.OrderCancelledEvent{TeamId: 2, OrderId: 4242})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	cancel := func() error {
+		return h(ctx, &event_source.PushRequest{
+			Subscription: revenue_service.OrderCancelledSubscription,
+			Message:      event_source.PushMessage{MessageID: "c-1", Data: data},
+		})
+	}
+
+	if err = cancel(); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	// After: it does not. Neither listed nor totalled — the row is kept, but it earned nothing.
+	after := list()
+
+	if got := after.GetTotals().GetRevenue(); got != 0 {
+		t.Fatalf("after the cancel, total revenue = %d, want 0 — the report is still overstating", got)
+	}
+	// The row is STILL LISTED, and flagged. That is the difference between voiding and deleting: the
+	// order was placed and then cancelled, and that is exactly what somebody looking at the money wants
+	// to see. Hiding it here would make it as invisible as deleting it.
+	if n := len(after.GetRevenues()); n != 1 {
+		t.Fatalf("the voided row is no longer listed (%d rows) — voiding should keep it visible", n)
+	}
+	if !after.GetRevenues()[0].GetVoided() {
+		t.Fatal("the listed row is not flagged as voided, so it reads as live money")
+	}
+
+	// A REDELIVERY MUST ACK. Pub/Sub delivers at least once, so re-voiding an already-voided row is
+	// normal — NACKing it would loop forever on a message that can never succeed.
+	if err = cancel(); err != nil {
+		t.Fatalf("a redelivered cancel must ACK, got %v", err)
+	}
+}
+
+// #164 — cancelling an order that has NO revenue row is success, not NotFound.
+//
+// An order placed before #153, or one whose publish was lost, has nothing to void. Refusing would turn
+// an ordinary gap into a poison message that Pub/Sub redelivers forever.
+func TestRevenuePush_CancellingAnUnrecordedOrderIsFine(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := revenue_v1.NewService(db)
+	h := revenue_service.NewRevenuePushHandler(svc)
+
+	data, err := protojson.Marshal(&sellingv1.OrderCancelledEvent{TeamId: 2, OrderId: 999999})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	err = h(context.Background(), &event_source.PushRequest{
+		Subscription: revenue_service.OrderCancelledSubscription,
+		Message:      event_source.PushMessage{MessageID: "c-none", Data: data},
+	})
+	if err != nil {
+		t.Fatalf("cancelling an order with no revenue row = %v, want success", err)
+	}
+}

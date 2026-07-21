@@ -19,6 +19,9 @@ import (
 // is how the wrong events end up in the wrong branch.
 const OrderPlacedSubscription = "revenue-order-placed"
 
+// OrderCancelledSubscription feeds revenue the cancels that void a row (#164).
+const OrderCancelledSubscription = "revenue-order-cancelled"
+
 // NewRevenuePushHandler consumes OrderPlacedEvent and writes the order's expected-margin row (#153).
 //
 // This is the wiring that makes #75 and #78 real: RevenueRecord existed and was tested, but nothing
@@ -70,6 +73,24 @@ func NewRevenuePushHandler(svc *revenue_v1.Service) event_source.PushHandler {
 			}
 
 			return nil
+
+		case OrderCancelledSubscription:
+			event := sellingv1.OrderCancelledEvent{}
+
+			err := event_source.DecodeEvent(msg, &event)
+			if err != nil {
+				return err
+			}
+
+			// RevenueVoid is idempotent and treats a missing row as success (#164), so a redelivery and
+			// an order that never had a row both ACK. Neither is an error worth NACKing, and NACKing
+			// either would loop forever.
+			_, err = svc.RevenueVoid(ctx, connect.NewRequest(&revenuev1.RevenueVoidRequest{
+				TeamId:  event.GetTeamId(),
+				OrderId: event.GetOrderId(),
+			}))
+
+			return err
 
 		default:
 			slog.InfoContext(ctx, "revenue push: no handler for subscription, acking",

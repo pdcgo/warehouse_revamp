@@ -27,6 +27,8 @@ service RevenueService {
   rpc RevenueRecord(RevenueRecordRequest) returns (RevenueRecordResponse);
   // What a team's orders were expected to make, newest first.
   rpc RevenueList(RevenueListRequest) returns (RevenueListResponse);
+  // Stop an order's row counting — it was cancelled (#164).
+  rpc RevenueVoid(RevenueVoidRequest) returns (RevenueVoidResponse);
 }
 
 // What one order was expected to make.
@@ -60,6 +62,13 @@ message OrderRevenue {
   bool cost_known = 8;
 
   int64 created_at_unix = 9;
+
+  // Whether this row still counts (#164). An order cancelled after it was placed earned nothing, so
+  // its row is VOIDED — kept, but excluded from every total.
+  //
+  // Kept rather than deleted because a deleted row cannot tell you an order was placed and then
+  // cancelled, and that is a thing somebody looking at the money wants to see.
+  bool voided = 10;
 }
 
 message RevenueRecordRequest {
@@ -142,4 +151,30 @@ message RevenueTotals {
   // Naming the number lets a reader judge how much of the total to trust, which is the only honest
   // option while some costs are unknown.
   uint64 unknown_cost_orders = 5;
+}
+
+message RevenueVoidRequest {
+  // Write: the same selling-team roles that place and cancel orders — voiding is part of cancelling.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RevenueVoidResponse {
+  // The voided row. Absent when the order had no revenue row at all — which is not an error: an order
+  // placed before #153, or one whose publish was lost, has nothing to void, and refusing would make a
+  // redelivery fail forever.
+  OrderRevenue revenue = 1;
 }

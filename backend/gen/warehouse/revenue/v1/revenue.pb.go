@@ -52,6 +52,12 @@ type OrderRevenue struct {
 	// which is a worse kind of missing.
 	CostKnown     bool  `protobuf:"varint,8,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
 	CreatedAtUnix int64 `protobuf:"varint,9,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// Whether this row still counts (#164). An order cancelled after it was placed earned nothing, so
+	// its row is VOIDED — kept, but excluded from every total.
+	//
+	// Kept rather than deleted because a deleted row cannot tell you an order was placed and then
+	// cancelled, and that is a thing somebody looking at the money wants to see.
+	Voided        bool `protobuf:"varint,10,opt,name=voided,proto3" json:"voided,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -147,6 +153,13 @@ func (x *OrderRevenue) GetCreatedAtUnix() int64 {
 		return x.CreatedAtUnix
 	}
 	return 0
+}
+
+func (x *OrderRevenue) GetVoided() bool {
+	if x != nil {
+		return x.Voided
+	}
+	return false
 }
 
 type RevenueRecordRequest struct {
@@ -482,11 +495,110 @@ func (x *RevenueTotals) GetUnknownCostOrders() uint64 {
 	return 0
 }
 
+type RevenueVoidRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId       uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueVoidRequest) Reset() {
+	*x = RevenueVoidRequest{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueVoidRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueVoidRequest) ProtoMessage() {}
+
+func (x *RevenueVoidRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueVoidRequest.ProtoReflect.Descriptor instead.
+func (*RevenueVoidRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RevenueVoidRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *RevenueVoidRequest) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+type RevenueVoidResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The voided row. Absent when the order had no revenue row at all — which is not an error: an order
+	// placed before #153, or one whose publish was lost, has nothing to void, and refusing would make a
+	// redelivery fail forever.
+	Revenue       *OrderRevenue `protobuf:"bytes,1,opt,name=revenue,proto3" json:"revenue,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueVoidResponse) Reset() {
+	*x = RevenueVoidResponse{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueVoidResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueVoidResponse) ProtoMessage() {}
+
+func (x *RevenueVoidResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueVoidResponse.ProtoReflect.Descriptor instead.
+func (*RevenueVoidResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RevenueVoidResponse) GetRevenue() *OrderRevenue {
+	if x != nil {
+		return x.Revenue
+	}
+	return nil
+}
+
 var File_warehouse_revenue_v1_revenue_proto protoreflect.FileDescriptor
 
 const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/revenue/v1/revenue.proto\x12\x14warehouse.revenue.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x95\x02\n" +
+	"\"warehouse/revenue/v1/revenue.proto\x12\x14warehouse.revenue.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xad\x02\n" +
 	"\fOrderRevenue\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x19\n" +
@@ -497,7 +609,9 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\x0fexpected_margin\x18\a \x01(\x03R\x0eexpectedMargin\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\b \x01(\bR\tcostKnown\x12&\n" +
-	"\x0fcreated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix\"\xfa\x01\n" +
+	"\x0fcreated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix\x12\x16\n" +
+	"\x06voided\x18\n" +
+	" \x01(\bR\x06voided\"\xfa\x01\n" +
 	"\x14RevenueRecordRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId\x12!\n" +
@@ -523,10 +637,17 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\x04cogs\x18\x02 \x01(\x03R\x04cogs\x12#\n" +
 	"\rshipping_cost\x18\x03 \x01(\x03R\fshippingCost\x12'\n" +
 	"\x0fexpected_margin\x18\x04 \x01(\x03R\x0eexpectedMargin\x12.\n" +
-	"\x13unknown_cost_orders\x18\x05 \x01(\x04R\x11unknownCostOrders2\xde\x01\n" +
+	"\x13unknown_cost_orders\x18\x05 \x01(\x04R\x11unknownCostOrders\"k\n" +
+	"\x12RevenueVoidRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
+	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"S\n" +
+	"\x13RevenueVoidResponse\x12<\n" +
+	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue2\xc2\x02\n" +
 	"\x0eRevenueService\x12h\n" +
 	"\rRevenueRecord\x12*.warehouse.revenue.v1.RevenueRecordRequest\x1a+.warehouse.revenue.v1.RevenueRecordResponse\x12b\n" +
-	"\vRevenueList\x12(.warehouse.revenue.v1.RevenueListRequest\x1a).warehouse.revenue.v1.RevenueListResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1;revenuev1b\x06proto3"
+	"\vRevenueList\x12(.warehouse.revenue.v1.RevenueListRequest\x1a).warehouse.revenue.v1.RevenueListResponse\x12b\n" +
+	"\vRevenueVoid\x12(.warehouse.revenue.v1.RevenueVoidRequest\x1a).warehouse.revenue.v1.RevenueVoidResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1;revenuev1b\x06proto3"
 
 var (
 	file_warehouse_revenue_v1_revenue_proto_rawDescOnce sync.Once
@@ -540,7 +661,7 @@ func file_warehouse_revenue_v1_revenue_proto_rawDescGZIP() []byte {
 	return file_warehouse_revenue_v1_revenue_proto_rawDescData
 }
 
-var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_warehouse_revenue_v1_revenue_proto_goTypes = []any{
 	(*OrderRevenue)(nil),          // 0: warehouse.revenue.v1.OrderRevenue
 	(*RevenueRecordRequest)(nil),  // 1: warehouse.revenue.v1.RevenueRecordRequest
@@ -548,24 +669,29 @@ var file_warehouse_revenue_v1_revenue_proto_goTypes = []any{
 	(*RevenueListRequest)(nil),    // 3: warehouse.revenue.v1.RevenueListRequest
 	(*RevenueListResponse)(nil),   // 4: warehouse.revenue.v1.RevenueListResponse
 	(*RevenueTotals)(nil),         // 5: warehouse.revenue.v1.RevenueTotals
-	(*v1.PageFilter)(nil),         // 6: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),           // 7: warehouse.common.v1.PageInfo
+	(*RevenueVoidRequest)(nil),    // 6: warehouse.revenue.v1.RevenueVoidRequest
+	(*RevenueVoidResponse)(nil),   // 7: warehouse.revenue.v1.RevenueVoidResponse
+	(*v1.PageFilter)(nil),         // 8: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),           // 9: warehouse.common.v1.PageInfo
 }
 var file_warehouse_revenue_v1_revenue_proto_depIdxs = []int32{
 	0, // 0: warehouse.revenue.v1.RevenueRecordResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
-	6, // 1: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	8, // 1: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	0, // 2: warehouse.revenue.v1.RevenueListResponse.revenues:type_name -> warehouse.revenue.v1.OrderRevenue
-	7, // 3: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	9, // 3: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	5, // 4: warehouse.revenue.v1.RevenueListResponse.totals:type_name -> warehouse.revenue.v1.RevenueTotals
-	1, // 5: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
-	3, // 6: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
-	2, // 7: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
-	4, // 8: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0, // 5: warehouse.revenue.v1.RevenueVoidResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
+	1, // 6: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
+	3, // 7: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
+	6, // 8: warehouse.revenue.v1.RevenueService.RevenueVoid:input_type -> warehouse.revenue.v1.RevenueVoidRequest
+	2, // 9: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
+	4, // 10: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
+	7, // 11: warehouse.revenue.v1.RevenueService.RevenueVoid:output_type -> warehouse.revenue.v1.RevenueVoidResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_revenue_v1_revenue_proto_init() }
@@ -579,7 +705,7 @@ func file_warehouse_revenue_v1_revenue_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_revenue_v1_revenue_proto_rawDesc), len(file_warehouse_revenue_v1_revenue_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

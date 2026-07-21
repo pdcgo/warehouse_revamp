@@ -51,5 +51,8 @@ func orderRevenueToProto(r *revenue_service_models.OrderRevenue) *revenuev1.Orde
 		ExpectedMargin: r.ExpectedMargin,
 		CostKnown:      r.CostKnown,
 		CreatedAtUnix:  r.CreatedAt.Unix(),
+		// #164 — a cancelled order earned nothing. The row is kept so the history is visible; every
+		// total excludes it.
+		Voided: r.VoidedAt != nil,
 	}
 }

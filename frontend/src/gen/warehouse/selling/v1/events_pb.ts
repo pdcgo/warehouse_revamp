@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/events.proto.
  */
 export const file_warehouse_selling_v1_events: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIpMBChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCDoSirUYDgoMb3JkZXItcGxhY2VkQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_warehouse_event_base_v1_event]);
+  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIpMBChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCDoSirUYDgoMb3JkZXItcGxhY2VkIk8KE09yZGVyQ2FuY2VsbGVkRXZlbnQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBDoVirUYEQoPb3JkZXItY2FuY2VsbGVkQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_warehouse_event_base_v1_event]);
 
 /**
  * OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
@@ -83,4 +83,36 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
  */
 export const OrderPlacedEventSchema: GenMessage<OrderPlacedEvent> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_events, 0);
+
+/**
+ * OrderCancelledEvent announces that an order was cancelled (#164).
+ *
+ * Published by selling_service after the cancel commits; consumed by revenue_service, which VOIDS the
+ * order's expected-margin row. Without it, revenue keeps counting money from an order that fell
+ * through — the report was overstating from #153 until this landed.
+ *
+ * It carries only the ids. Unlike OrderPlacedEvent, which ships the frozen money because the money IS
+ * the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,
+ * and the figures being voided are already on the row.
+ *
+ * @generated from message warehouse.selling.v1.OrderCancelledEvent
+ */
+export type OrderCancelledEvent = Message<"warehouse.selling.v1.OrderCancelledEvent"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 2;
+   */
+  orderId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderCancelledEvent.
+ * Use `create(OrderCancelledEventSchema)` to create a new message.
+ */
+export const OrderCancelledEventSchema: GenMessage<OrderCancelledEvent> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_events, 1);
 

@@ -739,6 +739,7 @@ erDiagram
         bigserial   id              PK
         bigint      team_id         "the SELLING team, opaque cross-service id, no FK"
         bigint      order_id        UK "the order, opaque; UNIQUE — one record per order"
+        timestamptz voided_at       "NULL = still counts; set when the order was cancelled (#164)"
         bigint      revenue         "what the buyer paid, copied from the order"
         bigint      cogs            "what the goods cost us, copied"
         bigint      shipping_cost   "copied"

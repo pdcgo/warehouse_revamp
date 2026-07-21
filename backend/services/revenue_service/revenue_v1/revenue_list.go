@@ -22,6 +22,12 @@ func (s *Service) RevenueList(
 	query := s.db.
 		WithContext(ctx).
 		Model(&revenue_service_models.OrderRevenue{}).
+		// EVERY row, voided ones included (#164).
+		//
+		// The list shows them and the TOTALS below exclude them, and that split is the whole point of
+		// voiding rather than deleting: a cancelled order earned nothing, but the fact that it was placed
+		// and then cancelled is exactly what somebody looking at the money wants to see. Hiding the row
+		// here would make it as invisible as deleting it, which is the option the owner did not choose.
 		Where("team_id = ?", req.Msg.GetTeamId())
 
 	var total int64
@@ -89,7 +95,7 @@ func teamTotals(ctx context.Context, s *Service, teamID uint64) (*revenuev1.Reve
 				// silently overstates margin. Naming the number is the only honest option.
 				"COUNT(*) FILTER (WHERE NOT cost_known) AS unknown_cost_orders",
 		).
-		Where("team_id = ?", teamID).
+		Where("team_id = ? AND voided_at IS NULL", teamID).
 		Scan(&agg).
 		Error
 	if err != nil {

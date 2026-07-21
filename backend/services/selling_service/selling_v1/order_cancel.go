@@ -2,6 +2,7 @@ package selling_v1
 
 import (
 	"context"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -73,6 +74,27 @@ func (s *Service) OrderCancel(
 	})
 	if err != nil {
 		return nil, mapOrderErr(err)
+	}
+
+	// THE CANCEL IS COMMITTED. Announce it (#164) so revenue stops counting an order that fell through.
+	//
+	// After the commit and non-fatal, for exactly the reasons OrderCreate publishes that way: a
+	// rolled-back cancel that revenue had already voided would be a live order with no revenue, and a
+	// cancel that failed because a report could not be updated would be the tail wagging the dog.
+	//
+	// The row can be re-voided safely — RevenueVoid is idempotent and treats a missing row as success —
+	// so a lost publish is repairable rather than permanent.
+	_, publishErr := s.events(ctx, &sellingv1.OrderCancelledEvent{
+		TeamId:  order.TeamID,
+		OrderId: order.ID,
+	})
+	if publishErr != nil {
+		slog.ErrorContext(ctx, "order cancelled but OrderCancelledEvent was not published — "+
+			"its revenue row is still counting and must be voided by hand",
+			"order_id", order.ID,
+			"team_id", order.TeamID,
+			"error", publishErr,
+		)
 	}
 
 	return connect.NewResponse(&sellingv1.OrderCancelResponse{Order: orderToProto(&order)}), nil

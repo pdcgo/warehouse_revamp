@@ -131,6 +131,67 @@ func (x *OrderPlacedEvent) GetCostKnown() bool {
 	return false
 }
 
+// OrderCancelledEvent announces that an order was cancelled (#164).
+//
+// Published by selling_service after the cancel commits; consumed by revenue_service, which VOIDS the
+// order's expected-margin row. Without it, revenue keeps counting money from an order that fell
+// through — the report was overstating from #153 until this landed.
+//
+// It carries only the ids. Unlike OrderPlacedEvent, which ships the frozen money because the money IS
+// the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,
+// and the figures being voided are already on the row.
+type OrderCancelledEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId       uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderCancelledEvent) Reset() {
+	*x = OrderCancelledEvent{}
+	mi := &file_warehouse_selling_v1_events_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderCancelledEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderCancelledEvent) ProtoMessage() {}
+
+func (x *OrderCancelledEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_events_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderCancelledEvent.ProtoReflect.Descriptor instead.
+func (*OrderCancelledEvent) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_events_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *OrderCancelledEvent) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderCancelledEvent) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
 var File_warehouse_selling_v1_events_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_events_proto_rawDesc = "" +
@@ -144,7 +205,11 @@ const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"\rshipping_cost\x18\x05 \x01(\x03R\fshippingCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown:\x12\x8a\xb5\x18\x0e\n" +
-	"\forder-placedBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\forder-placed\"`\n" +
+	"\x13OrderCancelledEvent\x12\x17\n" +
+	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId:\x15\x8a\xb5\x18\x11\n" +
+	"\x0forder-cancelledBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_events_proto_rawDescOnce sync.Once
@@ -158,9 +223,10 @@ func file_warehouse_selling_v1_events_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_events_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_warehouse_selling_v1_events_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_warehouse_selling_v1_events_proto_goTypes = []any{
-	(*OrderPlacedEvent)(nil), // 0: warehouse.selling.v1.OrderPlacedEvent
+	(*OrderPlacedEvent)(nil),    // 0: warehouse.selling.v1.OrderPlacedEvent
+	(*OrderCancelledEvent)(nil), // 1: warehouse.selling.v1.OrderCancelledEvent
 }
 var file_warehouse_selling_v1_events_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -181,7 +247,7 @@ func file_warehouse_selling_v1_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_events_proto_rawDesc), len(file_warehouse_selling_v1_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
