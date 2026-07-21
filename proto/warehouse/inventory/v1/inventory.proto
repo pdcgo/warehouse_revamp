@@ -35,6 +35,9 @@ service InventoryService {
   // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
   rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse);
 
+  // Which shelves already hold a product (#156) — the put-away recommendation.
+  rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse);
+
   // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
   rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
 }
@@ -545,4 +548,63 @@ message WarehouseProductListResponse {
   // put a product's name in two places, and the copy would go stale the first time somebody renamed it.
   repeated uint64 product_ids = 1;
   warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductPlaces answers "WHICH SHELVES ALREADY HOLD THIS PRODUCT, and how many are on each" (#156).
+//
+// It is the Accept screen's recommendation: a person putting a delivery away should add to the shelf
+// the product already lives on rather than starting a second pile of the same thing in a different
+// aisle. Two piles of one product is how a warehouse ends up walking past stock it has.
+//
+// The inverse of RackStock (#138), which asks "what is on A-01-3". Neither existing read answers this:
+// StockList is per product SUMMED across racks and deliberately carries no rack (#135), and
+// StockPickLocations reads the LEDGER for one pick rather than current levels.
+message ProductPlacesRequest {
+  // Read: the warehouse's own people — they are the ones walking to the shelf.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The products to look up. A LIST because the Accept screen asks about every line of a delivery at
+  // once, and one call beats one per line.
+  //
+  // Capped rather than paginated: a restock request's lines are the bound, and a page cursor over
+  // "the places of these products" would be a window into an answer the caller needs whole.
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+// One product, on one shelf, and how many sit there right now.
+message ProductPlace {
+  uint64 product_id = 1;
+
+  // 0 means the UNPLACED PILE (#135) — and it belongs in this answer as much as any shelf. "There are
+  // already 12 of these unshelved" is exactly what stops someone starting a second pile.
+  uint64 rack_id = 2;
+  string rack_code = 3;
+
+  int64 on_hand = 4;
+}
+
+message ProductPlacesResponse {
+  // Ordered product, then the unplaced pile, then shelves by label — the same order the pick walk uses
+  // (#151), so a place reads the same wherever it is shown.
+  //
+  // UNPAGINATED, and the HARD RULE 9 exemption stated out loud: it is bounded by the products ASKED
+  // FOR (capped above) times the handful of places each one sits on. A product on a hundred shelves is
+  // not a paging problem, it is a warehouse that needs tidying.
+  repeated ProductPlace places = 1;
 }

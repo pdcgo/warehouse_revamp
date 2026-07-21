@@ -63,6 +63,9 @@ const (
 	// InventoryServiceWarehouseProductListProcedure is the fully-qualified name of the
 	// InventoryService's WarehouseProductList RPC.
 	InventoryServiceWarehouseProductListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseProductList"
+	// InventoryServiceProductPlacesProcedure is the fully-qualified name of the InventoryService's
+	// ProductPlaces RPC.
+	InventoryServiceProductPlacesProcedure = "/warehouse.inventory.v1.InventoryService/ProductPlaces"
 	// InventoryServiceStockPickLocationsProcedure is the fully-qualified name of the InventoryService's
 	// StockPickLocations RPC.
 	InventoryServiceStockPickLocationsProcedure = "/warehouse.inventory.v1.InventoryService/StockPickLocations"
@@ -85,6 +88,8 @@ type InventoryServiceClient interface {
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
+	// Which shelves already hold a product (#156) — the put-away recommendation.
+	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 }
@@ -160,6 +165,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
 			connect.WithClientOptions(opts...),
 		),
+		productPlaces: connect.NewClient[v1.ProductPlacesRequest, v1.ProductPlacesResponse](
+			httpClient,
+			baseURL+InventoryServiceProductPlacesProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductPlaces")),
+			connect.WithClientOptions(opts...),
+		),
 		stockPickLocations: connect.NewClient[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse](
 			httpClient,
 			baseURL+InventoryServiceStockPickLocationsProcedure,
@@ -181,6 +192,7 @@ type inventoryServiceClient struct {
 	stockReturn          *connect.Client[v1.StockReturnRequest, v1.StockReturnResponse]
 	stockCost            *connect.Client[v1.StockCostRequest, v1.StockCostResponse]
 	warehouseProductList *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
+	productPlaces        *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
 }
 
@@ -234,6 +246,11 @@ func (c *inventoryServiceClient) WarehouseProductList(ctx context.Context, req *
 	return c.warehouseProductList.CallUnary(ctx, req)
 }
 
+// ProductPlaces calls warehouse.inventory.v1.InventoryService.ProductPlaces.
+func (c *inventoryServiceClient) ProductPlaces(ctx context.Context, req *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error) {
+	return c.productPlaces.CallUnary(ctx, req)
+}
+
 // StockPickLocations calls warehouse.inventory.v1.InventoryService.StockPickLocations.
 func (c *inventoryServiceClient) StockPickLocations(ctx context.Context, req *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error) {
 	return c.stockPickLocations.CallUnary(ctx, req)
@@ -257,6 +274,8 @@ type InventoryServiceHandler interface {
 	StockCost(context.Context, *connect.Request[v1.StockCostRequest]) (*connect.Response[v1.StockCostResponse], error)
 	// The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
 	WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error)
+	// Which shelves already hold a product (#156) — the put-away recommendation.
+	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
 }
@@ -328,6 +347,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseProductList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceProductPlacesHandler := connect.NewUnaryHandler(
+		InventoryServiceProductPlacesProcedure,
+		svc.ProductPlaces,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductPlaces")),
+		connect.WithHandlerOptions(opts...),
+	)
 	inventoryServiceStockPickLocationsHandler := connect.NewUnaryHandler(
 		InventoryServiceStockPickLocationsProcedure,
 		svc.StockPickLocations,
@@ -356,6 +381,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockCostHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseProductListProcedure:
 			inventoryServiceWarehouseProductListHandler.ServeHTTP(w, r)
+		case InventoryServiceProductPlacesProcedure:
+			inventoryServiceProductPlacesHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
 			inventoryServiceStockPickLocationsHandler.ServeHTTP(w, r)
 		default:
@@ -405,6 +432,10 @@ func (UnimplementedInventoryServiceHandler) StockCost(context.Context, *connect.
 
 func (UnimplementedInventoryServiceHandler) WarehouseProductList(context.Context, *connect.Request[v1.WarehouseProductListRequest]) (*connect.Response[v1.WarehouseProductListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseProductList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductPlaces is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error) {
