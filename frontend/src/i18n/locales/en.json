@@ -445,7 +445,8 @@
     },
     "select": {
       "placeholder": "Select a supplier",
-      "unavailable": "Suppliers unavailable"
+      "unavailable": "Suppliers unavailable",
+      "empty": "No suppliers found"
     }
   },
   "supplierChannel": {

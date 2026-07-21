@@ -68,3 +68,49 @@ test("ShippingSelect: search picks a courier, and clearing returns to none (#146
 
   await expect(page.getByText("Selected code: (none)")).toBeVisible();
 });
+
+// #109/#131 — SupplierSelect is a searchable Combobox, and it can be CLEARED back to no supplier.
+//
+// The clear is the part worth pinning, for the same reason as ShippingSelect: no supplier is a
+// legitimate value (a restock need not name one), and a picker that swallows the empty case is
+// WRITE-ONCE — a supplier recorded by mistake could never be removed. That exact bug was found in
+// #131, and converting to a combobox is a fresh chance to reintroduce it.
+test("SupplierSelect: search picks a supplier, and clearing returns to none (#109)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // A supplier for the ROOT team, which is the team the gallery demo runs as.
+  const supplier = await page.evaluate(async () => {
+    const token =
+      window.sessionStorage.getItem("warehouse_revamp.token") ??
+      window.localStorage.getItem("warehouse_revamp.token");
+
+    const res = await fetch(
+      "http://localhost:8081/warehouse.inventory.v1.SupplierService/SupplierCreate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: "1", name: "E2E Combobox Supplier", code: "ECS1" }),
+      },
+    );
+    if (!res.ok) throw new Error(`SupplierCreate: ${res.status} ${await res.text()}`);
+
+    return (await res.json()).supplier;
+  });
+
+  await page.goto("/components");
+
+  const select = page.getByTestId("supplier-select");
+  await expect(select).toBeVisible();
+
+  // Searchable, and matching on the CODE rather than the name — people type either.
+  await select.locator("input").fill("ECS1");
+  await page.getByTestId(`supplier-select-option-${supplier.id}`).click();
+
+  await expect(page.getByText(`Selected supplier id: ${supplier.id}`)).toBeVisible();
+
+  // And back to none. This is the assertion the write-once bug would fail.
+  await select.locator("input").clear();
+  await select.getByRole("button", { name: /clear/i }).click();
+
+  await expect(page.getByText("Selected supplier id: 0")).toBeVisible();
+});

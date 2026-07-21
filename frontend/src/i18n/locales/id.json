@@ -445,7 +445,8 @@
     },
     "select": {
       "placeholder": "Pilih pemasok",
-      "unavailable": "Pemasok tidak tersedia"
+      "unavailable": "Pemasok tidak tersedia",
+      "empty": "Pemasok tidak ditemukan"
     }
   },
   "supplierChannel": {
