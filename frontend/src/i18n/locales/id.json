@@ -20,7 +20,8 @@
     "settings": "Pengaturan",
     "profile": "Profil",
     "picking": "Pengambilan",
-    "revenue": "Pendapatan"
+    "revenue": "Pendapatan",
+    "costs": "Biaya"
   },
   "menu": {
     "language": "Bahasa",
@@ -976,5 +977,46 @@
     "damaged": "Rusak",
     "lineCost": "Biaya baris",
     "noBatches": "Belum ada kiriman produk ini."
+  },
+  "costs": {
+    "title": "Biaya",
+    "selectTeam": "Pilih tim untuk melihat biayanya.",
+    "empty": "Belum ada biaya bulan ini.",
+    "total": "Total",
+    "record": "Catat Biaya",
+    "recordTitle": "Catat Biaya",
+    "editTitle": "Ubah Biaya",
+    "save": "Simpan",
+    "edit": "Ubah",
+    "void": "Batalkan",
+    "voided": "Dibatalkan",
+    "dateHelp": "Tanggal biaya ini termasuk — gaji dibayar tanggal 5 adalah biaya bulan lalu.",
+    "table": {
+      "date": "Tanggal",
+      "kind": "Jenis",
+      "shop": "Toko",
+      "note": "Catatan",
+      "amount": "Jumlah",
+      "actions": "Aksi"
+    },
+    "kind": {
+      "ads": "Iklan",
+      "payroll": "Gaji",
+      "operational": "Operasional",
+      "other": "Lainnya",
+      "any": "Semua jenis",
+      "choose": "Pilih jenis"
+    },
+    "voidDialog": {
+      "title": "Batalkan Catatan Biaya",
+      "message": "Biaya ini tidak lagi dihitung dalam total. Barisnya tetap terlihat agar pembatalannya jelas.",
+      "confirm": "Batalkan"
+    },
+    "toast": {
+      "recorded": "Biaya dicatat",
+      "updated": "Biaya diperbarui",
+      "voided": "Biaya dibatalkan",
+      "voidFailed": "Tidak dapat membatalkan biaya"
+    }
   }
 }

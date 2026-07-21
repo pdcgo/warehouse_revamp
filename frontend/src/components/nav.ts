@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -34,6 +34,7 @@ const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
 const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
 const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
+const COSTS: MenuItem = { to: "/costs", label: "nav.costs", icon: Receipt };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -121,8 +122,13 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // Revenue is the MANAGER's view of those same orders (#78). Customer service places orders but
     // has no business reading the margin on them — which is exactly how RevenueList is scoped on the
     // server too, so this hides a link that would genuinely be refused.
+    //
+    // Costs (#170) sit beside it under the same gate: they are the two halves of one question, and
+    // CostList is scoped to the same roles for the same reason — a person taking orders has no
+    // business seeing the payroll number.
     if (isTeamManager(role)) {
       menu.push(REVENUE);
+      menu.push(COSTS);
     }
   }
 

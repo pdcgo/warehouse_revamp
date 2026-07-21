@@ -14,6 +14,7 @@ import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
 import { RevenueService } from "../gen/warehouse/revenue/v1/revenue_pb";
+import { CostService } from "../gen/warehouse/cost/v1/cost_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -36,6 +37,7 @@ export const restockClient = createClient(RestockRequestService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
 export const revenueClient = createClient(RevenueService, transport);
+export const costClient = createClient(CostService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

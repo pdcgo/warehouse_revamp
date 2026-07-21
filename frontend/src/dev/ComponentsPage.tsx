@@ -40,6 +40,8 @@ import {
 import { ShopSelect, description as shopSelectDescription } from "../components/ShopSelect";
 import { SupplierSelect, description as supplierSelectDescription } from "../components/SupplierSelect";
 import { CurrencyInput, description as currencyInputDescription } from "../components/CurrencyInput";
+import { CostKindSelect, costKindLabel, description as costKindSelectDescription } from "../components/CostKindSelect";
+import { CostKind } from "../gen/warehouse/cost/v1/cost_pb";
 import { RackSelect, UNPLACED, description as rackSelectDescription } from "../components/RackSelect";
 import {
   ProductSelect,
@@ -284,6 +286,20 @@ function ShopSelectDemo() {
       <Text fontSize="xs" color="fg.muted">
         Selected shop id: {id.toString()}
         {current ? "" : " — select a selling team to load shops"}
+      </Text>
+    </>
+  );
+}
+
+function CostKindDemo() {
+  const { t } = useTranslation();
+  const [kind, setKind] = useState<CostKind>(CostKind.UNSPECIFIED);
+
+  return (
+    <>
+      <CostKindSelect value={kind} onChange={setKind} />
+      <Text fontSize="xs" color="fg.muted">
+        Selected: {costKindLabel(t, kind) || "(none yet)"}
       </Text>
     </>
   );
@@ -676,6 +692,12 @@ const ENTRIES: Entry[] = [
     title: "CurrencyInput",
     description: currencyInputDescription,
     render: () => <CurrencyInputDemo />,
+  },
+  {
+    id: "cost-kind-select",
+    title: "CostKindSelect",
+    description: costKindSelectDescription,
+    render: () => <CostKindDemo />,
   },
   {
     id: "rack-select",

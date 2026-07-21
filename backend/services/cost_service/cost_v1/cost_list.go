@@ -72,9 +72,15 @@ func (s *Service) filtered(ctx context.Context, msg *costv1.CostListRequest) (*g
 	query := s.db.
 		WithContext(ctx).
 		Model(&cost_service_models.CostRecord{}).
-		// LIVE rows only. A voided cost was entered by mistake and earned its retraction; it is still
-		// visible on the row list (#169 shows it struck through) but it never counts.
-		Where("team_id = ? AND voided_at IS NULL", msg.GetTeamId())
+		// EVERY row, voided ones INCLUDED. The `voided_at IS NULL` predicate belongs to the TOTALS
+		// alone (see totals below), and keeping it out of here is the whole point of voiding rather
+		// than deleting: the list shows the retraction, the totals ignore it.
+		//
+		// It lived here first, and the comment beside it claimed voided rows were "still visible on the
+		// row list" while the code hid them — the same contradiction #164 shipped and had to correct in
+		// revenue. Hiding a voided row makes it exactly as invisible as deleting it, which is the
+		// option the owner did not choose.
+		Where("team_id = ?", msg.GetTeamId())
 
 	// THE PERIOD, inclusive at both ends. Server-side, because the list is paginated: a client-side
 	// date filter narrows the loaded page only and leaves the totals beside it unfiltered.
@@ -128,6 +134,11 @@ func (s *Service) totals(ctx context.Context, msg *costv1.CostListRequest) (*cos
 	var rows []kindTotalRow
 
 	err = query.
+		// LIVE rows only — and this is the ONLY place that predicate belongs. A voided cost was
+		// entered by mistake and earned its retraction, so it never counts; the list above still shows
+		// it, struck through, because an entry that was made and then withdrawn is exactly what
+		// somebody looking at a changed total wants to see.
+		Where("voided_at IS NULL").
 		Select("kind, COALESCE(SUM(amount), 0) AS total").
 		Group("kind").
 		Scan(&rows).

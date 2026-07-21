@@ -48,9 +48,25 @@ func TestCostVoid_StopsCountingButStaysVisible(t *testing.T) {
 		t.Fatal("the voided kind is still in the per-kind totals")
 	}
 
-	// The surviving row is untouched.
-	if n := len(after.GetCosts()); n != 1 || after.GetCosts()[0].GetId() != kept.GetId() {
-		t.Fatalf("the live list is %v, want just the payroll row", after.GetCosts())
+	// …but BOTH rows are still LISTED, and the voided one says so.
+	//
+	// That split is the whole point of voiding rather than deleting: the totals ignore it, the list
+	// shows it. Hiding it here would make it exactly as invisible as a delete. This assertion first
+	// said the list held ONE row — encoding the bug rather than the design — and the e2e caught it.
+	if n := len(after.GetCosts()); n != 2 {
+		t.Fatalf("the list holds %d rows, want 2 — a voided cost stays visible", n)
+	}
+
+	byID := map[uint64]bool{}
+	for _, c := range after.GetCosts() {
+		byID[c.GetId()] = c.GetVoided()
+	}
+
+	if byID[mistake.GetId()] != true {
+		t.Fatal("the voided cost is not flagged as voided, so it reads as live money")
+	}
+	if byID[kept.GetId()] != false {
+		t.Fatal("voiding one cost flagged another")
 	}
 }
 

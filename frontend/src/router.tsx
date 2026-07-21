@@ -65,6 +65,9 @@ const WarehouseProductPage = lazy(() =>
 const RestockAcceptPage = lazy(() =>
   import("./restock/RestockAcceptPage").then((m) => ({ default: m.RestockAcceptPage })),
 );
+const CostsPage = lazy(() =>
+  import("./costs/CostsPage").then((m) => ({ default: m.CostsPage })),
+);
 const RevenuePage = lazy(() =>
   import("./revenue/RevenuePage").then((m) => ({ default: m.RevenuePage })),
 );
@@ -147,6 +150,8 @@ export const router = createBrowserRouter([
       { path: "orders", element: <OrdersPage /> },
       // What the team's orders were expected to make (#78).
       { path: "revenue", element: <RevenuePage /> },
+      // What the team spent that no order caused (#170).
+      { path: "costs", element: <CostsPage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },

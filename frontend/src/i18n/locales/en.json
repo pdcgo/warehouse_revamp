@@ -20,7 +20,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "picking": "Picking",
-    "revenue": "Revenue"
+    "revenue": "Revenue",
+    "costs": "Costs"
   },
   "menu": {
     "language": "Language",
@@ -976,5 +977,46 @@
     "damaged": "Damaged",
     "lineCost": "Line cost",
     "noBatches": "No deliveries of this product yet."
+  },
+  "costs": {
+    "title": "Costs",
+    "selectTeam": "Select a team to view its costs.",
+    "empty": "No costs recorded this month.",
+    "total": "Total",
+    "record": "Record Cost",
+    "recordTitle": "Record Cost",
+    "editTitle": "Edit Cost",
+    "save": "Save",
+    "edit": "Edit",
+    "void": "Void",
+    "voided": "Voided",
+    "dateHelp": "The date the cost belongs to — payroll paid on the 5th is last month's cost.",
+    "table": {
+      "date": "Date",
+      "kind": "Kind",
+      "shop": "Shop",
+      "note": "Note",
+      "amount": "Amount",
+      "actions": "Actions"
+    },
+    "kind": {
+      "ads": "Ads",
+      "payroll": "Payroll",
+      "operational": "Operational",
+      "other": "Other",
+      "any": "Any kind",
+      "choose": "Choose a kind"
+    },
+    "voidDialog": {
+      "title": "Void Cost Record",
+      "message": "This cost will stop counting toward the totals. It stays on the list so the retraction is visible.",
+      "confirm": "Void"
+    },
+    "toast": {
+      "recorded": "Cost recorded",
+      "updated": "Cost updated",
+      "voided": "Cost voided",
+      "voidFailed": "Could not void the cost"
+    }
   }
 }
