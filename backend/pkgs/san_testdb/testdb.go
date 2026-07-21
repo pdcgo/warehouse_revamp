@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -37,13 +38,55 @@ const defaultDSN = "host=localhost port=5433 user=user password=password dbname=
 // instead of all migrating at once.
 const migrationLockKey = 8748301
 
-// migrationServices is the apply ORDER — team_service seeds team 1 before user_service seeds the
-// root user that references it. There is no cross-service FK to enforce it, so order matters here
-// exactly as it does in production. Independent services (shipping_service) can go anywhere.
-// region_service is migrated for its SCHEMA only — the 91.599-row seed is NOT loaded here. A test
-// that needs regions inserts the handful it actually asserts on; making every test database pay for
-// the whole country would be slow and would couple unit tests to upstream reference data.
-var migrationServices = []string{"team_service", "user_service", "shipping_service", "product_service", "selling_service", "category_service", "document_service", "inventory_service", "region_service", "revenue_service"}
+// seededFirst is the only part of the apply order that MATTERS: team_service seeds team 1 before
+// user_service seeds the root user that references it. There is no cross-service FK to enforce that,
+// so the order is enforced here exactly as it is in production. Every other service owns its own
+// tables (HARD RULE 3) and can go anywhere.
+var seededFirst = []string{"team_service", "user_service"}
+
+// migrationServices lists what to migrate, DISCOVERED FROM THE FILESYSTEM rather than hand-written.
+//
+// It used to be a literal slice, and it went stale exactly as you would expect: revenue_service (#75)
+// shipped with migrations that were never added, so its table did not exist and its tests skipped
+// silently. The e2e's copy of this list had the same bug and was fixed the same way (#78). A list that
+// must be updated by hand every time a service is born is a bug with a delay on it.
+//
+// region_service is migrated for its SCHEMA only — the 91.599-row seed is NOT loaded here. A test that
+// needs regions inserts the handful it actually asserts on; making every test database pay for the
+// whole country would be slow and would couple unit tests to upstream reference data.
+func migrationServices(root string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, "services"))
+	if err != nil {
+		return nil, err
+	}
+
+	seeded := make(map[string]struct{}, len(seededFirst))
+	for _, s := range seededFirst {
+		seeded[s] = struct{}{}
+	}
+
+	out := append([]string(nil), seededFirst...)
+
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasSuffix(e.Name(), "_service") {
+			continue
+		}
+
+		if _, first := seeded[e.Name()]; first {
+			continue
+		}
+
+		// A service with no migrations of its own is not an error — it simply has nothing to apply.
+		_, statErr := os.Stat(filepath.Join(root, "services", e.Name(), "db_migrations"))
+		if statErr != nil {
+			continue
+		}
+
+		out = append(out, e.Name())
+	}
+
+	return out, nil
+}
 
 var (
 	once    sync.Once
@@ -203,7 +246,12 @@ func connect() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	for _, svc := range migrationServices {
+	services, err := migrationServices(root)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, svc := range services {
 		goose.SetTableName(svc + "_version")
 
 		dir := filepath.Join(root, "services", svc, "db_migrations")

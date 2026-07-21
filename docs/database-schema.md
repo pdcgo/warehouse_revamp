@@ -769,3 +769,48 @@ erDiagram
     untrustworthy.
   - `UNIQUE (order_id)`: recording twice would **double** every total computed from this table, which
     is the kind of error that looks like good news.
+
+---
+
+## cost_service
+
+`backend/services/cost_service/db_migrations/`
+
+```mermaid
+erDiagram
+    cost_records {
+        bigserial   id          PK
+        bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
+        bigint      shop_id     "optional on ANY kind, opaque; 0 = not attributed to one shop"
+        int         kind        "CostKind enum number — mapped in the handler, no DB CHECK"
+        bigint      amount      "whole rupiah, CHECK > 0 — the kind carries the direction"
+        date        occurred_at "the date the cost BELONGS TO, chosen by the person"
+        text        note        "what it actually was"
+        bigint      created_by  "who typed it, opaque user_service id"
+        timestamptz voided_at   "NULL while it still counts (#164's pattern)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`cost_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
+  payroll, rent. `revenue_service` already knows what an order earned; this is everything else.
+  - **A PERSON TYPES IT**, and every decision here follows from that. A revenue row is written by the
+    system from an order and frozen (#153); a cost row is entered by hand about a period, so it can be
+    wrong — hence correctable, hence `created_by`, hence `voided_at` rather than a delete.
+  - **`amount` is CHECK > 0.** The `kind` already says the money is going out, so a signed amount would
+    let a negative cost silently become revenue. It is a database constraint rather than a handler rule
+    because that is the one arithmetic mistake this table must not permit.
+  - **`occurred_at` is a DATE the person picks**, not the insert timestamp. Payroll is paid on the 5th
+    for the month before, and filing it under the 5th puts it in the wrong month for every report that
+    matters. A date, not a timestamp — nobody records the hour the rent was paid.
+  - **ONE team per row.** A warehouse *is* a team, so warehouse payroll is a cost on that warehouse's
+    `team_id` — and it is **never recharged onward** to the selling teams it fulfils for (owner,
+    2026-07-21). A recharge would have been a second team here, which is why it was settled before
+    this table was written rather than migrated in later.
+  - **`shop_id` is optional on EVERY kind** (owner), not only ads: a team running two shops may split
+    its packing wages or a subscription between them.
+  - **`kind` has no DB `CHECK`** (cf. #80). Proto enums are open and append-only, so a check
+    constraint would reject a kind the contract already allows on the day one is added.
+  - Indexed on `(team_id, occurred_at DESC, id DESC) WHERE voided_at IS NULL` — every screen and every
+    total asks for one team's live costs over a period.

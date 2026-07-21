@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package warehouse.cost.v1;
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1;costv1";
+
+// CostService owns `cost_records` (#161) — the money the business spent that NO ORDER caused.
+//
+// That is the whole reason it is not part of revenue_service. A revenue row is written BY THE SYSTEM
+// from an order (#153); a cost row is TYPED BY A PERSON about a period. Everything below follows from
+// that one difference: the form has to be quick, the mistake has to be fixable, and the row has to say
+// who entered it.
+//
+// Deliberately NOT here:
+//   - Per-order costs. COGS and shipping are frozen onto the order (#74); marketplace and payment fees
+//     per order belong beside the revenue row so settlement (#76) can compare them to a real payout.
+//     Putting them here would split one order's money across two services.
+//   - A ledger. No balances, no double entry — the same call revenue made (revenue §2.4). A cost row
+//     records that money went out, not an account movement.
+//
+// See plans/cost_service/brainstorming.md.
+// The RPCs land with #168 (CostCreate / CostList) and #169 (CostUpdate / CostVoid), which is also when
+// this file regains its validate / page / role_base imports. The record and its table come first so
+// they can be reviewed on their own — a schema is the expensive thing to get wrong.
+service CostService {}
+
+// What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
+// team's numbers then mean the same thing, so "ads spend across all teams last month" has an answer.
+// Two teams naming the same cost "Iklan" and "Marketing" is how cross-team reporting stops working on
+// the day it is first needed.
+//
+// Adding a kind is a proto change — rare, deliberate, and visible in review. APPEND ONLY, like every
+// enum here.
+enum CostKind {
+  COST_KIND_UNSPECIFIED = 0;
+
+  // Marketplace ads budget. The kind most likely to name a shop, though any kind may.
+  COST_KIND_ADS = 1;
+
+  // Wages paid to people.
+  COST_KIND_PAYROLL = 2;
+
+  // Rent, electricity, internet, subscriptions (owner, §2.1: this is what "payment" meant).
+  //
+  // Named OPERATIONAL rather than PAYMENT or BILL, and both rejections are worth keeping: "payment"
+  // reads as a payment FEE or a payment METHOD to anyone who was not in that conversation, and a
+  // "bill" is a document you receive — which a subscription charged automatically is not. All three
+  // kinds now answer the same question, what kind of SPENDING.
+  COST_KIND_OPERATIONAL = 3;
+
+  // Everything else, so nothing is unrecordable while the set above is still small.
+  COST_KIND_OTHER = 4;
+}
+
+// One cost. Money is whole rupiah as int64, like every other money field in this system.
+message CostRecord {
+  uint64 id = 1;
+
+  // WHOSE cost — the authorization scope, exactly as on a revenue row.
+  //
+  // ONE team per row (owner, 2026-07-21). A warehouse IS a team, so a warehouse's payroll is a cost on
+  // that warehouse's team_id — and it is never recharged onward to the selling teams it fulfils for.
+  // A recharge would have been a second team on this row, which is why it was asked before the
+  // migration was written rather than after.
+  uint64 team_id = 2;
+
+  // OPTIONALLY which shop the money was spent on. 0 = not attributed to one shop.
+  //
+  // Optional on EVERY kind (owner, 2026-07-21), not just ads: a team running two shops may want to
+  // split its packing wages or a subscription between them, and "only ads may name a shop" is a rule
+  // somebody would hit and ask to have relaxed.
+  uint64 shop_id = 3;
+
+  CostKind kind = 4;
+
+  // Whole rupiah, ALWAYS POSITIVE. The kind already says the money is going out, so a signed amount
+  // would let a negative cost silently become revenue.
+  int64 amount = 5;
+
+  // The date the cost BELONGS TO, as chosen by the person — not the moment the row was inserted.
+  // Payroll is paid on the 5th for the month before, and filing it under the 5th would put it in the
+  // wrong month for every report that matters. RFC3339 date (YYYY-MM-DD).
+  string occurred_at = 6;
+
+  // What it actually was. The enum says which bucket; this says which electricity bill.
+  string note = 7;
+
+  // WHO TYPED IT. A person entered this number by hand and it moves profit directly, so the row says
+  // whose number it is. Opaque user_service id.
+  uint64 created_by = 8;
+
+  // Whether this row still counts (#164's pattern). A cost entered by mistake is VOIDED, not deleted:
+  // a deleted row cannot tell you a cost was entered and then retracted, and somebody looking at a
+  // profit figure that changed wants to see why.
+  bool voided = 9;
+
+  int64 created_at_unix = 10;
+}
