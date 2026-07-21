@@ -30,6 +30,8 @@ type TeamInfo struct {
 	// Owned by other services. Pointers because NULL means "unset", which is different from 0.
 	ReturnWarehouseID *uint64
 	ReturnUserID      *uint64
+	// The warehouse this SELLING team ships from by default (#145). NULL = not configured.
+	DefaultWarehouseID *uint64
 
 	ContactNumber     string
 	BankType          string

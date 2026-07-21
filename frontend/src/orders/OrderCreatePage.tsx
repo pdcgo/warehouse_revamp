@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { orderClient, rpcError } from "../api/clients";
+import { orderClient, rpcError, teamClient } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
 import { ShopSelect } from "../components/ShopSelect";
 import { TeamSelect } from "../components/TeamSelect";
@@ -92,9 +92,15 @@ export function OrderCreatePage() {
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [shopId, setShopId] = useState<bigint>(0n);
 
-  // Which warehouse fulfils this order (#72). Chosen per order and required: from #69 the order takes
-  // its stock out of this warehouse the moment it is placed, so there is no sensible default to fall
-  // back on — a guess here would move real goods out of the wrong building.
+  // Which warehouse fulfils this order (#72). Still REQUIRED: from #69 the order takes its stock out
+  // of this warehouse the moment it is placed, so the form cannot submit without one.
+  //
+  // Pre-filled from the team's configured default (#145), which is not the same as guessing. The
+  // earlier note here said there was "no sensible default to fall back on", and that was right about a
+  // default the SYSTEM invents — that would move real goods out of the wrong building. A default the
+  // TEAM configured is the team stating where it ships from, and it stays visible and changeable on
+  // every order. The server also still refuses an order that names no warehouse, so nothing here can
+  // let one through.
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   const [shippingCode, setShippingCode] = useState("");
   const [shippingCost, setShippingCost] = useState("0");
@@ -102,6 +108,35 @@ export function OrderCreatePage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Pre-fill the warehouse from the team's configured default (#145).
+  //
+  // Only ever fills an UNTOUCHED field: if the answer arrives after somebody has already picked one,
+  // it must not overwrite them. Reading `warehouseId` inside the updater rather than depending on it
+  // keeps this a one-shot fill instead of a rule that fights the person typing.
+  useEffect(() => {
+    if (teamId === undefined) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await teamClient.teamDetail({ teamId });
+        const preferred = res.team?.info?.defaultWarehouseId ?? 0n;
+
+        if (!cancelled && preferred !== 0n) {
+          setWarehouseId((chosen) => (chosen === 0n ? preferred : chosen));
+        }
+      } catch {
+        // No default is an ordinary state, not an error worth showing: the field is required and
+        // already visible, so the person simply picks one as they did before.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
 
   function patchLine(key: number, patch: Partial<LineDraft>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));

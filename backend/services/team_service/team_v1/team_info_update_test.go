@@ -130,3 +130,47 @@ func TestTeamInfoUpdate_MissingTeam(t *testing.T) {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))
 	}
 }
+
+// #145 — a selling team's DEFAULT SHIPPING WAREHOUSE round-trips, and a present zero clears it.
+//
+// Every order must name a warehouse (#72), and a selling team almost always ships from the same
+// building — so this is that answer, held once. It is a DEFAULT, not a rule: nothing here makes the
+// server accept an order that names no warehouse.
+func TestTeamInfoUpdate_DefaultWarehouseRoundTripsAndClears(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(db)
+	ctx := context.Background()
+
+	const team, warehouse uint64 = 1, 5
+
+	set := func(id uint64) *teamv1.TeamInfo {
+		t.Helper()
+
+		res, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
+			TeamId: team, DefaultWarehouseId: &id,
+		}))
+		if err != nil {
+			t.Fatalf("TeamInfoUpdate(%d): %v", id, err)
+		}
+
+		return res.Msg.GetInfo()
+	}
+
+	if got := set(warehouse).GetDefaultWarehouseId(); got != warehouse {
+		t.Fatalf("default warehouse = %d, want %d", got, warehouse)
+	}
+
+	// Read it back rather than trusting the write's echo — the value has to have reached the table.
+	detail, err := svc.TeamDetail(ctx, connect.NewRequest(&teamv1.TeamDetailRequest{TeamId: team}))
+	if err != nil {
+		t.Fatalf("TeamDetail: %v", err)
+	}
+	if got := detail.Msg.GetTeam().GetInfo().GetDefaultWarehouseId(); got != warehouse {
+		t.Fatalf("stored default warehouse = %d, want %d", got, warehouse)
+	}
+
+	// A present ZERO is an explicit clear, not "leave it alone" — the same rule the return ids follow.
+	if got := set(0).GetDefaultWarehouseId(); got != 0 {
+		t.Fatalf("after clearing, default warehouse = %d, want 0", got)
+	}
+}

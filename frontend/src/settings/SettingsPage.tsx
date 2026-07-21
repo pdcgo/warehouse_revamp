@@ -7,6 +7,8 @@ import { useTeam } from "../team/TeamContext";
 import { TeamPicture } from "../team/TeamPicture";
 import { toaster } from "../components/Toaster";
 import { isTeamManager } from "../lib/roles";
+import { TeamSelect } from "../components/TeamSelect";
+import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 
 // SettingsPage (#44) lets a team manager change the CURRENT team's picture and name.
 //
@@ -19,6 +21,8 @@ export function SettingsPage() {
 
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+  const [defaultWarehouse, setDefaultWarehouse] = useState<bigint>(0n);
 
   const canEdit = isTeamManager(current?.role);
 
@@ -26,6 +30,31 @@ export function SettingsPage() {
   useEffect(() => {
     setName(current?.teamName ?? "");
   }, [current?.teamId, current?.teamName]);
+
+  // The default warehouse lives on the team INFO, which the switcher does not carry — so it is read
+  // here, per team.
+  const teamId = current?.teamId;
+
+  useEffect(() => {
+    if (teamId === undefined) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await teamClient.teamDetail({ teamId });
+        if (!cancelled) {
+          setDefaultWarehouse(res.team?.info?.defaultWarehouseId ?? 0n);
+        }
+      } catch {
+        if (!cancelled) setDefaultWarehouse(0n);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
 
   if (!current) {
     return (
@@ -36,6 +65,30 @@ export function SettingsPage() {
         </Text>
       </Stack>
     );
+  }
+
+  async function saveDefaultWarehouse(event: FormEvent) {
+    event.preventDefault();
+
+    if (!current) return;
+
+    setBusy(true);
+
+    try {
+      await teamClient.teamInfoUpdate({
+        teamId: current.teamId,
+        // Sent explicitly, including 0: the field is `optional` on the wire, and a present zero is
+        // how the contract says "clear it" (#145). Omitting it would mean "leave alone", so somebody
+        // who cleared the picker would find their old default still there.
+        defaultWarehouseId: defaultWarehouse,
+      });
+
+      toaster.create({ type: "success", title: t("account.defaultWarehouseSaved") });
+    } catch (err) {
+      toaster.create({ type: "error", title: rpcError(err) });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveName(event: FormEvent) {
@@ -109,6 +162,44 @@ export function SettingsPage() {
           </form>
         </Card.Body>
       </Card.Root>
+
+      {/* The default shipping warehouse (#145) — a SELLING team's setting only. A warehouse does not
+          ship from a warehouse, so the card is absent rather than disabled for one. */}
+      {current.teamType === TeamType.SELLING && (
+        <Card.Root>
+          <Card.Body>
+            <form onSubmit={saveDefaultWarehouse}>
+              <Stack gap="card">
+                <Heading size="sm">{t("account.defaultWarehouse")}</Heading>
+
+                <Text color="fg.muted" fontSize="xs">
+                  {t("account.defaultWarehouseHint")}
+                </Text>
+
+                <Field.Root>
+                  <Field.Label>{t("account.warehouse")}</Field.Label>
+                  <TeamSelect
+                    value={defaultWarehouse === 0n ? undefined : defaultWarehouse}
+                    teamType={TeamType.WAREHOUSE}
+                    disabled={!canEdit || busy}
+                    onChange={setDefaultWarehouse}
+                  />
+                </Field.Root>
+
+                <Button
+                  type="submit"
+                  colorPalette="brand"
+                  loading={busy}
+                  disabled={!canEdit}
+                  data-testid="save-default-warehouse"
+                >
+                  {t("account.save")}
+                </Button>
+              </Stack>
+            </form>
+          </Card.Body>
+        </Card.Root>
+      )}
     </Stack>
   );
 }

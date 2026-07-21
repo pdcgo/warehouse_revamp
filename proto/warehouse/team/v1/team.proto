@@ -137,6 +137,14 @@ message TeamInfo {
   // service boundary. 0 = unset.
   uint64 return_warehouse_id = 6;
   uint64 return_user_id = 7;
+
+  // The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+  //
+  // A convenience, not a rule: the order form pre-selects it and the person may still choose another,
+  // and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
+  // fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
+  // database at all.
+  uint64 default_warehouse_id = 8;
 }
 
 message Team {
@@ -303,6 +311,7 @@ message TeamInfoUpdateRequest {
   optional string bank_account_number = 5 [(buf.validate.field).string.max_len = 60];
   optional uint64 return_warehouse_id = 6; // present & 0 = clear to NULL
   optional uint64 return_user_id = 7; // present & 0 = clear to NULL
+  optional uint64 default_warehouse_id = 8; // present & 0 = clear to NULL (#145)
 }
 
 message TeamInfoUpdateResponse {

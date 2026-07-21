@@ -863,7 +863,11 @@
     "enterCodeSuffix": "and choose a new password.",
     "code": "Code",
     "passwordReset": "Password reset",
-    "signInWithNewPassword": "Sign in with your new password."
+    "signInWithNewPassword": "Sign in with your new password.",
+    "defaultWarehouse": "Default Shipping Warehouse",
+    "defaultWarehouseHint": "New orders start with this warehouse selected. You can still change it on any order.",
+    "warehouse": "Warehouse",
+    "defaultWarehouseSaved": "Default warehouse saved"
   },
   "picking": {
     "title": "Picking",

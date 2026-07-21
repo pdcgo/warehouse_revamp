@@ -37,6 +37,7 @@ erDiagram
         bigint      team_id             FK "unique, on delete cascade"
         bigint      return_warehouse_id "nullable opaque cross-service id"
         bigint      return_user_id      "nullable opaque cross-service id"
+        bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
         text        contact_number
         text        bank_type
         text        bank_owner_name
@@ -63,6 +64,13 @@ erDiagram
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
   real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
   services — no FK is possible across the service boundary.
+  - **`default_warehouse_id`** (#145) — the warehouse a SELLING team ships from by default. Every
+    order must name a warehouse (#72), and a team almost always ships from the same building, so this
+    is that answer held once rather than asked every time.
+    It is a **default, not a rule**: the order form pre-fills an *untouched* field with it, the person
+    may still choose another, and the server keeps refusing an order that names none. A server-side
+    fallback would quietly undo that refusal — which exists so a warehouse-less order cannot reach the
+    database at all.
 - **`warehouse_infos`** — 1:1 with a WAREHOUSE `teams` row (`UNIQUE (team_id)`, so `WarehouseInfoUpdate`
   is an `ON CONFLICT` upsert). The two schedules are stored as JSONB (a per-day open/close grid; the
   handler validates and marshals). `location` is the warehouse's physical address (#39). A warehouse

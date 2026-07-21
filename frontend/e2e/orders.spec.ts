@@ -568,3 +568,52 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-01 (5)");
   await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-02 (3)");
 });
+
+// #145 — a selling team's DEFAULT SHIPPING WAREHOUSE pre-fills the order form.
+//
+// Every order must name a warehouse (#72) and a team almost always ships from the same building, so
+// answering that question on every single order is asking something whose answer never changes.
+//
+// It stays a DEFAULT: the field is still required, still visible, still changeable — and the server
+// still refuses an order that names none. This only saves the picking.
+test("Settings: a default warehouse pre-fills the order form (#145)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Root is a ROOT team, not a selling one, so the card is deliberately absent — a warehouse (or the
+  // root team) does not ship from a warehouse.
+  await page.goto("/settings");
+  await expect(page.getByTestId("save-default-warehouse")).toBeHidden();
+
+  // Configure it through the API for the team the order form actually runs as.
+  await page.evaluate(
+    async ([whCode]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+
+      await call("team.v1.TeamService/TeamInfoUpdate", {
+        teamId: "1",
+        defaultWarehouseId: String(warehouse.id),
+      });
+    },
+    [WH_CODE],
+  );
+
+  // The form now opens with it already chosen — the picker shows the warehouse's name.
+  await page.goto("/orders/new");
+  await expect(page.getByTestId("order-create-page")).toBeVisible();
+  await expect(page.getByTestId("order-warehouse").locator("input")).toHaveValue(WH_NAME);
+});

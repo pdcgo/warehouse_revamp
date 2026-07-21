@@ -54,6 +54,10 @@ func (s *Service) TeamInfoUpdate(
 	}
 
 	// present-and-zero clears to NULL; absent leaves the existing value alone.
+	if req.Msg.DefaultWarehouseId != nil {
+		updates["default_warehouse_id"] = nullableID(req.Msg.GetDefaultWarehouseId())
+	}
+
 	if req.Msg.ReturnWarehouseId != nil {
 		updates["return_warehouse_id"] = nullableID(req.Msg.GetReturnWarehouseId())
 	}
@@ -138,6 +142,10 @@ func applyInfoValues(row *team_service_models.TeamInfo, updates map[string]any) 
 
 	if v, ok := updates["return_user_id"].(uint64); ok {
 		row.ReturnUserID = &v
+	}
+
+	if v, ok := updates["default_warehouse_id"].(uint64); ok {
+		row.DefaultWarehouseID = &v
 	}
 }
 

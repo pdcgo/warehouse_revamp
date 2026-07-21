@@ -863,7 +863,11 @@
     "enterCodeSuffix": "dan pilih kata sandi baru.",
     "code": "Kode",
     "passwordReset": "Kata sandi diatur ulang",
-    "signInWithNewPassword": "Masuk dengan kata sandi baru Anda."
+    "signInWithNewPassword": "Masuk dengan kata sandi baru Anda.",
+    "defaultWarehouse": "Gudang Pengiriman Default",
+    "defaultWarehouseHint": "Pesanan baru dimulai dengan gudang ini terpilih. Anda tetap dapat mengubahnya di setiap pesanan.",
+    "warehouse": "Gudang",
+    "defaultWarehouseSaved": "Gudang default disimpan"
   },
   "picking": {
     "title": "Pengambilan",

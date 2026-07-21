@@ -507,8 +507,15 @@ type TeamInfo struct {
 	// service boundary. 0 = unset.
 	ReturnWarehouseId uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3" json:"return_warehouse_id,omitempty"`
 	ReturnUserId      uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3" json:"return_user_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+	//
+	// A convenience, not a rule: the order form pre-selects it and the person may still choose another,
+	// and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
+	// fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
+	// database at all.
+	DefaultWarehouseId uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3" json:"default_warehouse_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TeamInfo) Reset() {
@@ -586,6 +593,13 @@ func (x *TeamInfo) GetReturnWarehouseId() uint64 {
 func (x *TeamInfo) GetReturnUserId() uint64 {
 	if x != nil {
 		return x.ReturnUserId
+	}
+	return 0
+}
+
+func (x *TeamInfo) GetDefaultWarehouseId() uint64 {
+	if x != nil {
+		return x.DefaultWarehouseId
 	}
 	return 0
 }
@@ -1298,14 +1312,15 @@ type TeamInfoUpdateRequest struct {
 	// ALL optional — explicit presence. Absent = leave alone. Present = write it, including
 	// present-and-zero = clear. Without presence there is no way to say "don't touch this", and
 	// a contact-number-only update silently blanks the bank details.
-	ContactNumber     *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	BankType          *string `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3,oneof" json:"bank_type,omitempty"`
-	BankOwnerName     *string `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3,oneof" json:"bank_owner_name,omitempty"`
-	BankAccountNumber *string `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3,oneof" json:"bank_account_number,omitempty"`
-	ReturnWarehouseId *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"` // present & 0 = clear to NULL
-	ReturnUserId      *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                // present & 0 = clear to NULL
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	ContactNumber      *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
+	BankType           *string `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3,oneof" json:"bank_type,omitempty"`
+	BankOwnerName      *string `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3,oneof" json:"bank_owner_name,omitempty"`
+	BankAccountNumber  *string `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3,oneof" json:"bank_account_number,omitempty"`
+	ReturnWarehouseId  *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"`    // present & 0 = clear to NULL
+	ReturnUserId       *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                   // present & 0 = clear to NULL
+	DefaultWarehouseId *uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3,oneof" json:"default_warehouse_id,omitempty"` // present & 0 = clear to NULL (#145)
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TeamInfoUpdateRequest) Reset() {
@@ -1387,6 +1402,13 @@ func (x *TeamInfoUpdateRequest) GetReturnUserId() uint64 {
 	return 0
 }
 
+func (x *TeamInfoUpdateRequest) GetDefaultWarehouseId() uint64 {
+	if x != nil && x.DefaultWarehouseId != nil {
+		return *x.DefaultWarehouseId
+	}
+	return 0
+}
+
 type TeamInfoUpdateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Info          *TeamInfo              `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
@@ -1460,7 +1482,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"S\n" +
 	"\x1bWarehouseInfoUpdateResponse\x124\n" +
-	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\x95\x02\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\xc7\x02\n" +
 	"\bTeamInfo\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12%\n" +
 	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x12\x1b\n" +
@@ -1468,7 +1490,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0fbank_owner_name\x18\x04 \x01(\tR\rbankOwnerName\x12.\n" +
 	"\x13bank_account_number\x18\x05 \x01(\tR\x11bankAccountNumber\x12.\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\"\x82\x02\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\x120\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseId\"\x82\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -1522,7 +1545,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2..warehouse.team.v1.TeamByIdsResponse.DataEntryR\x04data\x1aP\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.warehouse.team.v1.TeamR\x05value:\x028\x01\"\xf8\x03\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.warehouse.team.v1.TeamR\x05value:\x028\x01\"\xc8\x04\n" +
 	"\x15TeamInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
 	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x12)\n" +
@@ -1530,7 +1553,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0fbank_owner_name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x02R\rbankOwnerName\x88\x01\x01\x12<\n" +
 	"\x13bank_account_number\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18<H\x03R\x11bankAccountNumber\x88\x01\x01\x123\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04H\x04R\x11returnWarehouseId\x88\x01\x01\x12)\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04H\x05R\freturnUserId\x88\x01\x01:\f\x92\xb5\x18\b\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04H\x05R\freturnUserId\x88\x01\x01\x125\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04H\x06R\x12defaultWarehouseId\x88\x01\x01:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\tB\x11\n" +
 	"\x0f_contact_numberB\f\n" +
 	"\n" +
@@ -1538,7 +1562,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x10_bank_owner_nameB\x16\n" +
 	"\x14_bank_account_numberB\x16\n" +
 	"\x14_return_warehouse_idB\x11\n" +
-	"\x0f_return_user_id\"I\n" +
+	"\x0f_return_user_idB\x17\n" +
+	"\x15_default_warehouse_id\"I\n" +
 	"\x16TeamInfoUpdateResponse\x12/\n" +
 	"\x04info\x18\x01 \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info*\xb6\x01\n" +
 	"\aWeekday\x12\x17\n" +
