@@ -215,7 +215,6 @@
       "products": "Produk",
       "productCount": "{{n}} produk",
       "quantity": "Jumlah",
-      "price": "Harga",
       "addProduct": "Tambah produk",
       "removeProduct": "Hapus produk",
       "changeProduct": "Ganti produk",
@@ -240,7 +239,8 @@
       "noteHelp": "Hal yang perlu diketahui gudang tentang restok ini.",
       "notePlaceholder": "Tambahkan catatan tentang restok ini…",
       "submit": "Buat Permintaan",
-      "saveChanges": "Simpan Perubahan"
+      "saveChanges": "Simpan Perubahan",
+      "totalPrice": "Total Harga"
     },
     "cancel": {
       "action": "Batalkan",

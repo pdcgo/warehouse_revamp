@@ -276,6 +276,12 @@ erDiagram
     order time (`StockCost`), because a client supplying it would be writing its own margin — the one
     number nobody placing an order should get to choose. `orderItemModels` deliberately does not read
     it, the same way it ignores `id`.
+  - **The line stores its TOTAL, not a per-unit price** (#140, owner). People buying stock read a
+    total off an invoice — "that box of 12 cost 240.000" — and asking for a per-unit figure makes them
+    divide in their head, storing a rounded number whose product no longer equals what they paid. The
+    total is therefore the stored truth, and **StockCost DERIVES** the per-unit cost as
+    `total_price / quantity`, rounded down. That rounding happens at READ time and is never written
+    back: 10.000 over 3 pieces reports 3.333 a piece while the stored total stays 10.000.
   - **The rule is the LATEST FULFILLED restock's price** for that product into that warehouse. Only
     fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
     That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
@@ -458,7 +464,7 @@ erDiagram
         text        sku                "snapshot at request time"
         text        name               "snapshot"
         bigint      quantity           "how many were ASKED FOR, CHECK > 0"
-        bigint      price              "whole rupiah PER UNIT, CHECK >= 0"
+        bigint      total_price        "whole rupiah, THE LINE TOTAL (#140), CHECK >= 0"
         bigint      received_quantity  "what ARRIVED, counted at acceptance; stock receives THIS; 0 until fulfilled; no CHECK vs quantity"
         bigint      received_rack_id   FK "-> racks(id) ON DELETE RESTRICT; WHERE it was shelved (#137); NULL = unplaced / not accepted"
         timestamptz created_at

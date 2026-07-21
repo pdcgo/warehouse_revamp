@@ -136,9 +136,15 @@ type RestockRequestItem struct {
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// How many were ASKED FOR. What actually turned up is received_quantity.
 	Quantity int64 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	// Whole rupiah, PER UNIT — what this product is expected to cost from the supplier. Zero is
-	// legitimate (a transfer, a sample), so it is gte 0, not gt 0.
-	Price int64 `protobuf:"varint,6,opt,name=price,proto3" json:"price,omitempty"`
+	// Whole rupiah, THE LINE TOTAL (#140, owner) — what the whole line cost, not what one piece cost.
+	//
+	// People buying stock think in totals: "that box of 12 cost 240.000". Asking for a per-unit figure
+	// makes them divide in their head, and what they type back is a rounded number whose product no
+	// longer equals the sum they actually paid. So the TOTAL is the stored truth, and a per-unit figure
+	// is DERIVED where one is needed (StockCost) and known to be a rounding.
+	//
+	// Zero is legitimate (a transfer, a sample), so it is gte 0, not gt 0.
+	TotalPrice int64 `protobuf:"varint,6,opt,name=total_price,json=totalPrice,proto3" json:"total_price,omitempty"`
 	// What actually ARRIVED, counted by the warehouse as it accepted (#133). A request is a promise;
 	// this is the delivery. Stock receives THIS number, not `quantity` — the warehouse opens the box
 	// and counts, and 9 of the 10 asked for is an ordinary Tuesday.
@@ -227,9 +233,9 @@ func (x *RestockRequestItem) GetQuantity() int64 {
 	return 0
 }
 
-func (x *RestockRequestItem) GetPrice() int64 {
+func (x *RestockRequestItem) GetTotalPrice() int64 {
 	if x != nil {
-		return x.Price
+		return x.TotalPrice
 	}
 	return 0
 }
@@ -1288,7 +1294,7 @@ var File_warehouse_inventory_v1_restock_request_proto protoreflect.FileDescripto
 
 const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\n" +
-	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xad\x02\n" +
+	",warehouse/inventory/v1/restock_request.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xb8\x02\n" +
 	"\x12RestockRequestItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12&\n" +
 	"\n" +
@@ -1296,8 +1302,9 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x03sku\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03sku\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12#\n" +
-	"\bquantity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12\x1d\n" +
-	"\x05price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05price\x124\n" +
+	"\bquantity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12(\n" +
+	"\vtotal_price\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\n" +
+	"totalPrice\x124\n" +
 	"\x11received_quantity\x18\a \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10receivedQuantity\x12(\n" +
 	"\x10received_rack_id\x18\b \x01(\x04R\x0ereceivedRackId\"\xef\x04\n" +
 	"\x0eRestockRequest\x12\x0e\n" +

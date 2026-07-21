@@ -58,8 +58,12 @@ type RestockRequestItem struct {
 	Name      string
 	// Quantity is what was ASKED FOR; ReceivedQuantity is what actually turned up.
 	Quantity int64
-	// Whole rupiah, PER UNIT.
-	Price int64
+	// Whole rupiah, THE LINE TOTAL (#140) — what the whole line cost, not one piece.
+	//
+	// Stored as the total because that is the number a person reads off an invoice and types. Any
+	// per-unit figure is DERIVED (see StockCost) and is openly a rounding: 10.000 over 3 pieces is
+	// 3.333 a piece, and the rupiah that division drops must never be written back over the 10.000.
+	TotalPrice int64
 
 	// What the warehouse COUNTED when it accepted the request (#133) — the number stock actually
 	// receives. Kept alongside Quantity rather than replacing it: the gap between asked and arrived is

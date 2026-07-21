@@ -56,9 +56,19 @@ function Field({ label, value, testId }: { label: string; value: ReactNode; test
   );
 }
 
-// A line's money: whole rupiah per unit × quantity. Both are bigint, so this never loses precision.
+// A line's money is now STORED as the total (#140) — the number typed off the invoice — so there is
+// nothing left to compute.
 function lineTotal(item: RestockRequestItem): bigint {
-  return item.quantity * item.price;
+  return item.totalPrice;
+}
+
+// What one piece cost, DERIVED and openly a rounding: 10.000 over 3 pieces shows 3.333 while the line
+// still totals 10.000. The two columns can therefore look a rupiah apart, and that is the honest
+// picture — the invoice said 10.000, and no per-piece figure divides it exactly.
+function unitPrice(item: RestockRequestItem): bigint {
+  if (item.quantity <= 0n) return 0n;
+
+  return item.totalPrice / item.quantity;
 }
 
 // Where a line's goods ended up, as a person would say it (#137). Three cases, and collapsing any
@@ -510,7 +520,7 @@ export function RestockRequestDetailPage() {
                           {rackLabel(t, item, rackCodes) || "—"}
                         </Table.Cell>
                       )}
-                      <Table.Cell textAlign="end">{formatRupiah(item.price)}</Table.Cell>
+                      <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
                       <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
                     </Table.Row>
                   );

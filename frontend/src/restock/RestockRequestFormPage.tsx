@@ -36,7 +36,7 @@ import { formatRupiah } from "../lib/money";
 import { toaster } from "../components/Toaster";
 
 // One editable restock line. product id/sku/name come from the picker (a snapshot — the product may
-// live in another team's catalogue); quantity and the expected per-unit supplier price are typed. The
+// live in another team's catalogue); quantity and the line's TOTAL supplier price are typed (#140). The
 // numeric fields are kept as strings while editing (an empty input is not 0) and parsed on submit.
 interface LineDraft {
   key: number;
@@ -44,7 +44,7 @@ interface LineDraft {
   sku: string;
   name: string;
   quantity: string;
-  price: string;
+  totalPrice: string;
 }
 
 // Whole rupiah only: parse an input string to a non-negative int64, treating blank/invalid as 0.
@@ -62,8 +62,11 @@ function toQty(raw: string): number {
   return n;
 }
 
+// The line total is TYPED now (#140), not computed from a per-unit price. People buying stock read a
+// total off an invoice — "that box of 12 cost 240.000" — and making them divide by 12 first only
+// invites a rounded number whose product no longer equals what they paid.
 function lineTotal(line: LineDraft): bigint {
-  return BigInt(toQty(line.quantity)) * toRupiah(line.price);
+  return toRupiah(line.totalPrice);
 }
 
 // The same defensive parse the detail page makes: a route param is a string from the URL bar, so a
@@ -108,7 +111,7 @@ function parseRequestId(raw: string | undefined): bigint {
 //                                       └──────────────┘
 //
 // Money is computed here for DISPLAY only — the backend stores what it is sent. The grand total is
-// the products' total (Σ qty × per-unit price) plus the freight, which is the one number the person
+// the products' total (Σ line totals) plus the freight, which is the one number the person
 // filling this in is actually agreeing to pay.
 export function RestockRequestFormPage() {
   const { t } = useTranslation();
@@ -133,7 +136,7 @@ export function RestockRequestFormPage() {
     sku: "",
     name: "",
     quantity: "1",
-    price: "0",
+    totalPrice: "0",
   });
 
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
@@ -204,7 +207,7 @@ export function RestockRequestFormPage() {
                 sku: item.sku,
                 name: item.name,
                 quantity: String(item.quantity),
-                price: String(item.price),
+                totalPrice: String(item.totalPrice),
               }))
             : [freshLine()],
         );
@@ -260,7 +263,7 @@ export function RestockRequestFormPage() {
 
   const picked = useMemo(() => lines.filter((l) => l.productId > 0n), [lines]);
 
-  // E — the products' money: Σ (quantity × per-unit price), in whole rupiah.
+  // E — the products' money: Σ (line totals), in whole rupiah (#140).
   const productsTotal = useMemo(() => picked.reduce((sum, l) => sum + lineTotal(l), 0n), [picked]);
 
   // F — the freight as typed. Parsed every render so E/F/G track the input live.
@@ -294,7 +297,7 @@ export function RestockRequestFormPage() {
         sku: l.sku,
         name: l.name,
         quantity: BigInt(toQty(l.quantity)),
-        price: toRupiah(l.price),
+        totalPrice: toRupiah(l.totalPrice),
       })),
       receipt: receipt.trim(),
       supplierId,
@@ -461,13 +464,13 @@ export function RestockRequestFormPage() {
                                 </Field.Root>
 
                                 <Field.Root w="28">
-                                  <Field.Label fontSize="xs">{t("restock.form.price")}</Field.Label>
+                                  <Field.Label fontSize="xs">{t("restock.form.totalPrice")}</Field.Label>
                                   <Input
                                     type="number"
                                     min="0"
-                                    value={line.price}
-                                    data-testid={`restock-price-${i}`}
-                                    onChange={(e) => patchLine(line.key, { price: e.target.value })}
+                                    value={line.totalPrice}
+                                    data-testid={`restock-total-price-${i}`}
+                                    onChange={(e) => patchLine(line.key, { totalPrice: e.target.value })}
                                   />
                                 </Field.Root>
 
@@ -678,7 +681,12 @@ export function RestockRequestFormPage() {
                             <Text fontSize="xs" color="fg.muted">
                               {t("restock.summary.perPiece", {
                                 qty: toQty(line.quantity),
-                                price: formatRupiah(toRupiah(line.price)),
+                                // Derived for the eye only (#140) — the TOTAL is what is stored and sent.
+                                price: formatRupiah(
+                                  toQty(line.quantity) > 0
+                                    ? toRupiah(line.totalPrice) / BigInt(toQty(line.quantity))
+                                    : 0n,
+                                ),
                               })}
                             </Text>
                           </Stack>

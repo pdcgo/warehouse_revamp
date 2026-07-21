@@ -215,7 +215,6 @@
       "products": "Products",
       "productCount": "{{n}} products",
       "quantity": "Quantity",
-      "price": "Price",
       "addProduct": "Add product",
       "removeProduct": "Remove product",
       "changeProduct": "Change product",
@@ -240,7 +239,8 @@
       "noteHelp": "Anything the warehouse should know about this restock.",
       "notePlaceholder": "Add a note about this restock…",
       "submit": "Create Request",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "totalPrice": "Total Price"
     },
     "cancel": {
       "action": "Cancel",

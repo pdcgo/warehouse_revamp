@@ -47,7 +47,14 @@ func (s *Service) StockCost(
 		Raw(`
 			SELECT DISTINCT ON (i.product_id)
 			       i.product_id AS product_id,
-			       i.price      AS unit_cost
+			       -- DERIVED, and openly a rounding (#140). The line stores what the WHOLE line cost,
+			       -- because that is the number a person reads off an invoice; the per-unit figure an
+			       -- order needs is computed here and nowhere written back. 10.000 over 3 pieces is
+			       -- 3.333 a piece, and the rupiah the division drops stays dropped rather than
+			       -- corrupting the stored total.
+			       --
+			       -- quantity has CHECK > 0, so this cannot divide by zero.
+			       (i.total_price / i.quantity) AS unit_cost
 			FROM restock_request_items i
 			JOIN restock_requests r ON r.id = i.restock_request_id
 			WHERE r.warehouse_id = ?

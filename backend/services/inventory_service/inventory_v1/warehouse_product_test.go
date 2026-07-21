@@ -33,7 +33,7 @@ func createRestock(t *testing.T, svc *inventory_v1.Service, warehouseID uint64, 
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(productIDs))
 	for _, id := range productIDs {
 		items = append(items, &inventoryv1.RestockRequestItem{
-			ProductId: id, Sku: "SKU", Name: "Widget", Quantity: 1, Price: 1000,
+			ProductId: id, Sku: "SKU", Name: "Widget", Quantity: 1, TotalPrice: 1000,
 		})
 	}
 

@@ -101,7 +101,7 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 			Sku:              r.Items[i].SKU,
 			Name:             r.Items[i].Name,
 			Quantity:         r.Items[i].Quantity,
-			Price:            r.Items[i].Price,
+			TotalPrice:       r.Items[i].TotalPrice,
 			ReceivedQuantity: r.Items[i].ReceivedQuantity,
 		}
 
@@ -154,11 +154,11 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 	out := make([]inventory_service_models.RestockRequestItem, 0, len(in))
 	for _, item := range in {
 		out = append(out, inventory_service_models.RestockRequestItem{
-			ProductID: item.GetProductId(),
-			SKU:       item.GetSku(),
-			Name:      item.GetName(),
-			Quantity:  item.GetQuantity(),
-			Price:     item.GetPrice(),
+			ProductID:  item.GetProductId(),
+			SKU:        item.GetSku(),
+			Name:       item.GetName(),
+			Quantity:   item.GetQuantity(),
+			TotalPrice: item.GetTotalPrice(),
 		})
 	}
 

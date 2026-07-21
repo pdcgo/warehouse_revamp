@@ -19,13 +19,21 @@ func TestStockCost_LatestFulfilledRestockPrice(t *testing.T) {
 
 	const sellingTeam, warehouse uint64 = 2, 5
 
-	place := func(price int64, fulfil bool) {
+	// The line stores its TOTAL (#140), so a test that wants a known per-unit cost multiplies up. Stated
+	// as `unitPrice * lineQty` rather than as a bare number so the arithmetic the RPC has to undo is
+	// visible in the test.
+	const lineQty int64 = 5
+
+	place := func(unitPrice int64, fulfil bool) {
 		t.Helper()
 
 		created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 5, Price: price},
+				{
+					ProductId: productX, Sku: "SKU1", Name: "Widget",
+					Quantity: lineQty, TotalPrice: unitPrice * lineQty,
+				},
 			},
 		}))
 		if err != nil {
@@ -98,7 +106,7 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: theirs,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 5, Price: 4242},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 5, TotalPrice: 4242},
 		},
 	}))
 	if err != nil {
@@ -122,5 +130,60 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 
 	if len(res.Msg.GetCosts()) != 0 {
 		t.Fatalf("another warehouse's price leaked in: %+v", res.Msg.GetCosts())
+	}
+}
+
+// #140 — the line stores its TOTAL, and StockCost DERIVES the per-unit cost by dividing.
+//
+// The uneven case is the point: 10.000 over 3 pieces is 3.333 a piece with 1 rupiah left over. What
+// matters is that the leftover is dropped at READ time and never written back — the stored 10.000
+// stays exactly what the person typed off the invoice, which is the whole reason the total is the
+// thing kept. Under the old per-unit contract that rupiah was lost at WRITE time, permanently.
+func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := ctxUser(1)
+
+	const sellingTeam, warehouse uint64 = 2, 5
+
+	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse,
+		Items: []*inventoryv1.RestockRequestItem{
+			// Deliberately indivisible: 10.000 / 3 = 3.333,33…
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 3, TotalPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// The stored total is untouched by the awkward division — this is what the old contract could not do.
+	if got := created.Msg.GetRequest().GetItems()[0].GetTotalPrice(); got != 10000 {
+		t.Fatalf("stored total = %d, want the typed 10000", got)
+	}
+
+	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
+		Lines: allArrived(created.Msg.GetRequest()),
+	}))
+	if err != nil {
+		t.Fatalf("fulfil: %v", err)
+	}
+
+	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+	}))
+	if err != nil {
+		t.Fatalf("StockCost: %v", err)
+	}
+
+	if len(res.Msg.GetCosts()) != 1 {
+		t.Fatalf("costs = %+v, want one line", res.Msg.GetCosts())
+	}
+
+	// Rounded DOWN, and defined rather than incidental: an order books 3.333 for a unit that cost
+	// 3.333,33. Rounding up would have the order claim to have paid more than the invoice.
+	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 3333 {
+		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, rounded down)", got)
 	}
 }

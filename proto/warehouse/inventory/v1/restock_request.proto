@@ -55,9 +55,15 @@ message RestockRequestItem {
   }];
   // How many were ASKED FOR. What actually turned up is received_quantity.
   int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
-  // Whole rupiah, PER UNIT — what this product is expected to cost from the supplier. Zero is
-  // legitimate (a transfer, a sample), so it is gte 0, not gt 0.
-  int64 price = 6 [(buf.validate.field).int64.gte = 0];
+  // Whole rupiah, THE LINE TOTAL (#140, owner) — what the whole line cost, not what one piece cost.
+  //
+  // People buying stock think in totals: "that box of 12 cost 240.000". Asking for a per-unit figure
+  // makes them divide in their head, and what they type back is a rounded number whose product no
+  // longer equals the sum they actually paid. So the TOTAL is the stored truth, and a per-unit figure
+  // is DERIVED where one is needed (StockCost) and known to be a rounding.
+  //
+  // Zero is legitimate (a transfer, a sample), so it is gte 0, not gt 0.
+  int64 total_price = 6 [(buf.validate.field).int64.gte = 0];
 
   // What actually ARRIVED, counted by the warehouse as it accepted (#133). A request is a promise;
   // this is the delivery. Stock receives THIS number, not `quantity` — the warehouse opens the box
