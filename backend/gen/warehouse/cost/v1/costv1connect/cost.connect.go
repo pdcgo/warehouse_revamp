@@ -6,8 +6,11 @@ package costv1connect
 
 import (
 	connect "connectrpc.com/connect"
-	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1"
+	context "context"
+	errors "errors"
+	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1"
 	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
@@ -22,8 +25,26 @@ const (
 	CostServiceName = "warehouse.cost.v1.CostService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// CostServiceCostCreateProcedure is the fully-qualified name of the CostService's CostCreate RPC.
+	CostServiceCostCreateProcedure = "/warehouse.cost.v1.CostService/CostCreate"
+	// CostServiceCostListProcedure is the fully-qualified name of the CostService's CostList RPC.
+	CostServiceCostListProcedure = "/warehouse.cost.v1.CostService/CostList"
+)
+
 // CostServiceClient is a client for the warehouse.cost.v1.CostService service.
 type CostServiceClient interface {
+	// Record money that went out (#168).
+	CostCreate(context.Context, *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error)
+	// A team's costs for a PERIOD, with per-kind totals (#168).
+	CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error)
 }
 
 // NewCostServiceClient constructs a client for the warehouse.cost.v1.CostService service. By
@@ -34,15 +55,46 @@ type CostServiceClient interface {
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
 func NewCostServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) CostServiceClient {
-	return &costServiceClient{}
+	baseURL = strings.TrimRight(baseURL, "/")
+	costServiceMethods := v1.File_warehouse_cost_v1_cost_proto.Services().ByName("CostService").Methods()
+	return &costServiceClient{
+		costCreate: connect.NewClient[v1.CostCreateRequest, v1.CostCreateResponse](
+			httpClient,
+			baseURL+CostServiceCostCreateProcedure,
+			connect.WithSchema(costServiceMethods.ByName("CostCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		costList: connect.NewClient[v1.CostListRequest, v1.CostListResponse](
+			httpClient,
+			baseURL+CostServiceCostListProcedure,
+			connect.WithSchema(costServiceMethods.ByName("CostList")),
+			connect.WithClientOptions(opts...),
+		),
+	}
 }
 
 // costServiceClient implements CostServiceClient.
 type costServiceClient struct {
+	costCreate *connect.Client[v1.CostCreateRequest, v1.CostCreateResponse]
+	costList   *connect.Client[v1.CostListRequest, v1.CostListResponse]
+}
+
+// CostCreate calls warehouse.cost.v1.CostService.CostCreate.
+func (c *costServiceClient) CostCreate(ctx context.Context, req *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error) {
+	return c.costCreate.CallUnary(ctx, req)
+}
+
+// CostList calls warehouse.cost.v1.CostService.CostList.
+func (c *costServiceClient) CostList(ctx context.Context, req *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error) {
+	return c.costList.CallUnary(ctx, req)
 }
 
 // CostServiceHandler is an implementation of the warehouse.cost.v1.CostService service.
 type CostServiceHandler interface {
+	// Record money that went out (#168).
+	CostCreate(context.Context, *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error)
+	// A team's costs for a PERIOD, with per-kind totals (#168).
+	CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error)
 }
 
 // NewCostServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -51,8 +103,25 @@ type CostServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewCostServiceHandler(svc CostServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	costServiceMethods := v1.File_warehouse_cost_v1_cost_proto.Services().ByName("CostService").Methods()
+	costServiceCostCreateHandler := connect.NewUnaryHandler(
+		CostServiceCostCreateProcedure,
+		svc.CostCreate,
+		connect.WithSchema(costServiceMethods.ByName("CostCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	costServiceCostListHandler := connect.NewUnaryHandler(
+		CostServiceCostListProcedure,
+		svc.CostList,
+		connect.WithSchema(costServiceMethods.ByName("CostList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.cost.v1.CostService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case CostServiceCostCreateProcedure:
+			costServiceCostCreateHandler.ServeHTTP(w, r)
+		case CostServiceCostListProcedure:
+			costServiceCostListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -61,3 +130,11 @@ func NewCostServiceHandler(svc CostServiceHandler, opts ...connect.HandlerOption
 
 // UnimplementedCostServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCostServiceHandler struct{}
+
+func (UnimplementedCostServiceHandler) CostCreate(context.Context, *connect.Request[v1.CostCreateRequest]) (*connect.Response[v1.CostCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.cost.v1.CostService.CostCreate is not implemented"))
+}
+
+func (UnimplementedCostServiceHandler) CostList(context.Context, *connect.Request[v1.CostListRequest]) (*connect.Response[v1.CostListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.cost.v1.CostService.CostList is not implemented"))
+}

@@ -22,6 +22,8 @@ import (
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	region_service "github.com/pdcgo/warehouse_revamp/backend/services/region_service"
 	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
+	cost_service "github.com/pdcgo/warehouse_revamp/backend/services/cost_service"
+	cost_v1 "github.com/pdcgo/warehouse_revamp/backend/services/cost_service/cost_v1"
 	revenue_service "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service"
 	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
 	selling_service "github.com/pdcgo/warehouse_revamp/backend/services/selling_service"
@@ -52,6 +54,7 @@ func NewServeMux(
 	inventoryService *inventory_v1.Service,
 	regionService *region_v1.Service,
 	revenueService *revenue_v1.Service,
+	costService *cost_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -96,6 +99,7 @@ func NewServeMux(
 		inventory_service.NewRegister(mux, inventoryService, opts),
 		region_service.NewRegister(mux, regionService, opts),
 		revenue_service.NewRegister(mux, revenueService, opts),
+		cost_service.NewRegister(mux, costService, opts),
 	)
 
 	return mux, nil

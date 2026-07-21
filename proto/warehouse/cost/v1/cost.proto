@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package warehouse.cost.v1;
 
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cost/v1;costv1";
 
 // CostService owns `cost_records` (#161) — the money the business spent that NO ORDER caused.
@@ -19,10 +23,14 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/cos
 //     records that money went out, not an account movement.
 //
 // See plans/cost_service/brainstorming.md.
-// The RPCs land with #168 (CostCreate / CostList) and #169 (CostUpdate / CostVoid), which is also when
-// this file regains its validate / page / role_base imports. The record and its table come first so
-// they can be reviewed on their own — a schema is the expensive thing to get wrong.
-service CostService {}
+service CostService {
+  // Record money that went out (#168).
+  rpc CostCreate(CostCreateRequest) returns (CostCreateResponse);
+  // A team's costs for a PERIOD, with per-kind totals (#168).
+  rpc CostList(CostListRequest) returns (CostListResponse);
+
+  // CostUpdate / CostVoid land with #169 — a cost is typed by a person, so it is correctable.
+}
 
 // What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
 // team's numbers then mean the same thing, so "ads spend across all teams last month" has an answer.
@@ -95,4 +103,100 @@ message CostRecord {
   bool voided = 9;
 
   int64 created_at_unix = 10;
+}
+
+message CostCreateRequest {
+  // Write: a MANAGER's action on both sides, unlike revenue where customer service writes and
+  // managers read. These numbers move profit directly, so the people already trusted to manage a team
+  // are the ones who move them (owner, 2026-07-21) — no new finance role.
+  //
+  // TEAM_CUSTOMER_SERVICE is deliberately absent: a person taking orders has no reason to see or move
+  // the payroll number.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  CostKind kind = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Whole rupiah, POSITIVE. Recording a cost of nothing is not a cost.
+  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+
+  // The date the cost BELONGS TO (YYYY-MM-DD), chosen by the person.
+  string occurred_at = 4 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+
+  // Optional on ANY kind. 0 = not attributed to one shop.
+  uint64 shop_id = 5;
+
+  string note = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message CostCreateResponse {
+  CostRecord cost = 1;
+}
+
+message CostListRequest {
+  // Read: the same managers. Money out is not customer service's business.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+
+  // Grows with every cost ever recorded, so it pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // THE PERIOD, inclusive, as YYYY-MM-DD. Both empty = every cost ever.
+  //
+  // Server-side, and that is the whole point of the field: the list is paginated, so a client-side
+  // date filter would narrow the loaded page only and leave the totals beside it unfiltered — a
+  // confidently-wrong headline figure, which is what #130/#151 settled for status filters.
+  //
+  // It is also what the profit screen stands on, and half of what it needs: RevenueList has no period
+  // filter at all yet (#171).
+  string from = 3 [(buf.validate.field).string.max_len = 10];
+  string to = 4 [(buf.validate.field).string.max_len = 10];
+
+  // One kind, or UNSPECIFIED for all of them.
+  CostKind kind = 5 [(buf.validate.field).enum.defined_only = true];
+  // One shop, or 0 for all of them.
+  uint64 shop_id = 6;
+}
+
+// What the filtered period cost, by kind and in total.
+message CostTotals {
+  // The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
+  // (#78). A page total is a different number wearing the same label.
+  int64 total = 1;
+
+  // Per kind, so the summary cards need no second call. A kind with no costs in the period is simply
+  // absent rather than reported as 0 — absent and zero read the same on a card, and building the
+  // absent ones would mean this message knowing the enum's members.
+  map<int32, int64> by_kind = 2;
+}
+
+message CostListResponse {
+  repeated CostRecord costs = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+  CostTotals totals = 3;
 }
