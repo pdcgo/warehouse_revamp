@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,18 +15,19 @@ import {
   Input,
   Separator,
   SimpleGrid,
+  Spacer,
   Spinner,
   Stack,
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { ArrowLeft, Plus, Replace, Trash2 } from "lucide-react";
+import { ArrowLeft, PackagePlus, Trash2 } from "lucide-react";
 import { restockClient, rpcError } from "../api/clients";
 import { RestockPaymentType } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { TeamSelect } from "../components/TeamSelect";
-import { ProductSelect } from "../components/ProductSelect";
+import { ProductPicker } from "../components/ProductPicker";
 import type { PickedProduct } from "../components/ProductSelect";
 import { ProductListItem } from "../components/ProductListItem";
 import { CurrencyInput } from "../components/CurrencyInput";
@@ -40,7 +41,10 @@ import { toaster } from "../components/Toaster";
 // live in another team's catalogue); quantity and the line's TOTAL supplier price are typed (#140). The
 // numeric fields are kept as strings while editing (an empty input is not 0) and parsed on submit.
 interface LineDraft {
-  key: number;
+  // THE IDENTITY of a line, not merely one of its fields (#165). The picker cannot tick the same
+  // product twice, so a product appears on at most one line — which is why there is no synthetic key
+  // here any more. There used to be one because a line could exist with nothing picked yet, and 0
+  // identifies nothing; the picker removed that state.
   productId: bigint;
   sku: string;
   name: string;
@@ -130,19 +134,19 @@ export function RestockRequestFormPage() {
   // returns there; creating has no row to return to, so it lands on the list.
   const backTo = isEdit ? `/inventories/restock/${id}` : "/inventories/restock";
 
-  const nextKey = useRef(1);
-  const freshLine = (): LineDraft => ({
-    key: nextKey.current++,
-    productId: 0n,
-    sku: "",
-    name: "",
+  const lineFor = (p: PickedProduct): LineDraft => ({
+    productId: p.id,
+    sku: p.sku,
+    name: p.name,
     quantity: "1",
     totalPrice: "0",
   });
 
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   const [shippingCode, setShippingCode] = useState("");
-  const [lines, setLines] = useState<LineDraft[]>(() => [freshLine()]);
+  // EVERY line holds a product (#165). Since the picker is the only way in, there is no such thing as
+  // a half-filled line any more, and the list starts genuinely empty rather than at one blank row.
+  const [lines, setLines] = useState<LineDraft[]>([]);
 
   // The optional context (#124, #127). Each has a documented "none" value in the contract —
   // orderRef "", receipt "", supplierId 0, shippingCost 0, paymentType UNSPECIFIED, note "" — so an
@@ -198,19 +202,16 @@ export function RestockRequestFormPage() {
         setWarehouseId(request.warehouseId);
         setShippingCode(request.shippingCode);
         // Quantity and price go back to STRINGS: they are typed fields, and a bigint here would make
-        // clearing the input impossible. The contract guarantees at least one line, but a row that
-        // somehow has none still has to be editable, so it falls back to one blank line.
+        // clearing the input impossible. A row that somehow has no items loads as an empty list, and
+        // the picker below is how it gets some — there is no blank line to fall back to now (#165).
         setLines(
-          request.items.length > 0
-            ? request.items.map((item) => ({
-                key: nextKey.current++,
-                productId: item.productId,
-                sku: item.sku,
-                name: item.name,
-                quantity: String(item.quantity),
-                totalPrice: String(item.totalPrice),
-              }))
-            : [freshLine()],
+          request.items.map((item) => ({
+            productId: item.productId,
+            sku: item.sku,
+            name: item.name,
+            quantity: String(item.quantity),
+            totalPrice: String(item.totalPrice),
+          })),
         );
         setReceipt(request.receipt);
         setSupplierId(request.supplierId);
@@ -234,38 +235,46 @@ export function RestockRequestFormPage() {
     // change on screen with the stored values. Nothing warns them; the work is simply gone. Storing keys
     // means the effect never calls `t`, so it has no reason to re-run.
     //
-    // freshLine is excluded for a duller reason: it is re-created every render and only supplies a key,
-    // so depending on it would refire the load on every keystroke.
   }, [isEdit, teamId, id]);
 
-  function patchLine(key: number, patch: Partial<LineDraft>) {
-    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  function patchLine(productId: bigint, patch: Partial<LineDraft>) {
+    setLines((prev) => prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
   }
 
-  function pickProduct(key: number, p: PickedProduct) {
-    patchLine(key, { productId: p.id, sku: p.sku, name: p.name });
+  // The picker hands back the WHOLE ticked set, so this RECONCILES — it does not append (#165).
+  //
+  // A product that is still ticked keeps the line it already had, with the quantity and price typed
+  // into it. Rebuilding the list from the picked set would be shorter to write and would silently
+  // reset every number on screen the next time somebody opened the picker to add one more product.
+  // Kept lines hold their on-screen ORDER too: rows jumping around after a dialog closes is its own
+  // small betrayal of somebody who was halfway through typing.
+  function pickProducts(products: PickedProduct[]) {
+    setLines((prev) => {
+      const ticked = new Set(products.map((p) => p.id.toString()));
+      const kept = prev.filter((l) => ticked.has(l.productId.toString()));
+
+      const known = new Set(kept.map((l) => l.productId.toString()));
+      const added = products.filter((p) => !known.has(p.id.toString())).map(lineFor);
+
+      return [...kept, ...added];
+    });
   }
 
-  // Clearing a line's product drops it back to the picker without losing the line (or its typed
-  // quantity/price) — the re-pick path, now that a picked line renders as a ProductListItem rather
-  // than as a combobox that stays on screen.
-  function clearProduct(key: number) {
-    patchLine(key, { productId: 0n, sku: "", name: "" });
+  // Dropping ONE product without opening the dialog. Unticking it in the picker does the same thing —
+  // they are the same edit, because the picker's ticks are derived from these lines rather than held
+  // separately. The last line IS removable now: an empty list is a legitimate half-filled form (the
+  // Save button is what refuses it), where before there was always a blank line that could not be got
+  // rid of.
+  function removeLine(productId: bigint) {
+    setLines((prev) => prev.filter((l) => l.productId !== productId));
   }
 
-  function addLine() {
-    setLines((prev) => [...prev, freshLine()]);
-  }
-
-  // The contract requires at least one line, so the last one is never removable.
-  function removeLine(key: number) {
-    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
-  }
-
-  const picked = useMemo(() => lines.filter((l) => l.productId > 0n), [lines]);
+  // What the picker shows as ticked. Derived from the lines, never stored beside them — two copies of
+  // "which products are on this request" is how a tick and a row start disagreeing.
+  const pickedIds = useMemo(() => lines.map((l) => l.productId), [lines]);
 
   // E — the products' money: Σ (line totals), in whole rupiah (#140).
-  const productsTotal = useMemo(() => picked.reduce((sum, l) => sum + lineTotal(l), 0n), [picked]);
+  const productsTotal = useMemo(() => lines.reduce((sum, l) => sum + lineTotal(l), 0n), [lines]);
 
   // F — the freight as typed. Parsed every render so E/F/G track the input live.
   const shippingCostValue = toRupiah(shippingCost);
@@ -273,6 +282,9 @@ export function RestockRequestFormPage() {
   // G — what this restock costs in full.
   const grandTotal = productsTotal + shippingCostValue;
 
+  // Every line carries a product by construction now, so the only thing left to be wrong is the
+  // quantity. The productId check stays anyway: it costs nothing and it is the assertion that would
+  // catch a future path putting a line here some way other than the picker.
   const linesValid = lines.every((l) => l.productId > 0n && toQty(l.quantity) >= 1);
   const canSave = warehouseId > 0n && lines.length >= 1 && linesValid;
 
@@ -407,126 +419,109 @@ export function RestockRequestFormPage() {
                   <Flex align="center" gap="card">
                     <Text fontWeight="medium">{t("restock.form.products")}</Text>
                     <Badge colorPalette="gray" data-testid="restock-product-count">
-                      {t("restock.form.productCount", { n: picked.length })}
+                      {t("restock.form.productCount", { n: lines.length })}
                     </Badge>
+                    <Spacer />
+
+                    {/* THE way products get onto this request (#165, owner: "not product select but
+                        product-picker"). A restock is a shopping list — you decide what to buy in one
+                        sitting — and picking a dozen products one combobox at a time made the form
+                        fight that. Ticking a dozen in one dialog is the same job in one pass.
+
+                        `stockWarehouseId` is the part that only works here: the picker shows what the
+                        DESTINATION warehouse already holds, which is the question being answered while
+                        choosing what to restock. Before a warehouse is chosen there is no such number,
+                        so it is omitted rather than guessed — undefined shows no badge, and no badge is
+                        honest where a wrong "out of stock" would not be.
+
+                        No `teamId` = browse EVERY team's catalogue, which is what the combobox's
+                        scope="all" did: a warehouse restocks goods it does not own. */}
+                    <ProductPicker
+                      stockWarehouseId={warehouseId > 0n ? warehouseId : undefined}
+                      value={pickedIds}
+                      onChange={pickProducts}
+                      trigger={
+                        <Button type="button" size="xs" variant="outline" data-testid="restock-pick-products">
+                          <Icon as={PackagePlus} boxSize="4" />
+                          {t("restock.form.addProduct")}
+                        </Button>
+                      }
+                    />
                   </Flex>
+
+                  {lines.length === 0 && (
+                    <Text fontSize="sm" color="fg.muted" data-testid="restock-no-products">
+                      {t("restock.form.noProducts")}
+                    </Text>
+                  )}
 
                   <Stack gap="card">
                     {lines.map((line, i) => (
                       <Box
-                        key={line.key}
+                        key={line.productId.toString()}
                         borderWidth="1px"
                         rounded="md"
                         p="card"
                         data-testid={`restock-line-${i}`}
                       >
-                        {line.productId === 0n ? (
-                          // Nothing picked yet: the line IS the picker.
-                          <Flex gap="card" align="center">
-                            <Box flex="1" minW="0">
-                              <ProductSelect
-                                teamId={teamId ?? 0n}
-                                scope="all"
-                                value={line.productId}
-                                onChange={(p) => pickProduct(line.key, p)}
-                              />
-                            </Box>
-                            <IconButton
-                              type="button"
-                              size="xs"
-                              variant="ghost"
-                              colorPalette="red"
-                              aria-label={t("restock.form.removeProduct")}
-                              disabled={lines.length <= 1}
-                              data-testid={`restock-remove-${i}`}
-                              onClick={() => removeLine(line.key)}
-                            >
-                              <Icon as={Trash2} boxSize="4" />
-                            </IconButton>
-                          </Flex>
-                        ) : (
-                          <ProductListItem
-                            product={{ id: line.productId, sku: line.sku, name: line.name }}
-                            action={
-                              <Flex gap="card" align="end" justify="end" wrap="wrap">
-                                <Field.Root w="20">
-                                  <Field.Label fontSize="xs">
-                                    {t("restock.form.quantity")}
-                                  </Field.Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={line.quantity}
-                                    data-testid={`restock-qty-${i}`}
-                                    onChange={(e) =>
-                                      patchLine(line.key, { quantity: e.target.value })
-                                    }
-                                  />
-                                </Field.Root>
+                        <ProductListItem
+                          product={{ id: line.productId, sku: line.sku, name: line.name }}
+                          action={
+                            <Flex gap="card" align="end" justify="end" wrap="wrap">
+                              <Field.Root w="20">
+                                <Field.Label fontSize="xs">{t("restock.form.quantity")}</Field.Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={line.quantity}
+                                  data-testid={`restock-qty-${i}`}
+                                  onChange={(e) =>
+                                    patchLine(line.productId, { quantity: e.target.value })
+                                  }
+                                />
+                              </Field.Root>
 
-                                <Field.Root w="28">
-                                  <Field.Label fontSize="xs">{t("restock.form.totalPrice")}</Field.Label>
-                                  <CurrencyInput
-                                    value={line.totalPrice}
-                                    data-testid={`restock-total-price-${i}`}
-                                    onChange={(v) => patchLine(line.key, { totalPrice: v })}
-                                  />
-                                </Field.Root>
+                              <Field.Root w="28">
+                                <Field.Label fontSize="xs">{t("restock.form.totalPrice")}</Field.Label>
+                                <CurrencyInput
+                                  value={line.totalPrice}
+                                  data-testid={`restock-total-price-${i}`}
+                                  onChange={(v) => patchLine(line.productId, { totalPrice: v })}
+                                />
+                              </Field.Root>
 
-                                <Text
-                                  fontSize="sm"
-                                  fontWeight="medium"
-                                  minW="24"
-                                  pb="1.5"
-                                  textAlign="end"
-                                  data-testid={`restock-line-total-${i}`}
-                                >
-                                  {formatRupiah(lineTotal(line))}
-                                </Text>
+                              <Text
+                                fontSize="sm"
+                                fontWeight="medium"
+                                minW="24"
+                                pb="1.5"
+                                textAlign="end"
+                                data-testid={`restock-line-total-${i}`}
+                              >
+                                {formatRupiah(lineTotal(line))}
+                              </Text>
 
-                                <Flex gap="1" pb="1">
-                                  <IconButton
-                                    type="button"
-                                    size="xs"
-                                    variant="ghost"
-                                    aria-label={t("restock.form.changeProduct")}
-                                    data-testid={`restock-change-${i}`}
-                                    onClick={() => clearProduct(line.key)}
-                                  >
-                                    <Icon as={Replace} boxSize="4" />
-                                  </IconButton>
-                                  <IconButton
-                                    type="button"
-                                    size="xs"
-                                    variant="ghost"
-                                    colorPalette="red"
-                                    aria-label={t("restock.form.removeProduct")}
-                                    disabled={lines.length <= 1}
-                                    data-testid={`restock-remove-${i}`}
-                                    onClick={() => removeLine(line.key)}
-                                  >
-                                    <Icon as={Trash2} boxSize="4" />
-                                  </IconButton>
-                                </Flex>
-                              </Flex>
-                            }
-                          />
-                        )}
+                              {/* No "change product" beside it any more: swapping one product for
+                                  another is picking, and picking is the dialog. Remove stays because
+                                  dropping one line should not need one. */}
+                              <IconButton
+                                type="button"
+                                size="xs"
+                                variant="ghost"
+                                colorPalette="red"
+                                mb="1"
+                                aria-label={t("restock.form.removeProduct")}
+                                data-testid={`restock-remove-${i}`}
+                                onClick={() => removeLine(line.productId)}
+                              >
+                                <Icon as={Trash2} boxSize="4" />
+                              </IconButton>
+                            </Flex>
+                          }
+                        />
                       </Box>
                     ))}
                   </Stack>
-
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="outline"
-                    alignSelf="flex-start"
-                    data-testid="restock-add-line"
-                    onClick={addLine}
-                  >
-                    <Icon as={Plus} boxSize="4" />
-                    {t("restock.form.addProduct")}
-                  </Button>
 
                   <Separator />
 
@@ -657,20 +652,20 @@ export function RestockRequestFormPage() {
                       {t("restock.summary.totalProducts")}
                     </Text>
                     <Text fontSize="sm" fontWeight="medium" data-testid="restock-summary-count">
-                      {picked.length}
+                      {lines.length}
                     </Text>
                   </Flex>
 
                   <Separator />
 
-                  {picked.length === 0 ? (
+                  {lines.length === 0 ? (
                     <Text fontSize="sm" color="fg.muted">
                       {t("restock.summary.noProducts")}
                     </Text>
                   ) : (
                     <Stack gap="card">
-                      {picked.map((line) => (
-                        <Flex key={line.key} gap="card" justify="space-between" align="start">
+                      {lines.map((line) => (
+                        <Flex key={line.productId.toString()} gap="card" justify="space-between" align="start">
                           <Stack gap="0" flex="1" minW="0">
                             <Text fontSize="sm" lineClamp={1}>
                               {line.name || line.sku}
