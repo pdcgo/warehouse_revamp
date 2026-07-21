@@ -928,7 +928,7 @@
       "voided": "Cancelled"
     },
     "totals": {
-      "heading": "All Orders",
+      "heading": "This Period",
       "unknownCost_one": "{{count}} order has an unknown cost — its margin reads as if the goods were free.",
       "unknownCost_other": "{{count}} orders have an unknown cost — their margin reads as if the goods were free."
     }

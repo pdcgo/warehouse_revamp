@@ -3,12 +3,15 @@ package revenue_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	revenuev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
 )
 
 // #75 — an order's expected margin is computed once and STORED, so #76 has a number to reconcile a
@@ -231,5 +234,113 @@ func TestRevenueList_ATeamWithNoOrdersTotalsZero(t *testing.T) {
 
 	if totals.GetRevenue() != 0 || totals.GetExpectedMargin() != 0 || totals.GetUnknownCostOrders() != 0 {
 		t.Fatalf("an empty team's totals are not zero: %+v", totals)
+	}
+}
+
+// seedOn records a revenue row and back-dates it, because `created_at` is set by the database and the
+// period filter reads exactly that column.
+func seedOn(t *testing.T, db *gorm.DB, svc *revenue_v1.Service, orderID uint64, amount int64, at time.Time) {
+	t.Helper()
+
+	_, err := svc.RevenueRecord(context.Background(), connect.NewRequest(&revenuev1.RevenueRecordRequest{
+		TeamId: 2, OrderId: orderID,
+		Revenue: amount, Cogs: 0, ShippingCost: 0, CostKnown: true,
+	}))
+	if err != nil {
+		t.Fatalf("record order %d: %v", orderID, err)
+	}
+
+	err = db.Exec(`UPDATE order_revenues SET created_at = ? WHERE order_id = ?`, at, orderID).Error
+	if err != nil {
+		t.Fatalf("backdate order %d: %v", orderID, err)
+	}
+}
+
+// #171 — THE PERIOD FILTER, and the totals that respect it.
+//
+// Without this the profit screen (#172) would subtract one month of costs from ALL-TIME revenue and
+// print a number that is not profit and never was. The page is deliberately smaller than the period,
+// so a total computed from the loaded rows could only ever be a fraction of the truth.
+func TestRevenueList_FiltersByPeriodAndTotalsTheWholeOfIt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	utc := time.UTC
+
+	seedOn(t, db, svc, 1, 10_000, time.Date(2026, 7, 3, 9, 0, 0, 0, utc))
+	seedOn(t, db, svc, 2, 20_000, time.Date(2026, 7, 20, 9, 0, 0, 0, utc))
+	// OUTSIDE the period — June must not count.
+	seedOn(t, db, svc, 3, 99_000, time.Date(2026, 6, 30, 9, 0, 0, 0, utc))
+
+	res, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
+		TeamId: 2,
+		From:   "2026-07-01",
+		To:     "2026-07-31",
+		// ONE row per page.
+		Page: &commonv1.PageFilter{Page: 1, Limit: 1},
+	}))
+	if err != nil {
+		t.Fatalf("RevenueList: %v", err)
+	}
+
+	if n := len(res.Msg.GetRevenues()); n != 1 {
+		t.Fatalf("the page holds %d rows, want 1 — the rest of this test assumes a partial page", n)
+	}
+	if n := res.Msg.GetPageInfo().GetTotalItems(); n != 2 {
+		t.Fatalf("total items = %d, want 2 (July only)", n)
+	}
+
+	// 10.000 + 20.000. June's 99.000 leaking in would read 129.000.
+	if got := res.Msg.GetTotals().GetRevenue(); got != 30_000 {
+		t.Fatalf("period revenue = %d, want 30000 — June must not count", got)
+	}
+}
+
+// #171 — THE LAST DAY OF THE PERIOD COUNTS IN FULL, and this is the trap the filter exists around.
+//
+// `created_at` is a TIMESTAMPTZ, not a DATE like cost_records.occurred_at. So `created_at <= to` means
+// `<= midnight`, which silently drops almost the whole last day of every month — a filter that looks
+// right and quietly under-reports. The handler uses a half-open `< to + 1 day` instead, and this is
+// what proves it.
+func TestRevenueList_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	// Late on the final day — the row a `<= to` bound would lose.
+	seedOn(t, db, svc, 1, 50_000, time.Date(2026, 7, 31, 23, 30, 0, 0, time.UTC))
+	// And the first moment of the next day, which must NOT count.
+	seedOn(t, db, svc, 2, 7_000, time.Date(2026, 8, 1, 0, 5, 0, 0, time.UTC))
+
+	res, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
+		TeamId: 2, From: "2026-07-01", To: "2026-07-31", Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("RevenueList: %v", err)
+	}
+
+	if got := res.Msg.GetTotals().GetRevenue(); got != 50_000 {
+		t.Fatalf("period revenue = %d, want 50000 — an order at 23:30 on the last day belongs to the "+
+			"period, and one at 00:05 the next day does not", got)
+	}
+}
+
+// #171 — no period means every order ever. The filter must not become a requirement, or every existing
+// caller breaks.
+func TestRevenueList_NoPeriodMeansEverything(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	seedOn(t, db, svc, 1, 10_000, time.Date(2026, 7, 3, 9, 0, 0, 0, time.UTC))
+	seedOn(t, db, svc, 2, 20_000, time.Date(2020, 1, 1, 9, 0, 0, 0, time.UTC))
+
+	res, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
+		TeamId: 2, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("RevenueList: %v", err)
+	}
+
+	if got := res.Msg.GetTotals().GetRevenue(); got != 30_000 {
+		t.Fatalf("unfiltered revenue = %d, want 30000", got)
 	}
 }

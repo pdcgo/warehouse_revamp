@@ -6,6 +6,7 @@ import {
   Flex,
   Heading,
   Icon,
+  Input,
   SimpleGrid,
   Spacer,
   Spinner,
@@ -20,6 +21,7 @@ import type { OrderRevenue, RevenueTotals } from "../gen/warehouse/revenue/v1/re
 import { Pagination } from "../components/Pagination";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
+import { monthRange, thisMonth } from "../lib/period";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -33,6 +35,7 @@ export function RevenuePage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
+  const [month, setMonth] = useState(thisMonth);
   const [revenues, setRevenues] = useState<OrderRevenue[]>([]);
   const [totals, setTotals] = useState<RevenueTotals | undefined>(undefined);
   const [page, setPage] = useState(1);
@@ -50,8 +53,14 @@ export function RevenuePage() {
     setError("");
 
     try {
+      const { from, to } = monthRange(month);
+
       const res = await revenueClient.revenueList({
         teamId,
+        // THE PERIOD (#171). Until this existed the totals were all-time, so a profit screen would have
+        // subtracted one month of costs from every order ever placed.
+        from,
+        to,
         page: { page, limit: pageSize },
       });
 
@@ -65,7 +74,7 @@ export function RevenuePage() {
     } finally {
       setLoading(false);
     }
-  }, [teamId, page, pageSize]);
+  }, [teamId, month, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -88,6 +97,20 @@ export function RevenuePage() {
         <Heading size="md">{t("revenue.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName}</Badge>
         <Spacer />
+
+        {/* The same month control the costs screen carries, reading the same shared helper — the two
+            screens must agree what "this month" selects, because the profit screen subtracts one from
+            the other. */}
+        <Input
+          type="month"
+          w="40"
+          value={month}
+          data-testid="revenue-month"
+          onChange={(e) => {
+            setMonth(e.target.value);
+            setPage(1);
+          }}
+        />
       </Flex>
 
       {/* These are expectations, not settled money. Said once, at the top, rather than repeated per row. */}
@@ -102,9 +125,9 @@ export function RevenuePage() {
         </Text>
       )}
 
-      {/* The headline figures — over EVERY order this team has, not the page below. That is why they
-          come from the server and are labelled "all orders": a total that silently meant "the twenty
-          rows you can see" would change with the page size and read as the whole truth. */}
+      {/* The headline figures — over every order in the SELECTED PERIOD, not the page below. They come
+          from the server for that reason (#78/#171): a total that silently meant "the twenty rows you
+          can see" would change with the page size and still read as the whole truth. */}
       {!loading && totals && (
         <Card.Root data-testid="revenue-totals">
           <Card.Body>

@@ -145,3 +145,23 @@ test("Revenue: the totals cover every order, not the page in front of you (#78)"
   await expect(page.getByTestId("revenue-total-revenue")).toHaveText(totalOnSmallPage);
   await expect(page.getByTestId("revenue-total-margin")).toHaveText(marginOnSmallPage);
 });
+
+// #171 — the revenue screen is scoped to a MONTH, and the totals follow it.
+//
+// Until this, RevenueList had no period filter at all: its totals were all-time. A profit screen built
+// on that would have subtracted one month of costs from every order ever placed.
+test("Revenue: another month shows none of this month's revenue (#171)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await seedRevenue(page, 970000 + Number(SUFFIX.slice(-3)), 3);
+
+  await page.goto("/revenue");
+
+  // The screen opens on THIS month, where the seeded rows live.
+  const total = page.getByTestId("revenue-total-revenue");
+  await expect(total).not.toHaveText("Rp 0");
+
+  // A month with nothing in it reads zero — which is what makes the filter real rather than decorative.
+  await page.getByTestId("revenue-month").fill("2020-01");
+  await expect(total).toHaveText("Rp 0");
+});

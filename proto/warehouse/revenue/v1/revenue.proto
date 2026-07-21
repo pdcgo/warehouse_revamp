@@ -121,6 +121,23 @@ message RevenueListRequest {
   ];
   // Grows with every order, so it pages (HARD RULE 9).
   warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
+  //
+  // Server-side, and that is the point of the field rather than a convenience: this list is
+  // paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
+  // it unfiltered — a headline figure that is right on a page big enough to hold everything and
+  // quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
+  //
+  // WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
+  // order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
+  // (#161).
+  // Those are two different senses of "belongs to July", and they are close enough to subtract only
+  // because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
+  // exactly that, so it is worth knowing before anybody reconciles the result against a bank
+  // statement.
+  string from = 3 [(buf.validate.field).string.max_len = 10];
+  string to = 4 [(buf.validate.field).string.max_len = 10];
 }
 
 message RevenueListResponse {

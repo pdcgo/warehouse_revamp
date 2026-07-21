@@ -296,7 +296,22 @@ type RevenueListRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Grows with every order, so it pages (HARD RULE 9).
-	Page          *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	Page *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
+	//
+	// Server-side, and that is the point of the field rather than a convenience: this list is
+	// paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
+	// it unfiltered — a headline figure that is right on a page big enough to hold everything and
+	// quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
+	//
+	// WHAT THE PERIOD SELECTS: a revenue row is dated by its , which is the moment the order
+	// was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose (#161).
+	// Those are two different senses of "belongs to July", and they are close enough to subtract only
+	// because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
+	// exactly that, so it is worth knowing before anybody reconciles the result against a bank
+	// statement.
+	From          string `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	To            string `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -343,6 +358,20 @@ func (x *RevenueListRequest) GetPage() *v1.PageFilter {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *RevenueListRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *RevenueListRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
 }
 
 type RevenueListResponse struct {
@@ -622,10 +651,14 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"U\n" +
 	"\x15RevenueRecordResponse\x12<\n" +
-	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue\"\x83\x01\n" +
+	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue\"\xb9\x01\n" +
 	"\x12RevenueListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12;\n" +
-	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12\x1b\n" +
+	"\x04from\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
+	"R\x04from\x12\x17\n" +
+	"\x02to\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
+	"R\x02to:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\xce\x01\n" +
 	"\x13RevenueListResponse\x12>\n" +

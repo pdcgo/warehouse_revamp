@@ -928,7 +928,7 @@
       "voided": "Dibatalkan"
     },
     "totals": {
-      "heading": "Semua Pesanan",
+      "heading": "Periode Ini",
       "unknownCost_one": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis.",
       "unknownCost_other": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis."
     }

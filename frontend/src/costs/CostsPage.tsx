@@ -28,34 +28,11 @@ import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
+import { monthRange, thisMonth } from "../lib/period";
 import { RecordCostDialog } from "./RecordCostDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// The month a cost list opens on: this one. A list without a period is meaningless, so it starts
-// somewhere real rather than showing every cost ever recorded.
-function thisMonth(): string {
-  const now = new Date();
-
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-// A "YYYY-MM" month becomes the inclusive day range the RPC filters on.
-//
-// The last day is computed rather than assumed: day 0 of the NEXT month is the last day of this one,
-// which is what makes February and the 30-day months come out right without a table of lengths.
-export function monthRange(month: string): { from: string; to: string } {
-  const [y, m] = month.split("-").map(Number);
-
-  if (!y || !m) return { from: "", to: "" };
-
-  const last = new Date(y, m, 0).getDate();
-
-  return {
-    from: `${month}-01`,
-    to: `${month}-${String(last).padStart(2, "0")}`,
-  };
-}
 
 // CostsPage lists what a team spent in a month (#170) — the money no order caused.
 //
