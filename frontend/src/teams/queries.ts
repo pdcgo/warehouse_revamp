@@ -111,13 +111,24 @@ export function useCreateTeam() {
   });
 }
 
+// ⚠ EVERY FIELD BUT `teamId` IS OPTIONAL, and that mirrors the contract rather than being lax.
+//
+// TeamUpdate declares `name`, `description` and `image_url` as proto3 `optional` — "Absent = leave
+// alone", stated in team.proto. Requiring them here would force a caller that only wants to RENAME a
+// team to supply a description, and supplying `""` is not "leave alone" — it is present-and-empty,
+// which CLEARS it. The settings screen renames, and TeamPicture only ever sets an image; neither
+// carries the other's fields, and neither should be made to invent them.
 export function useUpdateTeam() {
   const invalidateTeams = useInvalidateTeams();
   const invalidateUsers = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: (vars: { teamId: bigint; name: string; description: string }) =>
-      teamClient.teamUpdate(vars),
+    mutationFn: (vars: {
+      teamId: bigint;
+      name?: string;
+      description?: string;
+      imageUrl?: string;
+    }) => teamClient.teamUpdate(vars),
     // The name is the entangled part: UserTeams returns `team_name` for each of a person's
     // memberships, so a rename that only invalidated `["teams"]` would leave the renamed team
     // showing its old name on the user-detail page.
@@ -137,19 +148,35 @@ export function useDeleteTeam() {
   });
 }
 
-// Contact + bank details. Teams ONLY: `info` is carried by TeamDetail and nothing else — no user
-// query returns a bank account, so invalidating `["users"]` here would refetch lists that cannot
-// have changed.
+// The team's INFO — contact, bank details, and the default warehouse (#145).
+//
+// Teams ONLY: `info` is carried by TeamDetail and nothing else — no user query returns a bank
+// account, so invalidating `["users"]` here would refetch lists that cannot have changed.
+//
+// ⚠ ALL FIELDS OPTIONAL, and here it is not a nicety — it is the difference between saving a setting
+// and destroying somebody's bank details.
+//
+// team.proto states it outright: "ALL optional — explicit presence. Absent = leave alone. Present =
+// write it, including empty." Two screens write this message and they touch DISJOINT fields — the
+// contact/bank dialog, and the settings screen's default-warehouse picker. If the vars required the
+// bank fields, saving a default warehouse would send four present-and-empty strings and wipe the
+// account details of the team that saved it.
+//
+// The ids stay optional for the mirror-image reason: `present & 0` is how the contract says CLEAR,
+// so a caller that means "leave the return warehouse alone" must omit it rather than send 0.
 export function useSaveTeamInfo() {
   const invalidate = useInvalidateTeams();
 
   return useMutation({
     mutationFn: (vars: {
       teamId: bigint;
-      contactNumber: string;
-      bankType: string;
-      bankOwnerName: string;
-      bankAccountNumber: string;
+      contactNumber?: string;
+      bankType?: string;
+      bankOwnerName?: string;
+      bankAccountNumber?: string;
+      returnWarehouseId?: bigint;
+      returnUserId?: bigint;
+      defaultWarehouseId?: bigint;
     }) => teamClient.teamInfoUpdate(vars),
     onSuccess: () => invalidate(),
   });

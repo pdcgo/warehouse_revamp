@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Card, Field, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
+import { useUpdateTeam, useSaveTeamInfo, useTeamDetail } from "../teams/queries";
 import { TeamPicture } from "../team/TeamPicture";
 import { toaster } from "../components/Toaster";
 import { isTeamManager } from "../lib/roles";
@@ -18,6 +19,8 @@ import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 export function SettingsPage() {
   const { t } = useTranslation();
   const { current, refresh } = useTeam();
+  const updateTeam = useUpdateTeam();
+  const saveTeamInfo = useSaveTeamInfo();
 
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,26 +38,17 @@ export function SettingsPage() {
   // here, per team.
   const teamId = current?.teamId;
 
+  // Read through the same hook the team detail page and the contact dialog use, so a save from any
+  // of them moves all three.
+  const detail = useTeamDetail({ teamId: teamId ?? 0n, enabled: teamId !== undefined });
+  const savedWarehouse = detail.data?.info?.defaultWarehouseId;
+
+  // Seed the picker from the server, and RE-seed when the team changes. Keyed on the saved value
+  // rather than the whole record: a refetch that returns an identical setting must not yank the
+  // picker back while somebody is choosing a different one.
   useEffect(() => {
-    if (teamId === undefined) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await teamClient.teamDetail({ teamId });
-        if (!cancelled) {
-          setDefaultWarehouse(res.team?.info?.defaultWarehouseId ?? 0n);
-        }
-      } catch {
-        if (!cancelled) setDefaultWarehouse(0n);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId]);
+    setDefaultWarehouse(savedWarehouse ?? 0n);
+  }, [savedWarehouse, teamId]);
 
   if (!current) {
     return (
@@ -75,11 +69,14 @@ export function SettingsPage() {
     setBusy(true);
 
     try {
-      await teamClient.teamInfoUpdate({
+      await saveTeamInfo.mutateAsync({
         teamId: current.teamId,
         // Sent explicitly, including 0: the field is `optional` on the wire, and a present zero is
         // how the contract says "clear it" (#145). Omitting it would mean "leave alone", so somebody
         // who cleared the picker would find their old default still there.
+        //
+        // The bank and contact fields are OMITTED for the mirror-image reason — absent leaves them
+        // alone, and sending them empty here would wipe details this screen never showed.
         defaultWarehouseId: defaultWarehouse,
       });
 
@@ -101,7 +98,9 @@ export function SettingsPage() {
     setBusy(true);
 
     try {
-      await teamClient.teamUpdate({ teamId: current.teamId, name });
+      // Only the name. `description` is omitted rather than sent empty — absent means leave alone,
+      // and this screen has no description field to have gathered one from.
+      await updateTeam.mutateAsync({ teamId: current.teamId, name });
 
       // Reflect the rename in the team switcher and everywhere else `current` is read.
       await refresh();

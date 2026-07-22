@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Avatar, Button, FileUpload, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { Camera } from "lucide-react";
-import { documentClient, rpcError, teamClient } from "../api/clients";
+import { documentClient, rpcError } from "../api/clients";
 import { DocumentResourceType } from "../gen/warehouse/document/v1/document_pb";
 import { useTeam } from "./TeamContext";
+import { useTeamDetail, useUpdateTeam } from "../teams/queries";
 import { toaster } from "../components/Toaster";
 import { isTeamManager } from "../lib/roles";
 
@@ -20,7 +21,6 @@ import { isTeamManager } from "../lib/roles";
 export function TeamPicture() {
   const { current, refresh } = useTeam();
 
-  const [imageUrl, setImageUrl] = useState("");
   const [busy, setBusy] = useState(false);
 
   const teamId = current?.teamId;
@@ -28,36 +28,15 @@ export function TeamPicture() {
   const noTeam = !current;
   const name = current?.teamName || "Team";
 
-  // TeamAccessList (what `current` comes from) does not carry the picture, so read it from
-  // TeamDetail for the displayed image, and re-read whenever the current team changes.
-  useEffect(() => {
-    if (teamId === undefined) {
-      setImageUrl("");
+  // TeamAccessList (what `current` comes from) does not carry the picture, so it is read from
+  // TeamDetail — through the shared hook, so the settings page, the detail page and this all show
+  // one answer, and a save from any of them moves the others.
+  //
+  // A failed read is non-fatal: no image falls back to the initials, exactly as before.
+  const detail = useTeamDetail({ teamId: teamId ?? 0n, enabled: teamId !== undefined });
+  const imageUrl = detail.data?.imageUrl ?? "";
 
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await teamClient.teamDetail({ teamId });
-
-        if (!cancelled) {
-          setImageUrl(res.team?.imageUrl ?? "");
-        }
-      } catch {
-        // Non-fatal: fall back to initials.
-        if (!cancelled) {
-          setImageUrl("");
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId]);
+  const updateTeam = useUpdateTeam();
 
   async function upload(file: File) {
     if (!current) {
@@ -94,10 +73,12 @@ export function TeamPicture() {
       // one.
       const url = conf.document?.thumbnailUrl || conf.document?.publicUrl || "";
 
-      // 4. Point the team at it. TeamUpdate returns the updated team, so use it for the display.
-      const updated = await teamClient.teamUpdate({ teamId: current.teamId, imageUrl: url });
-
-      setImageUrl(updated.team?.imageUrl ?? url);
+      // 4. Point the team at it. ONLY `imageUrl` — the name and description are omitted rather than
+      // sent empty, because absent means leave alone and present-and-empty would erase them.
+      //
+      // The displayed image is no longer set from the response: the mutation invalidates the team
+      // queries, so the picture this component reads updates itself.
+      await updateTeam.mutateAsync({ teamId: current.teamId, imageUrl: url });
 
       // Reflect the new picture in the team switcher too.
       await refresh();
