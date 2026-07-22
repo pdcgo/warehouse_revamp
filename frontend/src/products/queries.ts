@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryClient, productClient } from "../api/clients";
+import { categoryClient, inventoryClient, productClient } from "../api/clients";
 import { key } from "../api/queryClient";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
@@ -57,6 +57,61 @@ export function useProducts({ teamId, isWarehouse, q, page, pageSize }: ProductL
       return {
         products: res.products,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// The DISCOVER list — products across every team, not just the caller's (#106).
+//
+// Its own key rather than a flag on useProducts: it answers a different question against a different
+// RPC, and sharing an entry would let one team's catalogue render under the cross-team heading.
+export function useDiscoverProducts(args: {
+  teamId: bigint | undefined;
+  q: string;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, q, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { discover: true, q, page, pageSize }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await productClient.productDiscover({
+        teamId: teamId!,
+        q,
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        products: res.products,
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// One product, with the category tree it is filed against.
+//
+// Both together: the detail screen names the product's category, and rendering the product before
+// the tree lands would show a blank where a name belongs. The tree is global reference data, so this
+// costs nothing beyond the first fetch.
+export function useProductDetail(args: { teamId: bigint | undefined; productId: bigint }) {
+  const { teamId, productId } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { productId: productId.toString() }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const [detail, cats] = await Promise.all([
+        productClient.productDetail({ teamId: teamId!, productId }),
+        categoryClient.categoryList({}),
+      ]);
+
+      return {
+        product: detail.product ?? null,
+        categories: cats.categories,
       };
     },
   });

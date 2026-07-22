@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -11,9 +11,8 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
-import { rpcError, userClient } from "../api/clients";
-import type { PublicUser, TeamAccessItem } from "../gen/warehouse/user/v1/user_pb";
-import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
+import { rpcError } from "../api/clients";
+import { useUserTeams } from "./queries";
 import { UserItem } from "../components/UserItem";
 import { TeamItem } from "../components/TeamItem";
 import { Pagination } from "../components/Pagination";
@@ -40,40 +39,18 @@ export function UserDetailPage() {
 
   const userId = parseUserId(userIdParam);
 
-  const [user, setUser] = useState<PublicUser | null>(null);
-  const [teams, setTeams] = useState<TeamAccessItem[]>([]);
-  const [pageInfo, setPageInfo] = useState<PageInfo | undefined>(undefined);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    if (userId === 0n) {
-      setError(t("users.detail.invalidId"));
-      setLoading(false);
-      return;
-    }
+  const query = useUserTeams({ userId, page, pageSize: TEAM_PAGE_SIZE });
 
-    setLoading(true);
-    setError("");
+  const user = query.data?.user ?? null;
+  const teams = query.data?.teams ?? [];
+  const pageInfo = query.data?.pageInfo;
+  const loading = query.isPending && userId !== 0n;
 
-    try {
-      const res = await userClient.userTeams({ userId, page: { page, limit: TEAM_PAGE_SIZE } });
-      setUser(res.user ?? null);
-      setTeams(res.teams);
-      setPageInfo(res.pageInfo);
-    } catch (err) {
-      setError(rpcError(err));
-      setUser(null);
-      setTeams([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, page, t]);
+  // A malformed id never reaches the server, so its message comes from here.
+  const error = userId === 0n ? t("users.detail.invalidId") : query.isError ? rpcError(query.error) : "";
 
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   return (
     <Stack gap="section" data-testid="user-detail-page">

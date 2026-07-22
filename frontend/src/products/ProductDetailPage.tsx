@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Image, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { categoryClient, productClient, rpcError } from "../api/clients";
-import type { Product } from "../gen/warehouse/product/v1/product_pb";
-import type { Category } from "../gen/warehouse/category/v1/category_pb";
+import { rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
+import { useProductDetail } from "./queries";
 import { pathToRoot } from "../categories/categoryTree";
 
 function parseProductId(raw: string | undefined): bigint {
@@ -44,39 +42,16 @@ export function ProductDetailPage() {
   const id = parseProductId(productId);
   const teamId = current?.teamId;
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? "Invalid product id." : "");
-      setLoading(false);
-      return;
-    }
+  const query = useProductDetail({ teamId, productId: id });
 
-    setLoading(true);
-    setError("");
+  const product = query.data?.product ?? null;
+  const categories = query.data?.categories ?? [];
+  const loading = query.isPending && id !== 0n;
 
-    try {
-      const [detail, cats] = await Promise.all([
-        productClient.productDetail({ teamId, productId: id }),
-        categoryClient.categoryList({}),
-      ]);
-      setProduct(detail.product ?? null);
-      setCategories(cats.categories);
-    } catch (err) {
-      setError(rpcError(err));
-      setProduct(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, id]);
+  // A malformed id never reaches the server, so its message comes from here.
+  const error = id === 0n ? "Invalid product id." : query.isError ? rpcError(query.error) : "";
 
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   if (!current) {
     return (

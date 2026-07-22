@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Flex, HStack, Heading, Input, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
-import { productClient, rpcError, teamClient } from "../api/clients";
-import type { Product } from "../gen/warehouse/product/v1/product_pb";
+import { rpcError, teamClient } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
+import { useDiscoverProducts } from "./queries";
 import { Pagination } from "../components/Pagination";
 import { ProductCard } from "../components/ProductCard";
 
@@ -20,13 +20,9 @@ export function DiscoverProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
-  const [products, setProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   // teamId -> name, for the card's team badge. Batched per page (TeamByIds), never per card.
   const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
@@ -38,29 +34,13 @@ export function DiscoverProductsPage() {
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  const query = useDiscoverProducts({ teamId, q, page, pageSize });
 
-    setLoading(true);
-    setError("");
+  const products = query.data?.products ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
-    try {
-      const res = await productClient.productDiscover({ teamId, q, page: { page, limit: pageSize } });
-      setProducts(res.products);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // The owning team's NAME for each card. A discover page's products come from many teams, so this
   // resolves the page's ids in ONE batch and caches them for the page's life — paging back, or a

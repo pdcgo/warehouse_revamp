@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,10 +19,8 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2, TriangleAlert } from "lucide-react";
 
-import { inventoryClient, restockClient, rpcError } from "../api/clients";
-import type { ProductPlace } from "../gen/warehouse/inventory/v1/inventory_pb";
+import { restockClient, rpcError } from "../api/clients";
 import type {
-  RestockRequest,
   RestockRequestItem,
 } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -33,7 +31,8 @@ import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
-import { useInvalidateRestock } from "./queries";
+import { useRestockRequest, useInvalidateRestock } from "./queries";
+import { useProductPlaces } from "../inventory/queries";
 import {
   deltaLabel,
   isCounted,
@@ -96,67 +95,68 @@ export function RestockAcceptPage() {
 
   const requestId = parseRequestId(rawId);
 
-  const [request, setRequest] = useState<RestockRequest | null>(null);
-  const [places, setPlaces] = useState<ProductPlace[]>([]);
+  // Only the DRAFTS are state — what the person counting is typing. The request and the existing
+  // shelf placements come from queries.
+  //
+  // `submitError` is separate from the query's error on purpose: one is "we could not load this
+  // request", the other is "the server refused your count". They read differently and one must not
+  // clear the other.
+  const [submitError, setSubmitError] = useState("");
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [placements, setPlacements] = useState<Record<string, PlacementDraft[]>>({});
   const [damage, setDamage] = useState<Record<string, DamageDraft[]>>({});
   const [codFee, setCodFee] = useState("0");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const teamId = isWarehouse ? current?.teamId : undefined;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || requestId === 0n) return;
+  const query = useRestockRequest({ teamId, requestId });
 
-    setLoading(true);
-    setError("");
+  const request = query.data ?? null;
+  const loading = query.isPending && teamId !== undefined && requestId !== 0n;
+  const error = query.isError ? rpcError(query.error) : submitError;
 
-    try {
-      const detail = await restockClient.restockRequestDetail({ teamId, requestId });
-      const req = detail.request ?? null;
+  // B — where these products already live, so a put-away adds to the existing pile rather than
+  // starting a second one in another aisle (#156). Its own query: it depends on the request having
+  // arrived, and it must not hold up the form if it fails — a shelf suggestion is help, not a gate.
+  const placesQuery = useProductPlaces({
+    warehouseId: teamId,
+    productIds: (request?.items ?? []).map((i) => i.productId),
+  });
+  const places = placesQuery.data ?? [];
 
-      setRequest(req);
-
-      // Prefill the counts from the ASK, and the placements with one row per line holding all of it.
-      // The place itself is deliberately left UNANSWERED: a prefilled count is a claim the request
-      // already made, offered back for confirmation, whereas a prefilled shelf would invent an answer
-      // only the person holding the box has. Guessing the shelf is what naming one exists to prevent.
-      const nextCounts: Record<string, string> = {};
-      const nextPlacements: Record<string, PlacementDraft[]> = {};
-
-      for (const item of req?.items ?? []) {
-        const key = item.id.toString();
-        nextCounts[key] = item.quantity.toString();
-        nextPlacements[key] = [{ key: nextKey(), place: "", quantity: item.quantity.toString() }];
-      }
-
-      setCounts(nextCounts);
-      setPlacements(nextPlacements);
-      setDamage({});
-
-      // B — where these products already live, so a put-away adds to the existing pile rather than
-      // starting a second one in another aisle (#156).
-      const ids = (req?.items ?? []).map((i) => i.productId);
-
-      if (ids.length > 0) {
-        const found = await inventoryClient.productPlaces({ warehouseId: teamId, productIds: ids });
-        setPlaces(found.places);
-      }
-    } catch (err) {
-      setError(rpcError(err));
-      setRequest(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, requestId]);
+  // SEEDING THE FORM, once per request. The drafts are what the person edits, so they cannot be
+  // derived on every render — that would overwrite typing. Keyed on the request id rather than the
+  // object: the query refetches and hands back a NEW object with the same contents, and reseeding on
+  // that would wipe a half-filled count sheet the moment anything invalidated.
+  //
+  // The counts prefill from the ASK and the PLACE is deliberately left unanswered: a prefilled count
+  // is a claim the request already made, offered back for confirmation, whereas a prefilled shelf
+  // would invent an answer only the person holding the box has.
+  const seededFor = useRef<string>("");
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!request) return;
+
+    const id = request.id.toString();
+    if (seededFor.current === id) return;
+    seededFor.current = id;
+
+    const nextCounts: Record<string, string> = {};
+    const nextPlacements: Record<string, PlacementDraft[]> = {};
+
+    for (const item of request.items) {
+      const key = item.id.toString();
+      nextCounts[key] = item.quantity.toString();
+      nextPlacements[key] = [{ key: nextKey(), place: "", quantity: item.quantity.toString() }];
+    }
+
+    setCounts(nextCounts);
+    setPlacements(nextPlacements);
+    setDamage({});
+  }, [request]);
+
 
   const items = useMemo(() => request?.items ?? [], [request]);
 
@@ -260,7 +260,7 @@ export function RestockAcceptPage() {
     if (teamId === undefined || !request) return;
 
     setBusy(true);
-    setError("");
+    setSubmitError("");
 
     try {
       // Built from `request.items` rather than from the maps, so the payload's shape comes from the
@@ -305,7 +305,7 @@ export function RestockAcceptPage() {
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
       navigate(`/inventories/restock/${request.id}`);
     } catch (err) {
-      setError(rpcError(err));
+      setSubmitError(rpcError(err));
       toaster.create({ type: "error", title: t("restock.accept.toast.failed"), description: rpcError(err) });
     } finally {
       setBusy(false);

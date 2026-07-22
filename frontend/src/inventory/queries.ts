@@ -180,6 +180,29 @@ export function useWarehouseProductActivity(args: {
   });
 }
 
+// Where a set of products already live in this warehouse (#156) — so a put-away adds to the existing
+// pile rather than starting a second one in another aisle.
+export function useProductPlaces(args: { warehouseId: bigint | undefined; productIds: bigint[] }) {
+  const { warehouseId, productIds } = args;
+
+  return useQuery({
+    // The ids are part of the question, so they are part of the key — sorted, because the same set
+    // arriving in a different order is the same question and must not be a second cache entry.
+    queryKey: key.inventory(warehouseId, {
+      places: productIds.map((id) => id.toString()).sort(),
+    }),
+    enabled: warehouseId !== undefined && productIds.length > 0,
+    queryFn: async () => {
+      const found = await inventoryClient.productPlaces({
+        warehouseId: warehouseId!,
+        productIds,
+      });
+
+      return found.places;
+    },
+  });
+}
+
 // Receive, adjust and move all change what is on a shelf, so they all land here.
 //
 // This also invalidates RESTOCK and RACKS, because stock is the thing those screens are about: a
