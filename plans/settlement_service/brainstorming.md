@@ -321,22 +321,56 @@ Three properties fall out, none of which the other anchors had:
 3. **No cross-service read on the posting path.** The number rides in on the order event; settlement
    does not have to ask inventory anything.
 
-⚠ **ONE EDGE CASE, AND IT LOSES THE OWNING TEAM MONEY.** `unit_cost = 0` means **unknown, not free**
-— a product received straight into stock without a restock has no recorded cost. Under cost+markup
-that computes to a fee of **zero**: the owning team is owed nothing for goods that genuinely left its
-stock, silently.
+#### ✅ Q10 — an unknown cost posts ZERO and is REPORTED, not refused (owner, 2026-07-22)
 
-`revenue_service` already meets this and chose to **count and warn** rather than exclude
-(`unknownCostOrders` on its totals). Settlement cannot borrow that answer directly, because a warning
-on a report is not the same as money not owed. Three options, unresolved:
+`unit_cost = 0` means **unknown, not free**. Under cost+markup that computes a fee of **zero**: the
+owning team is owed nothing for goods that genuinely left its stock, and nobody is told.
 
-| | |
+**This is not an edge case, which is what settled it.** `StockCost` reads one place only — fulfilled
+restock requests, scoped to one warehouse:
+
+```sql
+FROM restock_request_items i JOIN restock_requests r ON r.id = i.restock_request_id
+WHERE r.warehouse_id = ? AND r.status = fulfilled AND i.received_quantity > 0
+```
+
+Stock enters a warehouse **four ways, and three of them leave no cost behind**:
+
+| Arrival | Leaves a cost? |
 | --- | --- |
-| **Post 0 and flag it** | Consistent with revenue. The debt is understated but visible, and somebody can correct it by hand. |
-| **Refuse the order** | Truthful, and far too aggressive: it stops a sale because of a bookkeeping gap. |
-| **Post 0 and reconcile later** | The reconciliation report (§6 step 8) already exists to find gaps — this is one it could name. |
+| A fulfilled restock request | ✅ the only one |
+| **Direct receive** — the `Receive` action on the stock screen (`useReceiveStock`) | ❌ |
+| **Adjust up** — a stock-take correction | ❌ |
+| **Transfer in** from another warehouse | ❌ *in this warehouse* |
+| A restock line where nothing arrived (`received_quantity = 0`) | ❌ skipped deliberately |
 
-Leaning: **post 0 and flag**, and let the reconciliation report list them. See **Q10**.
+Receiving stock directly is one click on the inventory screen, so a zero cost is an ordinary state,
+not a corner.
+
+**The decision:**
+
+1. **Post 0.** A sale is not blocked by a bookkeeping gap. Refusing the order was considered and
+   rejected as far too aggressive — it stops the business working because a number is missing.
+2. **The reconciliation report (§6) LISTS every entry posted with an unknown cost.** This is what
+   turns a silent loss into a visible one somebody can settle by hand, and it is now part of that
+   issue's scope rather than a nice-to-have.
+
+> **Why `revenue_service`'s answer could not simply be copied.** It meets the same gap and chose to
+> count and warn (`unknownCostOrders`). That works there because revenue's failure is *a wrong number
+> on a report* — optimistic margin, visible, nobody out of pocket. Settlement's failure is **money not
+> owed**, and a warning on a report does not pay anybody. Hence the report is not the mitigation here;
+> it is the worklist.
+
+#### ⭐ Widen the cost lookup for TRANSFERS (proposed, not yet decided)
+
+For the transfer-in case the cost is **not actually unknown** — it exists, in the origin warehouse's
+restock history. `StockCost` is warehouse-scoped because freight differs per delivery, which is right
+for *"what did these goods cost this building"* and arguably wrong for settlement, where the question
+is *"what did these goods cost **their owner**"*.
+
+Recovering it is one query change rather than a new subsystem, and it removes a whole class of zero
+fees. Worth doing when the fee writer is built (§6 step 7) — flagged here so it is not rediscovered
+as a bug later.
 
 #### The actual NUMBERS are mocked for now (owner, 2026-07-22 — "add mock default first, we talk later")
 
@@ -761,11 +795,14 @@ flowchart LR
       needed) is deleted before being built. The accepted trade-off: storage is free, so dead stock
       costs a team nothing — revisit if warehouses start filling with goods nobody sells.
 - [x] **Q9** — ✅ audience: **admin and above**, the management tier (§3.6).
-- [ ] **Q10 (§3.4)** — ⭐ what happens when `unit_cost` is 0? It means UNKNOWN, not free — a product
-      received straight into stock without a restock has no recorded cost. Cost+markup then computes
-      a fee of ZERO, so the owning team is silently owed nothing for goods that really left its
-      stock. Leaning: post 0 and let the reconciliation report name it, rather than refusing the
-      order over a bookkeeping gap.
+- [x] **Q10 (§3.4)** — ✅ ANSWERED (owner, 2026-07-22): an unknown cost **posts 0 and is REPORTED**,
+      never refused. A sale is not blocked by a bookkeeping gap, and the reconciliation report lists
+      every entry posted with an unknown cost — which is now part of that issue's scope. It turned
+      out not to be an edge case: stock enters a warehouse four ways and only a fulfilled restock
+      request leaves a cost behind.
+- [ ] **Q11 (§3.4)** — should the cost lookup widen beyond one warehouse for TRANSFERS? The cost is
+      not unknown there — it sits in the origin warehouse's restock history. One query change,
+      removes a whole class of zero fees. Proposed, to decide when the fee writer is built.
 
 ---
 
