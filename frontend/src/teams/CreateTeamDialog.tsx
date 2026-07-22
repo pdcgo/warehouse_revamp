@@ -16,6 +16,7 @@ import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
 import { TeamTypeSelect, teamTypeLabel } from "../components/TeamTypeSelect";
 import { useCreateTeam } from "./queries";
+import { useTeam } from "../team/TeamContext";
 
 export function CreateTeamDialog({
   fixedType,
@@ -33,6 +34,7 @@ export function CreateTeamDialog({
   // team list's fetching. `busy` is gone for the same kind of reason, the mutation already knows
   // whether it is in flight, and a second flag beside it can disagree with the first.
   const save = useCreateTeam();
+  const { refresh } = useTeam();
   const busy = save.isPending;
 
   const [type, setType] = useState<TeamType>(fixedType ?? TeamType.WAREHOUSE);
@@ -56,6 +58,18 @@ export function CreateTeamDialog({
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
+
+          // Refresh the caller's MEMBERSHIPS as well as the team list, or the team just created is
+          // missing from the switcher until the page is reloaded.
+          //
+          // The two are different caches. `useCreateTeam` invalidates the `teams` and `users`
+          // QUERIES, which is what the list on this page reads — but the switcher reads TeamContext,
+          // which fetches memberships once per identity and is not a query. Nothing connected them.
+          //
+          // It bites precisely when it is least wanted: TeamCreate makes the caller the new team's
+          // OWNER, so the one thing somebody wants next is to switch into it, and that is the one
+          // thing they could not do.
+          void refresh();
 
           setName("");
           setTeamCode("");

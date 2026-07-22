@@ -105,6 +105,21 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       // Reset to the app root and hard-reload. Switching team re-scopes the WHOLE app, so rather
       // than surgically re-fetch every open view, we reload: no stale data from the previous scope
       // can survive, and the route returns to a page that exists for the new team.
+      //
+      // ⚠ CONSIDERED AND KEPT (#178, 2026-07-22). Once a query cache existed, the obvious question
+      // was whether this could become `queryClient.clear()` plus a router navigation. It was measured
+      // rather than argued: a full switch — click to the app usable again in the new team — takes
+      // ~630ms, with the document and bundle served from cache (0 KB transferred, DOMContentLoaded
+      // 260ms). That is the whole prize for giving up the guarantee below, on an action somebody
+      // performs a handful of times a day.
+      //
+      // What the reload buys is CORRECTNESS BY CONSTRUCTION: nothing from the previous team can
+      // survive, because nothing survives. "We clear the cache correctly" is a weaker promise, and
+      // the failure it risks — one team seeing another team's rows — is the worst this system can
+      // produce. It also solves a second problem for free: routes differ by team type, so a
+      // warehouse-only page must not persist after switching to a selling team.
+      //
+      // Do not re-open this without a reason the 630ms is actually costing somebody something.
       window.location.assign("/");
     },
     [teams],
