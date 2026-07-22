@@ -338,6 +338,31 @@ on a report is not the same as money not owed. Three options, unresolved:
 
 Leaning: **post 0 and flag**, and let the reconciliation report list them. See **Q10**.
 
+#### The actual NUMBERS are mocked for now (owner, 2026-07-22 — "add mock default first, we talk later")
+
+The two fee SHAPES are settled above. What a warehouse actually charges, and what the markup actually
+is, are business decisions still to be had. So they are mocked — but *where* they are mocked matters,
+because there are two kinds of default here and only one of them is safe.
+
+| | Value | Why |
+| --- | --- | --- |
+| **The SHIPPED default** (no config row) | **charge 0** | Already decided above, and the only safe answer. A team that has configured nothing is not charging, so a forgotten placeholder cannot quietly bill anybody. |
+| **The DEV FIXTURE default** (`seed dev`) | an obviously-fake example rate | Visible, disposable, and never reaches a real deployment — the same bargain `devpassword123` already makes. |
+
+⚠ **The mock must NOT become a plausible-looking shipped default.** A "sensible" 10% baked in as the
+fallback is the dangerous option: it is indistinguishable from a real decision, nobody is prompted to
+replace it, and the first sign of trouble is one team invoicing another a number nobody chose. Zero is
+LOUD — somebody notices they are owed nothing and asks — whereas a plausible number is silent.
+
+Proposed mock values for the dev fixture, to be argued and replaced:
+
+- warehouse handling fee: **Rp 5.000 per order**
+- product markup: **10%**
+
+Both are round and obviously illustrative, and they live only in the seed. **Nothing downstream may
+read them as decided.** §4.5 — the computed amount is frozen onto each entry — is what makes replacing
+them later safe for history already written.
+
 #### The analysis that led there — the product fee's missing anchor (#181)
 
 **A product has NO price in this system.** That is the whole of what is left to decide, and it was
