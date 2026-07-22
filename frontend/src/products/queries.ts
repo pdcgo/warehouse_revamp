@@ -156,6 +156,37 @@ export function useDeleteProduct() {
   });
 }
 
+// The product PICKER's search (ProductSelect).
+//
+// `scope` chooses the RPC — the team's own catalogue, or every team's (#106) — and is in the key for
+// the same reason `isWarehouse` is above: it decides which question was asked, and one answer must
+// not be served under the other.
+//
+// A catalogue is too large to load whole, which is why this searches rather than listing. Through
+// the cache a transient failure retries instead of turning into "no products found", and backing up
+// a character returns to an answer already given.
+export function useProductSearch(args: {
+  teamId: bigint;
+  q: string;
+  scope: "team" | "all";
+}) {
+  const { teamId, q, scope } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { search: q, scope }),
+    enabled: q.length >= 2 && teamId > 0n,
+    queryFn: async () => {
+      const req = { teamId, q, page: { page: 1, limit: 10 } };
+      const res =
+        scope === "all"
+          ? await productClient.productDiscover(req)
+          : await productClient.productList(req);
+
+      return res.products;
+    },
+  });
+}
+
 // Broad on purpose, for the same reason as expenses: a delete changes the page it was on and every
 // page after it, and the counts with them.
 //

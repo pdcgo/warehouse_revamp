@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
-import { productClient, rpcError } from "../api/clients";
+import { useProductSearch } from "../products/queries";
+import { useDebounced } from "../lib/useDebounced";
 
 // What a picked product contributes to an order line — a SNAPSHOT (#67): the opaque product id plus
 // the sku/name frozen at order time. Price is not here: a product has no catalogue price, so the CS
@@ -53,39 +54,14 @@ export function ProductSelect({
     itemToValue: (p) => p.id.toString(),
   });
 
-  // Server-side search, debounced, >= 2 characters — a catalogue is too large to load whole.
+  // Server-side search, debounced, >= 2 characters — a catalogue is too large to load whole. The
+  // query owns which answer is current; the debounce only keeps the request count down.
+  const q = useDebounced(input.trim());
+  const results = useProductSearch({ teamId, q, scope });
+
   useEffect(() => {
-    const q = input.trim();
-    if (q.length < 2 || teamId <= 0n) {
-      set([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const req = { teamId, q, page: { page: 1, limit: 10 } };
-          const res =
-            scope === "all"
-              ? await productClient.productDiscover(req)
-              : await productClient.productList(req);
-          if (!cancelled) set(res.products);
-        } catch (err) {
-          if (!cancelled) {
-            void rpcError(err);
-            set([]);
-          }
-        }
-      })();
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [input, teamId, scope, set]);
+    set(q.length >= 2 && teamId > 0n ? (results.data ?? []) : []);
+  }, [q, teamId, results.data, set]);
 
   return (
     <Combobox.Root

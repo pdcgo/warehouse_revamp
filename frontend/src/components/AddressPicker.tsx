@@ -12,6 +12,8 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { regionClient, rpcError } from "../api/clients";
+import { useRegionSearch } from "../region/queries";
+import { useDebounced } from "../lib/useDebounced";
 import type { Region, RegionAncestry } from "../gen/warehouse/region/v1/region_pb";
 
 // What the picker emits — codes AND names, so a consumer can SNAPSHOT the address onto its own
@@ -250,7 +252,6 @@ function AddressSearch({
 }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const { collection, set } = useListCollection<RegionAncestry>({
     initialItems: [],
@@ -260,38 +261,18 @@ function AddressSearch({
 
   // Server-side, debounced, >= 2 characters (the proto rejects shorter). No client filter: the
   // server already ranked these.
+  //
+  // Through the cache the same prefix is not asked twice — which matters most here: this is a
+  // four-level cascade somebody types their way down, so the same searches recur constantly, both
+  // from one person correcting a typo and from everybody entering an address in the same city.
+  const q = useDebounced(input.trim(), SEARCH_DEBOUNCE_MS);
+  const results = useRegionSearch({ q, limit: SEARCH_LIMIT, minChars: SEARCH_MIN_CHARS });
+  const loading = q.length >= SEARCH_MIN_CHARS && results.isPending;
+
   useEffect(() => {
-    const q = input.trim();
-    if (q.length < SEARCH_MIN_CHARS) {
-      set([]);
-      setLoading(false);
-      return;
-    }
+    set(q.length >= SEARCH_MIN_CHARS ? (results.data ?? []) : []);
+  }, [q, results.data, set]);
 
-    let cancelled = false;
-    setLoading(true);
-
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await regionClient.regionSearch({ q, limit: SEARCH_LIMIT });
-          if (!cancelled) set(res.results);
-        } catch (err) {
-          if (!cancelled) {
-            void rpcError(err);
-            set([]);
-          }
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [input, set]);
 
   return (
     <Field.Root disabled={disabled}>

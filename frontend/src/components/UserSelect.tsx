@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, useListCollection } from "@chakra-ui/react";
-import { rpcError, userClient } from "../api/clients";
+import { useUserSearch } from "../users/queries";
+import { useDebounced } from "../lib/useDebounced";
 import { UserItem } from "./UserItem";
 
 // The shape UserSelect works in — the fields UserItem needs, common to PublicUser (SearchUser)
@@ -45,49 +46,18 @@ export function UserSelect({
     itemToValue: (user) => user.id.toString(),
   });
 
-  // Server-side search, debounced. Both backends want >= 2 characters (SearchUser rejects less;
-  // UserList we hold to the same bar for a consistent feel), so we do not even ask below that.
+  // Server-side search, debounced. The query decides WHICH answer is current; the debounce only
+  // keeps the request count down while somebody is mid-word — see lib/useDebounced.
+  //
+  // A failed search is still an empty list rather than a crash, but it is now a RETRIED one: the
+  // hand-rolled version turned any hiccup into "no users found", which is a different and wrong
+  // answer to the question asked.
+  const q = useDebounced(input.trim());
+  const results = useUserSearch({ teamId, q });
+
   useEffect(() => {
-    const q = input.trim();
-    if (q.length < 2) {
-      set([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          if (teamId !== undefined && teamId > 0n) {
-            // Scoped: this team's members matching the query.
-            const res = await userClient.userList({
-              teamId,
-              q,
-              page: { page: 1, limit: 10 },
-            });
-            if (!cancelled) set(res.users);
-          } else {
-            // Unscoped: everyone.
-            const res = await userClient.searchUser({ q, limit: 10 });
-            if (!cancelled) set(res.users);
-          }
-        } catch (err) {
-          if (!cancelled) {
-            // A failed search is an empty result, not a crash. rpcError keeps the shape of the
-            // reason consistent with the rest of the app should we ever surface it.
-            void rpcError(err);
-            set([]);
-          }
-        }
-      })();
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [input, teamId, set]);
+    set(q.length >= 2 ? (results.data ?? []) : []);
+  }, [q, results.data, set]);
 
   return (
     <Combobox.Root

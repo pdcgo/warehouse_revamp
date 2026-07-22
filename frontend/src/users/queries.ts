@@ -73,6 +73,40 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
 // changes a row that may be cached under several filters and pages. Working out the exact set is a
 // calculation, and a calculation is something that can be wrong; the domain holds a handful of
 // cached pages, so refetching them costs nothing worth optimising for.
+// The user PICKER's search (UserSelect).
+//
+// Two RPCs behind one hook, because the question differs with the scope: inside a team it is "this
+// team's members matching q" (UserList), outside it is "anyone" (SearchUser). Both are in the key,
+// so the two answers cannot share an entry.
+//
+// Reading through the cache buys two things a hand-rolled search does not have. A transient failure
+// RETRIES rather than silently becoming an empty result list — and deleting a character returns to a
+// query already answered, so backing up through a search is instant instead of another round trip.
+//
+// The caller still debounces. That is now about request VOLUME rather than correctness: the cache
+// decides which answer belongs on screen, so a late reply for an abandoned prefix cannot land.
+export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    queryKey: key.users(teamId, { search: q }),
+    // Both backends want >= 2 characters (SearchUser rejects fewer; UserList is held to the same bar
+    // for a consistent feel), so below that we do not ask at all.
+    enabled: q.length >= 2,
+    queryFn: async () => {
+      if (teamId !== undefined && teamId > 0n) {
+        const res = await userClient.userList({ teamId, q, page: { page: 1, limit: 10 } });
+
+        return res.users;
+      }
+
+      const res = await userClient.searchUser({ q, limit: 10 });
+
+      return res.users;
+    },
+  });
+}
+
 export function useInvalidateUsers() {
   const client = useQueryClient();
 
