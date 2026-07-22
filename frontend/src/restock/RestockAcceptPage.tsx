@@ -33,6 +33,7 @@ import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
+import { useInvalidateRestock } from "./queries";
 import {
   deltaLabel,
   isCounted,
@@ -90,6 +91,7 @@ export function RestockAcceptPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
   const navigate = useNavigate();
+  const invalidateRestock = useInvalidateRestock();
   const { t } = useTranslation();
 
   const requestId = parseRequestId(rawId);
@@ -295,6 +297,10 @@ export function RestockAcceptPage() {
           };
         }),
       });
+
+      // Accepting changes the request AND moves stock, so it invalidates before leaving — the list
+      // it lands beside filters by the status this just changed.
+      await invalidateRestock();
 
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
       navigate(`/inventories/restock/${request.id}`);

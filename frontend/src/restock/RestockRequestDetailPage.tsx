@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -20,9 +20,10 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, Pencil } from "lucide-react";
 import { rackClient, restockClient, rpcError, supplierClient } from "../api/clients";
-import type { RestockRequest, RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
+import { useRestockRequest, useInvalidateRestock } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { deltaLabel } from "./counting";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
@@ -116,36 +117,19 @@ export function RestockRequestDetailPage() {
   const id = parseRequestId(requestId);
   const teamId = current?.teamId;
 
-  const [request, setRequest] = useState<RestockRequest | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [rackCodes, setRackCodes] = useState<Record<string, string>>({});
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? t("restock.detail.invalidId") : "");
-      setLoading(false);
-      return;
-    }
+  const query = useRestockRequest({ teamId, requestId: id });
+  const invalidateRestock = useInvalidateRestock();
 
-    setLoading(true);
-    setError("");
+  const request = query.data ?? null;
+  const loading = query.isPending && id !== 0n;
 
-    try {
-      const res = await restockClient.restockRequestDetail({ teamId, requestId: id });
-      setRequest(res.request ?? null);
-    } catch (err) {
-      setError(rpcError(err));
-      setRequest(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, id, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // A malformed id never reaches the server (the query is disabled for it), so its message comes
+  // from here rather than from an error no request produced.
+  const error =
+    id === 0n ? t("restock.detail.invalidId") : query.isError ? rpcError(query.error) : "";
 
   const supplierId = request?.supplierId ?? 0n;
   const requestingTeamId = request?.requestingTeamId ?? 0n;
@@ -255,15 +239,18 @@ export function RestockRequestDetailPage() {
   // The same arithmetic the create form's G does (#127): the goods, plus the freight on top.
   const grandTotal = productsTotal + (request?.shippingCost ?? 0n);
 
-  // Cancel returns the updated request, so the page re-renders off the response rather than
-  // re-fetching — the same move OrderDetailPage makes. (Accepting goes through
-  // RestockReceiveDialog, which owns its own call and asks us to reload when it lands.)
+  // Cancel used to re-render off the response instead of re-fetching. It now INVALIDATES, for the
+  // same reason OrderDetailPage's confirm does: cancelling moves this request between STATUS TABS on
+  // the list, and writing the new status only into this page's state would leave that list — and its
+  // per-tab counts — showing the request where it no longer belongs.
+  //
+  // (Accepting goes through RestockReceiveDialog, which owns its own call and tells us when it lands.)
   async function cancelRequest() {
     if (teamId === undefined || !request) return;
 
     try {
-      const res = await restockClient.restockRequestCancel({ teamId, requestId: request.id });
-      setRequest(res.request ?? request);
+      await restockClient.restockRequestCancel({ teamId, requestId: request.id });
+      await invalidateRestock();
       toaster.create({ type: "success", title: t("restock.toast.cancelled") });
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.toast.cancelFailed"), description: rpcError(err) });

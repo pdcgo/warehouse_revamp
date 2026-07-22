@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +26,7 @@ import type {
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { useRestockRequests, useInvalidateRestock } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
@@ -96,13 +97,9 @@ export function RestockRequestsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [requests, setRequests] = useState<RestockRequest[]>([]);
   const [tab, setTab] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const teamId = current?.teamId;
 
@@ -113,37 +110,17 @@ export function RestockRequestsPage() {
   const activeTab = STATUS_TABS.find((item) => item.value === tab) ?? STATUS_TABS[0];
   const status = activeTab.status;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  // The status filter is SERVER-side: the list is paginated, so filtering the loaded page here would
+  // show only the matching rows that happened to land in this page — and `totalItems` would still
+  // count the unfiltered set, misreporting the pager on every tab. It is in the query key for the
+  // same reason: each tab is a different question with its own count.
+  const query = useRestockRequests({ teamId, status, page, pageSize });
+  const invalidateRestock = useInvalidateRestock();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      // The status filter is SERVER-side: the list is paginated, so filtering the loaded page here
-      // would show only the matching rows that happened to land in this page — and `totalItems`
-      // would still count the unfiltered set, misreporting the pager on every tab.
-      const res = await restockClient.restockRequestList({
-        teamId,
-        page: { page, limit: pageSize },
-        status,
-      });
-
-      setRequests(res.requests);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setRequests([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, page, pageSize, status]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const requests = query.data?.requests ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   // Switching tab restarts at page 1 — the page number belongs to the OLD filter, and page 5 of
   // "All Status" is very likely past the end of "Cancelled". Same reason the page-size control
@@ -161,7 +138,7 @@ export function RestockRequestsPage() {
     try {
       await restockClient.restockRequestCancel({ teamId, requestId: request.id });
       toaster.create({ type: "success", title: t("restock.toast.cancelled") });
-      await load();
+      await invalidateRestock();
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.toast.cancelFailed"), description: rpcError(err) });
     }
