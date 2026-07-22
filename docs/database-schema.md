@@ -203,6 +203,7 @@ erDiagram
     shops ||--o{ shop_users : "shop_id"
     shops ||--o{ orders : "shop_id"
     orders ||--o{ order_items : "order_id"
+    order_drafts ||--o{ order_draft_items : "draft_id"
 
     shops {
         bigserial   id          PK
@@ -259,6 +260,45 @@ erDiagram
         bigint      unit_price "whole rupiah snapshot"
         bigint      unit_cost     "per-unit cost frozen at order time (#74); server-set, 0 = unknown"
         timestamptz created_at
+    }
+
+    order_drafts {
+        bigserial   id             PK
+        bigint      team_id        "the scope, carries use_scope"
+        bigint      author_user_id "personal — only the author lists it; opaque, no FK"
+        text        source         "which app pushed it"
+        text        external_id    "the marketplace's own id — UNIQUE with team_id and source"
+        jsonb       touched_fields "field names a human has edited; the push writes only what is absent here"
+        bigint      shop_id        "0 until known — no FK, can go stale"
+        bigint      warehouse_id   "0 until known — no FK, can go stale"
+        text        customer_name  "optional, like everything below"
+        text        customer_phone
+        text        provinsi_code  "same frozen-address shape as orders (#118)"
+        text        provinsi_name
+        text        kabupaten_code
+        text        kabupaten_name
+        text        kecamatan_code
+        text        kecamatan_name
+        text        desa_code
+        text        desa_name
+        text        kode_pos
+        text        address_line
+        text        shipping_code
+        bigint      shipping_cost  "as scraped, whole rupiah — promote recomputes the money"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_draft_items {
+        bigserial   id            PK
+        bigint      draft_id      FK "-> order_drafts(id), ON DELETE CASCADE"
+        text        external_sku  "what the app scraped, never overwritten"
+        text        external_name "what the app scraped, never overwritten"
+        bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
+        int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
+        bigint      unit_price
+        timestamptz created_at
+        timestamptz updated_at
     }
 ```
 
@@ -348,6 +388,38 @@ erDiagram
   than one JSONB blob: an address is a fixed 4-tier shape, and "which orders ship to this kecamatan"
   is a question worth being able to ask. The whole address is **optional** — as the free text it
   replaced was.
+- **`order_drafts`** / **`order_draft_items`** — an incomplete order **pushed in by a third-party
+  app** (#190, `plans/selling_service/brainstorming.md` §6), finished by a person here and promoted
+  into a real order. A draft is not a quotation, not a reservation, not an unpaid marketplace order,
+  and it holds no stock.
+  - **Its own table, not an `ORDER_STATUS_DRAFT` on `orders`.** The reason is not tidiness: on one
+    table, *every* reader of `orders` becomes responsible for excluding drafts — the list, the pick
+    queue, the revenue chain, every count — and one forgotten `AND status <> 'draft'` puts an
+    unfinished scrape into somebody's revenue report. Apart, `orders` keeps every `NOT NULL` it has
+    (a real order always has a shop, a warehouse, a customer) while this table carries almost none,
+    because incompleteness is what a draft **is**. A draft never publishes `OrderCreatedEvent` —
+    placement does, and a draft was never placed.
+  - **`UNIQUE (team_id, source, external_id)` is what makes the push idempotent.** An external caller
+    on a flaky network will retry, and without this one bad connection quietly fills the list with
+    near-identical drafts nobody can tell apart. Per **team**, not per author, so the same marketplace
+    order cannot become two drafts because two people's logins pushed it. The `CHECK` that both are
+    non-empty exists because empty strings would make that index collide across unrelated drafts.
+  - **`touched_fields` is how a re-scrape cannot destroy someone's work.** `OrderDraftPush` writes
+    only fields absent from this list; `OrderDraftUpdate` (a person, in our UI) always wins and adds
+    to it. The app and the person authenticate as the *same user*, so identity cannot tell them
+    apart — the **RPC** is what carries the distinction.
+  - **A line keeps BOTH the scrape and the mapping.** `external_sku`/`external_name` are what the
+    marketplace said and are never overwritten, even by a person editing the line: they are the
+    evidence of what the buyer ordered, and keeping them beside `product_id` is what lets somebody
+    spot a wrong mapping. `product_id` is `0` until mapped, and an unmapped line is precisely the
+    incompleteness that keeps this a draft.
+  - **No `quantity >= 1` CHECK**, unlike `order_items` — a scrape can arrive with a quantity it could
+    not read, and refusing the whole push over one unreadable line would lose the other nine. Promote
+    is where every requirement lands, by running the same validation `OrderCreate` runs.
+  - `author_user_id` makes a draft **personal**, as a *handler filter* — the request still carries
+    `team_id` with `use_scope`, because a team-level policy without a scope is a dead letter.
+    `shop_id` / `warehouse_id` / a mapped `product_id` have **no FK** and can go stale underneath a
+    draft; promote re-checks them and names which reference died.
 
 `backend/services/category_service/db_migrations/`
 
