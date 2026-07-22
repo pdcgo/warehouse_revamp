@@ -296,6 +296,85 @@ One config surface, one owner, no cross-service read on the posting path. The *s
 next to the warehouse's other settings in the UI — that is a navigation choice, not a data-ownership
 one.
 
+#### ✅ SETTLED (owner, 2026-07-22) — the two fee shapes
+
+| | Decision |
+| --- | --- |
+| **Warehouse handling fee** | **Flat per order**, a default rate per warehouse with **per-selling-team overrides**. No rate configured = charge 0. |
+| **Product fee** | **Cost (HPP) + markup.** A owes B what the goods cost, plus B's margin. |
+
+**The anchor is `OrderItem.unit_cost`, and it is a better one than it first appeared.** The order
+line already carries what the product cost per unit, frozen at order time (#74) — so:
+
+```
+product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
+```
+
+Three properties fall out, none of which the other anchors had:
+
+1. **Reproducible forever.** The cost is frozen on the order, so the fee can be recomputed from the
+   order years later and produce the same number — which is exactly what a ledger entry needs to be
+   defensible.
+2. **Un-gameable.** `unit_cost` is SERVER-SET and ignored on input, because *"a client supplying it
+   would be writing its own margin, which is the one number nobody placing an order should get to
+   choose."* That protection now guards the product fee too, for free.
+3. **No cross-service read on the posting path.** The number rides in on the order event; settlement
+   does not have to ask inventory anything.
+
+⚠ **ONE EDGE CASE, AND IT LOSES THE OWNING TEAM MONEY.** `unit_cost = 0` means **unknown, not free**
+— a product received straight into stock without a restock has no recorded cost. Under cost+markup
+that computes to a fee of **zero**: the owning team is owed nothing for goods that genuinely left its
+stock, silently.
+
+`revenue_service` already meets this and chose to **count and warn** rather than exclude
+(`unknownCostOrders` on its totals). Settlement cannot borrow that answer directly, because a warning
+on a report is not the same as money not owed. Three options, unresolved:
+
+| | |
+| --- | --- |
+| **Post 0 and flag it** | Consistent with revenue. The debt is understated but visible, and somebody can correct it by hand. |
+| **Refuse the order** | Truthful, and far too aggressive: it stops a sale because of a bookkeeping gap. |
+| **Post 0 and reconcile later** | The reconciliation report (§6 step 8) already exists to find gaps — this is one it could name. |
+
+Leaning: **post 0 and flag**, and let the reconciliation report list them. See **Q10**.
+
+#### The analysis that led there — the product fee's missing anchor (#181)
+
+**A product has NO price in this system.** That is the whole of what is left to decide, and it was
+not obvious until the data was checked:
+
+- `product.proto` has **no price field at all** — a product carries sku, name, description, category
+  and images. `ProductSelect` says so outright: *"a product has no catalogue price, so the CS person
+  types the buyer-paid unit price on the line itself."*
+- The only prices in the system are **`unit_price`** on an order line (what the BUYER paid, typed per
+  order) and **`unit_cost` / `cogs`** (what the goods COST, derived from whoever restocked them).
+
+So "a markup over the owner's price" has nothing to be a markup *of* yet. There are three candidate
+anchors, and they are not variations on a theme — they answer different questions:
+
+| Anchor | Exists today? | What A owes B is then… | The catch |
+| --- | --- | --- | --- |
+| **Cost (HPP)** | ✅ `StockCost`, and the order already freezes `cogs` (#74) | what the goods cost, plus B's margin | The cost is the WAREHOUSE's basis, from whoever restocked it — it is not a number B set, and B may disagree with it. It is also "latest restock price" today (revenue §, flagged as wanting revisiting), so it moves. |
+| **Buyer-paid price** | ✅ `unit_price` on the line | a share of what the customer actually paid | Ties B's income to A's pricing decisions. A discounts, B earns less, and B never agreed to the discount. Reads as a commission split rather than a sale. |
+| **A configured wholesale price** | ❌ nothing like it exists | exactly what B says its product is worth to another team | The truest answer and the most work: a new per-product, per-owner price — and a screen for B to maintain it. Also the only one where B is stating a number rather than having one derived. |
+
+**A worked example, because the three diverge sharply.** B's product cost 60,000 to restock. A sells
+it for 100,000. With a 20% markup:
+
+- **on cost** → A owes B 72,000 (B keeps 12,000, A keeps 28,000)
+- **on buyer-paid** → A owes B 20,000 (which is *less than the goods cost*, so B loses 40,000)
+- **on a wholesale price** B set at 80,000 → A owes B 80,000, whatever A charges
+
+The middle row is not a rounding difference — a percentage of the selling price is a fundamentally
+different deal, and at 20% it loses B money on every sale. If the intent is "B sells to A at a
+margin", the anchor has to be **cost** or **a price B sets**, and a percentage of the buyer's price
+is only sensible as a *commission* model where B keeps the goods' value some other way.
+
+⚠ **Whichever is chosen, the resulting amount is frozen onto the entry (§4.5)** — so the anchor can be
+changed later without rewriting history. What cannot be deferred is the *direction*, which is already
+decided: there IS a markup, and charging at cost now would understate what B was owed on every past
+order with no way to tell which.
+
 #### Remaining sub-questions on the warehouse fee
 
 | Question | Options | Leaning |
@@ -640,9 +719,11 @@ flowchart LR
       fed by `OrderPlacedEvent` / `OrderCancelledEvent`, idempotent on
       `(source_type, source_id, counterparty)`. Obliges a dead-letter policy and a reconciliation
       report — see §3.3.
-- [x] **Q5 (§3.4)** — ✅ ANSWERED (owner, 2026-07-21): **the warehouse sets its own rate in an admin
-      screen**, and the config lives in `settlement_service` alongside credit limits. Sub-questions on
-      the rate's shape (flat vs per-unit, per-team overrides) have leanings recorded, not decisions.
+- [x] **Q5 (§3.4)** — ✅ FULLY ANSWERED. The warehouse sets its own rate in an admin screen, and the
+      config lives in `settlement_service` beside the credit limits (owner, 2026-07-21). The two fee
+      SHAPES are settled too (owner, 2026-07-22): the **warehouse fee is FLAT PER ORDER**, a default
+      rate with per-team overrides, no rate = charge 0; the **product fee is COST (HPP) + MARKUP**,
+      anchored on the order line's frozen, server-set `unit_cost`. See §3.4.
 - [x] **Q6 (§3.5)** — ✅ ANSWERED (owner, 2026-07-21): **current debt**, and **unlimited until
       configured**. Unlimited is the absence of a limit — `0` means no credit, not infinite credit.
 - [x] **Q7** — ✅ credit limits are **in v1** (§3.2).
@@ -655,6 +736,11 @@ flowchart LR
       needed) is deleted before being built. The accepted trade-off: storage is free, so dead stock
       costs a team nothing — revisit if warehouses start filling with goods nobody sells.
 - [x] **Q9** — ✅ audience: **admin and above**, the management tier (§3.6).
+- [ ] **Q10 (§3.4)** — ⭐ what happens when `unit_cost` is 0? It means UNKNOWN, not free — a product
+      received straight into stock without a restock has no recorded cost. Cost+markup then computes
+      a fee of ZERO, so the owning team is silently owed nothing for goods that really left its
+      stock. Leaning: post 0 and let the reconciliation report name it, rather than refusing the
+      order over a bookkeeping gap.
 
 ---
 
@@ -694,5 +780,12 @@ flowchart LR
 - **2026-07-21** — Owner: *"for Q8b, there is no charge"* → **no standing charge.** The warehouse bills
   per order only. This deletes the occupancy-measurement problem, the daily snapshots, and the
   allocation question in one stroke — at the cost of storage being free.
+- **2026-07-22** — Owner settled the fee shapes (#181): the warehouse fee is FLAT PER ORDER with a
+  default plus per-team overrides, and the product fee is COST (HPP) + MARKUP. The analysis that
+  mattered was checking what data exists rather than listing options — **a product has no price
+  anywhere in this system**, so the markup had nothing to be a markup *of*. The anchor turned out to
+  be the order line's frozen, server-set `unit_cost`, which makes the fee reproducible and
+  un-gameable. It also surfaced Q10: `unit_cost = 0` means UNKNOWN, not free, and cost+markup then
+  owes a product's owner nothing for goods that really left their stock.
 - **2026-07-21** — Owner: *"Q6 current debt, and defaultly unlimited until config"* → §3.5 decided.
   Current-debt semantics agree with §3.3's eventual-consistency window rather than fighting it.
