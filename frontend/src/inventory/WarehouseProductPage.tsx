@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,16 +17,14 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 
-import { inventoryClient, orderClient, productClient, restockClient, rpcError, teamClient } from "../api/clients";
-import type { ProductPlace, StockMovement } from "../gen/warehouse/inventory/v1/inventory_pb";
+import { rpcError } from "../api/clients";
+import type { StockMovement } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { MovementKind } from "../gen/warehouse/inventory/v1/inventory_pb";
-import type { Product } from "../gen/warehouse/product/v1/product_pb";
-import type { RestockRequest } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
-import type { Order } from "../gen/warehouse/selling/v1/order_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
+import { useWarehouseProduct, useWarehouseProductActivity } from "./queries";
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -75,122 +72,42 @@ export function WarehouseProductPage() {
 
   const productId = parseId(rawId);
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [ownerName, setOwnerName] = useState("");
-  const [places, setPlaces] = useState<ProductPlace[]>([]);
-  const [unitCost, setUnitCost] = useState<bigint>(0n);
-  const [costKnown, setCostKnown] = useState(false);
-  const [lastOpname, setLastOpname] = useState<StockMovement | null>(null);
-  const [history, setHistory] = useState<StockMovement[]>([]);
-  const [placementHistory, setPlacementHistory] = useState<StockMovement[]>([]);
-  const [lastOrders, setLastOrders] = useState<Order[]>([]);
-  const [restocks, setRestocks] = useState<RestockRequest[]>([]);
-  const [incoming, setIncoming] = useState<RestockRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
 
-  const load = useCallback(async () => {
-    if (warehouseId === undefined || productId === 0n) return;
+  // TWO queries (#176): the stock half renders whether or not the activity half succeeds. The old
+  // loader intended this — its comment said a failure below "should not cost the stock figures at the
+  // top" — but both blocks shared one try/catch, so an order-history failure blanked the very figures
+  // it meant to protect.
+  const stockQuery = useWarehouseProduct({
+    warehouseId,
+    productId,
+    adjustKind: MovementKind.ADJUST,
+    moveKind: MovementKind.MOVE,
+  });
+  const activityQuery = useWarehouseProductActivity({
+    warehouseId,
+    productId,
+    fulfilledStatus: RestockRequestStatus.FULFILLED,
+    pendingStatus: RestockRequestStatus.PENDING,
+  });
 
-    setLoading(true);
-    setError("");
+  const product = stockQuery.data?.product ?? null;
+  const ownerName = stockQuery.data?.ownerName ?? "";
+  const places = stockQuery.data?.places ?? [];
+  const unitCost = stockQuery.data?.unitCost ?? 0n;
+  const costKnown = stockQuery.data?.costKnown ?? false;
+  const lastOpname = stockQuery.data?.lastOpname ?? null;
+  const history = stockQuery.data?.history ?? [];
+  const placementHistory = stockQuery.data?.placementHistory ?? [];
 
-    try {
-      // A warehouse may read a product it does not own BY ID (#138's rule): a person standing at a
-      // shelf must be able to read the label on the box sitting on it.
-      const found = await productClient.productByIds({ teamId: warehouseId, productIds: [productId] });
-      const p = found.products[0] ?? null;
+  const lastOrders = activityQuery.data?.lastOrders ?? [];
+  const restocks = activityQuery.data?.restocks ?? [];
+  const incoming = activityQuery.data?.incoming ?? [];
 
-      setProduct(p);
+  const loading = stockQuery.isPending && warehouseId !== undefined && productId !== 0n;
+  const error = stockQuery.isError ? rpcError(stockQuery.error) : "";
 
-      const [placesRes, costRes, opnameRes, historyRes, moveRes] = await Promise.all([
-        inventoryClient.productPlaces({ warehouseId, productIds: [productId] }),
-        inventoryClient.stockCost({ teamId: warehouseId, warehouseId, productIds: [productId] }),
-        // The LAST stock-take. Filtered server-side (#158) — page one of an unfiltered ledger would
-        // report "never counted" the moment the last one scrolled off it.
-        inventoryClient.stockHistory({
-          warehouseId,
-          productId,
-          page: { page: 1, limit: 1 },
-          kind: MovementKind.ADJUST,
-        }),
-        inventoryClient.stockHistory({ warehouseId, productId, page: { page: 1, limit: 50 } }),
-        inventoryClient.stockHistory({
-          warehouseId,
-          productId,
-          page: { page: 1, limit: 50 },
-          kind: MovementKind.MOVE,
-        }),
-      ]);
-
-      setPlaces(placesRes.places);
-      setLastOpname(opnameRes.movements[0] ?? null);
-      setHistory(historyRes.movements);
-      setPlacementHistory(moveRes.movements);
-
-      // E and G, and the batch tab (#159/#160) — all three are "this product's history", which is
-      // exactly what the product filter added. Without it these would mean paging every order and
-      // every restock the warehouse has ever had and filtering in the browser.
-      //
-      // Fetched after the block above rather than inside it: they are the lower half of the page, and
-      // a failure here should not cost the stock figures at the top.
-      const [orderRes, restockRes, incomingRes] = await Promise.all([
-        orderClient.orderList({
-          teamId: warehouseId,
-          productId,
-          page: { page: 1, limit: 5 },
-        }),
-        // Fulfilled deliveries — the BATCHES (owner, 2026-07-21: a batch is a delivery).
-        restockClient.restockRequestList({
-          teamId: warehouseId,
-          productId,
-          status: RestockRequestStatus.FULFILLED,
-          page: { page: 1, limit: 20 },
-        }),
-        // Still on its way — D's "ongoing restock".
-        restockClient.restockRequestList({
-          teamId: warehouseId,
-          productId,
-          status: RestockRequestStatus.PENDING,
-          page: { page: 1, limit: 20 },
-        }),
-      ]);
-
-      setLastOrders(orderRes.orders);
-      setRestocks(restockRes.requests);
-      setIncoming(incomingRes.requests);
-
-      // ABSENT means the cost is UNKNOWN, not zero (#74). A valuation computed over an unknown cost
-      // would read as "these goods are worth nothing", which is a different claim entirely.
-      const cost = costRes.costs[0];
-      setUnitCost(cost?.unitCost ?? 0n);
-      setCostKnown(cost !== undefined);
-
-      // Who owns the catalogue entry — a warehouse holds other teams' products (#142).
-      if (p && p.teamId > 0n) {
-        try {
-          const teams = await teamClient.teamByIds({ ids: [p.teamId] });
-          // Unknown and soft-deleted ids are OMITTED from the map, so this is a presence check rather
-          // than a blind index — a deleted owning team leaves the badge off rather than showing blank.
-          setOwnerName(teams.data[p.teamId.toString()]?.name ?? "");
-        } catch {
-          setOwnerName("");
-        }
-      }
-    } catch (err) {
-      setError(rpcError(err));
-      setProduct(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [warehouseId, productId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // C — how much is here, summed across its places. The same arithmetic StockList does (#135): a
   // warehouse total is a SUM across a product's shelves, never one shelf's figure.
