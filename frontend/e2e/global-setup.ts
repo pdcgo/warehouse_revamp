@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { ADMIN_DSN, TEST_DSN } from "./db";
+import { acquireRunLock } from "./lock";
 
 // The e2e drives the REAL backend against a REAL database — but the DEDICATED test database
 // (warehouse_test), never the dev one. Requires `docker compose up -d` (postgres on :5433).
@@ -36,6 +37,11 @@ function servicesToMigrate(): string[] {
 }
 
 export default function globalSetup(): void {
+  // FIRST, before anything destructive: refuse to start if another run is already going. The next
+  // line drops the shared database, and doing that under a live run is what made this suite look
+  // flaky for a whole session. See e2e/lock.ts.
+  acquireRunLock();
+
   const run = (cmd: string) =>
     execSync(cmd, { cwd: "../backend", stdio: "inherit", env: { ...process.env } });
 
