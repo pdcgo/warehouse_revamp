@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -20,6 +20,7 @@ import { rpcError, supplierClient } from "../api/clients";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { useSuppliers, useInvalidateSuppliers } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
@@ -37,41 +38,20 @@ export function SuppliersPage() {
   // Only a selling team (and root/admin) manages suppliers; a warehouse team is read-only (#107).
   const canManage = current?.teamType !== TeamType.WAREHOUSE;
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<Supplier | null>(null);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  const query = useSuppliers({ teamId, q, page, pageSize });
+  const invalidateSuppliers = useInvalidateSuppliers();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await supplierClient.supplierList({ teamId, q, page: { page, limit: pageSize } });
-
-      setSuppliers(res.suppliers);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setSuppliers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const suppliers = query.data?.suppliers ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function remove(supplier: Supplier) {
     if (teamId === undefined) {
@@ -81,7 +61,7 @@ export function SuppliersPage() {
     try {
       await supplierClient.supplierDelete({ teamId, supplierId: supplier.id });
       toaster.create({ type: "success", title: t("suppliers.deleted", { name: supplier.name }) });
-      await load();
+      await invalidateSuppliers();
     } catch (err) {
       toaster.create({ type: "error", title: t("suppliers.deleteFailed"), description: rpcError(err) });
     }
@@ -105,7 +85,7 @@ export function SuppliersPage() {
         <Heading size="md">{t("suppliers.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        {canManage && <SupplierFormDialog onDone={() => void load()} />}
+        {canManage && <SupplierFormDialog onDone={() => void invalidateSuppliers()} />}
       </Flex>
 
       <HStack>
@@ -224,7 +204,7 @@ export function SuppliersPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateSuppliers()}
         />
       )}
     </Stack>

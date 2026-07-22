@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -19,12 +19,12 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ExternalLink, Pencil, Trash2 } from "lucide-react";
-import { rpcError, supplierChannelClient, supplierClient } from "../api/clients";
-import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
+import { rpcError, supplierChannelClient } from "../api/clients";
 import type { SupplierChannel } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { SupplierChannelType } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { useSupplier, useSupplierChannels, useInvalidateSuppliers } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { toaster } from "../components/Toaster";
@@ -73,65 +73,30 @@ export function SupplierDetailPage() {
   // SuppliersPage). The backend interceptor is the real boundary either way.
   const canManage = current?.teamType !== TeamType.WAREHOUSE;
 
-  const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [channels, setChannels] = useState<SupplierChannel[]>([]);
-  const [channelsError, setChannelsError] = useState("");
   const [editing, setEditing] = useState<SupplierChannel | null>(null);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? t("supplierChannel.detail.invalidId") : "");
-      setLoading(false);
-      return;
-    }
+  // Two queries, not one. They failed independently before — a channel-list error did not blank the
+  // supplier — and folding them together would let one request's failure hide the other's result.
+  const supplierQuery = useSupplier({ teamId, supplierId: id });
+  const channelsQuery = useSupplierChannels({ teamId, supplierId: id });
+  const invalidateSuppliers = useInvalidateSuppliers();
 
-    setLoading(true);
-    setError("");
+  const supplier = supplierQuery.data ?? null;
+  const loading = supplierQuery.isPending && id !== 0n;
 
-    try {
-      const res = await supplierClient.supplierDetail({ teamId, supplierId: id });
-      setSupplier(res.supplier ?? null);
-    } catch (err) {
-      setError(rpcError(err));
-      setSupplier(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, id]);
+  // A malformed id never reaches the server (the queries are disabled for it), so its message is
+  // produced here rather than by an error no request produced.
+  const error =
+    id === 0n
+      ? t("supplierChannel.detail.invalidId")
+      : supplierQuery.isError
+        ? rpcError(supplierQuery.error)
+        : "";
 
-  const loadChannels = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      return;
-    }
-
-    setChannelsError("");
-
-    try {
-      // Channels are few per supplier — one large page covers them all; no pager UI needed.
-      const res = await supplierChannelClient.supplierChannelList({
-        teamId,
-        supplierId: id,
-        page: { page: 1, limit: 100 },
-      });
-      setChannels(res.channels);
-    } catch (err) {
-      setChannelsError(rpcError(err));
-      setChannels([]);
-    }
-  }, [teamId, id]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    void loadChannels();
-  }, [loadChannels]);
+  const channels = channelsQuery.data ?? [];
+  const channelsError = channelsQuery.isError ? rpcError(channelsQuery.error) : "";
 
   async function removeChannel(channel: SupplierChannel) {
     if (teamId === undefined) {
@@ -141,7 +106,7 @@ export function SupplierDetailPage() {
     try {
       await supplierChannelClient.supplierChannelDelete({ teamId, channelId: channel.id });
       toaster.create({ type: "success", title: t("supplierChannel.deleted", { name: channel.name }) });
-      await loadChannels();
+      await invalidateSuppliers();
     } catch (err) {
       toaster.create({
         type: "error",
@@ -230,7 +195,7 @@ export function SupplierDetailPage() {
               <Heading size="sm">{t("supplierChannel.section.title")}</Heading>
               <Spacer />
               {canManage && (
-                <SupplierChannelFormDialog supplierId={supplier.id} onDone={() => void loadChannels()} />
+                <SupplierChannelFormDialog supplierId={supplier.id} onDone={() => void invalidateSuppliers()} />
               )}
             </Flex>
 
@@ -346,7 +311,7 @@ export function SupplierDetailPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void loadChannels()}
+          onDone={() => void invalidateSuppliers()}
         />
       )}
     </Stack>
