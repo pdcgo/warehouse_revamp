@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
-import { teamClient } from "../api/clients";
+import { useTeams } from "../teams/queries";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "./TeamItem";
@@ -28,7 +28,7 @@ export function TeamSelect({
   disabled,
   teamType,
 }: TeamSelectProps) {
-  const [loading, setLoading] = useState(true);
+
 
   const { collection, filter, set } = useListCollection<Team>({
     initialItems: [],
@@ -42,36 +42,39 @@ export function TeamSelect({
     },
   });
 
+  // Read through the cache (#176's gap, found via a flaky e2e — see src/shops/queries.ts).
+  //
+  // The hand-rolled version fetched once in an effect keyed on `[set, teamType]`, neither of which
+  // changes in normal use. On failure it called `set([])` and stopped forever, so ONE transient
+  // failure left this picker permanently empty — and this picker is the REQUIRED warehouse field on
+  // the order and restock forms, so an empty one means the form cannot be submitted at all, with no
+  // way back but a reload.
+  //
+  // `useTeams` already asks exactly this question, so this shares its cache rather than adding a
+  // second copy of the same list.
+  const query = useTeams({ teamType, page: 1, pageSize: 200 });
+  const teams = query.data?.teams;
+
+  // ⚠ `filled` tracks whether the COLLECTION has the list, not whether the QUERY has finished, and
+  // the difference is the whole point once there is a cache.
+  //
+  // The remount below has to happen the moment the collection fills. With a cold fetch those were the
+  // same instant, so `query.isPending` would do. On a CACHE HIT they are not: the data is present on
+  // the very first render while the collection — filled by the effect below — is still empty. Keying
+  // on the query would leave `key` at "ready" throughout, the machine would initialise against an
+  // empty collection, and a prefilled edit form would render a BLANK REQUIRED FIELD. That is #131,
+  // reintroduced by caching.
+  const [filled, setFilled] = useState(false);
+
+  // The collection is the combobox's own store, so the fetched list still has to be handed to it.
   useEffect(() => {
-    let cancelled = false;
+    if (teams === undefined) return;
 
-    setLoading(true);
+    set(teams);
+    setFilled(true);
+  }, [teams, set]);
 
-    void (async () => {
-      try {
-        const res = await teamClient.teamList({
-          page: { page: 1, limit: 200 },
-          // Unset (undefined) sends TEAM_TYPE_UNSPECIFIED, which the RPC treats as "no filter".
-          teamType,
-        });
-        if (!cancelled) {
-          set(res.teams);
-        }
-      } catch {
-        if (!cancelled) {
-          set([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [set, teamType]);
+  const loading = !filled;
 
   return (
     <Combobox.Root

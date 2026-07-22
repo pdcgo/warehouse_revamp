@@ -27,6 +27,38 @@ export function useShops(args: {
   });
 }
 
+// Every shop a team runs, for the PICKER (ShopSelect).
+//
+// ⚠ This exists because a hand-rolled fetch in that component produced a real, intermittent test
+// failure — and would have produced an intermittent BUG for a person placing an order.
+//
+// ShopSelect fetched once in an effect keyed on `teamId`. On failure it set an error, showed "Shops
+// unavailable", and then did nothing ever again: the effect could not re-run because `teamId` had not
+// changed, so ONE transient failure left a permanently dead control on the order form, with no way
+// back except a reload. The e2e symptom was `selectOption` waiting sixty seconds for an option that
+// was never going to arrive.
+//
+// Reading through the cache fixes it structurally: the shared `retry: 1` covers a dropped connection,
+// and a genuine failure is a query that can be retried rather than a component that has given up.
+//
+// A team runs a handful of shops, so one large page covers them all — the same call ShippingSelect
+// makes over the courier catalogue. It is a separate key from the paged list because it asks a
+// different question ("all of them"), and sharing an entry would let a filtered page of the
+// management screen become the picker's options.
+export function useShopOptions(args: { teamId: bigint }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.shops(teamId, { options: true }),
+    enabled: teamId > 0n,
+    queryFn: async () => {
+      const res = await shopClient.shopList({ teamId, q: "", page: { page: 1, limit: 100 } });
+
+      return res.shops;
+    },
+  });
+}
+
 // One shop. `shopId` is in the key with the team: the same id under two teams is two different
 // records, and the detail page is reachable by URL, so the id cannot be trusted to belong to the
 // team the caller is currently in.

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+
 import { NativeSelect } from "@chakra-ui/react";
-import { rpcError, shopClient } from "../api/clients";
-import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
+import { useShopOptions } from "../shops/queries";
 import { marketplaceLabel } from "./MarketplaceSelect";
 
 export interface ShopSelectProps {
@@ -27,30 +26,16 @@ export function ShopSelect({
   placeholder = "Select a shop",
   disabled,
 }: ShopSelectProps) {
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [error, setError] = useState("");
+  // Read through the cache rather than fetching here (#176's gap, found via a flaky e2e).
+  //
+  // The hand-rolled version fetched ONCE in an effect keyed on `teamId`, and on failure set an error
+  // and stopped: the effect could not re-run because the team had not changed, so a single transient
+  // failure left this control permanently empty — "Shops unavailable" with no way back but a reload.
+  // See src/shops/queries.ts for the full note.
+  const query = useShopOptions({ teamId });
 
-  useEffect(() => {
-    if (teamId <= 0n) {
-      setShops([]);
-      return;
-    }
-
-    let alive = true;
-
-    shopClient
-      .shopList({ teamId, q: "", page: { page: 1, limit: 100 } })
-      .then((res) => {
-        if (alive) setShops(res.shops);
-      })
-      .catch((err) => {
-        if (alive) setError(rpcError(err));
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [teamId]);
+  const shops = query.data ?? [];
+  const error = query.isError;
 
   return (
     <NativeSelect.Root disabled={disabled}>
