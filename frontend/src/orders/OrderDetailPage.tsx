@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Check } from "lucide-react";
 import { orderClient, rpcError } from "../api/clients";
-import type { Order, OrderAddress } from "../gen/warehouse/selling/v1/order_pb";
+import type { OrderAddress } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
+import { useOrder, useInvalidateOrders } from "./queries";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { ShippingBadge } from "../components/ShippingBadge";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -89,36 +90,24 @@ export function OrderDetailPage() {
   const id = parseOrderId(orderId);
   const teamId = current?.teamId;
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [acting, setActing] = useState(false);
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? t("orders.invalidOrderId") : "");
-      setLoading(false);
-      return;
-    }
+  const query = useOrder({ teamId, orderId: id });
+  const invalidateOrders = useInvalidateOrders();
 
-    setLoading(true);
-    setError("");
+  const order = query.data ?? null;
+  const loading = query.isPending && id !== 0n;
 
-    try {
-      const res = await orderClient.orderDetail({ teamId, orderId: id });
-      setOrder(res.order ?? null);
-    } catch (err) {
-      setError(rpcError(err));
-      setOrder(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, id, t]);
+  // A malformed id never reaches the server (the query is disabled for it), so its message comes
+  // from here rather than from an error no request produced.
+  const error =
+    id === 0n ? t("orders.invalidOrderId") : query.isError ? rpcError(query.error) : "";
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  // Both actions used to write the response straight into local state. They now INVALIDATE instead:
+  // the status they change is also a column in the orders list, and setting it here would leave that
+  // list holding the previous value until its own cache lapsed. Pressing back would show an order
+  // still PLACED that had just been confirmed.
+  //
   // Confirm is a forward, non-destructive move (PLACED -> CONFIRMED), so it runs on a direct click.
   async function confirmOrder() {
     if (teamId === undefined || !order) return;
@@ -126,8 +115,8 @@ export function OrderDetailPage() {
     setActing(true);
 
     try {
-      const res = await orderClient.orderConfirm({ teamId, orderId: order.id });
-      setOrder(res.order ?? order);
+      await orderClient.orderConfirm({ teamId, orderId: order.id });
+      await invalidateOrders();
       toaster.create({ type: "success", title: t("orders.orderConfirmed") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
@@ -142,8 +131,8 @@ export function OrderDetailPage() {
     if (teamId === undefined || !order) return;
 
     try {
-      const res = await orderClient.orderCancel({ teamId, orderId: order.id });
-      setOrder(res.order ?? order);
+      await orderClient.orderCancel({ teamId, orderId: order.id });
+      await invalidateOrders();
       toaster.create({ type: "success", title: t("orders.orderCancelled") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });

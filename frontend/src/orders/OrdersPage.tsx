@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Flex, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { orderClient, rpcError } from "../api/clients";
-import type { Order } from "../gen/warehouse/selling/v1/order_pb";
+import { rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
+import { useOrders } from "./queries";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { Pagination } from "../components/Pagination";
 import { formatRupiah } from "../lib/money";
@@ -18,38 +18,18 @@ export function OrdersPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  const query = useOrders({ teamId, page, pageSize });
 
-    setLoading(true);
-    setError("");
+  const orders = query.data?.orders ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
-    try {
-      const res = await orderClient.orderList({ teamId, page: { page, limit: pageSize } });
-      setOrders(res.orders);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   if (!current) {
     return (
