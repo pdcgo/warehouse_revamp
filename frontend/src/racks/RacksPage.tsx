@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -19,6 +19,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { rackClient, rpcError } from "../api/clients";
 import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../team/TeamContext";
+import { useRacks, useInvalidateRacks } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
@@ -40,42 +41,21 @@ export function RacksPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [racks, setRacks] = useState<Rack[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<Rack | null>(null);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  // The server already orders by code — the code is how a person reads the warehouse.
+  const query = useRacks({ teamId, q, page, pageSize });
+  const invalidateRacks = useInvalidateRacks();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      // The server already orders by code — the code is how a person reads the warehouse.
-      const res = await rackClient.rackList({ teamId, q, page: { page, limit: pageSize } });
-
-      setRacks(res.racks);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setRacks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const racks = query.data?.racks ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function remove(rack: Rack) {
     if (teamId === undefined) {
@@ -85,7 +65,7 @@ export function RacksPage() {
     try {
       await rackClient.rackDelete({ teamId, rackId: rack.id });
       toaster.create({ type: "success", title: t("racks.deleted", { code: rack.code }) });
-      await load();
+      await invalidateRacks();
     } catch (err) {
       toaster.create({ type: "error", title: t("racks.deleteFailed"), description: rpcError(err) });
     }
@@ -109,7 +89,7 @@ export function RacksPage() {
         <Heading size="md">{t("racks.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <RackFormDialog onDone={() => void load()} />
+        <RackFormDialog onDone={() => void invalidateRacks()} />
       </Flex>
 
       <HStack>
@@ -224,7 +204,7 @@ export function RacksPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateRacks()}
         />
       )}
     </Stack>
