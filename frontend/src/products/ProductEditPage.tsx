@@ -20,6 +20,7 @@ import { ArrowLeft } from "lucide-react";
 import { productClient, rpcError } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { useInvalidateProducts } from "./queries";
 import { CategorySelect } from "../categories/CategorySelect";
 import { toaster } from "../components/Toaster";
 import { ProductImagesInput } from "./ProductImagesInput";
@@ -35,6 +36,7 @@ export function ProductEditPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const invalidateProducts = useInvalidateProducts();
 
   const teamId = current?.teamId;
 
@@ -122,6 +124,15 @@ export function ProductEditPage() {
         type: "success",
         title: editing ? t("products.toast.saved") : t("products.toast.created", { sku }),
       });
+
+      // Invalidate BEFORE navigating (#176). This page writes and then leaves; the list it returns to
+      // is a different component, so there is no callback to hand a refetch to. Once the list reads
+      // through a cache, arriving there is no longer a fetch — it is a cache hit, and without this the
+      // product just created is missing from the list that opens a moment later.
+      //
+      // This is the failure mode caching introduces in exchange for the one it removes, and it does
+      // not announce itself: the save succeeded, the toast appeared, and the row is simply absent.
+      await invalidateProducts();
       void navigate("/products");
     } catch (err) {
       setError(rpcError(err));

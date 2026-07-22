@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -19,13 +19,14 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { inventoryClient, productClient, rpcError } from "../api/clients";
+import { productClient, rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
+import { useProducts, useInvalidateProducts } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -37,78 +38,23 @@ export function ProductsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [products, setProducts] = useState<Product[]>([]);
+  // Only the filters are state (#176) — the rows, the count, the spinner and the error come off the
+  // query. The warehouse/selling branch moved into the query function with them.
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const teamId = current?.teamId;
-  // A warehouse reads a different list entirely — see load().
+  // A warehouse reads a different list entirely — see useProducts.
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  const query = useProducts({ teamId, isWarehouse, q, page, pageSize });
+  const invalidateProducts = useInvalidateProducts();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      // A WAREHOUSE's catalogue is a different question (#142).
-      //
-      // It owns no products — products belong to selling teams — so ProductList, scoped to the team
-      // that OWNS them, correctly returns nothing for a warehouse. What a warehouse should see is what
-      // somebody has asked it to hold, which is inventory_service's arrangement list.
-      //
-      // Two calls, deliberately: inventory returns product IDS and product_service turns them into
-      // names. Mirroring the catalogue into inventory would put a product's name in two places, and the
-      // copy would go stale the first time anyone renamed it.
-      if (isWarehouse) {
-        const arrangement = await inventoryClient.warehouseProductList({
-          warehouseId: teamId,
-          page: { page, limit: pageSize },
-        });
-
-        setTotalItems(Number(arrangement.pageInfo?.totalItems ?? 0n));
-
-        // No ids means no second call — ProductByIds with an empty list is a request for nothing.
-        if (arrangement.productIds.length === 0) {
-          setProducts([]);
-          return;
-        }
-
-        const resolved = await productClient.productByIds({
-          teamId,
-          productIds: arrangement.productIds,
-        });
-
-        setProducts(resolved.products);
-        return;
-      }
-
-      const res = await productClient.productList({
-        teamId,
-        q,
-        page: { page, limit: pageSize },
-      });
-
-      setProducts(res.products);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, isWarehouse, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const products = query.data?.products ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function remove(product: Product) {
     if (teamId === undefined) {
@@ -118,7 +64,7 @@ export function ProductsPage() {
     try {
       await productClient.productDelete({ teamId, productId: product.id });
       toaster.create({ type: "success", title: t("products.toast.deleted", { sku: product.sku }) });
-      await load();
+      await invalidateProducts();
     } catch (err) {
       toaster.create({ type: "error", title: t("products.toast.deleteFailed"), description: rpcError(err) });
     }
