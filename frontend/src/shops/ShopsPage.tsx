@@ -17,14 +17,14 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { rpcError, shopClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
-import { useShops, useInvalidateShops } from "./queries";
+import { useShops, useDeleteShop } from "./queries";
 import { ShopFormDialog } from "./ShopFormDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -44,22 +44,25 @@ export function ShopsPage() {
   const teamId = current?.teamId;
 
   const query = useShops({ teamId, q, page, pageSize });
-  const invalidateShops = useInvalidateShops();
+  const deleteShop = useDeleteShop();
 
   const shops = query.data?.shops ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
+  // loading state — a fire-and-forget `mutate` resolves instantly, so the dialog would close while the
+  // delete was still in flight. mutateAsync REJECTS on failure, which is why the catch is not optional
+  // here the way it would be with mutate's onError.
   async function remove(shop: Shop) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await shopClient.shopDelete({ teamId, shopId: shop.id });
+      await deleteShop.mutateAsync({ teamId, shopId: shop.id });
       toaster.create({ type: "success", title: t("shops.deleted", { name: shop.name }) });
-      await invalidateShops();
     } catch (err) {
       toaster.create({ type: "error", title: t("shops.deleteFailed"), description: rpcError(err) });
     }
@@ -82,7 +85,7 @@ export function ShopsPage() {
         <Heading size="md">{t("shops.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <ShopFormDialog onDone={() => void invalidateShops()} />
+        <ShopFormDialog />
       </Flex>
 
       <HStack>
@@ -198,7 +201,6 @@ export function ShopsPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void invalidateShops()}
         />
       )}
     </Stack>

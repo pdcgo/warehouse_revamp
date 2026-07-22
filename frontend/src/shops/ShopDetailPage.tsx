@@ -5,7 +5,7 @@ import { Button, Card, Flex, Heading, Icon, SimpleGrid, Spacer, Spinner, Stack, 
 import { ArrowLeft, Pencil } from "lucide-react";
 import { rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
-import { useShop, useInvalidateShops } from "./queries";
+import { useShop } from "./queries";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { ShopFormDialog } from "./ShopFormDialog";
 import { ShopUsersSection } from "./ShopUsersSection";
@@ -49,7 +49,6 @@ export function ShopDetailPage() {
   const teamId = current?.teamId;
 
   const query = useShop({ teamId, shopId: id });
-  const invalidateShops = useInvalidateShops();
 
   const shop = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -146,7 +145,6 @@ export function ShopDetailPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(false);
           }}
-          onDone={() => void invalidateShops()}
         />
       )}
     </Stack>

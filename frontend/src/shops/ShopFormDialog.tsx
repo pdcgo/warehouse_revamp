@@ -11,12 +11,13 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { rpcError, shopClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
 import { MarketplaceSelect } from "../components/MarketplaceSelect";
 import { toaster } from "../components/Toaster";
+import { useSaveShop } from "./queries";
 
 // ShopFormDialog creates OR edits a shop in the CURRENT (selling) team. The team is the scope: it
 // travels in the message body (the backend's use_scope reads it there, never a header).
@@ -26,13 +27,18 @@ import { toaster } from "../components/Toaster";
 //  - edit — `shop` set; the dialog is controlled (open/onOpenChange), pre-filled, calls ShopUpdate.
 export function ShopFormDialog({
   shop,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   shop?: Shop;
-  onDone: () => void;
   open?: boolean;
+  /**
+   * The dialog's open state changed — including its closing itself after a successful save.
+   *
+   * Lifecycle only. It used to be joined by an `onDone` that existed purely so the caller could
+   * refetch (#177); the write invalidates the cache itself now, so both callers are told the dialog
+   * is gone and nothing more. That is what clears their `editing` state.
+   */
   onOpenChange?: (open: boolean) => void;
 }) {
   const { current } = useTeam();
@@ -51,8 +57,13 @@ export function ShopFormDialog({
     }
   }
 
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). `busy` is the
+  // mutation's own state: a second flag beside it is a second answer to the same question, free to
+  // disagree with the first.
+  const save = useSaveShop();
+  const busy = save.isPending;
 
   const [name, setName] = useState(shop?.name ?? "");
   const [shopCode, setShopCode] = useState(shop?.shopCode ?? "");
@@ -61,37 +72,47 @@ export function ShopFormDialog({
 
   const canSave = name.trim() !== "" && shopCode.trim() !== "" && marketplace !== Marketplace.UNSPECIFIED;
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (!current) {
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      if (editing && shop) {
-        await shopClient.shopUpdate({ teamId: current.teamId, shopId: shop.id, name, shopCode, marketplace, description });
-        toaster.create({ type: "success", title: t("shops.form.saved") });
-      } else {
-        await shopClient.shopCreate({ teamId: current.teamId, name, shopCode, marketplace, description });
-        toaster.create({ type: "success", title: t("shops.form.created", { name }) });
+    save.mutate(
+      {
+        teamId: current.teamId,
+        shopId: shop?.id,
+        name,
+        shopCode,
+        marketplace,
+        description,
+      },
+      {
+        onSuccess: () => {
+          if (editing) {
+            toaster.create({ type: "success", title: t("shops.form.saved") });
+          } else {
+            toaster.create({ type: "success", title: t("shops.form.created", { name }) });
 
-        setName("");
-        setShopCode("");
-        setMarketplace(Marketplace.UNSPECIFIED);
-        setDescription("");
-      }
+            // Only the create form empties itself: it is reopened from the same trigger to add a
+            // SECOND shop, while the edit form is thrown away and rebuilt from the next row.
+            setName("");
+            setShopCode("");
+            setMarketplace(Marketplace.UNSPECIFIED);
+            setDescription("");
+          }
 
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          // The dialog is gone — in edit mode this reaches onOpenChange, which is what clears the
+          // caller's `editing`. It is NOT a refetch signal: the hook already invalidated before this
+          // ran.
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

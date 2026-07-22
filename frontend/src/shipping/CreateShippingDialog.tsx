@@ -11,40 +11,48 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rpcError, shippingClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { toaster } from "../components/Toaster";
+import { useCreateShipping } from "./queries";
 
 // CreateShippingDialog adds a courier to the GLOBAL catalogue. `code` is the stable machine key a
 // shipment stores and is immutable once created, so it is only settable here (never in Edit).
-export function CreateShippingDialog({ onDone }: { onDone: () => void }) {
+//
+// It takes no props at all: it used to take an `onDone` so the page could refetch, and the write now
+// says what it invalidates itself (#177). Nothing outside needs to know this dialog closed either —
+// it triggers itself and it closes itself.
+export function CreateShippingDialog() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
 
-  async function submit(event: FormEvent) {
+  // The write, and the caches it drops, declared together in queries.ts. `busy` is the mutation's own
+  // state rather than a `useState` beside it — two flags for one question are two answers, free to
+  // disagree.
+  const save = useCreateShipping();
+  const busy = save.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      await shippingClient.shippingCreate({ code, name });
+    save.mutate(
+      { code, name },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("catalog.shipping.createdToast", { name }) });
 
-      toaster.create({ type: "success", title: t("catalog.shipping.createdToast", { name }) });
-
-      setCode("");
-      setName("");
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setCode("");
+          setName("");
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

@@ -14,43 +14,42 @@ import {
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, shippingClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
+import { useUpdateShipping } from "./queries";
 
 // EditShippingDialog renames a courier. `code` is immutable, so it is shown read-only and never
 // sent — only `name` changes here. Active/inactive is toggled from the row, not this form.
-export function EditShippingDialog({
-  shipping,
-  onDone,
-}: {
-  shipping: Shipping;
-  onDone: () => void;
-}) {
+//
+// `shipping` is the only prop: the `onDone` that used to make the page refetch is gone, because the
+// write now declares what it invalidates (#177), and this dialog opens and closes itself.
+export function EditShippingDialog({ shipping }: { shipping: Shipping }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const [name, setName] = useState(shipping.name);
 
-  async function submit(event: FormEvent) {
+  // Shared with the row's activate/deactivate — one RPC, one declaration of what it makes stale.
+  const save = useUpdateShipping();
+  const busy = save.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      await shippingClient.shippingUpdate({ shippingId: shipping.id, name });
-
-      toaster.create({ type: "success", title: t("catalog.shipping.updatedToast", { name }) });
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+    save.mutate(
+      { shippingId: shipping.id, name },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("catalog.shipping.updatedToast", { name }) });
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

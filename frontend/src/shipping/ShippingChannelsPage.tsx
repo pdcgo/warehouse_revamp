@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import {
   Badge,
   Flex,
@@ -14,11 +13,10 @@ import {
 } from "@chakra-ui/react";
 import { Power, PowerOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, shippingClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
-import { useShippingChannels, useInvalidateShipping } from "./queries";
-import { invalidateShippingCatalogue } from "./catalogue";
+import { useShippingChannels, useUpdateShipping } from "./queries";
 import { CreateShippingDialog } from "./CreateShippingDialog";
 import { EditShippingDialog } from "./EditShippingDialog";
 
@@ -30,39 +28,41 @@ export function ShippingChannelsPage() {
   // `includeInactive: true` — this is the MANAGEMENT view, so it must show retired couriers. It is
   // in the query key, so it cannot collide with a picker's active-only list (see queries.ts).
   const query = useShippingChannels({ includeInactive: true });
-  const invalidateShipping = useInvalidateShipping();
+
+  // The flip shares the rename's hook: both are ShippingUpdate with a partial patch, and both make
+  // the same two caches stale — which the hook, not this page, now declares (#177).
+  const updateShipping = useUpdateShipping();
 
   const channels = query.data ?? [];
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
-  // TWO caches, and both must be dropped. This page is the only thing that CHANGES the catalogue,
-  // and ShippingSelect/ShippingBadge read it from their own session-long cache rather than through
-  // TanStack — so clearing only the query would leave a renamed courier showing its old name in
-  // every badge until a full reload. That second cache predates this epic and is untouched by it.
-  const refresh = useCallback(async () => {
-    invalidateShippingCatalogue();
-    await invalidateShipping();
-  }, [invalidateShipping]);
-
   // Deactivate/reactivate is a reversible flip of `active`, so it needs no confirm (unlike a
   // destructive delete). The row is never removed — a retired courier is still referenced by
   // historical shipments.
-  async function toggleActive(channel: Shipping) {
+  function toggleActive(channel: Shipping) {
     const next = !channel.active;
 
-    try {
-      await shippingClient.shippingUpdate({ shippingId: channel.id, active: next });
-      toaster.create({
-        type: "success",
-        title: next
-          ? t("catalog.shipping.activatedToast", { name: channel.name })
-          : t("catalog.shipping.deactivatedToast", { name: channel.name }),
-      });
-      await refresh();
-    } catch (err) {
-      toaster.create({ type: "error", title: t("catalog.updateFailed"), description: rpcError(err) });
-    }
+    updateShipping.mutate(
+      { shippingId: channel.id, active: next },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: next
+              ? t("catalog.shipping.activatedToast", { name: channel.name })
+              : t("catalog.shipping.deactivatedToast", { name: channel.name }),
+          });
+        },
+        onError: (err) => {
+          toaster.create({
+            type: "error",
+            title: t("catalog.updateFailed"),
+            description: rpcError(err),
+          });
+        },
+      },
+    );
   }
 
   return (
@@ -70,7 +70,7 @@ export function ShippingChannelsPage() {
       <Flex align="center" gap="card">
         <Heading size="md">{t("catalog.shipping.title")}</Heading>
         <Spacer />
-        <CreateShippingDialog onDone={() => void refresh()} />
+        <CreateShippingDialog />
       </Flex>
 
       {error && (
@@ -105,7 +105,7 @@ export function ShippingChannelsPage() {
 
                 <Table.Cell textAlign="end">
                   <HStack justify="end" gap="1">
-                    <EditShippingDialog shipping={channel} onDone={() => void refresh()} />
+                    <EditShippingDialog shipping={channel} />
 
                     <IconButton
                       size="xs"
@@ -113,7 +113,7 @@ export function ShippingChannelsPage() {
                       colorPalette={channel.active ? "red" : "green"}
                       aria-label={channel.active ? "Deactivate" : "Activate"}
                       data-testid={`toggle-channel-${channel.id}`}
-                      onClick={() => void toggleActive(channel)}
+                      onClick={() => toggleActive(channel)}
                     >
                       <Icon as={channel.active ? PowerOff : Power} boxSize="4" />
                     </IconButton>
