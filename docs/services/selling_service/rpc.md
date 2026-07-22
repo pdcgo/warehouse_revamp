@@ -212,3 +212,27 @@ reassignment the escape hatch "personal" leans on rather than an accident.
 **A draft publishes nothing.** `OrderCreatedEvent` fires at placement (#153) and revenue consumes it
 (#75). A draft that published would put an unfinished scrape into the month's margin — promote (#194)
 is the only door into revenue.
+
+### Reading drafts — two narrowings, not one (#192)
+
+`OrderDraftList` and `OrderDraftDetail` both apply **two** restrictions, and they are different kinds
+of thing:
+
+| | What it is | Enforced by |
+| --- | --- | --- |
+| `team_id` | the authorization **scope** (`use_scope`) | the access interceptor |
+| `author_user_id` | a **handler filter** — a draft is personal working state | the query itself |
+
+⚠ **The scope is not optional just because the list is personal.** A team-level role policy on a
+message with no `use_scope` field is evaluated against the *root team*, where almost nobody is a
+member — so "simplifying" this to author-only would leave a policy that authorizes nobody.
+
+A colleague's draft reads as **NotFound**, not PermissionDenied: the caller holds a perfectly good
+role in the team, and "exists but is not yours" would leak that a given external ref has already been
+scraped by somebody else.
+
+**The list carries counts, not lines.** `item_count` and `unmapped_item_count` are aggregated in one
+`GROUP BY` for the whole page — they are the only thing on the list screen (#195) that says how much
+work is left on a draft, and computing them client-side would mean loading every draft's lines to
+render one page of a list. A non-zero `unmapped_item_count` is exactly what makes a draft still a
+draft.

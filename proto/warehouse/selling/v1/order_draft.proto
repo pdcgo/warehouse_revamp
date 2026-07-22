@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.selling.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 import "warehouse/selling/v1/order.proto";
 
@@ -23,6 +24,11 @@ service OrderDraftService {
   // The external app's intake. Create-or-update on (team_id, source, external_id), writing only
   // fields a human has NOT touched.
   rpc OrderDraftPush(OrderDraftPushRequest) returns (OrderDraftPushResponse);
+
+  // Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
+  // the AUTHOR, in addition to the team scope.
+  rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse);
+  rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse);
 }
 
 // One scraped line of a draft.
@@ -91,6 +97,80 @@ message OrderDraft {
 
   int64 created_at_unix = 15;
   int64 updated_at_unix = 16;
+
+  // How far along this draft is, WITHOUT its lines (#192). Both are computed by the server on every
+  // read, list and detail alike.
+  //
+  // They exist because the list deliberately does not return items, and "how much work is left on
+  // this one" is the only question the list screen (#195) is really asking. Counting client-side
+  // would mean loading every draft's lines to render one page of a list — the exact shape of the
+  // slow query pagination is there to prevent.
+  uint32 item_count = 17;
+  // Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
+  // line is precisely what makes it a draft.
+  uint32 unmapped_item_count = 18;
+}
+
+message OrderDraftListRequest {
+  // Read: the same audience as OrderCreate — the app reads back what it pushed, and the person who
+  // will finish the draft is one of these people.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // ⚠ THE SCOPE STAYS, even though the list is personal. The handler narrows to the caller's
+  // author_user_id ON TOP of this — "personal" is a handler filter, never a replacement for the
+  // scope. A team-level role policy on a message with no use_scope field is evaluated against the
+  // root team, where almost nobody is a member: it would authorize nobody at all.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // REQUIRED (HARD RULE 9), and not a formality here: drafts never expire, and an app pushing
+  // continuously fills this list far faster than a human ever would. It is a list that only grows.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Only drafts pushed by THIS app. Empty means all of them. Server-side, because the list is
+  // paginated — a client-side filter would narrow the loaded page only and report the unfiltered
+  // total beside it.
+  string source = 3 [(buf.validate.field).string.max_len = 64];
+}
+
+message OrderDraftListResponse {
+  // Draft summaries — no line items, but `item_count` / `unmapped_item_count` on each.
+  repeated OrderDraft drafts = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message OrderDraftDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 draft_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderDraftDetailResponse {
+  // WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
+  // the mapping screen (#196) can show one beside the other.
+  OrderDraft draft = 1;
 }
 
 // OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on

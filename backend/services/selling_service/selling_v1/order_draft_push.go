@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm/clause"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -37,14 +36,9 @@ func (s *Service) OrderDraftPush(
 	ctx context.Context,
 	req *connect.Request[sellingv1.OrderDraftPushRequest],
 ) (*connect.Response[sellingv1.OrderDraftPushResponse], error) {
-	identity, err := san_auth.GetIdentity(ctx)
+	authorID, err := draftAuthor(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errDraftNoAuthor)
-	}
-
-	authorID := identity.GetIdentityId()
-	if authorID == 0 {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errDraftNoAuthor)
+		return nil, err
 	}
 
 	draft, created, err := s.pushDraft(ctx, req.Msg, authorID)

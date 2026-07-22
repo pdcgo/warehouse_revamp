@@ -36,6 +36,12 @@ const (
 	// OrderDraftServiceOrderDraftPushProcedure is the fully-qualified name of the OrderDraftService's
 	// OrderDraftPush RPC.
 	OrderDraftServiceOrderDraftPushProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftPush"
+	// OrderDraftServiceOrderDraftListProcedure is the fully-qualified name of the OrderDraftService's
+	// OrderDraftList RPC.
+	OrderDraftServiceOrderDraftListProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftList"
+	// OrderDraftServiceOrderDraftDetailProcedure is the fully-qualified name of the OrderDraftService's
+	// OrderDraftDetail RPC.
+	OrderDraftServiceOrderDraftDetailProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftDetail"
 )
 
 // OrderDraftServiceClient is a client for the warehouse.selling.v1.OrderDraftService service.
@@ -43,6 +49,10 @@ type OrderDraftServiceClient interface {
 	// The external app's intake. Create-or-update on (team_id, source, external_id), writing only
 	// fields a human has NOT touched.
 	OrderDraftPush(context.Context, *connect.Request[v1.OrderDraftPushRequest]) (*connect.Response[v1.OrderDraftPushResponse], error)
+	// Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
+	// the AUTHOR, in addition to the team scope.
+	OrderDraftList(context.Context, *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error)
+	OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error)
 }
 
 // NewOrderDraftServiceClient constructs a client for the warehouse.selling.v1.OrderDraftService
@@ -62,17 +72,41 @@ func NewOrderDraftServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftPush")),
 			connect.WithClientOptions(opts...),
 		),
+		orderDraftList: connect.NewClient[v1.OrderDraftListRequest, v1.OrderDraftListResponse](
+			httpClient,
+			baseURL+OrderDraftServiceOrderDraftListProcedure,
+			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftList")),
+			connect.WithClientOptions(opts...),
+		),
+		orderDraftDetail: connect.NewClient[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse](
+			httpClient,
+			baseURL+OrderDraftServiceOrderDraftDetailProcedure,
+			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // orderDraftServiceClient implements OrderDraftServiceClient.
 type orderDraftServiceClient struct {
-	orderDraftPush *connect.Client[v1.OrderDraftPushRequest, v1.OrderDraftPushResponse]
+	orderDraftPush   *connect.Client[v1.OrderDraftPushRequest, v1.OrderDraftPushResponse]
+	orderDraftList   *connect.Client[v1.OrderDraftListRequest, v1.OrderDraftListResponse]
+	orderDraftDetail *connect.Client[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse]
 }
 
 // OrderDraftPush calls warehouse.selling.v1.OrderDraftService.OrderDraftPush.
 func (c *orderDraftServiceClient) OrderDraftPush(ctx context.Context, req *connect.Request[v1.OrderDraftPushRequest]) (*connect.Response[v1.OrderDraftPushResponse], error) {
 	return c.orderDraftPush.CallUnary(ctx, req)
+}
+
+// OrderDraftList calls warehouse.selling.v1.OrderDraftService.OrderDraftList.
+func (c *orderDraftServiceClient) OrderDraftList(ctx context.Context, req *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error) {
+	return c.orderDraftList.CallUnary(ctx, req)
+}
+
+// OrderDraftDetail calls warehouse.selling.v1.OrderDraftService.OrderDraftDetail.
+func (c *orderDraftServiceClient) OrderDraftDetail(ctx context.Context, req *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error) {
+	return c.orderDraftDetail.CallUnary(ctx, req)
 }
 
 // OrderDraftServiceHandler is an implementation of the warehouse.selling.v1.OrderDraftService
@@ -81,6 +115,10 @@ type OrderDraftServiceHandler interface {
 	// The external app's intake. Create-or-update on (team_id, source, external_id), writing only
 	// fields a human has NOT touched.
 	OrderDraftPush(context.Context, *connect.Request[v1.OrderDraftPushRequest]) (*connect.Response[v1.OrderDraftPushResponse], error)
+	// Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
+	// the AUTHOR, in addition to the team scope.
+	OrderDraftList(context.Context, *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error)
+	OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error)
 }
 
 // NewOrderDraftServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -96,10 +134,26 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftPush")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderDraftServiceOrderDraftListHandler := connect.NewUnaryHandler(
+		OrderDraftServiceOrderDraftListProcedure,
+		svc.OrderDraftList,
+		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderDraftServiceOrderDraftDetailHandler := connect.NewUnaryHandler(
+		OrderDraftServiceOrderDraftDetailProcedure,
+		svc.OrderDraftDetail,
+		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderDraftService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderDraftServiceOrderDraftPushProcedure:
 			orderDraftServiceOrderDraftPushHandler.ServeHTTP(w, r)
+		case OrderDraftServiceOrderDraftListProcedure:
+			orderDraftServiceOrderDraftListHandler.ServeHTTP(w, r)
+		case OrderDraftServiceOrderDraftDetailProcedure:
+			orderDraftServiceOrderDraftDetailHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -111,4 +165,12 @@ type UnimplementedOrderDraftServiceHandler struct{}
 
 func (UnimplementedOrderDraftServiceHandler) OrderDraftPush(context.Context, *connect.Request[v1.OrderDraftPushRequest]) (*connect.Response[v1.OrderDraftPushResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftPush is not implemented"))
+}
+
+func (UnimplementedOrderDraftServiceHandler) OrderDraftList(context.Context, *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftList is not implemented"))
+}
+
+func (UnimplementedOrderDraftServiceHandler) OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftDetail is not implemented"))
 }

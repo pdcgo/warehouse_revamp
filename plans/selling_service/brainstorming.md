@@ -660,7 +660,9 @@ form, which is no longer what happens):
    commit.
 2. ✅ **`OrderDraftPush`** (#191) — the third-party intake. Idempotent on the external ref,
    blanks-only merge; the granularity questions it forced are §6.10.4–6.
-3. **`OrderDraftList` + `OrderDraftDetail`** — paginated (HARD RULE 9), narrowed to the author.
+3. ✅ **`OrderDraftList` + `OrderDraftDetail`** (#192) — paginated (HARD RULE 9), narrowed to the
+   author *on top of* the team scope. The list carries `item_count` / `unmapped_item_count` instead
+   of lines, which is what §6.7's list screen needs to say how much work is left.
 4. **`OrderDraftUpdate` + `OrderDraftDelete`** — the human edit path, marking fields touched.
 5. **`OrderDraftPromote`** — validate, create the order, delete the draft, in one transaction.
 6. **`/order-drafts` list screen** — its own route, with pruning that is easy and bulk-friendly (§6.7).

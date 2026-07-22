@@ -5,6 +5,8 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
+import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { OrderAddress } from "./order_pb";
 import { file_warehouse_selling_v1_order } from "./order_pb";
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order_draft.proto.
  */
 export const file_warehouse_selling_v1_order_draft: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIp4DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDIpEDChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIeCg1zaGlwcGluZ19jb2RlGAkgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2Nvc3QYCiABKANCB7pIBCICKAASMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbToLkrUYBwoFAQIDBAUiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCDKAAQoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
+  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIs8DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SGwoTdW5tYXBwZWRfaXRlbV9jb3VudBgSIAEoDSKSAQoVT3JkZXJEcmFmdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBARIXCgZzb3VyY2UYAyABKAlCB7pIBHICGEA6C5K1GAcKBQECAwQFInwKFk9yZGVyRHJhZnRMaXN0UmVzcG9uc2USMAoGZHJhZnRzGAEgAygLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0IpEDChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIeCg1zaGlwcGluZ19jb2RlGAkgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2Nvc3QYCiABKANCB7pIBCICKAASMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbToLkrUYBwoFAQIDBAUiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCDLgAgoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEmsKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZRJxChBPcmRlckRyYWZ0RGV0YWlsEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERldGFpbFJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
 
 /**
  * One scraped line of a draft.
@@ -182,6 +184,27 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
    * @generated from field: int64 updated_at_unix = 16;
    */
   updatedAtUnix: bigint;
+
+  /**
+   * How far along this draft is, WITHOUT its lines (#192). Both are computed by the server on every
+   * read, list and detail alike.
+   *
+   * They exist because the list deliberately does not return items, and "how much work is left on
+   * this one" is the only question the list screen (#195) is really asking. Counting client-side
+   * would mean loading every draft's lines to render one page of a list — the exact shape of the
+   * slow query pagination is there to prevent.
+   *
+   * @generated from field: uint32 item_count = 17;
+   */
+  itemCount: number;
+
+  /**
+   * Lines still carrying product_id = 0. Non-zero means this draft CANNOT be promoted: an unmapped
+   * line is precisely what makes it a draft.
+   *
+   * @generated from field: uint32 unmapped_item_count = 18;
+   */
+  unmappedItemCount: number;
 };
 
 /**
@@ -190,6 +213,111 @@ export type OrderDraft = Message<"warehouse.selling.v1.OrderDraft"> & {
  */
 export const OrderDraftSchema: GenMessage<OrderDraft> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_order_draft, 1);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftListRequest
+ */
+export type OrderDraftListRequest = Message<"warehouse.selling.v1.OrderDraftListRequest"> & {
+  /**
+   * ⚠ THE SCOPE STAYS, even though the list is personal. The handler narrows to the caller's
+   * author_user_id ON TOP of this — "personal" is a handler filter, never a replacement for the
+   * scope. A team-level role policy on a message with no use_scope field is evaluated against the
+   * root team, where almost nobody is a member: it would authorize nobody at all.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * REQUIRED (HARD RULE 9), and not a formality here: drafts never expire, and an app pushing
+   * continuously fills this list far faster than a human ever would. It is a list that only grows.
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   */
+  page?: PageFilter;
+
+  /**
+   * Only drafts pushed by THIS app. Empty means all of them. Server-side, because the list is
+   * paginated — a client-side filter would narrow the loaded page only and report the unfiltered
+   * total beside it.
+   *
+   * @generated from field: string source = 3;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftListRequest.
+ * Use `create(OrderDraftListRequestSchema)` to create a new message.
+ */
+export const OrderDraftListRequestSchema: GenMessage<OrderDraftListRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 2);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftListResponse
+ */
+export type OrderDraftListResponse = Message<"warehouse.selling.v1.OrderDraftListResponse"> & {
+  /**
+   * Draft summaries — no line items, but `item_count` / `unmapped_item_count` on each.
+   *
+   * @generated from field: repeated warehouse.selling.v1.OrderDraft drafts = 1;
+   */
+  drafts: OrderDraft[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftListResponse.
+ * Use `create(OrderDraftListResponseSchema)` to create a new message.
+ */
+export const OrderDraftListResponseSchema: GenMessage<OrderDraftListResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 3);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftDetailRequest
+ */
+export type OrderDraftDetailRequest = Message<"warehouse.selling.v1.OrderDraftDetailRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 draft_id = 2;
+   */
+  draftId: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftDetailRequest.
+ * Use `create(OrderDraftDetailRequestSchema)` to create a new message.
+ */
+export const OrderDraftDetailRequestSchema: GenMessage<OrderDraftDetailRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 4);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftDetailResponse
+ */
+export type OrderDraftDetailResponse = Message<"warehouse.selling.v1.OrderDraftDetailResponse"> & {
+  /**
+   * WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
+   * the mapping screen (#196) can show one beside the other.
+   *
+   * @generated from field: warehouse.selling.v1.OrderDraft draft = 1;
+   */
+  draft?: OrderDraft;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftDetailResponse.
+ * Use `create(OrderDraftDetailResponseSchema)` to create a new message.
+ */
+export const OrderDraftDetailResponseSchema: GenMessage<OrderDraftDetailResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 5);
 
 /**
  * OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on
@@ -282,7 +410,7 @@ export type OrderDraftPushRequest = Message<"warehouse.selling.v1.OrderDraftPush
  * Use `create(OrderDraftPushRequestSchema)` to create a new message.
  */
 export const OrderDraftPushRequestSchema: GenMessage<OrderDraftPushRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 2);
+  messageDesc(file_warehouse_selling_v1_order_draft, 6);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftPushResponse
@@ -308,7 +436,7 @@ export type OrderDraftPushResponse = Message<"warehouse.selling.v1.OrderDraftPus
  * Use `create(OrderDraftPushResponseSchema)` to create a new message.
  */
 export const OrderDraftPushResponseSchema: GenMessage<OrderDraftPushResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 3);
+  messageDesc(file_warehouse_selling_v1_order_draft, 7);
 
 /**
  * OrderDraftService owns `order_drafts` + `order_draft_items` (#190,
@@ -336,6 +464,25 @@ export const OrderDraftService: GenService<{
     methodKind: "unary";
     input: typeof OrderDraftPushRequestSchema;
     output: typeof OrderDraftPushResponseSchema;
+  },
+  /**
+   * Reading drafts (#192) — used by our UI and by the app that pushed them (§6.6). Both narrow to
+   * the AUTHOR, in addition to the team scope.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderDraftService.OrderDraftList
+   */
+  orderDraftList: {
+    methodKind: "unary";
+    input: typeof OrderDraftListRequestSchema;
+    output: typeof OrderDraftListResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.selling.v1.OrderDraftService.OrderDraftDetail
+   */
+  orderDraftDetail: {
+    methodKind: "unary";
+    input: typeof OrderDraftDetailRequestSchema;
+    output: typeof OrderDraftDetailResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_order_draft, 0);
