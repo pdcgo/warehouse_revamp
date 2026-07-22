@@ -271,3 +271,63 @@ skipped rather than failing the batch: deleting is idempotent by nature, and ref
 id would make a bulk prune unusable exactly when the list is long enough to need one. The scope and
 the author are in the `WHERE` rather than checked beforehand, so there is no window in which the ids
 stop being the caller's.
+
+### A draft becomes an order — `OrderDraftPromote` (#194)
+
+```mermaid
+sequenceDiagram
+    participant CS as CS person
+    participant D as OrderDraftService
+    participant P as product_service
+    participant I as inventory_service
+    participant R as revenue_service
+
+    CS->>D: OrderDraftPromote — team_id, draft_id
+    D->>D: every line mapped? shop, warehouse, customer?
+    D->>P: ProductByIds — the mapped ids
+    P-->>D: sku + name for each that still exists
+    Note over D: an id that resolves to nothing is a<br/>DEAD REFERENCE — the answer names it
+    rect rgb(240, 240, 240)
+        Note over D,I: one transaction
+        D->>D: INSERT the order and its lines
+        D->>D: DELETE the draft
+        D->>I: StockPick — the order's lines leave the warehouse
+    end
+    D->>R: OrderPlacedEvent, after the commit
+    D-->>CS: the order
+```
+
+**It runs the same code path `OrderCreate` runs**, not a copy of it — `placeOrder` in
+[order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go). That is the
+payoff the separate drafts table was chosen for: what counts as a placeable order is defined once, so
+the draft door cannot quietly accept an order the form would refuse. `placeOrder` re-checks the field
+rules that proto validation covers for `OrderCreate`, because promote's request carries only a draft
+id and none of those rules ran.
+
+**One transaction, not two.** `orders` and `order_drafts` are the same service in the same database,
+so the order is written and the draft deleted together. A refused promote leaves the draft intact to
+be fixed — which is the behaviour that makes retrying safe.
+
+**The money is recomputed from the mapped lines**, not carried over. A draft's totals are whatever the
+marketplace page said, and the lines somebody actually mapped may not add up to that — a line removed,
+a quantity corrected. An order's totals must agree with its own lines, because margin comes from them.
+
+**The line freezes the CATALOGUE's label, not the scrape.** `external_name` is what the buyer clicked
+on; `sku`/`name` on the order line say what we shipped. They come from `ProductByIds` because
+promote's request names a draft, not a basket — there is nowhere honest for them to come from except
+the catalogue. (`OrderCreate` takes them from the request because the person typing has the catalogue
+open in front of them.)
+
+**Stale references are named, not lumped together.** A draft names products by id with no FK, so one
+can be deleted between the mapping and the promote. Every dead id is reported at once — somebody who
+must re-map three lines should learn that in one attempt, not by promoting three times. The `shop_id`
+check falls out of `placeOrder`'s existing shop lookup.
+
+> ⚠ **The warehouse id is NOT re-checked.** `team_service` has no by-id existence RPC selling_service
+> could call, and inventing one for this was out of scope. A warehouse deleted underneath a draft
+> surfaces as the stock pick failing, which is late and reads as a stock problem. Worth fixing when
+> something else needs that lookup.
+
+**This is where `OrderPlacedEvent` fires, and the only place a draft ever reaches revenue.** Pushing
+and editing publish nothing at all — there is a test asserting exactly that, because "a draft must
+never publish" is the kind of rule that is only ever violated by accident.

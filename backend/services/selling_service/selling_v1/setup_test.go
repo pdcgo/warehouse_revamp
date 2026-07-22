@@ -2,6 +2,7 @@ package selling_v1_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -60,25 +61,65 @@ func (f *fakePicker) Return(_ context.Context, _, _ uint64, ref string) error {
 	return nil
 }
 
+// fakeCatalog stands in for product_service when a draft is promoted (#194).
+//
+// It resolves EVERY id to a synthetic snapshot except those named in `missing` — which is the shape
+// the real thing has, where an id that resolves to nothing means the product was deleted underneath
+// the draft. Making absence the explicit opt-in keeps the stale-reference test honest: it has to say
+// which product died, rather than passing because the fake happened to know nothing.
+type fakeCatalog struct {
+	missing map[uint64]bool
+}
+
+func (c *fakeCatalog) Snapshots(
+	_ context.Context,
+	_ uint64,
+	productIDs []uint64,
+) (map[uint64]selling_v1.ProductSnapshot, error) {
+	out := map[uint64]selling_v1.ProductSnapshot{}
+
+	for _, id := range productIDs {
+		if c.missing[id] {
+			continue
+		}
+
+		sku := "SKU" + strconv.FormatUint(id, 10)
+		out[id] = selling_v1.ProductSnapshot{SKU: sku, Name: "Catalogue " + sku}
+	}
+
+	return out, nil
+}
+
 func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{})
 }
 
 // newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events)
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{})
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil)
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{})
+}
+
+// newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
+func newServiceWithCatalog(
+	t *testing.T,
+	db *gorm.DB,
+	catalog selling_v1.ProductCatalog,
+) *selling_v1.Service {
+	t.Helper()
+
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog)
 }
 
 // insertShop seeds an active shop directly and returns its id.

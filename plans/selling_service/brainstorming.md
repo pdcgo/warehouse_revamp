@@ -668,7 +668,13 @@ form, which is no longer what happens):
    neither written nor marked, and clearing one stays expressible. The lines are sent as the
    complete desired set — an omitted line is deleted, `id = 0` adds one, and the edit deliberately
    cannot carry the scraped text.
-5. **`OrderDraftPromote`** — validate, create the order, delete the draft, in one transaction.
+5. ✅ **`OrderDraftPromote`** (#194) — validate, create the order, delete the draft, in one
+   transaction. `OrderCreate`'s body was extracted to a shared `placeOrder` so this genuinely runs
+   the same code rather than a copy. Two things it forced: an order line's `sku`/`name` must come
+   from the CATALOGUE (a draft line stores only an id, and promote's request names a draft, not a
+   basket) — which is also the stale-product check, since an id that resolves to nothing is a dead
+   reference. **The warehouse id is still unchecked**: `team_service` has no by-id existence RPC, and
+   a deleted warehouse surfaces late, as the stock pick failing.
 6. **`/order-drafts` list screen** — its own route, with pruning that is easy and bulk-friendly (§6.7).
 7. **Draft detail screen** — the product-mapping UI and promote. The meatiest piece: this is where
    scraped text becomes a real `product_id`, so `ProductSelect` does the work it already does on the

@@ -1,0 +1,276 @@
+package selling_v1
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+
+	"connectrpc.com/connect"
+	"gorm.io/gorm"
+
+	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
+)
+
+// orderPlacement is everything it takes to place an order, whichever door it came through — typed in
+// on the #90 form (OrderCreate) or promoted from a draft (#194).
+//
+// It exists so the RULE FOR WHAT AN ORDER MUST HAVE lives in exactly one place. That is the payoff
+// the separate drafts table was chosen for: two doors, one definition of a valid order, no chance of
+// the draft path quietly accepting something the form would refuse.
+type orderPlacement struct {
+	teamID      uint64
+	shopID      uint64
+	warehouseID uint64
+
+	customerName  string
+	customerPhone string
+	address       *sellingv1.OrderAddress
+	shippingCode  string
+
+	subtotal     int64
+	shippingCost int64
+	total        int64
+
+	items []*sellingv1.OrderItem
+
+	// Extra work to run INSIDE the order's transaction, once the order row exists. Promote deletes the
+	// draft here, which is what makes "the order is written and the draft is gone" one atomic fact
+	// rather than two writes with a gap between them.
+	inTx func(tx *gorm.DB, order *selling_service_models.Order) error
+}
+
+// The requirements an order must meet, whichever door it came through. Each is stated as what is
+// missing rather than as a code, because both callers report them to a person who has to go and fix
+// exactly this.
+var (
+	errOrderNoShop     = errors.New("an order must say which shop it came through")
+	errOrderNoCustomer = errors.New("an order must name a customer")
+	errOrderNoItems    = errors.New("an order must have at least one line")
+	errOrderBadLine    = errors.New("every line must name a product and a quantity of at least one")
+)
+
+// validate is the one definition of a placeable order.
+//
+// It re-checks what proto validation already covers for OrderCreate rather than trusting it: the
+// draft path reaches here through a request that carries only a draft id, so none of those field
+// rules ran at all. A shared core that trusted its caller's validation would be a rule written once
+// and enforced on one path.
+func (p *orderPlacement) validate() error {
+	if p.shopID == 0 {
+		return errOrderNoShop
+	}
+
+	// From #69 this id is what stock is deducted FROM, so an order that cannot say where its goods
+	// come from is not an order the system can honour.
+	if p.warehouseID == 0 {
+		return errOrderNoWarehouse
+	}
+
+	if p.customerName == "" {
+		return errOrderNoCustomer
+	}
+
+	if len(p.items) == 0 {
+		return errOrderNoItems
+	}
+
+	for _, item := range p.items {
+		if item.GetProductId() == 0 || item.GetQuantity() == 0 {
+			return errOrderBadLine
+		}
+	}
+
+	return nil
+}
+
+// placeOrder writes an order, takes its stock, and announces it — the whole of what "placing" means.
+//
+// Extracted from OrderCreate for #194 so promote runs the same path rather than a copy of it. The
+// behaviour is unchanged, including the parts that look odd and are not: the stock draw happens
+// inside the still-uncommitted transaction, and the compensation tracks whether the pick was
+// ATTEMPTED rather than whether it succeeded.
+func (s *Service) placeOrder(
+	ctx context.Context,
+	p *orderPlacement,
+) (*selling_service_models.Order, error) {
+	err := p.validate()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	// The shop is checked BEFORE any stock moves. A bad shop is a rejected request, and rejecting it
+	// after taking stock would mean compensating a draw that never needed to happen.
+	shopOK, err := shopExists(s.db.WithContext(ctx), p.teamID, p.shopID)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	if !shopOK {
+		return nil, notFound()
+	}
+
+	// What the goods COST us, frozen onto the order (#74). Read before the transaction — it is a read,
+	// and doing it inside would hold the order's row lock across another service's call for nothing.
+	//
+	// A product with no known cost is ABSENT from this map, which becomes a 0 on the line: "we do not
+	// know what this cost". That is deliberately not the same as free, and the contract says so — a
+	// margin computed over an unknown cost reads as pure profit, so 0 is a flag rather than a figure.
+	costs, err := s.stock.UnitCosts(ctx, p.teamID, p.warehouseID, orderProductIDs(p.items))
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	var (
+		order selling_service_models.Order
+		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
+		// rather than "succeeded" is the right thing to track.
+		picked bool
+	)
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		address := p.address
+
+		order = selling_service_models.Order{
+			TeamID: p.teamID,
+			ShopID: p.shopID,
+			// The warehouse this order ships from (#72), as chosen by whoever typed it — copied onto
+			// the order, never looked up later, so it reads the same forever.
+			WarehouseID:   p.warehouseID,
+			Status:        orderStatusPlaced,
+			CustomerName:  p.customerName,
+			CustomerPhone: p.customerPhone,
+			// FROZEN at order time: the names are copied, not resolved later, so this order reads the
+			// same forever even after region_service renames or merges the desa (#118).
+			ProvinsiCode:  address.GetProvinsiCode(),
+			ProvinsiName:  address.GetProvinsiName(),
+			KabupatenCode: address.GetKabupatenCode(),
+			KabupatenName: address.GetKabupatenName(),
+			KecamatanCode: address.GetKecamatanCode(),
+			KecamatanName: address.GetKecamatanName(),
+			DesaCode:      address.GetDesaCode(),
+			DesaName:      address.GetDesaName(),
+			KodePos:       address.GetKodePos(),
+			AddressLine:   address.GetAddressLine(),
+			ShippingCode:  p.shippingCode,
+			Subtotal:      p.subtotal,
+			ShippingCost:  p.shippingCost,
+			Total:         p.total,
+			Items:         orderItemModels(p.items),
+		}
+
+		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
+		// orderItemModels because the cost comes from the WAREHOUSE, not from the request — a client
+		// supplying it would be writing its own margin.
+		for i := range order.Items {
+			order.Items[i].UnitCost = costs[order.Items[i].ProductID]
+			order.COGS += int64(order.Items[i].Quantity) * order.Items[i].UnitCost
+		}
+
+		// GORM inserts the order and its items in this transaction, stamping their OrderID.
+		createErr := tx.Create(&order).Error
+		if createErr != nil {
+			return createErr
+		}
+
+		// Whatever the caller needs done atomically with the order. For promote (#194) this is the
+		// draft's deletion: same service, same database, so it is one transaction and the "gap between
+		// two writes" a cross-service split would have created never exists.
+		if p.inTx != nil {
+			hookErr := p.inTx(tx, &order)
+			if hookErr != nil {
+				return hookErr
+			}
+		}
+
+		// THE STOCK, inside the order's still-uncommitted transaction (#149).
+		//
+		// The insert comes first only to get the order's id, which is what the pick is recorded
+		// under — the ref is what a later cancel names to put exactly this draw back (#70). The
+		// GUARANTEE is unchanged and is what the owner chose: the pick must succeed before the order
+		// is committed, so not enough stock means this transaction rolls back and NO ORDER EXISTS.
+		// Writing the order first and deducting afterwards would leave a gap in which two orders
+		// could be placed against the same unit.
+		picked = true
+
+		return s.stock.Pick(ctx, p.teamID, order.WarehouseID, pickLines(p.items), stockRef(order.ID))
+	})
+	if err != nil {
+		// COMPENSATION (#149). The pick runs against another service and commits on its own; if this
+		// transaction then failed, stock has left for an order that does not exist. There is no
+		// rollback that reaches across both, so the draw is UNDONE explicitly.
+		//
+		// `picked` is set before the call rather than after, deliberately: a Pick that fails midway
+		// takes nothing (it is one transaction there), but a Pick whose result never reached us — a
+		// timeout, a panic — may well have committed. Compensating a draw that never happened is a
+		// harmless NotFound; failing to compensate one that did is stock lost from the building.
+		if picked {
+			returnErr := s.stock.Return(ctx, p.teamID, order.WarehouseID, stockRef(order.ID))
+			if returnErr != nil {
+				// The order failed AND its stock could not be put back. Say both, because the second
+				// is the one someone has to fix by hand, and a message naming only the first would
+				// send them looking in the wrong place.
+				return nil, connect.NewError(connect.CodeInternal,
+					errors.New("the order failed and its stock could not be returned ("+
+						stockRef(order.ID)+"): "+returnErr.Error()))
+			}
+		}
+
+		if errors.Is(err, errShopMissing) {
+			return nil, notFound()
+		}
+
+		return nil, dbError(err)
+	}
+
+	// THE ORDER IS COMMITTED. Announce it (#153) so revenue can record what it was expected to make.
+	//
+	// After the commit, never inside it. Publishing inside would mean a rolled-back order that revenue
+	// has already recorded — a phantom nothing would ever correct. The cost of doing it here is the
+	// opposite failure: a crash between commit and publish leaves an order with no revenue row. That is
+	// the better half of the trade, and only because it is REPAIRABLE — the order still holds every
+	// figure the event carries, and RevenueRecord refuses duplicates on order_id, so a backfill can be
+	// run safely at any time.
+	//
+	// A publish failure does NOT fail the order. Revenue is downstream: a shop must be able to keep
+	// selling while the revenue service, or the broker, is down. It is logged loudly instead, because
+	// the alternative — swallowing it — is how a month-end report quietly goes wrong.
+	_, publishErr := s.events(ctx, &sellingv1.OrderPlacedEvent{
+		TeamId:       order.TeamID,
+		OrderId:      order.ID,
+		Revenue:      order.Total,
+		Cogs:         order.COGS,
+		ShippingCost: order.ShippingCost,
+		CostKnown:    costKnown(order.Items, costs),
+	})
+	if publishErr != nil {
+		slog.ErrorContext(ctx, "order placed but OrderPlacedEvent was not published — "+
+			"its revenue row must be backfilled",
+			"order_id", order.ID,
+			"team_id", order.TeamID,
+			"error", publishErr,
+		)
+	}
+
+	return &order, nil
+}
+
+// costKnown reports whether EVERY line's cost was actually known (#74/#153).
+//
+// A product with no recorded cost is absent from the costs map and lands on its line as 0, which is
+// indistinguishable from "free" once it is written down. So the distinction is computed here, while
+// the map is still in hand, and travels with the event as its own field.
+//
+// ALL lines, not some. One unknown line understates the order's COGS, which overstates its margin —
+// and a margin that is wrong is wrong however few lines caused it. A "mostly known" cost is not a
+// thing a report can use.
+func costKnown(items []selling_service_models.OrderItem, costs map[uint64]int64) bool {
+	for i := range items {
+		_, known := costs[items[i].ProductID]
+		if !known {
+			return false
+		}
+	}
+
+	return true
+}

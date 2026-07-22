@@ -35,6 +35,10 @@ service OrderDraftService {
   rpc OrderDraftUpdate(OrderDraftUpdateRequest) returns (OrderDraftUpdateResponse);
   // Pruning, which is entirely manual (nothing expires) — so it takes several at once.
   rpc OrderDraftDelete(OrderDraftDeleteRequest) returns (OrderDraftDeleteResponse);
+
+  // A draft becomes an order (#194) — the same validation OrderCreate runs, in one transaction, and
+  // the ONLY point at which anything about a draft reaches revenue.
+  rpc OrderDraftPromote(OrderDraftPromoteRequest) returns (OrderDraftPromoteResponse);
 }
 
 // One scraped line of a draft.
@@ -359,4 +363,41 @@ message OrderDraftPushResponse {
   // the only caller, and it is the one that cannot otherwise tell a successful retry from a new
   // scrape — the id alone looks identical either way.
   bool created = 2;
+}
+
+// OrderDraftPromote turns a finished draft into a real order (#194).
+//
+// It runs THE SAME VALIDATION OrderCreate runs — that is the payoff of the separate table: the rule
+// for what an order must have lives in exactly one place instead of being written twice and drifting.
+// So it requires what an order requires: a shop, a warehouse, a customer name, at least one line, and
+// EVERY LINE MAPPED to a real product. An unmapped line is precisely what makes it still a draft.
+//
+// ONE TRANSACTION, not two. `orders` and `order_drafts` are both selling_service, in the same
+// database, so the order is written and the draft deleted together — there is no gap between the two
+// writes and no compensation path to build for one.
+//
+// ⚠ THIS IS WHERE OrderCreatedEvent FIRES, AND THE ONLY PLACE. Everything upstream of promote is
+// invisible to revenue, deliberately.
+message OrderDraftPromoteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 draft_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderDraftPromoteResponse {
+  // The order that now exists. The draft is gone — its id will never resolve again, which is the
+  // honest answer: a promoted draft is not a draft in some final state, it stopped existing.
+  Order order = 1;
 }

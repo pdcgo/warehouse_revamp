@@ -1158,6 +1158,117 @@ func (x *OrderDraftPushResponse) GetCreated() bool {
 	return false
 }
 
+// OrderDraftPromote turns a finished draft into a real order (#194).
+//
+// It runs THE SAME VALIDATION OrderCreate runs — that is the payoff of the separate table: the rule
+// for what an order must have lives in exactly one place instead of being written twice and drifting.
+// So it requires what an order requires: a shop, a warehouse, a customer name, at least one line, and
+// EVERY LINE MAPPED to a real product. An unmapped line is precisely what makes it still a draft.
+//
+// ONE TRANSACTION, not two. `orders` and `order_drafts` are both selling_service, in the same
+// database, so the order is written and the draft deleted together — there is no gap between the two
+// writes and no compensation path to build for one.
+//
+// ⚠ THIS IS WHERE OrderCreatedEvent FIRES, AND THE ONLY PLACE. Everything upstream of promote is
+// invisible to revenue, deliberately.
+type OrderDraftPromoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	DraftId       uint64                 `protobuf:"varint,2,opt,name=draft_id,json=draftId,proto3" json:"draft_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderDraftPromoteRequest) Reset() {
+	*x = OrderDraftPromoteRequest{}
+	mi := &file_warehouse_selling_v1_order_draft_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderDraftPromoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderDraftPromoteRequest) ProtoMessage() {}
+
+func (x *OrderDraftPromoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_draft_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderDraftPromoteRequest.ProtoReflect.Descriptor instead.
+func (*OrderDraftPromoteRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_draft_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *OrderDraftPromoteRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *OrderDraftPromoteRequest) GetDraftId() uint64 {
+	if x != nil {
+		return x.DraftId
+	}
+	return 0
+}
+
+type OrderDraftPromoteResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The order that now exists. The draft is gone — its id will never resolve again, which is the
+	// honest answer: a promoted draft is not a draft in some final state, it stopped existing.
+	Order         *Order `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderDraftPromoteResponse) Reset() {
+	*x = OrderDraftPromoteResponse{}
+	mi := &file_warehouse_selling_v1_order_draft_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderDraftPromoteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderDraftPromoteResponse) ProtoMessage() {}
+
+func (x *OrderDraftPromoteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_order_draft_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderDraftPromoteResponse.ProtoReflect.Descriptor instead.
+func (*OrderDraftPromoteResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_order_draft_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *OrderDraftPromoteResponse) GetOrder() *Order {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
 var File_warehouse_selling_v1_order_draft_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
@@ -1265,13 +1376,20 @@ const file_warehouse_selling_v1_order_draft_proto_rawDesc = "" +
 	"\x05\x01\x02\x03\x04\x05\"j\n" +
 	"\x16OrderDraftPushResponse\x126\n" +
 	"\x05draft\x18\x01 \x01(\v2 .warehouse.selling.v1.OrderDraftR\x05draft\x12\x18\n" +
-	"\acreated\x18\x02 \x01(\bR\acreated2\xc6\x04\n" +
+	"\acreated\x18\x02 \x01(\bR\acreated\"q\n" +
+	"\x18OrderDraftPromoteRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
+	"\bdraft_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\adraftId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"N\n" +
+	"\x19OrderDraftPromoteResponse\x121\n" +
+	"\x05order\x18\x01 \x01(\v2\x1b.warehouse.selling.v1.OrderR\x05order2\xbc\x05\n" +
 	"\x11OrderDraftService\x12k\n" +
 	"\x0eOrderDraftPush\x12+.warehouse.selling.v1.OrderDraftPushRequest\x1a,.warehouse.selling.v1.OrderDraftPushResponse\x12k\n" +
 	"\x0eOrderDraftList\x12+.warehouse.selling.v1.OrderDraftListRequest\x1a,.warehouse.selling.v1.OrderDraftListResponse\x12q\n" +
 	"\x10OrderDraftDetail\x12-.warehouse.selling.v1.OrderDraftDetailRequest\x1a..warehouse.selling.v1.OrderDraftDetailResponse\x12q\n" +
 	"\x10OrderDraftUpdate\x12-.warehouse.selling.v1.OrderDraftUpdateRequest\x1a..warehouse.selling.v1.OrderDraftUpdateResponse\x12q\n" +
-	"\x10OrderDraftDelete\x12-.warehouse.selling.v1.OrderDraftDeleteRequest\x1a..warehouse.selling.v1.OrderDraftDeleteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x10OrderDraftDelete\x12-.warehouse.selling.v1.OrderDraftDeleteRequest\x1a..warehouse.selling.v1.OrderDraftDeleteResponse\x12t\n" +
+	"\x11OrderDraftPromote\x12..warehouse.selling.v1.OrderDraftPromoteRequest\x1a/.warehouse.selling.v1.OrderDraftPromoteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_order_draft_proto_rawDescOnce sync.Once
@@ -1285,55 +1403,61 @@ func file_warehouse_selling_v1_order_draft_proto_rawDescGZIP() []byte {
 	return file_warehouse_selling_v1_order_draft_proto_rawDescData
 }
 
-var file_warehouse_selling_v1_order_draft_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_warehouse_selling_v1_order_draft_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_warehouse_selling_v1_order_draft_proto_goTypes = []any{
-	(*OrderDraftItem)(nil),           // 0: warehouse.selling.v1.OrderDraftItem
-	(*OrderDraft)(nil),               // 1: warehouse.selling.v1.OrderDraft
-	(*OrderDraftListRequest)(nil),    // 2: warehouse.selling.v1.OrderDraftListRequest
-	(*OrderDraftListResponse)(nil),   // 3: warehouse.selling.v1.OrderDraftListResponse
-	(*OrderDraftDetailRequest)(nil),  // 4: warehouse.selling.v1.OrderDraftDetailRequest
-	(*OrderDraftDetailResponse)(nil), // 5: warehouse.selling.v1.OrderDraftDetailResponse
-	(*OrderDraftLineEdit)(nil),       // 6: warehouse.selling.v1.OrderDraftLineEdit
-	(*OrderDraftLines)(nil),          // 7: warehouse.selling.v1.OrderDraftLines
-	(*OrderDraftUpdateRequest)(nil),  // 8: warehouse.selling.v1.OrderDraftUpdateRequest
-	(*OrderDraftUpdateResponse)(nil), // 9: warehouse.selling.v1.OrderDraftUpdateResponse
-	(*OrderDraftDeleteRequest)(nil),  // 10: warehouse.selling.v1.OrderDraftDeleteRequest
-	(*OrderDraftDeleteResponse)(nil), // 11: warehouse.selling.v1.OrderDraftDeleteResponse
-	(*OrderDraftPushRequest)(nil),    // 12: warehouse.selling.v1.OrderDraftPushRequest
-	(*OrderDraftPushResponse)(nil),   // 13: warehouse.selling.v1.OrderDraftPushResponse
-	(*OrderAddress)(nil),             // 14: warehouse.selling.v1.OrderAddress
-	(*v1.PageFilter)(nil),            // 15: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),              // 16: warehouse.common.v1.PageInfo
+	(*OrderDraftItem)(nil),            // 0: warehouse.selling.v1.OrderDraftItem
+	(*OrderDraft)(nil),                // 1: warehouse.selling.v1.OrderDraft
+	(*OrderDraftListRequest)(nil),     // 2: warehouse.selling.v1.OrderDraftListRequest
+	(*OrderDraftListResponse)(nil),    // 3: warehouse.selling.v1.OrderDraftListResponse
+	(*OrderDraftDetailRequest)(nil),   // 4: warehouse.selling.v1.OrderDraftDetailRequest
+	(*OrderDraftDetailResponse)(nil),  // 5: warehouse.selling.v1.OrderDraftDetailResponse
+	(*OrderDraftLineEdit)(nil),        // 6: warehouse.selling.v1.OrderDraftLineEdit
+	(*OrderDraftLines)(nil),           // 7: warehouse.selling.v1.OrderDraftLines
+	(*OrderDraftUpdateRequest)(nil),   // 8: warehouse.selling.v1.OrderDraftUpdateRequest
+	(*OrderDraftUpdateResponse)(nil),  // 9: warehouse.selling.v1.OrderDraftUpdateResponse
+	(*OrderDraftDeleteRequest)(nil),   // 10: warehouse.selling.v1.OrderDraftDeleteRequest
+	(*OrderDraftDeleteResponse)(nil),  // 11: warehouse.selling.v1.OrderDraftDeleteResponse
+	(*OrderDraftPushRequest)(nil),     // 12: warehouse.selling.v1.OrderDraftPushRequest
+	(*OrderDraftPushResponse)(nil),    // 13: warehouse.selling.v1.OrderDraftPushResponse
+	(*OrderDraftPromoteRequest)(nil),  // 14: warehouse.selling.v1.OrderDraftPromoteRequest
+	(*OrderDraftPromoteResponse)(nil), // 15: warehouse.selling.v1.OrderDraftPromoteResponse
+	(*OrderAddress)(nil),              // 16: warehouse.selling.v1.OrderAddress
+	(*v1.PageFilter)(nil),             // 17: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),               // 18: warehouse.common.v1.PageInfo
+	(*Order)(nil),                     // 19: warehouse.selling.v1.Order
 }
 var file_warehouse_selling_v1_order_draft_proto_depIdxs = []int32{
-	14, // 0: warehouse.selling.v1.OrderDraft.address:type_name -> warehouse.selling.v1.OrderAddress
+	16, // 0: warehouse.selling.v1.OrderDraft.address:type_name -> warehouse.selling.v1.OrderAddress
 	0,  // 1: warehouse.selling.v1.OrderDraft.items:type_name -> warehouse.selling.v1.OrderDraftItem
-	15, // 2: warehouse.selling.v1.OrderDraftListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	17, // 2: warehouse.selling.v1.OrderDraftListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	1,  // 3: warehouse.selling.v1.OrderDraftListResponse.drafts:type_name -> warehouse.selling.v1.OrderDraft
-	16, // 4: warehouse.selling.v1.OrderDraftListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	18, // 4: warehouse.selling.v1.OrderDraftListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	1,  // 5: warehouse.selling.v1.OrderDraftDetailResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
 	6,  // 6: warehouse.selling.v1.OrderDraftLines.lines:type_name -> warehouse.selling.v1.OrderDraftLineEdit
-	14, // 7: warehouse.selling.v1.OrderDraftUpdateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	16, // 7: warehouse.selling.v1.OrderDraftUpdateRequest.address:type_name -> warehouse.selling.v1.OrderAddress
 	7,  // 8: warehouse.selling.v1.OrderDraftUpdateRequest.items:type_name -> warehouse.selling.v1.OrderDraftLines
 	1,  // 9: warehouse.selling.v1.OrderDraftUpdateResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
-	14, // 10: warehouse.selling.v1.OrderDraftPushRequest.address:type_name -> warehouse.selling.v1.OrderAddress
+	16, // 10: warehouse.selling.v1.OrderDraftPushRequest.address:type_name -> warehouse.selling.v1.OrderAddress
 	0,  // 11: warehouse.selling.v1.OrderDraftPushRequest.items:type_name -> warehouse.selling.v1.OrderDraftItem
 	1,  // 12: warehouse.selling.v1.OrderDraftPushResponse.draft:type_name -> warehouse.selling.v1.OrderDraft
-	12, // 13: warehouse.selling.v1.OrderDraftService.OrderDraftPush:input_type -> warehouse.selling.v1.OrderDraftPushRequest
-	2,  // 14: warehouse.selling.v1.OrderDraftService.OrderDraftList:input_type -> warehouse.selling.v1.OrderDraftListRequest
-	4,  // 15: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:input_type -> warehouse.selling.v1.OrderDraftDetailRequest
-	8,  // 16: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:input_type -> warehouse.selling.v1.OrderDraftUpdateRequest
-	10, // 17: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:input_type -> warehouse.selling.v1.OrderDraftDeleteRequest
-	13, // 18: warehouse.selling.v1.OrderDraftService.OrderDraftPush:output_type -> warehouse.selling.v1.OrderDraftPushResponse
-	3,  // 19: warehouse.selling.v1.OrderDraftService.OrderDraftList:output_type -> warehouse.selling.v1.OrderDraftListResponse
-	5,  // 20: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:output_type -> warehouse.selling.v1.OrderDraftDetailResponse
-	9,  // 21: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:output_type -> warehouse.selling.v1.OrderDraftUpdateResponse
-	11, // 22: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:output_type -> warehouse.selling.v1.OrderDraftDeleteResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	19, // 13: warehouse.selling.v1.OrderDraftPromoteResponse.order:type_name -> warehouse.selling.v1.Order
+	12, // 14: warehouse.selling.v1.OrderDraftService.OrderDraftPush:input_type -> warehouse.selling.v1.OrderDraftPushRequest
+	2,  // 15: warehouse.selling.v1.OrderDraftService.OrderDraftList:input_type -> warehouse.selling.v1.OrderDraftListRequest
+	4,  // 16: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:input_type -> warehouse.selling.v1.OrderDraftDetailRequest
+	8,  // 17: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:input_type -> warehouse.selling.v1.OrderDraftUpdateRequest
+	10, // 18: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:input_type -> warehouse.selling.v1.OrderDraftDeleteRequest
+	14, // 19: warehouse.selling.v1.OrderDraftService.OrderDraftPromote:input_type -> warehouse.selling.v1.OrderDraftPromoteRequest
+	13, // 20: warehouse.selling.v1.OrderDraftService.OrderDraftPush:output_type -> warehouse.selling.v1.OrderDraftPushResponse
+	3,  // 21: warehouse.selling.v1.OrderDraftService.OrderDraftList:output_type -> warehouse.selling.v1.OrderDraftListResponse
+	5,  // 22: warehouse.selling.v1.OrderDraftService.OrderDraftDetail:output_type -> warehouse.selling.v1.OrderDraftDetailResponse
+	9,  // 23: warehouse.selling.v1.OrderDraftService.OrderDraftUpdate:output_type -> warehouse.selling.v1.OrderDraftUpdateResponse
+	11, // 24: warehouse.selling.v1.OrderDraftService.OrderDraftDelete:output_type -> warehouse.selling.v1.OrderDraftDeleteResponse
+	15, // 25: warehouse.selling.v1.OrderDraftService.OrderDraftPromote:output_type -> warehouse.selling.v1.OrderDraftPromoteResponse
+	20, // [20:26] is the sub-list for method output_type
+	14, // [14:20] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_order_draft_proto_init() }
@@ -1349,7 +1473,7 @@ func file_warehouse_selling_v1_order_draft_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_order_draft_proto_rawDesc), len(file_warehouse_selling_v1_order_draft_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
