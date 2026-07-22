@@ -46,6 +46,9 @@ const OrderCreatePage = lazy(() =>
 const OrderDetailPage = lazy(() =>
   import("./orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })),
 );
+const OrderDraftsPage = lazy(() =>
+  import("./orderDrafts/OrderDraftsPage").then((m) => ({ default: m.OrderDraftsPage })),
+);
 const InventoryPage = lazy(() =>
   import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
 );
@@ -160,6 +163,10 @@ export const router = createBrowserRouter([
       { path: "profit", element: <ProfitPage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
+      // Drafts get their OWN route, not a tab on /orders (#195). A draft is not an order, and a tab
+      // would put not-orders inside the orders screen — the same concern that gave them their own
+      // table rather than an ORDER_STATUS_DRAFT.
+      { path: "order-drafts", element: <OrderDraftsPage /> },
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122) — one screen that
       // reads differently per team type: a SELLING team creates requests, a WAREHOUSE team accepts

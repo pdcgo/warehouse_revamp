@@ -69,6 +69,10 @@ export const key = {
   revenue: (teamId: bigint | undefined, params?: Params) => scope("revenue", teamId, params),
   products: (teamId: bigint | undefined, params?: Params) => scope("products", teamId, params),
   orders: (teamId: bigint | undefined, params?: Params) => scope("orders", teamId, params),
+  // Drafts are their OWN domain, not a filter on orders (#195). A draft is not an order, and sharing
+  // the `orders` prefix would mean promoting one invalidates every order query and vice versa —
+  // which is exactly the entanglement the separate table was chosen to avoid.
+  orderDrafts: (teamId: bigint | undefined, params?: Params) => scope("orderDrafts", teamId, params),
   shops: (teamId: bigint | undefined, params?: Params) => scope("shops", teamId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),

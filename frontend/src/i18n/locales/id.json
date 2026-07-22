@@ -22,7 +22,8 @@
     "picking": "Pengambilan",
     "revenue": "Pendapatan",
     "expenses": "Biaya",
-    "profit": "Laba"
+    "profit": "Laba",
+    "orderDrafts": "Draf Pesanan"
   },
   "menu": {
     "language": "Bahasa",
@@ -151,6 +152,29 @@
     "sku": "SKU",
     "name": "Nama",
     "lineTotal": "Total baris"
+  },
+  "orderDrafts": {
+    "title": "Draf Pesanan",
+    "intro": "Pesanan belum lengkap yang dikirim aplikasi lain. Lengkapi lalu promosikan, atau hapus yang tidak dipakai — tidak ada yang hilang sendiri di sini.",
+    "selectTeamView": "Pilih tim untuk melihat draf pesanannya.",
+    "reference": "Referensi",
+    "lines": "Baris",
+    "remaining": "Masih kurang",
+    "ready": "Siap dipromosikan",
+    "unmappedOf": "{{unmapped}} dari {{total}} belum dipetakan",
+    "unmappedLines": "Baris belum dipetakan",
+    "missingShop": "Toko",
+    "missingWarehouse": "Gudang",
+    "missingCustomer": "Pelanggan",
+    "missingLines": "Tidak ada baris",
+    "noDrafts": "Belum ada draf pesanan.",
+    "selectAll": "Pilih semua draf di halaman ini",
+    "selectOne": "Pilih draf {{id}}",
+    "deleteSelected": "Hapus {{count}}",
+    "deleteTitle": "Hapus Draf Pesanan",
+    "deleteMessage": "Hapus {{count}} draf? Tindakan ini tidak bisa dibatalkan, dan aplikasi pengirim bisa mengirimnya lagi.",
+    "deleteConfirm": "Hapus",
+    "deleted": "{{count}} draf dihapus"
   },
   "restock": {
     "title": "Permintaan Restok",

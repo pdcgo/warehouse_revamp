@@ -4,6 +4,7 @@ import { TeamService } from "../gen/warehouse/team/v1/team_pb";
 import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
+import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
 import { ShippingService } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
 import { DocumentService } from "../gen/warehouse/document/v1/document_pb";
@@ -25,6 +26,9 @@ export const teamClient = createClient(TeamService, transport);
 export const productClient = createClient(ProductService, transport);
 export const shopClient = createClient(ShopService, transport);
 export const orderClient = createClient(OrderService, transport);
+// Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
+// so a draft never appears for a colleague however the client asks.
+export const orderDraftClient = createClient(OrderDraftService, transport);
 export const shippingClient = createClient(ShippingService, transport);
 export const categoryClient = createClient(CategoryService, transport);
 export const documentClient = createClient(DocumentService, transport);

@@ -22,7 +22,8 @@
     "picking": "Picking",
     "revenue": "Revenue",
     "expenses": "Expenses",
-    "profit": "Profit"
+    "profit": "Profit",
+    "orderDrafts": "Order Drafts"
   },
   "menu": {
     "language": "Language",
@@ -151,6 +152,29 @@
     "sku": "SKU",
     "name": "Name",
     "lineTotal": "Line total"
+  },
+  "orderDrafts": {
+    "title": "Order Drafts",
+    "intro": "Incomplete orders pushed in by another app. Finish one and promote it, or delete what you will not use — nothing here expires on its own.",
+    "selectTeamView": "Select a team to view its order drafts.",
+    "reference": "Reference",
+    "lines": "Lines",
+    "remaining": "Still needed",
+    "ready": "Ready to promote",
+    "unmappedOf": "{{unmapped}} of {{total}} unmapped",
+    "unmappedLines": "Unmapped lines",
+    "missingShop": "Shop",
+    "missingWarehouse": "Warehouse",
+    "missingCustomer": "Customer",
+    "missingLines": "No lines",
+    "noDrafts": "No order drafts.",
+    "selectAll": "Select every draft on this page",
+    "selectOne": "Select draft {{id}}",
+    "deleteSelected": "Delete {{count}}",
+    "deleteTitle": "Delete Order Drafts",
+    "deleteMessage": "Delete {{count}} draft(s)? This cannot be undone, and the app that pushed them may push them again.",
+    "deleteConfirm": "Delete",
+    "deleted": "{{count}} draft(s) deleted"
   },
   "restock": {
     "title": "Restock Requests",

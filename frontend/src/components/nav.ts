@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -32,6 +32,9 @@ const SHIPPING: MenuItem = { to: "/shipping", label: "nav.shipping", icon: Truck
 const PRODUCTS: MenuItem = { to: "/products", label: "nav.products", icon: Package };
 const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
 const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
+// Drafts sit BESIDE Orders, never inside it (#195) — a draft was never an order, and the menu says
+// so the same way the schema and the route do.
+const ORDER_DRAFTS: MenuItem = { to: "/order-drafts", label: "nav.orderDrafts", icon: FileClock };
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
 const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
 const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
@@ -119,6 +122,7 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   if (teamType === TeamType.SELLING) {
     menu.push(SHOPS);
     menu.push(ORDERS);
+    menu.push(ORDER_DRAFTS);
 
     // Revenue is the MANAGER's view of those same orders (#78). Customer service places orders but
     // has no business reading the margin on them — which is exactly how RevenueList is scoped on the
