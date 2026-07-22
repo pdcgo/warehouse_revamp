@@ -19,14 +19,14 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { productClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
-import { useProducts, useInvalidateProducts } from "./queries";
+import { useProducts, useDeleteProduct } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -49,7 +49,7 @@ export function ProductsPage() {
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
 
   const query = useProducts({ teamId, isWarehouse, q, page, pageSize });
-  const invalidateProducts = useInvalidateProducts();
+  const deleteProduct = useDeleteProduct();
 
   const products = query.data?.products ?? [];
   const totalItems = query.data?.totalItems ?? 0;
@@ -62,9 +62,8 @@ export function ProductsPage() {
     }
 
     try {
-      await productClient.productDelete({ teamId, productId: product.id });
+      await deleteProduct.mutateAsync({ teamId, productId: product.id });
       toaster.create({ type: "success", title: t("products.toast.deleted", { sku: product.sku }) });
-      await invalidateProducts();
     } catch (err) {
       toaster.create({ type: "error", title: t("products.toast.deleteFailed"), description: rpcError(err) });
     }

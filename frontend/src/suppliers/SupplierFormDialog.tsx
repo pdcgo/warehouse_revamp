@@ -11,10 +11,11 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { rpcError, supplierClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
 import { useTeam } from "../team/TeamContext";
 import { toaster } from "../components/Toaster";
+import { useSaveSupplier } from "./queries";
 
 // SupplierFormDialog creates OR edits a supplier in the CURRENT team. The team is the scope: it
 // travels in the message body (the backend's use_scope reads it there, never a header).
@@ -25,13 +26,18 @@ import { toaster } from "../components/Toaster";
 //    SupplierUpdate.
 export function SupplierFormDialog({
   supplier,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   supplier?: Supplier;
-  onDone: () => void;
   open?: boolean;
+  /**
+   * The dialog's open state changed — including the close that follows a successful save.
+   *
+   * LIFECYCLE ONLY. It used to be joined by an `onDone` that existed purely so the page could refetch
+   * (#177); the write now invalidates the cache itself, so the parent is told the dialog closed and
+   * nothing more. In edit mode that is what clears `editing`.
+   */
   onOpenChange?: (open: boolean) => void;
 }) {
   const { current } = useTeam();
@@ -50,8 +56,13 @@ export function SupplierFormDialog({
     }
   }
 
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). There is no `busy`
+  // beside it: the mutation already knows whether it is in flight, and a second flag is a second
+  // answer to the same question that can disagree with the first.
+  const save = useSaveSupplier();
+  const busy = save.isPending;
 
   const [code, setCode] = useState(supplier?.code ?? "");
   const [name, setName] = useState(supplier?.name ?? "");
@@ -63,59 +74,52 @@ export function SupplierFormDialog({
 
   const canSave = code.trim() !== "" && name.trim() !== "";
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (!current) {
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      if (editing && supplier) {
-        await supplierClient.supplierUpdate({
-          teamId: current.teamId,
-          supplierId: supplier.id,
-          code,
-          name,
-          contact,
-          province,
-          city,
-          address,
-          description,
-        });
-        toaster.create({ type: "success", title: t("suppliers.form.saved") });
-      } else {
-        await supplierClient.supplierCreate({
-          teamId: current.teamId,
-          code,
-          name,
-          contact,
-          province,
-          city,
-          address,
-          description,
-        });
-        toaster.create({ type: "success", title: t("suppliers.form.created", { name }) });
+    save.mutate(
+      {
+        teamId: current.teamId,
+        supplierId: supplier?.id,
+        code,
+        name,
+        contact,
+        province,
+        city,
+        address,
+        description,
+      },
+      {
+        onSuccess: () => {
+          if (editing) {
+            toaster.create({ type: "success", title: t("suppliers.form.saved") });
+          } else {
+            toaster.create({ type: "success", title: t("suppliers.form.created", { name }) });
 
-        setCode("");
-        setName("");
-        setContact("");
-        setProvince("");
-        setCity("");
-        setAddress("");
-        setDescription("");
-      }
+            // Only after a CREATE: the trigger stays on screen, so the next "New supplier" must open
+            // an empty form rather than the vendor that was just added.
+            setCode("");
+            setName("");
+            setContact("");
+            setProvince("");
+            setCity("");
+            setAddress("");
+            setDescription("");
+          }
 
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          // Closing is what tells the parent the dialog is gone — in edit mode that is what clears
+          // `editing`. It is NOT a refetch signal: the hook already invalidated before this ran.
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

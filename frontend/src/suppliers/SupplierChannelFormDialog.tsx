@@ -15,13 +15,14 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Plus } from "lucide-react";
-import { rpcError, supplierChannelClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { SupplierChannel } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { SupplierChannelType } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../team/TeamContext";
 import { MarketplaceSelect } from "../components/MarketplaceSelect";
 import { toaster } from "../components/Toaster";
+import { useSaveSupplierChannel } from "./queries";
 
 // SupplierChannelFormDialog creates OR edits a channel of one supplier (#120) — the way a team reaches
 // that vendor. Two shapes, one form, chosen by the Type toggle:
@@ -37,14 +38,19 @@ import { toaster } from "../components/Toaster";
 export function SupplierChannelFormDialog({
   supplierId,
   channel,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   supplierId: bigint;
   channel?: SupplierChannel;
-  onDone: () => void;
   open?: boolean;
+  /**
+   * The dialog's open state changed — including the close that follows a successful save.
+   *
+   * LIFECYCLE ONLY. It used to be joined by an `onDone` that existed purely so the page could refetch
+   * (#177); the write now invalidates the cache itself, so the parent is told the dialog closed and
+   * nothing more. In edit mode that is what clears `editing`.
+   */
   onOpenChange?: (open: boolean) => void;
 }) {
   const { current } = useTeam();
@@ -63,8 +69,13 @@ export function SupplierChannelFormDialog({
     }
   }
 
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). There is no `busy`
+  // beside it: the mutation already knows whether it is in flight, and a second flag is a second
+  // answer to the same question that can disagree with the first.
+  const save = useSaveSupplierChannel();
+  const busy = save.isPending;
 
   // Default to ONLINE — a marketplace store is the common case for these teams.
   const [online, setOnline] = useState(channel ? channel.type !== SupplierChannelType.OFFLINE : true);
@@ -77,59 +88,57 @@ export function SupplierChannelFormDialog({
   // Name is always required; an online channel additionally needs a marketplace picked.
   const canSave = name.trim() !== "" && (!online || marketplace !== Marketplace.UNSPECIFIED);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (!current) {
       return;
     }
 
-    setBusy(true);
     setError("");
 
     // A channel is one shape or the other: never send an offline channel a marketplace, and never
     // send an online one a location. The backend enforces the same pairing.
     const type = online ? SupplierChannelType.ONLINE : SupplierChannelType.OFFLINE;
-    const payload = {
-      type,
-      marketplace: online ? marketplace : Marketplace.UNSPECIFIED,
-      name,
-      url: online ? url : "",
-      contact,
-      location: online ? "" : location,
-    };
 
-    try {
-      if (editing && channel) {
-        await supplierChannelClient.supplierChannelUpdate({
-          teamId: current.teamId,
-          channelId: channel.id,
-          ...payload,
-        });
-        toaster.create({ type: "success", title: t("supplierChannel.form.saved") });
-      } else {
-        await supplierChannelClient.supplierChannelCreate({
-          teamId: current.teamId,
-          supplierId,
-          ...payload,
-        });
-        toaster.create({ type: "success", title: t("supplierChannel.form.created", { name }) });
+    save.mutate(
+      {
+        teamId: current.teamId,
+        // The supplier is only read on create — an update names the channel. Both travel, and the
+        // hook picks the RPC by whether there is a channel to correct.
+        supplierId,
+        channelId: channel?.id,
+        type,
+        marketplace: online ? marketplace : Marketplace.UNSPECIFIED,
+        name,
+        url: online ? url : "",
+        contact,
+        location: online ? "" : location,
+      },
+      {
+        onSuccess: () => {
+          if (editing) {
+            toaster.create({ type: "success", title: t("supplierChannel.form.saved") });
+          } else {
+            toaster.create({ type: "success", title: t("supplierChannel.form.created", { name }) });
 
-        setOnline(true);
-        setMarketplace(Marketplace.UNSPECIFIED);
-        setName("");
-        setUrl("");
-        setContact("");
-        setLocation("");
-      }
+            // Only after a CREATE: the trigger stays on screen, so the next "Add Channel" must open
+            // an empty form rather than the channel that was just added.
+            setOnline(true);
+            setMarketplace(Marketplace.UNSPECIFIED);
+            setName("");
+            setUrl("");
+            setContact("");
+            setLocation("");
+          }
 
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          // Closing is what tells the parent the dialog is gone — in edit mode that is what clears
+          // `editing`. It is NOT a refetch signal: the hook already invalidated before this ran.
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

@@ -19,12 +19,12 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ExternalLink, Pencil, Trash2 } from "lucide-react";
-import { rpcError, supplierChannelClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { SupplierChannel } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { SupplierChannelType } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { useSupplier, useSupplierChannels, useInvalidateSuppliers } from "./queries";
+import { useDeleteSupplierChannel, useSupplier, useSupplierChannels } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { toaster } from "../components/Toaster";
@@ -81,7 +81,7 @@ export function SupplierDetailPage() {
   // supplier — and folding them together would let one request's failure hide the other's result.
   const supplierQuery = useSupplier({ teamId, supplierId: id });
   const channelsQuery = useSupplierChannels({ teamId, supplierId: id });
-  const invalidateSuppliers = useInvalidateSuppliers();
+  const deleteChannel = useDeleteSupplierChannel();
 
   const supplier = supplierQuery.data ?? null;
   const loading = supplierQuery.isPending && id !== 0n;
@@ -98,15 +98,18 @@ export function SupplierDetailPage() {
   const channels = channelsQuery.data ?? [];
   const channelsError = channelsQuery.isError ? rpcError(channelsQuery.error) : "";
 
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
+  // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
+  // while the delete was still in flight. mutateAsync REJECTS on failure, so the catch is not optional
+  // here the way it would be with mutate's onError.
   async function removeChannel(channel: SupplierChannel) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await supplierChannelClient.supplierChannelDelete({ teamId, channelId: channel.id });
+      await deleteChannel.mutateAsync({ teamId, channelId: channel.id });
       toaster.create({ type: "success", title: t("supplierChannel.deleted", { name: channel.name }) });
-      await invalidateSuppliers();
     } catch (err) {
       toaster.create({
         type: "error",
@@ -194,9 +197,7 @@ export function SupplierDetailPage() {
             <Flex align="center" gap="card">
               <Heading size="sm">{t("supplierChannel.section.title")}</Heading>
               <Spacer />
-              {canManage && (
-                <SupplierChannelFormDialog supplierId={supplier.id} onDone={() => void invalidateSuppliers()} />
-              )}
+              {canManage && <SupplierChannelFormDialog supplierId={supplier.id} />}
             </Flex>
 
             {channelsError && (
@@ -311,7 +312,6 @@ export function SupplierDetailPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void invalidateSuppliers()}
         />
       )}
     </Stack>

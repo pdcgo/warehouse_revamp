@@ -16,10 +16,10 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { rackClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../team/TeamContext";
-import { useRacks, useInvalidateRacks } from "./queries";
+import { useDeleteRack, useRacks } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
@@ -50,22 +50,25 @@ export function RacksPage() {
 
   // The server already orders by code — the code is how a person reads the warehouse.
   const query = useRacks({ teamId, q, page, pageSize });
-  const invalidateRacks = useInvalidateRacks();
+  const deleteRack = useDeleteRack();
 
   const racks = query.data?.racks ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
+  // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
+  // while the delete was still in flight. mutateAsync REJECTS on failure, so the catch is not optional
+  // here the way it would be with mutate's onError.
   async function remove(rack: Rack) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await rackClient.rackDelete({ teamId, rackId: rack.id });
+      await deleteRack.mutateAsync({ teamId, rackId: rack.id });
       toaster.create({ type: "success", title: t("racks.deleted", { code: rack.code }) });
-      await invalidateRacks();
     } catch (err) {
       toaster.create({ type: "error", title: t("racks.deleteFailed"), description: rpcError(err) });
     }
@@ -89,7 +92,7 @@ export function RacksPage() {
         <Heading size="md">{t("racks.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <RackFormDialog onDone={() => void invalidateRacks()} />
+        <RackFormDialog />
       </Flex>
 
       <HStack>
@@ -204,7 +207,6 @@ export function RacksPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void invalidateRacks()}
         />
       )}
     </Stack>

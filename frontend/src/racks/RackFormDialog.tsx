@@ -12,10 +12,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { rackClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../team/TeamContext";
 import { toaster } from "../components/Toaster";
+import { useSaveRack } from "./queries";
 
 // RackFormDialog creates OR edits a rack in the CURRENT team — and for racks the team IS the
 // warehouse the shelf stands in. The team travels in the message body (the backend's use_scope
@@ -30,13 +31,18 @@ import { toaster } from "../components/Toaster";
 // clearing a field clears it.
 export function RackFormDialog({
   rack,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   rack?: Rack;
-  onDone: () => void;
   open?: boolean;
+  /**
+   * The dialog's open state changed — including the close that follows a successful save.
+   *
+   * LIFECYCLE ONLY. It used to be joined by an `onDone` that existed purely so the page could refetch
+   * (#177); the write now invalidates the cache itself, so the parent is told the dialog closed and
+   * nothing more. In edit mode that is what clears `editing`.
+   */
   onOpenChange?: (open: boolean) => void;
 }) {
   const { current } = useTeam();
@@ -55,8 +61,13 @@ export function RackFormDialog({
     }
   }
 
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). There is no `busy`
+  // beside it: the mutation already knows whether it is in flight, and a second flag is a second
+  // answer to the same question that can disagree with the first.
+  const save = useSaveRack();
+  const busy = save.isPending;
 
   const [code, setCode] = useState(rack?.code ?? "");
   const [name, setName] = useState(rack?.name ?? "");
@@ -66,51 +77,55 @@ export function RackFormDialog({
   // conveniences, so the code alone is enough to save.
   const canSave = code.trim() !== "";
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (!current) {
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      if (editing && rack) {
-        await rackClient.rackUpdate({
-          teamId: current.teamId,
-          rackId: rack.id,
-          code,
-          name,
-          description,
-        });
-        toaster.create({ type: "success", title: t("racks.form.saved") });
-      } else {
-        await rackClient.rackCreate({ teamId: current.teamId, code, name, description });
-        toaster.create({ type: "success", title: t("racks.form.created", { code }) });
+    save.mutate(
+      {
+        teamId: current.teamId,
+        rackId: rack?.id,
+        code,
+        name,
+        description,
+      },
+      {
+        onSuccess: () => {
+          if (editing) {
+            toaster.create({ type: "success", title: t("racks.form.saved") });
+          } else {
+            toaster.create({ type: "success", title: t("racks.form.created", { code }) });
 
-        setCode("");
-        setName("");
-        setDescription("");
-      }
+            // Only after a CREATE: the trigger stays on screen, so the next "New rack" must open an
+            // empty form rather than the shelf that was just registered.
+            setCode("");
+            setName("");
+            setDescription("");
+          }
 
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      // A code is unique per warehouse among ACTIVE racks, so the one error a person will actually
-      // hit here is a duplicate. The raw "[already_exists] …" is the server talking to itself —
-      // say which code clashed instead. Anything else falls back to the message as sent.
-      const connectErr = ConnectError.from(err);
+          // Closing is what tells the parent the dialog is gone — in edit mode that is what clears
+          // `editing`. It is NOT a refetch signal: the hook already invalidated before this ran.
+          setOpen(false);
+        },
+        onError: (err) => {
+          // A code is unique per warehouse among ACTIVE racks, so the one error a person will
+          // actually hit here is a duplicate. The raw "[already_exists] …" is the server talking to
+          // itself — say which code clashed instead. Anything else falls back to the message as sent.
+          const connectErr = ConnectError.from(err);
 
-      setError(
-        connectErr.code === Code.AlreadyExists
-          ? t("racks.form.duplicateCode", { code })
-          : rpcError(err),
-      );
-    } finally {
-      setBusy(false);
-    }
+          setError(
+            connectErr.code === Code.AlreadyExists
+              ? t("racks.form.duplicateCode", { code })
+              : rpcError(err),
+          );
+        },
+      },
+    );
   }
 
   return (

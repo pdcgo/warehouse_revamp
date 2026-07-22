@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, productClient } from "../api/clients";
 import { key } from "../api/queryClient";
 
@@ -117,10 +117,58 @@ export function useProductDetail(args: { teamId: bigint | undefined; productId: 
   });
 }
 
+// ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
+//
+// The catalogue's writes. Each declares its invalidation here rather than leaving the page that
+// happens to call it to remember — see src/expenses/queries.ts for the reasoning.
+//
+// ⚠ A product write DOES cross into inventory, and not for the obvious reason. The stock screen's
+// query loads the product list and the on-hand levels TOGETHER in one queryFn (see
+// inventory/queries.ts `useWarehouseStock`), so a renamed or deleted product is stale data inside an
+// `["inventory"]` entry that no `["products"]` invalidation would touch. The rows on that screen ARE
+// products.
+//
+// It does NOT cross into orders: an order line SNAPSHOTS sku/name/unit_price at order time precisely
+// so later catalogue edits never rewrite history, which is the whole point of freezing them.
+export function useSaveProduct() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: async (
+      vars:
+        | { productId: bigint; fields: Parameters<typeof productClient.productUpdate>[0] }
+        | { productId?: undefined; fields: Parameters<typeof productClient.productCreate>[0] },
+    ) =>
+      vars.productId === undefined
+        ? await productClient.productCreate(vars.fields)
+        : await productClient.productUpdate({ ...vars.fields, productId: vars.productId }),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDeleteProduct() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) =>
+      productClient.productDelete(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // Broad on purpose, for the same reason as expenses: a delete changes the page it was on and every
 // page after it, and the counts with them.
+//
+// It also clears `["inventory"]`, for the reason given above the writes: the warehouse stock screen
+// loads the product list INSIDE its inventory query, so the catalogue rows it renders would otherwise
+// survive a rename or a delete that every other screen had already noticed.
 export function useInvalidateProducts() {
   const client = useQueryClient();
 
-  return () => client.invalidateQueries({ queryKey: ["products"] });
+  return async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: ["products"] }),
+      client.invalidateQueries({ queryKey: ["inventory"] }),
+    ]);
+  };
 }

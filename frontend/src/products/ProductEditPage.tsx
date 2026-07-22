@@ -20,7 +20,7 @@ import { ArrowLeft } from "lucide-react";
 import { productClient, rpcError } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { useInvalidateProducts } from "./queries";
+import { useSaveProduct } from "./queries";
 import { CategorySelect } from "../categories/CategorySelect";
 import { toaster } from "../components/Toaster";
 import { ProductImagesInput } from "./ProductImagesInput";
@@ -36,7 +36,8 @@ export function ProductEditPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const invalidateProducts = useInvalidateProducts();
+  // The write and its invalidation, declared together (#177).
+  const saveProduct = useSaveProduct();
 
   const teamId = current?.teamId;
 
@@ -48,7 +49,7 @@ export function ProductEditPage() {
   }, [editing, current?.teamType, navigate]);
 
   const [loading, setLoading] = useState(editing);
-  const [saving, setSaving] = useState(false);
+  const saving = saveProduct.isPending;
   const [error, setError] = useState("");
 
   const [sku, setSku] = useState("");
@@ -101,43 +102,39 @@ export function ProductEditPage() {
       return;
     }
 
-    setSaving(true);
     setError("");
 
     try {
-      if (editing) {
-        await productClient.productUpdate({
-          teamId,
-          productId: BigInt(productId),
-          sku,
-          name,
-          description,
-          categoryId,
-          // A present wrapper REPLACES the gallery with exactly this set.
-          images: { items: images },
-        });
-      } else {
-        await productClient.productCreate({ teamId, sku, name, description, categoryId, images });
-      }
+      // The invalidation travels WITH the write now (#177), which matters most on a page like this
+      // one: it writes and then leaves, so the list it returns to is a different component with no
+      // callback to hand a refetch to. Arriving there is a cache hit, not a fetch — and without the
+      // invalidation the product just created is simply missing from the list that opens a moment
+      // later. That failure does not announce itself: the save succeeded and the toast appeared.
+      await saveProduct.mutateAsync(
+        editing
+          ? {
+              productId: BigInt(productId),
+              fields: {
+                teamId,
+                sku,
+                name,
+                description,
+                categoryId,
+                // A present wrapper REPLACES the gallery with exactly this set.
+                images: { items: images },
+              },
+            }
+          : { fields: { teamId, sku, name, description, categoryId, images } },
+      );
 
       toaster.create({
         type: "success",
         title: editing ? t("products.toast.saved") : t("products.toast.created", { sku }),
       });
 
-      // Invalidate BEFORE navigating (#176). This page writes and then leaves; the list it returns to
-      // is a different component, so there is no callback to hand a refetch to. Once the list reads
-      // through a cache, arriving there is no longer a fetch — it is a cache hit, and without this the
-      // product just created is missing from the list that opens a moment later.
-      //
-      // This is the failure mode caching introduces in exchange for the one it removes, and it does
-      // not announce itself: the save succeeded, the toast appeared, and the row is simply absent.
-      await invalidateProducts();
       void navigate("/products");
     } catch (err) {
       setError(rpcError(err));
-    } finally {
-      setSaving(false);
     }
   }
 

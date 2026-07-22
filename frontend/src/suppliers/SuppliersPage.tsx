@@ -16,11 +16,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
-import { rpcError, supplierClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { useSuppliers, useInvalidateSuppliers } from "./queries";
+import { useDeleteSupplier, useSuppliers } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
@@ -46,22 +46,25 @@ export function SuppliersPage() {
   const teamId = current?.teamId;
 
   const query = useSuppliers({ teamId, q, page, pageSize });
-  const invalidateSuppliers = useInvalidateSuppliers();
+  const deleteSupplier = useDeleteSupplier();
 
   const suppliers = query.data?.suppliers ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
+  // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
+  // while the delete was still in flight. mutateAsync REJECTS on failure, so the catch is not optional
+  // here the way it would be with mutate's onError.
   async function remove(supplier: Supplier) {
     if (teamId === undefined) {
       return;
     }
 
     try {
-      await supplierClient.supplierDelete({ teamId, supplierId: supplier.id });
+      await deleteSupplier.mutateAsync({ teamId, supplierId: supplier.id });
       toaster.create({ type: "success", title: t("suppliers.deleted", { name: supplier.name }) });
-      await invalidateSuppliers();
     } catch (err) {
       toaster.create({ type: "error", title: t("suppliers.deleteFailed"), description: rpcError(err) });
     }
@@ -85,7 +88,7 @@ export function SuppliersPage() {
         <Heading size="md">{t("suppliers.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        {canManage && <SupplierFormDialog onDone={() => void invalidateSuppliers()} />}
+        {canManage && <SupplierFormDialog />}
       </Flex>
 
       <HStack>
@@ -204,7 +207,6 @@ export function SuppliersPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void invalidateSuppliers()}
         />
       )}
     </Stack>
