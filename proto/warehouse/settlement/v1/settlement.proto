@@ -1,0 +1,535 @@
+syntax = "proto3";
+
+package warehouse.settlement.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
+
+// SettlementService is the ledger of WHAT TEAMS OWE EACH OTHER (#180,
+// plans/settlement_service/brainstorming.md).
+//
+// It exists because an obligation already happens today and nothing records it: when a restock
+// arrives COD, the WAREHOUSE pays the courier at the door for goods it does not own (#155). That
+// number reaches the order's COGS — correct for costing, silent on settlement. Nothing says the
+// warehouse is owed it, or whether it was ever repaid.
+//
+// Three things it deliberately is NOT:
+//
+//   - **Not a goods ledger.** Money only. "Borrowing another team's product" is a cross-team SALE,
+//     charged as money at order time — the goods leave and do not come back.
+//   - **Not an allocation engine.** `expense_service` records what a team spent and settlement NEVER
+//     reads it. What reaches a selling team is a PRICE the warehouse set, never a share of its spend.
+//   - **Not open to outsiders.** Counterparties are TEAMS ONLY, because settlement is two-phase: the
+//     creditor confirms a payment, and a party that cannot log in can never confirm anything.
+//
+// ⚠ TWO AUTHORIZATION TRAPS LIVE IN THIS SERVICE, and both are easy to walk into.
+//
+//  1. Every request needs `use_scope` on `team_id`. These are team-level roles, and a team-level role
+//     on an unscoped message is evaluated against the ROOT team — the policy becomes a dead letter
+//     and the proto claims something the system does not do.
+//  2. A balance has TWO SIDES and only one can be the scope. A request scoped to `team_id` proves the
+//     caller belongs to THAT team and says nothing about the counterparty. A handler must never treat
+//     a caller-supplied `counterparty_id` as if it were the scope.
+//
+// This file is the CONTRACT ONLY (#182) — derived from the screens (HARD RULE 6), with no
+// implementation behind it yet. The ledger core is #183, the first writer #184, the screens #185.
+// Two later issues add their own RPCs rather than crowding this one: the reconciliation report (#187)
+// and the pre-order credit check (#189).
+service SettlementService {
+  // The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
+  rpc SettlementPositionList(SettlementPositionListRequest) returns (SettlementPositionListResponse);
+  // The counterparty detail's running history (#185).
+  rpc SettlementEntryList(SettlementEntryListRequest) returns (SettlementEntryListResponse);
+
+  // Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
+  // posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
+  rpc SettlementPaymentRecord(SettlementPaymentRecordRequest) returns (SettlementPaymentRecordResponse);
+  rpc SettlementPaymentConfirm(SettlementPaymentConfirmRequest) returns (SettlementPaymentConfirmResponse);
+  rpc SettlementPaymentReverse(SettlementPaymentReverseRequest) returns (SettlementPaymentReverseResponse);
+  rpc SettlementPaymentList(SettlementPaymentListRequest) returns (SettlementPaymentListResponse);
+
+  // A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it
+  // takes on its products, and how much it will let a team owe it.
+  rpc SettlementTermsList(SettlementTermsListRequest) returns (SettlementTermsListResponse);
+  rpc SettlementTermsSet(SettlementTermsSetRequest) returns (SettlementTermsSetResponse);
+  // Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
+  rpc SettlementTermsDelete(SettlementTermsDeleteRequest) returns (SettlementTermsDeleteResponse);
+}
+
+// WHAT CAUSED an entry (§4.4). A typed pair `(source_type, source_id)`, never a free-text note:
+// "why do I owe this?" is the first question anyone asks a balance, and a note cannot be joined,
+// filtered or counted. It is also what lets an order's fee and its reversal read as one story, and
+// what keeps this service out of selling_service's tables.
+//
+// APPEND ONLY, like every enum here.
+enum SettlementSourceType {
+  SETTLEMENT_SOURCE_TYPE_UNSPECIFIED = 0;
+
+  // The warehouse paid the courier at the door for goods it does not own (#155/#184). `source_id` is
+  // the restock request. The only obligation that exists in the system today.
+  SETTLEMENT_SOURCE_TYPE_COD_FEE = 1;
+
+  // The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
+  // the order.
+  SETTLEMENT_SOURCE_TYPE_HANDLING_FEE = 2;
+
+  // The order sold a product belonging to ANOTHER team, so the selling team owes that team (#186).
+  // `source_id` is the order. One order can post several of these — one per distinct owning team.
+  SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE = 3;
+
+  // A confirmed payment (#188). `source_id` is the payment.
+  SETTLEMENT_SOURCE_TYPE_PAYMENT = 4;
+}
+
+// One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating
+// entry, never an update or a delete — a ledger you can edit is not evidence of anything.
+message SettlementEntry {
+  uint64 id = 1;
+
+  // WHOSE side of the movement this leg is. Every posting writes two legs, one per team, in one
+  // transaction — posting half a movement is impossible by construction.
+  uint64 team_id = 2;
+  uint64 counterparty_id = 3;
+
+  // ⚠ ONE SIGN CONVENTION, STATED ONCE (§4.11): from `team_id`'s point of view, a RECEIVABLE is
+  // POSITIVE and a PAYABLE is NEGATIVE. Whole rupiah, int64 — never a float. Float cannot represent
+  // 0.1 exactly, sums drift, and equality decays into "within epsilon", at which point "are we
+  // square?" has no yes/no answer.
+  //
+  // The API must never also return an `abs()` of this under another name. Two fields called
+  // "payable" that disagree in sign is a bug that reaches the screen. Direction is rendered as WORDS
+  // by the UI ("They owe you…" / "You owe them…"), from this one signed number.
+  int64 amount = 4;
+
+  // What caused it, and the id of that thing in its own service (opaque, no FK).
+  SettlementSourceType source_type = 5;
+  uint64 source_id = 6;
+
+  // ⚠ WHETHER THIS LEG UNDOES AN EARLIER ONE. A cancelled order's fee is reversed by an
+  // equal-and-opposite entry: the original stays, the balance nets to zero, and the history shows the
+  // fee was charged and then returned. "The fee briefly existed" is exactly what an audit needs.
+  //
+  // It is part of the IDEMPOTENCY KEY — `(source_type, source_id, counterparty_id, reversal)` — not
+  // merely a display flag. Without it a reversal would collide with the entry it reverses, and a
+  // double cancel would have to be prevented by something less reliable than a unique index.
+  bool reversal = 7;
+
+  // BOTH LEGS OF ONE MOVEMENT SHARE THIS (§4.3). Without it, "show me both sides of this posting" is
+  // answerable only by matching amount, opposite sign and a near timestamp — a heuristic that fails
+  // exactly when two similar postings land together.
+  uint64 group_id = 8;
+
+  // The balance after this entry, from `team_id`'s side. A convenience for the history screen, NOT a
+  // second source of truth: the balance is a projection and must stay recomputable from the entries
+  // alone (§4.8), or the ledger cannot be audited.
+  int64 balance_after = 9;
+
+  int64 created_at_unix = 10;
+}
+
+// One counterparty's position — a row of the position list (#185).
+message SettlementPosition {
+  uint64 counterparty_id = 1;
+
+  // Signed, from the requesting team's side: positive = they owe you, negative = you owe them. Same
+  // convention as SettlementEntry.amount, deliberately — see the warning there.
+  int64 balance = 2;
+
+  // WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
+  //
+  // ⚠ AGEING IS THE POINT OF THIS SCREEN, not the total. "Rp 2.4m, oldest unsettled 47 days" is
+  // actionable in a way a balance alone is not — a manager chases the old ones.
+  //
+  // A TIMESTAMP rather than a day count, on purpose: a day count is a rollup, and a rollup has to
+  // name its timezone or it shifts when the server moves (§4.13). The screen renders "47 days" in the
+  // reader's own timezone, which is the only one that means anything to them.
+  int64 oldest_unsettled_at_unix = 3;
+
+  // How many payments this counterparty has recorded that the requesting team has NOT yet confirmed.
+  //
+  // It rides on the position row because a creditor must learn a payment is waiting WITHOUT hunting
+  // for it — a payment nobody notices is a debt that stays open for no reason. It is the row-level
+  // half of the nav badge.
+  uint32 awaiting_confirmation = 4;
+}
+
+message SettlementPositionListRequest {
+  // BACK OFFICE ONLY. Nobody on the warehouse floor sees this: WAREHOUSE_STAFF picks and counts,
+  // TEAM_CUSTOMER_SERVICE places orders, and neither chases debt. The same set may read a position and
+  // confirm a payment — the answers converged rather than being merged, and narrowing confirmation
+  // later (owners only) is a one-line change.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The team whose position this is — and the SCOPE. See the service comment: the counterparty side
+  // of a balance can never be the scope, so a filter below is a filter, not an authorization.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Narrow to ONE counterparty. 0 = every counterparty. A filter only — it grants nothing.
+  uint64 counterparty_id = 3;
+
+  // Only pairs that are not square. The screen's default view is "who owes what", and a list padded
+  // with settled zeros buries the rows a manager is looking for.
+  bool unsettled_only = 4;
+}
+
+message SettlementPositionListResponse {
+  // BOTH DIRECTIONS in one list. A counterparty is ONE relationship: splitting "what they owe me" and
+  // "what I owe them" across two screens would make a manager visit two places to answer one
+  // question.
+  repeated SettlementPosition positions = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+
+  // Every payment awaiting this team's confirmation, across all counterparties — the nav badge.
+  // Returned here rather than as its own RPC because the screen that shows the badge already asks
+  // this question, and a second call would be a second chance to disagree with the first.
+  uint32 awaiting_confirmation = 3;
+}
+
+message SettlementEntryListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // WHOSE history. Required here, unlike the position list: this is the counterparty detail page, and
+  // a history of everything at once is not a screen anybody asked for.
+  //
+  // ⚠ Still NOT the scope. The handler proves the caller belongs to `team_id` and then reads the pair
+  // — it must never authorize against this field.
+  uint64 counterparty_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message SettlementEntryListResponse {
+  // Newest first. An order's fee and its cancellation reversal both appear — netting to zero and
+  // still visible, which is the whole point of compensating entries.
+  repeated SettlementEntry entries = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+
+  // The pair's current balance, so the header does not need a second call.
+  int64 balance = 3;
+}
+
+// A claim that money moved, and whether the creditor has agreed it arrived (#188).
+enum SettlementPaymentStatus {
+  SETTLEMENT_PAYMENT_STATUS_UNSPECIFIED = 0;
+
+  // The payer says they paid. NO LEDGER EFFECT YET — one side asserting a transfer is not evidence
+  // that it landed.
+  SETTLEMENT_PAYMENT_STATUS_RECORDED = 1;
+
+  // The creditor saw the money arrive. THIS is what posts the entry.
+  SETTLEMENT_PAYMENT_STATUS_CONFIRMED = 2;
+
+  // A confirmation made in error, undone by a compensating entry — the confirmation itself is never
+  // deleted.
+  SETTLEMENT_PAYMENT_STATUS_REVERSED = 3;
+}
+
+message SettlementPayment {
+  uint64 id = 1;
+
+  // WHO PAID and WHO WAS PAID. Not interchangeable: only the creditor may confirm, because only the
+  // creditor can see the money arrive.
+  uint64 payer_team_id = 2;
+  uint64 creditor_team_id = 3;
+
+  // Whole rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
+  // a negative payment would be a refund, which is a different thing and not modelled.
+  int64 amount = 4;
+
+  SettlementPaymentStatus status = 5;
+
+  // Free text from the payer: a transfer reference, a bank, a date. It is a HINT for the human
+  // confirming, never something the system reads — which is exactly why the ledger uses
+  // `(source_type, source_id)` instead of notes.
+  string note = 6;
+
+  // Opaque user_service ids; no FK. Who claimed and who agreed — this is the record that says a
+  // person, not a process, moved money.
+  uint64 recorded_by = 7;
+  uint64 confirmed_by = 8;
+
+  int64 created_at_unix = 9;
+  int64 confirmed_at_unix = 10;
+}
+
+message SettlementPaymentRecordRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The PAYER — and the scope. You may only ever record your own payment: recording somebody else's
+  // would be asserting a movement of their money.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 creditor_team_id = 2 [(buf.validate.field).uint64.gt = 0];
+  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+  string note = 4 [(buf.validate.field).string.max_len = 500];
+}
+
+message SettlementPaymentRecordResponse {
+  SettlementPayment payment = 1;
+}
+
+message SettlementPaymentConfirmRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The CREDITOR — and the scope. The whole two-phase design rests on this being the team that was
+  // paid: a payer who could confirm their own payment could write off any debt they liked.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SettlementPaymentConfirmResponse {
+  SettlementPayment payment = 1;
+}
+
+message SettlementPaymentReverseRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The CREDITOR again — whoever confirmed is who un-confirms.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Why. Reversing a confirmation says a person got it wrong, and the next person to read the history
+  // deserves to know what happened rather than seeing two entries that cancel out for no stated
+  // reason.
+  string reason = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+}
+
+message SettlementPaymentReverseResponse {
+  SettlementPayment payment = 1;
+}
+
+message SettlementPaymentListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The scope. Returns payments where this team is EITHER side — one relationship, one list, the same
+  // reasoning as the position list showing both directions.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // 0 = every counterparty.
+  uint64 counterparty_id = 3;
+
+  // Only payments this team must act on: recorded by somebody else, awaiting this team's
+  // confirmation. Server-side, because the list is paginated — a client-side filter would narrow one
+  // page and report the unfiltered total beside it.
+  bool awaiting_my_confirmation = 4;
+}
+
+message SettlementPaymentListResponse {
+  repeated SettlementPayment payments = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
+//
+// One row covers both fees and the limit because they are one relationship: the warehouse that
+// charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
+// screens and two chances to configure half of it.
+message SettlementTerms {
+  // The creditor — the team that SETS these terms.
+  uint64 team_id = 1;
+
+  // The debtor they apply to. ⚠ 0 IS THE DEFAULT ROW, applying to every team without one of their
+  // own. That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else.
+  uint64 counterparty_id = 2;
+
+  // FLAT PER ORDER, whole rupiah, charged by a warehouse for fulfilling it. NO RATE CONFIGURED MEANS
+  // CHARGE NOTHING — a warehouse that has set nothing is not silently billing anybody.
+  int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
+
+  // The markup this team takes when another team sells ITS product, in BASIS POINTS over the cost
+  // (2000 = 20%). Basis points rather than a float, for the same reason money is int64: a percentage
+  // that cannot be represented exactly is a fee that drifts.
+  //
+  // The anchor is the order line's frozen `unit_cost` (HPP), NOT the buyer-paid price. A markup on
+  // what the buyer paid is a commission model wearing a sale's clothes — on a product that cost
+  // 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while
+  // buyer-paid+markup owes 20.000, and the owner loses 40.000 on their own goods.
+  //
+  //   product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
+  //
+  // ⚠ `unit_cost = 0` means UNKNOWN, not free — a product received straight into stock has no
+  // recorded cost, and computes a fee of zero. The decision is to POST THE ZERO and let the
+  // reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping gap.
+  int64 product_markup_bp = 4 [(buf.validate.field).int64.gte = 0];
+
+  // How much this debtor may owe before their next order is refused.
+  //
+  // ⚠ ABSENT MEANS UNLIMITED. `0` MEANS NO CREDIT AT ALL. They are opposites, and encoding unlimited
+  // as 0 is the trap: the day somebody genuinely wants to freeze a team they will type 0 and grant
+  // infinite credit instead. Removing a limit means DELETING the terms row, never zeroing this field.
+  //
+  // The rule is CURRENT debt < limit, so exposure can reach the limit plus one order's fees and the
+  // NEXT order is blocked. Friendlier than a hard ceiling — a person is cut off next time rather than
+  // rejected mid-order for an amount they cannot see — and it agrees with the eventual-consistency
+  // window rather than fighting it.
+  optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
+}
+
+message SettlementTermsListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The CREDITOR whose terms these are — and the scope. A team configures what it charges; it can
+  // never read or write what somebody else charges it.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message SettlementTermsListResponse {
+  // Including the `counterparty_id = 0` default row when one exists, so the screen can show "everyone
+  // else" beside the overrides rather than hiding the rule most teams actually fall under.
+  repeated SettlementTerms terms = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message SettlementTermsSetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // 0 sets the DEFAULT row — see SettlementTerms.counterparty_id.
+  uint64 counterparty_id = 2;
+
+  int64 handling_fee = 3 [(buf.validate.field).int64.gte = 0];
+  int64 product_markup_bp = 4 [(buf.validate.field).int64.gte = 0];
+  // Omit for unlimited; send 0 to freeze this team's credit entirely.
+  optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
+}
+
+message SettlementTermsSetResponse {
+  SettlementTerms terms = 1;
+}
+
+// Removing terms is a DELETE, and that is the point: it is the only way to express "unlimited"
+// once a limit has been set, because 0 already means the opposite.
+message SettlementTermsDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 counterparty_id = 2;
+}
+
+message SettlementTermsDeleteResponse {}

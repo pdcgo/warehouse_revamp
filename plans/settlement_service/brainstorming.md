@@ -738,6 +738,55 @@ flowchart LR
       no orders and its real income will live in settlement. Not being solved now. **Revisit before
       a warehouse team is shown a profit number**, or it will read as a broken screen.
 
+## 5.2 What deriving the proto forced (#182)
+
+`proto/warehouse/settlement/v1/settlement.proto` is the contract only — no implementation behind it.
+Four things had to be decided to write it, none of which §5.1 had said out loud. All four are cheap
+to change now and expensive once entries exist.
+
+### 5.2.1 One `SettlementTerms` row, not three config surfaces
+
+The handling fee, the product markup and the credit limit are all **the creditor's terms toward one
+debtor**, so they are one row keyed `(team_id, counterparty_id)` — the warehouse that charges you 12k
+an order is the warehouse that caps you at 50m. Three separate tables would mean three screens and
+three chances to configure half of it.
+
+**`counterparty_id = 0` IS the default row**, applying to every team without one of their own. That is
+the whole override mechanism §3.4/§3.5 asked for, and it is why 0 is not a valid team id anywhere
+else in the system.
+
+### 5.2.2 The markup is BASIS POINTS, not a float
+
+`product_markup_bp` — 2000 = 20%. Same reason money is `int64` (§4.2): a percentage that cannot be
+represented exactly is a fee that drifts, and a fee that drifts makes *"are we square?"* unanswerable
+one order at a time instead of all at once.
+
+### 5.2.3 `reversal` is part of the idempotency key, not a display flag
+
+§4.6 keys idempotency on `(source_type, source_id, counterparty)`. A **compensating entry has the same
+three values as the entry it reverses** (§2.2 — reversal is never a delete), so on that key alone a
+reversal would collide with the original and be silently swallowed as a duplicate.
+
+The key is therefore `(source_type, source_id, counterparty_id, reversal)`. The alternative — a
+`*_REVERSAL` variant of every source type — was rejected because it doubles the enum and makes "show
+me this order's fees" a two-value query forever.
+
+### 5.2.4 Ageing is a TIMESTAMP, never a day count
+
+`oldest_unsettled_at_unix`, and the screen renders "47 days". A day count is a rollup, and §4.13
+requires a rollup to name its timezone — a server-computed "47" silently shifts when the server
+moves. The reader's own timezone is the only one that means anything to them.
+
+`0` means the pair is square. The position row also carries `awaiting_confirmation`, so Q10's badge is
+answered by the query the screen already makes rather than by a second call that could disagree with
+the first.
+
+> **Not in this proto, deliberately.** The reconciliation report (#187) and the pre-order credit check
+> (#189) add their own RPCs when they are built. A contract carrying RPCs nothing implements is a
+> contract that lies about what the system does.
+
+---
+
 ## 6. Proposed decomposition (confirm before creating issues)
 
 **Design before build, per HARD RULE 6.** The screens are settled first, and the proto is derived
@@ -747,7 +796,8 @@ flowchart LR
    detail, and the config surface. What a screen shows is what the API must return.
 2. **Settle the fee amounts** (§3.4) — the warehouse fee rule and how the markup is expressed.
    Nothing can post until there is a number to post.
-3. **The proto**, derived from §5.1 — the reads the screens need, and the writes the actions need.
+3. ✅ **The proto** (#182), derived from §5.1 — the reads the screens need, and the writes the
+   actions need. See §5.2 for the four shapes deriving it forced.
 4. **The ledger core** — `entries` + `balances`, one posting function, the §4 invariants. Includes
    the unique constraint (§4.7) and the idempotency key (§4.6).
 5. **First writer: the COD obligation** at restock accept — it exists today, needs no new fee model,
