@@ -21,7 +21,7 @@ import { rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { useWarehouseStock, useInvalidateStock } from "./queries";
+import { useWarehouseStock } from "./queries";
 import { TeamSelect } from "../components/TeamSelect";
 import { Pagination } from "../components/Pagination";
 import { ReceiveStockDialog } from "./ReceiveStockDialog";
@@ -60,7 +60,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   } | null>(null);
 
   const query = useWarehouseStock({ warehouseId, q, page, pageSize, levelLimit: LEVEL_LIMIT });
-  const invalidateStock = useInvalidateStock();
 
   const products = query.data?.products ?? [];
   const onHand = query.data?.onHand ?? new Map<string, bigint>();
@@ -225,7 +224,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void invalidateStock()}
         />
       )}
 
@@ -239,7 +237,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void invalidateStock()}
         />
       )}
 
@@ -253,7 +250,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void invalidateStock()}
         />
       )}
     </Stack>

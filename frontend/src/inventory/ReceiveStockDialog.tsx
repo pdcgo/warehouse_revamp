@@ -11,9 +11,10 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { inventoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../components/Toaster";
+import { useReceiveStock } from "./queries";
 
 // ReceiveStockDialog records incoming goods (a +quantity movement) for one product at a warehouse.
 export function ReceiveStockDialog({
@@ -21,21 +22,23 @@ export function ReceiveStockDialog({
   product,
   open,
   onOpenChange,
-  onDone,
 }: {
   warehouseId: bigint;
   product: Product;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDone: () => void;
 }) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(event: FormEvent) {
+  // Receiving stock also makes the restock and rack views stale — the hook fans that out (#177), so
+  // this dialog no longer takes an `onDone` for the parent to refetch with.
+  const receive = useReceiveStock();
+  const busy = receive.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     const qty = Number(quantity);
@@ -44,29 +47,27 @@ export function ReceiveStockDialog({
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await inventoryClient.stockReceive({
+    receive.mutate(
+      {
         warehouseId,
         productId: product.id,
         quantity: BigInt(qty),
         reason,
         ref: "",
-      });
-
-      toaster.create({
-        type: "success",
-        title: t("inventory.receivedToast", { qty, sku: product.sku }),
-      });
-      onOpenChange(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: t("inventory.receivedToast", { qty, sku: product.sku }),
+          });
+          onOpenChange(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

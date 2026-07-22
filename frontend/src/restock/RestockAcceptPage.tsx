@@ -19,7 +19,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2, TriangleAlert } from "lucide-react";
 
-import { restockClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type {
   RestockRequestItem,
 } from "../gen/warehouse/inventory/v1/restock_request_pb";
@@ -31,7 +31,7 @@ import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
-import { useRestockRequest, useInvalidateRestock } from "./queries";
+import { useRestockRequest, useFulfillRestockRequest } from "./queries";
 import { useProductPlaces } from "../inventory/queries";
 import {
   deltaLabel,
@@ -90,7 +90,6 @@ export function RestockAcceptPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
   const navigate = useNavigate();
-  const invalidateRestock = useInvalidateRestock();
   const { t } = useTranslation();
 
   const requestId = parseRequestId(rawId);
@@ -106,7 +105,11 @@ export function RestockAcceptPage() {
   const [placements, setPlacements] = useState<Record<string, PlacementDraft[]>>({});
   const [damage, setDamage] = useState<Record<string, DamageDraft[]>>({});
   const [codFee, setCodFee] = useState("0");
-  const [busy, setBusy] = useState(false);
+
+  // Accepting RECEIVES GOODS, so this mutation invalidates stock and racks as well as restock —
+  // see the warning in queries.ts. `busy` is the mutation's own in-flight flag (#177).
+  const fulfill = useFulfillRestockRequest();
+  const busy = fulfill.isPending;
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const teamId = isWarehouse ? current?.teamId : undefined;
@@ -259,13 +262,12 @@ export function RestockAcceptPage() {
   async function accept() {
     if (teamId === undefined || !request) return;
 
-    setBusy(true);
     setSubmitError("");
 
     try {
       // Built from `request.items` rather than from the maps, so the payload's shape comes from the
       // REQUEST and cannot silently drop a line a map missed.
-      await restockClient.restockRequestFulfill({
+      await fulfill.mutateAsync({
         teamId,
         requestId: request.id,
         codShippingFee: toRupiah(codFee),
@@ -298,17 +300,14 @@ export function RestockAcceptPage() {
         }),
       });
 
-      // Accepting changes the request AND moves stock, so it invalidates before leaving — the list
-      // it lands beside filters by the status this just changed.
-      await invalidateRestock();
-
+      // The invalidation is part of the mutation now (#177) and has already run by the time we get
+      // here — including the STOCK and RACK caches, which accepting a delivery makes stale and which
+      // the old `invalidateRestock()` here did not clear.
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
       navigate(`/inventories/restock/${request.id}`);
     } catch (err) {
       setSubmitError(rpcError(err));
       toaster.create({ type: "error", title: t("restock.accept.toast.failed"), description: rpcError(err) });
-    } finally {
-      setBusy(false);
     }
   }
 

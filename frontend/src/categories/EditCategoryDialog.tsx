@@ -14,47 +14,43 @@ import {
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { categoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { toaster } from "../components/Toaster";
 import { CategorySelect } from "./CategorySelect";
+import { useSaveCategory } from "./queries";
 
 // EditCategoryDialog renames and/or reparents a category. The parent picker excludes THIS node's own
 // id so it cannot be made its own parent; the backend still guards against deeper cycles. name and
 // parent_id are optional on the wire, but the form holds the current values, so sending both simply
 // overwrites with what is on screen (parent_id 0n = make top-level).
-export function EditCategoryDialog({
-  category,
-  onDone,
-}: {
-  category: Category;
-  onDone: () => void;
-}) {
+export function EditCategoryDialog({ category }: { category: Category }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const [name, setName] = useState(category.name);
   const [parentId, setParentId] = useState<bigint>(category.parentId);
 
-  async function submit(event: FormEvent) {
+  // Same hook the create dialog uses — one write, one invalidation, whichever form calls it (#177).
+  const save = useSaveCategory();
+  const busy = save.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      await categoryClient.categoryUpdate({ categoryId: category.id, name, parentId });
-
-      toaster.create({ type: "success", title: t("catalog.categories.updatedToast", { name }) });
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+    save.mutate(
+      { categoryId: category.id, name, parentId },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("catalog.categories.updatedToast", { name }) });
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

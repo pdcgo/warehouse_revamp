@@ -11,11 +11,12 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { inventoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { StockAdjustRequest } from "../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../components/Toaster";
 import { RackSelect, UNPLACED } from "../components/RackSelect";
+import { useAdjustStock } from "./queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof. It is total over the
 // picker's two legal answers only — `""` (unanswered) has no encoding, which is the point: the
@@ -41,23 +42,25 @@ export function AdjustStockDialog({
   currentOnHand,
   open,
   onOpenChange,
-  onDone,
 }: {
   warehouseId: bigint;
   product: Product;
   currentOnHand: bigint;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDone: () => void;
 }) {
   const { t } = useTranslation();
   const [onHand, setOnHand] = useState(currentOnHand.toString());
   const [place, setPlace] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(event: FormEvent) {
+  // A correction changes what a SHELF holds, so the rack views go stale with the stock ones — the
+  // hook fans that out (#177).
+  const adjust = useAdjustStock();
+  const busy = adjust.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     // Checked before the figure: without a place there is nothing a count could correct, so this is
@@ -73,29 +76,27 @@ export function AdjustStockDialog({
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await inventoryClient.stockAdjust({
+    adjust.mutate(
+      {
         warehouseId,
         productId: product.id,
         onHand: BigInt(counted),
         reason,
         place: placeToOneof(place),
-      });
-
-      toaster.create({
-        type: "success",
-        title: t("inventory.adjustedToast", { sku: product.sku, counted }),
-      });
-      onOpenChange(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: t("inventory.adjustedToast", { sku: product.sku, counted }),
+          });
+          onOpenChange(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

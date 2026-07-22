@@ -19,11 +19,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, Pencil } from "lucide-react";
-import { rackClient, restockClient, rpcError, supplierClient } from "../api/clients";
+import { rackClient, rpcError, supplierClient } from "../api/clients";
 import type { RestockRequestItem } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../team/TeamContext";
-import { useRestockRequest, useInvalidateRestock } from "./queries";
+import { useRestockRequest, useCancelRestockRequest } from "./queries";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { deltaLabel } from "./counting";
 import { RestockStatusBadge } from "../components/RestockStatusBadge";
@@ -121,7 +121,7 @@ export function RestockRequestDetailPage() {
   const [rackCodes, setRackCodes] = useState<Record<string, string>>({});
 
   const query = useRestockRequest({ teamId, requestId: id });
-  const invalidateRestock = useInvalidateRestock();
+  const cancelMutation = useCancelRestockRequest();
 
   const request = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -249,8 +249,7 @@ export function RestockRequestDetailPage() {
     if (teamId === undefined || !request) return;
 
     try {
-      await restockClient.restockRequestCancel({ teamId, requestId: request.id });
-      await invalidateRestock();
+      await cancelMutation.mutateAsync({ teamId, requestId: request.id });
       toaster.create({ type: "success", title: t("restock.toast.cancelled") });
     } catch (err) {
       toaster.create({ type: "error", title: t("restock.toast.cancelFailed"), description: rpcError(err) });

@@ -25,7 +25,7 @@ import { restockClient, rpcError } from "../api/clients";
 import { RestockPaymentType } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { useInvalidateRestock } from "./queries";
+import { useSaveRestockRequest } from "./queries";
 import { TeamSelect } from "../components/TeamSelect";
 import { ProductPicker } from "../components/ProductPicker";
 import type { PickedProduct } from "../components/ProductSelect";
@@ -122,7 +122,8 @@ export function RestockRequestFormPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
-  const invalidateRestock = useInvalidateRestock();
+  // The write and its invalidation, declared together (#177).
+  const saveMutation = useSaveRestockRequest();
   const { requestId } = useParams<{ requestId: string }>();
 
   // The route param IS the mode: present ⇒ editing that row, absent ⇒ creating a new one.
@@ -159,7 +160,7 @@ export function RestockRequestFormPage() {
   const [paymentType, setPaymentType] = useState<RestockPaymentType>(RestockPaymentType.UNSPECIFIED);
   const [note, setNote] = useState("");
 
-  const [saving, setSaving] = useState(false);
+  const saving = saveMutation.isPending;
   const [error, setError] = useState("");
 
   // Two DIFFERENT failures, so two states. `error` is a rejected SUBMIT — the form stays on screen with
@@ -296,7 +297,6 @@ export function RestockRequestFormPage() {
       return;
     }
 
-    setSaving(true);
     setError("");
 
     // Create and update take the SAME fields — update only adds the request_id naming the row to
@@ -322,24 +322,20 @@ export function RestockRequestFormPage() {
     };
 
     try {
-      if (isEdit) {
-        await restockClient.restockRequestUpdate({ ...fields, requestId: id });
-        toaster.create({ type: "success", title: t("restock.toast.updated") });
-      } else {
-        await restockClient.restockRequestCreate(fields);
-        toaster.create({ type: "success", title: t("restock.toast.created") });
-      }
+      // The mutation carries the invalidation (#177), which matters more here than anywhere else:
+      // this page writes and then NAVIGATES AWAY, so the list and detail it lands on have no other
+      // way to hear that anything changed.
+      await saveMutation.mutateAsync(isEdit ? { requestId: id, fields } : { fields });
 
-      // Invalidate before leaving (#176): this page writes and navigates away, so the list and the
-      // detail it returns to have no way to hear about the change otherwise.
-      await invalidateRestock();
+      toaster.create({
+        type: "success",
+        title: isEdit ? t("restock.toast.updated") : t("restock.toast.created"),
+      });
 
       // Editing returns to the row it changed so the result is right there; creating has no row yet.
       void navigate(backTo);
     } catch (err) {
       setError(rpcError(err));
-    } finally {
-      setSaving(false);
     }
   }
 

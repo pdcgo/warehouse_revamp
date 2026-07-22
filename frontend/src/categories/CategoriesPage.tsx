@@ -13,14 +13,14 @@ import {
 } from "@chakra-ui/react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { categoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toaster } from "../components/Toaster";
 import { flattenTree } from "./categoryTree";
 import { CreateCategoryDialog } from "./CreateCategoryDialog";
 import { EditCategoryDialog } from "./EditCategoryDialog";
-import { useCategories, useInvalidateCategories } from "./queries";
+import { useCategories, useDeleteCategory } from "./queries";
 
 // CategoriesPage manages the GLOBAL, nested category taxonomy — a single shared tree curated by
 // root/admin (see the nav gate). It is not team-scoped, so unlike ProductsPage there is no current
@@ -28,20 +28,20 @@ import { useCategories, useInvalidateCategories } from "./queries";
 export function CategoriesPage() {
   const { t } = useTranslation();
   const query = useCategories();
-  const invalidateCategories = useInvalidateCategories();
+  const deleteCategory = useDeleteCategory();
 
   const categories = query.data ?? [];
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
+  // mutateAsync because ConfirmDialog awaits onConfirm — see the note in expenses/ExpensesPage.tsx.
   async function remove(category: Category) {
     try {
-      await categoryClient.categoryDelete({ categoryId: category.id });
+      await deleteCategory.mutateAsync({ categoryId: category.id });
       toaster.create({
         type: "success",
         title: t("catalog.categories.deletedToast", { name: category.name }),
       });
-      await invalidateCategories();
     } catch (err) {
       // The backend refuses to delete a category that still has sub-categories (FailedPrecondition);
       // surface that message rather than pretending it worked.
@@ -56,7 +56,7 @@ export function CategoriesPage() {
       <Flex align="center" gap="card">
         <Heading size="md">{t("catalog.categories.title")}</Heading>
         <Spacer />
-        <CreateCategoryDialog onDone={() => void invalidateCategories()} />
+        <CreateCategoryDialog />
       </Flex>
 
       {error && (
@@ -88,7 +88,7 @@ export function CategoriesPage() {
 
                 <Table.Cell textAlign="end">
                   <HStack justify="end" gap="1">
-                    <EditCategoryDialog category={category} onDone={() => void invalidateCategories()} />
+                    <EditCategoryDialog category={category} />
 
                     <ConfirmDialog
                       title={t("catalog.categories.deleteTitle")}

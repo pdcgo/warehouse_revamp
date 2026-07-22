@@ -11,11 +11,12 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { inventoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { StockMoveRequest } from "../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../components/Toaster";
 import { RackSelect, UNPLACED } from "../components/RackSelect";
+import { useMoveStock } from "./queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
 // AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the
@@ -48,14 +49,12 @@ export function MoveStockDialog({
   currentOnHand,
   open,
   onOpenChange,
-  onDone,
 }: {
   warehouseId: bigint;
   product: Product;
   currentOnHand: bigint;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDone: () => void;
 }) {
   const { t } = useTranslation();
   // Both ends start unanswered. A default would be a guess about where the goods are, and a move
@@ -66,15 +65,19 @@ export function MoveStockDialog({
   // a blank field look like a legitimate answer.
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // A move is the clearest case for the cross-domain fan-out (#177): nothing about the WAREHOUSE
+  // total changes, only which shelf holds it — so the rack views are the screens that go stale.
+  const move = useMoveStock();
+  const busy = move.isPending;
 
   const samePlace = from !== "" && from === to;
   const qty = Number(quantity);
   const qtyValid = Number.isInteger(qty) && qty >= 1;
   const canSubmit = from !== "" && to !== "" && !samePlace && qtyValid;
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (from === "" || to === "") {
@@ -92,30 +95,28 @@ export function MoveStockDialog({
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await inventoryClient.stockMove({
+    move.mutate(
+      {
         warehouseId,
         productId: product.id,
         from: { place: placeToOneof(from) },
         to: { place: placeToOneof(to) },
         quantity: BigInt(qty),
         reason,
-      });
-
-      toaster.create({
-        type: "success",
-        title: t("inventory.movedToast", { qty, sku: product.sku }),
-      });
-      onOpenChange(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: t("inventory.movedToast", { qty, sku: product.sku }),
+          });
+          onOpenChange(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

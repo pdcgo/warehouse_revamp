@@ -11,41 +11,43 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { categoryClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { toaster } from "../components/Toaster";
 import { CategorySelect } from "./CategorySelect";
+import { useSaveCategory } from "./queries";
 
 // CreateCategoryDialog adds a category to the GLOBAL taxonomy. A parent of 0n makes it top-level;
 // picking a parent in the CategorySelect nests it under that node.
-export function CreateCategoryDialog({ onDone }: { onDone: () => void }) {
+export function CreateCategoryDialog() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<bigint>(0n);
 
-  async function submit(event: FormEvent) {
+  // The write invalidates the taxonomy itself (#177) — the page no longer passes a refetch callback.
+  const save = useSaveCategory();
+  const busy = save.isPending;
+
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      await categoryClient.categoryCreate({ name, parentId });
+    save.mutate(
+      { name, parentId },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("catalog.categories.createdToast", { name }) });
 
-      toaster.create({ type: "success", title: t("catalog.categories.createdToast", { name }) });
-
-      setName("");
-      setParentId(0n);
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setName("");
+          setParentId(0n);
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (
