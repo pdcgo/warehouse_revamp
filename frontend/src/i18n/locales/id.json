@@ -478,7 +478,31 @@
       "product": "Produk",
       "onThisRack": "Di rak ini",
       "empty": "Tidak ada apa pun di rak ini.",
-      "productUnknown": "Produk tidak diketahui #{{id}}"
+      "productUnknown": "Produk tidak diketahui #{{id}}",
+      "countAndValue": "Di rak ini",
+      "unitsOnShelf": "{{count}} unit",
+      "unknownCost": "{{count}} produk belum punya catatan harga — nilainya baru batas bawah",
+      "lastCounted": "Opname terakhir",
+      "neverCounted": "Belum pernah diopname",
+      "code": "Kode",
+      "name": "Nama",
+      "noName": "(tanpa nama)",
+      "noDescription": "(tanpa keterangan)",
+      "unitCost": "Harga satuan",
+      "lineValue": "Nilai",
+      "costUnknown": "Tidak diketahui",
+      "noHistory": "Belum ada aktivitas di rak ini.",
+      "when": "Waktu",
+      "what": "Kegiatan",
+      "change": "Perubahan",
+      "after": "Sisa di rak",
+      "tab": {
+        "info": "Info Rak",
+        "products": "Produk",
+        "prices": "Harga",
+        "stockHistory": "Riwayat Stok",
+        "placementHistory": "Riwayat Penempatan"
+      }
     }
   },
   "suppliers": {

@@ -24,6 +24,7 @@ import { RestockRequestStatus } from "../gen/warehouse/inventory/v1/restock_requ
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
+import { kindLabel } from "./movementKind";
 import { useWarehouseProduct, useWarehouseProductActivity } from "./queries";
 
 function parseId(raw: string | undefined): bigint {
@@ -33,28 +34,6 @@ function parseId(raw: string | undefined): bigint {
     return BigInt(raw);
   } catch {
     return 0n;
-  }
-}
-
-// The movement kinds, worded once. The ledger stores a number; a person reads a word.
-function kindLabel(t: ReturnType<typeof useTranslation>["t"], kind: MovementKind): string {
-  switch (kind) {
-    case MovementKind.RECEIVE:
-      return t("warehouseProduct.kind.receive");
-    case MovementKind.ADJUST:
-      return t("warehouseProduct.kind.adjust");
-    case MovementKind.TRANSFER_OUT:
-      return t("warehouseProduct.kind.transferOut");
-    case MovementKind.TRANSFER_IN:
-      return t("warehouseProduct.kind.transferIn");
-    case MovementKind.PICK:
-      return t("warehouseProduct.kind.pick");
-    case MovementKind.MOVE:
-      return t("warehouseProduct.kind.move");
-    case MovementKind.RETURN:
-      return t("warehouseProduct.kind.return");
-    default:
-      return t("warehouseProduct.kind.unknown");
   }
 }
 

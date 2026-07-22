@@ -7,6 +7,8 @@ import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
 import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { MovementKind, StockMovement } from "./inventory_pb";
+import { file_warehouse_inventory_v1_inventory } from "./inventory_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/rack.proto.
  */
 export const file_warehouse_inventory_v1_rack: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2sihwEKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgicQoQUmFja0xpc3RSZXNwb25zZRIrCgVyYWNrcxgBIAMoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjaxIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIlgKEVJhY2tEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIkAKElJhY2tEZXRhaWxSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrIjQKDVJhY2tTdG9ja0xpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIPCgdvbl9oYW5kGAIgASgDIo4BChBSYWNrU3RvY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ7ChFSYWNrU3RvY2tSZXNwb25zZRI0CgVsaW5lcxgBIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N0b2NrTGluZRIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvItgBChFSYWNrVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAEhwKBGNvZGUYAyABKAlCCbpIBnIEEAEYIEgAiAEBEhsKBG5hbWUYBCABKAlCCLpIBXIDGMgBSAGIAQESIgoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGPQDSAKIAQE6CpK1GAYKBAECBglCBwoFX2NvZGVCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uIkAKElJhY2tVcGRhdGVSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrIlcKEVJhY2tEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECBgkiFAoSUmFja0RlbGV0ZVJlc3BvbnNlMuIECgtSYWNrU2VydmljZRJjCgpSYWNrQ3JlYXRlEikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrQ3JlYXRlUmVxdWVzdBoqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlc3BvbnNlEl0KCFJhY2tMaXN0Eicud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlcXVlc3QaKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0UmVzcG9uc2USYwoKUmFja0RldGFpbBIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RldGFpbFJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZXRhaWxSZXNwb25zZRJgCglSYWNrU3RvY2sSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja1JlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja1Jlc3BvbnNlEmMKClJhY2tVcGRhdGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVXBkYXRlUmVzcG9uc2USYwoKUmFja0RlbGV0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2sihwEKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgicQoQUmFja0xpc3RSZXNwb25zZRIrCgVyYWNrcxgBIAMoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjaxIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIlgKEVJhY2tEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIInYKElJhY2tEZXRhaWxSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrEjQKB3N1bW1hcnkYAiABKAsyIy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdW1tYXJ5InEKC1JhY2tTdW1tYXJ5EhUKDXRvdGFsX29uX2hhbmQYASABKAMSEwoLdG90YWxfdmFsdWUYAiABKAMSHQoVdW5rbm93bl9jb3N0X3Byb2R1Y3RzGAMgASgNEhcKD2xhc3RfY291bnRlZF9hdBgEIAEoCSJqCg1SYWNrU3RvY2tMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSDwoHb25faGFuZBgCIAEoAxIRCgl1bml0X2Nvc3QYAyABKAMSEgoKY29zdF9rbm93bhgEIAEoCBINCgV2YWx1ZRgFIAEoAyKOAQoQUmFja1N0b2NrUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToLkrUYBwoFAQIGCQgiewoRUmFja1N0b2NrUmVzcG9uc2USNAoFbGluZXMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja0xpbmUSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLYAQoRUmFja1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHcmFja19pZBgCIAEoBEIHukgEMgIgABIcCgRjb2RlGAMgASgJQgm6SAZyBBABGCBIAIgBARIbCgRuYW1lGAQgASgJQgi6SAVyAxjIAUgBiAEBEiIKC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxj0A0gCiAEBOgqStRgGCgQBAgYJQgcKBV9jb2RlQgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbiJAChJSYWNrVXBkYXRlUmVzcG9uc2USKgoEcmFjaxgBIAEoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjayJXChFSYWNrRGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgYJIhQKElJhY2tEZWxldGVSZXNwb25zZSLPAQoSUmFja0hpc3RvcnlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEj0KBWtpbmRzGAQgAygOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmRCCLpIBZIBAhAIOguStRgHCgUBAgYJCCKBAQoTUmFja0hpc3RvcnlSZXNwb25zZRI4Cgltb3ZlbWVudHMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbzLKBQoLUmFja1NlcnZpY2USYwoKUmFja0NyZWF0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tDcmVhdGVSZXNwb25zZRJdCghSYWNrTGlzdBInLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0xpc3RSZXF1ZXN0Gigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlc3BvbnNlEmMKClJhY2tEZXRhaWwSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZXRhaWxSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrRGV0YWlsUmVzcG9uc2USYAoJUmFja1N0b2NrEigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXNwb25zZRJmCgtSYWNrSGlzdG9yeRIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeVJlc3BvbnNlEmMKClJhY2tVcGRhdGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVXBkYXRlUmVzcG9uc2USYwoKUmFja0RlbGV0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_inventory_v1_inventory, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.inventory.v1.Rack
@@ -195,6 +197,15 @@ export type RackDetailResponse = Message<"warehouse.inventory.v1.RackDetailRespo
    * @generated from field: warehouse.inventory.v1.Rack rack = 1;
    */
   rack?: Rack;
+
+  /**
+   * The two numbers the detail page's header tiles show (#197). On the detail response rather than
+   * their own RPC because the header is one glance at one shelf — two calls to fill two tiles beside
+   * each other is two chances to render a half-loaded header.
+   *
+   * @generated from field: warehouse.inventory.v1.RackSummary summary = 2;
+   */
+  summary?: RackSummary;
 };
 
 /**
@@ -203,6 +214,60 @@ export type RackDetailResponse = Message<"warehouse.inventory.v1.RackDetailRespo
  */
 export const RackDetailResponseSchema: GenMessage<RackDetailResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_inventory_v1_rack, 6);
+
+/**
+ * What is on a rack, in one line each (#197) — the header tiles of the detail page.
+ *
+ * @generated from message warehouse.inventory.v1.RackSummary
+ */
+export type RackSummary = Message<"warehouse.inventory.v1.RackSummary"> & {
+  /**
+   * Every unit on the shelf, across every product. The "count" half of the header tile.
+   *
+   * @generated from field: int64 total_on_hand = 1;
+   */
+  totalOnHand: bigint;
+
+  /**
+   * What those units COST, whole rupiah — quantity × the product's unit cost in this warehouse.
+   *
+   * ⚠ It is a floor, not a valuation. A product with no recorded cost contributes NOTHING rather
+   * than a guess, so a shelf full of never-restocked goods reads as worth little — which is why
+   * `unknown_cost_products` travels beside it rather than being left to be inferred from a low
+   * number.
+   *
+   * @generated from field: int64 total_value = 2;
+   */
+  totalValue: bigint;
+
+  /**
+   * How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
+   * understated, and by an unknown amount — the screen says so rather than presenting a confident
+   * figure built on a gap.
+   *
+   * @generated from field: uint32 unknown_cost_products = 3;
+   */
+  unknownCostProducts: number;
+
+  /**
+   * WHEN THIS SHELF WAS LAST COUNTED — the most recent stock-take (#139), RFC3339. Empty means never
+   * counted, which is a real and common answer for a new rack and must not render as a date.
+   *
+   * A stock-take is a MOVEMENT_KIND_ADJUST naming this rack, so this is derived from the ledger
+   * rather than stored: there is no separate "last counted" column to drift from the movements that
+   * actually happened.
+   *
+   * @generated from field: string last_counted_at = 4;
+   */
+  lastCountedAt: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackSummary.
+ * Use `create(RackSummarySchema)` to create a new message.
+ */
+export const RackSummarySchema: GenMessage<RackSummary> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 7);
 
 /**
  * One product sitting on a rack, and how many (#138).
@@ -226,6 +291,32 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
    * @generated from field: int64 on_hand = 2;
    */
   onHand: bigint;
+
+  /**
+   * WHAT ONE UNIT COST THIS WAREHOUSE (#197) — HPP, from the product's latest fulfilled restock into
+   * this building, the same figure an order freezes onto its lines (#155).
+   *
+   * ⚠ 0 MEANS UNKNOWN, NOT FREE, exactly as it does everywhere else: a product received straight into
+   * stock has no recorded cost. `cost_known` carries the distinction rather than leaving a screen to
+   * guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
+   * this cost" are opposite things to tell a manager.
+   *
+   * @generated from field: int64 unit_cost = 3;
+   */
+  unitCost: bigint;
+
+  /**
+   * @generated from field: bool cost_known = 4;
+   */
+  costKnown: boolean;
+
+  /**
+   * `on_hand × unit_cost`, whole rupiah — 0 when the cost is unknown. Computed here rather than in the
+   * client so the line and the header tile cannot disagree about the same multiplication.
+   *
+   * @generated from field: int64 value = 5;
+   */
+  value: bigint;
 };
 
 /**
@@ -233,7 +324,7 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
  * Use `create(RackStockLineSchema)` to create a new message.
  */
 export const RackStockLineSchema: GenMessage<RackStockLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 7);
+  messageDesc(file_warehouse_inventory_v1_rack, 8);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockRequest
@@ -263,7 +354,7 @@ export type RackStockRequest = Message<"warehouse.inventory.v1.RackStockRequest"
  * Use `create(RackStockRequestSchema)` to create a new message.
  */
 export const RackStockRequestSchema: GenMessage<RackStockRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 8);
+  messageDesc(file_warehouse_inventory_v1_rack, 9);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockResponse
@@ -285,7 +376,7 @@ export type RackStockResponse = Message<"warehouse.inventory.v1.RackStockRespons
  * Use `create(RackStockResponseSchema)` to create a new message.
  */
 export const RackStockResponseSchema: GenMessage<RackStockResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 9);
+  messageDesc(file_warehouse_inventory_v1_rack, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.RackUpdateRequest
@@ -324,7 +415,7 @@ export type RackUpdateRequest = Message<"warehouse.inventory.v1.RackUpdateReques
  * Use `create(RackUpdateRequestSchema)` to create a new message.
  */
 export const RackUpdateRequestSchema: GenMessage<RackUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 10);
+  messageDesc(file_warehouse_inventory_v1_rack, 11);
 
 /**
  * @generated from message warehouse.inventory.v1.RackUpdateResponse
@@ -341,7 +432,7 @@ export type RackUpdateResponse = Message<"warehouse.inventory.v1.RackUpdateRespo
  * Use `create(RackUpdateResponseSchema)` to create a new message.
  */
 export const RackUpdateResponseSchema: GenMessage<RackUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 11);
+  messageDesc(file_warehouse_inventory_v1_rack, 12);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteRequest
@@ -363,7 +454,7 @@ export type RackDeleteRequest = Message<"warehouse.inventory.v1.RackDeleteReques
  * Use `create(RackDeleteRequestSchema)` to create a new message.
  */
 export const RackDeleteRequestSchema: GenMessage<RackDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 12);
+  messageDesc(file_warehouse_inventory_v1_rack, 13);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteResponse
@@ -376,7 +467,85 @@ export type RackDeleteResponse = Message<"warehouse.inventory.v1.RackDeleteRespo
  * Use `create(RackDeleteResponseSchema)` to create a new message.
  */
 export const RackDeleteResponseSchema: GenMessage<RackDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 13);
+  messageDesc(file_warehouse_inventory_v1_rack, 14);
+
+/**
+ * RackHistory is the movement ledger narrowed to ONE SHELF (#197).
+ *
+ * `StockHistory` cannot answer this: it requires a `product_id`, because it was built for "what has
+ * happened to this product" (#158). Standing at a rack the question is the other way round — "what
+ * has happened HERE" — and no amount of per-product paging assembles it.
+ *
+ * Every movement already carries `rack_id`, so this is a filter over data that exists rather than a
+ * new ledger. Nothing is written differently for it.
+ *
+ * @generated from message warehouse.inventory.v1.RackHistoryRequest
+ */
+export type RackHistoryRequest = Message<"warehouse.inventory.v1.RackHistoryRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 rack_id = 2;
+   */
+  rackId: bigint;
+
+  /**
+   * The ledger is append-only and grows forever, so this pages (HARD RULE 9).
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   */
+  page?: PageFilter;
+
+  /**
+   * WHICH KINDS to return; empty means all of them.
+   *
+   * A LIST rather than the single `kind` StockHistory takes, because the detail page asks two
+   * different questions of the same ledger (#197):
+   *
+   *   - **Stock History** — everything that changed a count here.
+   *   - **Placement History** — the put-aways and moves that decided goods LIVE here (RECEIVE, MOVE).
+   *
+   * Server-side, for the same reason StockHistory filters server-side: the list is paginated, so a
+   * client-side filter narrows the loaded page only and reports the unfiltered total beside it.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.MovementKind kinds = 4;
+   */
+  kinds: MovementKind[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackHistoryRequest.
+ * Use `create(RackHistoryRequestSchema)` to create a new message.
+ */
+export const RackHistoryRequestSchema: GenMessage<RackHistoryRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 15);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackHistoryResponse
+ */
+export type RackHistoryResponse = Message<"warehouse.inventory.v1.RackHistoryResponse"> & {
+  /**
+   * Newest first — the last thing that happened to this shelf is the thing somebody came to see.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.StockMovement movements = 1;
+   */
+  movements: StockMovement[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackHistoryResponse.
+ * Use `create(RackHistoryResponseSchema)` to create a new message.
+ */
+export const RackHistoryResponseSchema: GenMessage<RackHistoryResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 16);
 
 /**
  * RackService owns `racks` — the physical places inside ONE warehouse (#129).
@@ -419,7 +588,7 @@ export const RackService: GenService<{
     output: typeof RackDetailResponseSchema;
   },
   /**
-   * What is physically ON one rack, and how much of it (#138).
+   * What is physically ON one rack, and how much of it (#138), with what it cost (#197).
    *
    * @generated from rpc warehouse.inventory.v1.RackService.RackStock
    */
@@ -427,6 +596,16 @@ export const RackService: GenService<{
     methodKind: "unary";
     input: typeof RackStockRequestSchema;
     output: typeof RackStockResponseSchema;
+  },
+  /**
+   * WHAT HAS HAPPENED TO THIS SHELF (#197) — the movement ledger, narrowed to one rack.
+   *
+   * @generated from rpc warehouse.inventory.v1.RackService.RackHistory
+   */
+  rackHistory: {
+    methodKind: "unary";
+    input: typeof RackHistoryRequestSchema;
+    output: typeof RackHistoryResponseSchema;
   },
   /**
    * @generated from rpc warehouse.inventory.v1.RackService.RackUpdate

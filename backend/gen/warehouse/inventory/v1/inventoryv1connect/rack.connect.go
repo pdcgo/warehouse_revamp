@@ -41,6 +41,8 @@ const (
 	RackServiceRackDetailProcedure = "/warehouse.inventory.v1.RackService/RackDetail"
 	// RackServiceRackStockProcedure is the fully-qualified name of the RackService's RackStock RPC.
 	RackServiceRackStockProcedure = "/warehouse.inventory.v1.RackService/RackStock"
+	// RackServiceRackHistoryProcedure is the fully-qualified name of the RackService's RackHistory RPC.
+	RackServiceRackHistoryProcedure = "/warehouse.inventory.v1.RackService/RackHistory"
 	// RackServiceRackUpdateProcedure is the fully-qualified name of the RackService's RackUpdate RPC.
 	RackServiceRackUpdateProcedure = "/warehouse.inventory.v1.RackService/RackUpdate"
 	// RackServiceRackDeleteProcedure is the fully-qualified name of the RackService's RackDelete RPC.
@@ -53,8 +55,10 @@ type RackServiceClient interface {
 	RackList(context.Context, *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error)
 	// One rack in full, for the detail page (#138).
 	RackDetail(context.Context, *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error)
-	// What is physically ON one rack, and how much of it (#138).
+	// What is physically ON one rack, and how much of it (#138), with what it cost (#197).
 	RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error)
+	// WHAT HAS HAPPENED TO THIS SHELF (#197) — the movement ledger, narrowed to one rack.
+	RackHistory(context.Context, *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
 }
@@ -94,6 +98,12 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(rackServiceMethods.ByName("RackStock")),
 			connect.WithClientOptions(opts...),
 		),
+		rackHistory: connect.NewClient[v1.RackHistoryRequest, v1.RackHistoryResponse](
+			httpClient,
+			baseURL+RackServiceRackHistoryProcedure,
+			connect.WithSchema(rackServiceMethods.ByName("RackHistory")),
+			connect.WithClientOptions(opts...),
+		),
 		rackUpdate: connect.NewClient[v1.RackUpdateRequest, v1.RackUpdateResponse](
 			httpClient,
 			baseURL+RackServiceRackUpdateProcedure,
@@ -111,12 +121,13 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // rackServiceClient implements RackServiceClient.
 type rackServiceClient struct {
-	rackCreate *connect.Client[v1.RackCreateRequest, v1.RackCreateResponse]
-	rackList   *connect.Client[v1.RackListRequest, v1.RackListResponse]
-	rackDetail *connect.Client[v1.RackDetailRequest, v1.RackDetailResponse]
-	rackStock  *connect.Client[v1.RackStockRequest, v1.RackStockResponse]
-	rackUpdate *connect.Client[v1.RackUpdateRequest, v1.RackUpdateResponse]
-	rackDelete *connect.Client[v1.RackDeleteRequest, v1.RackDeleteResponse]
+	rackCreate  *connect.Client[v1.RackCreateRequest, v1.RackCreateResponse]
+	rackList    *connect.Client[v1.RackListRequest, v1.RackListResponse]
+	rackDetail  *connect.Client[v1.RackDetailRequest, v1.RackDetailResponse]
+	rackStock   *connect.Client[v1.RackStockRequest, v1.RackStockResponse]
+	rackHistory *connect.Client[v1.RackHistoryRequest, v1.RackHistoryResponse]
+	rackUpdate  *connect.Client[v1.RackUpdateRequest, v1.RackUpdateResponse]
+	rackDelete  *connect.Client[v1.RackDeleteRequest, v1.RackDeleteResponse]
 }
 
 // RackCreate calls warehouse.inventory.v1.RackService.RackCreate.
@@ -139,6 +150,11 @@ func (c *rackServiceClient) RackStock(ctx context.Context, req *connect.Request[
 	return c.rackStock.CallUnary(ctx, req)
 }
 
+// RackHistory calls warehouse.inventory.v1.RackService.RackHistory.
+func (c *rackServiceClient) RackHistory(ctx context.Context, req *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error) {
+	return c.rackHistory.CallUnary(ctx, req)
+}
+
 // RackUpdate calls warehouse.inventory.v1.RackService.RackUpdate.
 func (c *rackServiceClient) RackUpdate(ctx context.Context, req *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error) {
 	return c.rackUpdate.CallUnary(ctx, req)
@@ -155,8 +171,10 @@ type RackServiceHandler interface {
 	RackList(context.Context, *connect.Request[v1.RackListRequest]) (*connect.Response[v1.RackListResponse], error)
 	// One rack in full, for the detail page (#138).
 	RackDetail(context.Context, *connect.Request[v1.RackDetailRequest]) (*connect.Response[v1.RackDetailResponse], error)
-	// What is physically ON one rack, and how much of it (#138).
+	// What is physically ON one rack, and how much of it (#138), with what it cost (#197).
 	RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error)
+	// WHAT HAS HAPPENED TO THIS SHELF (#197) — the movement ledger, narrowed to one rack.
+	RackHistory(context.Context, *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
 }
@@ -192,6 +210,12 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(rackServiceMethods.ByName("RackStock")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rackServiceRackHistoryHandler := connect.NewUnaryHandler(
+		RackServiceRackHistoryProcedure,
+		svc.RackHistory,
+		connect.WithSchema(rackServiceMethods.ByName("RackHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	rackServiceRackUpdateHandler := connect.NewUnaryHandler(
 		RackServiceRackUpdateProcedure,
 		svc.RackUpdate,
@@ -214,6 +238,8 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 			rackServiceRackDetailHandler.ServeHTTP(w, r)
 		case RackServiceRackStockProcedure:
 			rackServiceRackStockHandler.ServeHTTP(w, r)
+		case RackServiceRackHistoryProcedure:
+			rackServiceRackHistoryHandler.ServeHTTP(w, r)
 		case RackServiceRackUpdateProcedure:
 			rackServiceRackUpdateHandler.ServeHTTP(w, r)
 		case RackServiceRackDeleteProcedure:
@@ -241,6 +267,10 @@ func (UnimplementedRackServiceHandler) RackDetail(context.Context, *connect.Requ
 
 func (UnimplementedRackServiceHandler) RackStock(context.Context, *connect.Request[v1.RackStockRequest]) (*connect.Response[v1.RackStockResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackStock is not implemented"))
+}
+
+func (UnimplementedRackServiceHandler) RackHistory(context.Context, *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackHistory is not implemented"))
 }
 
 func (UnimplementedRackServiceHandler) RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error) {

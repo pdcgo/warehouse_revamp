@@ -65,12 +65,40 @@ func (s *Service) RackStock(
 		return nil, rackDBError(err)
 	}
 
-	lines := make([]*inventoryv1.RackStockLine, 0, len(levels))
+	// WHAT EACH LINE COST (#197) — the same HPP query StockCost runs, for THIS PAGE's products only.
+	// A cost per page rather than per shelf: the contents page, so valuing rows the caller cannot see
+	// would be work nobody asked for.
+	ids := make([]uint64, 0, len(levels))
 	for i := range levels {
-		lines = append(lines, &inventoryv1.RackStockLine{
+		ids = append(ids, levels[i].ProductID)
+	}
+
+	costs, err := s.unitCosts(ctx, warehouseID, ids)
+	if err != nil {
+		return nil, rackDBError(err)
+	}
+
+	lines := make([]*inventoryv1.RackStockLine, 0, len(levels))
+
+	for i := range levels {
+		unitCost, known := costs[levels[i].ProductID]
+
+		line := &inventoryv1.RackStockLine{
 			ProductId: levels[i].ProductID,
 			OnHand:    levels[i].OnHand,
-		})
+			// ⚠ 0 IS UNKNOWN, NOT FREE, and `cost_known` is what carries the difference. A screen left
+			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
+			UnitCost:  unitCost,
+			CostKnown: known,
+		}
+
+		if known {
+			// Multiplied HERE rather than in the client, so a line and the header tile cannot disagree
+			// about the same arithmetic.
+			line.Value = levels[i].OnHand * unitCost
+		}
+
+		lines = append(lines, line)
 	}
 
 	return connect.NewResponse(&inventoryv1.RackStockResponse{

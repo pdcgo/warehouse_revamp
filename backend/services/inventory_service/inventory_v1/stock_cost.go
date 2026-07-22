@@ -29,6 +29,44 @@ func (s *Service) StockCost(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockCostRequest],
 ) (*connect.Response[inventoryv1.StockCostResponse], error) {
+	costs, err := s.unitCosts(ctx, req.Msg.GetWarehouseId(), req.Msg.GetProductIds())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	out := make([]*inventoryv1.StockCostLine, 0, len(costs))
+	for productID, unitCost := range costs {
+		out = append(out, &inventoryv1.StockCostLine{
+			ProductId: productID,
+			UnitCost:  unitCost,
+		})
+	}
+
+	return connect.NewResponse(&inventoryv1.StockCostResponse{Costs: out}), nil
+}
+
+// unitCosts is the HPP query itself, shared by StockCost and by the rack's valuation (#197).
+//
+// Extracted rather than copied, and that is the whole point: the formula below is the owner's, it has
+// four documented rounding decisions in it, and a second copy would be a second answer to "what did
+// this cost" the first time either was tweaked.
+//
+// A product with NO restock history is ABSENT from the map, never present as 0 — "we do not know what
+// this cost" and "this cost nothing" are different facts, and collapsing them lets a caller compute a
+// margin, or value a shelf, as if the goods were free.
+func (s *Service) unitCosts(
+	ctx context.Context,
+	warehouseID uint64,
+	productIDs []uint64,
+) (map[uint64]int64, error) {
+	costs := map[uint64]int64{}
+
+	// An empty id list would make `IN ?` invalid SQL, and "the cost of nothing" is an empty map rather
+	// than an error.
+	if len(productIDs) == 0 {
+		return costs, nil
+	}
+
 	type row struct {
 		ProductID uint64
 		UnitCost  int64
@@ -86,21 +124,17 @@ func (s *Service) StockCost(
 			  -- the product falls back to its previous delivery rather than to a fabricated figure.
 			  AND i.received_quantity > 0
 			ORDER BY i.product_id, r.id DESC`,
-			req.Msg.GetWarehouseId(), restockStatusFulfilled, req.Msg.GetProductIds(),
+			warehouseID, restockStatusFulfilled, productIDs,
 		).
 		Scan(&rows).
 		Error
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
-	out := make([]*inventoryv1.StockCostLine, 0, len(rows))
 	for i := range rows {
-		out = append(out, &inventoryv1.StockCostLine{
-			ProductId: rows[i].ProductID,
-			UnitCost:  rows[i].UnitCost,
-		})
+		costs[rows[i].ProductID] = rows[i].UnitCost
 	}
 
-	return connect.NewResponse(&inventoryv1.StockCostResponse{Costs: out}), nil
+	return costs, nil
 }

@@ -479,7 +479,31 @@
       "product": "Product",
       "onThisRack": "On this rack",
       "empty": "Nothing on this rack.",
-      "productUnknown": "Unknown product #{{id}}"
+      "productUnknown": "Unknown product #{{id}}",
+      "countAndValue": "On this shelf",
+      "unitsOnShelf": "{{count}} units",
+      "unknownCost": "{{count}} product(s) have no recorded cost — the value is a floor",
+      "lastCounted": "Last stock-take",
+      "neverCounted": "Never counted",
+      "code": "Code",
+      "name": "Name",
+      "noName": "(no name)",
+      "noDescription": "(no description)",
+      "unitCost": "Unit cost",
+      "lineValue": "Value",
+      "costUnknown": "Unknown",
+      "noHistory": "Nothing has happened to this shelf yet.",
+      "when": "When",
+      "what": "What",
+      "change": "Change",
+      "after": "On shelf after",
+      "tab": {
+        "info": "Rack Info",
+        "products": "Products",
+        "prices": "Prices",
+        "stockHistory": "Stock History",
+        "placementHistory": "Placement History"
+      }
     }
   },
   "suppliers": {

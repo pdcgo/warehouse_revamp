@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/inventory/v1/inventory.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -22,8 +23,10 @@ service RackService {
   rpc RackList(RackListRequest) returns (RackListResponse);
   // One rack in full, for the detail page (#138).
   rpc RackDetail(RackDetailRequest) returns (RackDetailResponse);
-  // What is physically ON one rack, and how much of it (#138).
+  // What is physically ON one rack, and how much of it (#138), with what it cost (#197).
   rpc RackStock(RackStockRequest) returns (RackStockResponse);
+  // WHAT HAS HAPPENED TO THIS SHELF (#197) — the movement ledger, narrowed to one rack.
+  rpc RackHistory(RackHistoryRequest) returns (RackHistoryResponse);
   rpc RackUpdate(RackUpdateRequest) returns (RackUpdateResponse);
   rpc RackDelete(RackDeleteRequest) returns (RackDeleteResponse);
 }
@@ -115,6 +118,37 @@ message RackDetailRequest {
 
 message RackDetailResponse {
   Rack rack = 1;
+  // The two numbers the detail page's header tiles show (#197). On the detail response rather than
+  // their own RPC because the header is one glance at one shelf — two calls to fill two tiles beside
+  // each other is two chances to render a half-loaded header.
+  RackSummary summary = 2;
+}
+
+// What is on a rack, in one line each (#197) — the header tiles of the detail page.
+message RackSummary {
+  // Every unit on the shelf, across every product. The "count" half of the header tile.
+  int64 total_on_hand = 1;
+
+  // What those units COST, whole rupiah — quantity × the product's unit cost in this warehouse.
+  //
+  // ⚠ It is a floor, not a valuation. A product with no recorded cost contributes NOTHING rather
+  // than a guess, so a shelf full of never-restocked goods reads as worth little — which is why
+  // `unknown_cost_products` travels beside it rather than being left to be inferred from a low
+  // number.
+  int64 total_value = 2;
+
+  // How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
+  // understated, and by an unknown amount — the screen says so rather than presenting a confident
+  // figure built on a gap.
+  uint32 unknown_cost_products = 3;
+
+  // WHEN THIS SHELF WAS LAST COUNTED — the most recent stock-take (#139), RFC3339. Empty means never
+  // counted, which is a real and common answer for a new rack and must not render as a date.
+  //
+  // A stock-take is a MOVEMENT_KIND_ADJUST naming this rack, so this is derived from the ledger
+  // rather than stored: there is no separate "last counted" column to drift from the movements that
+  // actually happened.
+  string last_counted_at = 4;
 }
 
 // One product sitting on a rack, and how many (#138).
@@ -126,6 +160,20 @@ message RackStockLine {
   // How many of it are on THIS rack. Not the warehouse's total for the product, which is a SUM across
   // the product's racks and a different question (StockList).
   int64 on_hand = 2;
+
+  // WHAT ONE UNIT COST THIS WAREHOUSE (#197) — HPP, from the product's latest fulfilled restock into
+  // this building, the same figure an order freezes onto its lines (#155).
+  //
+  // ⚠ 0 MEANS UNKNOWN, NOT FREE, exactly as it does everywhere else: a product received straight into
+  // stock has no recorded cost. `cost_known` carries the distinction rather than leaving a screen to
+  // guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
+  // this cost" are opposite things to tell a manager.
+  int64 unit_cost = 3;
+  bool cost_known = 4;
+
+  // `on_hand × unit_cost`, whole rupiah — 0 when the cost is unknown. Computed here rather than in the
+  // client so the line and the header tile cannot disagree about the same multiplication.
+  int64 value = 5;
 }
 
 message RackStockRequest {
@@ -202,3 +250,51 @@ message RackDeleteRequest {
 }
 
 message RackDeleteResponse {}
+
+// RackHistory is the movement ledger narrowed to ONE SHELF (#197).
+//
+// `StockHistory` cannot answer this: it requires a `product_id`, because it was built for "what has
+// happened to this product" (#158). Standing at a rack the question is the other way round — "what
+// has happened HERE" — and no amount of per-product paging assembles it.
+//
+// Every movement already carries `rack_id`, so this is a filter over data that exists rather than a
+// new ledger. Nothing is written differently for it.
+message RackHistoryRequest {
+  // Read: anyone who works in the warehouse, staff included — the people standing at the shelf.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // The ledger is append-only and grows forever, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+
+  // WHICH KINDS to return; empty means all of them.
+  //
+  // A LIST rather than the single `kind` StockHistory takes, because the detail page asks two
+  // different questions of the same ledger (#197):
+  //
+  //   - **Stock History** — everything that changed a count here.
+  //   - **Placement History** — the put-aways and moves that decided goods LIVE here (RECEIVE, MOVE).
+  //
+  // Server-side, for the same reason StockHistory filters server-side: the list is paginated, so a
+  // client-side filter narrows the loaded page only and reports the unfiltered total beside it.
+  repeated MovementKind kinds = 4 [(buf.validate.field).repeated.max_items = 8];
+}
+
+message RackHistoryResponse {
+  // Newest first — the last thing that happened to this shelf is the thing somebody came to see.
+  repeated StockMovement movements = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
