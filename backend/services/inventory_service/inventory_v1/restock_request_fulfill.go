@@ -258,7 +258,7 @@ func (s *Service) RestockRequestFulfill(
 		// is the side that paid it — and it lands in the same transaction as the goods it belongs to.
 		rr.CODShippingFee = req.Msg.GetCodShippingFee()
 
-		return tx.
+		statusErr := tx.
 			Model(&rr).
 			Updates(map[string]any{
 				"status":           restockStatusFulfilled,
@@ -266,6 +266,34 @@ func (s *Service) RestockRequestFulfill(
 				"updated_at":       time.Now(),
 			}).
 			Error
+		if statusErr != nil {
+			return statusErr
+		}
+
+		// THE OBLIGATION THE COD FEE CREATES (#184), in this same transaction.
+		//
+		// The warehouse has just paid the courier for goods it does not own, so the requesting team
+		// owes it that money. Until now the number reached the order's COGS and stopped there —
+		// correct for costing, and completely silent on who is owed it or whether it was ever repaid.
+		//
+		// ⚠ THIS DOES NOT CHANGE WHAT COD DOES TODAY. The fee still flows into HPP and into the
+		// order's COGS; that is *costing* and it stays. Settlement adds the missing half. The same
+		// rupiah answers two different questions, and recording it here must not remove it from the
+		// other.
+		//
+		// In the transaction rather than after it, because the failure it prevents is the exact
+		// situation this whole service exists to fix: goods on the shelf, money out of the warehouse's
+		// pocket, and no record that anybody owes it.
+		//
+		// A fee of 0 posts NOTHING. Most deliveries are not COD, and an entry of zero would be a
+		// ledger row saying nothing happened — worse than no row, because it reads as a debt of
+		// nothing rather than the absence of one.
+		if rr.CODShippingFee > 0 {
+			return s.settlement.PostCODFee(
+				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, rr.CODShippingFee)
+		}
+
+		return nil
 	})
 	if err != nil {
 		return nil, restockErr(err)

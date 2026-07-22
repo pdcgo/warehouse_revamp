@@ -15,7 +15,54 @@ import (
 func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db)
+	// nil poster — NewService substitutes a no-op, so a test receiving a box onto a shelf does not
+	// have to construct a ledger it has no opinion about (#184).
+	return inventory_v1.NewService(db, nil)
+}
+
+// recordingPoster captures the COD obligations a fulfil posts, so a test can assert on WHAT was
+// recorded rather than on whether some other service's table changed.
+type recordingPoster struct {
+	posted []codPosting
+	fail   error
+}
+
+type codPosting struct {
+	sellingTeamID    uint64
+	warehouseID      uint64
+	restockRequestID uint64
+	amount           int64
+}
+
+func (p *recordingPoster) PostCODFee(
+	_ context.Context,
+	_ *gorm.DB,
+	sellingTeamID, warehouseID, restockRequestID uint64,
+	amount int64,
+) error {
+	if p.fail != nil {
+		return p.fail
+	}
+
+	p.posted = append(p.posted, codPosting{
+		sellingTeamID:    sellingTeamID,
+		warehouseID:      warehouseID,
+		restockRequestID: restockRequestID,
+		amount:           amount,
+	})
+
+	return nil
+}
+
+// newServiceWithSettlement is for the tests that care what reached the ledger (#184).
+func newServiceWithSettlement(
+	t *testing.T,
+	db *gorm.DB,
+	poster inventory_v1.SettlementPoster,
+) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, poster)
 }
 
 // page1 is the first page at a generous limit — enough for the tiny fixtures here.

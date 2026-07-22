@@ -13,6 +13,7 @@ import (
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
+	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
@@ -52,6 +53,9 @@ func InitializeApp() (*App, error) {
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,
+		settlement_v1.NewService,
+		// Joins inventory to settlement (#184) — see settlement_poster.go.
+		NewSettlementPoster,
 		region_v1.NewService,
 		revenue_v1.NewService,
 		expense_v1.NewService,

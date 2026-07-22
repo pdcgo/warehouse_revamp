@@ -825,8 +825,11 @@ allocate against without inventing one.
    Includes the unique constraint (§4.7) and the idempotency key (§4.6). `PostEntry` takes the
    CALLER'S transaction, which is what lets #184 post the COD obligation atomically with the
    acceptance. Ageing is §5.3.
-5. **First writer: the COD obligation** at restock accept — it exists today, needs no new fee model,
-   and is in-process rather than event-driven, so it exercises the core without the event path.
+5. ✅ **First writer: the COD obligation** at restock accept (#184) — it exists today, needs no new
+   fee model, and is in-process rather than event-driven, so it exercises the core without the event
+   path. `inventory_service` declares a `SettlementPoster` interface and imports nothing from
+   settlement; the adapter is in the composition root. See
+   [docs/services/settlement_service/rpc.md](../../docs/services/settlement_service/rpc.md).
 6. **The position list and counterparty detail** (§5.1 A/B) — the first screens, reading real COD
    obligations from step 5. **This is the first thing the owner can look at.**
 7. **The order-driven fees** — warehouse fee and product fee on `OrderPlacedEvent`, reversal on

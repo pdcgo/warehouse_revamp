@@ -15,6 +15,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
@@ -46,7 +47,9 @@ func InitializeApp() (*App, error) {
 	team_v1Service := team_v1.NewService(db, userServiceClient)
 	shipping_v1Service := shipping_v1.NewService(db)
 	product_v1Service := product_v1.NewService(db)
-	inventory_v1Service := inventory_v1.NewService(db)
+	settlement_v1Service := settlement_v1.NewService(db)
+	inventory_v1SettlementPoster := NewSettlementPoster(settlement_v1Service)
+	inventory_v1Service := inventory_v1.NewService(db, inventory_v1SettlementPoster)
 	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
 	revenue_v1Service := revenue_v1.NewService(db)
 	eventSender := NewEventSender(revenue_v1Service)

@@ -22,6 +22,9 @@ import (
 
 type Service struct {
 	db *gorm.DB
+	// Where the COD obligation goes when a restock is accepted (#184) — an interface this service
+	// owns, so inventory never imports settlement_service. See settlement_poster.go.
+	settlement SettlementPoster
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one inventory_service
@@ -34,8 +37,15 @@ var (
 	_ inventoryv1connect.RackServiceHandler            = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+func NewService(db *gorm.DB, settlement SettlementPoster) *Service {
+	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
+	// box and the wrong one for production — the composition root always wires the real thing, and
+	// the reconciliation report (#187) is what would catch it if it ever did not.
+	if settlement == nil {
+		settlement = noSettlement{}
+	}
+
+	return &Service{db: db, settlement: settlement}
 }
 
 // errInsufficientStock is returned when a movement would drive on-hand below zero.
