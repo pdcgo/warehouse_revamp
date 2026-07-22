@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -17,10 +17,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowRightLeft, MoreHorizontal, Pencil, Plus } from "lucide-react";
-import { inventoryClient, productClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { useWarehouseStock, useInvalidateStock } from "./queries";
 import { TeamSelect } from "../components/TeamSelect";
 import { Pagination } from "../components/Pagination";
 import { ReceiveStockDialog } from "./ReceiveStockDialog";
@@ -49,56 +50,23 @@ export function InventoryPage({ title }: { title?: string } = {}) {
     current?.teamType === TeamType.WAREHOUSE ? current.teamId : undefined,
   );
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const [dialog, setDialog] = useState<{
     kind: "receive" | "adjust" | "move";
     product: Product;
   } | null>(null);
 
-  const load = useCallback(async () => {
-    if (warehouseId === undefined) {
-      setProducts([]);
-      setOnHand(new Map());
-      return;
-    }
+  const query = useWarehouseStock({ warehouseId, q, page, pageSize, levelLimit: LEVEL_LIMIT });
+  const invalidateStock = useInvalidateStock();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const [productRes, stockRes] = await Promise.all([
-        productClient.productList({ teamId: warehouseId, q, page: { page, limit: pageSize } }),
-        inventoryClient.stockList({ warehouseId, page: { page: 1, limit: LEVEL_LIMIT } }),
-      ]);
-
-      setProducts(productRes.products);
-      setTotalItems(Number(productRes.pageInfo?.totalItems ?? 0n));
-
-      const map = new Map<string, bigint>();
-      for (const level of stockRes.levels) {
-        map.set(level.productId.toString(), level.onHand);
-      }
-      setOnHand(map);
-    } catch (err) {
-      setError(rpcError(err));
-      setProducts([]);
-      setOnHand(new Map());
-    } finally {
-      setLoading(false);
-    }
-  }, [warehouseId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const products = query.data?.products ?? [];
+  const onHand = query.data?.onHand ?? new Map<string, bigint>();
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending && warehouseId !== undefined;
+  const error = query.isError ? rpcError(query.error) : "";
 
   return (
     <Stack gap="section">
@@ -257,7 +225,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateStock()}
         />
       )}
 
@@ -271,7 +239,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateStock()}
         />
       )}
 
@@ -285,7 +253,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateStock()}
         />
       )}
     </Stack>
