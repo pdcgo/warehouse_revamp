@@ -11,10 +11,10 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { rpcError } from "../../../api/clients";
-import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
-import { toaster } from "../../../components/Toaster";
-import { useReceiveStock } from "../../../features/inventory/queries";
+import { rpcError } from "../../api/clients";
+import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { toaster } from "../../components/Toaster";
+import { useReceiveStock } from "../../features/inventory/queries";
 
 // ReceiveStockDialog records incoming goods (a +quantity movement) for one product at a warehouse.
 export function ReceiveStockDialog({

@@ -1053,7 +1053,9 @@
       "placement": "Placement",
       "stockHistory": "Stock History",
       "placementHistory": "Placement History",
-      "batches": "Batches"
+      "batches": "Batches",
+      "info": "Info",
+      "prices": "Prices"
     },
     "kind": {
       "receive": "Received",
@@ -1073,7 +1075,8 @@
     "arrived": "Arrived",
     "damaged": "Damaged",
     "lineCost": "Line cost",
-    "noBatches": "No deliveries of this product yet."
+    "noBatches": "No deliveries of this product yet.",
+    "owner": "Owner"
   },
   "profit": {
     "title": "Profit",

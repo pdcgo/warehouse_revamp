@@ -657,15 +657,32 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   // received, ordered against, cancelled and accepted by earlier tests. Pinning the running total
   // would make every future test that touches this product break this one, which is a test asserting
   // the suite's history rather than the page's behaviour.
+  // THE ACTION GROUP (#198) — the warehouse's own stock operations on this product, reusing the
+  // dialogs the stock list already has rather than a second set scoped to one product.
+  await expect(page.getByTestId("wp-action-receive")).toBeVisible();
+  await expect(page.getByTestId("wp-action-move")).toBeVisible();
+  await expect(page.getByTestId("wp-action-adjust")).toBeVisible();
+
+  // It really opens the shared dialog, not a lookalike.
+  await page.getByTestId("wp-action-receive").click();
+  await expect(page.getByTestId("receive-quantity")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Info is the tab that opens (#198), and it carries the stock facts.
   await expect(page.getByTestId("warehouse-product-onhand")).not.toHaveText("0");
-  await expect(page.getByTestId("warehouse-product-unitcost")).not.toHaveText("Unknown");
-  await expect(page.getByTestId("warehouse-product-valuation")).not.toHaveText("Unknown");
 
   // F — never counted, because nothing has adjusted it. This is the assertion the server-side kind
   // filter earns: without it, page one of the ledger would decide the answer.
   await expect(page.getByTestId("warehouse-product-last-opname")).toHaveText("Never counted");
 
-  // Tab 2 — both shelves it was split across.
+  // Prices — the cost is known because a fulfilled restock recorded it (#155), so the valuation is a
+  // real figure rather than "Unknown".
+  await page.getByTestId("wp-tab-prices").click();
+  await expect(page.getByTestId("warehouse-product-unitcost")).not.toHaveText("Unknown");
+  await expect(page.getByTestId("warehouse-product-valuation")).not.toHaveText("Unknown");
+
+  // Placements — both shelves it was split across.
+  await page.getByTestId("wp-tab-placement").click();
   await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-01");
   await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-02");
 
@@ -678,7 +695,8 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await expect(page.getByTestId("wp-placement-history-table-empty")).toBeVisible();
 
   // E/G (#159) — the last order and the last delivery, answerable only because the list RPCs can now
-  // be narrowed to one product.
+  // be narrowed to one product. Back to Info, which is where they sit (#198).
+  await page.getByTestId("wp-tab-info").click();
   await expect(page.getByTestId("warehouse-product-last-order")).not.toHaveText("None");
   await expect(page.getByTestId("warehouse-product-last-restock")).not.toHaveText("None");
 

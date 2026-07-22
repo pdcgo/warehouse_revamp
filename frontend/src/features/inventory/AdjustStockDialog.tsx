@@ -11,12 +11,12 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { rpcError } from "../../../api/clients";
-import type { StockAdjustRequest } from "../../../gen/warehouse/inventory/v1/inventory_pb";
-import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
-import { toaster } from "../../../components/Toaster";
-import { RackSelect, UNPLACED } from "../../../components/RackSelect";
-import { useAdjustStock } from "../../../features/inventory/queries";
+import { rpcError } from "../../api/clients";
+import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { toaster } from "../../components/Toaster";
+import { RackSelect, UNPLACED } from "../../components/RackSelect";
+import { useAdjustStock } from "../../features/inventory/queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof. It is total over the
 // picker's two legal answers only — `""` (unanswered) has no encoding, which is the point: the

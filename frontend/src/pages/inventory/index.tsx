@@ -24,9 +24,9 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useWarehouseStock } from "../../features/inventory/queries";
 import { TeamSelect } from "../../components/TeamSelect";
 import { Pagination } from "../../components/Pagination";
-import { ReceiveStockDialog } from "./components/ReceiveStockDialog";
-import { AdjustStockDialog } from "./components/AdjustStockDialog";
-import { MoveStockDialog } from "./components/MoveStockDialog";
+import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
+import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
+import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // StockList is not filterable by product, so we pull a generous page of levels and join client-side.

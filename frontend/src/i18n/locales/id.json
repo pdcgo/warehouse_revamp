@@ -1052,7 +1052,9 @@
       "placement": "Penempatan",
       "stockHistory": "Riwayat Stok",
       "placementHistory": "Riwayat Penempatan",
-      "batches": "Batch"
+      "batches": "Batch",
+      "info": "Info",
+      "prices": "Harga"
     },
     "kind": {
       "receive": "Diterima",
@@ -1072,7 +1074,8 @@
     "arrived": "Tiba",
     "damaged": "Rusak",
     "lineCost": "Biaya baris",
-    "noBatches": "Belum ada kiriman produk ini."
+    "noBatches": "Belum ada kiriman produk ini.",
+    "owner": "Pemilik"
   },
   "profit": {
     "title": "Laba",
