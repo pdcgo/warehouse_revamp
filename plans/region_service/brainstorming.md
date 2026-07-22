@@ -48,7 +48,7 @@ one shared service**.
 A single curated shared component, `frontend/src/components/AddressPicker.tsx`, alongside
 [`ConfirmDialog`](../../frontend/src/components/ConfirmDialog.tsx) and the existing `ShopSelect`
 / `ProductSelect` / `ShippingSelect` pickers. It `export const description` and appears in the
-[`/components` gallery](../../frontend/src/dev/ComponentsPage.tsx).
+[`/components` gallery](../../frontend/src/pages/components-gallery/index.tsx).
 
 **Shape (Chakra v3, per the design system):**
 

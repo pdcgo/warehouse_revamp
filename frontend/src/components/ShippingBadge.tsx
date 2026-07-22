@@ -1,5 +1,5 @@
 import { Badge, Text } from "@chakra-ui/react";
-import { courierName, useShippingCatalogue } from "../shipping/catalogue";
+import { courierName, useShippingCatalogue } from "../features/shipping/catalogue";
 
 // The STANDARD colour for each courier, so a courier always looks the same everywhere it is shown
 // (#126). One place owns the mapping; every view renders through ShippingBadge.

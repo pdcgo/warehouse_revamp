@@ -15,7 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
-import { useTeam } from "../team/TeamContext";
+import { useTeam } from "../features/team/TeamContext";
 import { Pagination } from "./Pagination";
 import { ProductListItem } from "./ProductListItem";
 import type { PickedProduct } from "./ProductSelect";

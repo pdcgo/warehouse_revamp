@@ -1,6 +1,6 @@
 
 import { NativeSelect } from "@chakra-ui/react";
-import { useShopOptions } from "../shops/queries";
+import { useShopOptions } from "../features/shops/queries";
 import { marketplaceLabel } from "./MarketplaceSelect";
 
 export interface ShopSelectProps {

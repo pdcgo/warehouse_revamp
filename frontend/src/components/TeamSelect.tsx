@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
-import { useTeams } from "../teams/queries";
+import { useTeams } from "../features/teams/queries";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "./TeamItem";

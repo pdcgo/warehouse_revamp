@@ -12,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { regionClient, rpcError } from "../api/clients";
-import { useRegionSearch } from "../region/queries";
+import { useRegionSearch } from "../features/region/queries";
 import { useDebounced } from "../lib/useDebounced";
 import type { Region, RegionAncestry } from "../gen/warehouse/region/v1/region_pb";
 

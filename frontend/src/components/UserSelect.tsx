@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, useListCollection } from "@chakra-ui/react";
-import { useUserSearch } from "../users/queries";
+import { useUserSearch } from "../features/users/queries";
 import { useDebounced } from "../lib/useDebounced";
 import { UserItem } from "./UserItem";
 

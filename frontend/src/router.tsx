@@ -1,121 +1,121 @@
 import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
-import { AuthGate, ProtectedRoute } from "./auth/AuthGate";
-import { LoginPage } from "./auth/LoginPage";
-import { Layout } from "./components/Layout";
-import { TeamProvider } from "./team/TeamContext";
+import { AuthGate, ProtectedRoute } from "./features/auth/AuthGate";
+import { LoginPage } from "./pages/login/index";
+import { Layout } from "./layouts/Layout";
+import { TeamProvider } from "./features/team/TeamContext";
 
 // The app SHELL (auth gate, protected route, team provider, layout) and the LOGIN page load eagerly —
 // they are on the critical path to the first paint. Every PAGE behind the layout is code-split with
 // React.lazy so a route only pulls its own chunk; the Suspense boundary lives around the <Outlet/> in
 // Layout. The pages are named exports, so each import maps `.X` onto the default lazy expects.
-const HomePage = lazy(() => import("./home/HomePage").then((m) => ({ default: m.HomePage })));
-const TeamsPage = lazy(() => import("./teams/TeamsPage").then((m) => ({ default: m.TeamsPage })));
+const HomePage = lazy(() => import("./pages/home").then((m) => ({ default: m.HomePage })));
+const TeamsPage = lazy(() => import("./pages/teams").then((m) => ({ default: m.TeamsPage })));
 const TeamDetailPage = lazy(() =>
-  import("./teams/TeamDetailPage").then((m) => ({ default: m.TeamDetailPage })),
+  import("./pages/team-detail").then((m) => ({ default: m.TeamDetailPage })),
 );
 const WarehouseEditPage = lazy(() =>
-  import("./warehouses/WarehouseEditPage").then((m) => ({ default: m.WarehouseEditPage })),
+  import("./pages/warehouse-edit").then((m) => ({ default: m.WarehouseEditPage })),
 );
 const CategoriesPage = lazy(() =>
-  import("./categories/CategoriesPage").then((m) => ({ default: m.CategoriesPage })),
+  import("./pages/categories").then((m) => ({ default: m.CategoriesPage })),
 );
 const ShippingChannelsPage = lazy(() =>
-  import("./shipping/ShippingChannelsPage").then((m) => ({ default: m.ShippingChannelsPage })),
+  import("./pages/shipping-channels").then((m) => ({ default: m.ShippingChannelsPage })),
 );
 const ProductsPage = lazy(() =>
-  import("./products/ProductsPage").then((m) => ({ default: m.ProductsPage })),
+  import("./pages/products").then((m) => ({ default: m.ProductsPage })),
 );
 const ProductEditPage = lazy(() =>
-  import("./products/ProductEditPage").then((m) => ({ default: m.ProductEditPage })),
+  import("./pages/product-edit").then((m) => ({ default: m.ProductEditPage })),
 );
 const ProductDetailPage = lazy(() =>
-  import("./products/ProductDetailPage").then((m) => ({ default: m.ProductDetailPage })),
+  import("./pages/product-detail").then((m) => ({ default: m.ProductDetailPage })),
 );
 const DiscoverProductsPage = lazy(() =>
-  import("./products/DiscoverProductsPage").then((m) => ({ default: m.DiscoverProductsPage })),
+  import("./pages/product-discover").then((m) => ({ default: m.DiscoverProductsPage })),
 );
-const ShopsPage = lazy(() => import("./shops/ShopsPage").then((m) => ({ default: m.ShopsPage })));
+const ShopsPage = lazy(() => import("./pages/shops").then((m) => ({ default: m.ShopsPage })));
 const ShopDetailPage = lazy(() =>
-  import("./shops/ShopDetailPage").then((m) => ({ default: m.ShopDetailPage })),
+  import("./pages/shop-detail").then((m) => ({ default: m.ShopDetailPage })),
 );
-const OrdersPage = lazy(() => import("./orders/OrdersPage").then((m) => ({ default: m.OrdersPage })));
+const OrdersPage = lazy(() => import("./pages/orders").then((m) => ({ default: m.OrdersPage })));
 const OrderCreatePage = lazy(() =>
-  import("./orders/OrderCreatePage").then((m) => ({ default: m.OrderCreatePage })),
+  import("./pages/order-create").then((m) => ({ default: m.OrderCreatePage })),
 );
 const OrderDetailPage = lazy(() =>
-  import("./orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })),
+  import("./pages/order-detail").then((m) => ({ default: m.OrderDetailPage })),
 );
 const OrderDraftsPage = lazy(() =>
-  import("./orderDrafts/OrderDraftsPage").then((m) => ({ default: m.OrderDraftsPage })),
+  import("./pages/order-drafts").then((m) => ({ default: m.OrderDraftsPage })),
 );
 const OrderDraftDetailPage = lazy(() =>
-  import("./orderDrafts/OrderDraftDetailPage").then((m) => ({ default: m.OrderDraftDetailPage })),
+  import("./pages/order-draft-detail").then((m) => ({ default: m.OrderDraftDetailPage })),
 );
 const SettlementPage = lazy(() =>
-  import("./settlement/SettlementPage").then((m) => ({ default: m.SettlementPage })),
+  import("./pages/settlement").then((m) => ({ default: m.SettlementPage })),
 );
 const CounterpartyPage = lazy(() =>
-  import("./settlement/CounterpartyPage").then((m) => ({ default: m.CounterpartyPage })),
+  import("./pages/counterparty").then((m) => ({ default: m.CounterpartyPage })),
 );
 const InventoryPage = lazy(() =>
-  import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
+  import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
 const PlacementsPage = lazy(() =>
-  import("./inventory/PlacementsPage").then((m) => ({ default: m.PlacementsPage })),
+  import("./pages/placements").then((m) => ({ default: m.PlacementsPage })),
 );
 const SuppliersPage = lazy(() =>
-  import("./suppliers/SuppliersPage").then((m) => ({ default: m.SuppliersPage })),
+  import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
 );
 const SupplierDetailPage = lazy(() =>
-  import("./suppliers/SupplierDetailPage").then((m) => ({ default: m.SupplierDetailPage })),
+  import("./pages/supplier-detail").then((m) => ({ default: m.SupplierDetailPage })),
 );
-const RacksPage = lazy(() => import("./racks/RacksPage").then((m) => ({ default: m.RacksPage })));
+const RacksPage = lazy(() => import("./pages/racks").then((m) => ({ default: m.RacksPage })));
 const WarehouseProductPage = lazy(() =>
-  import("./inventory/WarehouseProductPage").then((m) => ({ default: m.WarehouseProductPage })),
+  import("./pages/warehouse-product").then((m) => ({ default: m.WarehouseProductPage })),
 );
 const RestockAcceptPage = lazy(() =>
-  import("./restock/RestockAcceptPage").then((m) => ({ default: m.RestockAcceptPage })),
+  import("./pages/restock-accept").then((m) => ({ default: m.RestockAcceptPage })),
 );
 const ExpensesPage = lazy(() =>
-  import("./expenses/ExpensesPage").then((m) => ({ default: m.ExpensesPage })),
+  import("./pages/expenses").then((m) => ({ default: m.ExpensesPage })),
 );
 const RevenuePage = lazy(() =>
-  import("./revenue/RevenuePage").then((m) => ({ default: m.RevenuePage })),
+  import("./pages/revenue").then((m) => ({ default: m.RevenuePage })),
 );
 const ProfitPage = lazy(() =>
-  import("./expenses/ProfitPage").then((m) => ({ default: m.ProfitPage })),
+  import("./pages/profit").then((m) => ({ default: m.ProfitPage })),
 );
 const PickQueuePage = lazy(() =>
-  import("./picking/PickQueuePage").then((m) => ({ default: m.PickQueuePage })),
+  import("./pages/pick-queue").then((m) => ({ default: m.PickQueuePage })),
 );
 const PickOrderPage = lazy(() =>
-  import("./picking/PickOrderPage").then((m) => ({ default: m.PickOrderPage })),
+  import("./pages/pick-order").then((m) => ({ default: m.PickOrderPage })),
 );
 const RackDetailPage = lazy(() =>
-  import("./racks/RackDetailPage").then((m) => ({ default: m.RackDetailPage })),
+  import("./pages/rack-detail").then((m) => ({ default: m.RackDetailPage })),
 );
 const RestockRequestsPage = lazy(() =>
-  import("./restock/RestockRequestsPage").then((m) => ({ default: m.RestockRequestsPage })),
+  import("./pages/restock-requests").then((m) => ({ default: m.RestockRequestsPage })),
 );
 const RestockRequestFormPage = lazy(() =>
-  import("./restock/RestockRequestFormPage").then((m) => ({ default: m.RestockRequestFormPage })),
+  import("./pages/restock-request-form").then((m) => ({ default: m.RestockRequestFormPage })),
 );
 const RestockRequestDetailPage = lazy(() =>
-  import("./restock/RestockRequestDetailPage").then((m) => ({ default: m.RestockRequestDetailPage })),
+  import("./pages/restock-request-detail").then((m) => ({ default: m.RestockRequestDetailPage })),
 );
-const UsersPage = lazy(() => import("./users/UsersPage").then((m) => ({ default: m.UsersPage })));
+const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
-  import("./users/UserDetailPage").then((m) => ({ default: m.UserDetailPage })),
+  import("./pages/user-detail").then((m) => ({ default: m.UserDetailPage })),
 );
 const ComponentsPage = lazy(() =>
-  import("./dev/ComponentsPage").then((m) => ({ default: m.ComponentsPage })),
+  import("./pages/components-gallery").then((m) => ({ default: m.ComponentsPage })),
 );
 const SettingsPage = lazy(() =>
-  import("./settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+  import("./pages/settings").then((m) => ({ default: m.SettingsPage })),
 );
 const ProfilePage = lazy(() =>
-  import("./settings/ProfilePage").then((m) => ({ default: m.ProfilePage })),
+  import("./pages/profile").then((m) => ({ default: m.ProfilePage })),
 );
 
 // TeamProvider sits INSIDE the protected route: memberships are only loadable once there is an

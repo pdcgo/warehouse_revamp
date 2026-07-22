@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
-import { useProductSearch } from "../products/queries";
+import { useProductSearch } from "../features/products/queries";
 import { useDebounced } from "../lib/useDebounced";
 
 // What a picked product contributes to an order line — a SNAPSHOT (#67): the opaque product id plus

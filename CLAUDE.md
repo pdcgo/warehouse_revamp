@@ -398,11 +398,46 @@ everything else → JSON), so they cannot disagree about what a cached value loo
   Connect-ES v2 needs no separate service plugin: `protoc-gen-es` emits the service
   descriptor, and the client is `createClient(HelloService, transport)`.
 
+### Frontend structure — `layouts/`, `pages/`, `features/` (owner, #199)
+
+```
+frontend/src/
+  layouts/            the shell: Layout, the sidebar, nav, TeamSwitcher
+  pages/<page>/
+    index.tsx         THE page component — one directory per SCREEN
+    components/       used by THIS page and nothing else
+  features/<domain>/  queries + anything shared by SEVERAL pages of one domain
+  components/         the design system (see below) — shared app-wide
+  api/ lib/ i18n/ gen/ theme.ts router.tsx
+```
+
+**One directory per PAGE, named for the screen** — `pages/order-create/`, not
+`pages/orders/new/`. Flat and route-descriptive, so every directory has exactly one `index.tsx` and
+the `components/` beside it can only mean that one page. A nested tree mirroring the URLs makes
+`components/` ambiguous the moment a parent and a child both have one.
+
+**The test for where a file goes is HOW MANY PAGES USE IT:**
+
+| Used by | Goes in |
+| --- | --- |
+| one page | `pages/<page>/components/` |
+| several pages of one domain | `features/<domain>/` |
+| the whole app, and it is a UI primitive | `components/` (the design system) |
+
+A `queries.ts` is almost always `features/`, because a domain's reads are shared by its list, its
+detail and its form. Two of the pickers (`CategorySelect`, `ShippingSelect`) had been living in domain
+folders while being curated gallery components — if a component exports a `description`, it belongs in
+`components/`.
+
+> ⚠ **`pages/<page>/components/` means ONLY THIS PAGE.** The moment a second page imports one, it has
+> become a domain component and belongs in `features/`. Leaving it where it was is how a page
+> directory quietly turns into a domain module and the rule stops meaning anything.
+
 ### The design system
 
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
-`frontend/src/components/` holds 26 of them, 22 previewed with their own description at
-[`/components`](frontend/src/dev/ComponentsPage.tsx) — that gallery is the fastest way to see what
+`frontend/src/components/` holds 29 of them, 26 previewed with their own description at
+[`/components`](frontend/src/pages/components-gallery/index.tsx) — that gallery is the fastest way to see what
 exists, and it is generated from the components themselves so it cannot drift. `graphify query "what
 shared components exist for <the thing>"` works too.
 
@@ -440,7 +475,7 @@ Two more UI rules:
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
 - **Every curated shared component exports a `description`.** A reusable component previewed in
-  the [components gallery](frontend/src/dev/ComponentsPage.tsx) (`/components`) must
+  the [components gallery](frontend/src/pages/components-gallery/index.tsx) (`/components`) must
   `export const description = "…"` alongside itself, and the gallery renders it — so the gallery
   is living documentation generated from the components, not a parallel list that drifts. Adding a
   new shared component to the gallery means adding its `description` in the same file.
@@ -506,20 +541,33 @@ app and review as work lands, so per-issue branch-switching just gets in the way
     deprecation). Use the REST API instead:
     `gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'` (all) or
     `… --jq '.[-1].body'` (last only; the array is oldest→newest).
-- **Read PRIORITY (and Size) from the board — do not invent it.** When asked to work "by
-  priority", the order comes from the board's **Priority** field, not from your own guess about
-  what's important. Read it first.
-  - ⚠ `gh project item-list --format json` **does NOT include custom fields** — its items expose
-    only `content, id, status, title`. Priority/Size come **only** from the GraphQL API:
+- **Read PRIORITY from the ISSUE, not from the project board — and do not invent it.** When
+  asked to work "by priority", the order comes from the owner's **Priority** field. Read it first.
+  - ⚠ **There are TWO fields named "Priority", and only one is real.** The owner sets an
+    **issue-level custom field** (GitHub's issue Fields, shown in the issue sidebar *above* the
+    Projects box). Project #2 *also* has a ProjectV2 field called Priority — it has **no options
+    and no values**, is not used, and reading it returns nothing. Do not "fix" it by adding
+    options; that would create a second, competing Priority.
+  - The issue-level field lives in `issue_field_values`, and **REST is the working path**:
     ```sh
-    gh api graphql -f query='{ organization(login:"pdcgo"){ projectV2(number:2){
-      items(first:100){ nodes{ content{ ... on Issue { number } }
-        fieldValues(first:20){ nodes{ ... on ProjectV2ItemFieldSingleSelectValue {
-          name field{ ... on ProjectV2FieldCommon { name } } } } } } } } } }'
+    # one issue
+    gh api repos/pdcgo/warehouse_revamp/issues/165 \
+      --jq '[.issue_field_values[]? | "\(.issue_field_name)=\(.single_select_option.name)"]'
+    # every open issue that has one
+    gh api "repos/pdcgo/warehouse_revamp/issues?state=open&per_page=100" --paginate \
+      --jq '.[] | select(.pull_request == null)
+            | select(.issue_field_values | length > 0)
+            | "\(.number)\t\(.issue_field_values[].single_select_option.name)\t\(.title)"'
     ```
-  - If Priority is **unset** (as it is now — the field exists with no options/values), say so and
-    **ask the owner** (or propose an order for confirmation) rather than silently ranking by your
-    own judgement. Never present an inferred order as if it were the board's.
+    The key is **`issue_field_name`**, not `name`. GraphQL exposes `Issue.issueFieldValues`, but
+    `IssueFieldSingleSelectValue` has **no `singleSelectOption`** field — a GraphQL attempt fails
+    with `undefinedField`, so use REST.
+  - `gh project item-list --format json` **does NOT include custom fields** — its items expose
+    only `content, id, status, title`. It is still the right tool for **Status** and item ids.
+  - **Most issues have no Priority set** (4 of 33 open, when this was written). Absence is normal
+    and is not a reason to rank by your own judgement: say the field is unset and **ask the owner**
+    (or propose an order for confirmation). Never present an inferred order as if it were the
+    board's.
 - Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
   move items **Ready → In progress** when you start, and **In progress → In review** when the
   work is finished and green on `dev`.
