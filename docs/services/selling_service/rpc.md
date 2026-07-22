@@ -156,3 +156,59 @@ own (`warehouse.event_base.v1.event_config`), so a publisher cannot send it to t
 
 > The full flow, the delivery trade-off, and why the event carries the money rather than just an order
 > id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
+
+## Draft orders — `OrderDraftPush` and the blanks-only merge (#190, #191)
+
+A **draft** is an incomplete order pushed in by a **third-party app**, which a person here finishes
+and promotes. It lives in `order_drafts` / `order_draft_items`, not in `orders` — see
+[database-schema.md](../../database-schema.md) for why, and
+`plans/selling_service/brainstorming.md` §6 for the design.
+
+`OrderDraftPush` is worth documenting because it is not the CRUD it looks like: it is a
+**create-or-update keyed on `(team_id, source, external_id)` that writes untouched fields only**.
+
+```mermaid
+sequenceDiagram
+    participant App as third-party app
+    participant D as OrderDraftService
+    participant DB as order_drafts
+
+    App->>D: OrderDraftPush — source, external_id, scraped text
+    D->>DB: SELECT ... FOR UPDATE on (team_id, source, external_id)
+    alt no such draft
+        D->>DB: INSERT — nothing is touched yet, so every field is taken
+        D-->>App: draft id, created = true
+    else it already exists
+        D->>DB: UPDATE only the fields absent from touched_fields
+        Note over D,DB: a name in touched_fields is skipped entirely —<br/>a re-scrape can never destroy a person's work
+        D-->>App: same draft id, created = false
+    end
+```
+
+**Why the RPC name carries the rule.** The app and the person authenticate as the **same user** — the
+app logs in as one, because there is no machine identity in this system — so *identity cannot tell
+them apart*. `OrderDraftPush` yields to a human; `OrderDraftUpdate` (#193) always wins and marks what
+it wrote. Merging the two into one handler would erase the only thing distinguishing them.
+
+Four details that are decisions rather than implementation:
+
+- **It is "untouched fields only", NOT "empty fields only".** An untouched field the app has changed
+  its mind about *is* updated — the app remains the authority on everything nobody here has claimed.
+- **The address is one touched field, not ten columns.** Somebody who corrects a kecamatan has
+  corrected the address, and rewriting the nine columns around their fix would leave a hybrid address
+  that was never true anywhere.
+- **`items` is one touched field too.** Once a person has edited any line, the app stops rewriting
+  the lines altogether. Per-line merging would need a per-line touched mark; the rule that matters —
+  a re-scrape never destroys a mapping — holds without one. While untouched, the lines are replaced
+  **wholesale**, so a line the app no longer sees disappears rather than lingering.
+- **`product_id` is ignored on push.** The app does not know our catalogue ids, and a client matching
+  titles against our catalogue on its own would guess wrong silently. Mapping is a human act. This is
+  the same instinct as `OrderItem.unit_cost`, which `OrderCreate` also refuses from the client.
+
+**The author follows the push.** A draft is personal, and a colleague cannot pick one up — so
+re-pushing under the right person's login is the only way to hand a draft over. That makes
+reassignment the escape hatch "personal" leans on rather than an accident.
+
+**A draft publishes nothing.** `OrderCreatedEvent` fires at placement (#153) and revenue consumes it
+(#75). A draft that published would put an unfinished scrape into the month's margin — promote (#194)
+is the only door into revenue.

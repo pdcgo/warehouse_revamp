@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+import "warehouse/selling/v1/order.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// OrderDraftService owns `order_drafts` + `order_draft_items` (#190,
+// plans/selling_service/brainstorming.md §6) — an INCOMPLETE order pushed in by a third-party app,
+// which a person in this system finishes and promotes into a real order.
+//
+// A draft is not a quotation, not a reservation, not an unpaid marketplace order, and not a
+// template. It holds no stock, and it NEVER publishes OrderCreatedEvent — placement does (#153) and
+// revenue consumes it (#75), so a draft that published would put an unfinished scrape into the
+// month's margin.
+//
+// Team-scoped like the rest of selling_service, and additionally PERSONAL: the handler narrows to
+// the author. "Personal" is a handler filter, never a substitute for the scope.
+service OrderDraftService {
+  // The external app's intake. Create-or-update on (team_id, source, external_id), writing only
+  // fields a human has NOT touched.
+  rpc OrderDraftPush(OrderDraftPushRequest) returns (OrderDraftPushResponse);
+}
+
+// One scraped line of a draft.
+//
+// It carries BOTH what the marketplace said and what we resolved it to. A marketplace scraper knows
+// the marketplace's product TITLE, not our `product_id` — so the title is stored verbatim and a
+// person maps it later. The unmapped line IS the incompleteness that makes this a draft.
+message OrderDraftItem {
+  uint64 id = 1;
+
+  // What the app scraped. NEVER overwritten, not even by a person editing the line: it is the
+  // evidence of what the buyer actually ordered, and keeping it beside the mapping is what lets
+  // somebody tell a wrong mapping from a right one.
+  string external_sku = 2 [(buf.validate.field).string.max_len = 128];
+  string external_name = 3 [(buf.validate.field).string.max_len = 500];
+
+  // Our catalogue id, 0 until a person maps it.
+  //
+  // ⚠ IGNORED ON PUSH. The app does not know our ids, and a client guessing them by matching titles
+  // against our catalogue — silently, on its own — is exactly the design §6.4 rejected. Mapping is a
+  // human act performed through OrderDraftUpdate.
+  uint64 product_id = 4;
+
+  // Unconstrained, unlike OrderItem's `quantity >= 1`: a scrape may not have been able to read
+  // either. Refusing a whole push over one unreadable line would lose the other nine — promote is
+  // where every requirement lands.
+  uint32 quantity = 5;
+  int64 unit_price = 6;
+}
+
+message OrderDraft {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  // Whoever's login the pushing app runs under. There is no machine identity in this system and this
+  // feature does not invent one, so every draft has a human accountable on it.
+  uint64 author_user_id = 3;
+
+  // Which app pushed this, and the marketplace's own id for it. UNIQUE together with team_id, which
+  // is what makes the push idempotent.
+  string source = 4;
+  string external_id = 5;
+
+  // The field names a human has edited. OrderDraftPush writes only what is ABSENT from this list, so
+  // a background re-scrape can never silently destroy someone's work. Returned so the UI can show
+  // which fields the app has stopped being able to change.
+  repeated string touched_fields = 6;
+
+  // 0 until known. Opaque cross-service ids with no FK, so either can be deleted underneath a draft —
+  // promote re-checks them and names which one died.
+  uint64 shop_id = 7;
+  uint64 warehouse_id = 8;
+
+  string customer_name = 9;
+  string customer_phone = 10;
+  // The same frozen-address shape an order carries (#118), so promote copies rather than translates.
+  OrderAddress address = 11;
+  string shipping_code = 12;
+
+  // As scraped, whole rupiah. Nothing here is authoritative: promote recomputes the order's money
+  // from the mapped lines, and there is no COGS at all yet — a draft's lines mostly name no product,
+  // so there is nothing whose cost could be looked up.
+  int64 shipping_cost = 13;
+
+  // The lines — populated by OrderDraftDetail (the list returns a summary without them).
+  repeated OrderDraftItem items = 14;
+
+  int64 created_at_unix = 15;
+  int64 updated_at_unix = 16;
+}
+
+// OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on
+// (team_id, source, external_id) — so a retry after a flaky connection updates the existing draft
+// instead of adding a near-identical one nobody can tell apart. Any external caller will retry
+// eventually, so this is not an optimisation.
+//
+// ⚠ IT WRITES UNTOUCHED FIELDS ONLY. A re-scrape must never destroy work a person has already done
+// here — mapped lines, a corrected address. Fields named in `touched_fields` are left exactly as
+// they are.
+//
+// ⚠ WHY THIS IS A SEPARATE RPC FROM OrderDraftUpdate. The app and the person authenticate as the
+// SAME user (the app logs in as one — there is no machine identity), so identity cannot tell them
+// apart. The RPC NAME is what carries the distinction: this one yields to a human, OrderDraftUpdate
+// always wins and marks what it wrote. Do not merge them into one handler.
+message OrderDraftPushRequest {
+  // Write: the same audience as OrderCreate. The app runs under one of these people's logins.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The external reference, and the ONLY thing a draft is required to have. Everything else about a
+  // draft is optional by construction — there is no "New draft" button producing a blank, because
+  // every draft traces to a real scrape.
+  string source = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string external_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  uint64 shop_id = 4;
+  uint64 warehouse_id = 5;
+
+  string customer_name = 6 [(buf.validate.field).string.max_len = 200];
+  string customer_phone = 7 [(buf.validate.field).string.max_len = 40];
+  OrderAddress address = 8;
+  string shipping_code = 9 [(buf.validate.field).string.max_len = 40];
+  int64 shipping_cost = 10 [(buf.validate.field).int64.gte = 0];
+
+  // The scraped lines. NO minimum: a push carrying a customer and an address but no readable lines
+  // is still worth keeping — refusing it would throw away everything the app COULD see over the one
+  // thing it could not.
+  //
+  // `items` is one field for the touched rule: once a person has edited any line, the app stops
+  // rewriting the lines altogether. Per-line merging would need a per-line touched mark, and the
+  // rule that matters — a re-scrape never destroys a mapping — is satisfied without it.
+  repeated OrderDraftItem items = 11;
+}
+
+message OrderDraftPushResponse {
+  OrderDraft draft = 1;
+
+  // Whether this push CREATED the draft (false = it updated one that already existed). The app is
+  // the only caller, and it is the one that cannot otherwise tell a successful retry from a new
+  // scrape — the id alone looks identical either way.
+  bool created = 2;
+}

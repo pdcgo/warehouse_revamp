@@ -620,7 +620,31 @@ because it slightly reinterprets "update":
    button to produce a blank, because there is no in-app creation — every draft traces to a real
    scrape.
 
-4. **Stale references still need handling, and are cheaper than feared.** A draft names shop,
+4. ⚠ **How COARSE is "a field"? — settled while building #191, and the line to redirect.** §6.5 says
+   the merge works per field, which leaves two things ambiguous, and both were resolved **coarse**:
+   - **The address is ONE field, not ten columns.** Somebody who corrects a kecamatan has corrected
+     the address; letting a re-scrape rewrite the nine columns around their fix would leave a hybrid
+     address that was never true anywhere.
+   - **`items` is ONE field, not one mark per line.** Once a person has edited any line, the app
+     stops rewriting the lines altogether. Per-line merging would need a per-line touched mark, and
+     the rule that actually matters — a re-scrape never destroys a mapping — holds without it. The
+     accepted cost, stated plainly: after the first mapping, a genuine quantity change or a newly
+     added line can no longer reach the draft from the app. Per-line merge is the alternative if that
+     turns out to bite.
+
+   While untouched, the lines are replaced **wholesale** rather than merged, so a line the app no
+   longer sees disappears instead of lingering.
+
+5. **"Untouched", not "empty".** The rule is about what a person has claimed, not about what happens
+   to be blank: an untouched field the app has changed its mind about *is* updated. The app stays the
+   authority on everything nobody here has touched.
+
+6. **`product_id` is ignored on push.** §6.4 rejected internal ids from the app, so the push refuses
+   them rather than merely not requiring them — otherwise an app could quietly start guessing, which
+   is exactly the silently-wrong-mapping failure §6.4 was avoiding. Same instinct as `OrderCreate`
+   ignoring a client-supplied `unit_cost`.
+
+7. **Stale references still need handling, and are cheaper than feared.** A draft names shop,
    warehouse and mapped products by id with no FK (HARD RULE 3), so any can be deleted underneath it.
    Most line references are now *text*, which cannot go stale — but `shop_id` / `warehouse_id` / a
    mapped `product_id` can. Proposal: resolve on load **and** re-check on promote, and name *which*
@@ -631,9 +655,11 @@ because it slightly reinterprets "update":
 Revised for the third-party-push design (the original §6.9 assumed a CS person typing into the #90
 form, which is no longer what happens):
 
-1. **`order_drafts` model + migration** — both tables, the unique `(team_id, source, external_id)`,
-   `touched_fields`, and `docs/database-schema.md` in the same commit.
-2. **`OrderDraftPush`** — the third-party intake. Idempotent on the external ref, blanks-only merge.
+1. ✅ **`order_drafts` model + migration** (#190) — both tables, the unique
+   `(team_id, source, external_id)`, `touched_fields`, and `docs/database-schema.md` in the same
+   commit.
+2. ✅ **`OrderDraftPush`** (#191) — the third-party intake. Idempotent on the external ref,
+   blanks-only merge; the granularity questions it forced are §6.10.4–6.
 3. **`OrderDraftList` + `OrderDraftDetail`** — paginated (HARD RULE 9), narrowed to the author.
 4. **`OrderDraftUpdate` + `OrderDraftDelete`** — the human edit path, marking fields touched.
 5. **`OrderDraftPromote`** — validate, create the order, delete the draft, in one transaction.

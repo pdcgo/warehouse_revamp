@@ -28,7 +28,7 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
   id: bigint;
 
   /**
-   * WHOSE cost — the authorization scope, exactly as on a revenue row.
+   * WHOSE expense — the authorization scope, exactly as on a revenue row.
    *
    * ONE team per row (owner, 2026-07-21). A warehouse IS a team, so a warehouse's payroll is an expense on
    * that warehouse's team_id — and it is never recharged onward to the selling teams it fulfils for.
@@ -88,7 +88,7 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
   createdBy: bigint;
 
   /**
-   * Whether this row still counts (#164's pattern). A cost entered by mistake is VOIDED, not deleted:
+   * Whether this row still counts (#164's pattern). An expense entered by mistake is VOIDED, not deleted:
    * a deleted row cannot tell you an expense was entered and then retracted, and somebody looking at a
    * profit figure that changed wants to see why.
    *
@@ -483,7 +483,7 @@ export const ExpenseKindSchema: GenEnum<ExpenseKind> = /*@__PURE__*/
  *   - Per-order costs. COGS and shipping are frozen onto the order (#74); marketplace and payment fees
  *     per order belong beside the revenue row so settlement (#76) can compare them to a real payout.
  *     Putting them here would split one order's money across two services.
- *   - A ledger. No balances, no double entry — the same call revenue made (revenue §2.4). A cost row
+ *   - A ledger. No balances, no double entry — the same call revenue made (revenue §2.4). An expense row
  *     records that money went out, not an account movement.
  *
  * See plans/expense_service/brainstorming.md.

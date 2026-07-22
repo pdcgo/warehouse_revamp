@@ -32,8 +32,9 @@ type Service struct {
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
 // serves ShopService and OrderService).
 var (
-	_ sellingv1connect.ShopServiceHandler  = (*Service)(nil)
-	_ sellingv1connect.OrderServiceHandler = (*Service)(nil)
+	_ sellingv1connect.ShopServiceHandler       = (*Service)(nil)
+	_ sellingv1connect.OrderServiceHandler      = (*Service)(nil)
+	_ sellingv1connect.OrderDraftServiceHandler = (*Service)(nil)
 )
 
 func NewService(db *gorm.DB, stock StockPicker, events event_source.EventSender) *Service {
