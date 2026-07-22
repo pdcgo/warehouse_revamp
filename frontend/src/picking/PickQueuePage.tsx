@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,13 +15,13 @@ import {
 } from "@chakra-ui/react";
 import { PackageSearch } from "lucide-react";
 
-import { orderClient, rpcError } from "../api/clients";
-import type { Order } from "../gen/warehouse/selling/v1/order_pb";
+import { rpcError } from "../api/clients";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { Pagination } from "../components/Pagination";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { usePickQueue } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -48,13 +48,9 @@ export function PickQueuePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [orders, setOrders] = useState<Order[]>([]);
   const [tab, setTab] = useState("topick");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   // Only a WAREHOUSE team has a pick queue. A selling team has orders but no shelves and nobody to walk
   // to them, so the screen says so rather than showing an empty table that looks like a quiet day.
@@ -64,32 +60,12 @@ export function PickQueuePage() {
   const activeTab = STATUS_TABS.find((i) => i.value === tab) ?? STATUS_TABS[0];
   const status = activeTab.status;
 
-  const load = useCallback(async () => {
-    if (warehouseId === undefined) return;
+  const query = usePickQueue({ warehouseId, status, page, pageSize });
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await orderClient.orderList({
-        teamId: warehouseId,
-        page: { page, limit: pageSize },
-        status,
-      });
-
-      setOrders(res.orders);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [warehouseId, page, pageSize, status]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const orders = query.data?.orders ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending && warehouseId !== undefined;
+  const error = query.isError ? rpcError(query.error) : "";
 
   function selectTab(value: string) {
     setTab(value);

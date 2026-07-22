@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,14 +16,15 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
-import { inventoryClient, orderClient, rpcError } from "../api/clients";
-import type { Order } from "../gen/warehouse/selling/v1/order_pb";
+import { orderClient, rpcError } from "../api/clients";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
+import { usePickOrder } from "./queries";
+import { useInvalidateOrders } from "../orders/queries";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -35,11 +36,6 @@ function parseOrderId(raw: string | undefined): bigint {
   }
 }
 
-// The ref inventory_service recorded this order's draw under (#149). selling_service builds the same
-// string; it is the handle that ties an order to the shelves its goods were taken from.
-function stockRef(orderId: bigint): string {
-  return `order:${orderId}`;
-}
 
 // The one action available from each state, and nothing else. The crew's screen offers the NEXT STEP
 // rather than a set of buttons to choose between: at any moment there is exactly one thing that has
@@ -64,42 +60,19 @@ export function PickOrderPage() {
 
   const orderId = parseOrderId(rawOrderId);
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [locations, setLocations] = useState<StockPickLocation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [acting, setActing] = useState(false);
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
 
-  const load = useCallback(async () => {
-    if (warehouseId === undefined || orderId === 0n) return;
+  // Both reads land together — see usePickOrder. A partial screen would be worse than a slower one.
+  const query = usePickOrder({ warehouseId, orderId });
+  const invalidateOrders = useInvalidateOrders();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      // Both reads together: the lines are useless without the shelves and the shelves meaningless
-      // without the lines, so a partial screen would be worse than a slower one.
-      const [detail, places] = await Promise.all([
-        orderClient.orderDetail({ teamId: warehouseId, orderId }),
-        inventoryClient.stockPickLocations({ warehouseId, ref: stockRef(orderId) }),
-      ]);
-
-      setOrder(detail.order ?? null);
-      setLocations(places.locations);
-    } catch (err) {
-      setError(rpcError(err));
-      setOrder(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [warehouseId, orderId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const order = query.data?.order ?? null;
+  const locations = query.data?.locations ?? [];
+  const loading = query.isPending && warehouseId !== undefined && orderId !== 0n;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function advance() {
     if (warehouseId === undefined || !order) return;
@@ -117,9 +90,13 @@ export function PickOrderPage() {
             ? orderClient.orderPack({ teamId: warehouseId, orderId })
             : orderClient.orderShip({ teamId: warehouseId, orderId });
 
-      const res = await call;
+      await call;
 
-      setOrder(res.order ?? order);
+      // Invalidate rather than writing the response into local state. This status is on THREE
+      // screens — this one, the pick queue's tabs, and the selling team's order list — and the
+      // picker moves between the first two constantly. Setting it here would advance the order in
+      // hand while the queue behind it still listed the job as waiting.
+      await invalidateOrders();
       toaster.create({ type: "success", title: t(step.toastKey) });
     } catch (err) {
       toaster.create({
