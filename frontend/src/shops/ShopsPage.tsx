@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
+import { useShops, useInvalidateShops } from "./queries";
 import { ShopFormDialog } from "./ShopFormDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -35,41 +36,20 @@ export function ShopsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [shops, setShops] = useState<Shop[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<Shop | null>(null);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) {
-      return;
-    }
+  const query = useShops({ teamId, q, page, pageSize });
+  const invalidateShops = useInvalidateShops();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await shopClient.shopList({ teamId, q, page: { page, limit: pageSize } });
-
-      setShops(res.shops);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setShops([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const shops = query.data?.shops ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function remove(shop: Shop) {
     if (teamId === undefined) {
@@ -79,7 +59,7 @@ export function ShopsPage() {
     try {
       await shopClient.shopDelete({ teamId, shopId: shop.id });
       toaster.create({ type: "success", title: t("shops.deleted", { name: shop.name }) });
-      await load();
+      await invalidateShops();
     } catch (err) {
       toaster.create({ type: "error", title: t("shops.deleteFailed"), description: rpcError(err) });
     }
@@ -102,7 +82,7 @@ export function ShopsPage() {
         <Heading size="md">{t("shops.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
         <Spacer />
-        <ShopFormDialog onDone={() => void load()} />
+        <ShopFormDialog onDone={() => void invalidateShops()} />
       </Flex>
 
       <HStack>
@@ -218,7 +198,7 @@ export function ShopsPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateShops()}
         />
       )}
     </Stack>

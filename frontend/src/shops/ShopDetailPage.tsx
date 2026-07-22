@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { rpcError, shopClient } from "../api/clients";
-import type { Shop } from "../gen/warehouse/selling/v1/selling_pb";
+import { rpcError } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
+import { useShop, useInvalidateShops } from "./queries";
 import { MarketplaceBadge } from "../components/MarketplaceBadge";
 import { ShopFormDialog } from "./ShopFormDialog";
 import { ShopUsersSection } from "./ShopUsersSection";
@@ -44,37 +44,19 @@ export function ShopDetailPage() {
 
   const id = parseShopId(shopId);
 
-  const [shop, setShop] = useState<Shop | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined || id === 0n) {
-      setError(id === 0n ? t("shops.detail.invalidId") : "");
-      setLoading(false);
-      return;
-    }
+  const query = useShop({ teamId, shopId: id });
+  const invalidateShops = useInvalidateShops();
 
-    setLoading(true);
-    setError("");
+  const shop = query.data ?? null;
+  const loading = query.isPending && id !== 0n;
 
-    try {
-      const res = await shopClient.shopDetail({ teamId, shopId: id });
-      setShop(res.shop ?? null);
-    } catch (err) {
-      setError(rpcError(err));
-      setShop(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, id]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // A malformed id in the URL is not a failed request — the query never runs for it (`enabled`), so
+  // its message is produced here rather than by an error the server never saw.
+  const error = id === 0n ? t("shops.detail.invalidId") : query.isError ? rpcError(query.error) : "";
 
   if (!current) {
     return (
@@ -164,7 +146,7 @@ export function ShopDetailPage() {
           onOpenChange={(o) => {
             if (!o) setEditing(false);
           }}
-          onDone={() => void load()}
+          onDone={() => void invalidateShops()}
         />
       )}
     </Stack>
