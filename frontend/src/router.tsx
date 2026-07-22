@@ -52,6 +52,12 @@ const OrderDraftsPage = lazy(() =>
 const OrderDraftDetailPage = lazy(() =>
   import("./orderDrafts/OrderDraftDetailPage").then((m) => ({ default: m.OrderDraftDetailPage })),
 );
+const SettlementPage = lazy(() =>
+  import("./settlement/SettlementPage").then((m) => ({ default: m.SettlementPage })),
+);
+const CounterpartyPage = lazy(() =>
+  import("./settlement/CounterpartyPage").then((m) => ({ default: m.CounterpartyPage })),
+);
 const InventoryPage = lazy(() =>
   import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
 );
@@ -173,6 +179,11 @@ export const router = createBrowserRouter([
       // A detail view is a PAGE, not a dialog (CLAUDE.md) — and this one especially: mapping a
       // scraped line to a real product is work somebody sits down to, not a focused action.
       { path: "order-drafts/:draftId", element: <OrderDraftDetailPage /> },
+      // The ledger of what teams owe each other (#185). Its own top-level section — a warehouse team
+      // has no money screens at all today, and this gives it one.
+      { path: "settlement", element: <SettlementPage /> },
+      // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row.
+      { path: "settlement/:counterpartyId", element: <CounterpartyPage /> },
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122) — one screen that
       // reads differently per team type: a SELLING team creates requests, a WAREHOUSE team accepts

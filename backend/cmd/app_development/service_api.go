@@ -16,18 +16,20 @@ import (
 	document_service "github.com/pdcgo/warehouse_revamp/backend/services/document_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	expense_service "github.com/pdcgo/warehouse_revamp/backend/services/expense_service"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	inventory_service "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	region_service "github.com/pdcgo/warehouse_revamp/backend/services/region_service"
 	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
-	expense_service "github.com/pdcgo/warehouse_revamp/backend/services/expense_service"
-	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	revenue_service "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service"
 	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
 	selling_service "github.com/pdcgo/warehouse_revamp/backend/services/selling_service"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service"
+	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
 	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
@@ -55,6 +57,7 @@ func NewServeMux(
 	regionService *region_v1.Service,
 	revenueService *revenue_v1.Service,
 	costService *expense_v1.Service,
+	settlementService *settlement_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -100,6 +103,7 @@ func NewServeMux(
 		region_service.NewRegister(mux, regionService, opts),
 		revenue_service.NewRegister(mux, revenueService, opts),
 		expense_service.NewRegister(mux, costService, opts),
+		settlement_service.NewRegister(mux, settlementService, opts),
 	)
 
 	return mux, nil

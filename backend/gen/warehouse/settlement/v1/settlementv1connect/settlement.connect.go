@@ -23,6 +23,10 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// SettlementServiceName is the fully-qualified name of the SettlementService service.
 	SettlementServiceName = "warehouse.settlement.v1.SettlementService"
+	// SettlementPaymentServiceName is the fully-qualified name of the SettlementPaymentService service.
+	SettlementPaymentServiceName = "warehouse.settlement.v1.SettlementPaymentService"
+	// SettlementTermsServiceName is the fully-qualified name of the SettlementTermsService service.
+	SettlementTermsServiceName = "warehouse.settlement.v1.SettlementTermsService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -39,27 +43,27 @@ const (
 	// SettlementServiceSettlementEntryListProcedure is the fully-qualified name of the
 	// SettlementService's SettlementEntryList RPC.
 	SettlementServiceSettlementEntryListProcedure = "/warehouse.settlement.v1.SettlementService/SettlementEntryList"
-	// SettlementServiceSettlementPaymentRecordProcedure is the fully-qualified name of the
-	// SettlementService's SettlementPaymentRecord RPC.
-	SettlementServiceSettlementPaymentRecordProcedure = "/warehouse.settlement.v1.SettlementService/SettlementPaymentRecord"
-	// SettlementServiceSettlementPaymentConfirmProcedure is the fully-qualified name of the
-	// SettlementService's SettlementPaymentConfirm RPC.
-	SettlementServiceSettlementPaymentConfirmProcedure = "/warehouse.settlement.v1.SettlementService/SettlementPaymentConfirm"
-	// SettlementServiceSettlementPaymentReverseProcedure is the fully-qualified name of the
-	// SettlementService's SettlementPaymentReverse RPC.
-	SettlementServiceSettlementPaymentReverseProcedure = "/warehouse.settlement.v1.SettlementService/SettlementPaymentReverse"
-	// SettlementServiceSettlementPaymentListProcedure is the fully-qualified name of the
-	// SettlementService's SettlementPaymentList RPC.
-	SettlementServiceSettlementPaymentListProcedure = "/warehouse.settlement.v1.SettlementService/SettlementPaymentList"
-	// SettlementServiceSettlementTermsListProcedure is the fully-qualified name of the
-	// SettlementService's SettlementTermsList RPC.
-	SettlementServiceSettlementTermsListProcedure = "/warehouse.settlement.v1.SettlementService/SettlementTermsList"
-	// SettlementServiceSettlementTermsSetProcedure is the fully-qualified name of the
-	// SettlementService's SettlementTermsSet RPC.
-	SettlementServiceSettlementTermsSetProcedure = "/warehouse.settlement.v1.SettlementService/SettlementTermsSet"
-	// SettlementServiceSettlementTermsDeleteProcedure is the fully-qualified name of the
-	// SettlementService's SettlementTermsDelete RPC.
-	SettlementServiceSettlementTermsDeleteProcedure = "/warehouse.settlement.v1.SettlementService/SettlementTermsDelete"
+	// SettlementPaymentServiceSettlementPaymentRecordProcedure is the fully-qualified name of the
+	// SettlementPaymentService's SettlementPaymentRecord RPC.
+	SettlementPaymentServiceSettlementPaymentRecordProcedure = "/warehouse.settlement.v1.SettlementPaymentService/SettlementPaymentRecord"
+	// SettlementPaymentServiceSettlementPaymentConfirmProcedure is the fully-qualified name of the
+	// SettlementPaymentService's SettlementPaymentConfirm RPC.
+	SettlementPaymentServiceSettlementPaymentConfirmProcedure = "/warehouse.settlement.v1.SettlementPaymentService/SettlementPaymentConfirm"
+	// SettlementPaymentServiceSettlementPaymentReverseProcedure is the fully-qualified name of the
+	// SettlementPaymentService's SettlementPaymentReverse RPC.
+	SettlementPaymentServiceSettlementPaymentReverseProcedure = "/warehouse.settlement.v1.SettlementPaymentService/SettlementPaymentReverse"
+	// SettlementPaymentServiceSettlementPaymentListProcedure is the fully-qualified name of the
+	// SettlementPaymentService's SettlementPaymentList RPC.
+	SettlementPaymentServiceSettlementPaymentListProcedure = "/warehouse.settlement.v1.SettlementPaymentService/SettlementPaymentList"
+	// SettlementTermsServiceSettlementTermsListProcedure is the fully-qualified name of the
+	// SettlementTermsService's SettlementTermsList RPC.
+	SettlementTermsServiceSettlementTermsListProcedure = "/warehouse.settlement.v1.SettlementTermsService/SettlementTermsList"
+	// SettlementTermsServiceSettlementTermsSetProcedure is the fully-qualified name of the
+	// SettlementTermsService's SettlementTermsSet RPC.
+	SettlementTermsServiceSettlementTermsSetProcedure = "/warehouse.settlement.v1.SettlementTermsService/SettlementTermsSet"
+	// SettlementTermsServiceSettlementTermsDeleteProcedure is the fully-qualified name of the
+	// SettlementTermsService's SettlementTermsDelete RPC.
+	SettlementTermsServiceSettlementTermsDeleteProcedure = "/warehouse.settlement.v1.SettlementTermsService/SettlementTermsDelete"
 )
 
 // SettlementServiceClient is a client for the warehouse.settlement.v1.SettlementService service.
@@ -68,18 +72,6 @@ type SettlementServiceClient interface {
 	SettlementPositionList(context.Context, *connect.Request[v1.SettlementPositionListRequest]) (*connect.Response[v1.SettlementPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	SettlementEntryList(context.Context, *connect.Request[v1.SettlementEntryListRequest]) (*connect.Response[v1.SettlementEntryListResponse], error)
-	// Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
-	// posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
-	SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error)
-	SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error)
-	SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error)
-	SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error)
-	// A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it
-	// takes on its products, and how much it will let a team owe it.
-	SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error)
-	SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error)
-	// Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
-	SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error)
 }
 
 // NewSettlementServiceClient constructs a client for the warehouse.settlement.v1.SettlementService
@@ -105,62 +97,13 @@ func NewSettlementServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(settlementServiceMethods.ByName("SettlementEntryList")),
 			connect.WithClientOptions(opts...),
 		),
-		settlementPaymentRecord: connect.NewClient[v1.SettlementPaymentRecordRequest, v1.SettlementPaymentRecordResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementPaymentRecordProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentRecord")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementPaymentConfirm: connect.NewClient[v1.SettlementPaymentConfirmRequest, v1.SettlementPaymentConfirmResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementPaymentConfirmProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentConfirm")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementPaymentReverse: connect.NewClient[v1.SettlementPaymentReverseRequest, v1.SettlementPaymentReverseResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementPaymentReverseProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentReverse")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementPaymentList: connect.NewClient[v1.SettlementPaymentListRequest, v1.SettlementPaymentListResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementPaymentListProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentList")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementTermsList: connect.NewClient[v1.SettlementTermsListRequest, v1.SettlementTermsListResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementTermsListProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsList")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementTermsSet: connect.NewClient[v1.SettlementTermsSetRequest, v1.SettlementTermsSetResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementTermsSetProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsSet")),
-			connect.WithClientOptions(opts...),
-		),
-		settlementTermsDelete: connect.NewClient[v1.SettlementTermsDeleteRequest, v1.SettlementTermsDeleteResponse](
-			httpClient,
-			baseURL+SettlementServiceSettlementTermsDeleteProcedure,
-			connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsDelete")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // settlementServiceClient implements SettlementServiceClient.
 type settlementServiceClient struct {
-	settlementPositionList   *connect.Client[v1.SettlementPositionListRequest, v1.SettlementPositionListResponse]
-	settlementEntryList      *connect.Client[v1.SettlementEntryListRequest, v1.SettlementEntryListResponse]
-	settlementPaymentRecord  *connect.Client[v1.SettlementPaymentRecordRequest, v1.SettlementPaymentRecordResponse]
-	settlementPaymentConfirm *connect.Client[v1.SettlementPaymentConfirmRequest, v1.SettlementPaymentConfirmResponse]
-	settlementPaymentReverse *connect.Client[v1.SettlementPaymentReverseRequest, v1.SettlementPaymentReverseResponse]
-	settlementPaymentList    *connect.Client[v1.SettlementPaymentListRequest, v1.SettlementPaymentListResponse]
-	settlementTermsList      *connect.Client[v1.SettlementTermsListRequest, v1.SettlementTermsListResponse]
-	settlementTermsSet       *connect.Client[v1.SettlementTermsSetRequest, v1.SettlementTermsSetResponse]
-	settlementTermsDelete    *connect.Client[v1.SettlementTermsDeleteRequest, v1.SettlementTermsDeleteResponse]
+	settlementPositionList *connect.Client[v1.SettlementPositionListRequest, v1.SettlementPositionListResponse]
+	settlementEntryList    *connect.Client[v1.SettlementEntryListRequest, v1.SettlementEntryListResponse]
 }
 
 // SettlementPositionList calls warehouse.settlement.v1.SettlementService.SettlementPositionList.
@@ -173,43 +116,6 @@ func (c *settlementServiceClient) SettlementEntryList(ctx context.Context, req *
 	return c.settlementEntryList.CallUnary(ctx, req)
 }
 
-// SettlementPaymentRecord calls warehouse.settlement.v1.SettlementService.SettlementPaymentRecord.
-func (c *settlementServiceClient) SettlementPaymentRecord(ctx context.Context, req *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error) {
-	return c.settlementPaymentRecord.CallUnary(ctx, req)
-}
-
-// SettlementPaymentConfirm calls
-// warehouse.settlement.v1.SettlementService.SettlementPaymentConfirm.
-func (c *settlementServiceClient) SettlementPaymentConfirm(ctx context.Context, req *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error) {
-	return c.settlementPaymentConfirm.CallUnary(ctx, req)
-}
-
-// SettlementPaymentReverse calls
-// warehouse.settlement.v1.SettlementService.SettlementPaymentReverse.
-func (c *settlementServiceClient) SettlementPaymentReverse(ctx context.Context, req *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error) {
-	return c.settlementPaymentReverse.CallUnary(ctx, req)
-}
-
-// SettlementPaymentList calls warehouse.settlement.v1.SettlementService.SettlementPaymentList.
-func (c *settlementServiceClient) SettlementPaymentList(ctx context.Context, req *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error) {
-	return c.settlementPaymentList.CallUnary(ctx, req)
-}
-
-// SettlementTermsList calls warehouse.settlement.v1.SettlementService.SettlementTermsList.
-func (c *settlementServiceClient) SettlementTermsList(ctx context.Context, req *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error) {
-	return c.settlementTermsList.CallUnary(ctx, req)
-}
-
-// SettlementTermsSet calls warehouse.settlement.v1.SettlementService.SettlementTermsSet.
-func (c *settlementServiceClient) SettlementTermsSet(ctx context.Context, req *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error) {
-	return c.settlementTermsSet.CallUnary(ctx, req)
-}
-
-// SettlementTermsDelete calls warehouse.settlement.v1.SettlementService.SettlementTermsDelete.
-func (c *settlementServiceClient) SettlementTermsDelete(ctx context.Context, req *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error) {
-	return c.settlementTermsDelete.CallUnary(ctx, req)
-}
-
 // SettlementServiceHandler is an implementation of the warehouse.settlement.v1.SettlementService
 // service.
 type SettlementServiceHandler interface {
@@ -217,18 +123,6 @@ type SettlementServiceHandler interface {
 	SettlementPositionList(context.Context, *connect.Request[v1.SettlementPositionListRequest]) (*connect.Response[v1.SettlementPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	SettlementEntryList(context.Context, *connect.Request[v1.SettlementEntryListRequest]) (*connect.Response[v1.SettlementEntryListResponse], error)
-	// Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
-	// posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
-	SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error)
-	SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error)
-	SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error)
-	SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error)
-	// A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it
-	// takes on its products, and how much it will let a team owe it.
-	SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error)
-	SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error)
-	// Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
-	SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error)
 }
 
 // NewSettlementServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -250,68 +144,12 @@ func NewSettlementServiceHandler(svc SettlementServiceHandler, opts ...connect.H
 		connect.WithSchema(settlementServiceMethods.ByName("SettlementEntryList")),
 		connect.WithHandlerOptions(opts...),
 	)
-	settlementServiceSettlementPaymentRecordHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementPaymentRecordProcedure,
-		svc.SettlementPaymentRecord,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentRecord")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementPaymentConfirmHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementPaymentConfirmProcedure,
-		svc.SettlementPaymentConfirm,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentConfirm")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementPaymentReverseHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementPaymentReverseProcedure,
-		svc.SettlementPaymentReverse,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentReverse")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementPaymentListHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementPaymentListProcedure,
-		svc.SettlementPaymentList,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementPaymentList")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementTermsListHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementTermsListProcedure,
-		svc.SettlementTermsList,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsList")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementTermsSetHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementTermsSetProcedure,
-		svc.SettlementTermsSet,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsSet")),
-		connect.WithHandlerOptions(opts...),
-	)
-	settlementServiceSettlementTermsDeleteHandler := connect.NewUnaryHandler(
-		SettlementServiceSettlementTermsDeleteProcedure,
-		svc.SettlementTermsDelete,
-		connect.WithSchema(settlementServiceMethods.ByName("SettlementTermsDelete")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/warehouse.settlement.v1.SettlementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettlementServiceSettlementPositionListProcedure:
 			settlementServiceSettlementPositionListHandler.ServeHTTP(w, r)
 		case SettlementServiceSettlementEntryListProcedure:
 			settlementServiceSettlementEntryListHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementPaymentRecordProcedure:
-			settlementServiceSettlementPaymentRecordHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementPaymentConfirmProcedure:
-			settlementServiceSettlementPaymentConfirmHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementPaymentReverseProcedure:
-			settlementServiceSettlementPaymentReverseHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementPaymentListProcedure:
-			settlementServiceSettlementPaymentListHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementTermsListProcedure:
-			settlementServiceSettlementTermsListHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementTermsSetProcedure:
-			settlementServiceSettlementTermsSetHandler.ServeHTTP(w, r)
-		case SettlementServiceSettlementTermsDeleteProcedure:
-			settlementServiceSettlementTermsDeleteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -329,30 +167,284 @@ func (UnimplementedSettlementServiceHandler) SettlementEntryList(context.Context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementEntryList is not implemented"))
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementPaymentRecord is not implemented"))
+// SettlementPaymentServiceClient is a client for the
+// warehouse.settlement.v1.SettlementPaymentService service.
+type SettlementPaymentServiceClient interface {
+	SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error)
+	SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error)
+	SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error)
+	SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error)
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementPaymentConfirm is not implemented"))
+// NewSettlementPaymentServiceClient constructs a client for the
+// warehouse.settlement.v1.SettlementPaymentService service. By default, it uses the Connect
+// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
+// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSettlementPaymentServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettlementPaymentServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	settlementPaymentServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementPaymentService").Methods()
+	return &settlementPaymentServiceClient{
+		settlementPaymentRecord: connect.NewClient[v1.SettlementPaymentRecordRequest, v1.SettlementPaymentRecordResponse](
+			httpClient,
+			baseURL+SettlementPaymentServiceSettlementPaymentRecordProcedure,
+			connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentRecord")),
+			connect.WithClientOptions(opts...),
+		),
+		settlementPaymentConfirm: connect.NewClient[v1.SettlementPaymentConfirmRequest, v1.SettlementPaymentConfirmResponse](
+			httpClient,
+			baseURL+SettlementPaymentServiceSettlementPaymentConfirmProcedure,
+			connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentConfirm")),
+			connect.WithClientOptions(opts...),
+		),
+		settlementPaymentReverse: connect.NewClient[v1.SettlementPaymentReverseRequest, v1.SettlementPaymentReverseResponse](
+			httpClient,
+			baseURL+SettlementPaymentServiceSettlementPaymentReverseProcedure,
+			connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentReverse")),
+			connect.WithClientOptions(opts...),
+		),
+		settlementPaymentList: connect.NewClient[v1.SettlementPaymentListRequest, v1.SettlementPaymentListResponse](
+			httpClient,
+			baseURL+SettlementPaymentServiceSettlementPaymentListProcedure,
+			connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentList")),
+			connect.WithClientOptions(opts...),
+		),
+	}
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementPaymentReverse is not implemented"))
+// settlementPaymentServiceClient implements SettlementPaymentServiceClient.
+type settlementPaymentServiceClient struct {
+	settlementPaymentRecord  *connect.Client[v1.SettlementPaymentRecordRequest, v1.SettlementPaymentRecordResponse]
+	settlementPaymentConfirm *connect.Client[v1.SettlementPaymentConfirmRequest, v1.SettlementPaymentConfirmResponse]
+	settlementPaymentReverse *connect.Client[v1.SettlementPaymentReverseRequest, v1.SettlementPaymentReverseResponse]
+	settlementPaymentList    *connect.Client[v1.SettlementPaymentListRequest, v1.SettlementPaymentListResponse]
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementPaymentList is not implemented"))
+// SettlementPaymentRecord calls
+// warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord.
+func (c *settlementPaymentServiceClient) SettlementPaymentRecord(ctx context.Context, req *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error) {
+	return c.settlementPaymentRecord.CallUnary(ctx, req)
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementTermsList is not implemented"))
+// SettlementPaymentConfirm calls
+// warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm.
+func (c *settlementPaymentServiceClient) SettlementPaymentConfirm(ctx context.Context, req *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error) {
+	return c.settlementPaymentConfirm.CallUnary(ctx, req)
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementTermsSet is not implemented"))
+// SettlementPaymentReverse calls
+// warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse.
+func (c *settlementPaymentServiceClient) SettlementPaymentReverse(ctx context.Context, req *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error) {
+	return c.settlementPaymentReverse.CallUnary(ctx, req)
 }
 
-func (UnimplementedSettlementServiceHandler) SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementTermsDelete is not implemented"))
+// SettlementPaymentList calls
+// warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList.
+func (c *settlementPaymentServiceClient) SettlementPaymentList(ctx context.Context, req *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error) {
+	return c.settlementPaymentList.CallUnary(ctx, req)
+}
+
+// SettlementPaymentServiceHandler is an implementation of the
+// warehouse.settlement.v1.SettlementPaymentService service.
+type SettlementPaymentServiceHandler interface {
+	SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error)
+	SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error)
+	SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error)
+	SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error)
+}
+
+// NewSettlementPaymentServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSettlementPaymentServiceHandler(svc SettlementPaymentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settlementPaymentServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementPaymentService").Methods()
+	settlementPaymentServiceSettlementPaymentRecordHandler := connect.NewUnaryHandler(
+		SettlementPaymentServiceSettlementPaymentRecordProcedure,
+		svc.SettlementPaymentRecord,
+		connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentRecord")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementPaymentServiceSettlementPaymentConfirmHandler := connect.NewUnaryHandler(
+		SettlementPaymentServiceSettlementPaymentConfirmProcedure,
+		svc.SettlementPaymentConfirm,
+		connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentConfirm")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementPaymentServiceSettlementPaymentReverseHandler := connect.NewUnaryHandler(
+		SettlementPaymentServiceSettlementPaymentReverseProcedure,
+		svc.SettlementPaymentReverse,
+		connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentReverse")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementPaymentServiceSettlementPaymentListHandler := connect.NewUnaryHandler(
+		SettlementPaymentServiceSettlementPaymentListProcedure,
+		svc.SettlementPaymentList,
+		connect.WithSchema(settlementPaymentServiceMethods.ByName("SettlementPaymentList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/warehouse.settlement.v1.SettlementPaymentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SettlementPaymentServiceSettlementPaymentRecordProcedure:
+			settlementPaymentServiceSettlementPaymentRecordHandler.ServeHTTP(w, r)
+		case SettlementPaymentServiceSettlementPaymentConfirmProcedure:
+			settlementPaymentServiceSettlementPaymentConfirmHandler.ServeHTTP(w, r)
+		case SettlementPaymentServiceSettlementPaymentReverseProcedure:
+			settlementPaymentServiceSettlementPaymentReverseHandler.ServeHTTP(w, r)
+		case SettlementPaymentServiceSettlementPaymentListProcedure:
+			settlementPaymentServiceSettlementPaymentListHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSettlementPaymentServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSettlementPaymentServiceHandler struct{}
+
+func (UnimplementedSettlementPaymentServiceHandler) SettlementPaymentRecord(context.Context, *connect.Request[v1.SettlementPaymentRecordRequest]) (*connect.Response[v1.SettlementPaymentRecordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord is not implemented"))
+}
+
+func (UnimplementedSettlementPaymentServiceHandler) SettlementPaymentConfirm(context.Context, *connect.Request[v1.SettlementPaymentConfirmRequest]) (*connect.Response[v1.SettlementPaymentConfirmResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm is not implemented"))
+}
+
+func (UnimplementedSettlementPaymentServiceHandler) SettlementPaymentReverse(context.Context, *connect.Request[v1.SettlementPaymentReverseRequest]) (*connect.Response[v1.SettlementPaymentReverseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse is not implemented"))
+}
+
+func (UnimplementedSettlementPaymentServiceHandler) SettlementPaymentList(context.Context, *connect.Request[v1.SettlementPaymentListRequest]) (*connect.Response[v1.SettlementPaymentListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList is not implemented"))
+}
+
+// SettlementTermsServiceClient is a client for the warehouse.settlement.v1.SettlementTermsService
+// service.
+type SettlementTermsServiceClient interface {
+	SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error)
+	SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error)
+	// Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
+	SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error)
+}
+
+// NewSettlementTermsServiceClient constructs a client for the
+// warehouse.settlement.v1.SettlementTermsService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSettlementTermsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettlementTermsServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	settlementTermsServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementTermsService").Methods()
+	return &settlementTermsServiceClient{
+		settlementTermsList: connect.NewClient[v1.SettlementTermsListRequest, v1.SettlementTermsListResponse](
+			httpClient,
+			baseURL+SettlementTermsServiceSettlementTermsListProcedure,
+			connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsList")),
+			connect.WithClientOptions(opts...),
+		),
+		settlementTermsSet: connect.NewClient[v1.SettlementTermsSetRequest, v1.SettlementTermsSetResponse](
+			httpClient,
+			baseURL+SettlementTermsServiceSettlementTermsSetProcedure,
+			connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsSet")),
+			connect.WithClientOptions(opts...),
+		),
+		settlementTermsDelete: connect.NewClient[v1.SettlementTermsDeleteRequest, v1.SettlementTermsDeleteResponse](
+			httpClient,
+			baseURL+SettlementTermsServiceSettlementTermsDeleteProcedure,
+			connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsDelete")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// settlementTermsServiceClient implements SettlementTermsServiceClient.
+type settlementTermsServiceClient struct {
+	settlementTermsList   *connect.Client[v1.SettlementTermsListRequest, v1.SettlementTermsListResponse]
+	settlementTermsSet    *connect.Client[v1.SettlementTermsSetRequest, v1.SettlementTermsSetResponse]
+	settlementTermsDelete *connect.Client[v1.SettlementTermsDeleteRequest, v1.SettlementTermsDeleteResponse]
+}
+
+// SettlementTermsList calls warehouse.settlement.v1.SettlementTermsService.SettlementTermsList.
+func (c *settlementTermsServiceClient) SettlementTermsList(ctx context.Context, req *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error) {
+	return c.settlementTermsList.CallUnary(ctx, req)
+}
+
+// SettlementTermsSet calls warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet.
+func (c *settlementTermsServiceClient) SettlementTermsSet(ctx context.Context, req *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error) {
+	return c.settlementTermsSet.CallUnary(ctx, req)
+}
+
+// SettlementTermsDelete calls warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete.
+func (c *settlementTermsServiceClient) SettlementTermsDelete(ctx context.Context, req *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error) {
+	return c.settlementTermsDelete.CallUnary(ctx, req)
+}
+
+// SettlementTermsServiceHandler is an implementation of the
+// warehouse.settlement.v1.SettlementTermsService service.
+type SettlementTermsServiceHandler interface {
+	SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error)
+	SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error)
+	// Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
+	SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error)
+}
+
+// NewSettlementTermsServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSettlementTermsServiceHandler(svc SettlementTermsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settlementTermsServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementTermsService").Methods()
+	settlementTermsServiceSettlementTermsListHandler := connect.NewUnaryHandler(
+		SettlementTermsServiceSettlementTermsListProcedure,
+		svc.SettlementTermsList,
+		connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementTermsServiceSettlementTermsSetHandler := connect.NewUnaryHandler(
+		SettlementTermsServiceSettlementTermsSetProcedure,
+		svc.SettlementTermsSet,
+		connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsSet")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementTermsServiceSettlementTermsDeleteHandler := connect.NewUnaryHandler(
+		SettlementTermsServiceSettlementTermsDeleteProcedure,
+		svc.SettlementTermsDelete,
+		connect.WithSchema(settlementTermsServiceMethods.ByName("SettlementTermsDelete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/warehouse.settlement.v1.SettlementTermsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SettlementTermsServiceSettlementTermsListProcedure:
+			settlementTermsServiceSettlementTermsListHandler.ServeHTTP(w, r)
+		case SettlementTermsServiceSettlementTermsSetProcedure:
+			settlementTermsServiceSettlementTermsSetHandler.ServeHTTP(w, r)
+		case SettlementTermsServiceSettlementTermsDeleteProcedure:
+			settlementTermsServiceSettlementTermsDeleteHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSettlementTermsServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSettlementTermsServiceHandler struct{}
+
+func (UnimplementedSettlementTermsServiceHandler) SettlementTermsList(context.Context, *connect.Request[v1.SettlementTermsListRequest]) (*connect.Response[v1.SettlementTermsListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementTermsService.SettlementTermsList is not implemented"))
+}
+
+func (UnimplementedSettlementTermsServiceHandler) SettlementTermsSet(context.Context, *connect.Request[v1.SettlementTermsSetRequest]) (*connect.Response[v1.SettlementTermsSetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet is not implemented"))
+}
+
+func (UnimplementedSettlementTermsServiceHandler) SettlementTermsDelete(context.Context, *connect.Request[v1.SettlementTermsDeleteRequest]) (*connect.Response[v1.SettlementTermsDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete is not implemented"))
 }

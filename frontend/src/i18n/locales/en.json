@@ -23,7 +23,8 @@
     "revenue": "Revenue",
     "expenses": "Expenses",
     "profit": "Profit",
-    "orderDrafts": "Order Drafts"
+    "orderDrafts": "Order Drafts",
+    "settlement": "Liability"
   },
   "menu": {
     "language": "Language",
@@ -192,6 +193,34 @@
     "promoted": "Order created from the draft",
     "deleteOneTitle": "Delete Order Draft",
     "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again."
+  },
+  "settlement": {
+    "title": "Liability",
+    "intro": "What you and each counterparty owe each other. Chase the oldest first — a debt nobody chases is one nobody gets paid.",
+    "selectTeamView": "Select a team to view its position.",
+    "counterparty": "Counterparty",
+    "position": "Position",
+    "ageing": "Ageing",
+    "unsettledOnly": "Unsettled only",
+    "theyOweYou": "They owe you {{amount}}",
+    "youOweThem": "You owe them {{amount}}",
+    "square": "Square",
+    "oldestUnsettled": "oldest unsettled {{days}} days",
+    "awaiting": "{{count}} awaiting you",
+    "allSquare": "Everything is settled.",
+    "noCounterparties": "No counterparties yet.",
+    "back": "Back to Liability",
+    "what": "What",
+    "amount": "Amount",
+    "balanceAfter": "Balance after",
+    "when": "When",
+    "reversal": "Reversed",
+    "noEntries": "Nothing has moved between you yet.",
+    "sourceCodFee": "COD fee, restock",
+    "sourceHandlingFee": "Handling fee, order",
+    "sourceProductFee": "Product fee, order",
+    "sourcePayment": "Payment",
+    "sourceUnknown": "Unknown"
   },
   "restock": {
     "title": "Restock Requests",

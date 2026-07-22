@@ -23,7 +23,8 @@
     "revenue": "Pendapatan",
     "expenses": "Biaya",
     "profit": "Laba",
-    "orderDrafts": "Draf Pesanan"
+    "orderDrafts": "Draf Pesanan",
+    "settlement": "Kewajiban"
   },
   "menu": {
     "language": "Bahasa",
@@ -192,6 +193,34 @@
     "promoted": "Pesanan dibuat dari draf",
     "deleteOneTitle": "Hapus Draf Pesanan",
     "deleteOneMessage": "Hapus draf {{ref}}? Tindakan ini tidak bisa dibatalkan, dan aplikasi pengirim bisa mengirimnya lagi."
+  },
+  "settlement": {
+    "title": "Kewajiban",
+    "intro": "Apa yang Anda dan tiap rekanan saling hutangkan. Kejar yang paling lama dulu — hutang yang tidak ditagih tidak akan dibayar.",
+    "selectTeamView": "Pilih tim untuk melihat posisinya.",
+    "counterparty": "Rekanan",
+    "position": "Posisi",
+    "ageing": "Umur",
+    "unsettledOnly": "Belum lunas saja",
+    "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
+    "youOweThem": "Anda berhutang {{amount}} kepada mereka",
+    "square": "Lunas",
+    "oldestUnsettled": "terlama belum lunas {{days}} hari",
+    "awaiting": "{{count}} menunggu Anda",
+    "allSquare": "Semuanya sudah lunas.",
+    "noCounterparties": "Belum ada rekanan.",
+    "back": "Kembali ke Kewajiban",
+    "what": "Keterangan",
+    "amount": "Jumlah",
+    "balanceAfter": "Saldo sesudah",
+    "when": "Waktu",
+    "reversal": "Dibatalkan",
+    "noEntries": "Belum ada transaksi di antara kalian.",
+    "sourceCodFee": "Biaya COD, restock",
+    "sourceHandlingFee": "Biaya penanganan, pesanan",
+    "sourceProductFee": "Biaya produk, pesanan",
+    "sourcePayment": "Pembayaran",
+    "sourceUnknown": "Tidak diketahui"
   },
   "restock": {
     "title": "Permintaan Restok",

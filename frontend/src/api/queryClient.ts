@@ -80,6 +80,7 @@ export const key = {
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),
+  settlement: (teamId: bigint | undefined, params?: Params) => scope("settlement", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

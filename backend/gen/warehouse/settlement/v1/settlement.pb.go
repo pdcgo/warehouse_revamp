@@ -1771,14 +1771,16 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"%SETTLEMENT_PAYMENT_STATUS_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"SETTLEMENT_PAYMENT_STATUS_RECORDED\x10\x01\x12'\n" +
 	"#SETTLEMENT_PAYMENT_STATUS_CONFIRMED\x10\x02\x12&\n" +
-	"\"SETTLEMENT_PAYMENT_STATUS_REVERSED\x10\x032\xe9\t\n" +
+	"\"SETTLEMENT_PAYMENT_STATUS_REVERSED\x10\x032\xa2\x02\n" +
 	"\x11SettlementService\x12\x89\x01\n" +
 	"\x16SettlementPositionList\x126.warehouse.settlement.v1.SettlementPositionListRequest\x1a7.warehouse.settlement.v1.SettlementPositionListResponse\x12\x80\x01\n" +
-	"\x13SettlementEntryList\x123.warehouse.settlement.v1.SettlementEntryListRequest\x1a4.warehouse.settlement.v1.SettlementEntryListResponse\x12\x8c\x01\n" +
+	"\x13SettlementEntryList\x123.warehouse.settlement.v1.SettlementEntryListRequest\x1a4.warehouse.settlement.v1.SettlementEntryListResponse2\xd6\x04\n" +
+	"\x18SettlementPaymentService\x12\x8c\x01\n" +
 	"\x17SettlementPaymentRecord\x127.warehouse.settlement.v1.SettlementPaymentRecordRequest\x1a8.warehouse.settlement.v1.SettlementPaymentRecordResponse\x12\x8f\x01\n" +
 	"\x18SettlementPaymentConfirm\x128.warehouse.settlement.v1.SettlementPaymentConfirmRequest\x1a9.warehouse.settlement.v1.SettlementPaymentConfirmResponse\x12\x8f\x01\n" +
 	"\x18SettlementPaymentReverse\x128.warehouse.settlement.v1.SettlementPaymentReverseRequest\x1a9.warehouse.settlement.v1.SettlementPaymentReverseResponse\x12\x86\x01\n" +
-	"\x15SettlementPaymentList\x125.warehouse.settlement.v1.SettlementPaymentListRequest\x1a6.warehouse.settlement.v1.SettlementPaymentListResponse\x12\x80\x01\n" +
+	"\x15SettlementPaymentList\x125.warehouse.settlement.v1.SettlementPaymentListRequest\x1a6.warehouse.settlement.v1.SettlementPaymentListResponse2\xa3\x03\n" +
+	"\x16SettlementTermsService\x12\x80\x01\n" +
 	"\x13SettlementTermsList\x123.warehouse.settlement.v1.SettlementTermsListRequest\x1a4.warehouse.settlement.v1.SettlementTermsListResponse\x12}\n" +
 	"\x12SettlementTermsSet\x122.warehouse.settlement.v1.SettlementTermsSetRequest\x1a3.warehouse.settlement.v1.SettlementTermsSetResponse\x12\x86\x01\n" +
 	"\x15SettlementTermsDelete\x125.warehouse.settlement.v1.SettlementTermsDeleteRequest\x1a6.warehouse.settlement.v1.SettlementTermsDeleteResponseBTZRgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1b\x06proto3"
@@ -1846,22 +1848,22 @@ var file_warehouse_settlement_v1_settlement_proto_depIdxs = []int32{
 	17, // 17: warehouse.settlement.v1.SettlementTermsSetResponse.terms:type_name -> warehouse.settlement.v1.SettlementTerms
 	4,  // 18: warehouse.settlement.v1.SettlementService.SettlementPositionList:input_type -> warehouse.settlement.v1.SettlementPositionListRequest
 	6,  // 19: warehouse.settlement.v1.SettlementService.SettlementEntryList:input_type -> warehouse.settlement.v1.SettlementEntryListRequest
-	9,  // 20: warehouse.settlement.v1.SettlementService.SettlementPaymentRecord:input_type -> warehouse.settlement.v1.SettlementPaymentRecordRequest
-	11, // 21: warehouse.settlement.v1.SettlementService.SettlementPaymentConfirm:input_type -> warehouse.settlement.v1.SettlementPaymentConfirmRequest
-	13, // 22: warehouse.settlement.v1.SettlementService.SettlementPaymentReverse:input_type -> warehouse.settlement.v1.SettlementPaymentReverseRequest
-	15, // 23: warehouse.settlement.v1.SettlementService.SettlementPaymentList:input_type -> warehouse.settlement.v1.SettlementPaymentListRequest
-	18, // 24: warehouse.settlement.v1.SettlementService.SettlementTermsList:input_type -> warehouse.settlement.v1.SettlementTermsListRequest
-	20, // 25: warehouse.settlement.v1.SettlementService.SettlementTermsSet:input_type -> warehouse.settlement.v1.SettlementTermsSetRequest
-	22, // 26: warehouse.settlement.v1.SettlementService.SettlementTermsDelete:input_type -> warehouse.settlement.v1.SettlementTermsDeleteRequest
+	9,  // 20: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:input_type -> warehouse.settlement.v1.SettlementPaymentRecordRequest
+	11, // 21: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:input_type -> warehouse.settlement.v1.SettlementPaymentConfirmRequest
+	13, // 22: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:input_type -> warehouse.settlement.v1.SettlementPaymentReverseRequest
+	15, // 23: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:input_type -> warehouse.settlement.v1.SettlementPaymentListRequest
+	18, // 24: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:input_type -> warehouse.settlement.v1.SettlementTermsListRequest
+	20, // 25: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:input_type -> warehouse.settlement.v1.SettlementTermsSetRequest
+	22, // 26: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:input_type -> warehouse.settlement.v1.SettlementTermsDeleteRequest
 	5,  // 27: warehouse.settlement.v1.SettlementService.SettlementPositionList:output_type -> warehouse.settlement.v1.SettlementPositionListResponse
 	7,  // 28: warehouse.settlement.v1.SettlementService.SettlementEntryList:output_type -> warehouse.settlement.v1.SettlementEntryListResponse
-	10, // 29: warehouse.settlement.v1.SettlementService.SettlementPaymentRecord:output_type -> warehouse.settlement.v1.SettlementPaymentRecordResponse
-	12, // 30: warehouse.settlement.v1.SettlementService.SettlementPaymentConfirm:output_type -> warehouse.settlement.v1.SettlementPaymentConfirmResponse
-	14, // 31: warehouse.settlement.v1.SettlementService.SettlementPaymentReverse:output_type -> warehouse.settlement.v1.SettlementPaymentReverseResponse
-	16, // 32: warehouse.settlement.v1.SettlementService.SettlementPaymentList:output_type -> warehouse.settlement.v1.SettlementPaymentListResponse
-	19, // 33: warehouse.settlement.v1.SettlementService.SettlementTermsList:output_type -> warehouse.settlement.v1.SettlementTermsListResponse
-	21, // 34: warehouse.settlement.v1.SettlementService.SettlementTermsSet:output_type -> warehouse.settlement.v1.SettlementTermsSetResponse
-	23, // 35: warehouse.settlement.v1.SettlementService.SettlementTermsDelete:output_type -> warehouse.settlement.v1.SettlementTermsDeleteResponse
+	10, // 29: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:output_type -> warehouse.settlement.v1.SettlementPaymentRecordResponse
+	12, // 30: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:output_type -> warehouse.settlement.v1.SettlementPaymentConfirmResponse
+	14, // 31: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:output_type -> warehouse.settlement.v1.SettlementPaymentReverseResponse
+	16, // 32: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:output_type -> warehouse.settlement.v1.SettlementPaymentListResponse
+	19, // 33: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:output_type -> warehouse.settlement.v1.SettlementTermsListResponse
+	21, // 34: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:output_type -> warehouse.settlement.v1.SettlementTermsSetResponse
+	23, // 35: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:output_type -> warehouse.settlement.v1.SettlementTermsDeleteResponse
 	27, // [27:36] is the sub-list for method output_type
 	18, // [18:27] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name
@@ -1884,7 +1886,7 @@ func file_warehouse_settlement_v1_settlement_proto_init() {
 			NumEnums:      2,
 			NumMessages:   22,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   3,
 		},
 		GoTypes:           file_warehouse_settlement_v1_settlement_proto_goTypes,
 		DependencyIndexes: file_warehouse_settlement_v1_settlement_proto_depIdxs,

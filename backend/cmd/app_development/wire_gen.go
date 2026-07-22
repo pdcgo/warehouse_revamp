@@ -60,7 +60,7 @@ func InitializeApp() (*App, error) {
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
 	region_v1Service := region_v1.NewService(db)
 	expense_v1Service := expense_v1.NewService(db)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, revenue_v1Service, expense_v1Service, docstoreConfig, roleResolver, signer)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, revenue_v1Service, expense_v1Service, settlement_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

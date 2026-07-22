@@ -16,6 +16,7 @@ import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_req
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
 import { RevenueService } from "../gen/warehouse/revenue/v1/revenue_pb";
 import { ExpenseService } from "../gen/warehouse/expense/v1/expense_pb";
+import { SettlementService } from "../gen/warehouse/settlement/v1/settlement_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -42,6 +43,10 @@ export const restockClient = createClient(RestockRequestService, transport);
 export const regionClient = createClient(RegionService, transport);
 export const revenueClient = createClient(RevenueService, transport);
 export const expenseClient = createClient(ExpenseService, transport);
+// The ledger of what teams owe each other (#185). Read-only for now: the payment and terms services
+// are declared in the same proto and land with #188/#189 — and the ledger WRITE path is in-process
+// by design, so it has no client here and never will.
+export const settlementClient = createClient(SettlementService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

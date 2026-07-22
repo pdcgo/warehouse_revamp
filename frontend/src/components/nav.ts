@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -39,6 +39,10 @@ const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Bo
 const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
 const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
 const PROFIT: MenuItem = { to: "/profit", label: "nav.profit", icon: Scale };
+// The ledger of what teams owe each other (#185). A TOP-LEVEL section rather than a child of the
+// selling team's money group, because a WAREHOUSE team has no money section at all today and this is
+// where its income actually lives.
+const SETTLEMENT: MenuItem = { to: "/settlement", label: "nav.settlement", icon: Handshake };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -138,6 +142,16 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
       // the numbers on the other two screens, so anyone who may not read them may not read this.
       menu.push(PROFIT);
     }
+  }
+
+  // Liability is BACK OFFICE, and it is offered to both team types that can be a counterparty: a
+  // selling team owes its warehouse, a warehouse is owed by the teams it fulfils for. isTeamManager
+  // is exactly the role set the RPCs are policed on — staff and customer service never chase debt.
+  if (
+    (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) &&
+    isTeamManager(role)
+  ) {
+    menu.push(SETTLEMENT);
   }
 
   // Inventories sub-menu — restock + placements — for the two team types that work with stock (#95).

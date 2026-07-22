@@ -810,6 +810,44 @@ allocate against without inventing one.
 
 ---
 
+## 5.4 Three proto services, not one (#185)
+
+§5.2's contract was one `SettlementService` with nine RPCs. Building the screens showed why that
+cannot work: **a service is mounted whole.** The generated handler interface demands every RPC, and
+mounting is also what puts a service into reflection — so one service could not be served until the
+last of its nine RPCs existed. The screens would have had to ship alongside payment and terms stubs
+returning `Unimplemented`, reachable and advertised.
+
+So the contract is now three services in the same proto package, served by one Go implementation —
+exactly as `ShopService`, `OrderService` and `OrderDraftService` share `selling_service`'s:
+
+| Service | Lands with |
+| --- | --- |
+| `SettlementService` — position list, entry history | #185 ✅ mounted |
+| `SettlementPaymentService` — record / confirm / reverse / list | #188 |
+| `SettlementTermsService` — the creditor's fees and limits | #189 |
+
+⚠ **The ledger's WRITE path has no wire surface at all, and never will.** `PostEntry` is a domain
+function called in-process, because nothing outside this system may assert that one team owes
+another — every posting originates from a real event inside it. The RPCs are reads plus the payment
+flow; there is no "post an entry" endpoint.
+
+### Direction-as-words is a shared module, not screen code
+
+§5.1 A says direction must be words rather than a sign, and two screens ask that question — the
+position list and the counterparty header. It lives in `src/settlement/direction.ts` for the same
+reason `draftReadiness.ts` exists: answering it twice is how two screens start disagreeing about what
+a minus sign meant.
+
+The `abs()` §4.11 warns about is computed **there, for display, and nowhere else** — it is never
+stored, never returned by an RPC, and never sits in a field beside the signed one.
+
+**One place a sign IS legitimate**: a line in the entry history. An entry is a *movement*, so "+" /
+"−" means "this made the balance go up / down", which is what a ledger line is. The POSITION is the
+thing that must never be a bare number.
+
+---
+
 ## 6. Proposed decomposition (confirm before creating issues)
 
 **Design before build, per HARD RULE 6.** The screens are settled first, and the proto is derived
@@ -830,8 +868,10 @@ allocate against without inventing one.
    path. `inventory_service` declares a `SettlementPoster` interface and imports nothing from
    settlement; the adapter is in the composition root. See
    [docs/services/settlement_service/rpc.md](../../docs/services/settlement_service/rpc.md).
-6. **The position list and counterparty detail** (§5.1 A/B) — the first screens, reading real COD
-   obligations from step 5. **This is the first thing the owner can look at.**
+6. ✅ **The position list and counterparty detail** (#185, §5.1 A/B) — the first screens, reading real
+   COD obligations from step 5. **This is the first thing the owner can look at.** Two things it
+   forced: the contract is now **three proto services** (§5.4), and direction-as-words lives in one
+   shared module rather than inline on two screens.
 7. **The order-driven fees** — warehouse fee and product fee on `OrderPlacedEvent`, reversal on
    `OrderCancelledEvent`. Includes the **dead-letter policy** (§3.3).
 8. **The reconciliation report** (§3.3) — do the entries match the orders that should have produced

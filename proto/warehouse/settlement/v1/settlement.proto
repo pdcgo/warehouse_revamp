@@ -34,25 +34,37 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/set
 //     caller belongs to THAT team and says nothing about the counterparty. A handler must never treat
 //     a caller-supplied `counterparty_id` as if it were the scope.
 //
-// This file is the CONTRACT ONLY (#182) — derived from the screens (HARD RULE 6), with no
-// implementation behind it yet. The ledger core is #183, the first writer #184, the screens #185.
-// Two later issues add their own RPCs rather than crowding this one: the reconciliation report (#187)
+// The contract was derived from the screens first (#182, HARD RULE 6) and is SPLIT INTO THREE
+// SERVICES — reads, payments, terms — served by one Go implementation, exactly as ShopService,
+// OrderService and OrderDraftService share selling_service's.
+//
+// ⚠ THE SPLIT IS ABOUT WHEN EACH CAN BE MOUNTED, not about taste. A service is mounted whole: the
+// generated handler interface demands every RPC, and mounting also puts it in reflection. One service
+// covering all nine RPCs could not be served until the last of them existed — so the screens (#185)
+// would have had to ship alongside stubs returning Unimplemented, which is a contract that lies about
+// what the system does. Three services land with their three issues instead.
+//
+// Two later issues bring their own RPCs rather than crowding these: the reconciliation report (#187)
 // and the pre-order credit check (#189).
 service SettlementService {
   // The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
   rpc SettlementPositionList(SettlementPositionListRequest) returns (SettlementPositionListResponse);
   // The counterparty detail's running history (#185).
   rpc SettlementEntryList(SettlementEntryListRequest) returns (SettlementEntryListResponse);
+}
 
-  // Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
-  // posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
+// Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
+// posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
+service SettlementPaymentService {
   rpc SettlementPaymentRecord(SettlementPaymentRecordRequest) returns (SettlementPaymentRecordResponse);
   rpc SettlementPaymentConfirm(SettlementPaymentConfirmRequest) returns (SettlementPaymentConfirmResponse);
   rpc SettlementPaymentReverse(SettlementPaymentReverseRequest) returns (SettlementPaymentReverseResponse);
   rpc SettlementPaymentList(SettlementPaymentListRequest) returns (SettlementPaymentListResponse);
+}
 
-  // A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it
-  // takes on its products, and how much it will let a team owe it.
+// A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it takes
+// on its products, and how much it will let a team owe it.
+service SettlementTermsService {
   rpc SettlementTermsList(SettlementTermsListRequest) returns (SettlementTermsListResponse);
   rpc SettlementTermsSet(SettlementTermsSetRequest) returns (SettlementTermsSetResponse);
   // Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
