@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
@@ -20,7 +20,7 @@ import {
 import { Ban, MoreHorizontal, Pencil } from "lucide-react";
 
 import { expenseClient, rpcError } from "../api/clients";
-import type { ExpenseRecord, ExpenseTotals } from "../gen/warehouse/expense/v1/expense_pb";
+import type { ExpenseRecord } from "../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ExpenseKindSelect, expenseKindLabel } from "../components/ExpenseKindSelect";
@@ -28,8 +28,9 @@ import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
-import { monthRange, thisMonth } from "../lib/period";
+import { thisMonth } from "../lib/period";
 import { RecordExpenseDialog } from "./RecordExpenseDialog";
+import { useExpenses, useInvalidateExpenses } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -42,51 +43,25 @@ export function ExpensesPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
+  // Only the FILTERS are state now (#175). The rows, the totals, the page count, the spinner and the
+  // error are all derived from the query — nothing here re-declares them, so they cannot drift out
+  // of step with each other the way six independent useStates could.
   const [month, setMonth] = useState(thisMonth);
   const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
-  const [totals, setTotals] = useState<ExpenseTotals | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [editing, setEditing] = useState<ExpenseRecord | null>(null);
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) return;
+  const query = useExpenses({ teamId, month, kind, page, pageSize });
+  const invalidateExpenses = useInvalidateExpenses();
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const { from, to } = monthRange(month);
-
-      const res = await expenseClient.expenseList({
-        teamId,
-        from,
-        to,
-        kind,
-        page: { page, limit: pageSize },
-      });
-
-      setExpenses(res.expenses);
-      setTotals(res.totals);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setExpenses([]);
-      setTotals(undefined);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, month, kind, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const expenses = query.data?.expenses ?? [];
+  const totals = query.data?.totals;
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function voidCost(cost: ExpenseRecord) {
     if (teamId === undefined) return;
@@ -94,7 +69,7 @@ export function ExpensesPage() {
     try {
       await expenseClient.expenseVoid({ teamId, expenseId: cost.id });
       toaster.create({ type: "success", title: t("expenses.toast.voided") });
-      await load();
+      await invalidateExpenses();
     } catch (err) {
       toaster.create({
         type: "error",
@@ -134,7 +109,7 @@ export function ExpensesPage() {
           }}
         />
 
-        <RecordExpenseDialog teamId={current.teamId} onDone={() => void load()} />
+        <RecordExpenseDialog teamId={current.teamId} onDone={() => void invalidateExpenses()} />
       </Flex>
 
       {/* The summary — per kind and in total, for the WHOLE month rather than the page below. The
@@ -310,7 +285,7 @@ export function ExpensesPage() {
           editing={editing}
           onDone={() => {
             setEditing(null);
-            void load();
+            void invalidateExpenses();
           }}
           onClose={() => setEditing(null)}
         />
