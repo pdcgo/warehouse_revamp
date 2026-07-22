@@ -42,14 +42,17 @@
 >   If a default/list price is ever wanted, it belongs on the product (a new field), not invented here.
 > - Still **open** and need the owner: §3.6 (which warehouse fulfils — needs §1) and the whole
 >   revenue side (#32 / §3.7 downstream).
-> - **§6 DRAFT ORDERS (#162) — planned, nothing decided.** The issue is a title with an empty body, so
->   §6 maps the domain and the forks rather than guessing. **Seven questions are open and the owner's
->   to settle (§6.10)**, and the first one decides the rest: a draft can mean *an order half-typed*
->   (incomplete by definition) or *an order awaiting payment* (complete but not yet real), and a
->   design for one is wrong for the other. The agent's one recommendation is §6.2: a **separate
->   `order_drafts` table** rather than a status on `orders` — not for tidiness, but because a status
->   makes every reader of `orders` responsible for remembering to exclude drafts, which is how an
->   unfinished scribble reaches a revenue report.
+> - **§6 DRAFT ORDERS (#162) — SETTLED (owner, 2026-07-22).** A draft is **an order half-typed**, and
+>   the answer that reframed everything: **it is never typed in our UI — a third-party app pushes it
+>   in**, and a person here finishes it and promotes it. It lives in a **separate `order_drafts`
+>   table** (not a status on `orders`, which would make every reader responsible for excluding drafts
+>   — that is how an unfinished scrape reaches a revenue report). It is **personal to the author**,
+>   and the app **logs in as a user** rather than as a machine, so every draft has a human accountable
+>   on it and the §3.3 machine-identity gap stays unopened. Lines arrive as **scraped text**, mapped
+>   to real products on promote — the unmapped line *is* the incompleteness. A re-push **dedupes on
+>   `(source, external_id)`** and **fills blanks only**, so a background re-scrape can never destroy
+>   someone's work. **No expiry**, own page at `/order-drafts`. Decomposed into seven sub-issues
+>   (§6.11).
 
 ---
 
@@ -392,12 +395,16 @@ first; the fulfillment half cannot be planned well until §1 is filled in with t
    half of every order issue, and #32.
 
 ---
+## 6. Draft orders (#162) — ✅ DECIDED (owner, 2026-07-22)
 
-## 6. Draft orders (#162) — PLANNING, nothing decided
-
-> #162 is titled **"Plan Feature Draft Order"** and its body is empty. So the first thing this section
-> does is refuse to guess what a draft is for — §6.1 is the question that decides everything below it,
-> and it is the owner's to answer.
+> #162's body was one line — *"order can to be draft"* — so §6 was first written as seven open
+> questions rather than a guess. **All seven are now answered**, and one of them reframed the whole
+> feature: **a draft is never typed into our UI.** It is pushed in by a **third-party app**, and a
+> person in this system finishes it and promotes it.
+>
+> That single answer dissolved one question outright (explicit-save vs autosave — there is no in-app
+> editor to save from) and forced four new ones that the original §6 never thought to ask. Those are
+> §6.3–§6.6 below.
 
 ### 6.0 What a draft is NOT
 
@@ -411,50 +418,51 @@ then quietly change what a draft means:
 | **Unpaid marketplace order** | That is a real order in a payment state, which belongs in `OrderStatus`. A draft was never placed by anybody. |
 | **Template / repeat order** | A template is reused many times. A draft is consumed once, when it becomes an order. |
 
-### 6.1 ⭐ What job is a draft for? *(answer this first)*
+### 6.1 ✅ The job — **park a half-typed order**, pushed in from outside
 
-Four readings, and they do not want the same feature:
+A draft is **incomplete by definition**. The third-party app scrapes what it can see and pushes it;
+what it could not resolve — which of our products a line actually is, the shop, the warehouse — is
+left blank for a person to fill in.
 
-| Reading | The person | What they need |
-| --- | --- | --- |
-| **A. Park a half-typed order** | CS mid-chat: has the products, waiting on the address | Save anything, resume later, one keystroke to save |
-| **B. Wait for payment/confirmation** | CS who has a complete order the buyer has not paid for | A complete, validated order in a pre-placed STATE — closer to a status than a draft |
-| **C. Stage a bulk import** | Whoever imports a marketplace CSV | Many rows at once, validated in bulk, promoted in bulk (§3.4 — import is not built) |
-| **D. Repeat a common order** | CS with a regular buyer | A template, reused — explicitly not a draft (§6.0) |
+The other three readings (§6.1's B/C/D — awaiting payment, import staging, repeat template) were
+**not** chosen. Worth keeping straight: **"awaiting payment" would have been a new `OrderStatus`, not
+a draft at all**, because nothing about such an order is missing. If that need ever arrives it is a
+separate, much smaller change, and it must not be folded onto `order_drafts`.
 
-**These differ in the one way that matters:** in **A** a draft is *incomplete by definition*, in **B**
-it is *complete but not yet real*. A design for one is wrong for the other — B needs nothing nullable,
-and A cannot be a status on a table whose columns are all `NOT NULL`.
+> ⚠ **This is intake, but it is NOT §3.4's marketplace import.** §3.4 decided *manual entry only* and
+> left `source`/`ref_id` unwritten, because inventing a shape for an import nobody had seen would be
+> guessing. Drafts are the thing that finally makes those fields real — the shape is now driven by an
+> app that actually exists, which is exactly the condition §3.4 set. An import that writes `orders`
+> directly is still not built and still not decided.
 
-The rest of §6 assumes **A**, because "draft" in ordinary use means "not finished yet". If the owner
-means B, §6.2 collapses to "add a status" and most of this section is moot.
-
-### 6.2 ⭐ Where does a draft live? *(the structural fork)*
+### 6.2 ✅ Where a draft lives — **a separate `order_drafts` table**
 
 | Option | ✅ | ❌ |
 | --- | --- | --- |
-| **A. `ORDER_STATUS_DRAFT` on `orders`** | One table, one id — a draft "becomes" an order without changing identity, and its history is continuous | **Every `NOT NULL` on `orders` must be relaxed**, permanently, for real orders too. `shop_id`, `warehouse_id`, `customer_name` and "at least one item" are required today. The schema stops being able to say *a real order always has a warehouse* |
-| **B. A separate `order_drafts` table** ⭐ | `orders` keeps every constraint it has. A draft is a loose bag of nullable columns, which is what a draft *is*. Promoting calls the existing `OrderCreate`, so validation lives in exactly one place | Two id spaces — "draft #12" and "order #12" are different things. Promotion is two writes (create, then delete) and the gap between them needs a decision |
-| **C. Client-side only (`localStorage`)** | No backend at all. Free, instant, and genuinely enough for one person on one machine | Gone when the tab is cleared or the machine changes, and no colleague can pick it up. Viability depends **entirely** on §6.3 |
+| **A. `ORDER_STATUS_DRAFT` on `orders`** | One table, one id — a draft "becomes" an order without changing identity | **Every `NOT NULL` on `orders` relaxes permanently**, for real orders too. `shop_id`, `warehouse_id`, `customer_name` and "at least one item" are required today, and the schema would stop being able to say *a real order always has a warehouse* |
+| **B. A separate `order_drafts` table** ✅ | `orders` keeps every constraint it has. A draft is a loose bag of nullable columns, which is what a draft *is*. Promoting runs the same validation `OrderCreate` does, so it lives in one place | Two id spaces — "draft #12" and "order #12" are different things |
+| **C. Client-side only (`localStorage`)** | No backend at all | **Impossible here.** A draft arrives from another machine entirely, so there is no browser for it to live in |
 
-**The agent's recommendation is B, and the reason is not tidiness.** Option A's real cost is not the
-migration — it is that *every* reader of `orders` must from then on remember to exclude drafts: the
-order list, the pick queue, the warehouse's view, the revenue chain, every count. That is exactly the
-shape of the bug #164 produced on the revenue screen (a row that must be listed but not totalled), and
-a draft is worse than a voided order — a voided order is a real order that stopped counting, while a
-draft was never an order at all. One forgotten `AND status != DRAFT` puts an unfinished scribble into
-somebody's revenue report.
+**The reason is not tidiness.** Option A's real cost is that *every* reader of `orders` becomes
+responsible for remembering to exclude drafts — the order list, the pick queue, the warehouse's view,
+the revenue chain, every count. That is the shape of the bug #164 produced on the revenue screen (a
+row that must be listed but not totalled), and a draft is the more dangerous version: a voided order
+is a real order that stopped counting, while a draft **was never an order at all**. One forgotten
+`AND status != DRAFT` puts an unfinished scrape into somebody's revenue report.
 
-⚠ **Whatever is chosen, a draft must not publish `OrderCreatedEvent`.** Placement is what fires it
-(#153) and revenue consumes it (#75). A draft that published would put an unfinished order into the
-month's margin.
+Option C stopped being viable the moment drafts came from outside — worth recording, because under
+the original "CS types it in" reading it was a genuine contender.
+
+⚠ **A draft must never publish `OrderCreatedEvent`.** Placement fires it (#153) and revenue consumes
+it (#75). A draft that published would put an unfinished order into the month's margin.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft: save what has been typed
-    Draft --> Draft: keep editing
-    Draft --> Placed: promote, and OrderCreate validates
-    Draft --> [*]: discard
+    [*] --> Draft: the app pushes what it scraped
+    Draft --> Draft: the app re-pushes, filling blanks only
+    Draft --> Draft: a person maps lines and fixes the address
+    Draft --> Placed: promote, and the OrderCreate validation runs
+    Draft --> [*]: deleted by hand
     Placed --> Confirmed
     Placed --> Cancelled
     note right of Placed
@@ -464,61 +472,172 @@ stateDiagram-v2
     end note
 ```
 
-### 6.3 Whose draft is it?
+### 6.3 ✅ Whose draft, and how the app gets in — **personal, and the app logs in as a user**
+
+**Personal to the author.** A draft is private working state. A colleague cannot pick it up, which is
+the accepted cost — under the third-party design it matters less than it would have, because the app
+can always re-push to whoever should own it.
+
+**The app authenticates as a user**, holding a normal JWT. There is **no machine identity in this
+system** — §3.3 named that gap and nothing has filled it — and this feature deliberately does not
+fill it either:
+
+| | ✅ | ❌ |
+| --- | --- | --- |
+| **Logs in as a user** ✅ | No new auth machinery at all. And it makes "personal" true *by construction* — the draft belongs to whoever's login the app runs under, so **every draft has a human accountable on it**, which is the stance every stock movement in this system already takes | The app must hold a user credential and handle expiry |
+| A machine identity | The general answer — unblocks every future service-to-service call | Authorizes a call with **nobody accountable on it**. A big change to the access interceptor, the most sensitive code in the repo, taken for convenience rather than need |
+| Key + acting-for-a-user | Both | Needs a delegation concept that does not exist |
+
+> ⚠ **The CLAUDE.md trap this must avoid.** "Personal" is a **handler filter, not a scope.** Every
+> draft request still carries `team_id` with `(use_scope) = true` and a team-role policy; the handler
+> then additionally narrows to `author_user_id`. Dropping the scope to "make it personal" would leave
+> a team-level policy evaluated against the root team — a **dead letter** that authorizes nobody.
+
+### 6.4 ✅ What the app sends — **external text, mapped on promote**
+
+A marketplace scraper knows the marketplace's product *title*. It does not know our `product_id`.
 
 | Option | ✅ | ❌ |
 | --- | --- | --- |
-| **Personal** — only the author sees it | It is private working state, like a scratchpad. No confusion about who owns finishing it | A colleague cannot pick up the order when the author's shift ends |
-| **Team-visible** | Anybody can finish it — which is the point if drafts wait on a buyer | Two people editing one draft, and there is no design here for that. Half-typed work becomes everyone's business |
+| **External text** ✅ | The draft stores what was scraped, verbatim. A person maps each line to a real product when promoting — and **the unmapped line IS the incompleteness that makes it a draft**, which is §6.1 exactly | Needs a mapping step in the UI |
+| Our internal ids | Smallest build — `OrderDraftPush` becomes `OrderCreate` with everything nullable | Pushes the hard problem into a client we do not control. The app would have to search our catalogue and match titles **itself, and guess wrong silently** |
+| Mixed | Shop/warehouse as ids (stable, few), products as text (many, volatile) | Two conventions in one message |
 
-This decides §6.2's option C: **a personal draft can live in the browser, a team-visible one cannot.**
+The line therefore carries **both**: the scraped `external_sku` / `external_name` (never overwritten —
+it is the evidence of what was ordered) **and** a `product_id` that is `0` until a person maps it.
+Same instinct as the order's frozen address and frozen money: keep what was actually said.
 
-### 6.4 Explicit save, or autosave?
+### 6.5 ✅ Re-pushes — **dedupe on an external ref, and human edits win**
 
-Explicit is simpler and predictable. But the failure a draft exists to prevent — *the tab closed and
-the work is gone* — is exactly the one explicit saving does not fix. Autosave means a half-typed phone
-number is persisted, which is fine for a draft and would be intolerable for an order.
+**Dedupe.** The draft carries `source` + `external_id`, **unique per team**. A second push updates the
+existing draft rather than adding one — so the RPC is **safely retryable**, which any external caller
+needs and a flaky network guarantees it will use. Without this, one bad connection quietly fills the
+list with near-identical drafts nobody can tell apart.
 
-### 6.5 What is the minimum a draft needs?
+**The conflict this creates, and the rule for it.** A re-scrape can land on a draft a person has
+already partly completed — two lines mapped, the address corrected.
 
-If the answer is "nothing", then **"New draft" and "an empty draft" are indistinguishable**, and the
-list fills with blanks somebody has to clean up. A minimum of *something* — a customer name, or one
-line — is the cheapest guard. Which one is a real choice, not an obvious default.
+| Option | ✅ | ❌ |
+| --- | --- | --- |
+| **Human edits win, app fills blanks only** ✅ | A background re-scrape **can never silently destroy someone's work**. The app still gets to supply everything nobody has touched | Needs a per-field "touched" notion on the draft |
+| Latest push wins | Simplest, and defensible — the app knows what the buyer actually ordered | Wipes ten minutes of mapping with no warning and no undo |
+| Refuse once touched | Nothing is ever lost | A genuine buyer address change can no longer reach the draft |
 
-### 6.6 What happens when a draft goes stale?
+### 6.6 ✅ The RPC surface — **full create / update / list / delete for the app**
 
-A draft names a shop, a warehouse, and products **by id, with no FK** — services do not share tables.
-Any of them can be deleted while the draft sits there. On promote, `OrderCreate` will refuse, which is
-correct, but the person needs to be told *which* reference died rather than handed a validation error.
-Worth deciding whether the draft screen checks on load or only on promote.
+The external app is not fire-and-forget: it can read back what it pushed and withdraw it. Our own UI
+needs list / detail / update / promote / delete regardless.
 
-### 6.7 Do drafts expire?
+### 6.7 ✅ Expiry and placement — **never expire, and a page of their own**
 
-A drafts list that only ever grows becomes a graveyard nobody reads. An age-out (30 days? 90?) keeps it
-useful, but deleting somebody's unfinished work on a timer needs an explicit decision, not a default.
+**No expiry.** Nothing is deleted on a timer; deleting somebody's unfinished work automatically was
+not worth the tidiness. **The accepted cost is real and worth stating**: an app pushing continuously
+fills this list far faster than a human ever would, and nothing prunes it. That makes two things
+non-optional rather than nice — the list **must** paginate (HARD RULE 9), and deleting must be easy
+and bulk-friendly, because pruning is now entirely manual.
 
-### 6.8 Where do drafts appear?
+**`/order-drafts`, its own route.** Drafts are not orders, and the UI should say so the same way the
+schema does. A tab on the orders list was cheaper but would have put not-orders inside the orders
+screen — §6.2's concern in UI form.
 
-A tab on the orders list, a page of their own, or a "you have an unfinished order" prompt on the create
-form. The tab is cheapest and puts them where orders already are — but it also puts not-orders inside
-the orders screen, which is the §6.2 concern in UI form.
+### 6.8 The shape that falls out
 
-### 6.9 Proposed decomposition — CONFIRM BEFORE CREATING
+```mermaid
+erDiagram
+    order_drafts ||--o{ order_draft_items : "has"
+    order_drafts {
+        uint64 id PK
+        uint64 team_id "scope — carries use_scope"
+        uint64 author_user_id "personal — only the author lists it"
+        string source "which app pushed it"
+        string external_id "the marketplace's own id, unique per team and source"
+        jsonb touched_fields "field names a human has edited"
+        string customer_name "nullable — everything here is"
+        uint64 shop_id "0 until known"
+        uint64 warehouse_id "0 until known"
+    }
+    order_draft_items {
+        uint64 id PK
+        uint64 draft_id FK
+        string external_sku "what the app scraped, never overwritten"
+        string external_name "what the app scraped, never overwritten"
+        uint64 product_id "0 until a person maps it"
+        uint32 quantity
+        int64 unit_price
+    }
+```
 
-Assuming **A** (§6.1) and **B** (§6.2), smallest useful pieces first:
+Everything except the identity columns (`team_id`, `author_user_id`, `source`, `external_id`) is
+nullable or zero-valued. That is the whole point of §6.2: `orders` keeps its constraints because this
+table carries none.
 
-1. **The draft model + migration** — `order_drafts` in `selling_service`, nearly every column nullable.
-2. **`DraftSave` / `DraftList` / `DraftDelete`** — the list pages (HARD RULE 9).
-3. **`DraftPromote`** — reads the draft, runs the same validation `OrderCreate` does, deletes on success.
-4. **The create form saves and resumes** — the #90 form gains save-as-draft and loads from one.
-5. **The drafts list screen** — §6.8's answer.
+### 6.9 The promote flow
 
-### 6.10 Open — the owner's to settle
+```mermaid
+sequenceDiagram
+    participant App as third-party app
+    participant D as OrderDraftService
+    participant CS as CS person
+    participant O as OrderService
 
-- [ ] **§6.1 — which job is a draft for?** A (park a half-typed order), B (awaiting payment), C (import staging), or D (template)?
-- [ ] **§6.2 — status on `orders`, a separate table, or the browser?** (agent recommends the separate table)
-- [ ] **§6.3 — personal, or team-visible?**
-- [ ] **§6.4 — explicit save, or autosave?**
-- [ ] **§6.5 — what is the minimum a draft must have to be saved at all?**
-- [ ] **§6.7 — do drafts expire, and after how long?**
-- [ ] **§6.9 — is the decomposition right, and should the sub-issues be created?**
+    App->>D: OrderDraftPush — source, external_id, scraped text
+    D-->>App: draft id, created or updated in place
+    Note over D: blanks only — a field a human<br/>has touched is never overwritten
+    CS->>D: OrderDraftList, then OrderDraftDetail
+    CS->>D: OrderDraftUpdate — map lines to products, fix the address
+    Note over D: every field written here<br/>is marked touched
+    CS->>D: OrderDraftPromote
+    D->>O: the same validation OrderCreate runs
+    O-->>D: order created, and only now does OrderCreatedEvent fire
+    Note over D: one transaction — same service,<br/>same database, so the draft is<br/>deleted as the order is written
+```
+
+### 6.10 Derived — what the answers forced, and one thing to review
+
+These were not asked and not chosen. They fall out of the combination, and the first is worth a look
+because it slightly reinterprets "update":
+
+1. ⚠ **Two write paths, not one — and the RPC is what distinguishes them.** The app and the person
+   authenticate as the **same user** (§6.3), so *identity cannot tell them apart* — but the merge
+   rule (§6.5) requires exactly that. So the **RPC** carries the distinction:
+   - **`OrderDraftPush`** — the app's create-or-update, keyed on `(team, source, external_id)`,
+     writes **only untouched fields**.
+   - **`OrderDraftUpdate`** — a person's edit in our UI, **always wins**, and marks each field it
+     writes as touched.
+
+   This is how the app gets "full update" (§6.6) *and* the human keeps their work (§6.5). If you
+   meant the app's update to be a plain overwrite, this is the line to redirect.
+
+2. ✅ **Promotion is ONE transaction, not two.** §6.2 listed "promotion is two writes and the gap
+   between them needs a decision" as a cost of the separate table. **It dissolves**: `orders` and
+   `order_drafts` are both owned by `selling_service`, in the same database — so writing the order
+   and deleting the draft is a single transaction. That cost was real for a cross-service split and
+   imaginary here.
+
+3. ✅ **"The minimum a draft needs" is now derived rather than chosen.** The old §6.5 asked what a
+   draft must have before it can be saved at all. Dedupe (§6.5) keys on `source` + `external_id`, so
+   **the external ref is required by construction** and nothing else is. There is no "New draft"
+   button to produce a blank, because there is no in-app creation — every draft traces to a real
+   scrape.
+
+4. **Stale references still need handling, and are cheaper than feared.** A draft names shop,
+   warehouse and mapped products by id with no FK (HARD RULE 3), so any can be deleted underneath it.
+   Most line references are now *text*, which cannot go stale — but `shop_id` / `warehouse_id` / a
+   mapped `product_id` can. Proposal: resolve on load **and** re-check on promote, and name *which*
+   reference died rather than returning a bare validation error.
+
+### 6.11 Decomposition — sub-issues under #162
+
+Revised for the third-party-push design (the original §6.9 assumed a CS person typing into the #90
+form, which is no longer what happens):
+
+1. **`order_drafts` model + migration** — both tables, the unique `(team_id, source, external_id)`,
+   `touched_fields`, and `docs/database-schema.md` in the same commit.
+2. **`OrderDraftPush`** — the third-party intake. Idempotent on the external ref, blanks-only merge.
+3. **`OrderDraftList` + `OrderDraftDetail`** — paginated (HARD RULE 9), narrowed to the author.
+4. **`OrderDraftUpdate` + `OrderDraftDelete`** — the human edit path, marking fields touched.
+5. **`OrderDraftPromote`** — validate, create the order, delete the draft, in one transaction.
+6. **`/order-drafts` list screen** — its own route, with pruning that is easy and bulk-friendly (§6.7).
+7. **Draft detail screen** — the product-mapping UI and promote. The meatiest piece: this is where
+   scraped text becomes a real `product_id`, so `ProductSelect` does the work it already does on the
+   #90 order form.
