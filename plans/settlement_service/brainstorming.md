@@ -848,6 +848,29 @@ thing that must never be a bare number.
 
 ---
 
+## 5.5 ⚠ The two fees DEFAULT differently (#186) — the one thing here worth a second opinion
+
+§3.4 settled that a warehouse with **no rate configured charges 0**. Building #186 showed that rule
+cannot simply be copied to the product fee, and the two now differ:
+
+| | With nothing configured | Because |
+| --- | --- | --- |
+| **Handling fee** | **charges nothing** | It is a **price** the warehouse sets. A warehouse that configured nothing must not be silently billing anybody, and the alternative would have every warehouse in the system quietly accruing receivables it never asked for. |
+| **Product fee** | **charges COST, markup 0** | It is a **cost transfer**. §2.2: the goods leave and do not come back, so it is *"money from the first moment"* — the debt exists because stock moved, not because a rate was typed. The **markup** is the optional part. |
+
+**Why not default the product fee to zero too.** It would mean one team's goods walk out of another
+team's warehouse **free**, which is the outcome §2.2 exists to prevent. A team that never opens the
+settlement config would be donating stock to whoever sells it.
+
+**The accepted cost, stated plainly.** A team that never configures anything now accrues *payables*
+the moment somebody sells its products — debts nobody explicitly agreed to. That is the mirror of the
+warehouse case, and it is the reason this is flagged rather than buried: if the owner wants a product
+fee to require configuration too, it is a one-line change now and a data migration later.
+
+> **Redirect here** if "no configuration means no money moves" should hold for both.
+
+---
+
 ## 6. Proposed decomposition (confirm before creating issues)
 
 **Design before build, per HARD RULE 6.** The screens are settled first, and the proto is derived
@@ -872,8 +895,10 @@ thing that must never be a bare number.
    COD obligations from step 5. **This is the first thing the owner can look at.** Two things it
    forced: the contract is now **three proto services** (§5.4), and direction-as-words lives in one
    shared module rather than inline on two screens.
-7. **The order-driven fees** — warehouse fee and product fee on `OrderPlacedEvent`, reversal on
-   `OrderCancelledEvent`. Includes the **dead-letter policy** (§3.3).
+7. ✅ **The order-driven fees** (#186) — warehouse fee and product fee on `OrderPlacedEvent`, reversal
+   on `OrderCancelledEvent`. The dead-letter policy is still **owed** — the subscription is declared
+   and the handler is safe against redelivery, but nothing yet watches a poison message. See §5.5 for
+   the default asymmetry it forced, which is the one thing here worth a second opinion.
 8. **The reconciliation report** (§3.3) — do the entries match the orders that should have produced
    them? Reports, never repairs. Should not lag far behind step 7, since it is the only way to find
    a lost event.

@@ -42,6 +42,45 @@ message OrderPlacedEvent {
   // guessed at by the consumer. A margin computed over an unknown cost reads as pure profit, and the
   // revenue row has to be able to say so.
   bool cost_known = 6;
+
+  // WHICH WAREHOUSE fulfilled it (#186). settlement_service charges the handling fee to this team —
+  // the order cannot say who to bill without it.
+  uint64 warehouse_id = 7;
+
+  // The lines, for settlement's PRODUCT FEE (#186): an order selling another team's product owes that
+  // team money.
+  //
+  // Carried on the event rather than read back, which is the same choice the money above already
+  // makes and for the same reason: these are FROZEN AT ORDER TIME. A product moved to another team
+  // next month must not rewrite who was owed for a sale that happened today, and a consumer that read
+  // the catalogue at consume time would do exactly that.
+  repeated OrderPlacedLine lines = 8;
+}
+
+// One line of a placed order, as settlement needs it (#186).
+//
+// Deliberately not the whole `OrderItem`: an event carries what its consumers need, and sku, name and
+// the buyer-paid price are none of settlement's business. What it needs is who owns the goods and
+// what they cost.
+message OrderPlacedLine {
+  uint64 product_id = 1;
+
+  // The team that OWNS this product, resolved from the catalogue when the order was placed. 0 when it
+  // could not be resolved — a product deleted between the pick and the publish — which settlement
+  // treats as "nobody to pay" rather than guessing.
+  uint64 owning_team_id = 2;
+
+  uint32 quantity = 3;
+
+  // What the goods COST, per unit, frozen at order time (#74) — and the anchor the product fee is a
+  // markup OVER. Server-set and ignored on input, which means that anti-tampering protection guards
+  // the product fee for free.
+  //
+  // ⚠ 0 means UNKNOWN, not free. Under cost+markup that computes a fee of zero, so the owning team is
+  // silently owed nothing for goods that really left its stock. The decision is to let that stand and
+  // have the reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping
+  // gap.
+  int64 unit_cost = 4;
 }
 
 // OrderCancelledEvent announces that an order was cancelled (#164).

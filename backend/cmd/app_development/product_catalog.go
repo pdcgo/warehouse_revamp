@@ -56,8 +56,9 @@ func (c *productCatalog) Snapshots(
 	// distinction promote needs to name a dead reference.
 	for _, product := range res.Msg.GetProducts() {
 		snapshots[product.GetId()] = selling_v1.ProductSnapshot{
-			SKU:  product.GetSku(),
-			Name: product.GetName(),
+			SKU:    product.GetSku(),
+			Name:   product.GetName(),
+			TeamID: product.GetTeamId(),
 		}
 	}
 

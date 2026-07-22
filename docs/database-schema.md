@@ -896,6 +896,16 @@ erDiagram
 ```mermaid
 erDiagram
     settlement_entries }o--|| settlement_balances : "projected into"
+    settlement_terms {
+        bigserial   id                PK
+        bigint      team_id           "the CREDITOR who set these terms"
+        bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
+        bigint      handling_fee      "flat per order, whole rupiah; 0 = charge nothing"
+        bigint      product_markup_bp "basis points over cost, 2000 = 20 percent"
+        bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
     settlement_entries {
         bigserial   id              PK
@@ -960,3 +970,20 @@ erDiagram
     days" is actionable in a way a balance alone is not). A per-entry FIFO age would be truer under
     partial payments and needs an allocation model — which payment settled which entry — that nothing
     here has; see §5.3 of the brainstorming doc.
+- **`settlement_terms`** — a **creditor's terms toward one debtor** (#186/#189): what it charges them
+  and how far it will let them run. One row rather than three tables because these are one
+  relationship — the warehouse that charges you 12k an order is the warehouse that caps you at 50m.
+  - **`counterparty_id = 0` IS the default row**, applying to every team without one of their own.
+    That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else. The
+    lookup is "this debtor's row, else the default, else nothing".
+  - ⚠ **`credit_limit` NULL is UNLIMITED; `0` is NO CREDIT AT ALL.** They are opposites, and encoding
+    unlimited as 0 is the trap — the day somebody wants to freeze a team they will type 0 and grant
+    infinite credit instead. Removing a limit **deletes the row**, which is why the API has a delete.
+  - **`product_markup_bp` is basis points**, not a float (2000 = 20%). Same reason money is `BIGINT`:
+    a percentage that cannot be represented exactly is a fee that drifts.
+  - **The two fees default differently, deliberately.** No `handling_fee` means charge nothing — it is
+    a *price*, and a warehouse that configured nothing must not be silently billing anybody. No
+    markup still charges **cost**, because the product fee is a *cost transfer*: the goods left the
+    owner's stock and do not come back. See `docs/services/settlement_service/rpc.md`.
+  - Created with #186 rather than #189, because the order fees have to READ it before anything writes
+    it. Until #189 lands, every row is absent — which is exactly the "nothing configured" case.

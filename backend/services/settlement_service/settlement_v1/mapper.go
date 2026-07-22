@@ -66,3 +66,20 @@ func sourceTypeProto(text string) settlementv1.SettlementSourceType {
 		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_UNSPECIFIED
 	}
 }
+
+// sourceTypeFromText is the inverse of sourceTypeText, for re-posting a movement the ledger already
+// recorded — the reversal path reads a stored entry and posts its opposite (#186).
+func sourceTypeFromText(text string) SourceType {
+	switch text {
+	case sourceCODFee:
+		return SourceTypeCODFee
+	case sourceHandlingFee:
+		return SourceTypeHandlingFee
+	case sourceProductFee:
+		return SourceTypeProductFee
+	case sourcePayment:
+		return SourceTypePayment
+	default:
+		return SourceTypeUnspecified
+	}
+}

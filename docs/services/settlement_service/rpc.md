@@ -80,3 +80,78 @@ that can never succeed — a poison loop built entirely out of correct behaviour
 
 `reversal` is in that key because a compensating entry shares the other four columns with the entry
 it undoes; without it, a cancellation would be swallowed as a duplicate of the fee it was cancelling.
+
+## The order-driven fees, on order events (#186)
+
+Two more obligations, both driven by `OrderPlacedEvent` and both reversed by `OrderCancelledEvent`.
+
+```mermaid
+sequenceDiagram
+    participant S as selling_service
+    participant P as product_service
+    participant R as revenue_service
+    participant T as settlement_service
+
+    Note over S: the order has COMMITTED
+    S->>P: ProductByIds — who owns these products?
+    P-->>S: the owning team per product
+    S->>S: publish OrderPlacedEvent, carrying the lines
+    par one topic, two subscriptions
+        S-->>R: revenue-order-placed
+    and
+        S-->>T: settlement-order-placed
+    end
+    T->>T: handling fee to the warehouse
+    T->>T: product fee to each owning team
+```
+
+**The owner is resolved AT PLACEMENT and rides on the event.** Same choice the money already makes,
+and for the same reason: a product moved to another team next month must not rewrite who was owed for
+a sale that happened today. A consumer reading the catalogue at consume time would do exactly that.
+A failed lookup does not fail the order — the order is already committed, the owner rides as `0`, and
+settlement reads that as "nobody to pay".
+
+**Two subscriptions on one topic.** `revenue-order-placed` and `settlement-order-placed` are separate
+subscriptions, each with its own delivery state, so settlement falling behind never delays a revenue
+row. The dev-server loopback models this fan-out explicitly — it delivered to one subscription per
+topic until settlement became a second consumer.
+
+### The two fees default differently, and that is deliberate
+
+| | Default with no configuration | Because |
+| --- | --- | --- |
+| **Handling fee** | **charge nothing** | It is a **price** the warehouse sets. A warehouse that has configured nothing must not be silently billing anybody. |
+| **Product fee** | **charge cost, markup 0** | It is a **cost transfer**. The goods left the owner's stock and do not come back (§2.2 — "money from the first moment"), so the owner is owed what they cost whether or not anybody configured anything. The **markup** is the optional part. |
+
+Defaulting the product fee to zero as well would mean one team's goods walk out of another team's
+warehouse free, which is the one outcome §2.2 explicitly rejects.
+
+**The anchor is the frozen `unit_cost`, never the buyer-paid price.** A markup on what the buyer paid
+is a commission model wearing a sale's clothes: on goods that cost 60.000 and sold for 100.000 at
+20%, cost+markup owes the owner 72.000 while buyer-paid+markup owes 20.000 — the owner loses 40.000
+on their own stock.
+
+**One fee per owning team, not per line.** Two lines of the same team's goods are one debt, and the
+idempotency key is `(source_type, source_id, counterparty)` — per-line postings would collide and the
+second line would silently vanish.
+
+⚠ **An unknown cost charges nothing and is not refused** (Q10). A product received straight into
+stock has no recorded cost, so cost+markup computes zero. The sale is not blocked over a bookkeeping
+gap. Nothing is written, because a zero-amount entry would consume that pair's idempotency key for
+that order and block the real fee forever — so the gap is visible as a **missing** entry, which is
+exactly what the reconciliation report (#187) looks for.
+
+### Cancelling reads back what was charged
+
+`ReverseOrder` does not recompute fees — it reads its own entries for that order and posts their
+opposites. The cancel event carries only ids and needs no more: **the ledger already knows what it
+charged.** Re-deriving from rates would disagree with the original the moment a rate changed between
+placement and cancellation.
+
+It reverses only `handling_fee` and `product_fee`. ⚠ **The COD obligation is left alone** — that debt
+is for goods the warehouse paid for at the door, and an order falling through does not give the
+warehouse its money back.
+
+Only the **debtor's legs** are read. Both sides of every movement are stored, so reading every row
+for the order would find each fee twice and reverse it twice — refused as a duplicate, but by luck
+rather than by intent.

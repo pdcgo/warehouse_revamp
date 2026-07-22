@@ -75,17 +75,37 @@ func (s *Service) PostEntry(ctx context.Context, tx *gorm.DB, p Posting) (uint64
 		return 0, errors.New("settlement: a posting must be a positive amount")
 	}
 
-	if tx == nil {
-		tx = s.db
-	}
-
-	tx = tx.WithContext(ctx)
-
 	sourceType := sourceTypeText(p.SourceType)
 	if sourceType == "" {
 		return 0, errors.New("settlement: a posting must say what caused it")
 	}
 
+	// ⚠ A CALLER WITH NO TRANSACTION GETS ONE. "Both legs or neither" is the first invariant of this
+	// ledger, and running on the bare connection would write them as two independent statements —
+	// posting half a movement, which is precisely what this design makes impossible.
+	//
+	// It also contains the failure. A duplicate posting aborts the transaction it is in; on the bare
+	// connection that would be the caller's whole unit of work, so an order's second fee could not be
+	// attempted after the first was found to be a redelivery.
+	if tx == nil {
+		var groupID uint64
+
+		err := s.db.WithContext(ctx).Transaction(func(own *gorm.DB) error {
+			var postErr error
+
+			groupID, postErr = s.postBothLegs(own, p, sourceType)
+
+			return postErr
+		})
+
+		return groupID, err
+	}
+
+	return s.postBothLegs(tx.WithContext(ctx), p, sourceType)
+}
+
+// postBothLegs writes the movement inside whichever transaction it is handed.
+func (s *Service) postBothLegs(tx *gorm.DB, p Posting, sourceType string) (uint64, error) {
 	var groupID uint64
 
 	err := tx.Raw("SELECT nextval('settlement_group_seq')").Scan(&groupID).Error

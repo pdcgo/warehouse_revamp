@@ -242,6 +242,8 @@ func (s *Service) placeOrder(
 		Cogs:         order.COGS,
 		ShippingCost: order.ShippingCost,
 		CostKnown:    costKnown(order.Items, costs),
+		WarehouseId:  order.WarehouseID,
+		Lines:        s.placedLines(ctx, order.TeamID, order.Items),
 	})
 	if publishErr != nil {
 		slog.ErrorContext(ctx, "order placed but OrderPlacedEvent was not published — "+
@@ -273,4 +275,66 @@ func costKnown(items []selling_service_models.OrderItem, costs map[uint64]int64)
 	}
 
 	return true
+}
+
+// placedLines is what settlement needs to charge the PRODUCT FEE (#186): per line, who owns the
+// goods and what they cost.
+//
+// The owner is resolved HERE, at placement, and travels on the event — the same choice the money
+// already makes. A consumer that read the catalogue when it processed the event would answer "who
+// owns this?" as of THEN, so a product transferred to another team next month would rewrite who was
+// owed for a sale that happened today.
+//
+// ⚠ A FAILED LOOKUP DOES NOT FAIL THE ORDER. The order is already committed by the time this runs,
+// and settlement is downstream exactly as revenue is: a shop must keep selling while the catalogue,
+// or the ledger, is having a bad day. An unresolved owner rides as 0 and settlement treats it as
+// "nobody to pay" — a gap the reconciliation report (#187) is built to find, rather than a sale
+// nobody could make.
+func (s *Service) placedLines(
+	ctx context.Context,
+	teamID uint64,
+	items []selling_service_models.OrderItem,
+) []*sellingv1.OrderPlacedLine {
+	ids := make([]uint64, 0, len(items))
+	seen := map[uint64]bool{}
+
+	for i := range items {
+		id := items[i].ProductID
+		if id == 0 || seen[id] {
+			continue
+		}
+
+		seen[id] = true
+
+		ids = append(ids, id)
+	}
+
+	owners := map[uint64]ProductSnapshot{}
+
+	if s.catalog != nil && len(ids) > 0 {
+		resolved, err := s.catalog.Snapshots(ctx, teamID, ids)
+		if err != nil {
+			slog.ErrorContext(ctx, "order placed but the product owners could not be resolved — "+
+				"settlement will see no product fees for it",
+				"team_id", teamID,
+				"error", err,
+			)
+		} else {
+			owners = resolved
+		}
+	}
+
+	lines := make([]*sellingv1.OrderPlacedLine, 0, len(items))
+
+	for i := range items {
+		lines = append(lines, &sellingv1.OrderPlacedLine{
+			ProductId: items[i].ProductID,
+			// 0 when unresolved, which settlement reads as "nobody to pay".
+			OwningTeamId: owners[items[i].ProductID].TeamID,
+			Quantity:     items[i].Quantity,
+			UnitCost:     items[i].UnitCost,
+		})
+	}
+
+	return lines
 }

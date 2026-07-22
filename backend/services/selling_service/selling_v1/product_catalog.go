@@ -8,6 +8,10 @@ import "context"
 type ProductSnapshot struct {
 	SKU  string
 	Name string
+	// The team that OWNS this product (#186). An order selling another team's goods owes that team
+	// money, and the owner is resolved AT PLACEMENT so the answer is frozen: a product moved to a
+	// different team next month must not rewrite who was owed for a sale that happened today.
+	TeamID uint64
 }
 
 // ProductCatalog is how selling_service reads product LABELS (#194).

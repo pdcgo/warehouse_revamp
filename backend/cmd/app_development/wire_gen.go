@@ -52,7 +52,7 @@ func InitializeApp() (*App, error) {
 	inventory_v1Service := inventory_v1.NewService(db, inventory_v1SettlementPoster)
 	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
 	revenue_v1Service := revenue_v1.NewService(db)
-	eventSender := NewEventSender(revenue_v1Service)
+	eventSender := NewEventSender(revenue_v1Service, settlement_v1Service)
 	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
 	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog)
 	category_v1Service := category_v1.NewService(db)

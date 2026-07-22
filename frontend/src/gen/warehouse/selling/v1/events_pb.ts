@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/events.proto.
  */
 export const file_warehouse_selling_v1_events: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIpMBChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCDoSirUYDgoMb3JkZXItcGxhY2VkIk8KE09yZGVyQ2FuY2VsbGVkRXZlbnQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBDoVirUYEQoPb3JkZXItY2FuY2VsbGVkQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_warehouse_event_base_v1_event]);
+  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIt8BChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSNAoFbGluZXMYCCADKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBsYWNlZExpbmU6Eoq1GA4KDG9yZGVyLXBsYWNlZCJiCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMiTwoTT3JkZXJDYW5jZWxsZWRFdmVudBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWRCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_warehouse_event_base_v1_event]);
 
 /**
  * OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
@@ -75,6 +75,27 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
    * @generated from field: bool cost_known = 6;
    */
   costKnown: boolean;
+
+  /**
+   * WHICH WAREHOUSE fulfilled it (#186). settlement_service charges the handling fee to this team —
+   * the order cannot say who to bill without it.
+   *
+   * @generated from field: uint64 warehouse_id = 7;
+   */
+  warehouseId: bigint;
+
+  /**
+   * The lines, for settlement's PRODUCT FEE (#186): an order selling another team's product owes that
+   * team money.
+   *
+   * Carried on the event rather than read back, which is the same choice the money above already
+   * makes and for the same reason: these are FROZEN AT ORDER TIME. A product moved to another team
+   * next month must not rewrite who was owed for a sale that happened today, and a consumer that read
+   * the catalogue at consume time would do exactly that.
+   *
+   * @generated from field: repeated warehouse.selling.v1.OrderPlacedLine lines = 8;
+   */
+  lines: OrderPlacedLine[];
 };
 
 /**
@@ -83,6 +104,57 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
  */
 export const OrderPlacedEventSchema: GenMessage<OrderPlacedEvent> = /*@__PURE__*/
   messageDesc(file_warehouse_selling_v1_events, 0);
+
+/**
+ * One line of a placed order, as settlement needs it (#186).
+ *
+ * Deliberately not the whole `OrderItem`: an event carries what its consumers need, and sku, name and
+ * the buyer-paid price are none of settlement's business. What it needs is who owns the goods and
+ * what they cost.
+ *
+ * @generated from message warehouse.selling.v1.OrderPlacedLine
+ */
+export type OrderPlacedLine = Message<"warehouse.selling.v1.OrderPlacedLine"> & {
+  /**
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * The team that OWNS this product, resolved from the catalogue when the order was placed. 0 when it
+   * could not be resolved — a product deleted between the pick and the publish — which settlement
+   * treats as "nobody to pay" rather than guessing.
+   *
+   * @generated from field: uint64 owning_team_id = 2;
+   */
+  owningTeamId: bigint;
+
+  /**
+   * @generated from field: uint32 quantity = 3;
+   */
+  quantity: number;
+
+  /**
+   * What the goods COST, per unit, frozen at order time (#74) — and the anchor the product fee is a
+   * markup OVER. Server-set and ignored on input, which means that anti-tampering protection guards
+   * the product fee for free.
+   *
+   * ⚠ 0 means UNKNOWN, not free. Under cost+markup that computes a fee of zero, so the owning team is
+   * silently owed nothing for goods that really left its stock. The decision is to let that stand and
+   * have the reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping
+   * gap.
+   *
+   * @generated from field: int64 unit_cost = 4;
+   */
+  unitCost: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderPlacedLine.
+ * Use `create(OrderPlacedLineSchema)` to create a new message.
+ */
+export const OrderPlacedLineSchema: GenMessage<OrderPlacedLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_events, 1);
 
 /**
  * OrderCancelledEvent announces that an order was cancelled (#164).
@@ -114,5 +186,5 @@ export type OrderCancelledEvent = Message<"warehouse.selling.v1.OrderCancelledEv
  * Use `create(OrderCancelledEventSchema)` to create a new message.
  */
 export const OrderCancelledEventSchema: GenMessage<OrderCancelledEvent> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_events, 1);
+  messageDesc(file_warehouse_selling_v1_events, 2);
 
