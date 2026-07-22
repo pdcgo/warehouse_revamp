@@ -49,6 +49,9 @@ const OrderDetailPage = lazy(() =>
 const OrderDraftsPage = lazy(() =>
   import("./orderDrafts/OrderDraftsPage").then((m) => ({ default: m.OrderDraftsPage })),
 );
+const OrderDraftDetailPage = lazy(() =>
+  import("./orderDrafts/OrderDraftDetailPage").then((m) => ({ default: m.OrderDraftDetailPage })),
+);
 const InventoryPage = lazy(() =>
   import("./inventory/InventoryPage").then((m) => ({ default: m.InventoryPage })),
 );
@@ -167,6 +170,9 @@ export const router = createBrowserRouter([
       // would put not-orders inside the orders screen — the same concern that gave them their own
       // table rather than an ORDER_STATUS_DRAFT.
       { path: "order-drafts", element: <OrderDraftsPage /> },
+      // A detail view is a PAGE, not a dialog (CLAUDE.md) — and this one especially: mapping a
+      // scraped line to a real product is work somebody sits down to, not a focused action.
+      { path: "order-drafts/:draftId", element: <OrderDraftDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122) — one screen that
       // reads differently per team type: a SELLING team creates requests, a WAREHOUSE team accepts

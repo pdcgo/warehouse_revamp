@@ -111,3 +111,42 @@ test("Order drafts: several are selected and deleted in one action (#195)", asyn
 
   await expect(page.getByTestId("order-drafts-empty")).toBeVisible();
 });
+
+// #196 — the detail screen, where scraped text becomes a real product.
+//
+// Deliberately NOT a full promote-through-the-UI run: promoting deducts stock, so that path needs a
+// category, a shop, a warehouse, a product AND a seeded stock level — the whole fixture chain
+// orders.spec.ts already builds and exercises. The backend's promote rules have their own unit tests
+// (#194). What only a browser can check is what this screen PUTS IN FRONT OF SOMEBODY: the evidence
+// beside the mapping, and a Promote button that says why it is disabled.
+test("Order drafts: the detail shows the scrape beside the mapping, and says why it cannot promote (#196)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/order-drafts");
+
+  const ref = `${EXTERNAL_ID}-D`;
+  await pushDraft(page, ref);
+  await page.reload();
+
+  await page.getByText(ref).click();
+  await expect(page.getByTestId("draft-detail-page")).toBeVisible();
+
+  // THE EVIDENCE OF WHAT WAS ORDERED, on screen and not replaced by the mapping. Without it nobody
+  // can tell a wrong match from a right one — which is the whole reason both halves live on the line.
+  await expect(page.getByTestId("draft-line-scraped-0")).toHaveText("Kaos Polos Hitam L");
+  await expect(page.getByTestId("draft-line-unmapped-0")).toBeVisible();
+
+  // Promote is refused, and the reasons are beside the button rather than behind a click.
+  await expect(page.getByTestId("draft-promote")).toBeDisabled();
+  await expect(page.getByTestId("draft-gaps")).toBeVisible();
+
+  // A person's edit lands, and the app may never overwrite that field again.
+  await page.getByTestId("draft-customer-name").fill("Budi Santoso");
+  await page.getByTestId("draft-save").click();
+  await expect(page.getByTestId("draft-save")).toBeDisabled();
+
+  await pushDraft(page, ref);
+  await page.reload();
+  await expect(page.getByTestId("draft-customer-name")).toHaveValue("Budi Santoso");
+});

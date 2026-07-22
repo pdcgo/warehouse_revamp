@@ -675,7 +675,10 @@ form, which is no longer what happens):
    basket) — which is also the stale-product check, since an id that resolves to nothing is a dead
    reference. **The warehouse id is still unchecked**: `team_service` has no by-id existence RPC, and
    a deleted warehouse surfaces late, as the stock pick failing.
-6. **`/order-drafts` list screen** — its own route, with pruning that is easy and bulk-friendly (§6.7).
-7. **Draft detail screen** — the product-mapping UI and promote. The meatiest piece: this is where
-   scraped text becomes a real `product_id`, so `ProductSelect` does the work it already does on the
-   #90 order form.
+6. ✅ **`/order-drafts` list screen** (#195) — its own route, with pruning that is easy and
+   bulk-friendly (§6.7). Each row says *what is still needed*, not just ready/not-ready.
+7. ✅ **Draft detail screen** (#196) — the product-mapping UI and promote, reusing `ProductSelect`,
+   `ShopSelect`, `TeamSelect`, `AddressPicker` and `ShippingSelect` from the #90 form. It **saves
+   only the fields that changed**, which is forced by §6.5 rather than an optimisation: every field
+   sent is marked touched, so a save-everything form would freeze the whole draft against the app
+   the first time anybody pressed Save.
