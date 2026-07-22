@@ -886,3 +886,77 @@ erDiagram
     constraint would reject a kind the contract already allows on the day one is added.
   - Indexed on `(team_id, occurred_at DESC, id DESC) WHERE voided_at IS NULL` — every screen and every
     total asks for one team's live costs over a period.
+
+---
+
+## settlement_service
+
+`backend/services/settlement_service/db_migrations/`
+
+```mermaid
+erDiagram
+    settlement_entries }o--|| settlement_balances : "projected into"
+
+    settlement_entries {
+        bigserial   id              PK
+        bigint      team_id         "whose books this leg is in, opaque, no FK"
+        bigint      counterparty_id "the other side"
+        bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
+        text        source_type     "cod_fee / handling_fee / product_fee / payment; no CHECK"
+        bigint      source_id       "opaque id in the service that owns the cause, no FK"
+        boolean     reversal        "undoes an earlier leg — part of the idempotency key"
+        bigint      group_id        "both legs of one movement share it"
+        bigint      balance_after   "derived; the entries stay the truth"
+        timestamptz created_at
+    }
+
+    settlement_balances {
+        bigserial   id                  PK
+        bigint      team_id             "one row per ORDERED pair — two per relationship"
+        bigint      counterparty_id
+        bigint      balance             "same sign convention; positive = they owe you"
+        timestamptz oldest_unsettled_at "when the current run of debt began, NULL when square"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`settlement_entries`** — the ledger of what teams owe each other (#183,
+  `plans/settlement_service/brainstorming.md`). Immutable and append-only: a correction is a
+  **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
+  anything.
+  - **Every movement writes TWO legs in one transaction**, one per side, holding exact negatives —
+    posting half a movement is impossible by construction rather than by discipline. `group_id` (from
+    `settlement_group_seq`) is what lets "show me both sides of this posting" be a query instead of a
+    heuristic match on amount, opposite sign and a near timestamp.
+  - **One sign convention, stated once**: from `team_id`'s side, a receivable is **positive** and a
+    payable is **negative**. Nothing anywhere returns an `abs()` of it under another name — two fields
+    called "payable" that disagree in sign is a bug that reaches the screen. The UI renders direction
+    as **words** from this one signed number.
+  - **`(source_type, source_id)` rather than a note.** "Why do I owe this?" is the first question
+    anyone asks a balance, and a note cannot be joined, filtered or counted. It is also what lets an
+    order's fee and its cancellation reversal read as one story.
+  - **`UNIQUE (team_id, counterparty_id, source_type, source_id, reversal)` is load-bearing.** The
+    order fees arrive on Pub/Sub, which delivers **at least once**, so a redelivered order is normal
+    rather than an error — the consumer can only safely ACK a duplicate because this index makes the
+    duplicate harmless. `counterparty_id` is in the key because **one order posts several entries** (a
+    handling fee plus one product fee per owning team), and `reversal` is in it because a compensating
+    entry shares the other four values with the entry it undoes.
+  - `CHECK (team_id <> counterparty_id)` — a team owing itself could only come from a bug upstream,
+    and a ledger is the wrong place to discover one quietly.
+- **`settlement_balances`** — a **projection** of the entries, kept because "what do we owe each
+  other" is asked far more often than it changes. Every balance must stay recomputable by summing the
+  entries alone, or the ledger cannot be audited; there is a test that does exactly that.
+  - **`UNIQUE (team_id, counterparty_id)` is in the FIRST migration, deliberately.** Lock-then-read
+    cannot protect a row that does not exist yet: two concurrent first-postings for a new pair both
+    find nothing, both insert, and one update is lost. Only a database constraint prevents it, and
+    the posting path upserts against this index (`ON CONFLICT … DO UPDATE … RETURNING`) so the
+    database serialises them.
+  - **Two rows per relationship**, one from each side. Both teams then read their own position with
+    the same query and the same sign convention, and neither has to know which way round the pair was
+    stored.
+  - **`oldest_unsettled_at` is the age of the current NON-ZERO RUN** — set as the balance leaves zero,
+    cleared as it returns. Ageing is the point of the position screen ("Rp 2.4m, oldest unsettled 47
+    days" is actionable in a way a balance alone is not). A per-entry FIFO age would be truer under
+    partial payments and needs an allocation model — which payment settled which entry — that nothing
+    here has; see §5.3 of the brainstorming doc.

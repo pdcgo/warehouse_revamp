@@ -787,6 +787,29 @@ the first.
 
 ---
 
+## 5.3 Ageing: the age of the CURRENT RUN, not a per-entry FIFO age (#183)
+
+`settlement_balances.oldest_unsettled_at` is **set as the balance leaves zero and cleared as it
+returns**. So paying in full resets the clock, more debt does not restart it, and a partial payment
+leaves it alone.
+
+The truer alternative is a **FIFO age**: match each payment against the oldest outstanding entries and
+report the age of the oldest one still unpaid. Under partial payments the two answers differ —
+`50m owed since January, 10m paid in June` reads as *"unsettled since January"* under FIFO and *"since
+January"* under the run rule too, but `paid in full in June, 5m owed again in July` reads as *July*
+under both, while `40m paid in June leaving 10m` reads as **January** under FIFO and **January** under
+the run rule as well. They only diverge when the balance actually touches zero — which is exactly
+when "we settled up and started again" is the true story.
+
+FIFO needs an **allocation model** — which payment settled which entry — and nothing here has one.
+Payments are recorded against a *counterparty*, not against entries (§5.1 C), so there is nothing to
+allocate against without inventing one.
+
+> **Revisit if a manager ever disputes an age.** The fix is allocation, and it is a table plus a rule
+> for what a partial payment pays first, not a change to this column.
+
+---
+
 ## 6. Proposed decomposition (confirm before creating issues)
 
 **Design before build, per HARD RULE 6.** The screens are settled first, and the proto is derived
@@ -798,8 +821,10 @@ the first.
    Nothing can post until there is a number to post.
 3. ✅ **The proto** (#182), derived from §5.1 — the reads the screens need, and the writes the
    actions need. See §5.2 for the four shapes deriving it forced.
-4. **The ledger core** — `entries` + `balances`, one posting function, the §4 invariants. Includes
-   the unique constraint (§4.7) and the idempotency key (§4.6).
+4. ✅ **The ledger core** (#183) — `entries` + `balances`, one posting function, the §4 invariants.
+   Includes the unique constraint (§4.7) and the idempotency key (§4.6). `PostEntry` takes the
+   CALLER'S transaction, which is what lets #184 post the COD obligation atomically with the
+   acceptance. Ageing is §5.3.
 5. **First writer: the COD obligation** at restock accept — it exists today, needs no new fee model,
    and is in-process rather than event-driven, so it exercises the core without the event path.
 6. **The position list and counterparty detail** (§5.1 A/B) — the first screens, reading real COD
