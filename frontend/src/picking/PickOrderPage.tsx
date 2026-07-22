@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
-import { orderClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
@@ -24,7 +23,7 @@ import { toaster } from "../components/Toaster";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { usePickOrder } from "./queries";
-import { useInvalidateOrders } from "../orders/queries";
+import { useAdvanceOrderFulfilment } from "./queries";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -60,14 +59,15 @@ export function PickOrderPage() {
 
   const orderId = parseOrderId(rawOrderId);
 
-  const [acting, setActing] = useState(false);
+
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const warehouseId = isWarehouse ? current?.teamId : undefined;
 
   // Both reads land together — see usePickOrder. A partial screen would be worse than a slower one.
   const query = usePickOrder({ warehouseId, orderId });
-  const invalidateOrders = useInvalidateOrders();
+  // Advancing a step also moves stock — the hook invalidates both (#177).
+  const advanceMutation = useAdvanceOrderFulfilment();
 
   const order = query.data?.order ?? null;
   const locations = query.data?.locations ?? [];
@@ -80,23 +80,18 @@ export function PickOrderPage() {
     const step = NEXT_STEP[order.status];
     if (!step) return;
 
-    setActing(true);
-
     try {
-      const call =
-        order.status === OrderStatus.CONFIRMED
-          ? orderClient.orderPick({ teamId: warehouseId, orderId })
-          : order.status === OrderStatus.PICKING
-            ? orderClient.orderPack({ teamId: warehouseId, orderId })
-            : orderClient.orderShip({ teamId: warehouseId, orderId });
-
-      await call;
-
-      // Invalidate rather than writing the response into local state. This status is on THREE
-      // screens — this one, the pick queue's tabs, and the selling team's order list — and the
-      // picker moves between the first two constantly. Setting it here would advance the order in
-      // hand while the queue behind it still listed the job as waiting.
-      await invalidateOrders();
+      // The step, and the stock it moves, invalidated together by the hook (#177).
+      await advanceMutation.mutateAsync({
+        warehouseId,
+        orderId,
+        step:
+          order.status === OrderStatus.CONFIRMED
+            ? "pick"
+            : order.status === OrderStatus.PICKING
+              ? "pack"
+              : "ship",
+      });
       toaster.create({ type: "success", title: t(step.toastKey) });
     } catch (err) {
       toaster.create({
@@ -104,8 +99,6 @@ export function PickOrderPage() {
         title: t("picking.toast.stepFailed"),
         description: rpcError(err),
       });
-    } finally {
-      setActing(false);
     }
   }
 
@@ -182,7 +175,7 @@ export function PickOrderPage() {
         {step && (
           <Button
             colorPalette="brand"
-            loading={acting}
+            loading={advanceMutation.isPending}
             onClick={() => void advance()}
             data-testid="pick-order-advance"
           >

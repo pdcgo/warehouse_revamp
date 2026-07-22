@@ -19,6 +19,7 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../api/clients";
 import { toaster } from "../components/Toaster";
+import { useSaveWarehouse } from "./queries";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./WeeklyHoursEditor";
 import type { WeekHours } from "./WeeklyHoursEditor";
 
@@ -33,7 +34,9 @@ export function WarehouseEditPage() {
   const id = teamId ? BigInt(teamId) : 0n;
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  // The write, and the team-list invalidation it owes, declared together (#177).
+  const saveWarehouse = useSaveWarehouse();
+  const saving = saveWarehouse.isPending;
   const [error, setError] = useState("");
 
   const [name, setName] = useState("");
@@ -85,14 +88,15 @@ export function WarehouseEditPage() {
   async function save(event: FormEvent) {
     event.preventDefault();
 
-    setSaving(true);
     setError("");
 
     try {
-      // Two writes: the team fields, then the warehouse hours. Both are scoped to this team.
-      await teamClient.teamUpdate({ teamId: id, name, description });
-      await teamClient.warehouseInfoUpdate({
+      // A warehouse is a TEAM, so this write stales the team list — the hook invalidates it (#177).
+      // Without that the rename is invisible on the Teams page for the whole 30s staleTime.
+      await saveWarehouse.mutateAsync({
         teamId: id,
+        name,
+        description,
         operatingHours: dayHoursFromWeek(operating),
         receivingHours: dayHoursFromWeek(receiving),
         location,
@@ -102,8 +106,6 @@ export function WarehouseEditPage() {
       void navigate(`/teams/${teamId}`);
     } catch (err) {
       setError(rpcError(err));
-    } finally {
-      setSaving(false);
     }
   }
 

@@ -17,9 +17,9 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { orderClient, rpcError, teamClient } from "../api/clients";
+import { rpcError, teamClient } from "../api/clients";
 import { useTeam } from "../team/TeamContext";
-import { useInvalidateOrders } from "./queries";
+import { useCreateOrder } from "./queries";
 import { ShopSelect } from "../components/ShopSelect";
 import { TeamSelect } from "../components/TeamSelect";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -76,7 +76,7 @@ export function OrderCreatePage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
-  const invalidateOrders = useInvalidateOrders();
+  const createOrder = useCreateOrder();
 
   const teamId = current?.teamId;
 
@@ -175,7 +175,7 @@ export function OrderCreatePage() {
     setError("");
 
     try {
-      const res = await orderClient.orderCreate({
+      const res = await createOrder.mutateAsync({
         teamId,
         shopId,
         warehouseId,
@@ -196,11 +196,9 @@ export function OrderCreatePage() {
         })),
       });
 
+      // The invalidation rode with the write (#177) — this page navigates away, so the list it
+      // leaves behind has no other way to learn about the order just created.
       toaster.create({ type: "success", title: t("orders.orderCreated") });
-
-      // Invalidate before leaving (#176): this page writes and then navigates away, so the list it
-      // leaves behind has no way to learn about the order just created.
-      await invalidateOrders();
 
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");

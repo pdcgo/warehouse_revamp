@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderClient } from "../api/clients";
 import { key } from "../api/queryClient";
 
@@ -45,4 +45,44 @@ export function useInvalidateOrders() {
   const client = useQueryClient();
 
   return () => client.invalidateQueries({ queryKey: ["orders"] });
+}
+
+// ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
+//
+// The selling side's three writes. All of them stay inside `["orders"]`, and that is a statement
+// about the design rather than an omission:
+//
+//   - `OrderCreate` does NOT touch inventory (§3.3 — stock integration is #69, still blocked), so
+//     placing an order cannot stale a stock figure. The day #69 lands, THIS is the hook that has to
+//     start invalidating stock, and it is the reason the write lives here rather than in the page.
+//   - `OrderCancel` reverses no stock or money either — that is #70, and it waits on #69.
+//
+// The fulfilment steps (pick/pack/ship) DO move goods, and they are in src/picking/queries.ts.
+
+export function useCreateOrder() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderCreate>[0]) => orderClient.orderCreate(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useConfirmOrder() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderConfirm>[0]) =>
+      orderClient.orderConfirm(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useCancelOrder() {
+  const invalidate = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderClient.orderCancel>[0]) => orderClient.orderCancel(vars),
+    onSuccess: () => invalidate(),
+  });
 }

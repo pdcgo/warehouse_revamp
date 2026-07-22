@@ -4,11 +4,11 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Check } from "lucide-react";
-import { orderClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { OrderAddress } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../team/TeamContext";
-import { useOrder, useInvalidateOrders } from "./queries";
+import { useOrder, useConfirmOrder, useCancelOrder } from "./queries";
 import { OrderStatusBadge } from "../components/OrderStatusBadge";
 import { ShippingBadge } from "../components/ShippingBadge";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -93,7 +93,8 @@ export function OrderDetailPage() {
   const [acting, setActing] = useState(false);
 
   const query = useOrder({ teamId, orderId: id });
-  const invalidateOrders = useInvalidateOrders();
+  const confirmMutation = useConfirmOrder();
+  const cancelMutation = useCancelOrder();
 
   const order = query.data ?? null;
   const loading = query.isPending && id !== 0n;
@@ -115,8 +116,7 @@ export function OrderDetailPage() {
     setActing(true);
 
     try {
-      await orderClient.orderConfirm({ teamId, orderId: order.id });
-      await invalidateOrders();
+      await confirmMutation.mutateAsync({ teamId, orderId: order.id });
       toaster.create({ type: "success", title: t("orders.orderConfirmed") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
@@ -131,8 +131,7 @@ export function OrderDetailPage() {
     if (teamId === undefined || !order) return;
 
     try {
-      await orderClient.orderCancel({ teamId, orderId: order.id });
-      await invalidateOrders();
+      await cancelMutation.mutateAsync({ teamId, orderId: order.id });
       toaster.create({ type: "success", title: t("orders.orderCancelled") });
     } catch (err) {
       toaster.create({ type: "error", title: rpcError(err) });
