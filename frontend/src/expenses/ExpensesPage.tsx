@@ -19,7 +19,7 @@ import {
 } from "@chakra-ui/react";
 import { Ban, MoreHorizontal, Pencil } from "lucide-react";
 
-import { expenseClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { ExpenseRecord } from "../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -30,7 +30,7 @@ import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
 import { thisMonth } from "../lib/period";
 import { RecordExpenseDialog } from "./RecordExpenseDialog";
-import { useExpenses, useInvalidateExpenses } from "./queries";
+import { useExpenses, useVoidExpense } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -55,7 +55,7 @@ export function ExpensesPage() {
   const teamId = current?.teamId;
 
   const query = useExpenses({ teamId, month, kind, page, pageSize });
-  const invalidateExpenses = useInvalidateExpenses();
+  const voidExpense = useVoidExpense();
 
   const expenses = query.data?.expenses ?? [];
   const totals = query.data?.totals;
@@ -63,13 +63,16 @@ export function ExpensesPage() {
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
+  // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
+  // while the write was still in flight. mutateAsync REJECTS on failure, so the catch is not optional
+  // here the way it would be with mutate's onError.
   async function voidCost(cost: ExpenseRecord) {
     if (teamId === undefined) return;
 
     try {
-      await expenseClient.expenseVoid({ teamId, expenseId: cost.id });
+      await voidExpense.mutateAsync({ teamId, expenseId: cost.id });
       toaster.create({ type: "success", title: t("expenses.toast.voided") });
-      await invalidateExpenses();
     } catch (err) {
       toaster.create({
         type: "error",
@@ -109,7 +112,7 @@ export function ExpensesPage() {
           }}
         />
 
-        <RecordExpenseDialog teamId={current.teamId} onDone={() => void invalidateExpenses()} />
+        <RecordExpenseDialog teamId={current.teamId} />
       </Flex>
 
       {/* The summary — per kind and in total, for the WHOLE month rather than the page below. The
@@ -283,10 +286,6 @@ export function ExpensesPage() {
         <RecordExpenseDialog
           teamId={current.teamId}
           editing={editing}
-          onDone={() => {
-            setEditing(null);
-            void invalidateExpenses();
-          }}
           onClose={() => setEditing(null)}
         />
       )}

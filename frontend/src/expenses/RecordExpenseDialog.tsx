@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Button, CloseButton, Dialog, Field, Icon, Input, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { Plus } from "lucide-react";
 
-import { expenseClient, rpcError } from "../api/clients";
+import { rpcError } from "../api/clients";
+import { useSaveExpense } from "./queries";
 import type { ExpenseRecord } from "../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKindSelect } from "../components/ExpenseKindSelect";
@@ -20,8 +21,13 @@ interface RecordCostDialogProps {
   teamId: bigint;
   /** When set, the dialog edits this cost instead of recording a new one. */
   editing?: ExpenseRecord;
-  onDone: () => void;
-  /** Only used in edit mode, where the dialog is opened by the caller rather than by its trigger. */
+  /**
+   * The dialog has CLOSED — after a save or a cancel alike.
+   *
+   * Lifecycle only. It used to be joined by an `onDone` that existed purely so the page could refetch
+   * (#177); the write now invalidates the cache itself, so the parent is told the dialog is gone and
+   * nothing more. In edit mode that is what clears `editing`.
+   */
   onClose?: () => void;
 }
 
@@ -32,7 +38,7 @@ interface RecordCostDialogProps {
 //
 // The same dialog serves create and EDIT, because the edit form IS the record re-opened — a second
 // component would be the same five fields drifting apart. `editing` decides which RPC it calls.
-export function RecordExpenseDialog({ teamId, editing, onDone, onClose }: RecordCostDialogProps) {
+export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDialogProps) {
   const { t } = useTranslation();
 
   const isEdit = editing !== undefined;
@@ -43,8 +49,13 @@ export function RecordExpenseDialog({ teamId, editing, onDone, onClose }: Record
   const [occurredAt, setOccurredAt] = useState(today);
   const [shopId, setShopId] = useState<bigint>(0n);
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). `busy` is gone: the
+  // mutation already knows whether it is in flight, and a second flag beside it is a second answer to
+  // the same question that can disagree with the first.
+  const save = useSaveExpense();
+  const busy = save.isPending;
 
   // In edit mode the dialog opens already holding the record. Keyed on the cost's id so opening a
   // DIFFERENT row re-fills rather than showing the previous one's figures.
@@ -74,49 +85,39 @@ export function RecordExpenseDialog({ teamId, editing, onDone, onClose }: Record
   // second idea of "ready to send".
   const ready = kind !== ExpenseKind.UNSPECIFIED && amount !== "" && Number(amount) > 0;
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (!ready) return;
 
-    setBusy(true);
     setError("");
 
-    try {
-      if (isEdit) {
-        await expenseClient.expenseUpdate({
-          teamId,
-          expenseId: editing.id,
-          kind,
-          amount: BigInt(amount),
-          occurredAt,
-          shopId,
-          note,
-        });
-      } else {
-        await expenseClient.expenseCreate({
-          teamId,
-          kind,
-          amount: BigInt(amount),
-          occurredAt,
-          shopId,
-          note,
-        });
-      }
+    save.mutate(
+      {
+        teamId,
+        expenseId: editing?.id,
+        kind,
+        amount: BigInt(amount),
+        occurredAt,
+        shopId,
+        note,
+      },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: isEdit ? t("expenses.toast.updated") : t("expenses.toast.recorded"),
+          });
 
-      toaster.create({
-        type: "success",
-        title: isEdit ? t("expenses.toast.updated") : t("expenses.toast.recorded"),
-      });
-
-      setOpen(false);
-      reset();
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setOpen(false);
+          reset();
+          // The dialog is gone — in edit mode this is what clears the parent's `editing`. It is NOT a
+          // refetch signal: the hook already invalidated before this ran.
+          onClose?.();
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   function change(next: boolean) {
