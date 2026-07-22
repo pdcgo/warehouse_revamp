@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import {
   Badge,
   Flex,
@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { rpcError, shippingClient } from "../api/clients";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { toaster } from "../components/Toaster";
+import { useShippingChannels, useInvalidateShipping } from "./queries";
 import { invalidateShippingCatalogue } from "./catalogue";
 import { CreateShippingDialog } from "./CreateShippingDialog";
 import { EditShippingDialog } from "./EditShippingDialog";
@@ -26,36 +27,23 @@ import { EditShippingDialog } from "./EditShippingDialog";
 // retired courier can be reactivated; the Status badge tells them apart.
 export function ShippingChannelsPage() {
   const { t } = useTranslation();
-  const [channels, setChannels] = useState<Shipping[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // `includeInactive: true` — this is the MANAGEMENT view, so it must show retired couriers. It is
+  // in the query key, so it cannot collide with a picker's active-only list (see queries.ts).
+  const query = useShippingChannels({ includeInactive: true });
+  const invalidateShipping = useInvalidateShipping();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const channels = query.data ?? [];
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
-    try {
-      const res = await shippingClient.shippingList({ includeInactive: true });
-      setChannels(res.data);
-    } catch (err) {
-      setError(rpcError(err));
-      setChannels([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  // This page is the only thing that CHANGES the catalogue, and ShippingSelect/ShippingBadge read it
-  // from a session-long cache — so every mutation here drops that cache. Without this, a courier
-  // renamed on this screen keeps its old name in every badge until a full reload.
+  // TWO caches, and both must be dropped. This page is the only thing that CHANGES the catalogue,
+  // and ShippingSelect/ShippingBadge read it from their own session-long cache rather than through
+  // TanStack — so clearing only the query would leave a renamed courier showing its old name in
+  // every badge until a full reload. That second cache predates this epic and is untouched by it.
   const refresh = useCallback(async () => {
     invalidateShippingCatalogue();
-    await load();
-  }, [load]);
+    await invalidateShipping();
+  }, [invalidateShipping]);
 
   // Deactivate/reactivate is a reversible flip of `active`, so it needs no confirm (unlike a
   // destructive delete). The row is never removed — a retired courier is still referenced by

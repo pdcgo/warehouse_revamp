@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Flex,
@@ -21,34 +20,19 @@ import { toaster } from "../components/Toaster";
 import { flattenTree } from "./categoryTree";
 import { CreateCategoryDialog } from "./CreateCategoryDialog";
 import { EditCategoryDialog } from "./EditCategoryDialog";
+import { useCategories, useInvalidateCategories } from "./queries";
 
 // CategoriesPage manages the GLOBAL, nested category taxonomy — a single shared tree curated by
 // root/admin (see the nav gate). It is not team-scoped, so unlike ProductsPage there is no current
 // team in play: the list is flat on the wire and flattenTree assembles the indented tree here.
 export function CategoriesPage() {
   const { t } = useTranslation();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const query = useCategories();
+  const invalidateCategories = useInvalidateCategories();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await categoryClient.categoryList({});
-      setCategories(res.categories);
-    } catch (err) {
-      setError(rpcError(err));
-      setCategories([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const categories = query.data ?? [];
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   async function remove(category: Category) {
     try {
@@ -57,7 +41,7 @@ export function CategoriesPage() {
         type: "success",
         title: t("catalog.categories.deletedToast", { name: category.name }),
       });
-      await load();
+      await invalidateCategories();
     } catch (err) {
       // The backend refuses to delete a category that still has sub-categories (FailedPrecondition);
       // surface that message rather than pretending it worked.
@@ -72,7 +56,7 @@ export function CategoriesPage() {
       <Flex align="center" gap="card">
         <Heading size="md">{t("catalog.categories.title")}</Heading>
         <Spacer />
-        <CreateCategoryDialog onDone={() => void load()} />
+        <CreateCategoryDialog onDone={() => void invalidateCategories()} />
       </Flex>
 
       {error && (
@@ -104,7 +88,7 @@ export function CategoriesPage() {
 
                 <Table.Cell textAlign="end">
                   <HStack justify="end" gap="1">
-                    <EditCategoryDialog category={category} onDone={() => void load()} />
+                    <EditCategoryDialog category={category} onDone={() => void invalidateCategories()} />
 
                     <ConfirmDialog
                       title={t("catalog.categories.deleteTitle")}

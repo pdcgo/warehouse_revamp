@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
@@ -15,14 +15,13 @@ import {
 } from "@chakra-ui/react";
 import { Minus, TriangleAlert } from "lucide-react";
 
-import { expenseClient, revenueClient, rpcError } from "../api/clients";
-import type { ExpenseTotals } from "../gen/warehouse/expense/v1/expense_pb";
+import { rpcError } from "../api/clients";
 import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
-import type { RevenueTotals } from "../gen/warehouse/revenue/v1/revenue_pb";
 import { expenseKindLabel } from "../components/ExpenseKindSelect";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
-import { monthRange, thisMonth } from "../lib/period";
+import { useProfit } from "./profitQueries";
+import { thisMonth } from "../lib/period";
 
 // Only the TOTALS are wanted from either call, and both list RPCs require a page. One row is the
 // smallest a PageFilter allows (limit is validated 1..200), so this asks for one and ignores it —
@@ -49,68 +48,19 @@ export function ProfitPage() {
   const { t } = useTranslation();
 
   const [month, setMonth] = useState(thisMonth);
-  const [revenue, setRevenue] = useState<RevenueTotals | undefined>(undefined);
-  const [expenses, setExpenses] = useState<ExpenseTotals | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const teamId = current?.teamId;
+  // No hand-written race guard here any more (#176). The 40 lines it took — a cancelled() callback
+  // threaded through the loader, the catch and the finally — existed to stop a slow JULY response
+  // painting itself under a picker that reads June. A response for a key that is no longer current is
+  // simply not this component's data now, so there is nothing left to discard by hand.
+  const query = useProfit({ teamId, month, totalsOnly: TOTALS_ONLY });
 
-  // `cancelled` is checked before every setState, and on a money screen it is not a nicety (#173).
-  //
-  // Switch the picker July → June and two reads are in flight at once. Without this, a slow JULY
-  // response landing after June's paints July's figures under a picker that reads June — and there is
-  // nothing on screen to say so, because both are perfectly plausible numbers. That is the failure
-  // this whole screen was built to avoid, arriving through the back door.
-  //
-  // The same guard 11 other pages already use. #173 proposes doing it centrally with TanStack Query
-  // rather than by hand on each of the 19 that lack it.
-  const load = useCallback(async (cancelled: () => boolean) => {
-    if (teamId === undefined) return;
+  const revenue = query.data?.revenue;
+  const expenses = query.data?.expenses;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const { from, to } = monthRange(month);
-
-      // Concurrent, and ALL-OR-NOTHING on purpose. If only the cost call fails, a screen that showed
-      // the margin it did get would report the month's whole margin as its profit — a number that is
-      // wrong by exactly the costs, and looks entirely healthy. Promise.all rejects on the first
-      // failure, and the catch below clears BOTH, so a half-answer is never on screen.
-      const [rev, cost] = await Promise.all([
-        revenueClient.revenueList({ teamId, from, to, page: TOTALS_ONLY }),
-        // Every kind — UNSPECIFIED is the "any kind" filter (#170), not a kind of its own.
-        expenseClient.expenseList({ teamId, from, to, kind: ExpenseKind.UNSPECIFIED, page: TOTALS_ONLY }),
-      ]);
-
-      if (cancelled()) return;
-
-      setRevenue(rev.totals);
-      setExpenses(cost.totals);
-    } catch (err) {
-      if (cancelled()) return;
-
-      setError(rpcError(err));
-      setRevenue(undefined);
-      setExpenses(undefined);
-    } finally {
-      // Guarded too, and it has to be: a superseded read clearing the spinner would uncover an empty
-      // screen while the read that replaced it is still in flight. The newer request set `loading`
-      // itself and will clear it, so nothing is left spinning.
-      if (!cancelled()) setLoading(false);
-    }
-  }, [teamId, month]);
-
-  useEffect(() => {
-    let stale = false;
-
-    void load(() => stale);
-
-    return () => {
-      stale = true;
-    };
-  }, [load]);
 
   if (!current) {
     return (

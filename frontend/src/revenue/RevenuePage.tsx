@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
@@ -16,12 +16,12 @@ import {
 } from "@chakra-ui/react";
 import { TriangleAlert } from "lucide-react";
 
-import { revenueClient, rpcError } from "../api/clients";
-import type { OrderRevenue, RevenueTotals } from "../gen/warehouse/revenue/v1/revenue_pb";
+import { rpcError } from "../api/clients";
 import { Pagination } from "../components/Pagination";
 import { formatRupiah } from "../lib/money";
 import { useTeam } from "../team/TeamContext";
-import { monthRange, thisMonth } from "../lib/period";
+import { useRevenue } from "./queries";
+import { thisMonth } from "../lib/period";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -36,49 +36,21 @@ export function RevenuePage() {
   const { t } = useTranslation();
 
   const [month, setMonth] = useState(thisMonth);
-  const [revenues, setRevenues] = useState<OrderRevenue[]>([]);
-  const [totals, setTotals] = useState<RevenueTotals | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const teamId = current?.teamId;
 
-  const load = useCallback(async () => {
-    if (teamId === undefined) return;
+  // THE PERIOD (#171) travels in the query key. Until the filter existed the totals were all-time, so
+  // a profit screen would have subtracted one month of costs from every order ever placed.
+  const query = useRevenue({ teamId, month, page, pageSize });
 
-    setLoading(true);
-    setError("");
+  const revenues = query.data?.revenues ?? [];
+  const totals = query.data?.totals;
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
-    try {
-      const { from, to } = monthRange(month);
-
-      const res = await revenueClient.revenueList({
-        teamId,
-        // THE PERIOD (#171). Until this existed the totals were all-time, so a profit screen would have
-        // subtracted one month of costs from every order ever placed.
-        from,
-        to,
-        page: { page, limit: pageSize },
-      });
-
-      setRevenues(res.revenues);
-      setTotals(res.totals);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setRevenues([]);
-      setTotals(undefined);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, month, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   if (!current) {
     return (
