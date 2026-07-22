@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Icon, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
-import { rpcError, teamClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { TeamDetailCommon } from "./TeamDetailCommon";
+import { useTeamDetail } from "./queries";
 import { WarehouseInfoSection } from "./WarehouseInfoSection";
 import { ShopsSection } from "./ShopsSection";
 
@@ -24,41 +23,22 @@ function parseTeamId(raw: string | undefined): bigint {
 //   - WAREHOUSE: its weekly hours + location (with an edit shortcut), via WarehouseInfoSection.
 //   - SELLING:   its marketplace shops, via ShopsSection.
 //   - ROOT/ADMIN: the common detail only — they coordinate, they hold no stock or storefronts.
-// It loads the team once and hands it (with a reload callback) to the type page.
+// It loads the team once and hands it to the type page.
 export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
   const { teamId: teamIdParam } = useParams();
   const navigate = useNavigate();
 
   const teamId = parseTeamId(teamIdParam);
 
-  const [team, setTeam] = useState<Team | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // The `onReload` callback this page used to hand down is gone (#177): an edit invalidates the
+  // team cache, and this query is one of its readers, so the page re-reads itself.
+  const query = useTeamDetail({ teamId });
 
-  const loadTeam = useCallback(async () => {
-    if (teamId === 0n) {
-      setError("Invalid team id.");
-      setLoading(false);
-      return;
-    }
+  const team = query.data ?? null;
+  const loading = query.isPending && teamId !== 0n;
 
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await teamClient.teamDetail({ teamId });
-      setTeam(res.team ?? null);
-    } catch (err) {
-      setError(rpcError(err));
-      setTeam(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
-
-  useEffect(() => {
-    void loadTeam();
-  }, [loadTeam]);
+  // A malformed id never reaches the server, so its message comes from here.
+  const error = teamId === 0n ? "Invalid team id." : query.isError ? rpcError(query.error) : "";
 
   if (loading) {
     return <Spinner colorPalette="brand" />;
@@ -84,8 +64,6 @@ export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
     );
   }
 
-  const reload = () => void loadTeam();
-
   switch (team.type) {
     case TeamType.WAREHOUSE:
       return (
@@ -93,7 +71,6 @@ export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
           team={team}
           noun="Warehouse"
           backTo={backTo}
-          onReload={reload}
           extra={<WarehouseInfoSection teamId={team.id} />}
         />
       );
@@ -103,12 +80,11 @@ export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
           team={team}
           noun="Team"
           backTo={backTo}
-          onReload={reload}
           extra={<ShopsSection teamId={team.id} />}
         />
       );
     default:
       // Root / admin — the full common detail, no type-specific section.
-      return <TeamDetailCommon team={team} noun="Team" backTo={backTo} onReload={reload} />;
+      return <TeamDetailCommon team={team} noun="Team" backTo={backTo} />;
   }
 }

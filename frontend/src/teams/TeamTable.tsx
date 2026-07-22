@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -13,8 +13,8 @@ import {
 } from "@chakra-ui/react";
 import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../api/clients";
-import { TeamType } from "../gen/warehouse/team/v1/team_pb";
+import { rpcError } from "../api/clients";
+import type { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -23,6 +23,7 @@ import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { TeamInfoDialog } from "./TeamInfoDialog";
+import { useDeleteTeam, useTeams } from "./queries";
 
 const ROOT_TEAM_ID = 1n;
 
@@ -32,20 +33,25 @@ const ROOT_TEAM_ID = 1n;
 export function TeamTable({
   teamType,
   editAsPage = false,
-  reloadSignal,
 }: {
   teamType?: TeamType;
   editAsPage?: boolean;
-  // Bumped by the page when its header "New …" button creates a team, so this table reloads.
-  reloadSignal?: number;
 }) {
   const { t } = useTranslation();
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // The list, and the delete that makes it stale. The `reloadSignal` prop this component used to
+  // take is gone (#177): the page bumped a counter after creating a team, which meant the table
+  // only refreshed when the write happened somewhere that remembered to bump it. The write now
+  // invalidates the query itself, so every reader of this list updates — including the OTHER tabs'
+  // copies of it, which the counter never reached.
+  const query = useTeams({ teamType, page: 1, pageSize: 50 });
+  const deleteTeam = useDeleteTeam();
+
+  const teams = query.data?.teams ?? [];
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(null);
 
@@ -53,34 +59,14 @@ export function TeamTable({
   // is the real gate; this only decides what the UI offers.
   const admin = isGlobalAdmin(current?.role);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await teamClient.teamList({
-        // team_type = UNSPECIFIED (the enum default) means "all types" server-side.
-        teamType: teamType ?? TeamType.UNSPECIFIED,
-        page: { page: 1, limit: 50 },
-      });
-      setTeams(res.teams);
-    } catch (err) {
-      setError(rpcError(err));
-      setTeams([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamType]);
-
-  useEffect(() => {
-    void load();
-  }, [load, reloadSignal]);
-
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in
+  // its loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would
+  // close while the delete was still in flight. mutateAsync REJECTS on failure, so the catch is not
+  // optional here the way it would be with mutate's onError.
   async function remove(team: Team) {
     try {
-      await teamClient.teamDelete({ teamId: team.id });
+      await deleteTeam.mutateAsync({ teamId: team.id });
       toaster.create({ type: "success", title: t("teams.teamDeleted", { name: team.name }) });
-      await load();
     } catch (err) {
       toaster.create({ type: "error", title: t("teams.deleteFailed"), description: rpcError(err) });
     }
@@ -223,7 +209,6 @@ export function TeamTable({
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void load()}
         />
       )}
 

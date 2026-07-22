@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, CloseButton, Dialog, Field, Portal, Stack, Text } from "@chakra-ui/react";
-import { rpcError, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import type { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
@@ -9,6 +9,7 @@ import { toaster } from "../components/Toaster";
 import { RoleSelect } from "../components/RoleSelect";
 import { UserSelect } from "../components/UserSelect";
 import { rolesFor } from "../lib/roles";
+import { useAddTeamMember } from "./queries";
 
 // AddMemberDialog adds an EXISTING user to a team. It defaults to the CURRENT team (the scope), but
 // a caller may target another team explicitly (the team detail page manages an arbitrary team's
@@ -17,11 +18,9 @@ import { rolesFor } from "../lib/roles";
 // Both pickers are the shared components (#62): UserSelect (unscoped — you are looking for someone
 // NOT in the team yet) and RoleSelect (scoped to the target team type's assignable roles).
 export function AddMemberDialog({
-  onDone,
   teamId,
   teamType,
 }: {
-  onDone: () => void;
   teamId?: bigint;
   teamType?: TeamType;
 }) {
@@ -36,36 +35,34 @@ export function AddMemberDialog({
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<bigint | undefined>(undefined);
   const [role, setRole] = useState<Role>(roles[roles.length - 1] ?? Role.TEAM_ADMIN);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function add() {
+  // The membership write, and what it invalidates, declared together in queries.ts (#177). This
+  // dialog is opened from TWO places — the Users page header and a team's detail page — which is
+  // exactly the case the old `onDone` prop got wrong: whether the list behind it refreshed depended
+  // on which caller had remembered to wire the callback.
+  const save = useAddTeamMember();
+  const busy = save.isPending;
+
+  function add() {
     if (userId === undefined || targetTeamId === undefined) {
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await userClient.teamUserUpdate({
-        teamId: targetTeamId,
-        action: {
-          case: "add",
-          value: { userId, role, alias: "" },
+    save.mutate(
+      { teamId: targetTeamId, userId, role },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("users.toast.memberAdded") });
+
+          setUserId(undefined);
+          setOpen(false);
         },
-      });
-
-      toaster.create({ type: "success", title: t("users.toast.memberAdded") });
-
-      setUserId(undefined);
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (
@@ -125,7 +122,7 @@ export function AddMemberDialog({
                 colorPalette="brand"
                 loading={busy}
                 disabled={userId === undefined}
-                onClick={() => void add()}
+                onClick={add}
                 data-testid="submit-add-member"
               >
                 {t("users.addMember.submit")}

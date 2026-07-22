@@ -14,22 +14,27 @@ import {
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
+import { useUpdateTeam } from "./queries";
 
 // EditTeamDialog changes only name + description. `type` and `team_code` are immutable after
 // create — they are not in the request, so a rename can never violate the root-team invariant.
 export function EditTeamDialog({
   team,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   team: Team;
-  onDone: () => void;
-  // Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
-  // inline trigger is rendered. Absent, the dialog triggers itself as before.
+  /**
+   * Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
+   * inline trigger is rendered. Absent, the dialog triggers itself as before.
+   *
+   * LIFECYCLE ONLY. It used to be joined by an `onDone` that existed purely so the caller could
+   * refetch (#177); the write now invalidates the team cache itself, so the parent is told the
+   * dialog closed and nothing more — which is what clears its `dialog`/`editing` state.
+   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -37,7 +42,9 @@ export function EditTeamDialog({
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
-  const [busy, setBusy] = useState(false);
+
+  const save = useUpdateTeam();
+  const busy = save.isPending;
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -52,25 +59,24 @@ export function EditTeamDialog({
   const [name, setName] = useState(team.name);
   const [description, setDescription] = useState(team.description);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      // Fields are optional (presence): sending both is fine here since the form holds the
-      // current values, and the backend never blanks what it does not receive.
-      await teamClient.teamUpdate({ teamId: team.id, name, description });
-
-      toaster.create({ type: "success", title: t("teams.teamUpdated", { name }) });
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+    // Fields are optional (presence): sending both is fine here since the form holds the current
+    // values, and the backend never blanks what it does not receive.
+    save.mutate(
+      { teamId: team.id, name, description },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("teams.teamUpdated", { name }) });
+          // The dialog is gone. NOT a refetch signal — the hook invalidated before this ran.
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

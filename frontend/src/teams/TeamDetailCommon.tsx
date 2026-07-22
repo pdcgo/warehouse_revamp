@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -20,10 +20,9 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Pencil, UserMinus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
-import type { PageInfo } from "../gen/warehouse/common/v1/page_pb";
 import { useAuth } from "../auth/AuthContext";
 import { Pagination } from "../components/Pagination";
 import { useTeam } from "../team/TeamContext";
@@ -33,6 +32,7 @@ import { UserItem } from "../components/UserItem";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
 import { AddMemberDialog } from "../users/AddMemberDialog";
+import { useRemoveTeamMember, useUsers } from "../users/queries";
 import { EditTeamDialog } from "./EditTeamDialog";
 
 const MEMBER_PAGE_SIZE = 20;
@@ -55,18 +55,16 @@ export function DetailField({ label, value }: { label: string; value: string }) 
 // type has — the header + Edit, the TeamItem, code/description, contact & bank, and the members list
 // with add/remove — and drops the caller's `extra` (a type-specific section, e.g. warehouse hours or
 // selling shops) in between. The per-type pages compose this; the dispatcher loads the team and
-// passes it in with `onReload`.
+// passes it in.
 export function TeamDetailCommon({
   team,
   noun,
   backTo = "/teams",
-  onReload,
   extra,
 }: {
   team: Team;
   noun: string;
   backTo?: string;
-  onReload: () => void;
   extra?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -74,11 +72,8 @@ export function TeamDetailCommon({
   const { identity } = useAuth();
   const { current } = useTeam();
 
-  const [members, setMembers] = useState<User[]>([]);
-  const [membersLoading, setMembersLoading] = useState(true);
   const [memberQuery, setMemberQuery] = useState("");
   const [memberPage, setMemberPage] = useState(1);
-  const [memberPageInfo, setMemberPageInfo] = useState<PageInfo | undefined>(undefined);
 
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<User | null>(null);
@@ -87,41 +82,33 @@ export function TeamDetailCommon({
   // management menus). The backend's scope check is the real gate regardless of what we render.
   const admin = isGlobalAdmin(current?.role);
 
-  const loadMembers = useCallback(async () => {
-    setMembersLoading(true);
+  // The members list is the USERS domain's `useUsers` — the same hook, and the same cache entry, the
+  // Users screen reads. That is deliberate: "who is in this team?" is one question, and giving this
+  // page its own copy is how the two screens would start disagreeing after a membership change made
+  // from the other one.
+  const membersQuery = useUsers({
+    teamId: team.id,
+    q: memberQuery,
+    page: memberPage,
+    pageSize: MEMBER_PAGE_SIZE,
+  });
+  const removeFromTeam = useRemoveTeamMember();
 
-    try {
-      const res = await userClient.userList({
-        teamId: team.id,
-        q: memberQuery,
-        page: { page: memberPage, limit: MEMBER_PAGE_SIZE },
-      });
-      setMembers(res.users);
-      setMemberPageInfo(res.pageInfo);
-    } catch {
-      setMembers([]);
-      setMemberPageInfo(undefined);
-    } finally {
-      setMembersLoading(false);
-    }
-  }, [team.id, memberQuery, memberPage]);
+  const members = membersQuery.data?.users ?? [];
+  const memberTotal = membersQuery.data?.totalItems ?? 0;
+  const membersLoading = membersQuery.isPending;
 
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
-
+  // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in
+  // its loading state, and mutateAsync REJECTS on failure — so the catch is what turns a failed
+  // removal into the error toast instead of an unhandled rejection.
   async function removeMember(user: User) {
     try {
-      await userClient.teamUserUpdate({
-        teamId: team.id,
-        action: { case: "remove", value: { userId: user.id } },
-      });
+      await removeFromTeam.mutateAsync({ teamId: team.id, userId: user.id });
 
       toaster.create({
         type: "success",
         title: t("teams.memberRemoved", { username: user.username, noun: noun.toLowerCase() }),
       });
-      await loadMembers();
     } catch (err) {
       toaster.create({ type: "error", title: t("teams.removeFailed"), description: rpcError(err) });
     }
@@ -208,7 +195,7 @@ export function TeamDetailCommon({
             <Flex align="center" gap="card">
               <Heading size="sm">{t("teams.members")}</Heading>
           <Spacer />
-          {admin && <AddMemberDialog teamId={team.id} teamType={team.type} onDone={() => void loadMembers()} />}
+          {admin && <AddMemberDialog teamId={team.id} teamType={team.type} />}
         </Flex>
 
         <Input
@@ -263,7 +250,7 @@ export function TeamDetailCommon({
 
             <HStack justify="end">
               <Pagination
-                count={Number(memberPageInfo?.totalItems ?? 0n)}
+                count={memberTotal}
                 pageSize={MEMBER_PAGE_SIZE}
                 page={memberPage}
                 onPageChange={setMemberPage}
@@ -282,7 +269,6 @@ export function TeamDetailCommon({
           onOpenChange={(o) => {
             if (!o) setEditing(false);
           }}
-          onDone={onReload}
         />
       )}
 

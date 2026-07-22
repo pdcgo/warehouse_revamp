@@ -16,16 +16,15 @@ import { UsersTable } from "./UsersTable";
 //
 // The Add member / New user buttons live in the page header (top-right), NOT inside the tabs (#58
 // review). "Add member" only makes sense for a team-scoped view, so it shows on the plain page and
-// the "My Team User" tab, but not "All User". Running either bumps `reload` so the active table
-// refreshes.
+// the "My Team User" tab, but not "All User". Neither signals the tables any more (#177): each write
+// invalidates the user cache itself, so BOTH tabs' lists refresh — the old `reload` counter only
+// ever reached the one that happened to be mounted.
 export function UsersPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const globalAdmin = isGlobalAdmin(current?.role);
 
   const [tab, setTab] = useState<"team" | "all">("team");
-  const [reload, setReload] = useState(0);
-  const bump = () => setReload((r) => r + 1);
 
   // Add member is a team-membership action — offered wherever the view is a single team.
   const teamScoped = !globalAdmin || tab === "team";
@@ -37,8 +36,8 @@ export function UsersPage() {
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
       )}
       <Spacer />
-      {teamScoped && <AddMemberDialog onDone={bump} />}
-      <CreateUserDialog onDone={bump} />
+      {teamScoped && <AddMemberDialog />}
+      <CreateUserDialog />
     </Flex>
   );
 
@@ -46,7 +45,7 @@ export function UsersPage() {
     return (
       <Stack gap="section">
         {header}
-        <UsersTable mode="team" reloadSignal={reload} />
+        <UsersTable mode="team" />
       </Stack>
     );
   }
@@ -68,10 +67,10 @@ export function UsersPage() {
         </Tabs.List>
 
         <Tabs.Content value="team">
-          <UsersTable mode="team" reloadSignal={reload} />
+          <UsersTable mode="team" />
         </Tabs.Content>
         <Tabs.Content value="all">
-          <UsersTable mode="all" reloadSignal={reload} />
+          <UsersTable mode="all" />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

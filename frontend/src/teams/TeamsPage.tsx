@@ -13,7 +13,9 @@ import { TeamTable } from "./TeamTable";
 //
 // The "New …" button lives in the page header (top-right), NOT inside the tabs (#59 review). It
 // reflects the ACTIVE tab: on the Warehouses tab it creates a warehouse, on All a team of any type,
-// etc. Creating one bumps `reload` so the active tab's table refreshes.
+// etc. Creating one no longer signals anything to the tables (#177) — the write invalidates the
+// team list itself, so every tab's copy of it refreshes rather than only the one that happened to
+// be mounted when the counter was bumped.
 //
 // `lazyMount` + `unmountOnExit`: only the visible tab's TeamTable is mounted, so exactly one team
 // list is fetched (the active tab's), and there is never a duplicate `teams-table` in the DOM.
@@ -30,7 +32,6 @@ export function TeamsPage() {
   const admin = isGlobalAdmin(current?.role);
 
   const [tab, setTab] = useState("all");
-  const [reload, setReload] = useState(0);
 
   const activeType = TABS.find((item) => item.value === tab)?.type;
 
@@ -41,7 +42,7 @@ export function TeamsPage() {
         <Spacer />
         {admin && (
           // Keyed by the active tab so the locked type (and label/testid) reset when tabs change.
-          <CreateTeamDialog key={tab} fixedType={activeType} onDone={() => setReload((r) => r + 1)} />
+          <CreateTeamDialog key={tab} fixedType={activeType} />
         )}
       </Flex>
 
@@ -56,7 +57,7 @@ export function TeamsPage() {
 
         {TABS.map((item) => (
           <Tabs.Content key={item.value} value={item.value}>
-            <TeamTable teamType={item.type} editAsPage={item.editAsPage} reloadSignal={reload} />
+            <TeamTable teamType={item.type} editAsPage={item.editAsPage} />
           </Tabs.Content>
         ))}
       </Tabs.Root>

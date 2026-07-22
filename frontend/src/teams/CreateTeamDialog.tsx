@@ -11,24 +11,29 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
 import { TeamTypeSelect, teamTypeLabel } from "../components/TeamTypeSelect";
+import { useCreateTeam } from "./queries";
 
 export function CreateTeamDialog({
-  onDone,
   fixedType,
 }: {
-  onDone: () => void;
   // When set, the new team is always this type: the type selector is hidden and shown as
   // read-only text. Used by warehouse-scoped views that only ever create WAREHOUSE teams.
   fixedType?: TeamType;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // The write, and what it invalidates, declared together in queries.ts (#177). The `onDone` prop
+  // this dialog used to take is gone with it: the page no longer needs — or gets — a handle on the
+  // team list's fetching. `busy` is gone for the same kind of reason, the mutation already knows
+  // whether it is in flight, and a second flag beside it can disagree with the first.
+  const save = useCreateTeam();
+  const busy = save.isPending;
 
   const [type, setType] = useState<TeamType>(fixedType ?? TeamType.WAREHOUSE);
 
@@ -38,29 +43,28 @@ export function CreateTeamDialog({
   const [teamCode, setTeamCode] = useState("");
   const [description, setDescription] = useState("");
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      // TeamCreate also grants the caller ownership of the new team, server-side, via a
-      // compensating RPC — so a fresh team is never ownerless.
-      await teamClient.teamCreate({ type, name, teamCode, description });
+    // TeamCreate also grants the caller ownership of the new team, server-side, via a compensating
+    // RPC — so a fresh team is never ownerless. That ownership is why the hook invalidates the USERS
+    // cache as well as the teams one.
+    save.mutate(
+      { type, name, teamCode, description },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
 
-      toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
-
-      setName("");
-      setTeamCode("");
-      setDescription("");
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setName("");
+          setTeamCode("");
+          setDescription("");
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

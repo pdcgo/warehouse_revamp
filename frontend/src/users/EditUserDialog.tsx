@@ -14,10 +14,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
-import { rpcError, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
 import { toaster } from "../components/Toaster";
+import { useSaveUser } from "./queries";
 
 // EditUserDialog calls UpdateProfile when you are editing YOURSELF, and UpdateUser otherwise.
 //
@@ -26,14 +27,17 @@ import { toaster } from "../components/Toaster";
 // meaning both is exactly how the source produced an IDOR.
 export function EditUserDialog({
   user,
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
   user: User;
-  onDone: () => void;
-  // Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
-  // inline trigger is rendered. Absent, the dialog triggers itself as before.
+  /**
+   * Optional controlled mode: when opened from a row's actions menu the page owns `open` and no
+   * inline trigger is rendered. Absent, the dialog triggers itself as before.
+   *
+   * LIFECYCLE ONLY — what clears the parent's open-dialog state. The `onDone` beside it existed so
+   * the table could refetch (#177); the write invalidates the user cache itself now.
+   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -45,7 +49,9 @@ export function EditUserDialog({
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
-  const [busy, setBusy] = useState(false);
+
+  const save = useSaveUser();
+  const busy = save.isPending;
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -61,30 +67,27 @@ export function EditUserDialog({
   const [email, setEmail] = useState(user.email);
   const [phone, setPhone] = useState(user.phoneNumber);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      // Every field is `optional` in the proto. Sending them all is fine here because the form
-      // holds the current values — but the backend distinguishes absent from empty, so a partial
-      // update never blanks what it did not touch.
-      if (isSelf) {
-        await userClient.updateProfile({ name, email, phoneNumber: phone });
-      } else {
-        await userClient.updateUser({ userId: user.id, name, email, phoneNumber: phone });
-      }
-
-      toaster.create({ type: "success", title: t("users.toast.userUpdated", { username: user.username }) });
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+    // Every field is `optional` in the proto. Sending them all is fine here because the form holds
+    // the current values — but the backend distinguishes absent from empty, so a partial update
+    // never blanks what it did not touch.
+    //
+    // An OMITTED userId is what selects UpdateProfile over UpdateUser inside the hook — the same
+    // two-RPCs-one-form split this dialog already made, moved to where the call is.
+    save.mutate(
+      { userId: isSelf ? undefined : user.id, name, email, phoneNumber: phone },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("users.toast.userUpdated", { username: user.username }) });
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

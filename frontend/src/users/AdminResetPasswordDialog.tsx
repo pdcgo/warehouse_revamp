@@ -13,10 +13,11 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { KeyRound } from "lucide-react";
-import { rpcError, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
 import { PasswordInput } from "../components/PasswordInput";
 import { toaster } from "../components/Toaster";
+import { useAdminResetPassword } from "./queries";
 
 // AdminResetPasswordDialog calls AdminResetPassword — a DIFFERENT RPC from the self-serve
 // ResetPassword, with a different policy (root/admin only) and no old password, because an admin
@@ -40,7 +41,12 @@ export function AdminResetPasswordDialog({
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
-  const [busy, setBusy] = useState(false);
+
+  // Routed through a mutation like every other write (#177) even though it invalidates NOTHING — a
+  // password appears in no list. The hook says so where the other hooks say what they invalidate, so
+  // the silence is a decision rather than an omission.
+  const save = useAdminResetPassword();
+  const busy = save.isPending;
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -55,7 +61,7 @@ export function AdminResetPasswordDialog({
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     if (password !== confirm) {
@@ -64,28 +70,27 @@ export function AdminResetPasswordDialog({
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await userClient.adminResetPassword({ userId: user.id, newPassword: password });
+    save.mutate(
+      { userId: user.id, newPassword: password },
+      {
+        onSuccess: () => {
+          toaster.create({
+            type: "success",
+            title: t("users.toast.passwordReset", { username: user.username }),
+            // Worth saying out loud: this is not just "they can log in with a new password" — every
+            // token they already hold stops working.
+            description: t("users.toast.passwordResetDescription"),
+          });
 
-      toaster.create({
-        type: "success",
-        title: t("users.toast.passwordReset", { username: user.username }),
-        // Worth saying out loud: this is not just "they can log in with a new password" — every
-        // token they already hold stops working.
-        description: t("users.toast.passwordResetDescription"),
-      });
-
-      setPassword("");
-      setConfirm("");
-      setOpen(false);
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setPassword("");
+          setConfirm("");
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

@@ -11,24 +11,28 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { rpcError, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../team/TeamContext";
 import { PasswordInput } from "../components/PasswordInput";
 import { RoleSelect } from "../components/RoleSelect";
 import { toaster } from "../components/Toaster";
 import { rolesFor } from "../lib/roles";
+import { useCreateUser } from "./queries";
 
 // CreateUserDialog calls CreateUser, which creates the account AND the team membership in ONE
 // transaction. So there is no window where a user exists with no team.
 export function CreateUserDialog({
-  onDone,
   open: openProp,
   onOpenChange,
 }: {
-  onDone: () => void;
-  // Optional controlled mode: a caller may drive `open` and suppress the inline trigger. Absent,
-  // the dialog triggers itself as before.
+  /**
+   * Optional controlled mode: a caller may drive `open` and suppress the inline trigger. Absent,
+   * the dialog triggers itself as before.
+   *
+   * LIFECYCLE ONLY — the `onDone` that used to sit beside it existed so the page could refetch
+   * (#177), and the write invalidates the user cache itself now.
+   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -40,7 +44,9 @@ export function CreateUserDialog({
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
-  const [busy, setBusy] = useState(false);
+
+  const save = useCreateUser();
+  const busy = save.isPending;
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -58,7 +64,7 @@ export function CreateUserDialog({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>(roles[roles.length - 1] ?? Role.TEAM_ADMIN);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
     // Username is lowercase alphanumeric only (#87) — the backend enforces the same rule.
@@ -67,11 +73,10 @@ export function CreateUserDialog({
       return;
     }
 
-    setBusy(true);
     setError("");
 
-    try {
-      await userClient.createUser({
+    save.mutate(
+      {
         // The CURRENT TEAM is the scope. It travels in the message body — the backend's
         // (use_scope) option reads it from there, not from a header.
         teamId: current?.teamId ?? 0n,
@@ -81,21 +86,20 @@ export function CreateUserDialog({
         email,
         role,
         alias: "",
-      });
+      },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("users.toast.userCreated", { username }) });
 
-      toaster.create({ type: "success", title: t("users.toast.userCreated", { username }) });
-
-      setUsername("");
-      setPassword("");
-      setName("");
-      setEmail("");
-      setOpen(false);
-      onDone();
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+          setUsername("");
+          setPassword("");
+          setName("");
+          setEmail("");
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (

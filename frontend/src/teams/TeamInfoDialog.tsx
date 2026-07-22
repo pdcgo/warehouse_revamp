@@ -15,9 +15,10 @@ import {
 } from "@chakra-ui/react";
 import { Landmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../components/Toaster";
+import { useSaveTeamInfo, useTeamDetail } from "./queries";
 
 // TeamInfoDialog edits a team's contact + bank details (its TeamInfo).
 //
@@ -39,8 +40,6 @@ export function TeamInfoDialog({
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const [contactNumber, setContactNumber] = useState("");
@@ -56,69 +55,65 @@ export function TeamInfoDialog({
     }
   }
 
-  // Load the current info when the dialog opens — not before, so the list view stays cheap. Driven
-  // by `open` (an effect, not the onOpenChange handler) so a controlled open loads too.
+  // The read is `enabled` by `open`, which is what the old cancel-guarded effect was really
+  // expressing: the list view stays cheap because nothing is fetched until somebody opens this.
+  // Sharing `useTeamDetail` with the detail page is the point — TeamDetail is the only RPC that
+  // returns `info`, so the dialog and the page are two views of one record, and the save below
+  // moves both.
+  const query = useTeamDetail({ teamId: team.id, enabled: open });
+  const save = useSaveTeamInfo();
+
+  const loading = query.isPending && open;
+  const busy = save.isPending;
+
+  // Copy the stored info into form state ONCE PER OPEN — the fields are edited, so they cannot read
+  // straight off the cache.
+  //
+  // The `seeded` flag is what makes it once. A cached value arrives immediately and is then replaced
+  // by a background refetch (and again by the one this dialog's own save triggers), each with a new
+  // object identity — without the flag every one of those would overwrite what the person is
+  // typing. Closing resets it, so reopening re-reads rather than showing the last edit.
+  const info = query.data?.info;
+  const [seeded, setSeeded] = useState(false);
+
   useEffect(() => {
     if (!open) {
+      setSeeded(false);
+
       return;
     }
 
-    let cancelled = false;
+    if (seeded || !query.isSuccess) {
+      return;
+    }
 
-    setLoading(true);
-    setError("");
+    setContactNumber(info?.contactNumber ?? "");
+    setBankType(info?.bankType ?? "");
+    setBankOwnerName(info?.bankOwnerName ?? "");
+    setBankAccountNumber(info?.bankAccountNumber ?? "");
+    setSeeded(true);
+  }, [open, seeded, query.isSuccess, info]);
 
-    void (async () => {
-      try {
-        const res = await teamClient.teamDetail({ teamId: team.id });
-        const info = res.team?.info;
+  // A failed READ shows in the same place a failed write does — there is one error line in this
+  // dialog and either failure is a reason you cannot edit the bank details.
+  const readError = query.isError ? rpcError(query.error) : "";
+  const shownError = error || readError;
 
-        if (cancelled) {
-          return;
-        }
-
-        setContactNumber(info?.contactNumber ?? "");
-        setBankType(info?.bankType ?? "");
-        setBankOwnerName(info?.bankOwnerName ?? "");
-        setBankAccountNumber(info?.bankAccountNumber ?? "");
-      } catch (err) {
-        if (!cancelled) {
-          setError(rpcError(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, team.id]);
-
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
 
-    setBusy(true);
     setError("");
 
-    try {
-      await teamClient.teamInfoUpdate({
-        teamId: team.id,
-        contactNumber,
-        bankType,
-        bankOwnerName,
-        bankAccountNumber,
-      });
-
-      toaster.create({ type: "success", title: t("teams.teamInfoUpdated") });
-      setOpen(false);
-    } catch (err) {
-      setError(rpcError(err));
-    } finally {
-      setBusy(false);
-    }
+    save.mutate(
+      { teamId: team.id, contactNumber, bankType, bankOwnerName, bankAccountNumber },
+      {
+        onSuccess: () => {
+          toaster.create({ type: "success", title: t("teams.teamInfoUpdated") });
+          setOpen(false);
+        },
+        onError: (err) => setError(rpcError(err)),
+      },
+    );
   }
 
   return (
@@ -145,9 +140,9 @@ export function TeamInfoDialog({
                   <Spinner colorPalette="brand" />
                 ) : (
                   <Stack gap="card">
-                    {error && (
+                    {shownError && (
                       <Text color="red.fg" data-testid="team-info-error">
-                        {error}
+                        {shownError}
                       </Text>
                     )}
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,9 +17,8 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
-import { rpcError, teamClient, userClient } from "../api/clients";
+import { rpcError } from "../api/clients";
 import type { User } from "../gen/warehouse/user/v1/user_pb";
-import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -27,8 +26,10 @@ import { UserItem } from "../components/UserItem";
 import { Pagination } from "../components/Pagination";
 import { toaster } from "../components/Toaster";
 import { isGlobalAdmin } from "../lib/roles";
+import { useTeams } from "../teams/queries";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
+import { useDeleteUser, useRemoveTeamMember, useSuspendUser, useUsers } from "./queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -43,8 +44,10 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 //
 // Only one of these is ever mounted at a time (the tabs use lazyMount + unmountOnExit), so the
 // shared `user-*` testids never collide. The Add member / New user buttons live in the PAGE header
-// (#58 review), not here; `reloadSignal` is bumped there so this table reloads after one runs.
-export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloadSignal?: number }) {
+// (#58 review), not here — and since #177 they signal nothing: every write invalidates the user
+// cache, so this table refreshes wherever the write was made from. The `reloadSignal` prop that used
+// to carry that message is gone.
+export function UsersTable({ mode }: { mode: "team" | "all" }) {
   const { t } = useTranslation();
   const { identity } = useAuth();
   const { current } = useTeam();
@@ -55,17 +58,16 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
   const globalAdmin = isGlobalAdmin(current?.role);
 
   // mode="all" carries a team filter (0 = all teams); mode="team" is pinned to the current team.
-  const [teams, setTeams] = useState<Team[]>([]);
+  //
+  // `undefined` in team mode is NOT the same as 0: 0 means "every user in the system", so falling
+  // back to it while TeamProvider is still resolving would fire a root-scoped read on behalf of
+  // someone who may not be an admin. Undefined simply means "not known yet", and the query waits.
   const [filterTeamId, setFilterTeamId] = useState<bigint>(0n);
-  const teamId = mode === "all" ? filterTeamId : (current?.teamId ?? 0n);
+  const teamId = mode === "all" ? filterTeamId : current?.teamId;
 
-  const [users, setUsers] = useState<User[]>([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   // Which row action is open, and for which user. The row's actions live behind one overflow menu;
   // picking an item sets this, and the matching dialog (rendered once, below) opens from it.
@@ -73,63 +75,29 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
     { kind: "edit" | "reset" | "remove" | "suspend" | "delete"; user: User } | null
   >(null);
 
-  // The team-filter options (all mode only). A non-fatal failure just leaves "All teams" as the
-  // sole choice, which still lists everyone.
-  useEffect(() => {
-    if (mode !== "all") {
-      return;
-    }
+  const query = useUsers({ teamId, q, page, pageSize });
 
-    let cancelled = false;
+  // The team-filter options (all mode only). A failure is non-fatal — `?? []` leaves "All teams" as
+  // the sole choice, which still lists everyone, exactly as the old swallowed catch did.
+  const teamsQuery = useTeams({ page: 1, pageSize: 200, enabled: mode === "all" });
+  const teams = teamsQuery.data?.teams ?? [];
 
-    void (async () => {
-      try {
-        const res = await teamClient.teamList({ page: { page: 1, limit: 200 } });
-        if (!cancelled) {
-          setTeams(res.teams);
-        }
-      } catch {
-        if (!cancelled) {
-          setTeams([]);
-        }
-      }
-    })();
+  const suspendUser = useSuspendUser();
+  const deleteUser = useDeleteUser();
+  const removeMember = useRemoveTeamMember();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+  const users = query.data?.users ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending && teamId !== undefined;
+  const error = query.isError ? rpcError(query.error) : "";
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await userClient.userList({
-        // team_id = 0 -> every user (root scope); a real id -> that team's members.
-        teamId,
-        q,
-        page: { page, limit: pageSize },
-      });
-
-      setUsers(res.users);
-      setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-    } catch (err) {
-      setError(rpcError(err));
-      setUsers([]);
-      setTotalItems(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, q, page, pageSize]);
-
-  useEffect(() => {
-    void load();
-  }, [load, reloadSignal]);
-
+  // All three of these are reached through ConfirmDialog, which AWAITS its onConfirm to hold the
+  // button in its loading state. That is why they use `mutateAsync` rather than `mutate`: the
+  // fire-and-forget form resolves instantly and the dialog would close over an in-flight write.
+  // mutateAsync REJECTS on failure, so the catch is what produces the error toast.
   async function suspend(user: User, suspended: boolean) {
     try {
-      await userClient.suspendUser({ userId: user.id, suspended });
+      await suspendUser.mutateAsync({ userId: user.id, suspended });
 
       toaster.create({
         type: "success",
@@ -140,8 +108,6 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
         // session off on the very next request.
         description: suspended ? t("users.toast.suspendedDescription") : undefined,
       });
-
-      await load();
     } catch (err) {
       toaster.create({ type: "error", title: t("users.toast.suspendFailed"), description: rpcError(err) });
     }
@@ -149,9 +115,8 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
 
   async function remove(user: User) {
     try {
-      await userClient.deleteUser({ userId: user.id });
+      await deleteUser.mutateAsync({ userId: user.id });
       toaster.create({ type: "success", title: t("users.toast.userDeleted", { username: user.username }) });
-      await load();
     } catch (err) {
       toaster.create({ type: "error", title: t("users.toast.deleteFailed"), description: rpcError(err) });
     }
@@ -159,13 +124,9 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
 
   async function removeFromTeam(user: User) {
     try {
-      await userClient.teamUserUpdate({
-        teamId: current?.teamId ?? 0n,
-        action: { case: "remove", value: { userId: user.id } },
-      });
+      await removeMember.mutateAsync({ teamId: current?.teamId ?? 0n, userId: user.id });
 
       toaster.create({ type: "success", title: t("users.toast.removedFromTeam", { username: user.username }) });
-      await load();
     } catch (err) {
       toaster.create({ type: "error", title: t("users.toast.removeFailed"), description: rpcError(err) });
     }
@@ -188,7 +149,7 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
         {mode === "all" && (
           <NativeSelect.Root maxW="xs">
             <NativeSelect.Field
-              value={teamId.toString()}
+              value={filterTeamId.toString()}
               data-testid="users-team-filter"
               onChange={(e) => {
                 setFilterTeamId(BigInt(e.target.value));
@@ -382,7 +343,6 @@ export function UsersTable({ mode, reloadSignal }: { mode: "team" | "all"; reloa
           onOpenChange={(o) => {
             if (!o) setDialog(null);
           }}
-          onDone={() => void load()}
         />
       )}
 
