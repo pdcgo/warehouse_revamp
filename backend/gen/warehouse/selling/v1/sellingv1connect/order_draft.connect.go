@@ -42,6 +42,12 @@ const (
 	// OrderDraftServiceOrderDraftDetailProcedure is the fully-qualified name of the OrderDraftService's
 	// OrderDraftDetail RPC.
 	OrderDraftServiceOrderDraftDetailProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftDetail"
+	// OrderDraftServiceOrderDraftUpdateProcedure is the fully-qualified name of the OrderDraftService's
+	// OrderDraftUpdate RPC.
+	OrderDraftServiceOrderDraftUpdateProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftUpdate"
+	// OrderDraftServiceOrderDraftDeleteProcedure is the fully-qualified name of the OrderDraftService's
+	// OrderDraftDelete RPC.
+	OrderDraftServiceOrderDraftDeleteProcedure = "/warehouse.selling.v1.OrderDraftService/OrderDraftDelete"
 )
 
 // OrderDraftServiceClient is a client for the warehouse.selling.v1.OrderDraftService service.
@@ -53,6 +59,11 @@ type OrderDraftServiceClient interface {
 	// the AUTHOR, in addition to the team scope.
 	OrderDraftList(context.Context, *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error)
 	OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error)
+	// The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
+	// what OrderDraftPush then refuses to overwrite.
+	OrderDraftUpdate(context.Context, *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error)
+	// Pruning, which is entirely manual (nothing expires) — so it takes several at once.
+	OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error)
 }
 
 // NewOrderDraftServiceClient constructs a client for the warehouse.selling.v1.OrderDraftService
@@ -84,6 +95,18 @@ func NewOrderDraftServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
 			connect.WithClientOptions(opts...),
 		),
+		orderDraftUpdate: connect.NewClient[v1.OrderDraftUpdateRequest, v1.OrderDraftUpdateResponse](
+			httpClient,
+			baseURL+OrderDraftServiceOrderDraftUpdateProcedure,
+			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftUpdate")),
+			connect.WithClientOptions(opts...),
+		),
+		orderDraftDelete: connect.NewClient[v1.OrderDraftDeleteRequest, v1.OrderDraftDeleteResponse](
+			httpClient,
+			baseURL+OrderDraftServiceOrderDraftDeleteProcedure,
+			connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDelete")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -92,6 +115,8 @@ type orderDraftServiceClient struct {
 	orderDraftPush   *connect.Client[v1.OrderDraftPushRequest, v1.OrderDraftPushResponse]
 	orderDraftList   *connect.Client[v1.OrderDraftListRequest, v1.OrderDraftListResponse]
 	orderDraftDetail *connect.Client[v1.OrderDraftDetailRequest, v1.OrderDraftDetailResponse]
+	orderDraftUpdate *connect.Client[v1.OrderDraftUpdateRequest, v1.OrderDraftUpdateResponse]
+	orderDraftDelete *connect.Client[v1.OrderDraftDeleteRequest, v1.OrderDraftDeleteResponse]
 }
 
 // OrderDraftPush calls warehouse.selling.v1.OrderDraftService.OrderDraftPush.
@@ -109,6 +134,16 @@ func (c *orderDraftServiceClient) OrderDraftDetail(ctx context.Context, req *con
 	return c.orderDraftDetail.CallUnary(ctx, req)
 }
 
+// OrderDraftUpdate calls warehouse.selling.v1.OrderDraftService.OrderDraftUpdate.
+func (c *orderDraftServiceClient) OrderDraftUpdate(ctx context.Context, req *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error) {
+	return c.orderDraftUpdate.CallUnary(ctx, req)
+}
+
+// OrderDraftDelete calls warehouse.selling.v1.OrderDraftService.OrderDraftDelete.
+func (c *orderDraftServiceClient) OrderDraftDelete(ctx context.Context, req *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error) {
+	return c.orderDraftDelete.CallUnary(ctx, req)
+}
+
 // OrderDraftServiceHandler is an implementation of the warehouse.selling.v1.OrderDraftService
 // service.
 type OrderDraftServiceHandler interface {
@@ -119,6 +154,11 @@ type OrderDraftServiceHandler interface {
 	// the AUTHOR, in addition to the team scope.
 	OrderDraftList(context.Context, *connect.Request[v1.OrderDraftListRequest]) (*connect.Response[v1.OrderDraftListResponse], error)
 	OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error)
+	// The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
+	// what OrderDraftPush then refuses to overwrite.
+	OrderDraftUpdate(context.Context, *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error)
+	// Pruning, which is entirely manual (nothing expires) — so it takes several at once.
+	OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error)
 }
 
 // NewOrderDraftServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -146,6 +186,18 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderDraftServiceOrderDraftUpdateHandler := connect.NewUnaryHandler(
+		OrderDraftServiceOrderDraftUpdateProcedure,
+		svc.OrderDraftUpdate,
+		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderDraftServiceOrderDraftDeleteHandler := connect.NewUnaryHandler(
+		OrderDraftServiceOrderDraftDeleteProcedure,
+		svc.OrderDraftDelete,
+		connect.WithSchema(orderDraftServiceMethods.ByName("OrderDraftDelete")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderDraftService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderDraftServiceOrderDraftPushProcedure:
@@ -154,6 +206,10 @@ func NewOrderDraftServiceHandler(svc OrderDraftServiceHandler, opts ...connect.H
 			orderDraftServiceOrderDraftListHandler.ServeHTTP(w, r)
 		case OrderDraftServiceOrderDraftDetailProcedure:
 			orderDraftServiceOrderDraftDetailHandler.ServeHTTP(w, r)
+		case OrderDraftServiceOrderDraftUpdateProcedure:
+			orderDraftServiceOrderDraftUpdateHandler.ServeHTTP(w, r)
+		case OrderDraftServiceOrderDraftDeleteProcedure:
+			orderDraftServiceOrderDraftDeleteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -173,4 +229,12 @@ func (UnimplementedOrderDraftServiceHandler) OrderDraftList(context.Context, *co
 
 func (UnimplementedOrderDraftServiceHandler) OrderDraftDetail(context.Context, *connect.Request[v1.OrderDraftDetailRequest]) (*connect.Response[v1.OrderDraftDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftDetail is not implemented"))
+}
+
+func (UnimplementedOrderDraftServiceHandler) OrderDraftUpdate(context.Context, *connect.Request[v1.OrderDraftUpdateRequest]) (*connect.Response[v1.OrderDraftUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftUpdate is not implemented"))
+}
+
+func (UnimplementedOrderDraftServiceHandler) OrderDraftDelete(context.Context, *connect.Request[v1.OrderDraftDeleteRequest]) (*connect.Response[v1.OrderDraftDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderDraftService.OrderDraftDelete is not implemented"))
 }

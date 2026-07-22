@@ -29,6 +29,12 @@ service OrderDraftService {
   // the AUTHOR, in addition to the team scope.
   rpc OrderDraftList(OrderDraftListRequest) returns (OrderDraftListResponse);
   rpc OrderDraftDetail(OrderDraftDetailRequest) returns (OrderDraftDetailResponse);
+
+  // The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
+  // what OrderDraftPush then refuses to overwrite.
+  rpc OrderDraftUpdate(OrderDraftUpdateRequest) returns (OrderDraftUpdateResponse);
+  // Pruning, which is entirely manual (nothing expires) — so it takes several at once.
+  rpc OrderDraftDelete(OrderDraftDeleteRequest) returns (OrderDraftDeleteResponse);
 }
 
 // One scraped line of a draft.
@@ -171,6 +177,118 @@ message OrderDraftDetailResponse {
   // WITH its lines — each carrying both the scraped text and the product it has been mapped to, so
   // the mapping screen (#196) can show one beside the other.
   OrderDraft draft = 1;
+}
+
+// One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
+//
+// The scraped text is deliberately absent. `external_sku` / `external_name` are the evidence of what
+// the buyer ordered and are never overwritten by anybody; a request that could carry them would be a
+// request that could rewrite the evidence to match a wrong mapping.
+message OrderDraftLineEdit {
+  // An existing line of this draft. 0 adds a NEW line, which is how a person records something the
+  // scrape never saw — such a line has no external text, and its emptiness truthfully says so.
+  uint64 id = 1;
+
+  // The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
+  // state to save, because half-finished work is the whole point of a draft.
+  uint64 product_id = 2;
+
+  uint32 quantity = 3;
+  int64 unit_price = 4 [(buf.validate.field).int64.gte = 0];
+}
+
+// The complete desired set of lines. Its own message so it has PRESENCE: an absent `lines` means
+// "leave the lines alone", while a present-but-empty one means "this draft has no lines" — and
+// nothing else could tell those apart.
+message OrderDraftLines {
+  // Lines omitted here are DELETED. A buyer who cancelled one line of three must be able to say so,
+  // and without removal the draft would be unpromotable forever over a line nobody wants.
+  repeated OrderDraftLineEdit lines = 1;
+}
+
+// OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
+// product, fixing the address, choosing the shop and warehouse.
+//
+// ⚠ IT ALWAYS WINS, and marks every field it writes as TOUCHED. That mark is what OrderDraftPush
+// reads to know what it may not overwrite, so this RPC and that one are two halves of one rule.
+//
+// Every field is OPTIONAL in the presence sense: a field left unset is not edited and not marked.
+// This is not a convenience — a request that could not distinguish "unset" from "set to empty" would
+// mark every field touched on every save, and the first edit anybody made would freeze the whole
+// draft against the app forever.
+message OrderDraftUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 draft_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  optional uint64 shop_id = 3;
+  optional uint64 warehouse_id = 4;
+  optional string customer_name = 5 [(buf.validate.field).string.max_len = 200];
+  optional string customer_phone = 6 [(buf.validate.field).string.max_len = 40];
+  // The address is ONE field, whole. Somebody who corrects a kecamatan has corrected the address.
+  OrderAddress address = 7;
+  optional string shipping_code = 8 [(buf.validate.field).string.max_len = 40];
+  optional int64 shipping_cost = 9 [(buf.validate.field).int64.gte = 0];
+
+  // The lines, if this edit touches them at all.
+  OrderDraftLines items = 10;
+}
+
+message OrderDraftUpdateResponse {
+  // The draft as it now stands, WITH its lines and its updated `touched_fields` — so a UI can show
+  // straight away which fields the app has just lost the right to change.
+  OrderDraft draft = 1;
+}
+
+// OrderDraftDelete prunes drafts. Nothing expires (§6.7), so this is the only thing standing between
+// the list and a graveyard — and an app pushing continuously fills that list far faster than a person
+// deletes one at a time. Hence: SEVERAL AT ONCE.
+//
+// Reachable by the external app too, with an accepted consequence stated plainly in the design: an
+// external client can delete a draft a person has partly completed.
+message OrderDraftDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The drafts to delete. Capped so one request cannot ask to delete an unbounded set — a bulk
+  // delete is exactly the request where a runaway client does the most damage, and a page of the
+  // list is the largest selection a person can actually make.
+  repeated uint64 draft_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+}
+
+message OrderDraftDeleteResponse {
+  // How many were actually deleted. It can be fewer than asked for — an id that is not the caller's,
+  // or already gone, is skipped rather than failing the request. Deleting is idempotent by nature,
+  // and refusing the whole batch over one stale id would make a bulk prune unusable exactly when the
+  // list is long enough to need one.
+  uint32 deleted = 1;
 }
 
 // OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on

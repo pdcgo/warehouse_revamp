@@ -236,3 +236,38 @@ scraped by somebody else.
 work is left on a draft, and computing them client-side would mean loading every draft's lines to
 render one page of a list. A non-zero `unmapped_item_count` is exactly what makes a draft still a
 draft.
+
+### The human edit path — `OrderDraftUpdate` (#193)
+
+The other half of the merge rule. `OrderDraftUpdate` **always wins** and **marks every field it
+writes as touched**; `OrderDraftPush` then refuses to overwrite anything carrying that mark. Neither
+handler makes sense read alone.
+
+**Presence decides what was edited, not emptiness.** Every field is `optional`, so a field left unset
+is neither written nor marked. If "unset" and "set to empty" were indistinguishable, the first save
+anybody made would mark every field touched and freeze the whole draft against the app forever — and
+clearing a wrongly-scraped phone number would stop being expressible at all.
+
+**The lines are sent as the complete desired set** (`items`, a wrapper message so it has presence —
+absent means "leave the lines alone", present-and-empty means "this draft has no lines"). An id edits
+an existing line, `id = 0` adds one, and an omitted line is **deleted**: a buyer who cancels one line
+of three must be able to say so, or the draft stays unpromotable forever over a line nobody wants.
+
+⚠ **The edit cannot carry the scraped text.** `external_sku` / `external_name` are absent from
+`OrderDraftLineEdit` by design — a request that could rewrite them could quietly make the evidence
+agree with a wrong mapping, which is the one failure that keeping both halves on the line was meant
+to catch. A hand-added line has empty external text, which truthfully says nobody scraped it.
+
+### Pruning — `OrderDraftDelete` (#193)
+
+**Bulk, and a hard delete.** Nothing expires (§6.7), so this is the only thing between the list and a
+graveyard, and an app pushing continuously fills that list faster than a person deletes one at a
+time. Hard rather than soft because a draft is working state that was never an order — a soft-deleted
+draft would be a row every future reader has to remember to exclude, which is precisely the trap the
+separate table was built to avoid. The lines go with it via `ON DELETE CASCADE`.
+
+**Fewer deleted than asked for is a normal answer.** An id already gone, or never the caller's, is
+skipped rather than failing the batch: deleting is idempotent by nature, and refusing over one stale
+id would make a bulk prune unusable exactly when the list is long enough to need one. The scope and
+the author are in the `WHERE` rather than checked beforehand, so there is no window in which the ids
+stop being the caller's.

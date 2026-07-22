@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order_draft.proto.
  */
 export const file_warehouse_selling_v1_order_draft: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIs8DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SGwoTdW5tYXBwZWRfaXRlbV9jb3VudBgSIAEoDSKSAQoVT3JkZXJEcmFmdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBARIXCgZzb3VyY2UYAyABKAlCB7pIBHICGEA6C5K1GAcKBQECAwQFInwKFk9yZGVyRHJhZnRMaXN0UmVzcG9uc2USMAoGZHJhZnRzGAEgAygLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0IpEDChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIeCg1zaGlwcGluZ19jb2RlGAkgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2Nvc3QYCiABKANCB7pIBCICKAASMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbToLkrUYBwoFAQIDBAUiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCDLgAgoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEmsKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZRJxChBPcmRlckRyYWZ0RGV0YWlsEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERldGFpbFJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
+  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIs8DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SGwoTdW5tYXBwZWRfaXRlbV9jb3VudBgSIAEoDSKSAQoVT3JkZXJEcmFmdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBARIXCgZzb3VyY2UYAyABKAlCB7pIBHICGEA6C5K1GAcKBQECAwQFInwKFk9yZGVyRHJhZnRMaXN0UmVzcG9uc2USMAoGZHJhZnRzGAEgAygLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImMKEk9yZGVyRHJhZnRMaW5lRWRpdBIKCgJpZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhsKCnVuaXRfcHJpY2UYBCABKANCB7pIBCICKAAiSgoPT3JkZXJEcmFmdExpbmVzEjcKBWxpbmVzGAEgAygLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVFZGl0IvcDChdPcmRlckRyYWZ0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghkcmFmdF9pZBgCIAEoBEIHukgEMgIgABIUCgdzaG9wX2lkGAMgASgESACIAQESGQoMd2FyZWhvdXNlX2lkGAQgASgESAGIAQESJAoNY3VzdG9tZXJfbmFtZRgFIAEoCUIIukgFcgMYyAFIAogBARIkCg5jdXN0b21lcl9waG9uZRgGIAEoCUIHukgEcgIYKEgDiAEBEjMKB2FkZHJlc3MYByABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3MSIwoNc2hpcHBpbmdfY29kZRgIIAEoCUIHukgEcgIYKEgEiAEBEiMKDXNoaXBwaW5nX2Nvc3QYCSABKANCB7pIBCICKABIBYgBARI0CgVpdGVtcxgKIAEoCzIlLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaW5lczoLkrUYBwoFAQIDBAVCCgoIX3Nob3BfaWRCDwoNX3dhcmVob3VzZV9pZEIQCg5fY3VzdG9tZXJfbmFtZUIRCg9fY3VzdG9tZXJfcGhvbmVCEAoOX3NoaXBwaW5nX2NvZGVCEAoOX3NoaXBwaW5nX2Nvc3QiSwoYT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEi8KBWRyYWZ0GAEgASgLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdCJjChdPcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCglkcmFmdF9pZHMYAiADKARCCrpIB5IBBAgBEGQ6C5K1GAcKBQECAwQFIisKGE9yZGVyRHJhZnREZWxldGVSZXNwb25zZRIPCgdkZWxldGVkGAEgASgNIpEDChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIeCg1zaGlwcGluZ19jb2RlGAkgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2Nvc3QYCiABKANCB7pIBCICKAASMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbToLkrUYBwoFAQIDBAUiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCDLGBAoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEmsKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZRJxChBPcmRlckRyYWZ0RGV0YWlsEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERldGFpbFJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2UScQoQT3JkZXJEcmFmdFVwZGF0ZRItLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRVcGRhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEnEKEE9yZGVyRHJhZnREZWxldGUSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZWxldGVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
 
 /**
  * One scraped line of a draft.
@@ -320,6 +320,226 @@ export const OrderDraftDetailResponseSchema: GenMessage<OrderDraftDetailResponse
   messageDesc(file_warehouse_selling_v1_order_draft, 5);
 
 /**
+ * One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
+ *
+ * The scraped text is deliberately absent. `external_sku` / `external_name` are the evidence of what
+ * the buyer ordered and are never overwritten by anybody; a request that could carry them would be a
+ * request that could rewrite the evidence to match a wrong mapping.
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftLineEdit
+ */
+export type OrderDraftLineEdit = Message<"warehouse.selling.v1.OrderDraftLineEdit"> & {
+  /**
+   * An existing line of this draft. 0 adds a NEW line, which is how a person records something the
+   * scrape never saw — such a line has no external text, and its emptiness truthfully says so.
+   *
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * The mapping. 0 leaves the line unmapped, which keeps the draft unpromotable — that is a legal
+   * state to save, because half-finished work is the whole point of a draft.
+   *
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+
+  /**
+   * @generated from field: uint32 quantity = 3;
+   */
+  quantity: number;
+
+  /**
+   * @generated from field: int64 unit_price = 4;
+   */
+  unitPrice: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftLineEdit.
+ * Use `create(OrderDraftLineEditSchema)` to create a new message.
+ */
+export const OrderDraftLineEditSchema: GenMessage<OrderDraftLineEdit> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 6);
+
+/**
+ * The complete desired set of lines. Its own message so it has PRESENCE: an absent `lines` means
+ * "leave the lines alone", while a present-but-empty one means "this draft has no lines" — and
+ * nothing else could tell those apart.
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftLines
+ */
+export type OrderDraftLines = Message<"warehouse.selling.v1.OrderDraftLines"> & {
+  /**
+   * Lines omitted here are DELETED. A buyer who cancelled one line of three must be able to say so,
+   * and without removal the draft would be unpromotable forever over a line nobody wants.
+   *
+   * @generated from field: repeated warehouse.selling.v1.OrderDraftLineEdit lines = 1;
+   */
+  lines: OrderDraftLineEdit[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftLines.
+ * Use `create(OrderDraftLinesSchema)` to create a new message.
+ */
+export const OrderDraftLinesSchema: GenMessage<OrderDraftLines> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 7);
+
+/**
+ * OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
+ * product, fixing the address, choosing the shop and warehouse.
+ *
+ * ⚠ IT ALWAYS WINS, and marks every field it writes as TOUCHED. That mark is what OrderDraftPush
+ * reads to know what it may not overwrite, so this RPC and that one are two halves of one rule.
+ *
+ * Every field is OPTIONAL in the presence sense: a field left unset is not edited and not marked.
+ * This is not a convenience — a request that could not distinguish "unset" from "set to empty" would
+ * mark every field touched on every save, and the first edit anybody made would freeze the whole
+ * draft against the app forever.
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftUpdateRequest
+ */
+export type OrderDraftUpdateRequest = Message<"warehouse.selling.v1.OrderDraftUpdateRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 draft_id = 2;
+   */
+  draftId: bigint;
+
+  /**
+   * @generated from field: optional uint64 shop_id = 3;
+   */
+  shopId?: bigint;
+
+  /**
+   * @generated from field: optional uint64 warehouse_id = 4;
+   */
+  warehouseId?: bigint;
+
+  /**
+   * @generated from field: optional string customer_name = 5;
+   */
+  customerName?: string;
+
+  /**
+   * @generated from field: optional string customer_phone = 6;
+   */
+  customerPhone?: string;
+
+  /**
+   * The address is ONE field, whole. Somebody who corrects a kecamatan has corrected the address.
+   *
+   * @generated from field: warehouse.selling.v1.OrderAddress address = 7;
+   */
+  address?: OrderAddress;
+
+  /**
+   * @generated from field: optional string shipping_code = 8;
+   */
+  shippingCode?: string;
+
+  /**
+   * @generated from field: optional int64 shipping_cost = 9;
+   */
+  shippingCost?: bigint;
+
+  /**
+   * The lines, if this edit touches them at all.
+   *
+   * @generated from field: warehouse.selling.v1.OrderDraftLines items = 10;
+   */
+  items?: OrderDraftLines;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftUpdateRequest.
+ * Use `create(OrderDraftUpdateRequestSchema)` to create a new message.
+ */
+export const OrderDraftUpdateRequestSchema: GenMessage<OrderDraftUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 8);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftUpdateResponse
+ */
+export type OrderDraftUpdateResponse = Message<"warehouse.selling.v1.OrderDraftUpdateResponse"> & {
+  /**
+   * The draft as it now stands, WITH its lines and its updated `touched_fields` — so a UI can show
+   * straight away which fields the app has just lost the right to change.
+   *
+   * @generated from field: warehouse.selling.v1.OrderDraft draft = 1;
+   */
+  draft?: OrderDraft;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftUpdateResponse.
+ * Use `create(OrderDraftUpdateResponseSchema)` to create a new message.
+ */
+export const OrderDraftUpdateResponseSchema: GenMessage<OrderDraftUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 9);
+
+/**
+ * OrderDraftDelete prunes drafts. Nothing expires (§6.7), so this is the only thing standing between
+ * the list and a graveyard — and an app pushing continuously fills that list far faster than a person
+ * deletes one at a time. Hence: SEVERAL AT ONCE.
+ *
+ * Reachable by the external app too, with an accepted consequence stated plainly in the design: an
+ * external client can delete a draft a person has partly completed.
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftDeleteRequest
+ */
+export type OrderDraftDeleteRequest = Message<"warehouse.selling.v1.OrderDraftDeleteRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The drafts to delete. Capped so one request cannot ask to delete an unbounded set — a bulk
+   * delete is exactly the request where a runaway client does the most damage, and a page of the
+   * list is the largest selection a person can actually make.
+   *
+   * @generated from field: repeated uint64 draft_ids = 2;
+   */
+  draftIds: bigint[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftDeleteRequest.
+ * Use `create(OrderDraftDeleteRequestSchema)` to create a new message.
+ */
+export const OrderDraftDeleteRequestSchema: GenMessage<OrderDraftDeleteRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 10);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftDeleteResponse
+ */
+export type OrderDraftDeleteResponse = Message<"warehouse.selling.v1.OrderDraftDeleteResponse"> & {
+  /**
+   * How many were actually deleted. It can be fewer than asked for — an id that is not the caller's,
+   * or already gone, is skipped rather than failing the request. Deleting is idempotent by nature,
+   * and refusing the whole batch over one stale id would make a bulk prune unusable exactly when the
+   * list is long enough to need one.
+   *
+   * @generated from field: uint32 deleted = 1;
+   */
+  deleted: number;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftDeleteResponse.
+ * Use `create(OrderDraftDeleteResponseSchema)` to create a new message.
+ */
+export const OrderDraftDeleteResponseSchema: GenMessage<OrderDraftDeleteResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 11);
+
+/**
  * OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on
  * (team_id, source, external_id) — so a retry after a flaky connection updates the existing draft
  * instead of adding a near-identical one nobody can tell apart. Any external caller will retry
@@ -410,7 +630,7 @@ export type OrderDraftPushRequest = Message<"warehouse.selling.v1.OrderDraftPush
  * Use `create(OrderDraftPushRequestSchema)` to create a new message.
  */
 export const OrderDraftPushRequestSchema: GenMessage<OrderDraftPushRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 6);
+  messageDesc(file_warehouse_selling_v1_order_draft, 12);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftPushResponse
@@ -436,7 +656,7 @@ export type OrderDraftPushResponse = Message<"warehouse.selling.v1.OrderDraftPus
  * Use `create(OrderDraftPushResponseSchema)` to create a new message.
  */
 export const OrderDraftPushResponseSchema: GenMessage<OrderDraftPushResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 7);
+  messageDesc(file_warehouse_selling_v1_order_draft, 13);
 
 /**
  * OrderDraftService owns `order_drafts` + `order_draft_items` (#190,
@@ -483,6 +703,27 @@ export const OrderDraftService: GenService<{
     methodKind: "unary";
     input: typeof OrderDraftDetailRequestSchema;
     output: typeof OrderDraftDetailResponseSchema;
+  },
+  /**
+   * The human edit path (#193). ALWAYS WINS, and marks every field it writes as touched — which is
+   * what OrderDraftPush then refuses to overwrite.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderDraftService.OrderDraftUpdate
+   */
+  orderDraftUpdate: {
+    methodKind: "unary";
+    input: typeof OrderDraftUpdateRequestSchema;
+    output: typeof OrderDraftUpdateResponseSchema;
+  },
+  /**
+   * Pruning, which is entirely manual (nothing expires) — so it takes several at once.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderDraftService.OrderDraftDelete
+   */
+  orderDraftDelete: {
+    methodKind: "unary";
+    input: typeof OrderDraftDeleteRequestSchema;
+    output: typeof OrderDraftDeleteResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_order_draft, 0);

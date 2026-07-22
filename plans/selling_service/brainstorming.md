@@ -663,7 +663,11 @@ form, which is no longer what happens):
 3. ✅ **`OrderDraftList` + `OrderDraftDetail`** (#192) — paginated (HARD RULE 9), narrowed to the
    author *on top of* the team scope. The list carries `item_count` / `unmapped_item_count` instead
    of lines, which is what §6.7's list screen needs to say how much work is left.
-4. **`OrderDraftUpdate` + `OrderDraftDelete`** — the human edit path, marking fields touched.
+4. ✅ **`OrderDraftUpdate` + `OrderDraftDelete`** (#193) — the human edit path, marking fields
+   touched. Every field is `optional`, so PRESENCE decides what was edited: an unset field is
+   neither written nor marked, and clearing one stays expressible. The lines are sent as the
+   complete desired set — an omitted line is deleted, `id = 0` adds one, and the edit deliberately
+   cannot carry the scraped text.
 5. **`OrderDraftPromote`** — validate, create the order, delete the draft, in one transaction.
 6. **`/order-drafts` list screen** — its own route, with pruning that is easy and bulk-friendly (§6.7).
 7. **Draft detail screen** — the product-mapping UI and promote. The meatiest piece: this is where
