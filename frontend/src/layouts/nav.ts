@@ -69,16 +69,23 @@ const PRODUCTS_GROUP: MenuGroup = {
 //
 // "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
 //
-// The group is BUILT PER TEAM TYPE rather than being a fixed const, because "Racks" (#129) is not
-// common to both: a rack is a shelf in a warehouse, and a selling team has nowhere to put one. Every
-// other child is shared by the two team types that work with stock.
+// The group is BUILT PER TEAM TYPE rather than being a fixed const, because the children are not
+// common to both: "Racks" (#129) and "Picking" (#151) are a warehouse's own, while "Supplier" and
+// "Placements" are the requesting side's — a supplier belongs to the SELLING team that raises the
+// restock, not the warehouse that fulfils it. Only "Restock" and "Stock" are shared.
 function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
     { to: "/inventories/stock", label: "nav.stock", icon: PackagePlus },
-    { to: "/inventories/placements", label: "nav.placements", icon: MapPin },
-    { to: "/inventories/suppliers", label: "nav.supplier", icon: Factory },
   ];
+
+  // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
+  // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
+  // stock-locating side. They stay for a selling team.
+  if (teamType === TeamType.SELLING) {
+    children.push({ to: "/inventories/placements", label: "nav.placements", icon: MapPin });
+    children.push({ to: "/inventories/suppliers", label: "nav.supplier", icon: Factory });
+  }
 
   // Picking is the WAREHOUSE crew's own queue (#151): the orders shipping from THIS building. A
   // selling team places orders but nobody there walks to a shelf, so it has no queue to show.
