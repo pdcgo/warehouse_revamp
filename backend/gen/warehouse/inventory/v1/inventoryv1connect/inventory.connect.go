@@ -78,6 +78,9 @@ const (
 	// InventoryServicePlacementListProcedure is the fully-qualified name of the InventoryService's
 	// PlacementList RPC.
 	InventoryServicePlacementListProcedure = "/warehouse.inventory.v1.InventoryService/PlacementList"
+	// InventoryServiceProductStockSummaryProcedure is the fully-qualified name of the
+	// InventoryService's ProductStockSummary RPC.
+	InventoryServiceProductStockSummaryProcedure = "/warehouse.inventory.v1.InventoryService/ProductStockSummary"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -109,6 +112,9 @@ type InventoryServiceClient interface {
 	// The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
 	// dates that flag a shelf overdue for a count.
 	PlacementList(context.Context, *connect.Request[v1.PlacementListRequest]) (*connect.Response[v1.PlacementListResponse], error)
+	// The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
+	// was last counted, the last delivery. One call keeps the header cheap.
+	ProductStockSummary(context.Context, *connect.Request[v1.ProductStockSummaryRequest]) (*connect.Response[v1.ProductStockSummaryResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -212,6 +218,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("PlacementList")),
 			connect.WithClientOptions(opts...),
 		),
+		productStockSummary: connect.NewClient[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse](
+			httpClient,
+			baseURL+InventoryServiceProductStockSummaryProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductStockSummary")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -232,6 +244,7 @@ type inventoryServiceClient struct {
 	batchList            *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
 	costLayerList        *connect.Client[v1.CostLayerListRequest, v1.CostLayerListResponse]
 	placementList        *connect.Client[v1.PlacementListRequest, v1.PlacementListResponse]
+	productStockSummary  *connect.Client[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -309,6 +322,11 @@ func (c *inventoryServiceClient) PlacementList(ctx context.Context, req *connect
 	return c.placementList.CallUnary(ctx, req)
 }
 
+// ProductStockSummary calls warehouse.inventory.v1.InventoryService.ProductStockSummary.
+func (c *inventoryServiceClient) ProductStockSummary(ctx context.Context, req *connect.Request[v1.ProductStockSummaryRequest]) (*connect.Response[v1.ProductStockSummaryResponse], error) {
+	return c.productStockSummary.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -339,6 +357,9 @@ type InventoryServiceHandler interface {
 	// The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
 	// dates that flag a shelf overdue for a count.
 	PlacementList(context.Context, *connect.Request[v1.PlacementListRequest]) (*connect.Response[v1.PlacementListResponse], error)
+	// The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
+	// was last counted, the last delivery. One call keeps the header cheap.
+	ProductStockSummary(context.Context, *connect.Request[v1.ProductStockSummaryRequest]) (*connect.Response[v1.ProductStockSummaryResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -438,6 +459,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("PlacementList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceProductStockSummaryHandler := connect.NewUnaryHandler(
+		InventoryServiceProductStockSummaryProcedure,
+		svc.ProductStockSummary,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductStockSummary")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -470,6 +497,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceCostLayerListHandler.ServeHTTP(w, r)
 		case InventoryServicePlacementListProcedure:
 			inventoryServicePlacementListHandler.ServeHTTP(w, r)
+		case InventoryServiceProductStockSummaryProcedure:
+			inventoryServiceProductStockSummaryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -537,4 +566,8 @@ func (UnimplementedInventoryServiceHandler) CostLayerList(context.Context, *conn
 
 func (UnimplementedInventoryServiceHandler) PlacementList(context.Context, *connect.Request[v1.PlacementListRequest]) (*connect.Response[v1.PlacementListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.PlacementList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductStockSummary(context.Context, *connect.Request[v1.ProductStockSummaryRequest]) (*connect.Response[v1.ProductStockSummaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductStockSummary is not implemented"))
 }

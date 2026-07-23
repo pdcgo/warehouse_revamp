@@ -51,6 +51,10 @@ service InventoryService {
   // The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
   // dates that flag a shelf overdue for a count.
   rpc PlacementList(PlacementListRequest) returns (PlacementListResponse);
+
+  // The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
+  // was last counted, the last delivery. One call keeps the header cheap.
+  rpc ProductStockSummary(ProductStockSummaryRequest) returns (ProductStockSummaryResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -798,4 +802,40 @@ message PlacementListRequest {
 message PlacementListResponse {
   repeated ProductPlacement placements = 1;
   warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message ProductStockSummaryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// The Info tab's stat tiles (#209). The tiles this service can answer on its own — order and return
+// links belong to other services and are resolved by the page separately.
+message ProductStockSummaryResponse {
+  // READY — on hand now, across every shelf, and its value (known-cost layers only, #74).
+  int64 ready_qty = 1;
+  int64 ready_value = 2;
+
+  // ONGOING — inbound on pending restocks not yet accepted, and the estimated cost of those lines.
+  int64 ongoing_qty = 3;
+  int64 ongoing_value_est = 4;
+
+  // When the product was last counted on any shelf here (last ADJUST); 0 = never counted.
+  int64 last_counted_unix = 5;
+
+  // The most recent delivery of this product (its restock/delivery id); 0 = never delivered here.
+  uint64 last_restock_id = 6;
 }
