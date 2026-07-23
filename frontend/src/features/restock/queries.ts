@@ -35,6 +35,23 @@ export function useRestockRequests(args: {
   });
 }
 
+// The printable labels for a fulfilled restock (#207), scoped to the accepting warehouse. Its own
+// key params so it caches independently of the request detail — a different question about the same
+// receipt. Only enabled once we have a warehouse team and a real request id.
+export function useRestockLabels(args: { teamId: bigint | undefined; requestId: bigint }) {
+  const { teamId, requestId } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, { labels: requestId.toString() }),
+    enabled: teamId !== undefined && requestId > 0n,
+    queryFn: async () => {
+      const res = await restockClient.restockRequestLabels({ teamId: teamId!, requestId });
+
+      return res;
+    },
+  });
+}
+
 export function useRestockRequest(args: { teamId: bigint | undefined; requestId: bigint }) {
   const { teamId, requestId } = args;
 

@@ -77,6 +77,9 @@ const WarehouseProductPage = lazy(() =>
 const RestockAcceptPage = lazy(() =>
   import("./pages/restock-accept").then((m) => ({ default: m.RestockAcceptPage })),
 );
+const RestockLabelsPage = lazy(() =>
+  import("./pages/restock-labels").then((m) => ({ default: m.RestockLabelsPage })),
+);
 const ExpensesPage = lazy(() =>
   import("./pages/expenses").then((m) => ({ default: m.ExpensesPage })),
 );
@@ -202,6 +205,8 @@ export const router = createBrowserRouter([
       { path: "inventories/restock/:requestId/edit", element: <RestockRequestFormPage key="edit" /> },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
+      // After accepting, print the shelf labels for what landed (#207) — the step after accept.
+      { path: "inventories/restock/:requestId/labels", element: <RestockLabelsPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.

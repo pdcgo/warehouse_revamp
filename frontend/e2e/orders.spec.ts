@@ -579,6 +579,19 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(page.getByTestId("restock-detail-page")).toBeVisible();
   await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-01 (5)");
   await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-02 (3)");
+
+  // #207 — once accepted, the warehouse prints the shelf labels for exactly what entered stock.
+  await page.getByTestId("restock-detail-labels").click();
+  await expect(page.getByTestId("labels-sheet")).toBeVisible();
+
+  // Piece mode by default: 8 sellable units (5 + 3) → 8 labels. The 2 broken got none, and the screen
+  // says so out loud.
+  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(8);
+  await expect(page.getByTestId("labels-excluded")).toContainText("2");
+
+  // One-per-shelf collapses the run to one label per placement — the two shelves, two labels.
+  await page.getByTestId("labels-mode").getByText("Shelf").click();
+  await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(2);
 });
 
 // #145 — a selling team's DEFAULT SHIPPING WAREHOUSE pre-fills the order form.

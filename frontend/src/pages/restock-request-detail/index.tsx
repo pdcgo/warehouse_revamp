@@ -18,7 +18,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, Ban, PackageCheck, Pencil } from "lucide-react";
+import { ArrowLeft, Ban, PackageCheck, Pencil, Printer } from "lucide-react";
 import { rackClient, rpcError, supplierClient } from "../../api/clients";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -325,6 +325,19 @@ export function RestockRequestDetailPage() {
           >
             <Icon as={PackageCheck} boxSize="4" />
             {t("restock.receive.title")}
+          </Button>
+        )}
+
+        {/* Once accepted, the warehouse prints the shelf labels for what landed (#207) — the step
+            after accept. Only the accepting warehouse, and only once there is stock to label. */}
+        {isFulfilled && isWarehouse && teamId !== undefined && (
+          <Button
+            variant="outline"
+            data-testid="restock-detail-labels"
+            onClick={() => navigate(`/inventories/restock/${request.id}/labels`)}
+          >
+            <Icon as={Printer} boxSize="4" />
+            {t("restock.labels.action")}
           </Button>
         )}
 

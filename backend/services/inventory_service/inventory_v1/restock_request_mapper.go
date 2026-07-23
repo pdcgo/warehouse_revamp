@@ -50,6 +50,9 @@ func restockPaymentFromText(text string) inventoryv1.RestockPaymentType {
 var (
 	errRestockMissing    = errors.New("restock request not found")
 	errRestockNotPending = errors.New("restock request is not pending")
+	// Labels exist only once the goods have arrived (#207): a pending request has no placements to
+	// print, and a cancelled one never will. Refused as FailedPrecondition, not guessed.
+	errRestockNotFulfilled = errors.New("restock request is not fulfilled")
 	// The optional supplier must be one of the REQUESTING team's own (#124).
 	errRestockSupplierMissing = errors.New("supplier not found in this team")
 	// Proto validation requires min_items 1, so this can only be a row that predates #124 or was
@@ -192,6 +195,8 @@ func restockErr(err error) error {
 		return connect.NewError(connect.CodeNotFound, errRestockSupplierMissing)
 	case errors.Is(err, errRestockNotPending):
 		return connect.NewError(connect.CodeFailedPrecondition, errRestockNotPending)
+	case errors.Is(err, errRestockNotFulfilled):
+		return connect.NewError(connect.CodeFailedPrecondition, errRestockNotFulfilled)
 	case errors.Is(err, errRestockNoItems):
 		return connect.NewError(connect.CodeFailedPrecondition, errRestockNoItems)
 	case errors.Is(err, errRestockCountIncomplete):

@@ -24,6 +24,9 @@ service RestockRequestService {
   rpc RestockRequestFulfill(RestockRequestFulfillRequest) returns (RestockRequestFulfillResponse);
   // The requesting team cancels a still-pending request.
   rpc RestockRequestCancel(RestockRequestCancelRequest) returns (RestockRequestCancelResponse);
+  // The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
+  // warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
+  rpc RestockRequestLabels(RestockRequestLabelsRequest) returns (RestockRequestLabelsResponse);
 }
 
 enum RestockRequestStatus {
@@ -441,4 +444,70 @@ message RestockRequestCancelRequest {
 
 message RestockRequestCancelResponse {
   RestockRequest request = 1;
+}
+
+message RestockRequestLabelsRequest {
+  // Warehouse-side ONLY, exactly like Fulfill — labels are printed by the crew that just shelved the
+  // delivery, not by the selling team that raised the request. `team_id` is the accepting warehouse,
+  // and is the scope: a request belonging to another warehouse reads as NotFound.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// One printable label = one PLACEMENT of stock that entered the warehouse (#207).
+//
+// A product line split across two shelves is TWO labels sharing one batch_id — location is separate
+// from batch. Broken/lost units never entered stock, so they never appear here (the query joins
+// placements, and damaged units produce none).
+message RestockLabel {
+  uint64 product_id = 1;
+  // sku/name are the line's SNAPSHOT (the product may live in another team's catalogue) — no
+  // product_service lookup is needed, unlike RackStock.
+  string sku = 2;
+  string name = 3;
+
+  // ⚠ THE BATCH THIS STOCK BELONGS TO — and there is NO batch table. A batch is a delivery LINE: one
+  // product on one receipt (#160, "a batch is a delivery"), which is exactly `restock_request_item.id`.
+  // Two shelves of the same line share it; the QR encodes `sku/batch_id`. If a real batch entity is
+  // ever introduced, this becomes its id and nothing on the label changes.
+  uint64 batch_id = 4;
+
+  // How many units of this line went to the place below.
+  int64 quantity = 5;
+
+  // WHERE it went. `rack_code` is the shelf painted on the aisle ("A-01-3"); it is empty when the
+  // stock is UNPLACED — the holding pile, received but not shelved yet — which `unplaced` says out
+  // loud rather than encoding as an absent code (#135).
+  string rack_code = 6;
+  bool unplaced = 7;
+
+  // Per-unit HPP for THIS receipt, freight included — the value the accept screen showed. Scoped to
+  // this delivery's lines, NOT the product's latest cost (which a newer restock could have moved).
+  int64 hpp = 8;
+}
+
+message RestockRequestLabelsResponse {
+  // The receipt these labels belong to — printed on each as "Restock #{restock_id}".
+  uint64 restock_id = 1;
+  // When the delivery was accepted (unix seconds), for the label's date line.
+  int64 received_at_unix = 2;
+  repeated RestockLabel labels = 3;
+
+  // How many units arrived broken or lost and so got NO label — they never entered stock (#154). The
+  // screen states this out loud beside the count, so a short print run reads as "the breakage was left
+  // out on purpose", not "some labels are missing".
+  int64 excluded_count = 4;
 }
