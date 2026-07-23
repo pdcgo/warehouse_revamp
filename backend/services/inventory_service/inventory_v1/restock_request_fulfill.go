@@ -145,12 +145,12 @@ func (s *Service) RestockRequestFulfill(
 				return errRestockPlacementMismatch
 			}
 
-			// WHAT ARRIVED BROKEN (#154). Never enters stock, so it is recorded and nothing else.
+			// WHAT ARRIVED BROKEN OR LOST (#154). Never enters stock, so it is recorded and nothing else.
 			for _, d := range line.GetDamaged() {
 				cl.damaged = append(cl.damaged, inventory_service_models.RestockDamagedUnit{
-					Quantity: d.GetQuantity(),
-					Reason:   d.GetReason(),
-					Value:    d.GetValue(),
+					Quantity:   d.GetQuantity(),
+					Reason:     d.GetReason(),
+					DamageType: restockDamageTypeToText(d.GetType()),
 				})
 			}
 

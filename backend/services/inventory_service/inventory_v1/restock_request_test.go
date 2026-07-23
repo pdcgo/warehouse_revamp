@@ -15,6 +15,9 @@ const (
 	pending   = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_PENDING
 	fulfilled = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_FULFILLED
 	cancelled = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
+
+	broken = inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_BROKEN
+	lost   = inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_LOST
 )
 
 // allArrived is the "everything turned up as asked, and went to the unplaced pile" count — what a test
@@ -846,7 +849,7 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 				Placements:       placedOn(shelf, 10),
 				// And writes off two of its own goods while it is at it (#154).
 				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "claimed by the requester", Value: 100},
+					{Quantity: 2, Reason: "claimed by the requester", Type: lost},
 				},
 			},
 		},
@@ -876,7 +879,7 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 				Placements:       placedOn(shelf, 10),
 				// And writes off two of its own goods while it is at it (#154).
 				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "claimed by the requester", Value: 100},
+					{Quantity: 2, Reason: "claimed by the requester", Type: lost},
 				},
 			},
 		},
@@ -1523,7 +1526,7 @@ func TestRestockRequest_FulfilRecordsDamageWithoutStockingIt(t *testing.T) {
 				ReceivedQuantity: 8,
 				Placements:       placedOn(rack, 8),
 				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed in transit", Value: 20000},
+					{Quantity: 2, Reason: "crushed in transit", Type: broken},
 				},
 			},
 		},
@@ -1542,8 +1545,8 @@ func TestRestockRequest_FulfilRecordsDamageWithoutStockingIt(t *testing.T) {
 	if len(damaged) != 1 {
 		t.Fatalf("recorded %d damage rows, want 1", len(damaged))
 	}
-	if damaged[0].GetQuantity() != 2 || damaged[0].GetValue() != 20000 {
-		t.Fatalf("damage row = %+v, want 2 units worth 20000", damaged[0])
+	if damaged[0].GetQuantity() != 2 || damaged[0].GetType() != broken {
+		t.Fatalf("damage row = %+v, want 2 units, broken", damaged[0])
 	}
 	if damaged[0].GetReason() == "" {
 		t.Fatal("the reason was dropped — a loss with no reason is a number nobody can act on")

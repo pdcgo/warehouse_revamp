@@ -11,6 +11,7 @@ import {
   Icon,
   IconButton,
   Input,
+  NativeSelect,
   Separator,
   SimpleGrid,
   Spacer,
@@ -18,58 +19,49 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, LayoutGrid, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, History, LayoutGrid, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import type {
-  RestockRequestItem,
-} from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CurrencyInput } from "../../components/CurrencyInput";
 import { ProductListItem } from "../../components/ProductListItem";
 import { RackSelect, UNPLACED } from "../../components/RackSelect";
+import { ShippingBadge } from "../../components/ShippingBadge";
 import { toaster } from "../../components/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { useRestockRequest, useFulfillRestockRequest } from "../../features/restock/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
-import {
-  deltaLabel,
-  isCounted,
-  needsPlace,
-  noneArrived,
-  toReceived,
-  toRupiah,
-  unitHpp,
-} from "../../features/restock/counting";
+import { deltaLabel, toReceived, toRupiah, unitHpp } from "../../features/restock/counting";
 
-// One row of the placement editor: where some of a line's goods went, and how many.
+// One shelf a line's goods went to, and how many. `place` is RackSelect's value: "" (no shelf yet —
+// this is what blocks Accept), UNPLACED (the holding pile), or a rack id string.
 interface PlacementDraft {
   key: string;
   place: string;
   quantity: string;
 }
 
-// One row of the breakage editor (#154).
-interface DamageDraft {
+// One problem row: what failed to become stock, how many, and why (#154).
+interface ProblemDraft {
   key: string;
+  type: "broken" | "lost";
   quantity: string;
-  reason: string;
-  value: string;
+  note: string;
 }
 
 let seq = 0;
 
 function nextKey(): string {
   seq += 1;
-
   return `d${seq}`;
 }
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
-
   try {
     return BigInt(raw);
   } catch {
@@ -77,16 +69,29 @@ function parseRequestId(raw: string | undefined): bigint {
   }
 }
 
-// RestockAcceptPage is how a warehouse ACCEPTS a delivery (#157) — a PAGE, not a dialog.
+function formatDate(unix: bigint): string {
+  if (unix <= 0n) return "";
+  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// RestockAcceptPage — how a warehouse ACCEPTS a delivery (#157), redesigned to the owner's mock
+// (#201/#206, mocks/accept-rack.html).
 //
-// It replaced a dialog because the job outgrew one: a line can now be split across several shelves
-// (#154), some of it can arrive broken, and the COD fee (#155) changes what everything cost. That is a
-// form with sections, and a form with sections is a page.
+// THE RESTOCK COUNT IS DERIVED, NEVER TYPED (owner, 2026-07-23). There is no separate "arrived" box:
+// what you put on the shelves plus what you flag as a problem IS the count. You type quantities in ONE
+// place — the shelf rows and the problem rows — and the header, the per-line balance, the HPP and the
+// Accept button all read off that.
 //
-// ACCEPTING IS COUNTING (#133). A request is a promise, a delivery is a fact, and the two disagree
-// often enough that nothing here assumes they match. Each Arrived field is prefilled with the asked
-// quantity because everything turning up is the common case — a convenience, not an assumption: the
-// number is on screen, editable, and confirming means somebody looked at it.
+//   line count = placed (on named shelves + the holding pile) + problems (broken / lost)
+//   received (what stock hears about) = placed only — problems never enter stock (#154)
+//
+// A shelf row with a quantity but NO shelf chosen yet is what blocks Accept: goods that arrived are
+// somewhere, and the system is told rather than left to guess (#137). Each line seeds with the ordered
+// quantity on one unplaced row — a claim to confirm by naming a shelf, not a silent write-off (#133).
 export function RestockAcceptPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
@@ -95,20 +100,13 @@ export function RestockAcceptPage() {
 
   const requestId = parseRequestId(rawId);
 
-  // Only the DRAFTS are state — what the person counting is typing. The request and the existing
+  // Only the DRAFTS are state — what the person accepting is typing. The request and the existing
   // shelf placements come from queries.
-  //
-  // `submitError` is separate from the query's error on purpose: one is "we could not load this
-  // request", the other is "the server refused your count". They read differently and one must not
-  // clear the other.
   const [submitError, setSubmitError] = useState("");
-  const [counts, setCounts] = useState<Record<string, string>>({});
   const [placements, setPlacements] = useState<Record<string, PlacementDraft[]>>({});
-  const [damage, setDamage] = useState<Record<string, DamageDraft[]>>({});
+  const [problems, setProblems] = useState<Record<string, ProblemDraft[]>>({});
   const [codFee, setCodFee] = useState("0");
 
-  // Accepting RECEIVES GOODS, so this mutation invalidates stock and racks as well as restock —
-  // see the warning in queries.ts. `busy` is the mutation's own in-flight flag (#177).
   const fulfill = useFulfillRestockRequest();
   const busy = fulfill.isPending;
 
@@ -116,107 +114,75 @@ export function RestockAcceptPage() {
   const teamId = isWarehouse ? current?.teamId : undefined;
 
   const query = useRestockRequest({ teamId, requestId });
-
   const request = query.data ?? null;
   const loading = query.isPending && teamId !== undefined && requestId !== 0n;
   const error = query.isError ? rpcError(query.error) : submitError;
 
-  // B — where these products already live, so a put-away adds to the existing pile rather than
-  // starting a second one in another aisle (#156). Its own query: it depends on the request having
-  // arrived, and it must not hold up the form if it fails — a shelf suggestion is help, not a gate.
+  // Where these products already live, so a put-away joins the existing pile (#156). Help, not a gate.
   const placesQuery = useProductPlaces({
     warehouseId: teamId,
     productIds: (request?.items ?? []).map((i) => i.productId),
   });
   const places = placesQuery.data ?? [];
 
-  // SEEDING THE FORM, once per request. The drafts are what the person edits, so they cannot be
-  // derived on every render — that would overwrite typing. Keyed on the request id rather than the
-  // object: the query refetches and hands back a NEW object with the same contents, and reseeding on
-  // that would wipe a half-filled count sheet the moment anything invalidated.
-  //
-  // The counts prefill from the ASK and the PLACE is deliberately left unanswered: a prefilled count
-  // is a claim the request already made, offered back for confirmation, whereas a prefilled shelf
-  // would invent an answer only the person holding the box has.
+  // Seed once per request: one placement row prefilled with the ORDERED quantity and NO shelf — the
+  // asked number offered back for confirmation, blocking Accept until a shelf is named.
   const seededFor = useRef<string>("");
 
   useEffect(() => {
     if (!request) return;
-
     const id = request.id.toString();
     if (seededFor.current === id) return;
     seededFor.current = id;
 
-    const nextCounts: Record<string, string> = {};
     const nextPlacements: Record<string, PlacementDraft[]> = {};
-
     for (const item of request.items) {
-      const key = item.id.toString();
-      nextCounts[key] = item.quantity.toString();
-      nextPlacements[key] = [{ key: nextKey(), place: "", quantity: item.quantity.toString() }];
+      nextPlacements[item.id.toString()] = [
+        { key: nextKey(), place: "", quantity: item.quantity.toString() },
+      ];
     }
-
-    setCounts(nextCounts);
     setPlacements(nextPlacements);
-    setDamage({});
+    setProblems({});
   }, [request]);
-
 
   const items = useMemo(() => request?.items ?? [], [request]);
 
-  // The money, live. G feeds D: the person typing the COD fee is entitled to watch it land on the
-  // cost before committing to it.
   const freight = (request?.shippingCost ?? 0n) + toRupiah(codFee);
 
-  const sellableTotal = items.reduce(
-    (sum, item) => sum + toReceived(counts[item.id.toString()] ?? ""),
-    0n,
-  );
-
-  // The one guard on Accept — the server's rules mirrored, per line:
-  //   1. it must be counted at all (blank is not zero),
-  //   2. anything that arrived must say where it went, and
-  //   3. the placements must ADD UP to the count beside them.
-  // Kept as ONE expression on purpose: a second guard beside it is how a screen's idea of "ready to
-  // send" drifts from the handler's idea of "acceptable".
-  function lineReady(item: RestockRequestItem): boolean {
+  // Per-line arithmetic, in one place so the header, the pill and the payload cannot disagree.
+  function lineState(item: RestockRequestItem) {
     const key = item.id.toString();
-    const raw = counts[key] ?? "";
-
-    if (!isCounted(raw)) return false;
-
     const rows = placements[key] ?? [];
-    const wanted = toReceived(raw);
 
-    if (!needsPlace(raw)) {
-      // Nothing usable arrived, so nothing may be placed — the server refuses a placement beside a
-      // zero count, because 0 units cannot be anywhere.
-      return rows.every((r) => toReceived(r.quantity) === 0n);
+    let placed = 0n;
+    let blocking = 0n;
+    for (const row of rows) {
+      const qty = toReceived(row.quantity);
+      if (qty === 0n) continue;
+      if (row.place === "") blocking += qty;
+      else placed += qty;
     }
 
-    const placed = rows.reduce((sum, r) => sum + toReceived(r.quantity), 0n);
-    const allNamed = rows.every((r) => r.place !== "" || toReceived(r.quantity) === 0n);
+    const problemQty = (problems[key] ?? []).reduce((sum, p) => sum + toReceived(p.quantity), 0n);
 
-    return placed === wanted && allNamed;
+    return {
+      key,
+      rows,
+      placed,
+      blocking,
+      problemQty,
+      count: placed + blocking + problemQty,
+      ready: blocking === 0n,
+    };
   }
 
-  const ready = items.length > 0 && items.every(lineReady);
+  // Freight rides on every SHELVED (sellable) unit across the whole delivery — problems carry none.
+  const sellableTotal = items.reduce((sum, item) => sum + lineState(item).placed, 0n);
 
-  // WHY Accept is disabled, in the two words the person actually needs (#157 relayout).
-  //
-  // The per-line warnings were already there, but on a delivery of ten products they are ten screens
-  // apart: a disabled button with no explanation makes somebody scroll the whole page hunting for the
-  // line they have not finished. Counted and placed are separated because they are different jobs —
-  // "I have not opened that box yet" and "I opened it but have not said which shelf" send you to
-  // different places.
-  const counted = items.filter((item) => isCounted(counts[item.id.toString()] ?? "")).length;
-  const unplaced = items.filter(
-    (item) => isCounted(counts[item.id.toString()] ?? "") && !lineReady(item),
-  ).length;
+  const ready = items.length > 0 && items.every((item) => lineState(item).ready);
 
-  function patchCount(key: string, value: string) {
-    setCounts((prev) => ({ ...prev, [key]: value }));
-  }
+  const totalReceived = items.reduce((sum, item) => sum + lineState(item).count, 0n);
+  const blockedLines = items.filter((item) => !lineState(item).ready).length;
 
   function patchPlacement(itemKey: string, rowKey: string, patch: Partial<PlacementDraft>) {
     setPlacements((prev) => ({
@@ -239,22 +205,36 @@ export function RestockAcceptPage() {
     }));
   }
 
-  function addDamage(itemKey: string) {
-    setDamage((prev) => ({
+  // A "placed here before" chip drops the goods onto a shelf they sat on already: it fills the first
+  // row with no shelf chosen, else the first row (#156).
+  function applyRecommendation(itemKey: string, rackId: bigint) {
+    setPlacements((prev) => {
+      const rows = prev[itemKey] ?? [];
+      const target = rows.find((r) => r.place === "") ?? rows[0];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [itemKey]: rows.map((r) => (r.key === target.key ? { ...r, place: rackId.toString() } : r)),
+      };
+    });
+  }
+
+  function addProblem(itemKey: string) {
+    setProblems((prev) => ({
       ...prev,
-      [itemKey]: [...(prev[itemKey] ?? []), { key: nextKey(), quantity: "1", reason: "", value: "0" }],
+      [itemKey]: [...(prev[itemKey] ?? []), { key: nextKey(), type: "broken", quantity: "1", note: "" }],
     }));
   }
 
-  function patchDamage(itemKey: string, rowKey: string, patch: Partial<DamageDraft>) {
-    setDamage((prev) => ({
+  function patchProblem(itemKey: string, rowKey: string, patch: Partial<ProblemDraft>) {
+    setProblems((prev) => ({
       ...prev,
       [itemKey]: (prev[itemKey] ?? []).map((r) => (r.key === rowKey ? { ...r, ...patch } : r)),
     }));
   }
 
-  function removeDamage(itemKey: string, rowKey: string) {
-    setDamage((prev) => ({
+  function removeProblem(itemKey: string, rowKey: string) {
+    setProblems((prev) => ({
       ...prev,
       [itemKey]: (prev[itemKey] ?? []).filter((r) => r.key !== rowKey),
     }));
@@ -262,27 +242,22 @@ export function RestockAcceptPage() {
 
   async function accept() {
     if (teamId === undefined || !request) return;
-
     setSubmitError("");
 
     try {
-      // Built from `request.items` rather than from the maps, so the payload's shape comes from the
-      // REQUEST and cannot silently drop a line a map missed.
       await fulfill.mutateAsync({
         teamId,
         requestId: request.id,
         codShippingFee: toRupiah(codFee),
+        // Built from `request.items` so the payload's shape comes from the REQUEST and cannot drop a
+        // line a map missed. received = the shelved units; the problems ride separately (#154).
         lines: request.items.map((item) => {
-          const key = item.id.toString();
-          const receivedQuantity = toReceived(counts[key] ?? "");
-
+          const st = lineState(item);
           return {
             itemId: item.id,
-            receivedQuantity,
-            // A zero-quantity row is a half-finished edit, not a placement — dropped rather than sent,
-            // since the server refuses one and the person has already moved on.
-            placements: (placements[key] ?? [])
-              .filter((r) => toReceived(r.quantity) > 0n)
+            receivedQuantity: st.placed,
+            placements: st.rows
+              .filter((r) => toReceived(r.quantity) > 0n && r.place !== "")
               .map((r) => ({
                 place:
                   r.place === UNPLACED
@@ -290,34 +265,36 @@ export function RestockAcceptPage() {
                     : ({ case: "rackId", value: BigInt(r.place) } as const),
                 quantity: toReceived(r.quantity),
               })),
-            damaged: (damage[key] ?? [])
-              .filter((d) => toReceived(d.quantity) > 0n && d.reason.trim() !== "")
-              .map((d) => ({
-                quantity: toReceived(d.quantity),
-                reason: d.reason.trim(),
-                value: toRupiah(d.value),
+            damaged: (problems[item.id.toString()] ?? [])
+              .filter((p) => toReceived(p.quantity) > 0n && p.note.trim() !== "")
+              .map((p) => ({
+                quantity: toReceived(p.quantity),
+                reason: p.note.trim(),
+                type:
+                  p.type === "lost"
+                    ? RestockDamageType.LOST
+                    : RestockDamageType.BROKEN,
               })),
           };
         }),
       });
 
-      // The invalidation is part of the mutation now (#177) and has already run by the time we get
-      // here — including the STOCK and RACK caches, which accepting a delivery makes stale and which
-      // the old `invalidateRestock()` here did not clear.
       toaster.create({ type: "success", title: t("restock.accept.toast.accepted") });
       navigate(`/inventories/restock/${request.id}`);
     } catch (err) {
       setSubmitError(rpcError(err));
-      toaster.create({ type: "error", title: t("restock.accept.toast.failed"), description: rpcError(err) });
+      toaster.create({
+        type: "error",
+        title: t("restock.accept.toast.failed"),
+        description: rpcError(err),
+      });
     }
   }
 
-  // B — the shelves a product already sits on, as "A-01-3 (40)".
-  function recommended(productId: bigint): string {
-    return places
-      .filter((p) => p.productId === productId)
-      .map((p) => `${p.rackId === 0n ? t("racks.select.unplaced") : p.rackCode} (${p.onHand})`)
-      .join(", ");
+  // The shelves this product already sits on, as chips to drop it back onto. Only real racks — the
+  // unplaced pile is not a recommendation.
+  function recommendations(productId: bigint) {
+    return places.filter((p) => p.productId === productId && p.rackId !== 0n);
   }
 
   const back = (
@@ -379,33 +356,26 @@ export function RestockAcceptPage() {
     <Stack gap="section">
       {back}
 
-      {/* The action header rides at the top of the scroll (#201 relayout): on a delivery of ten
-          products the Accept button, and the reason it is disabled, must stay in reach without
-          scrolling back up to find them. */}
-      <Box
-        position="sticky"
-        top="0"
-        zIndex="1"
-        bg="bg"
-        borderBottomWidth="1px"
-        borderColor="border"
-        py="card"
-      >
+      {/* The action header rides at the top of the scroll (#201): on a long delivery the Accept button
+          and the reason it is disabled must stay in reach. */}
+      <Box position="sticky" top="0" zIndex="1" bg="bg" borderBottomWidth="1px" borderColor="border" py="card">
         <Flex align="center" gap="card" wrap="wrap">
           <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
           <Badge colorPalette="brand">{current.teamName}</Badge>
           <Spacer />
 
-          {/* What is left to do, beside the button it is stopping. Silent once everything is ready —
-              a bar that congratulates you on finishing is noise at the moment you want to press Accept. */}
-          {!ready && (
-            <Text fontSize="sm" color="fg.muted" data-testid="accept-progress">
-              {t("restock.accept.progress", { counted, total: items.length })}
-              {unplaced > 0 && ` · ${t("restock.accept.progressUnplaced", { count: unplaced })}`}
+          <Stack gap="0" textAlign="end" mr="1">
+            <Text fontSize="sm" data-testid="accept-restock-count">
+              {t("restock.accept.restockCount", { count: totalReceived.toString() })}
             </Text>
-          )}
+            {blockedLines > 0 && (
+              <Text fontSize="xs" color="orange.fg" data-testid="accept-progress">
+                {t("restock.accept.notPlaced", { count: blockedLines })}
+              </Text>
+            )}
+          </Stack>
 
-          {/* H — accepting moves stock and cannot be undone, so it confirms first. */}
+          {/* Accepting moves stock and cannot be undone, so it confirms first. */}
           <ConfirmDialog
             title={t("restock.accept.confirm.title")}
             message={t("restock.accept.confirm.message")}
@@ -426,82 +396,108 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      {/* I + J + G — what this delivery is, and the fee the courier took at the door. */}
+      {/* Delivery summary, grouped (#206): the order, the shipment, and the freight the courier took at
+          the door. Only the fields the model actually holds — a driver/receiver name and a shipped date
+          are on the mock but not yet in the schema, so they are left out rather than faked. */}
       <Card.Root>
         <Card.Body>
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} gap="card">
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.detail.receipt")}
+          <Stack gap="card">
+            <Box>
+              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+                {t("restock.accept.summary.order")}
               </Text>
-              <Text data-testid="accept-receipt">{request.receipt || "—"}</Text>
-            </Stack>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.form.shippingCost")}
-              </Text>
-              <Text>{formatRupiah(request.shippingCost)}</Text>
-            </Stack>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.accept.codFee")}
-              </Text>
-              <CurrencyInput
-                value={codFee}
-                data-testid="accept-cod-fee"
-                onChange={setCodFee}
-              />
-            </Stack>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.accept.freightTotal")}
-              </Text>
-              <Text fontWeight="medium" data-testid="accept-freight-total">
-                {formatRupiah(freight)}
-              </Text>
-            </Stack>
-          </SimpleGrid>
+              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+                <SummaryField label={t("restock.accept.summary.orderRef")} value={request.orderRef || "—"} />
+                <SummaryField
+                  label={t("restock.accept.summary.supplier")}
+                  value={request.supplierId !== 0n ? `#${request.supplierId.toString()}` : "—"}
+                />
+                <SummaryField label={t("restock.accept.summary.ordered")} value={formatDate(request.createdAtUnix) || "—"} />
+              </SimpleGrid>
+            </Box>
 
-          {request.note && (
-            <Stack gap="0" mt="card">
-              <Text fontSize="xs" color="fg.muted">
-                {t("restock.form.note")}
+            <Separator />
+
+            <Box>
+              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+                {t("restock.accept.summary.shipping")}
               </Text>
-              <Text data-testid="accept-note">{request.note}</Text>
-            </Stack>
-          )}
+              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+                <Stack gap="0.5">
+                  <Text fontSize="xs" color="fg.subtle">
+                    {t("restock.accept.summary.courier")}
+                  </Text>
+                  {request.shippingCode ? <ShippingBadge code={request.shippingCode} /> : <Text>—</Text>}
+                </Stack>
+                <SummaryField
+                  label={t("restock.accept.summary.receipt")}
+                  value={request.receipt || "—"}
+                  testId="accept-receipt"
+                />
+              </SimpleGrid>
+            </Box>
+
+            <Separator />
+
+            <Box>
+              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+                {t("restock.accept.summary.freight")}
+              </Text>
+              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+                <SummaryField label={t("restock.form.shippingCost")} value={formatRupiah(request.shippingCost)} />
+                <Stack gap="0.5">
+                  <Text fontSize="xs" color="fg.subtle">
+                    {t("restock.accept.codFee")}
+                  </Text>
+                  <CurrencyInput value={codFee} data-testid="accept-cod-fee" onChange={setCodFee} />
+                </Stack>
+                <Stack gap="0.5">
+                  <Text fontSize="xs" color="fg.subtle">
+                    {t("restock.accept.freightTotal")}
+                  </Text>
+                  <Text fontWeight="medium" data-testid="accept-freight-total">
+                    {formatRupiah(freight)}
+                  </Text>
+                </Stack>
+              </SimpleGrid>
+            </Box>
+
+            {request.note && (
+              <Box borderTopWidth="1px" borderColor="border" pt="card">
+                <Text fontSize="xs" color="fg.subtle">
+                  {t("restock.form.note")}
+                </Text>
+                <Text data-testid="accept-note">{request.note}</Text>
+              </Box>
+            )}
+          </Stack>
         </Card.Body>
       </Card.Root>
 
       {items.map((item) => {
-        const key = item.id.toString();
-        const raw = counts[key] ?? "";
-        const rows = placements[key] ?? [];
-        const damageRows = damage[key] ?? [];
-        const placed = rows.reduce((sum, r) => sum + toReceived(r.quantity), 0n);
-        const hpp = unitHpp(item.totalPrice, toReceived(raw), freight, sellableTotal);
-        const delta = deltaLabel(t, item.quantity, toReceived(raw));
-        const hint = recommended(item.productId);
+        const st = lineState(item);
+        const hpp = unitHpp(item.totalPrice, st.placed, freight, sellableTotal);
+        const delta = deltaLabel(t, item.quantity, st.count);
+        const recs = recommendations(item.productId);
+        const problemRows = problems[st.key] ?? [];
 
         return (
-          <Card.Root key={key} data-testid={`accept-line-${item.productId}`}>
+          <Card.Root key={st.key} data-testid={`accept-line-${item.productId}`}>
             <Card.Body>
               <Stack gap="card">
-                {/* A — the product, through the SHARED component (#143/#157). It was hand-rolled here
-                    as a name over a SKU, which is the same picture drawn a second way: this screen
-                    then had its own idea of how a product looks, and the cover image every other
-                    screen shows was simply missing. No `stock` is passed — that badge means the
-                    warehouse's total (#138), and nothing here has loaded one. */}
+                {/* The product, through the shared component (#143). No stock badge — that means the
+                    warehouse total (#138), and nothing here has loaded one. */}
                 <ProductListItem
                   product={{ id: item.productId, sku: item.sku, name: item.name }}
                   action={
-                    /* D — what a unit of this line actually cost, freight included (#155). */
                     <Stack gap="0" textAlign="end">
                       <Text fontSize="xs" color="fg.muted">
                         {t("restock.accept.hpp")}
                       </Text>
                       <Text fontWeight="medium" data-testid={`accept-hpp-${item.productId}`}>
-                        {t("restock.accept.perPiece", { price: formatRupiah(hpp) })}
+                        {/* No unit cost until something is shelved — "Rp 0" would read as free (#74),
+                            so an unplaced line shows a dash until it has a sellable count to divide. */}
+                        {st.placed > 0n ? t("restock.accept.perPiece", { price: formatRupiah(hpp) }) : "—"}
                       </Text>
                     </Stack>
                   }
@@ -509,109 +505,87 @@ export function RestockAcceptPage() {
 
                 <Separator />
 
-                {/* C — the count. */}
-                <Flex align="flex-end" gap="card" wrap="wrap">
-                  <Stack gap="0">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("restock.receive.asked")}
-                    </Text>
-                    <Text>{item.quantity.toString()}</Text>
-                  </Stack>
-
-                  <Stack gap="0" maxW="32">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("restock.receive.arrived")}
-                    </Text>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={raw}
-                      data-testid={`accept-count-${item.productId}`}
-                      onChange={(e) => patchCount(key, e.target.value)}
-                    />
-                  </Stack>
-
-                  {delta && (
-                    <Badge colorPalette="orange" data-testid={`accept-delta-${item.productId}`}>
-                      {delta}
-                    </Badge>
-                  )}
-                </Flex>
-
-                {/* E — PUT-AWAY, the heart of accepting (#201 relayout). A delivery of 100 does not
-                    go on one shelf (#154), and naming the shelf is PART of accepting rather than a
-                    later chore (owner, 2026-07-17). The balance pill turns green the moment the
-                    shelves add up to the count beside them — the running total that used to sit up in
-                    the count row, moved to where the decision it judges is made. */}
-                {!noneArrived(raw) && (
-                  <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card">
-                    <Stack gap="2">
-                      <Flex align="center" gap="2">
-                        <Icon as={LayoutGrid} boxSize="4" color="brand.fg" />
-                        <Text fontSize="sm" fontWeight="semibold">
-                          {t("restock.accept.putaway")}
-                        </Text>
-                        <Spacer />
-
-                        {/* The balance, WHILE typing — being told what is wrong only after pressing a
-                            disabled button is how a form wastes somebody's time. Green when it adds up,
-                            orange (and carrying the guard's testid) until it does. */}
-                        {needsPlace(raw) &&
-                          (placed === toReceived(raw) ? (
-                            <Badge colorPalette="green" data-testid={`accept-balanced-${item.productId}`}>
-                              {t("restock.accept.balancePlaced", {
-                                placed: placed.toString(),
-                                counted: toReceived(raw).toString(),
-                              })}
-                            </Badge>
-                          ) : (
-                            <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
-                              {t("restock.accept.balancePlaced", {
-                                placed: placed.toString(),
-                                counted: toReceived(raw).toString(),
-                              })}
-                            </Badge>
-                          ))}
-                      </Flex>
-
-                    {/* B — where it already lives (#157 relayout). This used to sit up beside the
-                        product, which is where you read ABOUT a product; it is really advice about
-                        WHERE TO PUT one, so it belongs at the decision it informs. Today's delivery
-                        joining yesterday's pile is the whole point of showing it. */}
-                    {hint && (
-                      <Text
-                        fontSize="xs"
-                        color="fg.muted"
-                        data-testid={`accept-recommend-${item.productId}`}
-                      >
-                        {t("restock.accept.alreadyOn", { places: hint })}
+                {/* PUT-AWAY is the whole line now (#206): what you shelve here + what you flag is the
+                    count. The balance pill turns from "{n} to place" to a settled total as every typed
+                    quantity gets a shelf. */}
+                <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card">
+                  <Stack gap="card">
+                    <Flex align="center" gap="2" wrap="wrap">
+                      <Icon as={LayoutGrid} boxSize="4" color="brand.fg" />
+                      <Text fontSize="sm" fontWeight="semibold">
+                        {t("restock.accept.putaway")}
                       </Text>
+                      <Text fontSize="xs" color="fg.subtle">
+                        {t("restock.accept.ordered", { n: item.quantity.toString() })}
+                      </Text>
+                      {delta && (
+                        <Badge
+                          colorPalette={st.count < item.quantity ? "orange" : "green"}
+                          data-testid={`accept-delta-${item.productId}`}
+                        >
+                          {delta}
+                        </Badge>
+                      )}
+                      <Spacer />
+                      {st.blocking > 0n ? (
+                        <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
+                          {t("restock.accept.toPlace", { count: st.blocking.toString() })}
+                        </Badge>
+                      ) : (
+                        <Badge colorPalette="green" data-testid={`accept-balanced-${item.productId}`}>
+                          {t("restock.accept.pcs", { count: st.count.toString() })}
+                        </Badge>
+                      )}
+                    </Flex>
+
+                    {/* Placed here before — clickable, drops it onto a shelf it already sits on (#156). */}
+                    {recs.length > 0 && (
+                      <Flex align="center" gap="2" wrap="wrap">
+                        <Flex align="center" gap="1" color="fg.muted">
+                          <Icon as={History} boxSize="3.5" />
+                          <Text fontSize="xs">{t("restock.accept.placedBefore")}</Text>
+                        </Flex>
+                        {recs.map((rec) => (
+                          <Button
+                            key={rec.rackId.toString()}
+                            size="xs"
+                            variant="outline"
+                            data-testid={`accept-rec-${item.productId}-${rec.rackId}`}
+                            onClick={() => applyRecommendation(st.key, rec.rackId)}
+                          >
+                            {rec.rackCode}
+                            <Text as="span" color="fg.subtle" ml="1">
+                              {t("restock.accept.hereCount", { count: rec.onHand.toString() })}
+                            </Text>
+                          </Button>
+                        ))}
+                      </Flex>
                     )}
 
-                    {rows.map((row) => (
+                    {st.rows.map((row) => (
                       <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                        <Stack gap="0" flex="1" minW="48">
+                        <Box flex="1" minW="48">
                           <RackSelect
                             warehouseId={teamId ?? 0n}
                             value={row.place}
-                            onChange={(v) => patchPlacement(key, row.key, { place: v })}
+                            onChange={(v) => patchPlacement(st.key, row.key, { place: v })}
                           />
-                        </Stack>
+                        </Box>
                         <Input
                           type="number"
                           min="0"
                           maxW="24"
                           value={row.quantity}
                           data-testid={`accept-placement-qty-${item.productId}-${row.key}`}
-                          onChange={(e) => patchPlacement(key, row.key, { quantity: e.target.value })}
+                          onChange={(e) => patchPlacement(st.key, row.key, { quantity: e.target.value })}
                         />
                         <IconButton
                           size="xs"
                           variant="ghost"
                           colorPalette="red"
                           aria-label={t("restock.accept.removePlacement")}
-                          disabled={rows.length === 1}
-                          onClick={() => removePlacement(key, row.key)}
+                          disabled={st.rows.length === 1}
+                          onClick={() => removePlacement(st.key, row.key)}
                         >
                           <Icon as={Trash2} boxSize="4" />
                         </IconButton>
@@ -623,92 +597,111 @@ export function RestockAcceptPage() {
                       variant="outline"
                       alignSelf="flex-start"
                       data-testid={`accept-add-placement-${item.productId}`}
-                      onClick={() => addPlacement(key)}
+                      onClick={() => addPlacement(st.key)}
                     >
                       <Icon as={Plus} boxSize="4" />
                       {t("restock.accept.addPlacement")}
                     </Button>
-                    </Stack>
-                  </Box>
-                )}
+                  </Stack>
+                </Box>
 
-                {/* F — what arrived broken. Never enters stock (#154).
-
-                    COLLAPSED UNTIL IT IS NEEDED (#157 relayout). Breakage is the exception: most
-                    deliveries have none, and an always-open "Broken / lost" heading with an empty
-                    Add button under EVERY line pushed the real work — count, then place — down the
-                    page on every single one. Now it is one small action until somebody has something
-                    to report, and the full section the moment they do. */}
-                {damageRows.length === 0 ? (
+                {/* Problems — broken or lost, never enter stock (#154). Collapsed until there is one to
+                    report: most deliveries have none. */}
+                {problemRows.length === 0 ? (
                   <Button
                     size="xs"
                     variant="ghost"
                     alignSelf="flex-start"
-                    data-testid={`accept-add-damage-${item.productId}`}
-                    onClick={() => addDamage(key)}
+                    data-testid={`accept-add-problem-${item.productId}`}
+                    onClick={() => addProblem(st.key)}
                   >
                     <Icon as={Plus} boxSize="4" />
-                    {t("restock.accept.reportDamage")}
+                    {t("restock.accept.reportProblem")}
                   </Button>
                 ) : (
-                <Stack gap="2">
-                  <Text fontSize="sm" fontWeight="medium">
-                    {t("restock.accept.damage")}
-                  </Text>
+                  <Box borderWidth="1px" borderColor="orange.emphasized" borderRadius="md" bg="orange.subtle" p="card">
+                    <Stack gap="2">
+                      <Flex align="center" gap="2">
+                        <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
+                        <Text fontSize="sm" fontWeight="semibold" color="orange.fg">
+                          {t("restock.accept.problems")}
+                        </Text>
+                      </Flex>
 
-                  {damageRows.map((row) => (
-                    <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                      <Input
-                        type="number"
-                        min="1"
-                        maxW="20"
-                        value={row.quantity}
-                        data-testid={`accept-damage-qty-${item.productId}-${row.key}`}
-                        onChange={(e) => patchDamage(key, row.key, { quantity: e.target.value })}
-                      />
-                      <Input
-                        flex="1"
-                        minW="40"
-                        placeholder={t("restock.accept.damageReason")}
-                        value={row.reason}
-                        data-testid={`accept-damage-reason-${item.productId}-${row.key}`}
-                        onChange={(e) => patchDamage(key, row.key, { reason: e.target.value })}
-                      />
-                      <CurrencyInput
-                        maxW="28"
-                        placeholder={t("restock.accept.damageValue")}
-                        value={row.value}
-                        onChange={(v) => patchDamage(key, row.key, { value: v })}
-                      />
-                      <IconButton
+                      {problemRows.map((row) => (
+                        <Flex key={row.key} align="center" gap="2" wrap="wrap">
+                          <NativeSelect.Root maxW="28" size="sm">
+                            <NativeSelect.Field
+                              value={row.type}
+                              data-testid={`accept-problem-type-${item.productId}-${row.key}`}
+                              onChange={(e) =>
+                                patchProblem(st.key, row.key, {
+                                  type: e.target.value as "broken" | "lost",
+                                })
+                              }
+                            >
+                              <option value="broken">{t("restock.accept.problemBroken")}</option>
+                              <option value="lost">{t("restock.accept.problemLost")}</option>
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                          </NativeSelect.Root>
+                          <Input
+                            type="number"
+                            min="1"
+                            maxW="20"
+                            value={row.quantity}
+                            data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
+                            onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
+                          />
+                          <Input
+                            flex="1"
+                            minW="40"
+                            placeholder={t("restock.accept.problemNote")}
+                            value={row.note}
+                            data-testid={`accept-problem-note-${item.productId}-${row.key}`}
+                            onChange={(e) => patchProblem(st.key, row.key, { note: e.target.value })}
+                          />
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            colorPalette="red"
+                            aria-label={t("restock.accept.removeProblem")}
+                            onClick={() => removeProblem(st.key, row.key)}
+                          >
+                            <Icon as={Trash2} boxSize="4" />
+                          </IconButton>
+                        </Flex>
+                      ))}
+
+                      <Button
                         size="xs"
-                        variant="ghost"
-                        colorPalette="red"
-                        aria-label={t("restock.accept.removeDamage")}
-                        onClick={() => removeDamage(key, row.key)}
+                        variant="outline"
+                        alignSelf="flex-start"
+                        data-testid={`accept-add-more-problem-${item.productId}`}
+                        onClick={() => addProblem(st.key)}
                       >
-                        <Icon as={Trash2} boxSize="4" />
-                      </IconButton>
-                    </Flex>
-                  ))}
-
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    alignSelf="flex-start"
-                    data-testid={`accept-add-more-damage-${item.productId}`}
-                    onClick={() => addDamage(key)}
-                  >
-                    <Icon as={Plus} boxSize="4" />
-                    {t("restock.accept.addDamage")}
-                  </Button>
-                </Stack>
+                        <Icon as={Plus} boxSize="4" />
+                        {t("restock.accept.addProblem")}
+                      </Button>
+                    </Stack>
+                  </Box>
                 )}
               </Stack>
             </Card.Body>
           </Card.Root>
         );
       })}
+    </Stack>
+  );
+}
+
+function SummaryField({ label, value, testId }: { label: string; value: string; testId?: string }) {
+  return (
+    <Stack gap="0.5">
+      <Text fontSize="xs" color="fg.subtle">
+        {label}
+      </Text>
+      <Text data-testid={testId}>{value}</Text>
     </Stack>
   );
 }

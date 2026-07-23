@@ -84,7 +84,7 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 28},
 				},
 				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed brims", Value: 56000},
+					{Quantity: 2, Reason: "crushed brims", Type: broken},
 				},
 			},
 		},

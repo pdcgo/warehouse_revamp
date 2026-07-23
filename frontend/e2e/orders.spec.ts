@@ -525,26 +525,17 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   const line = page.getByTestId(`accept-line-${seeded.productId}`);
   await expect(line).toBeVisible();
 
-  // 10 were asked for and the count is prefilled with it — a convenience, not an assumption.
-  const count = page.getByTestId(`accept-count-${seeded.productId}`);
-  await expect(count).toHaveValue("10");
-
-  // 8 are sellable: 2 arrived crushed.
-  await count.fill("8");
-
-  // The prefilled placement still says 10, so the screen must say so WHILE typing rather than
-  // refusing at the end — and Accept must be unavailable until it balances.
+  // The count is DERIVED now (#206): the line seeds with the ordered 10 on ONE row with no shelf, so
+  // Accept is blocked until every quantity has a home — there is no separate "arrived" box to type.
+  const firstQty = line.getByTestId(/^accept-placement-qty-/).first();
+  await expect(firstQty).toHaveValue("10");
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeVisible();
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
 
-  // #157 relayout — the disabled button SAYS WHY, beside itself. On a delivery of ten products the
-  // per-line warning above can be several screens away, and a button that refuses without a reason
-  // makes somebody scroll the whole page hunting for the line they have not finished.
-  await expect(page.getByTestId("accept-progress")).toContainText("1 of 1 counted");
-  await expect(page.getByTestId("accept-progress")).toContainText("1 still to place");
+  // The disabled button SAYS WHY, beside itself — the header names the line still to place.
+  await expect(page.getByTestId("accept-progress")).toContainText("1 line not placed");
 
-  // Split it: 5 on the first shelf, 3 on the second.
-  const firstQty = line.getByTestId(/^accept-placement-qty-/).first();
+  // 8 are sellable: split 5 on the first shelf, 3 on the second.
   await firstQty.fill("5");
   await line.getByTestId("rack-select").first().selectOption({ label: "ACC-01" });
 
@@ -552,18 +543,16 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await line.getByTestId(/^accept-placement-qty-/).nth(1).fill("3");
   await line.getByTestId("rack-select").nth(1).selectOption({ label: "ACC-02" });
 
+  // Everything typed now has a shelf — the blocking pill is gone and the progress line with it.
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeHidden();
-
-  // …and once nothing is blocking, the progress line goes away rather than congratulating anybody.
   await expect(page.getByTestId("accept-progress")).toBeHidden();
 
-  // The breakage — never enters stock, but it is recorded with a reason. The damage section is
-  // COLLAPSED until asked for (#157 relayout): most deliveries break nothing, and an always-open
-  // empty section under every line pushed the counting and placing down the page on every one.
-  await expect(line.getByTestId(/^accept-damage-qty-/)).toHaveCount(0);
-  await page.getByTestId(`accept-add-damage-${seeded.productId}`).click();
-  await line.getByTestId(/^accept-damage-qty-/).first().fill("2");
-  await line.getByTestId(/^accept-damage-reason-/).first().fill("crushed in transit");
+  // The other 2 never arrived sellable — recorded as a PROBLEM (broken), which never enters stock.
+  // The problems section is COLLAPSED until asked for: most deliveries have none.
+  await expect(line.getByTestId(/^accept-problem-qty-/)).toHaveCount(0);
+  await page.getByTestId(`accept-add-problem-${seeded.productId}`).click();
+  await line.getByTestId(/^accept-problem-qty-/).first().fill("2");
+  await line.getByTestId(/^accept-problem-note-/).first().fill("crushed in transit");
 
   // The COD fee changes what everything cost, and the HPP must move as it is typed (#155).
   const hpp = page.getByTestId(`accept-hpp-${seeded.productId}`);

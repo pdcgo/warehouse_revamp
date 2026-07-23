@@ -120,9 +120,11 @@ type RestockDamagedUnit struct {
 	Quantity             int64
 	// Required and non-empty (DB CHECK). A loss with no reason is a number nobody can act on.
 	Reason string
-	// What those units were worth, whole rupiah. 0 is legitimate — a free sample can arrive crushed.
-	Value     int64
-	CreatedAt time.Time
+	// How it failed to become stock: "broken" or "lost". Stored as text and mapped in the handler layer
+	// (no DB CHECK IN-list, cf. #80). The rupiah value that used to live here was dropped (owner,
+	// 2026-07-23) — staff know a box is crushed, not what it was worth, and nothing read it.
+	DamageType string
+	CreatedAt  time.Time
 }
 
 func (RestockDamagedUnit) TableName() string {

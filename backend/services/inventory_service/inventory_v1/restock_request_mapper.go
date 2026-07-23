@@ -25,6 +25,35 @@ const (
 	restockPaymentBankAccount = "bank_account"
 )
 
+// How a unit failed to become stock, as stored in `restock_damaged_units.damage_type` (#154). Mapped
+// here, not by a DB CHECK (cf. #80). Empty text (pre-2026-07-23 rows) reads back as UNSPECIFIED.
+const (
+	restockDamageBroken = "broken"
+	restockDamageLost   = "lost"
+)
+
+func restockDamageTypeToText(t inventoryv1.RestockDamageType) string {
+	switch t {
+	case inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_BROKEN:
+		return restockDamageBroken
+	case inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_LOST:
+		return restockDamageLost
+	default:
+		return ""
+	}
+}
+
+func restockDamageTypeFromText(text string) inventoryv1.RestockDamageType {
+	switch text {
+	case restockDamageBroken:
+		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_BROKEN
+	case restockDamageLost:
+		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_LOST
+	default:
+		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_UNSPECIFIED
+	}
+}
+
 func restockPaymentToText(p inventoryv1.RestockPaymentType) string {
 	switch p {
 	case inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY:
@@ -123,7 +152,7 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 			item.Damaged = append(item.Damaged, &inventoryv1.RestockDamagedUnits{
 				Quantity: r.Items[i].Damaged[d].Quantity,
 				Reason:   r.Items[i].Damaged[d].Reason,
-				Value:    r.Items[i].Damaged[d].Value,
+				Type:     restockDamageTypeFromText(r.Items[i].Damaged[d].DamageType),
 			})
 		}
 

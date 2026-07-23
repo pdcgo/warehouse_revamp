@@ -272,7 +272,7 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 8},
 				},
 				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed in transit", Value: 20000},
+					{Quantity: 2, Reason: "crushed in transit", Type: broken},
 				},
 			},
 		},

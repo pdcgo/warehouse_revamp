@@ -594,7 +594,7 @@ erDiagram
         bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
         bigint      quantity                "CHECK > 0"
         text        reason                  "required, CHECK <> empty"
-        bigint      value                   "whole rupiah, CHECK >= 0"
+        text        damage_type             "broken | lost (mapper-guarded, #80)"
         timestamptz created_at
     }
 

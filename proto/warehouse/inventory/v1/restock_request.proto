@@ -361,6 +361,17 @@ message RestockPlacement {
   int64 quantity = 3 [(buf.validate.field).int64.gt = 0];
 }
 
+// How a received unit failed to become stock (#154) — the two are DIFFERENT questions a supplier
+// report separates: "how much did they send us broken" is not "how much did they short us". APPEND
+// ONLY, like every enum here.
+enum RestockDamageType {
+  RESTOCK_DAMAGE_TYPE_UNSPECIFIED = 0;
+  // Arrived, but not sellable — crushed, torn, soaked.
+  RESTOCK_DAMAGE_TYPE_BROKEN = 1;
+  // Never arrived — short in the carton, missing from the box.
+  RESTOCK_DAMAGE_TYPE_LOST = 2;
+}
+
 // RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
 //
 // They NEVER ENTER STOCK (owner, 2026-07-20). Received counts what is sellable; this counts what is
@@ -377,8 +388,17 @@ message RestockDamagedUnits {
     max_len: 200
   }];
 
-  // What those units were worth, whole rupiah. 0 is legitimate: a free sample can still arrive crushed.
-  int64 value = 3 [(buf.validate.field).int64.gte = 0];
+  // BROKEN on arrival, or LOST from the box. Required — the person at the door always knows which.
+  RestockDamageType type = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // 3 was `value` — the rupiah worth of the loss. Dropped (owner, 2026-07-23): warehouse staff know a
+  // box is crushed at the door, not what it was worth, and no consumer read it. The type above is the
+  // fact worth keeping.
+  reserved 3;
+  reserved "value";
 }
 
 message RestockRequestReceivedLine {
