@@ -69,6 +69,9 @@ const (
 	// InventoryServiceStockPickLocationsProcedure is the fully-qualified name of the InventoryService's
 	// StockPickLocations RPC.
 	InventoryServiceStockPickLocationsProcedure = "/warehouse.inventory.v1.InventoryService/StockPickLocations"
+	// InventoryServiceBatchListProcedure is the fully-qualified name of the InventoryService's
+	// BatchList RPC.
+	InventoryServiceBatchListProcedure = "/warehouse.inventory.v1.InventoryService/BatchList"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -92,6 +95,9 @@ type InventoryServiceClient interface {
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
+	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
+	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
+	BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -177,6 +183,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("StockPickLocations")),
 			connect.WithClientOptions(opts...),
 		),
+		batchList: connect.NewClient[v1.BatchListRequest, v1.BatchListResponse](
+			httpClient,
+			baseURL+InventoryServiceBatchListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -194,6 +206,7 @@ type inventoryServiceClient struct {
 	warehouseProductList *connect.Client[v1.WarehouseProductListRequest, v1.WarehouseProductListResponse]
 	productPlaces        *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
+	batchList            *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -256,6 +269,11 @@ func (c *inventoryServiceClient) StockPickLocations(ctx context.Context, req *co
 	return c.stockPickLocations.CallUnary(ctx, req)
 }
 
+// BatchList calls warehouse.inventory.v1.InventoryService.BatchList.
+func (c *inventoryServiceClient) BatchList(ctx context.Context, req *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error) {
+	return c.batchList.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -278,6 +296,9 @@ type InventoryServiceHandler interface {
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
 	StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error)
+	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
+	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
+	BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -359,6 +380,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("StockPickLocations")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceBatchListHandler := connect.NewUnaryHandler(
+		InventoryServiceBatchListProcedure,
+		svc.BatchList,
+		connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -385,6 +412,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceProductPlacesHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
 			inventoryServiceStockPickLocationsHandler.ServeHTTP(w, r)
+		case InventoryServiceBatchListProcedure:
+			inventoryServiceBatchListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -440,4 +469,8 @@ func (UnimplementedInventoryServiceHandler) ProductPlaces(context.Context, *conn
 
 func (UnimplementedInventoryServiceHandler) StockPickLocations(context.Context, *connect.Request[v1.StockPickLocationsRequest]) (*connect.Response[v1.StockPickLocationsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.StockPickLocations is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchList is not implemented"))
 }

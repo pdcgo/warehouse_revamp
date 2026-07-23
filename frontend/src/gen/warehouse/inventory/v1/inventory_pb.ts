@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/inventory.proto.
  */
 export const file_warehouse_inventory_v1_inventory: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi8gEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkSDwoHcmFja19pZBgLIAEoBCJ5ChBTdG9ja0xpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ5ChFTdG9ja0xpc3RSZXNwb25zZRIyCgZsZXZlbHMYASADKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGV2ZWwSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLNAQoTU3RvY2tIaXN0b3J5UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEjIKBGtpbmQYBCABKA4yJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLk1vdmVtZW50S2luZDoLkrUYBwoFAQIGCQgiggEKFFN0b2NrSGlzdG9yeVJlc3BvbnNlEjgKCW1vdmVtZW50cxgBIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIq0BChNTdG9ja1JlY2VpdmVSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIZCghxdWFudGl0eRgDIAEoA0IHukgEIgIgABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBEhQKA3JlZhgFIAEoCUIHukgEcgIYZDoLkrUYBwoFAQIGCQgiTwoUU3RvY2tSZWNlaXZlUmVzcG9uc2USNwoIbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQi3QEKElN0b2NrQWRqdXN0UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASGAoHb25faGFuZBgDIAEoA0IHukgEIgIoABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBEhoKB3JhY2tfaWQYBSABKARCB7pIBDICIABIABIbCgh1bnBsYWNlZBgGIAEoCEIHukgEagIIAUgAOgqStRgGCgQBAgYJQg4KBXBsYWNlEgW6SAIIASKBAQoTU3RvY2tBZGp1c3RSZXNwb25zZRI3Cghtb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBIxCgVsZXZlbBgCIAEoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMZXZlbCJVCgpTdG9ja1BsYWNlEhoKB3JhY2tfaWQYASABKARCB7pIBDICIABIABIbCgh1bnBsYWNlZBgCIAEoCEIHukgEagIIAUgAQg4KBXBsYWNlEgW6SAIIASKGAgoQU3RvY2tNb3ZlUmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASOAoEZnJvbRgDIAEoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQbGFjZUIGukgDyAEBEjYKAnRvGAQgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1BsYWNlQga6SAPIAQESGQoIcXVhbnRpdHkYBSABKANCB7pIBCICIAASGAoGcmVhc29uGAYgASgJQgi6SAVyAxjIAToLkrUYBwoFAQIGCQgijQEKEVN0b2NrTW92ZVJlc3BvbnNlEjwKDWZyb21fbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQSOgoLdG9fbW92ZW1lbnQYAiABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQiRwoNU3RvY2tQaWNrTGluZRIbCgpwcm9kdWN0X2lkGAEgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAIgASgDQge6SAQiAiAAIrIBChBTdG9ja1BpY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABI+CgVsaW5lcxgDIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTGluZUIIukgFkgECCAESFAoDcmVmGAQgASgJQge6SARyAhhkOguStRgHCgUBAgMEBSJNChFTdG9ja1BpY2tSZXNwb25zZRI4Cgltb3ZlbWVudHMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQidgoSU3RvY2tSZXR1cm5SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIWCgNyZWYYAyABKAlCCbpIBnIEEAEYZDoLkrUYBwoFAQIDBAUiTwoTU3RvY2tSZXR1cm5SZXNwb25zZRI4Cgltb3ZlbWVudHMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQiNgoNU3RvY2tDb3N0TGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhEKCXVuaXRfY29zdBgCIAEoAyKGAQoQU3RvY2tDb3N0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgx3YXJlaG91c2VfaWQYAiABKARCB7pIBDICIAASKAoLcHJvZHVjdF9pZHMYAyADKARCE7pIEJIBDQgBEMgBGAEiBDICIAA6C5K1GAcKBQECAwQFIkkKEVN0b2NrQ29zdFJlc3BvbnNlEjQKBWNvc3RzGAEgAygLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RMaW5lIr4BChRTdG9ja1RyYW5zZmVyUmVxdWVzdBImChFmcm9tX3dhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPdG9fd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEhsKCnByb2R1Y3RfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASGAoGcmVhc29uGAUgASgJQgi6SAVyAxjIAToKkrUYBgoEAQIGCSKQAQoVU3RvY2tUcmFuc2ZlclJlc3BvbnNlEjsKDG91dF9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgtpbl9tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCJjChlTdG9ja1BpY2tMb2NhdGlvbnNSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESFgoDcmVmGAIgASgJQgm6SAZyBBABGEA6C5K1GAcKBQECBgkIIl0KEVN0b2NrUGlja0xvY2F0aW9uEhIKCnByb2R1Y3RfaWQYASABKAQSDwoHcmFja19pZBgCIAEoBBIRCglyYWNrX2NvZGUYAyABKAkSEAoIcXVhbnRpdHkYBCABKAMiWgoaU3RvY2tQaWNrTG9jYXRpb25zUmVzcG9uc2USPAoJbG9jYXRpb25zGAEgAygLMikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1BpY2tMb2NhdGlvbiKEAQobV2FyZWhvdXNlUHJvZHVjdExpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJlChxXYXJlaG91c2VQcm9kdWN0TGlzdFJlc3BvbnNlEhMKC3Byb2R1Y3RfaWRzGAEgAygEEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iaAoUUHJvZHVjdFBsYWNlc1JlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIgCgtwcm9kdWN0X2lkcxgCIAMoBEILukgIkgEFCAEQyAE6C5K1GAcKBQECBgkIIlcKDFByb2R1Y3RQbGFjZRISCgpwcm9kdWN0X2lkGAEgASgEEg8KB3JhY2tfaWQYAiABKAQSEQoJcmFja19jb2RlGAMgASgJEg8KB29uX2hhbmQYBCABKAMiTQoVUHJvZHVjdFBsYWNlc1Jlc3BvbnNlEjQKBnBsYWNlcxgBIAMoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUHJvZHVjdFBsYWNlKusBCgxNb3ZlbWVudEtpbmQSHQoZTU9WRU1FTlRfS0lORF9VTlNQRUNJRklFRBAAEhkKFU1PVkVNRU5UX0tJTkRfUkVDRUlWRRABEhgKFE1PVkVNRU5UX0tJTkRfQURKVVNUEAISHgoaTU9WRU1FTlRfS0lORF9UUkFOU0ZFUl9PVVQQAxIdChlNT1ZFTUVOVF9LSU5EX1RSQU5TRkVSX0lOEAQSFgoSTU9WRU1FTlRfS0lORF9QSUNLEAUSFgoSTU9WRU1FTlRfS0lORF9NT1ZFEAYSGAoUTU9WRU1FTlRfS0lORF9SRVRVUk4QBzKdCgoQSW52ZW50b3J5U2VydmljZRJgCglTdG9ja0xpc3QSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlc3BvbnNlEmkKDFN0b2NrSGlzdG9yeRIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVxdWVzdBosLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVzcG9uc2USaQoMU3RvY2tSZWNlaXZlEisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXNwb25zZRJmCgtTdG9ja0FkanVzdBIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tBZGp1c3RSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlc3BvbnNlEmwKDVN0b2NrVHJhbnNmZXISLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXF1ZXN0Gi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1RyYW5zZmVyUmVzcG9uc2USYAoJU3RvY2tNb3ZlEigud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXNwb25zZRJgCglTdG9ja1BpY2sSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUGlja1JlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUGlja1Jlc3BvbnNlEmYKC1N0b2NrUmV0dXJuEioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JldHVyblJlcXVlc3QaKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmV0dXJuUmVzcG9uc2USYAoJU3RvY2tDb3N0Eigud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RSZXNwb25zZRKBAQoUV2FyZWhvdXNlUHJvZHVjdExpc3QSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLldhcmVob3VzZVByb2R1Y3RMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuV2FyZWhvdXNlUHJvZHVjdExpc3RSZXNwb25zZRJsCg1Qcm9kdWN0UGxhY2VzEiwud2FyZWhvdXNlLmludmVudG9yeS52MS5Qcm9kdWN0UGxhY2VzUmVxdWVzdBotLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUHJvZHVjdFBsYWNlc1Jlc3BvbnNlEnsKElN0b2NrUGlja0xvY2F0aW9ucxIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTG9jYXRpb25zUmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTG9jYXRpb25zUmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiZ3YXJlaG91c2UvaW52ZW50b3J5L3YxL2ludmVudG9yeS5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSJHCgpTdG9ja0xldmVsEhIKCnByb2R1Y3RfaWQYASABKAQSFAoMd2FyZWhvdXNlX2lkGAIgASgEEg8KB29uX2hhbmQYAyABKAMi8gEKDVN0b2NrTW92ZW1lbnQSCgoCaWQYASABKAQSEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSDQoFZGVsdGEYBCABKAMSDwoHYmFsYW5jZRgFIAEoAxIyCgRraW5kGAYgASgOMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5Nb3ZlbWVudEtpbmQSDgoGcmVhc29uGAcgASgJEgsKA3JlZhgIIAEoCRIVCg1hY3Rvcl91c2VyX2lkGAkgASgEEhIKCmNyZWF0ZWRfYXQYCiABKAkSDwoHcmFja19pZBgLIAEoBCJ5ChBTdG9ja0xpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJ5ChFTdG9ja0xpc3RSZXNwb25zZRIyCgZsZXZlbHMYASADKAsyIi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGV2ZWwSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLNAQoTU3RvY2tIaXN0b3J5UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEjIKBGtpbmQYBCABKA4yJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLk1vdmVtZW50S2luZDoLkrUYBwoFAQIGCQgiggEKFFN0b2NrSGlzdG9yeVJlc3BvbnNlEjgKCW1vdmVtZW50cxgBIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIq0BChNTdG9ja1JlY2VpdmVSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIZCghxdWFudGl0eRgDIAEoA0IHukgEIgIgABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBEhQKA3JlZhgFIAEoCUIHukgEcgIYZDoLkrUYBwoFAQIGCQgiTwoUU3RvY2tSZWNlaXZlUmVzcG9uc2USNwoIbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQi3QEKElN0b2NrQWRqdXN0UmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASGAoHb25faGFuZBgDIAEoA0IHukgEIgIoABIYCgZyZWFzb24YBCABKAlCCLpIBXIDGMgBEhoKB3JhY2tfaWQYBSABKARCB7pIBDICIABIABIbCgh1bnBsYWNlZBgGIAEoCEIHukgEagIIAUgAOgqStRgGCgQBAgYJQg4KBXBsYWNlEgW6SAIIASKBAQoTU3RvY2tBZGp1c3RSZXNwb25zZRI3Cghtb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBIxCgVsZXZlbBgCIAEoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tMZXZlbCJVCgpTdG9ja1BsYWNlEhoKB3JhY2tfaWQYASABKARCB7pIBDICIABIABIbCgh1bnBsYWNlZBgCIAEoCEIHukgEagIIAUgAQg4KBXBsYWNlEgW6SAIIASKGAgoQU3RvY2tNb3ZlUmVxdWVzdBIhCgx3YXJlaG91c2VfaWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASOAoEZnJvbRgDIAEoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQbGFjZUIGukgDyAEBEjYKAnRvGAQgASgLMiIud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1BsYWNlQga6SAPIAQESGQoIcXVhbnRpdHkYBSABKANCB7pIBCICIAASGAoGcmVhc29uGAYgASgJQgi6SAVyAxjIAToLkrUYBwoFAQIGCQgijQEKEVN0b2NrTW92ZVJlc3BvbnNlEjwKDWZyb21fbW92ZW1lbnQYASABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQSOgoLdG9fbW92ZW1lbnQYAiABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQiRwoNU3RvY2tQaWNrTGluZRIbCgpwcm9kdWN0X2lkGAEgASgEQge6SAQyAiAAEhkKCHF1YW50aXR5GAIgASgDQge6SAQiAiAAIrIBChBTdG9ja1BpY2tSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABI+CgVsaW5lcxgDIAMoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTGluZUIIukgFkgECCAESFAoDcmVmGAQgASgJQge6SARyAhhkOguStRgHCgUBAgMEBSJNChFTdG9ja1BpY2tSZXNwb25zZRI4Cgltb3ZlbWVudHMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQidgoSU3RvY2tSZXR1cm5SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIWCgNyZWYYAyABKAlCCbpIBnIEEAEYZDoLkrUYBwoFAQIDBAUiTwoTU3RvY2tSZXR1cm5SZXNwb25zZRI4Cgltb3ZlbWVudHMYASADKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQiNgoNU3RvY2tDb3N0TGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhEKCXVuaXRfY29zdBgCIAEoAyKGAQoQU3RvY2tDb3N0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgx3YXJlaG91c2VfaWQYAiABKARCB7pIBDICIAASKAoLcHJvZHVjdF9pZHMYAyADKARCE7pIEJIBDQgBEMgBGAEiBDICIAA6C5K1GAcKBQECAwQFIkkKEVN0b2NrQ29zdFJlc3BvbnNlEjQKBWNvc3RzGAEgAygLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RMaW5lIr4BChRTdG9ja1RyYW5zZmVyUmVxdWVzdBImChFmcm9tX3dhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESIAoPdG9fd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEhsKCnByb2R1Y3RfaWQYAyABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYBCABKANCB7pIBCICIAASGAoGcmVhc29uGAUgASgJQgi6SAVyAxjIAToKkrUYBgoEAQIGCSKQAQoVU3RvY2tUcmFuc2ZlclJlc3BvbnNlEjsKDG91dF9tb3ZlbWVudBgBIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudBI6Cgtpbl9tb3ZlbWVudBgCIAEoCzIlLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tNb3ZlbWVudCJjChlTdG9ja1BpY2tMb2NhdGlvbnNSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESFgoDcmVmGAIgASgJQgm6SAZyBBABGEA6C5K1GAcKBQECBgkIIl0KEVN0b2NrUGlja0xvY2F0aW9uEhIKCnByb2R1Y3RfaWQYASABKAQSDwoHcmFja19pZBgCIAEoBBIRCglyYWNrX2NvZGUYAyABKAkSEAoIcXVhbnRpdHkYBCABKAMiWgoaU3RvY2tQaWNrTG9jYXRpb25zUmVzcG9uc2USPAoJbG9jYXRpb25zGAEgAygLMikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1BpY2tMb2NhdGlvbiKEAQobV2FyZWhvdXNlUHJvZHVjdExpc3RSZXF1ZXN0EiEKDHdhcmVob3VzZV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOguStRgHCgUBAgYJCCJlChxXYXJlaG91c2VQcm9kdWN0TGlzdFJlc3BvbnNlEhMKC3Byb2R1Y3RfaWRzGAEgAygEEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iaAoUUHJvZHVjdFBsYWNlc1JlcXVlc3QSIQoMd2FyZWhvdXNlX2lkGAEgASgEQgu6SAQyAiAAkLUYARIgCgtwcm9kdWN0X2lkcxgCIAMoBEILukgIkgEFCAEQyAE6C5K1GAcKBQECBgkIIlcKDFByb2R1Y3RQbGFjZRISCgpwcm9kdWN0X2lkGAEgASgEEg8KB3JhY2tfaWQYAiABKAQSEQoJcmFja19jb2RlGAMgASgJEg8KB29uX2hhbmQYBCABKAMiTQoVUHJvZHVjdFBsYWNlc1Jlc3BvbnNlEjQKBnBsYWNlcxgBIAMoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUHJvZHVjdFBsYWNlIogDCgpTdG9ja0JhdGNoEgoKAmlkGAEgASgEEhMKC2RlbGl2ZXJ5X2lkGAIgASgEEhIKCnJlY2VpcHRfbm8YAyABKAkSEgoKcHJvZHVjdF9pZBgEIAEoBBILCgNza3UYBSABKAkSDAoEbmFtZRgGIAEoCRITCgtzdXBwbGllcl9pZBgHIAEoBBIRCgl1bml0X2Nvc3QYCCABKAMSEgoKY29zdF9rbm93bhgJIAEoCBIPCgdhcnJpdmVkGAogASgDEg8KB2RhbWFnZWQYCyABKAMSDAoEdXNlZBgMIAEoAxINCgVyZWFkeRgNIAEoAxIRCglsaW5lX2Nvc3QYDiABKAMSEwoLcmVhZHlfdmFsdWUYDyABKAMSFwoPZXhwaXJlc19vbl91bml4GBAgASgDEhcKD2NyZWF0ZWRfYXRfdW5peBgRIAEoAxIYChBhY2NlcHRlZF9hdF91bml4GBIgASgDEhIKCmNyZWF0ZWRfYnkYEyABKAQSEwoLYWNjZXB0ZWRfYnkYFCABKAQi8gEKEEJhdGNoTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEhIKCnByb2R1Y3RfaWQYAyABKAQSDgoGc2VhcmNoGAQgASgJEhMKC3N1cHBsaWVyX2lkGAUgASgEEkMKBmV4cGlyeRgGIAEoDjIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuQmF0Y2hFeHBpcnlGaWx0ZXJCCLpIBYIBAhABOguStRgHCgUBAgYJCCKyAQoRQmF0Y2hMaXN0UmVzcG9uc2USMwoHYmF0Y2hlcxgBIAMoCzIiLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tCYXRjaBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEhkKEXJlYWR5X3ZhbHVlX3RvdGFsGAMgASgDEhsKE2V4cGlyaW5nX3Nvb25fY291bnQYBCABKAQq6wEKDE1vdmVtZW50S2luZBIdChlNT1ZFTUVOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTU9WRU1FTlRfS0lORF9SRUNFSVZFEAESGAoUTU9WRU1FTlRfS0lORF9BREpVU1QQAhIeChpNT1ZFTUVOVF9LSU5EX1RSQU5TRkVSX09VVBADEh0KGU1PVkVNRU5UX0tJTkRfVFJBTlNGRVJfSU4QBBIWChJNT1ZFTUVOVF9LSU5EX1BJQ0sQBRIWChJNT1ZFTUVOVF9LSU5EX01PVkUQBhIYChRNT1ZFTUVOVF9LSU5EX1JFVFVSThAHKoIBChFCYXRjaEV4cGlyeUZpbHRlchIjCh9CQVRDSF9FWFBJUllfRklMVEVSX1VOU1BFQ0lGSUVEEAASJQohQkFUQ0hfRVhQSVJZX0ZJTFRFUl9FWFBJUklOR19TT09OEAESIQodQkFUQ0hfRVhQSVJZX0ZJTFRFUl9OT19FWFBJUlkQAjL/CgoQSW52ZW50b3J5U2VydmljZRJgCglTdG9ja0xpc3QSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTGlzdFJlc3BvbnNlEmkKDFN0b2NrSGlzdG9yeRIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVxdWVzdBosLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tIaXN0b3J5UmVzcG9uc2USaQoMU3RvY2tSZWNlaXZlEisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JlY2VpdmVSZXNwb25zZRJmCgtTdG9ja0FkanVzdBIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tBZGp1c3RSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0FkanVzdFJlc3BvbnNlEmwKDVN0b2NrVHJhbnNmZXISLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrVHJhbnNmZXJSZXF1ZXN0Gi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1RyYW5zZmVyUmVzcG9uc2USYAoJU3RvY2tNb3ZlEigud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVSZXNwb25zZRJgCglTdG9ja1BpY2sSKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUGlja1JlcXVlc3QaKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUGlja1Jlc3BvbnNlEmYKC1N0b2NrUmV0dXJuEioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja1JldHVyblJlcXVlc3QaKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrUmV0dXJuUmVzcG9uc2USYAoJU3RvY2tDb3N0Eigud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja0Nvc3RSZXNwb25zZRKBAQoUV2FyZWhvdXNlUHJvZHVjdExpc3QSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLldhcmVob3VzZVByb2R1Y3RMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuV2FyZWhvdXNlUHJvZHVjdExpc3RSZXNwb25zZRJsCg1Qcm9kdWN0UGxhY2VzEiwud2FyZWhvdXNlLmludmVudG9yeS52MS5Qcm9kdWN0UGxhY2VzUmVxdWVzdBotLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUHJvZHVjdFBsYWNlc1Jlc3BvbnNlEnsKElN0b2NrUGlja0xvY2F0aW9ucxIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTG9jYXRpb25zUmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3RvY2tQaWNrTG9jYXRpb25zUmVzcG9uc2USYAoJQmF0Y2hMaXN0Eigud2FyZWhvdXNlLmludmVudG9yeS52MS5CYXRjaExpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5CYXRjaExpc3RSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -1039,6 +1039,222 @@ export const ProductPlacesResponseSchema: GenMessage<ProductPlacesResponse> = /*
   messageDesc(file_warehouse_inventory_v1_inventory, 30);
 
 /**
+ * A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
+ * The identity/receipt/supplier come from the delivery it was accepted on; sku/name are the line's
+ * snapshot; Ready/Used are derived from the shelf_batch rows.
+ *
+ * @generated from message warehouse.inventory.v1.StockBatch
+ */
+export type StockBatch = Message<"warehouse.inventory.v1.StockBatch"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * The delivery's display number (the restock request id) and receipt (GRN), searchable together.
+   *
+   * @generated from field: uint64 delivery_id = 2;
+   */
+  deliveryId: bigint;
+
+  /**
+   * @generated from field: string receipt_no = 3;
+   */
+  receiptNo: string;
+
+  /**
+   * @generated from field: uint64 product_id = 4;
+   */
+  productId: bigint;
+
+  /**
+   * @generated from field: string sku = 5;
+   */
+  sku: string;
+
+  /**
+   * @generated from field: string name = 6;
+   */
+  name: string;
+
+  /**
+   * The delivery's supplier — opaque id; 0 when none was recorded. Name resolved client-side.
+   *
+   * @generated from field: uint64 supplier_id = 7;
+   */
+  supplierId: bigint;
+
+  /**
+   * ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
+   * value below is 0, which a screen must render as "Unknown" rather than a real Rp 0.
+   *
+   * @generated from field: int64 unit_cost = 8;
+   */
+  unitCost: bigint;
+
+  /**
+   * @generated from field: bool cost_known = 9;
+   */
+  costKnown: boolean;
+
+  /**
+   * Arrived = damaged + used + ready. Ready = Σ shelf_batch.qty; used = arrived − damaged − ready.
+   *
+   * @generated from field: int64 arrived = 10;
+   */
+  arrived: bigint;
+
+  /**
+   * @generated from field: int64 damaged = 11;
+   */
+  damaged: bigint;
+
+  /**
+   * @generated from field: int64 used = 12;
+   */
+  used: bigint;
+
+  /**
+   * @generated from field: int64 ready = 13;
+   */
+  ready: bigint;
+
+  /**
+   * arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
+   *
+   * @generated from field: int64 line_cost = 14;
+   */
+  lineCost: bigint;
+
+  /**
+   * @generated from field: int64 ready_value = 15;
+   */
+  readyValue: bigint;
+
+  /**
+   * 0 = does not expire (perishables only). The screen flags amber when it is within the soon window.
+   *
+   * @generated from field: int64 expires_on_unix = 16;
+   */
+  expiresOnUnix: bigint;
+
+  /**
+   * @generated from field: int64 created_at_unix = 17;
+   */
+  createdAtUnix: bigint;
+
+  /**
+   * @generated from field: int64 accepted_at_unix = 18;
+   */
+  acceptedAtUnix: bigint;
+
+  /**
+   * @generated from field: uint64 created_by = 19;
+   */
+  createdBy: bigint;
+
+  /**
+   * @generated from field: uint64 accepted_by = 20;
+   */
+  acceptedBy: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.StockBatch.
+ * Use `create(StockBatchSchema)` to create a new message.
+ */
+export const StockBatchSchema: GenMessage<StockBatch> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 31);
+
+/**
+ * @generated from message warehouse.inventory.v1.BatchListRequest
+ */
+export type BatchListRequest = Message<"warehouse.inventory.v1.BatchListRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * Deliveries of stock grow with every restock, so this pages (HARD RULE 9).
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   */
+  page?: PageFilter;
+
+  /**
+   * Narrow to ONE product (the detail's Batches tab); 0 = every product (the warehouse-wide list).
+   *
+   * @generated from field: uint64 product_id = 3;
+   */
+  productId: bigint;
+
+  /**
+   * Match a batch/delivery number or a receipt no; "" = no search.
+   *
+   * @generated from field: string search = 4;
+   */
+  search: string;
+
+  /**
+   * Narrow to one supplier; 0 = all.
+   *
+   * @generated from field: uint64 supplier_id = 5;
+   */
+  supplierId: bigint;
+
+  /**
+   * Narrow by expiry.
+   *
+   * @generated from field: warehouse.inventory.v1.BatchExpiryFilter expiry = 6;
+   */
+  expiry: BatchExpiryFilter;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.BatchListRequest.
+ * Use `create(BatchListRequestSchema)` to create a new message.
+ */
+export const BatchListRequestSchema: GenMessage<BatchListRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 32);
+
+/**
+ * @generated from message warehouse.inventory.v1.BatchListResponse
+ */
+export type BatchListResponse = Message<"warehouse.inventory.v1.BatchListResponse"> & {
+  /**
+   * @generated from field: repeated warehouse.inventory.v1.StockBatch batches = 1;
+   */
+  batches: StockBatch[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo;
+
+  /**
+   * Stat tiles over the WHOLE filtered set (not just this page): the ready value of every matching
+   * batch, and how many are expiring soon — the batch list's header numbers.
+   *
+   * @generated from field: int64 ready_value_total = 3;
+   */
+  readyValueTotal: bigint;
+
+  /**
+   * @generated from field: uint64 expiring_soon_count = 4;
+   */
+  expiringSoonCount: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.BatchListResponse.
+ * Use `create(BatchListResponseSchema)` to create a new message.
+ */
+export const BatchListResponseSchema: GenMessage<BatchListResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_inventory, 33);
+
+/**
  * MovementKind — why a stock quantity changed. Every ledger row has one.
  *
  * @generated from enum warehouse.inventory.v1.MovementKind
@@ -1107,6 +1323,34 @@ export enum MovementKind {
  */
 export const MovementKindSchema: GenEnum<MovementKind> = /*@__PURE__*/
   enumDesc(file_warehouse_inventory_v1_inventory, 0);
+
+/**
+ * Narrows a batch list by expiry (#209) — the warehouse list's "Expiring ≤ 30 days / No expiry" filter.
+ *
+ * @generated from enum warehouse.inventory.v1.BatchExpiryFilter
+ */
+export enum BatchExpiryFilter {
+  /**
+   * @generated from enum value: BATCH_EXPIRY_FILTER_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: BATCH_EXPIRY_FILTER_EXPIRING_SOON = 1;
+   */
+  EXPIRING_SOON = 1,
+
+  /**
+   * @generated from enum value: BATCH_EXPIRY_FILTER_NO_EXPIRY = 2;
+   */
+  NO_EXPIRY = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.BatchExpiryFilter.
+ */
+export const BatchExpiryFilterSchema: GenEnum<BatchExpiryFilter> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_inventory, 1);
 
 /**
  * InventoryService owns `stock_movements` (an append-only ledger) and `stock_levels` (a derived
@@ -1231,6 +1475,17 @@ export const InventoryService: GenService<{
     methodKind: "unary";
     input: typeof StockPickLocationsRequestSchema;
     output: typeof StockPickLocationsResponseSchema;
+  },
+  /**
+   * The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
+   * detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
+   *
+   * @generated from rpc warehouse.inventory.v1.InventoryService.BatchList
+   */
+  batchList: {
+    methodKind: "unary";
+    input: typeof BatchListRequestSchema;
+    output: typeof BatchListResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_inventory_v1_inventory, 0);

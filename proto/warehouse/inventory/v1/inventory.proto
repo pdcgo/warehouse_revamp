@@ -40,6 +40,10 @@ service InventoryService {
 
   // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
   rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
+
+  // The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
+  // detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
+  rpc BatchList(BatchListRequest) returns (BatchListResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -615,4 +619,89 @@ message ProductPlacesResponse {
   // FOR (capped above) times the handful of places each one sits on. A product on a hundred shelves is
   // not a paging problem, it is a warehouse that needs tidying.
   repeated ProductPlace places = 1;
+}
+
+// A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
+// The identity/receipt/supplier come from the delivery it was accepted on; sku/name are the line's
+// snapshot; Ready/Used are derived from the shelf_batch rows.
+message StockBatch {
+  uint64 id = 1;
+  // The delivery's display number (the restock request id) and receipt (GRN), searchable together.
+  uint64 delivery_id = 2;
+  string receipt_no = 3;
+
+  uint64 product_id = 4;
+  string sku = 5;
+  string name = 6;
+  // The delivery's supplier — opaque id; 0 when none was recorded. Name resolved client-side.
+  uint64 supplier_id = 7;
+
+  // ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
+  // value below is 0, which a screen must render as "Unknown" rather than a real Rp 0.
+  int64 unit_cost = 8;
+  bool cost_known = 9;
+
+  // Arrived = damaged + used + ready. Ready = Σ shelf_batch.qty; used = arrived − damaged − ready.
+  int64 arrived = 10;
+  int64 damaged = 11;
+  int64 used = 12;
+  int64 ready = 13;
+
+  // arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
+  int64 line_cost = 14;
+  int64 ready_value = 15;
+
+  // 0 = does not expire (perishables only). The screen flags amber when it is within the soon window.
+  int64 expires_on_unix = 16;
+
+  int64 created_at_unix = 17;
+  int64 accepted_at_unix = 18;
+  uint64 created_by = 19;
+  uint64 accepted_by = 20;
+}
+
+// Narrows a batch list by expiry (#209) — the warehouse list's "Expiring ≤ 30 days / No expiry" filter.
+enum BatchExpiryFilter {
+  BATCH_EXPIRY_FILTER_UNSPECIFIED = 0;
+  BATCH_EXPIRY_FILTER_EXPIRING_SOON = 1;
+  BATCH_EXPIRY_FILTER_NO_EXPIRY = 2;
+}
+
+message BatchListRequest {
+  // Read: anyone who works in the warehouse — the crew reads batches at the shelf.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Deliveries of stock grow with every restock, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Narrow to ONE product (the detail's Batches tab); 0 = every product (the warehouse-wide list).
+  uint64 product_id = 3;
+  // Match a batch/delivery number or a receipt no; "" = no search.
+  string search = 4;
+  // Narrow to one supplier; 0 = all.
+  uint64 supplier_id = 5;
+  // Narrow by expiry.
+  BatchExpiryFilter expiry = 6 [(buf.validate.field).enum.defined_only = true];
+}
+
+message BatchListResponse {
+  repeated StockBatch batches = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+
+  // Stat tiles over the WHOLE filtered set (not just this page): the ready value of every matching
+  // batch, and how many are expiring soon — the batch list's header numbers.
+  int64 ready_value_total = 3;
+  uint64 expiring_soon_count = 4;
 }
