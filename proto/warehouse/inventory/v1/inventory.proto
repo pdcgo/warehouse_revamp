@@ -47,6 +47,10 @@ service InventoryService {
 
   // The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
   rpc CostLayerList(CostLayerListRequest) returns (CostLayerListResponse);
+
+  // The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
+  // dates that flag a shelf overdue for a count.
+  rpc PlacementList(PlacementListRequest) returns (PlacementListResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -747,4 +751,42 @@ message CostLayerListResponse {
   warehouse.common.v1.PageInfo page_info = 2;
   // The header total — stock value summed over every layer (known-cost only, #74).
   int64 total_value = 3;
+}
+
+// One row of the PLACEMENT tab (#209) — a product on one shelf, and when it last moved. The dates flag
+// a shelf overdue for a stock-take: a stale Last opname is amber on screen.
+message ProductPlacement {
+  // 0 = the unplaced/holding pile (#135). The frontend resolves the rack CODE.
+  uint64 rack_id = 1;
+  int64 on_hand = 2;
+
+  // Last time stock LEFT this shelf, arrived ON it, and was COUNTED on it (unix; 0 = never).
+  int64 last_out_unix = 3;
+  int64 last_in_unix = 4;
+  int64 last_opname_unix = 5;
+}
+
+message PlacementListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A product can spread across many shelves as the warehouse fills, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message PlacementListResponse {
+  repeated ProductPlacement placements = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
 }
