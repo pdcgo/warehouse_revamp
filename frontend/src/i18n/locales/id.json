@@ -1161,6 +1161,11 @@
     "after": "Sesudah",
     "noStock": "Produk ini tidak ada di sini.",
     "noMovements": "Belum ada aktivitas untuk produk ini di sini.",
+    "by": "Oleh",
+    "batch": "Batch",
+    "rack": "Rak",
+    "allBatches": "Semua batch",
+    "allRacks": "Semua rak",
     "tab": {
       "placement": "Penempatan",
       "stockHistory": "Riwayat Stok",

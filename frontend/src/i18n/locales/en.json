@@ -1161,6 +1161,11 @@
     "after": "After",
     "noStock": "None of this product is here.",
     "noMovements": "Nothing has happened to this product here.",
+    "by": "By",
+    "batch": "Batch",
+    "rack": "Rack",
+    "allBatches": "All batches",
+    "allRacks": "All racks",
     "tab": {
       "placement": "Placement",
       "stockHistory": "Stock History",

@@ -4,9 +4,11 @@ import { useTranslation } from "react-i18next";
 import {
   Badge,
   Button,
+  Field,
   Flex,
   Heading,
   Icon,
+  NativeSelect,
   SimpleGrid,
   Spacer,
   Spinner,
@@ -35,7 +37,6 @@ import {
 } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
-import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -105,6 +106,10 @@ export function WarehouseProductPage() {
   const lastOpname = stockQuery.data?.lastOpname ?? null;
   const history = stockQuery.data?.history ?? [];
   const placementHistory = stockQuery.data?.placementHistory ?? [];
+  // Resolved for the two history tabs' "By" and "Place" columns (#209): the actor's name and the rack
+  // CODE. Both fall back to "#id" when a lookup misses, never to a blank.
+  const rackCodes = stockQuery.data?.rackCodes ?? new Map<string, string>();
+  const actorNames = stockQuery.data?.actorNames ?? new Map<string, string>();
 
   const lastOrders = activityQuery.data?.lastOrders ?? [];
   const restocks = activityQuery.data?.restocks ?? [];
@@ -136,9 +141,35 @@ export function WarehouseProductPage() {
   // warehouse total is a SUM across a product's shelves, never one shelf's figure.
   const onHand = places.reduce((sum, p) => sum + p.onHand, 0n);
 
-  const [receiving, setReceiving] = useState(false);
   const [moving, setMoving] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
+
+  // The history tabs filter by batch, and Placement History also by rack (#209). "" = no filter (All).
+  // Client-side over the loaded page, the same shape the mock drives them: the ledger is one page here,
+  // and a batch-less recount (batch_id 0) simply never matches a specific batch, as it should.
+  const [historyBatch, setHistoryBatch] = useState("");
+  const [phRack, setPhRack] = useState("");
+  const [phBatch, setPhBatch] = useState("");
+
+  // The batch options both filters offer — this product's deliveries, labelled by delivery number.
+  const batchOptions = batchRows.map((b) => ({ value: b.id.toString(), label: `#${b.deliveryId}` }));
+  // The rack options Placement History offers — every rack a move in view touched, resolved to its code.
+  const phRackIds = [...new Set(placementHistory.map((m) => m.rackId))];
+
+  const filteredHistory = historyBatch
+    ? history.filter((m) => m.batchId.toString() === historyBatch)
+    : history;
+  const filteredPlacementHistory = placementHistory.filter((m) => {
+    if (phRack && m.rackId.toString() !== phRack) return false;
+    if (phBatch && m.batchId.toString() !== phBatch) return false;
+    return true;
+  });
+
+  // A rack's code for the Place column / filter label — the unplaced pile in words (#135), else its code.
+  const rackLabel = (rackId: bigint): string => {
+    if (rackId === 0n) return t("racks.select.unplaced");
+    return rackCodes.get(rackId.toString()) ?? `#${rackId.toString()}`;
+  };
 
   const back = (
     <Button
@@ -209,19 +240,11 @@ export function WarehouseProductPage() {
         </Stack>
         <Spacer />
 
-        {/* THE ACTION GROUP. All three are the warehouse's own stock operations on THIS product, and
-            all three are the dialogs the stock list already uses — a second set scoped to one product
-            would be a second place for "adjust to a counted figure" to mean something slightly
-            different. They moved to features/inventory/ the moment this page became their second
-            caller, which is the #199 rule doing its job. */}
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-receive"
-          onClick={() => setReceiving(true)}
-        >
-          {t("inventory.receive")}
-        </Button>
+        {/* THE ACTION GROUP — Move and Adjust only (#209). There is deliberately NO Receive here:
+            stock enters through restock ACCEPTANCE, which freezes a cost layer (#155/#208). A manual
+            receive would create batch-less, cost-unknown stock and undo the whole cost-layer model.
+            Both are the dialogs the stock list already uses — a second set scoped to one product would
+            be a second place for "adjust to a counted figure" to mean something slightly different. */}
         <Button
           size="xs"
           variant="outline"
@@ -242,12 +265,6 @@ export function WarehouseProductPage() {
 
       {warehouseId !== undefined && (
         <>
-          <ReceiveStockDialog
-            warehouseId={warehouseId}
-            product={product}
-            open={receiving}
-            onOpenChange={setReceiving}
-          />
           <MoveStockDialog
             warehouseId={warehouseId}
             product={product}
@@ -432,19 +449,63 @@ export function WarehouseProductPage() {
           )}
         </Tabs.Content>
 
-        {/* Tab 4 — everything that ever happened to it here. */}
+        {/* Tab 4 — everything that ever happened to it here, filterable by batch (#209). */}
         <Tabs.Content value="history" flex="1">
-          <MovementTable movements={history} t={t} testId="wp-history-table" kindLabel={kindLabel} />
+          <Stack gap="card">
+            <Flex gap="card" wrap="wrap">
+              <FilterSelect
+                label={t("warehouseProduct.batch")}
+                value={historyBatch}
+                onChange={setHistoryBatch}
+                testId="wp-history-batch-filter"
+                allLabel={t("warehouseProduct.allBatches")}
+                options={batchOptions}
+              />
+            </Flex>
+            <MovementTable
+              movements={filteredHistory}
+              t={t}
+              testId="wp-history-table"
+              kindLabel={kindLabel}
+              actorNames={actorNames}
+              rackLabel={rackLabel}
+            />
+          </Stack>
         </Tabs.Content>
 
-        {/* Tab 5 — only the shelf-to-shelf moves (#136). */}
+        {/* Tab 5 — only the shelf-to-shelf moves (#136), filterable by rack AND batch (#209). */}
         <Tabs.Content value="placementHistory" flex="1">
-          <MovementTable
-            movements={placementHistory}
-            t={t}
-            testId="wp-placement-history-table"
-            kindLabel={kindLabel}
-          />
+          <Stack gap="card">
+            <Flex gap="card" wrap="wrap">
+              {/* A FILTER, not a destination picker: it offers "All" and only the racks in view, which
+                  is why it is a NativeSelect rather than RackSelect (that one is for choosing where
+                  stock GOES, and deliberately has no "All"). */}
+              <FilterSelect
+                label={t("warehouseProduct.rack")}
+                value={phRack}
+                onChange={setPhRack}
+                testId="wp-ph-rack-filter"
+                allLabel={t("warehouseProduct.allRacks")}
+                options={phRackIds.map((id) => ({ value: id.toString(), label: rackLabel(id) }))}
+              />
+              <FilterSelect
+                label={t("warehouseProduct.batch")}
+                value={phBatch}
+                onChange={setPhBatch}
+                testId="wp-ph-batch-filter"
+                allLabel={t("warehouseProduct.allBatches")}
+                options={batchOptions}
+              />
+            </Flex>
+            <MovementTable
+              movements={filteredPlacementHistory}
+              t={t}
+              testId="wp-placement-history-table"
+              kindLabel={kindLabel}
+              actorNames={actorNames}
+              rackLabel={rackLabel}
+            />
+          </Stack>
         </Tabs.Content>
 
         {/* BATCHES — the deliveries of this product as COST LAYERS (#209): each carries its own frozen
@@ -524,18 +585,62 @@ function Stat({ label, testId, children }: { label: string; testId: string; chil
   );
 }
 
+// A labelled filter dropdown, "All" first. A filter over data in view — NativeSelect, not a picker.
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  testId,
+  allLabel,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  testId: string;
+  allLabel: string;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <Field.Root maxW="52">
+      <Field.Label>{label}</Field.Label>
+      <NativeSelect.Root>
+        <NativeSelect.Field
+          value={value}
+          data-testid={testId}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">{allLabel}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </NativeSelect.Field>
+        <NativeSelect.Indicator />
+      </NativeSelect.Root>
+    </Field.Root>
+  );
+}
+
 // The ledger, rendered. Shared by the two history tabs so a movement reads identically in both — the
-// only difference between them is which kinds the server was asked for.
+// only difference between them is which kinds the server was asked for. By (#209) resolves the actor's
+// name; Batch names the delivery its units came from ("—" for a batch-less shelf recount); Place is the
+// rack CODE, both resolved best-effort with an "#id" fallback.
 function MovementTable({
   movements,
   t,
   testId,
   kindLabel: label,
+  actorNames,
+  rackLabel,
 }: {
   movements: StockMovement[];
   t: ReturnType<typeof useTranslation>["t"];
   testId: string;
   kindLabel: (t: ReturnType<typeof useTranslation>["t"], kind: MovementKind) => string;
+  actorNames: Map<string, string>;
+  rackLabel: (rackId: bigint) => string;
 }) {
   return (
     <Stack gap="card">
@@ -544,6 +649,8 @@ function MovementTable({
           <Table.Row>
             <Table.ColumnHeader>{t("warehouseProduct.when")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("warehouseProduct.what")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("warehouseProduct.by")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("warehouseProduct.batch")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("warehouseProduct.place")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("warehouseProduct.change")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("warehouseProduct.after")}</Table.ColumnHeader>
@@ -555,8 +662,13 @@ function MovementTable({
               <Table.Cell>{m.createdAt}</Table.Cell>
               <Table.Cell>{label(t, m.kind)}</Table.Cell>
               <Table.Cell>
-                {m.rackId === 0n ? t("racks.select.unplaced") : `#${m.rackId}`}
+                {m.actorUserId > 0n
+                  ? actorNames.get(m.actorUserId.toString()) ?? `#${m.actorUserId}`
+                  : "—"}
               </Table.Cell>
+              {/* A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211). */}
+              <Table.Cell>{m.batchId > 0n ? `#${m.batchId}` : "—"}</Table.Cell>
+              <Table.Cell>{rackLabel(m.rackId)}</Table.Cell>
               {/* Signed, and shown as such: +9 and -9 are different events, and a bare 9 hides which. */}
               <Table.Cell textAlign="end">
                 {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}

@@ -659,15 +659,16 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   // received, ordered against, cancelled and accepted by earlier tests. Pinning the running total
   // would make every future test that touches this product break this one, which is a test asserting
   // the suite's history rather than the page's behaviour.
-  // THE ACTION GROUP (#198) — the warehouse's own stock operations on this product, reusing the
-  // dialogs the stock list already has rather than a second set scoped to one product.
-  await expect(page.getByTestId("wp-action-receive")).toBeVisible();
+  // THE ACTION GROUP (#198/#209) — Move and Adjust only. There is deliberately NO Receive here: stock
+  // enters through restock acceptance (which freezes a cost layer), never a manual receive on the
+  // product page.
+  await expect(page.getByTestId("wp-action-receive")).toHaveCount(0);
   await expect(page.getByTestId("wp-action-move")).toBeVisible();
   await expect(page.getByTestId("wp-action-adjust")).toBeVisible();
 
   // It really opens the shared dialog, not a lookalike.
-  await page.getByTestId("wp-action-receive").click();
-  await expect(page.getByTestId("receive-quantity")).toBeVisible();
+  await page.getByTestId("wp-action-move").click();
+  await expect(page.getByTestId("move-quantity")).toBeVisible();
   await page.keyboard.press("Escape");
 
   // Info is the tab that opens (#198), and it carries the stock facts.

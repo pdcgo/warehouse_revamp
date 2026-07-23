@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryClient, orderClient, productClient, restockClient, teamClient } from "../../api/clients";
+import {
+  inventoryClient,
+  orderClient,
+  productClient,
+  rackClient,
+  restockClient,
+  teamClient,
+  userClient,
+} from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { StockBatch, StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 
@@ -126,6 +134,39 @@ export function useWarehouseProduct(args: {
       // would read as "these goods are worth nothing", which is a different claim entirely.
       const cost = costRes.costs[0];
 
+      // The two history tabs show a "By" and a rack CODE per event (#209). Resolve both after the
+      // ledger is in hand: the rack code from the warehouse's rack registry (which covers shelves the
+      // product has since LEFT, unlike `places`), and the actor's name from user_service. Both are
+      // best-effort — an unknown id falls back to "#id", never a blank.
+      const events = [...historyRes.movements, ...moveRes.movements];
+
+      const rackCodes = new Map<string, string>();
+      try {
+        const racks = await rackClient.rackList({
+          teamId: warehouseId!,
+          q: "",
+          page: { page: 1, limit: 200 },
+        });
+        for (const r of racks.racks) {
+          rackCodes.set(r.id.toString(), r.code);
+        }
+      } catch {
+        // leave the map empty — the Place column falls back to "#id".
+      }
+
+      const actorNames = new Map<string, string>();
+      const actorIds = [...new Set(events.map((m) => m.actorUserId).filter((id) => id > 0n))];
+      if (actorIds.length > 0) {
+        try {
+          const users = await userClient.userByIDs({ ids: actorIds });
+          for (const [id, u] of Object.entries(users.data)) {
+            actorNames.set(id, u.name || u.username);
+          }
+        } catch {
+          // leave the map empty — the By column falls back to "#id".
+        }
+      }
+
       return {
         product,
         ownerName,
@@ -135,6 +176,8 @@ export function useWarehouseProduct(args: {
         lastOpname: opnameRes.movements[0] ?? null,
         history: historyRes.movements,
         placementHistory: moveRes.movements,
+        rackCodes,
+        actorNames,
       };
     },
   });
