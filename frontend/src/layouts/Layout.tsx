@@ -254,7 +254,9 @@ export function Layout() {
           <TeamSwitcher collapsed={collapsed} />
         </Box>
 
-        <Stack gap="1" flex="1" overflowY="auto" px="card" py="1">
+        {/* `as="nav"` gives the links a `navigation` landmark (the <aside> alone is `complementary`),
+            which the app and its e2e select the sidebar by. */}
+        <Stack as="nav" gap="1" flex="1" overflowY="auto" px="card" py="1">
           {menu.map((entry) => (isMenuGroup(entry) ? renderGroup(entry) : navItem(entry)))}
         </Stack>
 
