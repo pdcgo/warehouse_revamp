@@ -1134,6 +1134,10 @@
     "delivery": "Kiriman",
     "arrived": "Tiba",
     "damaged": "Rusak",
+    "used": "Terpakai",
+    "ready": "Siap",
+    "amount": "Nilai",
+    "expiring": "Kedaluwarsa",
     "lineCost": "Biaya baris",
     "noBatches": "Belum ada kiriman produk ini.",
     "owner": "Pemilik"

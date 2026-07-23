@@ -225,6 +225,25 @@ export function useProductBatches(args: { warehouseId: bigint | undefined; produ
   });
 }
 
+// The cost layers of one product (#209) — the Prices tab: on-hand grouped by frozen cost. A first
+// page large enough for the handful of layers a product accrues.
+export function useCostLayers(args: { warehouseId: bigint | undefined; productId: bigint }) {
+  const { warehouseId, productId } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, { costLayers: productId.toString() }),
+    enabled: warehouseId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.costLayerList({
+        teamId: warehouseId!,
+        productId,
+        page: { page: 1, limit: 100 },
+      });
+      return res;
+    },
+  });
+}
+
 // Receive, adjust and move all change what is on a shelf, so they all land here.
 //
 // This also invalidates RESTOCK and RACKS, because stock is the thing those screens are about: a

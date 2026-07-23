@@ -25,7 +25,12 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { kindLabel } from "../../features/inventory/movementKind";
-import { useWarehouseProduct, useWarehouseProductActivity } from "../../features/inventory/queries";
+import {
+  useCostLayers,
+  useProductBatches,
+  useWarehouseProduct,
+  useWarehouseProductActivity,
+} from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
 import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
@@ -38,6 +43,19 @@ function parseId(raw: string | undefined): bigint {
   } catch {
     return 0n;
   }
+}
+
+function formatDateUnix(unix: bigint): string {
+  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
+function isExpiringSoon(unix: bigint): boolean {
+  return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
 }
 
 // WarehouseProductPage is what a WAREHOUSE sees when it opens a product (#144/#158).
@@ -77,8 +95,6 @@ export function WarehouseProductPage() {
   const product = stockQuery.data?.product ?? null;
   const ownerName = stockQuery.data?.ownerName ?? "";
   const places = stockQuery.data?.places ?? [];
-  const unitCost = stockQuery.data?.unitCost ?? 0n;
-  const costKnown = stockQuery.data?.costKnown ?? false;
   const lastOpname = stockQuery.data?.lastOpname ?? null;
   const history = stockQuery.data?.history ?? [];
   const placementHistory = stockQuery.data?.placementHistory ?? [];
@@ -86,6 +102,16 @@ export function WarehouseProductPage() {
   const lastOrders = activityQuery.data?.lastOrders ?? [];
   const restocks = activityQuery.data?.restocks ?? [];
   const incoming = activityQuery.data?.incoming ?? [];
+
+  // The new per-(shelf × batch) reads (#209): cost LAYERS for Prices, and the batches themselves
+  // (with Used / Ready / expiry) for the Batches tab — the FIFO cost-layer model the old view could
+  // not show.
+  const costLayers = useCostLayers({ warehouseId, productId });
+  const layers = costLayers.data?.layers ?? [];
+  const layersTotal = costLayers.data?.totalValue ?? 0n;
+
+  const batchesQuery = useProductBatches({ warehouseId, productId });
+  const batchRows = batchesQuery.data ?? [];
 
   const loading = stockQuery.isPending && warehouseId !== undefined && productId !== 0n;
   const error = stockQuery.isError ? rpcError(stockQuery.error) : "";
@@ -298,19 +324,44 @@ export function WarehouseProductPage() {
           </SimpleGrid>
         </Tabs.Content>
 
-        {/* PRICES — what a unit cost this warehouse, and what the shelf holding it is worth. */}
+        {/* PRICES — stock value by COST LAYER (#209): each delivery froze its own HPP, so on-hand
+            splits into layers and the shelf's value is their sum, not on-hand × one price. */}
         <Tabs.Content value="prices" flex="1" data-testid="wp-prices-panel">
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap="card">
-            {/* ⚠ UNKNOWN IS NOT ZERO (#74) — a product never restocked has no recorded cost, and
-                showing Rp 0 would claim it was free. */}
-            <Stat label={t("warehouseProduct.unitCost")} testId="warehouse-product-unitcost">
-              {costKnown ? formatRupiah(unitCost) : t("warehouseProduct.costUnknown")}
-            </Stat>
+          <Stack gap="card">
+            <Table.Root size="sm" data-testid="wp-prices-table">
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader>{t("warehouseProduct.unitCost")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.amount")}</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {layers.map((layer, i) => (
+                  <Table.Row key={i}>
+                    {/* ⚠ UNKNOWN IS NOT ZERO (#74): a layer with no recorded cost reads "Unknown". */}
+                    <Table.Cell>
+                      {layer.costKnown ? formatRupiah(layer.unitCost) : t("warehouseProduct.costUnknown")}
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">{layer.onHand.toString()}</Table.Cell>
+                    <Table.Cell textAlign="end">
+                      {layer.costKnown ? formatRupiah(layer.amount) : t("warehouseProduct.costUnknown")}
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Root>
 
-            <Stat label={t("warehouseProduct.valuation")} testId="warehouse-product-valuation">
-              {costKnown ? formatRupiah(onHand * unitCost) : t("warehouseProduct.costUnknown")}
-            </Stat>
-          </SimpleGrid>
+            {layers.length === 0 ? (
+              <Text color="fg.muted" data-testid="wp-prices-empty">
+                {t("warehouseProduct.noStock")}
+              </Text>
+            ) : (
+              <Stat label={t("warehouseProduct.valuation")} testId="warehouse-product-valuation">
+                {formatRupiah(layersTotal)}
+              </Stat>
+            )}
+          </Stack>
         </Tabs.Content>
 
         {/* Where it sits right now (#156). */}
@@ -357,9 +408,8 @@ export function WarehouseProductPage() {
           />
         </Tabs.Content>
 
-        {/* Tab 1 — BATCHES. A batch IS a delivery (owner, 2026-07-21): no lot numbers, no expiry, no
-            per-batch stock. Each fulfilled restock that brought this product in is one batch, and the
-            data was already there — this is a view, not a model. */}
+        {/* BATCHES — the deliveries of this product as COST LAYERS (#209): each carries its own frozen
+            cost and a lifecycle (Arrived = Damaged + Used + Ready), and the number optionally expires. */}
         <Tabs.Content value="batches" flex="1">
           <Stack gap="card">
             <Table.Root size="sm" data-testid="wp-batches-table">
@@ -368,34 +418,47 @@ export function WarehouseProductPage() {
                   <Table.ColumnHeader>{t("warehouseProduct.delivery")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("warehouseProduct.arrived")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("warehouseProduct.damaged")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.used")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.ready")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("warehouseProduct.lineCost")}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("warehouseProduct.expiring")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {restocks.map((r) => {
-                  // Only THIS product's lines — a delivery usually carries several products, and the
-                  // other lines are somebody else's batch.
-                  const mine = r.items.filter((i) => i.productId === productId);
-                  const arrived = mine.reduce((sum, i) => sum + i.receivedQuantity, 0n);
-                  const broken = mine.reduce(
-                    (sum, i) => sum + i.damaged.reduce((d, x) => d + x.quantity, 0n),
-                    0n,
-                  );
-                  const cost = mine.reduce((sum, i) => sum + i.totalPrice, 0n);
-
-                  return (
-                    <Table.Row key={r.id.toString()} data-testid={`wp-batch-${r.id}`}>
-                      <Table.Cell>#{r.id.toString()}</Table.Cell>
-                      <Table.Cell textAlign="end">{arrived.toString()}</Table.Cell>
-                      <Table.Cell textAlign="end">{broken.toString()}</Table.Cell>
-                      <Table.Cell textAlign="end">{formatRupiah(cost)}</Table.Cell>
-                    </Table.Row>
-                  );
-                })}
+                {batchRows.map((b) => (
+                  <Table.Row key={b.id.toString()} data-testid={`wp-batch-${b.deliveryId}`}>
+                    <Table.Cell>
+                      <Text as="span" fontWeight="medium">
+                        #{b.deliveryId.toString()}
+                      </Text>
+                      {b.receiptNo && (
+                        <Text as="span" color="fg.subtle" ml="1">
+                          {b.receiptNo}
+                        </Text>
+                      )}
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">{b.arrived.toString()}</Table.Cell>
+                    <Table.Cell textAlign="end">{b.damaged.toString()}</Table.Cell>
+                    <Table.Cell textAlign="end">{b.used.toString()}</Table.Cell>
+                    <Table.Cell textAlign="end">{b.ready.toString()}</Table.Cell>
+                    <Table.Cell textAlign="end">
+                      {b.costKnown ? formatRupiah(b.lineCost) : t("warehouseProduct.costUnknown")}
+                    </Table.Cell>
+                    <Table.Cell>
+                      {b.expiresOnUnix > 0n ? (
+                        <Text color={isExpiringSoon(b.expiresOnUnix) ? "orange.fg" : undefined}>
+                          {formatDateUnix(b.expiresOnUnix)}
+                        </Text>
+                      ) : (
+                        "—"
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
               </Table.Body>
             </Table.Root>
 
-            {restocks.length === 0 && (
+            {batchRows.length === 0 && (
               <Text color="fg.muted" data-testid="wp-batches-empty">
                 {t("warehouseProduct.noBatches")}
               </Text>

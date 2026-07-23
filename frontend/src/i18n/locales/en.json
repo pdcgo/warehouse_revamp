@@ -1134,6 +1134,10 @@
     "delivery": "Delivery",
     "arrived": "Arrived",
     "damaged": "Damaged",
+    "used": "Used",
+    "ready": "Ready",
+    "amount": "Amount",
+    "expiring": "Expiring",
     "lineCost": "Line cost",
     "noBatches": "No deliveries of this product yet.",
     "owner": "Owner"
