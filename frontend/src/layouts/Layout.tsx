@@ -21,6 +21,7 @@ import { useTeam } from "../features/team/TeamContext";
 import { LANGUAGES, useLanguage } from "../i18n/language";
 import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "./TeamSwitcher";
+import { ColorModeToggle } from "../components/ColorModeToggle";
 import { Logo, WarehouseMark } from "../components/Logo";
 import { isMenuGroup, menuFor } from "./nav";
 import type { MenuGroup, MenuItem } from "./nav";
@@ -246,6 +247,8 @@ export function Layout() {
           </Breadcrumb.Root>
 
           <Spacer />
+
+          <ColorModeToggle />
 
           <Menu.Root positioning={{ placement: "bottom-end" }}>
             <Menu.Trigger asChild>

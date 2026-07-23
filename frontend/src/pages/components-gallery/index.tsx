@@ -15,6 +15,7 @@ import { TeamTypeSelect, description as teamTypeSelectDescription } from "../../
 import { TeamSelect, description as teamSelectDescription } from "../../components/TeamSelect";
 import { UserSelect, description as userSelectDescription } from "../../components/UserSelect";
 import { RoleSelect, description as roleSelectDescription } from "../../components/RoleSelect";
+import { ColorModeToggle, description as colorModeToggleDescription } from "../../components/ColorModeToggle";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { roleLabel } from "../../lib/roles";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -740,6 +741,12 @@ const ENTRIES: Entry[] = [
     title: "RoleSelect",
     description: roleSelectDescription,
     render: () => <RoleSelectDemo />,
+  },
+  {
+    id: "color-mode-toggle",
+    title: "ColorModeToggle",
+    description: colorModeToggleDescription,
+    render: () => <ColorModeToggle />,
   },
 ];
 
