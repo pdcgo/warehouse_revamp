@@ -17,6 +17,11 @@ type StockMovement struct {
 	// arrived before anyone shelved it, or every movement written before racks carried stock at all.
 	RackID *uint64
 
+	// WHICH BATCH this event moved (#208). nil for a batch-less event — a shelf RECOUNT reconciles the
+	// whole shelf and shows Batch "—" (#211), even though its delta lands on the oldest batch (FIFO).
+	// Every batch-scoped event (receive/move/pick/adjust) carries it. Real FK: batches live here.
+	BatchID *uint64
+
 	Delta int64
 	// The on-hand of THIS PLACE after the movement, not the warehouse's total for the product. Once a
 	// product can sit on several racks those are different numbers, and a ledger row is a statement

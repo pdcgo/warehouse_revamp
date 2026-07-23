@@ -498,6 +498,7 @@ erDiagram
         bigint      warehouse_id  "opaque, no FK"
         bigint      product_id    "opaque, no FK"
         bigint      rack_id       FK "-> racks(id); the place moved onto/off; NULL = unplaced (#135)"
+        bigint      batch_id      FK "-> stock_batches(id); which batch moved; NULL = batch-less recount (#211)"
         bigint      delta         "signed: + in, - out"
         bigint      balance       "THIS PLACE's on-hand after this movement"
         smallint    kind          "MovementKind enum number"
@@ -506,6 +507,33 @@ erDiagram
         bigint      actor_user_id "who, best-effort audit"
         timestamptz created_at
     }
+
+    stock_batches {
+        bigserial   id                      PK
+        bigint      warehouse_id            "opaque team id, scope"
+        bigint      product_id              "opaque product_service id"
+        bigint      delivery_id             "the accepted restock request id (display '#3007')"
+        bigint      restock_request_item_id FK "-> restock_request_items(id); UNIQUE — the line IS the batch (#207)"
+        bigint      unit_cost               "FROZEN HPP, whole rupiah; NULL = Unknown, never 0 (#74)"
+        bigint      arrived_qty             "units on the line, CHECK >= 0; Ready = sum shelf_batch.qty"
+        bigint      damaged_qty             "never entered stock, CHECK >= 0"
+        date        expires_on              "NULLABLE — perishables only (#208)"
+        bigint      created_by              "who raised the restock, opaque user id, 0=unknown"
+        bigint      accepted_by             "who accepted it"
+        timestamptz created_at
+        timestamptz accepted_at
+    }
+
+    stock_shelf_batches {
+        bigserial   id       PK
+        bigint      batch_id FK "-> stock_batches(id) ON DELETE RESTRICT"
+        bigint      rack_id  FK "-> racks(id) ON DELETE RESTRICT; NULL = unplaced (#135)"
+        bigint      qty      "READY units of this batch on this shelf, CHECK >= 0; UNIQUE(batch,rack) NULLS NOT DISTINCT"
+        timestamptz updated_at
+    }
+
+    stock_batches ||--o{ stock_shelf_batches : "batch_id"
+    restock_request_items ||--o| stock_batches : "restock_request_item_id (one batch per line)"
 
     suppliers ||--o{ supplier_channels : "supplier_id"
 
