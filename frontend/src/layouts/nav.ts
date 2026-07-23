@@ -76,8 +76,13 @@ const PRODUCTS_GROUP: MenuGroup = {
 function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
-    { to: "/inventories/stock", label: "nav.stock", icon: PackagePlus },
   ];
+
+  // Stock is the on-hand list, and it is the WAREHOUSE's: a selling team RAISES restocks but holds no
+  // stock of its own — the goods live at the warehouse — so it has no on-hand list to show.
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/stock", label: "nav.stock", icon: PackagePlus });
+  }
 
   // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
   // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
