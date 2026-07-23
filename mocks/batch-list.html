@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Batches</title>
+<style>
+  /* ------------------------------------------------------------------ *
+   * MOCKUP ONLY. Plain HTML/CSS, hardcoded data, no build. The BATCH    *
+   * LIST — a warehouse-wide management screen over every stock batch,   *
+   * to find expiring / depleted stock and drill into one. A batch = one *
+   * product's units from one delivery, so ONE delivery (#3007) appears  *
+   * as SEVERAL batches (one per product). A growing list → it paginates *
+   * (HARD RULE 9). Each row opens batch-detail.html.                    *
+   * ------------------------------------------------------------------ */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --neg: #b42318;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+      --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+      --border: #262b33; --border-strong: #333a44;
+      --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+      --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+      --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+      --pos: #47c67e; --neg: #f97066;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+  a { color: inherit; }
+  .mock-banner {
+    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
+    border-bottom: 1px solid var(--border); color: var(--accent-fg);
+    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
+  }
+
+  header.bar { border-bottom: 1px solid var(--border); background: var(--surface); }
+  .bar-inner { max-width: 1080px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .back { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-muted); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: var(--radius-sm); }
+  .back:hover { background: var(--surface-2); color: var(--fg); }
+  .name-block { display: flex; flex-direction: column; }
+  .page-title { font-size: 20px; font-weight: 650; line-height: 1.2; }
+  .page-sub { color: var(--fg-subtle); font-size: 13px; }
+  .spacer { flex: 1 1 auto; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 20px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
+  .stat-value { font-size: 22px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stat-value.warn { color: var(--warn); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card-body { padding: 18px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter { display: inline-flex; align-items: center; gap: 8px; }
+  .filter label { font-size: 12px; color: var(--fg-muted); font-weight: 600; }
+  .search-input {
+    font-family: inherit; font-size: 13px; color: var(--fg); min-width: 240px;
+    background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 10px 7px 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 9px center; background-size: 14px;
+  }
+  .search-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .select {
+    appearance: none; font-family: inherit; font-size: 13px; font-weight: 550;
+    color: var(--fg); background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 30px 7px 10px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+  }
+  .grow { flex: 1 1 auto; }
+  .date-input { font-family: inherit; font-size: 13px; color: var(--fg); color-scheme: light dark; background-color: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 6px 8px; }
+  .date-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .date-sep { color: var(--fg-subtle); font-size: 12px; }
+
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-variant-numeric: tabular-nums; }
+  .b-id { font-weight: 650; color: var(--accent-fg); font-variant-numeric: tabular-nums; }
+  .b-receipt { color: var(--fg-subtle); font-size: 11.5px; }
+  .prod { font-weight: 600; }
+  .prod .sku { display: block; color: var(--fg-subtle); font-size: 11.5px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .owner-chip { font-size: 10.5px; font-weight: 600; color: var(--accent-fg); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+  .ready { font-weight: 650; color: var(--pos); }
+  .ready.zero { color: var(--fg-subtle); font-weight: 550; }
+  .exp-soon { color: var(--warn); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .exp-none { color: var(--fg-subtle); }
+  .depleted { display: inline-block; font-size: 10px; font-weight: 700; color: var(--fg-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
+
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .pager-info { font-size: 12.5px; color: var(--fg-subtle); }
+  .pager-controls { display: inline-flex; align-items: center; gap: 6px; }
+  .pager-btn { appearance: none; font-family: inherit; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: var(--radius-sm); padding: 5px 8px; cursor: pointer; display: inline-flex; align-items: center; }
+  .pager-btn:hover:not(:disabled) { background: var(--surface-2); }
+  .pager-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .pager-page { font-size: 12.5px; color: var(--fg-muted); font-variant-numeric: tabular-nums; padding: 0 4px; }
+
+  .note { color: var(--fg-subtle); font-size: 12px; margin-top: 12px; }
+  svg { display: block; }
+  @media (max-width: 720px) { .stats { grid-template-columns: 1fr; } }
+  /* light / dark preview toggle */
+  .theme-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 9999; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg-muted); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .theme-toggle:hover { color: var(--fg); border-color: var(--accent); }
+  .theme-toggle .sun { display: none; }
+  .theme-toggle .moon { display: block; }
+  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+</style>
+</head>
+<body>
+  <div class="mock-banner">MOCKUP · Batches (warehouse-wide list) · fake data · not the app</div>
+
+  <header class="bar">
+    <div class="bar-inner">
+      <a class="back" href="index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Mocks
+      </a>
+      <div class="spacer" style="flex:0"></div>
+      <div class="name-block">
+        <span class="page-title">Batches</span>
+        <span class="page-sub">Every stock batch in the warehouse</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Batches</div><div class="stat-value">40</div></div>
+      <div class="stat"><div class="stat-label">Ready value</div><div class="stat-value">Rp 138.500.000</div></div>
+      <div class="stat"><div class="stat-label">Expiring ≤ 30 days</div><div class="stat-value warn">5</div></div>
+    </div>
+
+    <div class="card"><div class="card-body">
+      <div class="toolbar">
+        <input class="search-input" id="q" type="search" placeholder="Search batch, receipt, or product…" aria-label="Search batches" />
+        <span class="grow"></span>
+        <div class="filter">
+          <label for="f-team">Team</label>
+          <select class="select" id="f-team">
+            <option value="">All teams</option>
+            <option value="Selling Alpha">Selling Alpha</option>
+            <option value="Selling Beta">Selling Beta</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="f-supplier">Supplier</label>
+          <select class="select" id="f-supplier">
+            <option value="">All suppliers</option>
+            <option value="Konveksi Maju Jaya">Konveksi Maju Jaya</option>
+            <option value="Garmen Sentosa">Garmen Sentosa</option>
+            <option value="Medika Supplies">Medika Supplies</option>
+            <option value="Aksesoris Prima">Aksesoris Prima</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label for="f-exp">Expiry</label>
+          <select class="select" id="f-exp">
+            <option value="">All</option>
+            <option value="soon">Expiring ≤ 30 days</option>
+            <option value="none">No expiry</option>
+          </select>
+        </div>
+        <div class="filter">
+          <select class="select" id="f-date-field" aria-label="Date field">
+            <option value="arrived">Arrived</option>
+            <option value="expiring">Expiring</option>
+          </select>
+          <input class="date-input" id="f-from" type="date" aria-label="From date" />
+          <span class="date-sep">→</span>
+          <input class="date-input" id="f-to" type="date" aria-label="To date" />
+        </div>
+      </div>
+
+      <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Batch</th><th>Product</th><th>Supplier</th><th>Arrived</th>
+            <th class="num">Ready</th><th class="num">Cost / pc</th><th class="num">Ready value</th><th>Expiring</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Alpha" data-supplier="Garmen Sentosa" data-exp="none" data-arrived="2026-07-25" data-expiring="" data-search="3102 grn-0725 jaket hoodie m sku-1210 garmen sentosa selling alpha">
+            <td><span class="b-id">#3102</span><div class="b-receipt">GRN-0725</div></td>
+            <td class="prod">Jaket Hoodie M <span class="owner-chip">Selling Alpha</span><span class="sku">SKU-1210</span></td>
+            <td>Garmen Sentosa</td><td class="mono">2026-07-25</td>
+            <td class="num"><span class="ready">60</span></td><td class="num">Rp 85.000</td><td class="num">Rp 5.100.000</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Beta" data-supplier="Garmen Sentosa" data-exp="none" data-arrived="2026-07-22" data-expiring="" data-search="3088 grn-0722 sepatu sneaker 42 sku-1502 garmen sentosa selling beta">
+            <td><span class="b-id">#3088</span><div class="b-receipt">GRN-0722</div></td>
+            <td class="prod">Sepatu Sneaker 42 <span class="owner-chip">Selling Beta</span><span class="sku">SKU-1502</span></td>
+            <td>Garmen Sentosa</td><td class="mono">2026-07-22</td>
+            <td class="num"><span class="ready">24</span></td><td class="num">Rp 145.000</td><td class="num">Rp 3.480.000</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-exp="soon" data-arrived="2026-07-21" data-expiring="2026-07-30" data-search="3007 grn-0721 kaos polos hitam l sku-1041 konveksi maju jaya selling alpha">
+            <td><span class="b-id">#3007</span><div class="b-receipt">GRN-0721</div></td>
+            <td class="prod">Kaos Polos Hitam L <span class="owner-chip">Selling Alpha</span><span class="sku">SKU-1041</span></td>
+            <td>Konveksi Maju Jaya</td><td class="mono">2026-07-21</td>
+            <td class="num"><span class="ready">197</span></td><td class="num">Rp 25.000</td><td class="num">Rp 4.925.000</td>
+            <td><span class="exp-soon">2026-07-30</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-exp="none" data-arrived="2026-07-21" data-expiring="" data-search="3007 grn-0721 kaos polos putih l sku-1042 konveksi maju jaya selling alpha">
+            <td><span class="b-id">#3007</span><div class="b-receipt">GRN-0721</div></td>
+            <td class="prod">Kaos Polos Putih L <span class="owner-chip">Selling Alpha</span><span class="sku">SKU-1042</span></td>
+            <td>Konveksi Maju Jaya</td><td class="mono">2026-07-21</td>
+            <td class="num"><span class="ready">150</span></td><td class="num">Rp 25.000</td><td class="num">Rp 3.750.000</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Beta" data-supplier="Konveksi Maju Jaya" data-exp="none" data-arrived="2026-07-21" data-expiring="" data-search="3007 grn-0721 celana chino 32 sku-1108 konveksi maju jaya selling beta">
+            <td><span class="b-id">#3007</span><div class="b-receipt">GRN-0721</div></td>
+            <td class="prod">Celana Chino 32 <span class="owner-chip">Selling Beta</span><span class="sku">SKU-1108</span></td>
+            <td>Konveksi Maju Jaya</td><td class="mono">2026-07-21</td>
+            <td class="num"><span class="ready">79</span></td><td class="num">Rp 60.000</td><td class="num">Rp 4.740.000</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Alpha" data-supplier="Medika Supplies" data-exp="soon" data-arrived="2026-07-18" data-expiring="2026-08-02" data-search="3050 grn-0718 masker kain 3ply sku-1420 medika supplies selling alpha">
+            <td><span class="b-id">#3050</span><div class="b-receipt">GRN-0718</div></td>
+            <td class="prod">Masker Kain 3ply <span class="owner-chip">Selling Alpha</span><span class="sku">SKU-1420</span></td>
+            <td>Medika Supplies</td><td class="mono">2026-07-18</td>
+            <td class="num"><span class="ready">320</span></td><td class="num">Rp 3.500</td><td class="num">Rp 1.120.000</td>
+            <td><span class="exp-soon">2026-08-02</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-exp="none" data-arrived="2026-07-12" data-expiring="" data-search="2988 grn-0712 kaos polos hitam l sku-1041 konveksi maju jaya selling alpha">
+            <td><span class="b-id">#2988</span><div class="b-receipt">GRN-0712</div></td>
+            <td class="prod">Kaos Polos Hitam L <span class="owner-chip">Selling Alpha</span><span class="sku">SKU-1041</span></td>
+            <td>Konveksi Maju Jaya</td><td class="mono">2026-07-12</td>
+            <td class="num"><span class="ready">43</span></td><td class="num">Rp 24.000</td><td class="num">Rp 1.032.000</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+          <tr onclick="location.href='batch-detail.html'" data-team="Selling Beta" data-supplier="Aksesoris Prima" data-exp="none" data-arrived="2026-07-05" data-expiring="" data-search="2951 grn-0705 topi baseball sku-1301 aksesoris prima selling beta depleted">
+            <td><span class="b-id">#2951</span><div class="b-receipt">GRN-0705</div></td>
+            <td class="prod">Topi Baseball <span class="owner-chip">Selling Beta</span><span class="sku">SKU-1301</span></td>
+            <td>Aksesoris Prima</td><td class="mono">2026-07-05</td>
+            <td class="num"><span class="ready zero">0</span><span class="depleted">DEPLETED</span></td><td class="num">Rp 18.000</td><td class="num">Rp 0</td>
+            <td><span class="exp-none">—</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="pager">
+        <span class="pager-info" id="pager-info">Showing 1–8 of 40 batches</span>
+        <div class="pager-controls">
+          <button class="pager-btn" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+          <span class="pager-page">Page 1 of 5</span>
+          <button class="pager-btn" aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+      </div>
+
+      <p class="note">A batch is one product's units from one delivery, so delivery <strong>#3007</strong> lists as three batches (one per product). <strong>Team</strong> is the catalogue owner whose goods these are — a warehouse holds stock for several selling teams (#142); <strong>Supplier</strong> is who delivered them (different things). Ready value = ready × cost/pc; a depleted batch (Ready 0) stays for its history. Amber = expiring within 30 days. The <strong>date range</strong> filters on Arrived or Expiring (pick which) — a batch with no expiry drops out of an expiring range. Filters and search re-query the full set — the page count reflects the whole warehouse.</p>
+    </div></div>
+  </main>
+
+<script>
+  const q = document.getElementById("q");
+  const fTeam = document.getElementById("f-team");
+  const fSupplier = document.getElementById("f-supplier");
+  const fExp = document.getElementById("f-exp");
+  const fDateField = document.getElementById("f-date-field");
+  const fFrom = document.getElementById("f-from");
+  const fTo = document.getElementById("f-to");
+  const rows = [...document.querySelectorAll("#rows tr")];
+  const info = document.getElementById("pager-info");
+
+  function inDateRange(r) {
+    const from = fFrom.value, to = fTo.value;
+    if (!from && !to) return true;                       // range inactive
+    const v = fDateField.value === "expiring" ? r.dataset.expiring : r.dataset.arrived;
+    if (!v) return false;                                // no date (e.g. no expiry) → excluded
+    if (from && v < from) return false;                  // ISO dates compare lexicographically
+    if (to && v > to) return false;
+    return true;
+  }
+
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    const team = fTeam.value;
+    const sup = fSupplier.value;
+    const exp = fExp.value;
+    let shown = 0;
+    rows.forEach((r) => {
+      const ok =
+        (!term || r.dataset.search.includes(term)) &&
+        (!team || r.dataset.team === team) &&
+        (!sup || r.dataset.supplier === sup) &&
+        (!exp || r.dataset.exp === exp) &&
+        inDateRange(r);
+      r.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    });
+    const filtering = term || team || sup || exp || fFrom.value || fTo.value;
+    info.textContent = filtering
+      ? "Showing " + shown + " of " + shown + " (filtered)"
+      : "Showing 1–8 of 40 batches";
+  }
+  [q, fTeam, fSupplier, fExp, fDateField, fFrom, fTo].forEach((el) => el.addEventListener("input", apply));
+  apply();
+</script>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

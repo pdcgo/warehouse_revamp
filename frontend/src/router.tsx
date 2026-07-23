@@ -71,6 +71,10 @@ const SupplierDetailPage = lazy(() =>
   import("./pages/supplier-detail").then((m) => ({ default: m.SupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./pages/racks").then((m) => ({ default: m.RacksPage })));
+const BatchesPage = lazy(() => import("./pages/batches").then((m) => ({ default: m.BatchesPage })));
+const BatchDetailPage = lazy(() =>
+  import("./pages/batch-detail").then((m) => ({ default: m.BatchDetailPage })),
+);
 const WarehouseProductPage = lazy(() =>
   import("./pages/warehouse-product").then((m) => ({ default: m.WarehouseProductPage })),
 );
@@ -220,6 +224,10 @@ export const router = createBrowserRouter([
       { path: "inventories/picking", element: <PickQueuePage /> },
       { path: "inventories/picking/:orderId", element: <PickOrderPage /> },
       { path: "inventories/racks", element: <RacksPage /> },
+      // Every stock batch in the warehouse (#209) — cost layers, browsable by receipt and expiry.
+      { path: "inventories/batches", element: <BatchesPage /> },
+      // One batch's living detail (#209) — reached by clicking a row; a PAGE, not a dialog (CLAUDE.md).
+      { path: "inventories/batches/:batchId", element: <BatchDetailPage /> },
       // What is on one shelf, and how much (#138) — reached by clicking a rack in the list.
       { path: "inventories/racks/:rackId", element: <RackDetailPage /> },
       { path: "users", element: <UsersPage /> },

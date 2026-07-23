@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, MapPin, Package, PackagePlus, PackageSearch, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, Layers, MapPin, Package, PackagePlus, PackageSearch, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -96,6 +96,11 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
   if (teamType === TeamType.WAREHOUSE) {
     children.push({ to: "/inventories/racks", label: "nav.racks", icon: Grid3x3 });
+  }
+
+  // Batches — the deliveries of stock as cost layers (#209), a warehouse's own view of its inventory.
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/batches", label: "nav.batches", icon: Layers });
   }
 
   return { label: "nav.inventories", icon: Boxes, children };

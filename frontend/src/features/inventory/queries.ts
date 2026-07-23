@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { inventoryClient, orderClient, productClient, restockClient, teamClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import type { StockBatch, StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 
 // The inventory screens' reads (#176).
 
@@ -240,6 +241,118 @@ export function useCostLayers(args: { warehouseId: bigint | undefined; productId
         page: { page: 1, limit: 100 },
       });
       return res;
+    },
+  });
+}
+
+// The warehouse-wide batch list (#209) — every stock batch, with search / supplier / expiry filters
+// and the header stat tiles. Paginated (HARD RULE 9).
+export function useWarehouseBatches(args: {
+  warehouseId: bigint | undefined;
+  search: string;
+  supplierId: bigint;
+  expiry: number;
+  page: number;
+  pageSize: number;
+}) {
+  const { warehouseId, search, supplierId, expiry, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, {
+      batchList: "all",
+      search,
+      supplierId: supplierId.toString(),
+      expiry,
+      page,
+      pageSize,
+    }),
+    enabled: warehouseId !== undefined,
+    queryFn: async () => {
+      const res = await inventoryClient.batchList({
+        teamId: warehouseId!,
+        search,
+        supplierId,
+        expiry,
+        page: { page, limit: pageSize },
+      });
+      return res;
+    },
+  });
+}
+
+// One batch's living detail (#209) — its identity, where its ready units sit now, and its own history.
+// Five reads behind one query so the whole page renders or fails together:
+//   • BatchDetail          — the batch itself (lifecycle, frozen cost, dates).
+//   • productByIds+teamByIds — WHOSE goods these are (#142): a warehouse holds other teams' stock, so
+//                            the owner is resolved through the product, best-effort.
+//   • productPlaces        — the rack CODE per rack_id, so shelves read "A-01-3", not "#7".
+//   • BatchPlacementList   — where the ready units sit right now.
+//   • StockHistory(batchId) — this batch's ledger; a batch-less recount (batch_id 0) drops out.
+export interface BatchDetail {
+  batch: StockBatch | null;
+  ownerName: string;
+  rackCodes: Map<string, string>;
+  shelves: { rackId: bigint; qty: bigint }[];
+  history: StockMovement[];
+}
+
+export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }) {
+  const { warehouseId, batchId } = args;
+
+  return useQuery<BatchDetail>({
+    queryKey: key.inventory(warehouseId, { batch: batchId.toString() }),
+    enabled: warehouseId !== undefined && batchId > 0n,
+    queryFn: async () => {
+      const detail = await inventoryClient.batchDetail({ teamId: warehouseId!, batchId });
+      const batch = detail.batch ?? null;
+      if (!batch) {
+        return { batch: null, ownerName: "", rackCodes: new Map(), shelves: [], history: [] };
+      }
+
+      const [placesRes, placementRes, historyRes] = await Promise.all([
+        inventoryClient.productPlaces({ warehouseId: warehouseId!, productIds: [batch.productId] }),
+        inventoryClient.batchPlacementList({
+          teamId: warehouseId!,
+          batchId,
+          page: { page: 1, limit: 100 },
+        }),
+        inventoryClient.stockHistory({
+          warehouseId: warehouseId!,
+          productId: batch.productId,
+          batchId,
+          page: { page: 1, limit: 50 },
+        }),
+      ]);
+
+      const rackCodes = new Map<string, string>();
+      for (const p of placesRes.places) {
+        rackCodes.set(p.rackId.toString(), p.rackCode);
+      }
+
+      // WHOSE goods these are (#142) — resolved through the product's owning team, best-effort: an
+      // unknown or deleted owner leaves the badge off rather than showing a blank.
+      let ownerName = "";
+      try {
+        const found = await productClient.productByIds({
+          teamId: warehouseId!,
+          productIds: [batch.productId],
+        });
+        const ownerTeamId = found.products[0]?.teamId ?? 0n;
+        if (ownerTeamId > 0n) {
+          const teams = await teamClient.teamByIds({ ids: [ownerTeamId] });
+          ownerName = teams.data[ownerTeamId.toString()]?.name ?? "";
+        }
+      } catch {
+        ownerName = "";
+      }
+
+      return {
+        batch,
+        ownerName,
+        rackCodes,
+        shelves: placementRes.shelves.map((s) => ({ rackId: s.rackId, qty: s.qty })),
+        history: historyRes.movements,
+      };
     },
   });
 }
