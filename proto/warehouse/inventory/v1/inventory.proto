@@ -55,6 +55,11 @@ service InventoryService {
   // The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
   // was last counted, the last delivery. One call keeps the header cheap.
   rpc ProductStockSummary(ProductStockSummaryRequest) returns (ProductStockSummaryResponse);
+
+  // One batch in full, and where it sits (#209) — the batch-detail screen. Its history is StockHistory
+  // filtered by batch, so there is no separate event RPC.
+  rpc BatchDetail(BatchDetailRequest) returns (BatchDetailResponse);
+  rpc BatchPlacementList(BatchPlacementListRequest) returns (BatchPlacementListResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -838,4 +843,56 @@ message ProductStockSummaryResponse {
 
   // The most recent delivery of this product (its restock/delivery id); 0 = never delivered here.
   uint64 last_restock_id = 6;
+}
+
+message BatchDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message BatchDetailResponse {
+  StockBatch batch = 1;
+}
+
+// Where a batch's ready units sit right now (#209) — the batch-detail Placements tab.
+message BatchShelf {
+  uint64 rack_id = 1; // 0 = unplaced
+  int64 qty = 2;
+}
+
+message BatchPlacementListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message BatchPlacementListResponse {
+  repeated BatchShelf shelves = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
 }
