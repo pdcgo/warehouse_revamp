@@ -42,7 +42,7 @@ const PROFIT: MenuItem = { to: "/profit", label: "nav.profit", icon: Scale };
 // The ledger of what teams owe each other (#185). A TOP-LEVEL section rather than a child of the
 // selling team's money group, because a WAREHOUSE team has no money section at all today and this is
 // where its income actually lives.
-const SETTLEMENT: MenuItem = { to: "/settlement", label: "nav.settlement", icon: Handshake };
+const SETTLEMENT: MenuItem = { to: "/liability", label: "nav.settlement", icon: Handshake };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };

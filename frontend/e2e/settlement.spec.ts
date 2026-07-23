@@ -146,3 +146,24 @@ test("Liability: the warehouse sees the same debt as money owed TO it (#185)", a
     "They owe you Rp 25.000",
   );
 });
+
+// #221 — the Chakra redesign at /liability. Same real debt as above (root owes the warehouse), but the
+// direction is TWO COLUMNS now, never a sign: the amount lands in Payable, and the age is its own cell.
+// Reuses the serial seed's warehouseId.
+test("Liability redesign: the position reads in two columns on /liability (#221)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/liability");
+  await expect(page.getByTestId("liability-list-page")).toBeVisible();
+  await expect(page.getByTestId("liability-table")).toBeVisible();
+
+  const row = page.getByTestId(`liability-row-${warehouseId}`);
+  await expect(row).toBeVisible();
+  // Root OWES the warehouse, so the amount is in the Payable column — no minus sign anywhere.
+  await expect(row).toContainText("Rp 25.000");
+  await expect(row).not.toContainText("-");
+  await expect(page.getByTestId(`liability-age-${warehouseId}`)).toBeVisible();
+
+  // The header tile totals the payable side.
+  await expect(page.getByTestId("liability-total-payable")).toContainText("Rp 25.000");
+});

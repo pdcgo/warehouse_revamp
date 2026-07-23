@@ -55,6 +55,9 @@ const OrderDraftDetailPage = lazy(() =>
 const SettlementPage = lazy(() =>
   import("./pages/settlement").then((m) => ({ default: m.SettlementPage })),
 );
+const LiabilityListPage = lazy(() =>
+  import("./pages/liability-list").then((m) => ({ default: m.LiabilityListPage })),
+);
 const CounterpartyPage = lazy(() =>
   import("./pages/counterparty").then((m) => ({ default: m.CounterpartyPage })),
 );
@@ -190,8 +193,10 @@ export const router = createBrowserRouter([
       // scraped line to a real product is work somebody sits down to, not a focused action.
       { path: "order-drafts/:draftId", element: <OrderDraftDetailPage /> },
       // The ledger of what teams owe each other (#185). Its own top-level section — a warehouse team
-      // has no money screens at all today, and this gives it one.
+      // has no money screens at all today, and this gives it one. The Chakra redesign lives at
+      // /liability (#221); the old /settlement stays reachable but the nav points at the new one.
       { path: "settlement", element: <SettlementPage /> },
+      { path: "liability", element: <LiabilityListPage /> },
       // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row.
       { path: "settlement/:counterpartyId", element: <CounterpartyPage /> },
       { path: "inventory", element: <InventoryPage /> },
