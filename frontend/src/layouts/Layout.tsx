@@ -6,6 +6,8 @@ import {
   Flex,
   Icon,
   IconButton,
+  Input,
+  InputGroup,
   Menu,
   Portal,
   Spacer,
@@ -13,7 +15,14 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ChevronDown, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  Bell,
+  ChevronRight,
+  ChevronsUpDown,
+  LogOut,
+  Menu as MenuIcon,
+  Search,
+} from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../features/auth/AuthContext";
@@ -21,8 +30,10 @@ import { useTeam } from "../features/team/TeamContext";
 import { LANGUAGES, useLanguage } from "../i18n/language";
 import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "./TeamSwitcher";
-import { ColorModeToggle } from "../components/ColorModeToggle";
-import { Logo, WarehouseMark } from "../components/Logo";
+import { Logo } from "../components/Logo";
+import { useColorMode, setColorMode } from "../lib/colorMode";
+import type { ColorMode } from "../lib/colorMode";
+import { roleLabel } from "../lib/roles";
 import { isMenuGroup, menuFor } from "./nav";
 import type { MenuGroup, MenuItem } from "./nav";
 
@@ -37,7 +48,12 @@ export function Layout() {
   const { current } = useTeam();
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
-  const [collapsed, setCollapsed] = useState(false);
+  // On a narrow screen the sidebar is off-canvas behind a hamburger (#214); this is its open state.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const colorMode = useColorMode();
+  // The nav renders at full width — the collapse-to-rail affordance the mock does not have was
+  // dropped. Kept as a const so the shared navItem / TeamSwitcher signatures stay put.
+  const collapsed = false;
   // Sub-menu groups are an ACCORDION (#123): at most ONE is expanded, so opening one closes the rest
   // and the sidebar never turns into a wall of links. Null = all closed.
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -79,6 +95,12 @@ export function Layout() {
       setOpenGroup(owningLabel);
     }
   }, [owningLabel]);
+
+  // Navigating closes the mobile drawer (#214): a link tap should reveal the page, not leave the
+  // sidebar covering it. No-op on desktop, where the drawer is never open.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
   // One nav link row — shared by top-level items and group children. Active is decided by activeTo
   // (longest-prefix winner), NOT by the link's own prefix match, so siblings don't all light up.
@@ -191,93 +213,106 @@ export function Layout() {
 
   return (
     <Flex minH="100dvh">
+      {/* On a narrow screen the sidebar sits OVER the content; the backdrop dims the page and gives an
+          outside-tap a target to close on. Only while open, only below md (#214). */}
+      {drawerOpen && (
+        <Box
+          data-testid="sidebar-backdrop"
+          position="fixed"
+          inset="0"
+          zIndex={25}
+          bg="blackAlpha.500"
+          hideFrom="md"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR — brand, team switcher, nav, then the USER CARD at the foot (the mock's layout). Fixed
+          and off-canvas on mobile, sticky in-flow on desktop. */}
       <Flex
-        as="nav"
+        as="aside"
         direction="column"
-        gap="section"
         flexShrink={0}
-        w={collapsed ? "64px" : "240px"}
-        transition="width 0.15s ease"
+        w="258px"
+        bg="bg.subtle"
         borderRightWidth="1px"
         borderColor="border"
-        p="card"
+        position={{ base: "fixed", md: "sticky" }}
+        top="0"
+        bottom={{ base: "0", md: "auto" }}
+        left="0"
+        h={{ base: "100dvh", md: "100dvh" }}
+        zIndex={{ base: 30, md: "auto" }}
+        transform={{ base: drawerOpen ? "translateX(0)" : "translateX(-100%)", md: "none" }}
+        transition="transform 0.2s ease"
       >
-        <Box px="2" py="1" overflow="hidden" color="brand.solid">
-          {collapsed ? <WarehouseMark size={26} /> : <Logo size={28} />}
+        <Flex align="center" px="page" pt="4" pb="3" color="brand.solid">
+          <Logo size={28} />
+        </Flex>
+
+        <Box px="card" pb="2">
+          <TeamSwitcher collapsed={collapsed} />
         </Box>
 
-        <TeamSwitcher collapsed={collapsed} />
-
-        <Stack gap="1" flex="1">
-          {menu.map((entry) =>
-            isMenuGroup(entry) ? renderGroup(entry) : navItem(entry),
-          )}
+        <Stack gap="1" flex="1" overflowY="auto" px="card" py="1">
+          {menu.map((entry) => (isMenuGroup(entry) ? renderGroup(entry) : navItem(entry)))}
         </Stack>
 
-        <Flex justify={collapsed ? "center" : "flex-end"}>
-          <IconButton
-            size="xs"
-            variant="ghost"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed((v) => !v)}
-          >
-            <Icon as={collapsed ? PanelLeftOpen : PanelLeftClose} boxSize="4" />
-          </IconButton>
-        </Flex>
-      </Flex>
-
-      <Flex direction="column" flex="1" minW="0">
-        <Flex
-          as="header"
-          align="center"
-          gap="section"
-          borderBottomWidth="1px"
-          borderColor="border"
-          px="page"
-          py="card"
-        >
-          <Breadcrumb.Root size="lg">
-            <Breadcrumb.List>
-              <Breadcrumb.Item>
-                <Breadcrumb.CurrentLink fontWeight="semibold" color="fg">
-                  {currentLabel ? t(currentLabel) : ""}
-                </Breadcrumb.CurrentLink>
-              </Breadcrumb.Item>
-            </Breadcrumb.List>
-          </Breadcrumb.Root>
-
-          <Spacer />
-
-          <ColorModeToggle />
-
-          <Menu.Root positioning={{ placement: "bottom-end" }}>
+        {/* USER CARD — the identity and the account menu, at the sidebar foot. The menu opens UPWARD
+            (it has nowhere below to go) and carries Theme, Language and Sign out. */}
+        <Box borderTopWidth="1px" borderColor="border">
+          <Menu.Root positioning={{ placement: "top-start" }}>
             <Menu.Trigger asChild>
               <Flex
                 as="button"
                 data-testid="user-menu"
                 align="center"
-                gap="2"
-                rounded="md"
-                px="2"
-                py="1"
+                gap="2.5"
+                w="full"
+                px="card"
+                py="2.5"
+                textAlign="start"
                 cursor="pointer"
                 _hover={{ bg: "bg.muted" }}
               >
-                <Avatar.Root size="xs" colorPalette="brand">
+                <Avatar.Root size="sm" colorPalette="brand">
                   <Avatar.Fallback name={identity?.username} />
                 </Avatar.Root>
 
-                <Text fontSize="sm" color="fg.muted" data-testid="current-user">
-                  {identity?.username}
-                </Text>
+                <Box flex="1" minW="0">
+                  <Text fontSize="sm" fontWeight="semibold" truncate data-testid="current-user">
+                    {identity?.username}
+                  </Text>
+                  <Text fontSize="xs" color="fg.subtle" truncate>
+                    {roleLabel(current?.role)}
+                  </Text>
+                </Box>
 
-                <Icon as={ChevronDown} boxSize="4" color="fg.muted" flexShrink={0} />
+                <Icon as={ChevronsUpDown} boxSize="4" color="fg.subtle" flexShrink={0} />
               </Flex>
             </Menu.Trigger>
 
             <Portal>
               <Menu.Positioner>
-                <Menu.Content minW="200px">
+                <Menu.Content minW="220px">
+                  {/* Theme (#214/#213) — light / dark on the color-mode tokens, the mock's placement. */}
+                  <Menu.RadioItemGroup
+                    value={colorMode}
+                    onValueChange={(e) => setColorMode(e.value as ColorMode)}
+                  >
+                    <Menu.ItemGroupLabel>{t("menu.theme")}</Menu.ItemGroupLabel>
+                    <Menu.RadioItem value="light" data-testid="theme-light">
+                      {t("menu.themeLight")}
+                      <Menu.ItemIndicator />
+                    </Menu.RadioItem>
+                    <Menu.RadioItem value="dark" data-testid="theme-dark">
+                      {t("menu.themeDark")}
+                      <Menu.ItemIndicator />
+                    </Menu.RadioItem>
+                  </Menu.RadioItemGroup>
+
+                  <Menu.Separator />
+
                   {/* Language switcher (#93). Persists the choice and sets the page language; the
                       UI-string translation itself is the i18n effort tracked in #65. */}
                   <Menu.RadioItemGroup value={lang} onValueChange={(e) => setLang(e.value as Lang)}>
@@ -305,6 +340,87 @@ export function Layout() {
               </Menu.Positioner>
             </Portal>
           </Menu.Root>
+        </Box>
+      </Flex>
+
+      <Flex direction="column" flex="1" minW="0">
+        {/* TOPBAR — hamburger (mobile), the breadcrumb, then search and notifications on the right
+            (the mock's header; the user menu lives in the sidebar, not here). Sticky. */}
+        <Flex
+          as="header"
+          align="center"
+          gap="card"
+          borderBottomWidth="1px"
+          borderColor="border"
+          px="page"
+          py="card"
+          position="sticky"
+          top="0"
+          zIndex={20}
+          bg="bg.subtle"
+        >
+          <IconButton
+            size="xs"
+            variant="outline"
+            aria-label={t("shell.openMenu")}
+            data-testid="sidebar-hamburger"
+            hideFrom="md"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <Icon as={MenuIcon} boxSize="4" />
+          </IconButton>
+
+          <Breadcrumb.Root size="lg">
+            <Breadcrumb.List>
+              {current?.teamName && (
+                <>
+                  <Breadcrumb.Item>
+                    <Breadcrumb.Link color="fg.subtle">{current.teamName}</Breadcrumb.Link>
+                  </Breadcrumb.Item>
+                  <Breadcrumb.Separator />
+                </>
+              )}
+              <Breadcrumb.Item>
+                <Breadcrumb.CurrentLink fontWeight="semibold" color="fg">
+                  {currentLabel ? t(currentLabel) : ""}
+                </Breadcrumb.CurrentLink>
+              </Breadcrumb.Item>
+            </Breadcrumb.List>
+          </Breadcrumb.Root>
+
+          <Spacer />
+
+          {/* Search and notifications are the mock's top-bar chrome. Neither is wired to a backend yet
+              (there is no search or notifications service) — they are the frame those land in. */}
+          <InputGroup
+            startElement={<Icon as={Search} boxSize="4" color="fg.subtle" />}
+            maxW="220px"
+            hideBelow="sm"
+          >
+            <Input placeholder={t("shell.search")} rounded="full" size="sm" data-testid="global-search" />
+          </InputGroup>
+
+          <Box position="relative">
+            <IconButton
+              size="sm"
+              variant="outline"
+              aria-label={t("shell.notifications")}
+              data-testid="notifications"
+            >
+              <Icon as={Bell} boxSize="4" />
+            </IconButton>
+            <Box
+              position="absolute"
+              top="1"
+              right="1"
+              boxSize="2"
+              bg="orange.solid"
+              rounded="full"
+              borderWidth="1.5px"
+              borderColor="bg.subtle"
+              pointerEvents="none"
+            />
+          </Box>
         </Flex>
 
         <Box as="main" flex="1" overflow="auto" p="page">

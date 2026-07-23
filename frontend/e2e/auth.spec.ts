@@ -112,7 +112,7 @@ test("sign out clears the session", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await expect(page.getByTestId("home-user")).toContainText("root");
 
-  // Sign out now lives inside the top-right user menu: open it, then pick "Sign out".
+  // Sign out lives inside the user card at the foot of the sidebar: open it, then pick "Sign out".
   await page.getByTestId("user-menu").click();
   await page.getByTestId("sign-out").click();
 
@@ -120,4 +120,28 @@ test("sign out clears the session", async ({ page }) => {
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test("the user menu switches the theme, and the choice sticks across a reload (#214/#213)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText("root");
+
+  const html = page.locator("html");
+
+  // Theme lives in the sidebar-foot user menu. Pick Dark → the `.dark` class Chakra reads goes on <html>.
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("theme-dark").click();
+  await expect(html).toHaveClass(/dark/);
+
+  // The choice is persisted (localStorage), so it survives a full reload rather than snapping back.
+  await page.reload();
+  await expect(page.getByTestId("home-user")).toContainText("root");
+  await expect(html).toHaveClass(/dark/);
+
+  // And back to Light removes it.
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("theme-light").click();
+  await expect(html).not.toHaveClass(/dark/);
 });
