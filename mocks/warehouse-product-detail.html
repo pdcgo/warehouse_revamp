@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mock · Warehouse Product Detail</title>
+<style>
+  /* ------------------------------------------------------------------ *
+   * MOCKUP ONLY (#202). Plain HTML/CSS, hardcoded data, no build. A     *
+   * throwaway preview of the WAREHOUSE product detail — what a warehouse *
+   * team sees when it opens a product it HOLDS but does not own: how     *
+   * much is here, what it is worth, where it sits, what happened to it   *
+   * (#144/#158). NOT the catalogue page — a warehouse cannot edit a name *
+   * or a category (#142). The real screen is built from Chakra + the     *
+   * shared components; the accent ramp is a placeholder, same as the app.*
+   * ------------------------------------------------------------------ */
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f9fafb;
+    --border: #e4e7ec;
+    --border-strong: #d0d5dd;
+    --fg: #101828;
+    --fg-muted: #667085;
+    --fg-subtle: #98a2b3;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --accent-fg: #3730a3;
+    --warn: #b54708;
+    --warn-soft: #fffaeb;
+    --warn-border: #fedf89;
+    --danger: #b42318;
+    --pos: #067647;
+    --neg: #b42318;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0e12;
+      --surface: #161a20;
+      --surface-2: #1b2027;
+      --border: #262b33;
+      --border-strong: #333a44;
+      --fg: #f0f2f5;
+      --fg-muted: #98a2b3;
+      --fg-subtle: #667085;
+      --accent: #7c74f0;
+      --accent-soft: #1e1b34;
+      --accent-fg: #c7c2f7;
+      --warn: #f5a524;
+      --warn-soft: #2a2113;
+      --warn-border: #4a3a15;
+      --danger: #f97066;
+      --pos: #47c67e;
+      --neg: #f97066;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font); font-size: 14px; line-height: 1.45;
+  }
+  .mock-banner {
+    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
+    border-bottom: 1px solid var(--border); color: var(--accent-fg);
+    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
+  }
+
+  header.bar { border-bottom: 1px solid var(--border); background: var(--surface); }
+  .bar-inner {
+    max-width: 1000px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--fg-muted); text-decoration: none; font-size: 13px;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+  }
+  .back:hover { background: var(--surface-2); color: var(--fg); }
+  .name-block { display: flex; flex-direction: column; }
+  .prod-name { font-size: 20px; font-weight: 650; line-height: 1.2; }
+  .prod-sku { color: var(--fg-subtle); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .spacer { flex: 1 1 auto; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; border: 1px solid transparent; cursor: pointer; background: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; gap: 6px; color: var(--fg);
+  }
+  .btn-outline { background: var(--surface); border-color: var(--border-strong); }
+  .btn-outline:hover { background: var(--surface-2); }
+  .btn .glyph { color: var(--accent); }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+  /* Two columns: vertical tabs (#198) + content panel */
+  .layout { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
+  .tabs { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 20px; }
+  .tab {
+    text-align: left; border: none; background: none; cursor: pointer;
+    font-family: inherit; font-size: 13.5px; font-weight: 550; color: var(--fg-muted);
+    padding: 9px 12px; border-radius: var(--radius-sm); border-left: 2px solid transparent;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .tab:hover { background: var(--surface-2); color: var(--fg); }
+  .tab.active {
+    background: var(--accent-soft); color: var(--accent-fg);
+    border-left-color: var(--accent); font-weight: 650;
+  }
+  .tab .glyph { flex: 0 0 auto; opacity: .85; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .card-body { padding: 18px; }
+  .panel-title { font-size: 15px; font-weight: 650; margin: 0 0 14px; }
+
+  /* Stat tiles */
+  .tiles { display: grid; gap: 14px; }
+  .tiles.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .tiles.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px;
+  }
+  .tile-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
+  .tile-value { font-size: 22px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile-value.sm { font-size: 16px; }
+  .tile-value.muted { color: var(--fg-subtle); font-weight: 550; }
+  .tile-sub { font-size: 12px; color: var(--fg-muted); margin-top: 2px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-fg);
+  }
+  .link { color: var(--accent-fg); font-weight: 650; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--fg-subtle); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-variant-numeric: tabular-nums; }
+  .place-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .place-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .7; }
+  .place-chip.unplaced { color: var(--fg-muted); }
+  .place-chip.unplaced .dot { background: var(--fg-subtle); }
+  .delta-pos { color: var(--pos); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .delta-neg { color: var(--neg); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kind {
+    display: inline-flex; align-items: center; font-size: 12px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+  .foot-total td { font-weight: 700; border-top: 2px solid var(--border); }
+
+  svg { display: block; }
+  .footer-note { color: var(--fg-subtle); font-size: 12px; text-align: center; padding: 16px 0 4px; }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    .tabs { position: static; flex-direction: row; flex-wrap: wrap; }
+    .tab { border-left: none; border-bottom: 2px solid transparent; }
+    .tab.active { border-left: none; border-bottom-color: var(--accent); }
+    .tiles.cols-3, .tiles.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+  <div class="mock-banner">MOCKUP · Warehouse Product Detail (#202) · fake data · not the app</div>
+
+  <header class="bar">
+    <div class="bar-inner">
+      <a class="back" href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Products
+      </a>
+      <div class="spacer" style="flex:0"></div>
+      <div class="name-block">
+        <span class="prod-name">Kaos Polos Hitam L</span>
+        <span class="prod-sku">SKU-1041</span>
+      </div>
+      <div class="spacer"></div>
+      <!-- The SAME shared stock dialogs the stock list uses (#199). A warehouse ACTS on stock here;
+           it never edits the catalogue. -->
+      <div class="actions">
+        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M3 21h18"/></svg>Receive</button>
+        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Move</button>
+        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Adjust</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <!-- VERTICAL tabs (#198) — sections of one record, read one at a time -->
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="info"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Info</button>
+        <button class="tab" data-tab="prices"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Prices</button>
+        <button class="tab" data-tab="placement"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>Placement</button>
+        <button class="tab" data-tab="batches"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>Batches</button>
+        <button class="tab" data-tab="stock-history"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stock History</button>
+        <button class="tab" data-tab="placement-history"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg>Placement History</button>
+      </nav>
+
+      <section>
+        <!-- INFO -->
+        <div class="panel active" data-panel="info">
+          <div class="tiles cols-3">
+            <div class="tile">
+              <div class="tile-label">Owner</div>
+              <div class="tile-value sm"><span class="badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                Catalogue: Selling Alpha</span></div>
+              <div class="tile-sub">This warehouse holds another team's goods (#142).</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">On hand</div>
+              <div class="tile-value">240</div>
+              <div class="tile-sub">Summed across every shelf (#135).</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">On its way</div>
+              <div class="tile-value">120</div>
+              <div class="tile-sub">Pending restocks inbound.</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Last counted</div>
+              <div class="tile-value sm">2026-07-23</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Last order</div>
+              <div class="tile-value sm"><span class="link">#5821</span></div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Last delivery</div>
+              <div class="tile-value sm"><span class="link">#3007</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRICES -->
+        <div class="panel" data-panel="prices">
+          <div class="tiles cols-2">
+            <div class="tile">
+              <div class="tile-label">Cost / pc</div>
+              <div class="tile-value">Rp 25.000</div>
+              <div class="tile-sub">Frozen HPP from the last delivery.</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Stock value</div>
+              <div class="tile-value">Rp 6.000.000</div>
+              <div class="tile-sub">240 on hand × cost. Unknown cost would read "Unknown", never Rp 0 (#74).</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLACEMENT -->
+        <div class="panel" data-panel="placement">
+          <div class="card"><div class="card-body">
+            <h2 class="panel-title">Where it sits</h2>
+            <table>
+              <thead><tr><th>Place</th><th class="num">On hand</th></tr></thead>
+              <tbody>
+                <tr><td><span class="place-chip"><span class="dot"></span>A-01-3</span></td><td class="num">180</td></tr>
+                <tr><td><span class="place-chip"><span class="dot"></span>B-04-2</span></td><td class="num">45</td></tr>
+                <!-- Unplaced is a real place, spelled out — not a blank (#135). -->
+                <tr><td><span class="place-chip unplaced"><span class="dot"></span>Unplaced</span></td><td class="num">15</td></tr>
+              </tbody>
+              <tfoot><tr class="foot-total"><td>Total</td><td class="num">240</td></tr></tfoot>
+            </table>
+          </div></div>
+        </div>
+
+        <!-- BATCHES -->
+        <div class="panel" data-panel="batches">
+          <div class="card"><div class="card-body">
+            <h2 class="panel-title">Deliveries of this product</h2>
+            <table>
+              <thead><tr><th>Delivery</th><th class="num">Arrived</th><th class="num">Damaged</th><th class="num">Line cost</th></tr></thead>
+              <tbody>
+                <tr><td><span class="link">#3007</span></td><td class="num">200</td><td class="num">3</td><td class="num">Rp 5.000.000</td></tr>
+                <tr><td><span class="link">#2988</span></td><td class="num">60</td><td class="num">0</td><td class="num">Rp 1.500.000</td></tr>
+              </tbody>
+            </table>
+            <p class="tile-sub" style="margin-top:12px">A batch is a delivery — no lot numbers or expiry (owner, 2026-07-21). Only this product's lines within each delivery are summed.</p>
+          </div></div>
+        </div>
+
+        <!-- STOCK HISTORY -->
+        <div class="panel" data-panel="stock-history">
+          <div class="card"><div class="card-body">
+            <h2 class="panel-title">Everything that happened here</h2>
+            <table>
+              <thead><tr><th>When</th><th>What</th><th>Place</th><th class="num">Change</th><th class="num">After</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">2026-07-23 10:00</td><td><span class="kind">Counted</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−1</td><td class="num">170</td></tr>
+                <tr><td class="mono">2026-07-23 08:30</td><td><span class="kind">Picked</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−9</td><td class="num">171</td></tr>
+                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−20</td><td class="num">180</td></tr>
+                <tr><td class="mono">2026-07-21 09:14</td><td><span class="kind">Received</span></td><td class="mono">A-01-3</td><td class="num delta-pos">+200</td><td class="num">200</td></tr>
+              </tbody>
+            </table>
+            <p class="tile-sub" style="margin-top:12px">"After" is this SHELF's balance, not the warehouse total (#135).</p>
+          </div></div>
+        </div>
+
+        <!-- PLACEMENT HISTORY -->
+        <div class="panel" data-panel="placement-history">
+          <div class="card"><div class="card-body">
+            <h2 class="panel-title">Moves between shelves</h2>
+            <table>
+              <thead><tr><th>When</th><th>What</th><th>Place</th><th class="num">Change</th><th class="num">After</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">B-04-2</td><td class="num delta-pos">+20</td><td class="num">45</td></tr>
+                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−20</td><td class="num">180</td></tr>
+              </tbody>
+            </table>
+            <p class="tile-sub" style="margin-top:12px">MOVE-only (#136) — a shelf-to-shelf transfer shows as a pair that nets to zero across the warehouse.</p>
+          </div></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="footer-note">Static mock · click the tabs on the left to move between sections.</p>
+  </main>
+
+<script>
+  const tabs = document.getElementById("tabs");
+  const panels = [...document.querySelectorAll("[data-panel]")];
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    tabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === btn));
+    panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+  });
+</script>
+</body>
+</html>
