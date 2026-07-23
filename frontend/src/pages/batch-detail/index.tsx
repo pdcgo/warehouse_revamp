@@ -251,8 +251,9 @@ export function BatchDetailPage() {
           </Text>
         </Meta>
         <Meta label={t("batchDetail.unitCost")}>{cost(batch.unitCost)}</Meta>
-        <Meta label={t("batchDetail.accepted")}>{formatDateUnix(batch.acceptedAtUnix)}</Meta>
-        <Meta label={t("batchDetail.created")}>{formatDateUnix(batch.createdAtUnix)}</Meta>
+        {/* The batch is minted AT acceptance, so its created_at IS the arrival date (accepted_at is
+            never set on the model). */}
+        <Meta label={t("batchDetail.arrived")}>{formatDateUnix(batch.createdAtUnix)}</Meta>
       </SimpleGrid>
 
       {/* LIFECYCLE — Arrived = Damaged + Used + Ready. */}

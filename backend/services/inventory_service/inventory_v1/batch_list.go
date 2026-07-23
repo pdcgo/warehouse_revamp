@@ -61,6 +61,26 @@ func (s *Service) BatchList(
 			q = q.Where("b.expires_on IS NULL")
 		}
 
+		// A date range on one date field (#217). Applied to the accepted-at (arrived) or the expiry.
+		// An EXPIRING range implicitly excludes no-expiry batches (a NULL never satisfies a bound).
+		var dateCol string
+		switch req.Msg.GetDateField() {
+		case inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED:
+			// created_at is when the batch was minted = when the delivery was accepted (accepted_at is
+			// never set). This is the "arrived" date the list and receipt show.
+			dateCol = "b.created_at"
+		case inventoryv1.BatchDateField_BATCH_DATE_FIELD_EXPIRING:
+			dateCol = "b.expires_on"
+		}
+		if dateCol != "" {
+			if from := req.Msg.GetFromUnix(); from > 0 {
+				q = q.Where(dateCol+" >= ?", time.Unix(from, 0))
+			}
+			if to := req.Msg.GetToUnix(); to > 0 {
+				q = q.Where(dateCol+" <= ?", time.Unix(to, 0))
+			}
+		}
+
 		return q
 	}
 

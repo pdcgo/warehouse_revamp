@@ -753,6 +753,20 @@ message BatchListRequest {
   uint64 supplier_id = 5;
   // Narrow by expiry.
   BatchExpiryFilter expiry = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // A date range on ONE date field (#217) — the management list filters "what arrived / expires in this
+  // window". `date_field` picks which date the range applies to; `from`/`to` are unix seconds, 0 = open
+  // on that end. A batch with no expiry drops out of an EXPIRING range, as it should.
+  BatchDateField date_field = 7 [(buf.validate.field).enum.defined_only = true];
+  int64 from_unix = 8;
+  int64 to_unix = 9;
+}
+
+// Which date a BatchList date range applies to (#217).
+enum BatchDateField {
+  BATCH_DATE_FIELD_UNSPECIFIED = 0; // no date range
+  BATCH_DATE_FIELD_ARRIVED = 1; // when the delivery was accepted
+  BATCH_DATE_FIELD_EXPIRING = 2; // the batch's expiry date
 }
 
 message BatchListResponse {

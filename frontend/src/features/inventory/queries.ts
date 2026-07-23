@@ -292,17 +292,22 @@ export function useCostLayers(args: { warehouseId: bigint | undefined; productId
   });
 }
 
-// The warehouse-wide batch list (#209) — every stock batch, with search / supplier / expiry filters
-// and the header stat tiles. Paginated (HARD RULE 9).
+// The warehouse-wide batch list (#209/#217) — every stock batch, with search / expiry / date-range
+// filters and the header stat tiles. Paginated (HARD RULE 9). The owning TEAM per row (#142) is
+// resolved client-side: the warehouse holds other teams' goods, and the owner lives on the product,
+// which is another service's data the list query cannot join.
 export function useWarehouseBatches(args: {
   warehouseId: bigint | undefined;
   search: string;
   supplierId: bigint;
   expiry: number;
+  dateField: number;
+  fromUnix: bigint;
+  toUnix: bigint;
   page: number;
   pageSize: number;
 }) {
-  const { warehouseId, search, supplierId, expiry, page, pageSize } = args;
+  const { warehouseId, search, supplierId, expiry, dateField, fromUnix, toUnix, page, pageSize } = args;
 
   return useQuery({
     queryKey: key.inventory(warehouseId, {
@@ -310,6 +315,9 @@ export function useWarehouseBatches(args: {
       search,
       supplierId: supplierId.toString(),
       expiry,
+      dateField,
+      fromUnix: fromUnix.toString(),
+      toUnix: toUnix.toString(),
       page,
       pageSize,
     }),
@@ -320,9 +328,37 @@ export function useWarehouseBatches(args: {
         search,
         supplierId,
         expiry,
+        dateField,
+        fromUnix,
+        toUnix,
         page: { page, limit: pageSize },
       });
-      return res;
+
+      // Resolve the owning team NAME for each row's product, best-effort — product → team, both
+      // batched into one call each. An unresolved id simply leaves the cell blank.
+      const ownerByProduct = new Map<string, string>();
+      const productIds = [...new Set(res.batches.map((b) => b.productId).filter((id) => id > 0n))];
+      if (productIds.length > 0) {
+        try {
+          const found = await productClient.productByIds({ teamId: warehouseId!, productIds });
+          const teamByProduct = new Map<string, bigint>();
+          for (const p of found.products) {
+            if (p.teamId > 0n) teamByProduct.set(p.id.toString(), p.teamId);
+          }
+          const teamIds = [...new Set([...teamByProduct.values()])];
+          if (teamIds.length > 0) {
+            const teams = await teamClient.teamByIds({ ids: teamIds });
+            for (const [productId, teamId] of teamByProduct) {
+              const name = teams.data[teamId.toString()]?.name;
+              if (name) ownerByProduct.set(productId, name);
+            }
+          }
+        } catch {
+          // leave the map empty — the Team column shows blank rather than a wrong name.
+        }
+      }
+
+      return { res, ownerByProduct };
     },
   });
 }

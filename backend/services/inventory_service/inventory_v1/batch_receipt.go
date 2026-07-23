@@ -33,7 +33,9 @@ func (s *Service) BatchReceipt(
 		UnitCost   *int64
 		Arrived    int64
 		Damaged    int64
-		AcceptedAt time.Time
+		// The batch is minted AT acceptance, so created_at IS when the goods arrived. accepted_at is a
+		// vestigial column the fulfil flow never sets — do not read it.
+		CreatedAt  time.Time
 		CreatedBy  uint64
 		AcceptedBy uint64
 	}
@@ -48,7 +50,7 @@ func (s *Service) BatchReceipt(
 		Select(`
 			b.id, b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
 			r.receipt AS receipt_no, b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
-			b.accepted_at, b.created_by, b.accepted_by`).
+			b.created_at, b.created_by, b.accepted_by`).
 		Where("b.delivery_id = ? AND b.warehouse_id = ?", deliveryID, warehouseID).
 		Order("b.id ASC").
 		Scan(&rows).
@@ -140,7 +142,7 @@ func (s *Service) BatchReceipt(
 		ReceiptNo:     first.ReceiptNo,
 		SupplierId:    first.SupplierID,
 		WarehouseId:   warehouseID,
-		ArrivedAtUnix: first.AcceptedAt.Unix(),
+		ArrivedAtUnix: first.CreatedAt.Unix(),
 		CreatedBy:     first.CreatedBy,
 		AcceptedBy:    first.AcceptedBy,
 		Lines:         lines,

@@ -3,6 +3,7 @@ package inventory_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -142,5 +143,45 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	}
 	if len(found.Msg.GetBatches()) != 2 {
 		t.Fatalf("receipt search returned %d, want 2", len(found.Msg.GetBatches()))
+	}
+}
+
+// The date-range filter (#217) narrows on the arrived (accepted-at) or the expiry date. Here the two
+// batches arrived just now, so a range ending yesterday finds none and one ending tomorrow finds both.
+func TestBatchList_DateRange(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	const warehouse uint64 = 5
+	seedTwoBatches(t, svc, warehouse)
+
+	now := time.Now()
+
+	// Arrived on or before yesterday — nothing (they just arrived).
+	past, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId:    warehouse,
+		Page:      page1(),
+		DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
+		ToUnix:    now.AddDate(0, 0, -1).Unix(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList past: %v", err)
+	}
+	if len(past.Msg.GetBatches()) != 0 {
+		t.Fatalf("arrived ≤ yesterday returned %d, want 0", len(past.Msg.GetBatches()))
+	}
+
+	// Arrived on or before tomorrow — both.
+	upto, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
+		TeamId:    warehouse,
+		Page:      page1(),
+		DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
+		ToUnix:    now.AddDate(0, 0, 1).Unix(),
+	}))
+	if err != nil {
+		t.Fatalf("BatchList upto: %v", err)
+	}
+	if len(upto.Msg.GetBatches()) != 2 {
+		t.Fatalf("arrived ≤ tomorrow returned %d, want 2", len(upto.Msg.GetBatches()))
 	}
 }
