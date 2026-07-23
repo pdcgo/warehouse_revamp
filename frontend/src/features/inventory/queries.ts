@@ -12,8 +12,8 @@ import { key } from "../../api/queryClient";
 import type {
   BatchReceiptResponse,
   StockBatch,
-  StockMovement,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 
 // The inventory screens' reads (#176).
 
@@ -337,10 +337,11 @@ export function useWarehouseBatches(args: {
 //   • StockHistory(batchId) — this batch's ledger; a batch-less recount (batch_id 0) drops out.
 export interface BatchDetail {
   batch: StockBatch | null;
+  // The catalogue entry, for the header's Move / Adjust dialogs (they take a full Product). Best-effort.
+  product: Product | null;
   ownerName: string;
   rackCodes: Map<string, string>;
   shelves: { rackId: bigint; qty: bigint }[];
-  history: StockMovement[];
 }
 
 export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }) {
@@ -353,21 +354,15 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       const detail = await inventoryClient.batchDetail({ teamId: warehouseId!, batchId });
       const batch = detail.batch ?? null;
       if (!batch) {
-        return { batch: null, ownerName: "", rackCodes: new Map(), shelves: [], history: [] };
+        return { batch: null, product: null, ownerName: "", rackCodes: new Map(), shelves: [] };
       }
 
-      const [placesRes, placementRes, historyRes] = await Promise.all([
+      const [placesRes, placementRes] = await Promise.all([
         inventoryClient.productPlaces({ warehouseId: warehouseId!, productIds: [batch.productId] }),
         inventoryClient.batchPlacementList({
           teamId: warehouseId!,
           batchId,
           page: { page: 1, limit: 100 },
-        }),
-        inventoryClient.stockHistory({
-          warehouseId: warehouseId!,
-          productId: batch.productId,
-          batchId,
-          page: { page: 1, limit: 50 },
         }),
       ]);
 
@@ -377,29 +372,63 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       }
 
       // WHOSE goods these are (#142) — resolved through the product's owning team, best-effort: an
-      // unknown or deleted owner leaves the badge off rather than showing a blank.
+      // unknown or deleted owner leaves the badge off rather than showing a blank. The product itself is
+      // kept for the header's Move / Adjust dialogs.
+      let product: Product | null = null;
       let ownerName = "";
       try {
         const found = await productClient.productByIds({
           teamId: warehouseId!,
           productIds: [batch.productId],
         });
-        const ownerTeamId = found.products[0]?.teamId ?? 0n;
+        product = found.products[0] ?? null;
+        const ownerTeamId = product?.teamId ?? 0n;
         if (ownerTeamId > 0n) {
           const teams = await teamClient.teamByIds({ ids: [ownerTeamId] });
           ownerName = teams.data[ownerTeamId.toString()]?.name ?? "";
         }
       } catch {
+        product = null;
         ownerName = "";
       }
 
       return {
         batch,
+        product,
         ownerName,
         rackCodes,
         shelves: placementRes.shelves.map((s) => ({ rackId: s.rackId, qty: s.qty })),
-        history: historyRes.movements,
       };
+    },
+  });
+}
+
+// One batch's history, PAGINATED (#218) — the History tab's own read, so it can page independently of
+// the detail aggregate. StockHistory filtered to this product + batch; a batch-less recount drops out.
+export function useBatchHistory(args: {
+  warehouseId: bigint | undefined;
+  productId: bigint;
+  batchId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { warehouseId, productId, batchId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, {
+      batchHistory: batchId.toString(),
+      page,
+      pageSize,
+    }),
+    enabled: warehouseId !== undefined && productId > 0n && batchId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.stockHistory({
+        warehouseId: warehouseId!,
+        productId,
+        batchId,
+        page: { page, limit: pageSize },
+      });
+      return res;
     },
   });
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,14 +16,19 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Pencil, Printer } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { kindLabel } from "../../features/inventory/movementKind";
-import { useBatchDetail } from "../../features/inventory/queries";
+import { useBatchDetail, useBatchHistory } from "../../features/inventory/queries";
+import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
+import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
+import { Pagination } from "../../components/Pagination";
+
+const HISTORY_PAGE_SIZE = 20;
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -64,6 +70,22 @@ export function BatchDetailPage() {
   const query = useBatchDetail({ warehouseId, batchId });
   const data = query.data;
   const batch = data?.batch ?? null;
+  const product = data?.product ?? null;
+
+  const [moving, setMoving] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
+
+  // The History tab pages on its own (#218), independent of the detail aggregate above.
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyQuery = useBatchHistory({
+    warehouseId,
+    productId: batch?.productId ?? 0n,
+    batchId,
+    page: historyPage,
+    pageSize: HISTORY_PAGE_SIZE,
+  });
+  const historyMovements = historyQuery.data?.movements ?? [];
+  const historyTotal = Number(historyQuery.data?.pageInfo?.totalItems ?? 0n);
 
   // The place a shelf sits: its painted code, the named unplaced pile (#135), or a bare id if the code
   // could not be resolved.
@@ -144,16 +166,61 @@ export function BatchDetailPage() {
           </Text>
         </Stack>
         <Spacer />
-        <Button
-          variant="outline"
-          size="sm"
-          data-testid="batch-detail-open-product"
-          onClick={() => navigate(`/inventories/products/${batch.productId}`)}
-        >
-          <Icon as={ExternalLink} boxSize="4" />
-          {t("batchDetail.openProduct")}
-        </Button>
+        {/* The actions act on THIS batch (#218): Move / Adjust reuse the stock dialogs, Print receipt
+            opens the delivery's receipt with this product's line highlighted. */}
+        <Flex gap="2" wrap="wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="batch-detail-move"
+            disabled={!product}
+            onClick={() => setMoving(true)}
+          >
+            <Icon as={ArrowLeftRight} boxSize="4" />
+            {t("batchDetail.move")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="batch-detail-adjust"
+            disabled={!product}
+            onClick={() => setAdjusting(true)}
+          >
+            <Icon as={Pencil} boxSize="4" />
+            {t("batchDetail.adjust")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="batch-detail-receipt"
+            onClick={() =>
+              navigate(`/inventories/restock/${batch.deliveryId}/receipt?batch=${batch.id}`)
+            }
+          >
+            <Icon as={Printer} boxSize="4" />
+            {t("batchDetail.printReceipt")}
+          </Button>
+        </Flex>
       </Flex>
+
+      {warehouseId !== undefined && product && (
+        <>
+          <MoveStockDialog
+            warehouseId={warehouseId}
+            product={product}
+            currentOnHand={batch.ready}
+            open={moving}
+            onOpenChange={setMoving}
+          />
+          <AdjustStockDialog
+            warehouseId={warehouseId}
+            product={product}
+            currentOnHand={batch.ready}
+            open={adjusting}
+            onOpenChange={setAdjusting}
+          />
+        </>
+      )}
 
       {/* IDENTITY — what this batch IS, and whose goods (#142). */}
       <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
@@ -265,7 +332,7 @@ export function BatchDetailPage() {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {(data?.history ?? []).map((m) => (
+                {historyMovements.map((m) => (
                   <Table.Row key={m.id.toString()}>
                     <Table.Cell>{m.createdAt}</Table.Cell>
                     <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
@@ -278,10 +345,17 @@ export function BatchDetailPage() {
                 ))}
               </Table.Body>
             </Table.Root>
-            {(data?.history ?? []).length === 0 && (
+            {historyMovements.length === 0 ? (
               <Text color="fg.muted" data-testid="batch-detail-history-empty">
                 {t("batchDetail.noHistory")}
               </Text>
+            ) : (
+              <Pagination
+                page={historyPage}
+                pageSize={HISTORY_PAGE_SIZE}
+                count={historyTotal}
+                onPageChange={setHistoryPage}
+              />
             )}
           </Stack>
         </Tabs.Content>
