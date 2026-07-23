@@ -218,6 +218,21 @@ message StockReceiveResponse {
   StockMovement movement = 1;
 }
 
+// Why a shelf's count is being corrected (#211). The reason drives the model: a RECOUNT reconciles the
+// whole shelf (its delta lands on the oldest batch, FIFO), while DAMAGED/LOST/FOUND touch a SPECIFIC
+// batch's units. APPEND ONLY.
+enum StockAdjustReason {
+  // Back-compat: an adjust with no reason is a recount (the original absolute-count behaviour).
+  STOCK_ADJUST_REASON_UNSPECIFIED = 0;
+  // A stock-take: the shelf now holds `on_hand`. Batch-agnostic on screen ("—"); the delta lands on
+  // the oldest batch on the shelf underneath.
+  STOCK_ADJUST_REASON_RECOUNT = 1;
+  // Units of a SPECIFIC batch went bad, went missing, or turned up — a signed `quantity` on that batch.
+  STOCK_ADJUST_REASON_DAMAGED = 2;
+  STOCK_ADJUST_REASON_LOST = 3;
+  STOCK_ADJUST_REASON_FOUND = 4;
+}
+
 message StockAdjustRequest {
   // Correcting to a counted figure is a manager action.
   option (warehouse.role_base.v1.request_policy) = {
@@ -230,14 +245,24 @@ message StockAdjustRequest {
   };
 
   uint64 warehouse_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
   ];
   uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // The counted on-hand to correct TO (absolute, not a delta) — for the ONE place named below, not
-  // for the warehouse. The handler records the difference.
+  // For a RECOUNT: the counted on-hand to correct the shelf TO (absolute, not a delta). Ignored for the
+  // batch reasons, which carry a signed `quantity` instead.
   int64 on_hand = 3 [(buf.validate.field).int64.gte = 0];
   string reason = 4 [(buf.validate.field).string.max_len = 200];
+
+  // WHY (#211). UNSPECIFIED and RECOUNT both mean "correct the shelf to `on_hand`". DAMAGED/LOST/FOUND
+  // mean "change this batch's units by `quantity`" and REQUIRE `batch_id`.
+  StockAdjustReason reason_type = 7 [(buf.validate.field).enum.defined_only = true];
+  // The batch affected — required for DAMAGED/LOST/FOUND, ignored for a recount (its delta is FIFO'd
+  // onto the oldest batch). 0 for a recount.
+  uint64 batch_id = 8;
+  // The magnitude for DAMAGED/LOST/FOUND (always positive; the reason gives the sign). Ignored for a
+  // recount.
+  int64 quantity = 9 [(buf.validate.field).int64.gte = 0];
 
   // WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
   // in front of A-01-3 and counts what is on it, and this says which shelf that was.

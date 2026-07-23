@@ -102,6 +102,68 @@ func (MovementKind) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_inventory_proto_rawDescGZIP(), []int{0}
 }
 
+// Why a shelf's count is being corrected (#211). The reason drives the model: a RECOUNT reconciles the
+// whole shelf (its delta lands on the oldest batch, FIFO), while DAMAGED/LOST/FOUND touch a SPECIFIC
+// batch's units. APPEND ONLY.
+type StockAdjustReason int32
+
+const (
+	// Back-compat: an adjust with no reason is a recount (the original absolute-count behaviour).
+	StockAdjustReason_STOCK_ADJUST_REASON_UNSPECIFIED StockAdjustReason = 0
+	// A stock-take: the shelf now holds `on_hand`. Batch-agnostic on screen ("—"); the delta lands on
+	// the oldest batch on the shelf underneath.
+	StockAdjustReason_STOCK_ADJUST_REASON_RECOUNT StockAdjustReason = 1
+	// Units of a SPECIFIC batch went bad, went missing, or turned up — a signed `quantity` on that batch.
+	StockAdjustReason_STOCK_ADJUST_REASON_DAMAGED StockAdjustReason = 2
+	StockAdjustReason_STOCK_ADJUST_REASON_LOST    StockAdjustReason = 3
+	StockAdjustReason_STOCK_ADJUST_REASON_FOUND   StockAdjustReason = 4
+)
+
+// Enum value maps for StockAdjustReason.
+var (
+	StockAdjustReason_name = map[int32]string{
+		0: "STOCK_ADJUST_REASON_UNSPECIFIED",
+		1: "STOCK_ADJUST_REASON_RECOUNT",
+		2: "STOCK_ADJUST_REASON_DAMAGED",
+		3: "STOCK_ADJUST_REASON_LOST",
+		4: "STOCK_ADJUST_REASON_FOUND",
+	}
+	StockAdjustReason_value = map[string]int32{
+		"STOCK_ADJUST_REASON_UNSPECIFIED": 0,
+		"STOCK_ADJUST_REASON_RECOUNT":     1,
+		"STOCK_ADJUST_REASON_DAMAGED":     2,
+		"STOCK_ADJUST_REASON_LOST":        3,
+		"STOCK_ADJUST_REASON_FOUND":       4,
+	}
+)
+
+func (x StockAdjustReason) Enum() *StockAdjustReason {
+	p := new(StockAdjustReason)
+	*p = x
+	return p
+}
+
+func (x StockAdjustReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StockAdjustReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_inventory_proto_enumTypes[1].Descriptor()
+}
+
+func (StockAdjustReason) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_inventory_proto_enumTypes[1]
+}
+
+func (x StockAdjustReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StockAdjustReason.Descriptor instead.
+func (StockAdjustReason) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_inventory_proto_rawDescGZIP(), []int{1}
+}
+
 // Narrows a batch list by expiry (#209) — the warehouse list's "Expiring ≤ 30 days / No expiry" filter.
 type BatchExpiryFilter int32
 
@@ -136,11 +198,11 @@ func (x BatchExpiryFilter) String() string {
 }
 
 func (BatchExpiryFilter) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_inventory_v1_inventory_proto_enumTypes[1].Descriptor()
+	return file_warehouse_inventory_v1_inventory_proto_enumTypes[2].Descriptor()
 }
 
 func (BatchExpiryFilter) Type() protoreflect.EnumType {
-	return &file_warehouse_inventory_v1_inventory_proto_enumTypes[1]
+	return &file_warehouse_inventory_v1_inventory_proto_enumTypes[2]
 }
 
 func (x BatchExpiryFilter) Number() protoreflect.EnumNumber {
@@ -149,7 +211,7 @@ func (x BatchExpiryFilter) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use BatchExpiryFilter.Descriptor instead.
 func (BatchExpiryFilter) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_inventory_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_inventory_v1_inventory_proto_rawDescGZIP(), []int{2}
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -726,10 +788,19 @@ type StockAdjustRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WarehouseId uint64                 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	ProductId   uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	// The counted on-hand to correct TO (absolute, not a delta) — for the ONE place named below, not
-	// for the warehouse. The handler records the difference.
+	// For a RECOUNT: the counted on-hand to correct the shelf TO (absolute, not a delta). Ignored for the
+	// batch reasons, which carry a signed `quantity` instead.
 	OnHand int64  `protobuf:"varint,3,opt,name=on_hand,json=onHand,proto3" json:"on_hand,omitempty"`
 	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// WHY (#211). UNSPECIFIED and RECOUNT both mean "correct the shelf to `on_hand`". DAMAGED/LOST/FOUND
+	// mean "change this batch's units by `quantity`" and REQUIRE `batch_id`.
+	ReasonType StockAdjustReason `protobuf:"varint,7,opt,name=reason_type,json=reasonType,proto3,enum=warehouse.inventory.v1.StockAdjustReason" json:"reason_type,omitempty"`
+	// The batch affected — required for DAMAGED/LOST/FOUND, ignored for a recount (its delta is FIFO'd
+	// onto the oldest batch). 0 for a recount.
+	BatchId uint64 `protobuf:"varint,8,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
+	// The magnitude for DAMAGED/LOST/FOUND (always positive; the reason gives the sign). Ignored for a
+	// recount.
+	Quantity int64 `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
 	// in front of A-01-3 and counts what is on it, and this says which shelf that was.
 	//
@@ -805,6 +876,27 @@ func (x *StockAdjustRequest) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *StockAdjustRequest) GetReasonType() StockAdjustReason {
+	if x != nil {
+		return x.ReasonType
+	}
+	return StockAdjustReason_STOCK_ADJUST_REASON_UNSPECIFIED
+}
+
+func (x *StockAdjustRequest) GetBatchId() uint64 {
+	if x != nil {
+		return x.BatchId
+	}
+	return 0
+}
+
+func (x *StockAdjustRequest) GetQuantity() int64 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
 }
 
 func (x *StockAdjustRequest) GetPlace() isStockAdjustRequest_Place {
@@ -3431,13 +3523,17 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x03ref\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18dR\x03ref:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"Y\n" +
 	"\x14StockReceiveResponse\x12A\n" +
-	"\bmovement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\bmovement\"\x97\x02\n" +
+	"\bmovement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\bmovement\"\xad\x03\n" +
 	"\x12StockAdjustRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12&\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12 \n" +
 	"\aon_hand\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x06onHand\x12 \n" +
-	"\x06reason\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason\x12\"\n" +
+	"\x06reason\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason\x12T\n" +
+	"\vreason_type\x18\a \x01(\x0e2).warehouse.inventory.v1.StockAdjustReasonB\b\xbaH\x05\x82\x01\x02\x10\x01R\n" +
+	"reasonType\x12\x19\n" +
+	"\bbatch_id\x18\b \x01(\x04R\abatchId\x12#\n" +
+	"\bquantity\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\bquantity\x12\"\n" +
 	"\arack_id\x18\x05 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +
 	"\bunplaced\x18\x06 \x01(\bB\a\xbaH\x04j\x02\b\x01H\x00R\bunplaced:\n" +
 	"\x92\xb5\x18\x06\n" +
@@ -3663,7 +3759,13 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x19MOVEMENT_KIND_TRANSFER_IN\x10\x04\x12\x16\n" +
 	"\x12MOVEMENT_KIND_PICK\x10\x05\x12\x16\n" +
 	"\x12MOVEMENT_KIND_MOVE\x10\x06\x12\x18\n" +
-	"\x14MOVEMENT_KIND_RETURN\x10\a*\x82\x01\n" +
+	"\x14MOVEMENT_KIND_RETURN\x10\a*\xb7\x01\n" +
+	"\x11StockAdjustReason\x12#\n" +
+	"\x1fSTOCK_ADJUST_REASON_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bSTOCK_ADJUST_REASON_RECOUNT\x10\x01\x12\x1f\n" +
+	"\x1bSTOCK_ADJUST_REASON_DAMAGED\x10\x02\x12\x1c\n" +
+	"\x18STOCK_ADJUST_REASON_LOST\x10\x03\x12\x1d\n" +
+	"\x19STOCK_ADJUST_REASON_FOUND\x10\x04*\x82\x01\n" +
 	"\x11BatchExpiryFilter\x12#\n" +
 	"\x1fBATCH_EXPIRY_FILTER_UNSPECIFIED\x10\x00\x12%\n" +
 	"!BATCH_EXPIRY_FILTER_EXPIRING_SOON\x10\x01\x12!\n" +
@@ -3700,142 +3802,144 @@ func file_warehouse_inventory_v1_inventory_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_inventory_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_inventory_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_inventory_v1_inventory_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_warehouse_inventory_v1_inventory_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_warehouse_inventory_v1_inventory_proto_goTypes = []any{
 	(MovementKind)(0),                    // 0: warehouse.inventory.v1.MovementKind
-	(BatchExpiryFilter)(0),               // 1: warehouse.inventory.v1.BatchExpiryFilter
-	(*StockLevel)(nil),                   // 2: warehouse.inventory.v1.StockLevel
-	(*StockMovement)(nil),                // 3: warehouse.inventory.v1.StockMovement
-	(*StockListRequest)(nil),             // 4: warehouse.inventory.v1.StockListRequest
-	(*StockListResponse)(nil),            // 5: warehouse.inventory.v1.StockListResponse
-	(*StockHistoryRequest)(nil),          // 6: warehouse.inventory.v1.StockHistoryRequest
-	(*StockHistoryResponse)(nil),         // 7: warehouse.inventory.v1.StockHistoryResponse
-	(*StockReceiveRequest)(nil),          // 8: warehouse.inventory.v1.StockReceiveRequest
-	(*StockReceiveResponse)(nil),         // 9: warehouse.inventory.v1.StockReceiveResponse
-	(*StockAdjustRequest)(nil),           // 10: warehouse.inventory.v1.StockAdjustRequest
-	(*StockAdjustResponse)(nil),          // 11: warehouse.inventory.v1.StockAdjustResponse
-	(*StockPlace)(nil),                   // 12: warehouse.inventory.v1.StockPlace
-	(*StockMoveRequest)(nil),             // 13: warehouse.inventory.v1.StockMoveRequest
-	(*StockMoveResponse)(nil),            // 14: warehouse.inventory.v1.StockMoveResponse
-	(*StockPickLine)(nil),                // 15: warehouse.inventory.v1.StockPickLine
-	(*StockPickRequest)(nil),             // 16: warehouse.inventory.v1.StockPickRequest
-	(*StockPickResponse)(nil),            // 17: warehouse.inventory.v1.StockPickResponse
-	(*StockReturnRequest)(nil),           // 18: warehouse.inventory.v1.StockReturnRequest
-	(*StockReturnResponse)(nil),          // 19: warehouse.inventory.v1.StockReturnResponse
-	(*StockCostLine)(nil),                // 20: warehouse.inventory.v1.StockCostLine
-	(*StockCostRequest)(nil),             // 21: warehouse.inventory.v1.StockCostRequest
-	(*StockCostResponse)(nil),            // 22: warehouse.inventory.v1.StockCostResponse
-	(*StockTransferRequest)(nil),         // 23: warehouse.inventory.v1.StockTransferRequest
-	(*StockTransferResponse)(nil),        // 24: warehouse.inventory.v1.StockTransferResponse
-	(*StockPickLocationsRequest)(nil),    // 25: warehouse.inventory.v1.StockPickLocationsRequest
-	(*StockPickLocation)(nil),            // 26: warehouse.inventory.v1.StockPickLocation
-	(*StockPickLocationsResponse)(nil),   // 27: warehouse.inventory.v1.StockPickLocationsResponse
-	(*WarehouseProductListRequest)(nil),  // 28: warehouse.inventory.v1.WarehouseProductListRequest
-	(*WarehouseProductListResponse)(nil), // 29: warehouse.inventory.v1.WarehouseProductListResponse
-	(*ProductPlacesRequest)(nil),         // 30: warehouse.inventory.v1.ProductPlacesRequest
-	(*ProductPlace)(nil),                 // 31: warehouse.inventory.v1.ProductPlace
-	(*ProductPlacesResponse)(nil),        // 32: warehouse.inventory.v1.ProductPlacesResponse
-	(*StockBatch)(nil),                   // 33: warehouse.inventory.v1.StockBatch
-	(*BatchListRequest)(nil),             // 34: warehouse.inventory.v1.BatchListRequest
-	(*BatchListResponse)(nil),            // 35: warehouse.inventory.v1.BatchListResponse
-	(*CostLayer)(nil),                    // 36: warehouse.inventory.v1.CostLayer
-	(*CostLayerListRequest)(nil),         // 37: warehouse.inventory.v1.CostLayerListRequest
-	(*CostLayerListResponse)(nil),        // 38: warehouse.inventory.v1.CostLayerListResponse
-	(*ProductPlacement)(nil),             // 39: warehouse.inventory.v1.ProductPlacement
-	(*PlacementListRequest)(nil),         // 40: warehouse.inventory.v1.PlacementListRequest
-	(*PlacementListResponse)(nil),        // 41: warehouse.inventory.v1.PlacementListResponse
-	(*ProductStockSummaryRequest)(nil),   // 42: warehouse.inventory.v1.ProductStockSummaryRequest
-	(*ProductStockSummaryResponse)(nil),  // 43: warehouse.inventory.v1.ProductStockSummaryResponse
-	(*BatchDetailRequest)(nil),           // 44: warehouse.inventory.v1.BatchDetailRequest
-	(*BatchDetailResponse)(nil),          // 45: warehouse.inventory.v1.BatchDetailResponse
-	(*BatchShelf)(nil),                   // 46: warehouse.inventory.v1.BatchShelf
-	(*BatchPlacementListRequest)(nil),    // 47: warehouse.inventory.v1.BatchPlacementListRequest
-	(*BatchPlacementListResponse)(nil),   // 48: warehouse.inventory.v1.BatchPlacementListResponse
-	(*v1.PageFilter)(nil),                // 49: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),                  // 50: warehouse.common.v1.PageInfo
+	(StockAdjustReason)(0),               // 1: warehouse.inventory.v1.StockAdjustReason
+	(BatchExpiryFilter)(0),               // 2: warehouse.inventory.v1.BatchExpiryFilter
+	(*StockLevel)(nil),                   // 3: warehouse.inventory.v1.StockLevel
+	(*StockMovement)(nil),                // 4: warehouse.inventory.v1.StockMovement
+	(*StockListRequest)(nil),             // 5: warehouse.inventory.v1.StockListRequest
+	(*StockListResponse)(nil),            // 6: warehouse.inventory.v1.StockListResponse
+	(*StockHistoryRequest)(nil),          // 7: warehouse.inventory.v1.StockHistoryRequest
+	(*StockHistoryResponse)(nil),         // 8: warehouse.inventory.v1.StockHistoryResponse
+	(*StockReceiveRequest)(nil),          // 9: warehouse.inventory.v1.StockReceiveRequest
+	(*StockReceiveResponse)(nil),         // 10: warehouse.inventory.v1.StockReceiveResponse
+	(*StockAdjustRequest)(nil),           // 11: warehouse.inventory.v1.StockAdjustRequest
+	(*StockAdjustResponse)(nil),          // 12: warehouse.inventory.v1.StockAdjustResponse
+	(*StockPlace)(nil),                   // 13: warehouse.inventory.v1.StockPlace
+	(*StockMoveRequest)(nil),             // 14: warehouse.inventory.v1.StockMoveRequest
+	(*StockMoveResponse)(nil),            // 15: warehouse.inventory.v1.StockMoveResponse
+	(*StockPickLine)(nil),                // 16: warehouse.inventory.v1.StockPickLine
+	(*StockPickRequest)(nil),             // 17: warehouse.inventory.v1.StockPickRequest
+	(*StockPickResponse)(nil),            // 18: warehouse.inventory.v1.StockPickResponse
+	(*StockReturnRequest)(nil),           // 19: warehouse.inventory.v1.StockReturnRequest
+	(*StockReturnResponse)(nil),          // 20: warehouse.inventory.v1.StockReturnResponse
+	(*StockCostLine)(nil),                // 21: warehouse.inventory.v1.StockCostLine
+	(*StockCostRequest)(nil),             // 22: warehouse.inventory.v1.StockCostRequest
+	(*StockCostResponse)(nil),            // 23: warehouse.inventory.v1.StockCostResponse
+	(*StockTransferRequest)(nil),         // 24: warehouse.inventory.v1.StockTransferRequest
+	(*StockTransferResponse)(nil),        // 25: warehouse.inventory.v1.StockTransferResponse
+	(*StockPickLocationsRequest)(nil),    // 26: warehouse.inventory.v1.StockPickLocationsRequest
+	(*StockPickLocation)(nil),            // 27: warehouse.inventory.v1.StockPickLocation
+	(*StockPickLocationsResponse)(nil),   // 28: warehouse.inventory.v1.StockPickLocationsResponse
+	(*WarehouseProductListRequest)(nil),  // 29: warehouse.inventory.v1.WarehouseProductListRequest
+	(*WarehouseProductListResponse)(nil), // 30: warehouse.inventory.v1.WarehouseProductListResponse
+	(*ProductPlacesRequest)(nil),         // 31: warehouse.inventory.v1.ProductPlacesRequest
+	(*ProductPlace)(nil),                 // 32: warehouse.inventory.v1.ProductPlace
+	(*ProductPlacesResponse)(nil),        // 33: warehouse.inventory.v1.ProductPlacesResponse
+	(*StockBatch)(nil),                   // 34: warehouse.inventory.v1.StockBatch
+	(*BatchListRequest)(nil),             // 35: warehouse.inventory.v1.BatchListRequest
+	(*BatchListResponse)(nil),            // 36: warehouse.inventory.v1.BatchListResponse
+	(*CostLayer)(nil),                    // 37: warehouse.inventory.v1.CostLayer
+	(*CostLayerListRequest)(nil),         // 38: warehouse.inventory.v1.CostLayerListRequest
+	(*CostLayerListResponse)(nil),        // 39: warehouse.inventory.v1.CostLayerListResponse
+	(*ProductPlacement)(nil),             // 40: warehouse.inventory.v1.ProductPlacement
+	(*PlacementListRequest)(nil),         // 41: warehouse.inventory.v1.PlacementListRequest
+	(*PlacementListResponse)(nil),        // 42: warehouse.inventory.v1.PlacementListResponse
+	(*ProductStockSummaryRequest)(nil),   // 43: warehouse.inventory.v1.ProductStockSummaryRequest
+	(*ProductStockSummaryResponse)(nil),  // 44: warehouse.inventory.v1.ProductStockSummaryResponse
+	(*BatchDetailRequest)(nil),           // 45: warehouse.inventory.v1.BatchDetailRequest
+	(*BatchDetailResponse)(nil),          // 46: warehouse.inventory.v1.BatchDetailResponse
+	(*BatchShelf)(nil),                   // 47: warehouse.inventory.v1.BatchShelf
+	(*BatchPlacementListRequest)(nil),    // 48: warehouse.inventory.v1.BatchPlacementListRequest
+	(*BatchPlacementListResponse)(nil),   // 49: warehouse.inventory.v1.BatchPlacementListResponse
+	(*v1.PageFilter)(nil),                // 50: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                  // 51: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_inventory_proto_depIdxs = []int32{
 	0,  // 0: warehouse.inventory.v1.StockMovement.kind:type_name -> warehouse.inventory.v1.MovementKind
-	49, // 1: warehouse.inventory.v1.StockListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	2,  // 2: warehouse.inventory.v1.StockListResponse.levels:type_name -> warehouse.inventory.v1.StockLevel
-	50, // 3: warehouse.inventory.v1.StockListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	49, // 4: warehouse.inventory.v1.StockHistoryRequest.page:type_name -> warehouse.common.v1.PageFilter
+	50, // 1: warehouse.inventory.v1.StockListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	3,  // 2: warehouse.inventory.v1.StockListResponse.levels:type_name -> warehouse.inventory.v1.StockLevel
+	51, // 3: warehouse.inventory.v1.StockListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	50, // 4: warehouse.inventory.v1.StockHistoryRequest.page:type_name -> warehouse.common.v1.PageFilter
 	0,  // 5: warehouse.inventory.v1.StockHistoryRequest.kind:type_name -> warehouse.inventory.v1.MovementKind
-	3,  // 6: warehouse.inventory.v1.StockHistoryResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
-	50, // 7: warehouse.inventory.v1.StockHistoryResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	3,  // 8: warehouse.inventory.v1.StockReceiveResponse.movement:type_name -> warehouse.inventory.v1.StockMovement
-	3,  // 9: warehouse.inventory.v1.StockAdjustResponse.movement:type_name -> warehouse.inventory.v1.StockMovement
-	2,  // 10: warehouse.inventory.v1.StockAdjustResponse.level:type_name -> warehouse.inventory.v1.StockLevel
-	12, // 11: warehouse.inventory.v1.StockMoveRequest.from:type_name -> warehouse.inventory.v1.StockPlace
-	12, // 12: warehouse.inventory.v1.StockMoveRequest.to:type_name -> warehouse.inventory.v1.StockPlace
-	3,  // 13: warehouse.inventory.v1.StockMoveResponse.from_movement:type_name -> warehouse.inventory.v1.StockMovement
-	3,  // 14: warehouse.inventory.v1.StockMoveResponse.to_movement:type_name -> warehouse.inventory.v1.StockMovement
-	15, // 15: warehouse.inventory.v1.StockPickRequest.lines:type_name -> warehouse.inventory.v1.StockPickLine
-	3,  // 16: warehouse.inventory.v1.StockPickResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
-	3,  // 17: warehouse.inventory.v1.StockReturnResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
-	20, // 18: warehouse.inventory.v1.StockCostResponse.costs:type_name -> warehouse.inventory.v1.StockCostLine
-	3,  // 19: warehouse.inventory.v1.StockTransferResponse.out_movement:type_name -> warehouse.inventory.v1.StockMovement
-	3,  // 20: warehouse.inventory.v1.StockTransferResponse.in_movement:type_name -> warehouse.inventory.v1.StockMovement
-	26, // 21: warehouse.inventory.v1.StockPickLocationsResponse.locations:type_name -> warehouse.inventory.v1.StockPickLocation
-	49, // 22: warehouse.inventory.v1.WarehouseProductListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	50, // 23: warehouse.inventory.v1.WarehouseProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	31, // 24: warehouse.inventory.v1.ProductPlacesResponse.places:type_name -> warehouse.inventory.v1.ProductPlace
-	49, // 25: warehouse.inventory.v1.BatchListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	1,  // 26: warehouse.inventory.v1.BatchListRequest.expiry:type_name -> warehouse.inventory.v1.BatchExpiryFilter
-	33, // 27: warehouse.inventory.v1.BatchListResponse.batches:type_name -> warehouse.inventory.v1.StockBatch
-	50, // 28: warehouse.inventory.v1.BatchListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	49, // 29: warehouse.inventory.v1.CostLayerListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	36, // 30: warehouse.inventory.v1.CostLayerListResponse.layers:type_name -> warehouse.inventory.v1.CostLayer
-	50, // 31: warehouse.inventory.v1.CostLayerListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	49, // 32: warehouse.inventory.v1.PlacementListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	39, // 33: warehouse.inventory.v1.PlacementListResponse.placements:type_name -> warehouse.inventory.v1.ProductPlacement
-	50, // 34: warehouse.inventory.v1.PlacementListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	33, // 35: warehouse.inventory.v1.BatchDetailResponse.batch:type_name -> warehouse.inventory.v1.StockBatch
-	49, // 36: warehouse.inventory.v1.BatchPlacementListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	46, // 37: warehouse.inventory.v1.BatchPlacementListResponse.shelves:type_name -> warehouse.inventory.v1.BatchShelf
-	50, // 38: warehouse.inventory.v1.BatchPlacementListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	4,  // 39: warehouse.inventory.v1.InventoryService.StockList:input_type -> warehouse.inventory.v1.StockListRequest
-	6,  // 40: warehouse.inventory.v1.InventoryService.StockHistory:input_type -> warehouse.inventory.v1.StockHistoryRequest
-	8,  // 41: warehouse.inventory.v1.InventoryService.StockReceive:input_type -> warehouse.inventory.v1.StockReceiveRequest
-	10, // 42: warehouse.inventory.v1.InventoryService.StockAdjust:input_type -> warehouse.inventory.v1.StockAdjustRequest
-	23, // 43: warehouse.inventory.v1.InventoryService.StockTransfer:input_type -> warehouse.inventory.v1.StockTransferRequest
-	13, // 44: warehouse.inventory.v1.InventoryService.StockMove:input_type -> warehouse.inventory.v1.StockMoveRequest
-	16, // 45: warehouse.inventory.v1.InventoryService.StockPick:input_type -> warehouse.inventory.v1.StockPickRequest
-	18, // 46: warehouse.inventory.v1.InventoryService.StockReturn:input_type -> warehouse.inventory.v1.StockReturnRequest
-	21, // 47: warehouse.inventory.v1.InventoryService.StockCost:input_type -> warehouse.inventory.v1.StockCostRequest
-	28, // 48: warehouse.inventory.v1.InventoryService.WarehouseProductList:input_type -> warehouse.inventory.v1.WarehouseProductListRequest
-	30, // 49: warehouse.inventory.v1.InventoryService.ProductPlaces:input_type -> warehouse.inventory.v1.ProductPlacesRequest
-	25, // 50: warehouse.inventory.v1.InventoryService.StockPickLocations:input_type -> warehouse.inventory.v1.StockPickLocationsRequest
-	34, // 51: warehouse.inventory.v1.InventoryService.BatchList:input_type -> warehouse.inventory.v1.BatchListRequest
-	37, // 52: warehouse.inventory.v1.InventoryService.CostLayerList:input_type -> warehouse.inventory.v1.CostLayerListRequest
-	40, // 53: warehouse.inventory.v1.InventoryService.PlacementList:input_type -> warehouse.inventory.v1.PlacementListRequest
-	42, // 54: warehouse.inventory.v1.InventoryService.ProductStockSummary:input_type -> warehouse.inventory.v1.ProductStockSummaryRequest
-	44, // 55: warehouse.inventory.v1.InventoryService.BatchDetail:input_type -> warehouse.inventory.v1.BatchDetailRequest
-	47, // 56: warehouse.inventory.v1.InventoryService.BatchPlacementList:input_type -> warehouse.inventory.v1.BatchPlacementListRequest
-	5,  // 57: warehouse.inventory.v1.InventoryService.StockList:output_type -> warehouse.inventory.v1.StockListResponse
-	7,  // 58: warehouse.inventory.v1.InventoryService.StockHistory:output_type -> warehouse.inventory.v1.StockHistoryResponse
-	9,  // 59: warehouse.inventory.v1.InventoryService.StockReceive:output_type -> warehouse.inventory.v1.StockReceiveResponse
-	11, // 60: warehouse.inventory.v1.InventoryService.StockAdjust:output_type -> warehouse.inventory.v1.StockAdjustResponse
-	24, // 61: warehouse.inventory.v1.InventoryService.StockTransfer:output_type -> warehouse.inventory.v1.StockTransferResponse
-	14, // 62: warehouse.inventory.v1.InventoryService.StockMove:output_type -> warehouse.inventory.v1.StockMoveResponse
-	17, // 63: warehouse.inventory.v1.InventoryService.StockPick:output_type -> warehouse.inventory.v1.StockPickResponse
-	19, // 64: warehouse.inventory.v1.InventoryService.StockReturn:output_type -> warehouse.inventory.v1.StockReturnResponse
-	22, // 65: warehouse.inventory.v1.InventoryService.StockCost:output_type -> warehouse.inventory.v1.StockCostResponse
-	29, // 66: warehouse.inventory.v1.InventoryService.WarehouseProductList:output_type -> warehouse.inventory.v1.WarehouseProductListResponse
-	32, // 67: warehouse.inventory.v1.InventoryService.ProductPlaces:output_type -> warehouse.inventory.v1.ProductPlacesResponse
-	27, // 68: warehouse.inventory.v1.InventoryService.StockPickLocations:output_type -> warehouse.inventory.v1.StockPickLocationsResponse
-	35, // 69: warehouse.inventory.v1.InventoryService.BatchList:output_type -> warehouse.inventory.v1.BatchListResponse
-	38, // 70: warehouse.inventory.v1.InventoryService.CostLayerList:output_type -> warehouse.inventory.v1.CostLayerListResponse
-	41, // 71: warehouse.inventory.v1.InventoryService.PlacementList:output_type -> warehouse.inventory.v1.PlacementListResponse
-	43, // 72: warehouse.inventory.v1.InventoryService.ProductStockSummary:output_type -> warehouse.inventory.v1.ProductStockSummaryResponse
-	45, // 73: warehouse.inventory.v1.InventoryService.BatchDetail:output_type -> warehouse.inventory.v1.BatchDetailResponse
-	48, // 74: warehouse.inventory.v1.InventoryService.BatchPlacementList:output_type -> warehouse.inventory.v1.BatchPlacementListResponse
-	57, // [57:75] is the sub-list for method output_type
-	39, // [39:57] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	4,  // 6: warehouse.inventory.v1.StockHistoryResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
+	51, // 7: warehouse.inventory.v1.StockHistoryResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 8: warehouse.inventory.v1.StockReceiveResponse.movement:type_name -> warehouse.inventory.v1.StockMovement
+	1,  // 9: warehouse.inventory.v1.StockAdjustRequest.reason_type:type_name -> warehouse.inventory.v1.StockAdjustReason
+	4,  // 10: warehouse.inventory.v1.StockAdjustResponse.movement:type_name -> warehouse.inventory.v1.StockMovement
+	3,  // 11: warehouse.inventory.v1.StockAdjustResponse.level:type_name -> warehouse.inventory.v1.StockLevel
+	13, // 12: warehouse.inventory.v1.StockMoveRequest.from:type_name -> warehouse.inventory.v1.StockPlace
+	13, // 13: warehouse.inventory.v1.StockMoveRequest.to:type_name -> warehouse.inventory.v1.StockPlace
+	4,  // 14: warehouse.inventory.v1.StockMoveResponse.from_movement:type_name -> warehouse.inventory.v1.StockMovement
+	4,  // 15: warehouse.inventory.v1.StockMoveResponse.to_movement:type_name -> warehouse.inventory.v1.StockMovement
+	16, // 16: warehouse.inventory.v1.StockPickRequest.lines:type_name -> warehouse.inventory.v1.StockPickLine
+	4,  // 17: warehouse.inventory.v1.StockPickResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
+	4,  // 18: warehouse.inventory.v1.StockReturnResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
+	21, // 19: warehouse.inventory.v1.StockCostResponse.costs:type_name -> warehouse.inventory.v1.StockCostLine
+	4,  // 20: warehouse.inventory.v1.StockTransferResponse.out_movement:type_name -> warehouse.inventory.v1.StockMovement
+	4,  // 21: warehouse.inventory.v1.StockTransferResponse.in_movement:type_name -> warehouse.inventory.v1.StockMovement
+	27, // 22: warehouse.inventory.v1.StockPickLocationsResponse.locations:type_name -> warehouse.inventory.v1.StockPickLocation
+	50, // 23: warehouse.inventory.v1.WarehouseProductListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	51, // 24: warehouse.inventory.v1.WarehouseProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	32, // 25: warehouse.inventory.v1.ProductPlacesResponse.places:type_name -> warehouse.inventory.v1.ProductPlace
+	50, // 26: warehouse.inventory.v1.BatchListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	2,  // 27: warehouse.inventory.v1.BatchListRequest.expiry:type_name -> warehouse.inventory.v1.BatchExpiryFilter
+	34, // 28: warehouse.inventory.v1.BatchListResponse.batches:type_name -> warehouse.inventory.v1.StockBatch
+	51, // 29: warehouse.inventory.v1.BatchListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	50, // 30: warehouse.inventory.v1.CostLayerListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	37, // 31: warehouse.inventory.v1.CostLayerListResponse.layers:type_name -> warehouse.inventory.v1.CostLayer
+	51, // 32: warehouse.inventory.v1.CostLayerListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	50, // 33: warehouse.inventory.v1.PlacementListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	40, // 34: warehouse.inventory.v1.PlacementListResponse.placements:type_name -> warehouse.inventory.v1.ProductPlacement
+	51, // 35: warehouse.inventory.v1.PlacementListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	34, // 36: warehouse.inventory.v1.BatchDetailResponse.batch:type_name -> warehouse.inventory.v1.StockBatch
+	50, // 37: warehouse.inventory.v1.BatchPlacementListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	47, // 38: warehouse.inventory.v1.BatchPlacementListResponse.shelves:type_name -> warehouse.inventory.v1.BatchShelf
+	51, // 39: warehouse.inventory.v1.BatchPlacementListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	5,  // 40: warehouse.inventory.v1.InventoryService.StockList:input_type -> warehouse.inventory.v1.StockListRequest
+	7,  // 41: warehouse.inventory.v1.InventoryService.StockHistory:input_type -> warehouse.inventory.v1.StockHistoryRequest
+	9,  // 42: warehouse.inventory.v1.InventoryService.StockReceive:input_type -> warehouse.inventory.v1.StockReceiveRequest
+	11, // 43: warehouse.inventory.v1.InventoryService.StockAdjust:input_type -> warehouse.inventory.v1.StockAdjustRequest
+	24, // 44: warehouse.inventory.v1.InventoryService.StockTransfer:input_type -> warehouse.inventory.v1.StockTransferRequest
+	14, // 45: warehouse.inventory.v1.InventoryService.StockMove:input_type -> warehouse.inventory.v1.StockMoveRequest
+	17, // 46: warehouse.inventory.v1.InventoryService.StockPick:input_type -> warehouse.inventory.v1.StockPickRequest
+	19, // 47: warehouse.inventory.v1.InventoryService.StockReturn:input_type -> warehouse.inventory.v1.StockReturnRequest
+	22, // 48: warehouse.inventory.v1.InventoryService.StockCost:input_type -> warehouse.inventory.v1.StockCostRequest
+	29, // 49: warehouse.inventory.v1.InventoryService.WarehouseProductList:input_type -> warehouse.inventory.v1.WarehouseProductListRequest
+	31, // 50: warehouse.inventory.v1.InventoryService.ProductPlaces:input_type -> warehouse.inventory.v1.ProductPlacesRequest
+	26, // 51: warehouse.inventory.v1.InventoryService.StockPickLocations:input_type -> warehouse.inventory.v1.StockPickLocationsRequest
+	35, // 52: warehouse.inventory.v1.InventoryService.BatchList:input_type -> warehouse.inventory.v1.BatchListRequest
+	38, // 53: warehouse.inventory.v1.InventoryService.CostLayerList:input_type -> warehouse.inventory.v1.CostLayerListRequest
+	41, // 54: warehouse.inventory.v1.InventoryService.PlacementList:input_type -> warehouse.inventory.v1.PlacementListRequest
+	43, // 55: warehouse.inventory.v1.InventoryService.ProductStockSummary:input_type -> warehouse.inventory.v1.ProductStockSummaryRequest
+	45, // 56: warehouse.inventory.v1.InventoryService.BatchDetail:input_type -> warehouse.inventory.v1.BatchDetailRequest
+	48, // 57: warehouse.inventory.v1.InventoryService.BatchPlacementList:input_type -> warehouse.inventory.v1.BatchPlacementListRequest
+	6,  // 58: warehouse.inventory.v1.InventoryService.StockList:output_type -> warehouse.inventory.v1.StockListResponse
+	8,  // 59: warehouse.inventory.v1.InventoryService.StockHistory:output_type -> warehouse.inventory.v1.StockHistoryResponse
+	10, // 60: warehouse.inventory.v1.InventoryService.StockReceive:output_type -> warehouse.inventory.v1.StockReceiveResponse
+	12, // 61: warehouse.inventory.v1.InventoryService.StockAdjust:output_type -> warehouse.inventory.v1.StockAdjustResponse
+	25, // 62: warehouse.inventory.v1.InventoryService.StockTransfer:output_type -> warehouse.inventory.v1.StockTransferResponse
+	15, // 63: warehouse.inventory.v1.InventoryService.StockMove:output_type -> warehouse.inventory.v1.StockMoveResponse
+	18, // 64: warehouse.inventory.v1.InventoryService.StockPick:output_type -> warehouse.inventory.v1.StockPickResponse
+	20, // 65: warehouse.inventory.v1.InventoryService.StockReturn:output_type -> warehouse.inventory.v1.StockReturnResponse
+	23, // 66: warehouse.inventory.v1.InventoryService.StockCost:output_type -> warehouse.inventory.v1.StockCostResponse
+	30, // 67: warehouse.inventory.v1.InventoryService.WarehouseProductList:output_type -> warehouse.inventory.v1.WarehouseProductListResponse
+	33, // 68: warehouse.inventory.v1.InventoryService.ProductPlaces:output_type -> warehouse.inventory.v1.ProductPlacesResponse
+	28, // 69: warehouse.inventory.v1.InventoryService.StockPickLocations:output_type -> warehouse.inventory.v1.StockPickLocationsResponse
+	36, // 70: warehouse.inventory.v1.InventoryService.BatchList:output_type -> warehouse.inventory.v1.BatchListResponse
+	39, // 71: warehouse.inventory.v1.InventoryService.CostLayerList:output_type -> warehouse.inventory.v1.CostLayerListResponse
+	42, // 72: warehouse.inventory.v1.InventoryService.PlacementList:output_type -> warehouse.inventory.v1.PlacementListResponse
+	44, // 73: warehouse.inventory.v1.InventoryService.ProductStockSummary:output_type -> warehouse.inventory.v1.ProductStockSummaryResponse
+	46, // 74: warehouse.inventory.v1.InventoryService.BatchDetail:output_type -> warehouse.inventory.v1.BatchDetailResponse
+	49, // 75: warehouse.inventory.v1.InventoryService.BatchPlacementList:output_type -> warehouse.inventory.v1.BatchPlacementListResponse
+	58, // [58:76] is the sub-list for method output_type
+	40, // [40:58] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_inventory_proto_init() }
@@ -3856,7 +3960,7 @@ func file_warehouse_inventory_v1_inventory_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_inventory_proto_rawDesc), len(file_warehouse_inventory_v1_inventory_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,

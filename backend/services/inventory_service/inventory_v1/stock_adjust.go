@@ -15,40 +15,61 @@ import (
 // so a request arriving around it fails loudly rather than quietly correcting the unplaced pile.
 var errAdjustNoPlace = errors.New("a stock-take must say which place it counted (a rack, or unplaced)")
 
-// StockAdjust corrects ONE PLACE's on-hand to a counted figure (absolute, not a delta) and records the
-// difference as an ADJUST movement, so the correction is auditable in the ledger.
+// A batch reason (damaged/lost/found) must name its batch and a positive quantity (#211).
+var errAdjustBatchArgs = errors.New("a damaged/lost/found adjust needs a batch and a positive quantity")
+
+// StockAdjust corrects a shelf's stock (#139/#211). The REASON drives the model:
 //
-// A stock-take counts a SHELF (#139, owner's call): someone stands in front of A-01-3 and counts what
-// is on it, so the request says which shelf that was — a rack, or explicitly the unplaced pile. It is
-// required, because a warehouse-level figure would need a rule for spreading a correction across a
-// product's shelves, and every such rule invents a fact nobody observed. A stock-take that corrects the
-// wrong shelf is worse than none, because it is believed.
+//   - RECOUNT (or unspecified, for back-compat) reconciles the whole shelf to a counted `on_hand`. It
+//     is batch-agnostic on screen ("—"), but its delta is attributed to the OLDEST batch on the shelf
+//     (FIFO, owner's Q1) so per-batch Ready keeps reconciling to on-hand.
+//   - DAMAGED / LOST / FOUND touch a SPECIFIC batch's units by a signed `quantity`: goods of that batch
+//     went bad, went missing, or turned up. They carry the batch and refuse to drive it below zero.
 //
-// The response's `Level` is the warehouse's TOTAL after the correction, not the corrected shelf: the
-// shelf's own new figure is the movement's `balance`, and the two answer different questions ("this
-// shelf is now 68" / "the warehouse now holds 135").
+// Every reason writes one ADJUST movement (batch-tagged except a recount) so the correction is
+// auditable, and returns the warehouse TOTAL after it — read back, not computed.
+//
+// NOTE (#211): a DAMAGED/LOST adjust is also meant to WRITE OFF the frozen cost of the lost units to
+// expense_service (owner's Q4). That value posting is a follow-up — this change lands the stock
+// mechanics; the loss value is a separate cross-service hook (mirroring settlement's PostCODFee).
 func (s *Service) StockAdjust(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockAdjustRequest],
 ) (*connect.Response[inventoryv1.StockAdjustResponse], error) {
 	warehouseID := req.Msg.GetWarehouseId()
 	productID := req.Msg.GetProductId()
-	target := req.Msg.GetOnHand()
 	actor := actorFrom(ctx)
 
-	// The place counted. Proto validation (a required oneof) rejects a request that names none, but
-	// this re-checks it rather than reading the zero value: `GetRackId()` returns 0 both for
-	// "unplaced" and for "said nothing", and silently treating the second as the first is precisely
-	// the bug this field exists to prevent — a stock-take correcting a pile nobody counted. The guard
-	// is what makes the distinction real to the handler rather than only to the interceptor.
 	if req.Msg.GetPlace() == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errAdjustNoPlace)
 	}
 
 	var rackID *uint64
-
 	if id := req.Msg.GetRackId(); id != 0 {
 		rackID = &id
+	}
+
+	reasonType := req.Msg.GetReasonType()
+	batchReason := isBatchAdjust(reasonType)
+
+	var batchID uint64
+	var batchPtr *uint64
+	var batchDelta int64
+
+	if batchReason {
+		batchID = req.Msg.GetBatchId()
+		qty := req.Msg.GetQuantity()
+		if batchID == 0 || qty <= 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errAdjustBatchArgs)
+		}
+
+		batchPtr = &batchID
+		// FOUND adds; DAMAGED and LOST remove. The magnitude is always positive on the wire.
+		if reasonType == inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND {
+			batchDelta = qty
+		} else {
+			batchDelta = -qty
+		}
 	}
 
 	var (
@@ -58,58 +79,83 @@ func (s *Service) StockAdjust(
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if rackID != nil {
-			// The shelf must be one of THIS warehouse's — another warehouse's rack reads as NotFound,
-			// never PermissionDenied, or the error itself would confirm the id exists.
 			exists, checkErr := rackExists(tx, warehouseID, *rackID)
 			if checkErr != nil {
 				return checkErr
 			}
-
 			if !exists {
 				return errRackMissing
 			}
 		}
 
-		// Current on-hand OF THAT PLACE, locked (0 if it holds nothing yet).
-		//
-		// `IS NOT DISTINCT FROM`, never `=`: for the unplaced pile the latter is `rack_id = NULL`,
-		// which is never true in SQL — not even against a NULL row — so it would read 0, "correct" a
-		// full pile up to the target, and write an ADJUST movement claiming a discrepancy that never
-		// existed.
-		var current int64
+		var (
+			delta   int64
+			balance int64
+			err     error
+		)
 
-		err := tx.Raw(`
-			SELECT on_hand FROM stock_levels
-			WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NOT DISTINCT FROM ?
-			FOR UPDATE`,
-			warehouseID, productID, rackID,
-		).Scan(&current).Error
-		if err != nil {
-			return err
+		if batchReason {
+			// The batch must be this warehouse's this product, and hold enough on the shelf to lose.
+			ok, checkErr := batchBelongs(tx, warehouseID, productID, batchID)
+			if checkErr != nil {
+				return checkErr
+			}
+			if !ok {
+				return errBatchMissing
+			}
+
+			adjErr := adjustShelfBatch(tx, batchID, rackID, batchDelta)
+			if adjErr != nil {
+				return adjErr
+			}
+
+			delta = batchDelta
+			balance, err = applyDelta(tx, warehouseID, productID, rackID, batchDelta)
+			if err != nil {
+				return err
+			}
+		} else {
+			// RECOUNT — correct the shelf to the counted figure (absolute), and FIFO the difference onto
+			// the oldest batch so shelf_batch stays reconciled.
+			target := req.Msg.GetOnHand()
+
+			var current int64
+			err = tx.Raw(`
+				SELECT on_hand FROM stock_levels
+				WHERE warehouse_id = ? AND product_id = ? AND rack_id IS NOT DISTINCT FROM ?
+				FOR UPDATE`,
+				warehouseID, productID, rackID,
+			).Scan(&current).Error
+			if err != nil {
+				return err
+			}
+
+			delta = target - current
+			balance = target
+
+			err = tx.Exec(`
+				INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
+				VALUES (?, ?, ?, ?, NOW())
+				ON CONFLICT (warehouse_id, product_id, rack_id)
+				DO UPDATE SET on_hand = EXCLUDED.on_hand, updated_at = NOW()`,
+				warehouseID, productID, rackID, target,
+			).Error
+			if err != nil {
+				return err
+			}
+
+			fifoErr := attributeRecountFIFO(tx, warehouseID, productID, rackID, delta)
+			if fifoErr != nil {
+				return fifoErr
+			}
 		}
 
-		delta := target - current
-
-		// Set that place's on-hand to the counted target (not += delta) — the count is authoritative.
-		err = tx.Exec(`
-			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-			VALUES (?, ?, ?, ?, NOW())
-			ON CONFLICT (warehouse_id, product_id, rack_id)
-			DO UPDATE SET on_hand = EXCLUDED.on_hand, updated_at = NOW()`,
-			warehouseID, productID, rackID, target,
-		).Error
-		if err != nil {
-			return err
-		}
-
-		mv, err = appendMovement(tx, warehouseID, productID, rackID, nil, delta, target,
+		mv, err = appendMovement(tx, warehouseID, productID, rackID, batchPtr, delta, balance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST, req.Msg.GetReason(), "", actor)
 		if err != nil {
 			return err
 		}
 
-		// The warehouse's total AFTER the correction — read back rather than computed, so it is the
-		// number the next reader will see and not this handler's opinion of it.
 		return tx.Raw(`
 			SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels
 			WHERE warehouse_id = ? AND product_id = ?`,
@@ -130,4 +176,105 @@ func (s *Service) StockAdjust(
 		Movement: movementToProto(mv),
 		Level:    levelToProto(level),
 	}), nil
+}
+
+func isBatchAdjust(r inventoryv1.StockAdjustReason) bool {
+	switch r {
+	case inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_DAMAGED,
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST,
+		inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND:
+		return true
+	default:
+		return false
+	}
+}
+
+// adjustShelfBatch applies a SIGNED delta to one (batch, shelf) row (#211), creating it if the batch is
+// arriving on a shelf it was not on (a FOUND). It refuses to drive the row below zero — you cannot lose
+// more of a batch than the shelf holds.
+func adjustShelfBatch(tx *gorm.DB, batchID uint64, rack *uint64, delta int64) error {
+	err := tx.Exec(`
+		INSERT INTO stock_shelf_batches (batch_id, rack_id, qty, updated_at)
+		VALUES (?, ?, 0, NOW())
+		ON CONFLICT (batch_id, rack_id) DO NOTHING`,
+		batchID, rack).Error
+	if err != nil {
+		return err
+	}
+
+	res := tx.Exec(`
+		UPDATE stock_shelf_batches SET qty = qty + ?, updated_at = NOW()
+		WHERE batch_id = ? AND rack_id IS NOT DISTINCT FROM ? AND qty + ? >= 0`,
+		delta, batchID, rack, delta)
+	if res.Error != nil {
+		return res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return errInsufficientBatch
+	}
+
+	return nil
+}
+
+// attributeRecountFIFO spreads a shelf recount's delta over the shelf's batches, oldest first (#211,
+// owner's Q1). A gain lands on the oldest batch; a loss is drawn down the batches in age order, the way
+// a pick would. A shelf with no batch rows (legacy stock) is left to the stock_levels recount alone.
+func attributeRecountFIFO(tx *gorm.DB, warehouseID, productID uint64, rack *uint64, delta int64) error {
+	if delta == 0 {
+		return nil
+	}
+
+	type sbRow struct {
+		ID  uint64
+		Qty int64
+	}
+
+	var rows []sbRow
+
+	err := tx.Raw(`
+		SELECT sb.id, sb.qty
+		FROM stock_shelf_batches sb
+		JOIN stock_batches b ON b.id = sb.batch_id
+		WHERE b.warehouse_id = ? AND b.product_id = ? AND sb.rack_id IS NOT DISTINCT FROM ?
+		ORDER BY b.id ASC`,
+		warehouseID, productID, rack).Scan(&rows).Error
+	if err != nil {
+		return err
+	}
+
+	if len(rows) == 0 {
+		return nil
+	}
+
+	if delta > 0 {
+		return tx.Exec(`UPDATE stock_shelf_batches SET qty = qty + ?, updated_at = NOW() WHERE id = ?`,
+			delta, rows[0].ID).Error
+	}
+
+	// A loss: consume oldest-first until the shortfall is covered.
+	remaining := -delta
+	for i := range rows {
+		if remaining == 0 {
+			break
+		}
+
+		take := rows[i].Qty
+		if take > remaining {
+			take = remaining
+		}
+		if take == 0 {
+			continue
+		}
+
+		upErr := tx.Exec(`UPDATE stock_shelf_batches SET qty = qty - ?, updated_at = NOW() WHERE id = ?`,
+			take, rows[i].ID).Error
+		if upErr != nil {
+			return upErr
+		}
+
+		remaining -= take
+	}
+
+	return nil
 }
