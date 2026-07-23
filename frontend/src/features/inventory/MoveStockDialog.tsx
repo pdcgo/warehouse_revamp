@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Box,
   Button,
   CloseButton,
   Dialog,
@@ -17,7 +18,7 @@ import type { StockMoveRequest } from "../../gen/warehouse/inventory/v1/inventor
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/Toaster";
 import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { useMoveStock, useProductBatches } from "../../features/inventory/queries";
+import { useMoveStock, useProductBatches, useProductPlaces } from "../../features/inventory/queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
 // AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the
@@ -72,6 +73,29 @@ export function MoveStockDialog({
 
   const batches = useProductBatches({ warehouseId, productId: product.id });
   const batchList = batches.data ?? [];
+
+  // The shelves this product sits on, with each shelf's TOTAL on-hand — so the dialog can show what a
+  // move does to both ends before it commits (#210). A move changes a shelf's total by the quantity,
+  // whichever batch it draws.
+  const placesQuery = useProductPlaces({ warehouseId, productIds: [product.id] });
+  const places = placesQuery.data ?? [];
+
+  // A RackSelect value → that shelf's current on-hand. "" is unanswered; UNPLACED and a rack id map to
+  // the place's rackId (0 for the unplaced pile).
+  function shelfOnHand(place: string): bigint {
+    if (place === "") return 0n;
+    const rackId = place === UNPLACED ? 0n : BigInt(place);
+    const found = places.find((p) => p.rackId === rackId);
+    return found?.onHand ?? 0n;
+  }
+
+  // How a shelf reads in the balance line — its code if the product already sits there, else the pile
+  // or the raw id for a shelf it is arriving on for the first time.
+  function shelfLabel(place: string): string {
+    if (place === UNPLACED) return t("racks.select.unplaced");
+    const found = places.find((p) => p.rackId === BigInt(place));
+    return found?.rackCode ?? `#${place}`;
+  }
 
   // A move is the clearest case for the cross-domain fan-out (#177): nothing about the WAREHOUSE
   // total changes, only which shelf holds it — so the rack views are the screens that go stale.
@@ -223,6 +247,27 @@ export function MoveStockDialog({
                       onChange={(e) => setReason(e.target.value)}
                     />
                   </Field.Root>
+
+                  {/* What the move does to both ends, before it commits (#210). A shelf's total moves
+                      by the quantity whichever batch it draws from. */}
+                  {canSubmit && (
+                    <Box
+                      borderWidth="1px"
+                      borderColor="border"
+                      borderRadius="md"
+                      bg="bg.muted"
+                      p="card"
+                      data-testid="move-balances"
+                    >
+                      <Text fontSize="sm" fontVariantNumeric="tabular-nums">
+                        {shelfLabel(from)}: <b>{shelfOnHand(from).toString()}</b> →{" "}
+                        {(shelfOnHand(from) - BigInt(qty)).toString()}
+                        {"   ·   "}
+                        {shelfLabel(to)}: <b>{shelfOnHand(to).toString()}</b> →{" "}
+                        {(shelfOnHand(to) + BigInt(qty)).toString()}
+                      </Text>
+                    </Box>
+                  )}
                 </Stack>
               </Dialog.Body>
 
