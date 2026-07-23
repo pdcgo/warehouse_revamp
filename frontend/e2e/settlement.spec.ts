@@ -167,3 +167,27 @@ test("Liability redesign: the position reads in two columns on /liability (#221)
   // The header tile totals the payable side.
   await expect(page.getByTestId("liability-total-payable")).toContainText("Rp 25.000");
 });
+
+// #222 — the counterparty detail, redesigned. Clicking a /liability row opens the relationship's
+// history: the net position in words, the ledger split by direction with its TYPED cause, and the
+// Make-Payment form. Reuses the serial seed (root owes the warehouse a COD fee).
+test("Liability redesign: the counterparty detail opens with the ledger and its typed cause (#222)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/liability");
+  await page.getByTestId(`liability-row-${warehouseId}`).click();
+
+  await expect(page.getByTestId("liability-detail-page")).toBeVisible();
+  // Net position, in words — never a sign.
+  await expect(page.getByTestId("liability-detail-balance")).toContainText("You owe them Rp 25.000");
+
+  // The Payable tab carries the debt, named by its typed cause + the restock id (not a free-text note).
+  await page.getByTestId("liability-detail-tab-payable").click();
+  await expect(page.getByTestId("liability-detail-payable")).toContainText("COD fee");
+
+  // Make Payment opens the two-phase form (recording alone moves nothing until they confirm).
+  await page.getByTestId("liability-detail-make-payment").click();
+  await expect(page.getByTestId("record-amount")).toBeVisible();
+});

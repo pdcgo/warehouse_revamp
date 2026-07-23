@@ -61,6 +61,9 @@ const LiabilityListPage = lazy(() =>
 const CounterpartyPage = lazy(() =>
   import("./pages/counterparty").then((m) => ({ default: m.CounterpartyPage })),
 );
+const LiabilityDetailPage = lazy(() =>
+  import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
+);
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
@@ -197,7 +200,9 @@ export const router = createBrowserRouter([
       // /liability (#221); the old /settlement stays reachable but the nav points at the new one.
       { path: "settlement", element: <SettlementPage /> },
       { path: "liability", element: <LiabilityListPage /> },
-      // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row.
+      // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row. The Chakra
+      // redesign (#222) lives at /liability/:counterpartyId; the old /settlement one stays reachable.
+      { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
       { path: "settlement/:counterpartyId", element: <CounterpartyPage /> },
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122) — one screen that
