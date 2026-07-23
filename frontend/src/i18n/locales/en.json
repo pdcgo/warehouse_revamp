@@ -28,9 +28,6 @@
     "settlement": "Liability"
   },
   "menu": {
-    "theme": "Theme",
-    "themeLight": "Light",
-    "themeDark": "Dark",
     "language": "Language",
     "signOut": "Sign out"
   },

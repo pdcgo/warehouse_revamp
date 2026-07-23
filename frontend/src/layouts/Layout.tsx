@@ -13,14 +13,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import {
-  ChevronDown,
-  ChevronRight,
-  LogOut,
-  Menu as MenuIcon,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../features/auth/AuthContext";
@@ -28,9 +21,8 @@ import { useTeam } from "../features/team/TeamContext";
 import { LANGUAGES, useLanguage } from "../i18n/language";
 import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "./TeamSwitcher";
+import { ColorModeToggle } from "../components/ColorModeToggle";
 import { Logo, WarehouseMark } from "../components/Logo";
-import { useColorMode, setColorMode } from "../lib/colorMode";
-import type { ColorMode } from "../lib/colorMode";
 import { isMenuGroup, menuFor } from "./nav";
 import type { MenuGroup, MenuItem } from "./nav";
 
@@ -46,10 +38,6 @@ export function Layout() {
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
-  // On a NARROW screen the sidebar is off-canvas behind a hamburger (#214); this is its open state.
-  // It has no effect on desktop, where the sidebar is always in the flow.
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const colorMode = useColorMode();
   // Sub-menu groups are an ACCORDION (#123): at most ONE is expanded, so opening one closes the rest
   // and the sidebar never turns into a wall of links. Null = all closed.
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -91,12 +79,6 @@ export function Layout() {
       setOpenGroup(owningLabel);
     }
   }, [owningLabel]);
-
-  // Navigating closes the mobile drawer (#214): a link tap should reveal the page, not leave the
-  // sidebar covering it. No-op on desktop, where the drawer is never open.
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [location.pathname]);
 
   // One nav link row — shared by top-level items and group children. Active is decided by activeTo
   // (longest-prefix winner), NOT by the link's own prefix match, so siblings don't all light up.
@@ -209,41 +191,13 @@ export function Layout() {
 
   return (
     <Flex minH="100dvh">
-      {/* On a narrow screen the sidebar sits OVER the content, so the backdrop both dims the page and
-          gives an outside-tap a target to close on. It exists only while the drawer is open, and only
-          below the md breakpoint (#214). */}
-      {drawerOpen && (
-        <Box
-          data-testid="sidebar-backdrop"
-          position="fixed"
-          inset="0"
-          zIndex={25}
-          bg="blackAlpha.500"
-          hideFrom="md"
-          onClick={() => setDrawerOpen(false)}
-        />
-      )}
-
       <Flex
         as="nav"
         direction="column"
         gap="section"
         flexShrink={0}
-        // Off-canvas on mobile (fixed + slide), in-flow on desktop. The collapse rail is a DESKTOP
-        // affordance only — on mobile the drawer is always the full width when open.
-        position={{ base: "fixed", md: "static" }}
-        top="0"
-        bottom="0"
-        left="0"
-        zIndex={{ base: 30, md: "auto" }}
-        h={{ base: "100dvh", md: "auto" }}
-        bg="bg.subtle"
-        transform={{
-          base: drawerOpen ? "translateX(0)" : "translateX(-100%)",
-          md: "none",
-        }}
-        transition="transform 0.2s ease, width 0.15s ease"
-        w={{ base: "260px", md: collapsed ? "64px" : "240px" }}
+        w={collapsed ? "64px" : "240px"}
+        transition="width 0.15s ease"
         borderRightWidth="1px"
         borderColor="border"
         p="card"
@@ -260,9 +214,7 @@ export function Layout() {
           )}
         </Stack>
 
-        {/* Collapse-to-rail is a DESKTOP affordance; on mobile the sidebar is a full-width drawer, so
-            the toggle is hidden below md (#214). */}
-        <Flex justify={collapsed ? "center" : "flex-end"} hideBelow="md">
+        <Flex justify={collapsed ? "center" : "flex-end"}>
           <IconButton
             size="xs"
             variant="ghost"
@@ -284,18 +236,6 @@ export function Layout() {
           px="page"
           py="card"
         >
-          {/* The hamburger reveals the off-canvas sidebar on mobile only (#214). */}
-          <IconButton
-            size="xs"
-            variant="outline"
-            aria-label="Open menu"
-            data-testid="sidebar-hamburger"
-            hideFrom="md"
-            onClick={() => setDrawerOpen(true)}
-          >
-            <Icon as={MenuIcon} boxSize="4" />
-          </IconButton>
-
           <Breadcrumb.Root size="lg">
             <Breadcrumb.List>
               <Breadcrumb.Item>
@@ -307,6 +247,8 @@ export function Layout() {
           </Breadcrumb.Root>
 
           <Spacer />
+
+          <ColorModeToggle />
 
           <Menu.Root positioning={{ placement: "bottom-end" }}>
             <Menu.Trigger asChild>
@@ -336,26 +278,6 @@ export function Layout() {
             <Portal>
               <Menu.Positioner>
                 <Menu.Content minW="200px">
-                  {/* Theme (#214) — light / dark, on the color-mode tokens from #213. The mock puts
-                      this control in the user menu; setColorMode flips the `.dark` class and remembers
-                      the choice. */}
-                  <Menu.RadioItemGroup
-                    value={colorMode}
-                    onValueChange={(e) => setColorMode(e.value as ColorMode)}
-                  >
-                    <Menu.ItemGroupLabel>{t("menu.theme")}</Menu.ItemGroupLabel>
-                    <Menu.RadioItem value="light" data-testid="theme-light">
-                      {t("menu.themeLight")}
-                      <Menu.ItemIndicator />
-                    </Menu.RadioItem>
-                    <Menu.RadioItem value="dark" data-testid="theme-dark">
-                      {t("menu.themeDark")}
-                      <Menu.ItemIndicator />
-                    </Menu.RadioItem>
-                  </Menu.RadioItemGroup>
-
-                  <Menu.Separator />
-
                   {/* Language switcher (#93). Persists the choice and sets the page language; the
                       UI-string translation itself is the i18n effort tracked in #65. */}
                   <Menu.RadioItemGroup value={lang} onValueChange={(e) => setLang(e.value as Lang)}>
