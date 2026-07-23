@@ -120,7 +120,7 @@ func pickOneLine(
 			return nil, applyErr
 		}
 
-		mv, moveErr := appendMovement(tx, warehouseID, productID, places[i].RackID, -take, balance,
+		mv, moveErr := appendMovement(tx, warehouseID, productID, places[i].RackID, nil, -take, balance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_PICK, "order", ref, actor)
 		if moveErr != nil {
 			return nil, moveErr

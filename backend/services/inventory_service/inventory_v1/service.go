@@ -145,6 +145,7 @@ func appendMovement(
 	tx *gorm.DB,
 	warehouseID, productID uint64,
 	rackID *uint64,
+	batchID *uint64,
 	delta, balance int64,
 	kind inventoryv1.MovementKind,
 	reason, ref string,
@@ -154,6 +155,7 @@ func appendMovement(
 		WarehouseID: warehouseID,
 		ProductID:   productID,
 		RackID:      rackID,
+		BatchID:     batchID,
 		Delta:       delta,
 		Balance:     balance,
 		Kind:        int32(kind),
@@ -194,7 +196,7 @@ func (s *Service) recordSingle(
 			return err
 		}
 
-		mv, err = appendMovement(tx, warehouseID, productID, unplaced, delta, balance, kind, reason, ref, actor)
+		mv, err = appendMovement(tx, warehouseID, productID, unplaced, nil, delta, balance, kind, reason, ref, actor)
 
 		return err
 	})

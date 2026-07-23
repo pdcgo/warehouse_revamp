@@ -42,7 +42,7 @@ func (s *Service) StockTransfer(
 			return err
 		}
 
-		outMv, err = appendMovement(tx, from, productID, unplaced, -qty, outBalance,
+		outMv, err = appendMovement(tx, from, productID, unplaced, nil, -qty, outBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_TRANSFER_OUT, req.Msg.GetReason(), "", actor)
 		if err != nil {
 			return err
@@ -53,7 +53,7 @@ func (s *Service) StockTransfer(
 			return err
 		}
 
-		inMv, err = appendMovement(tx, to, productID, unplaced, qty, inBalance,
+		inMv, err = appendMovement(tx, to, productID, unplaced, nil, qty, inBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_TRANSFER_IN, req.Msg.GetReason(), "", actor)
 
 		return err

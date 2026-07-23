@@ -102,7 +102,7 @@ func (s *Service) StockAdjust(
 			return err
 		}
 
-		mv, err = appendMovement(tx, warehouseID, productID, rackID, delta, target,
+		mv, err = appendMovement(tx, warehouseID, productID, rackID, nil, delta, target,
 			inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST, req.Msg.GetReason(), "", actor)
 		if err != nil {
 			return err

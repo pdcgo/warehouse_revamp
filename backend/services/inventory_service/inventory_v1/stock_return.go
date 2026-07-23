@@ -93,7 +93,7 @@ func (s *Service) StockReturn(
 			}
 
 			mv, moveErr := appendMovement(tx, warehouseID, picks[i].ProductID, picks[i].RackID,
-				give, balance, inventoryv1.MovementKind_MOVEMENT_KIND_RETURN, "order returned", ref, actor)
+				nil, give, balance, inventoryv1.MovementKind_MOVEMENT_KIND_RETURN, "order returned", ref, actor)
 			if moveErr != nil {
 				return moveErr
 			}

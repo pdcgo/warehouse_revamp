@@ -163,6 +163,23 @@ func (s *Service) RestockRequestFulfill(
 
 		actor := actorFrom(ctx)
 
+		// THE FROZEN COST each batch will carry (#209). A batch is a cost layer, and its unit cost is
+		// the HPP StockCost computes — line total per sellable unit, plus this delivery's freight spread
+		// over every sellable unit that arrived. Frozen here, at acceptance, rather than recomputed on
+		// read: a later delivery's price must not rewrite what this layer cost. Same integer-floor
+		// arithmetic as stock_cost.go's unitCosts, scoped to THIS request.
+		var sellableTotal int64
+		for _, cl := range counted {
+			sellableTotal += cl.quantity
+		}
+
+		freight := rr.ShippingCost + req.Msg.GetCodShippingFee()
+
+		var freightPerUnit int64
+		if sellableTotal > 0 {
+			freightPerUnit = freight / sellableTotal
+		}
+
 		// EVERY line is received, inside this one transaction: a request half-received is worse than
 		// one not received at all, and the status flip below must mean all of it landed (#124).
 		for i := range rr.Items {
@@ -210,6 +227,35 @@ func (s *Service) RestockRequestFulfill(
 				continue
 			}
 
+			// MINT THE BATCH for this received line (#209) — one product's units from one delivery, the
+			// cost layer they carry. The line IS the batch (#207): its id is what makes that unique. The
+			// units then place as shelf_batch rows below, mirroring the restock_received_placements.
+			var damagedQty int64
+			for _, d := range line.damaged {
+				damagedQty += d.Quantity
+			}
+
+			unitCost := item.TotalPrice/line.quantity + freightPerUnit
+
+			batch := inventory_service_models.StockBatch{
+				WarehouseID:          rr.WarehouseID,
+				ProductID:            item.ProductID,
+				DeliveryID:           rr.ID,
+				RestockRequestItemID: item.ID,
+				UnitCost:             &unitCost,
+				// Arrived is what physically turned up on the line — the sellable count plus the breakage
+				// that never entered stock. Ready (= Σ shelf_batch.qty) equals line.quantity right now.
+				ArrivedQty: line.quantity + damagedQty,
+				DamagedQty: damagedQty,
+				// Who raised the restock is not tracked on the request yet; who accepted it is the actor.
+				AcceptedBy: actor,
+			}
+
+			batchErr := tx.Create(&batch).Error
+			if batchErr != nil {
+				return batchErr
+			}
+
 			// ONE MOVEMENT PER PLACE (#154). Straight onto the shelves the warehouse named, because
 			// counting and shelving are one act (#137) — and a delivery of 100 across three shelves is
 			// three ledger rows, not one row averaging a location it never sat in.
@@ -227,6 +273,7 @@ func (s *Service) RestockRequestFulfill(
 					rr.WarehouseID,
 					item.ProductID,
 					p.rack,
+					&batch.ID,
 					p.quantity,
 					balance,
 					inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
@@ -250,6 +297,20 @@ func (s *Service) RestockRequestFulfill(
 				}
 
 				rr.Items[i].Placements = append(rr.Items[i].Placements, stored)
+
+				// The batch's units on THIS shelf — the (shelf × batch) grain the stock feature turns on
+				// (#209). Mirrors the placement row above; on-hand for a (product, rack) is the sum of
+				// these across the batches on it.
+				shelf := inventory_service_models.StockShelfBatch{
+					BatchID: batch.ID,
+					RackID:  p.rack,
+					Qty:     p.quantity,
+				}
+
+				shelfErr := tx.Create(&shelf).Error
+				if shelfErr != nil {
+					return shelfErr
+				}
 			}
 		}
 
