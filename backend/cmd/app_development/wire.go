@@ -59,6 +59,9 @@ func InitializeApp() (*App, error) {
 		region_v1.NewService,
 		revenue_v1.NewService,
 		expense_v1.NewService,
+		// Joins inventory to expense (#211) — writing off the value of damaged/lost stock. See
+		// expense_poster.go.
+		NewExpensePoster,
 
 		NewServeMux,
 		NewServer,

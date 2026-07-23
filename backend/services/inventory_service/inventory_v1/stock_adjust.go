@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"connectrpc.com/connect"
@@ -51,6 +52,7 @@ func (s *Service) StockAdjust(
 
 	reasonType := req.Msg.GetReasonType()
 	batchReason := isBatchAdjust(reasonType)
+	qtyMag := req.Msg.GetQuantity()
 
 	var batchID uint64
 	var batchPtr *uint64
@@ -58,19 +60,23 @@ func (s *Service) StockAdjust(
 
 	if batchReason {
 		batchID = req.Msg.GetBatchId()
-		qty := req.Msg.GetQuantity()
-		if batchID == 0 || qty <= 0 {
+		if batchID == 0 || qtyMag <= 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errAdjustBatchArgs)
 		}
 
 		batchPtr = &batchID
 		// FOUND adds; DAMAGED and LOST remove. The magnitude is always positive on the wire.
 		if reasonType == inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND {
-			batchDelta = qty
+			batchDelta = qtyMag
 		} else {
-			batchDelta = -qty
+			batchDelta = -qtyMag
 		}
 	}
+
+	// A DAMAGED/LOST adjust writes off the value of the lost units (#211, owner's Q4): computed inside
+	// the transaction from the batch's frozen cost, posted to expense AFTER it commits.
+	var lossAmount int64
+	var postLoss bool
 
 	var (
 		mv    *inventory_service_models.StockMovement
@@ -107,6 +113,22 @@ func (s *Service) StockAdjust(
 			adjErr := adjustShelfBatch(tx, batchID, rackID, batchDelta)
 			if adjErr != nil {
 				return adjErr
+			}
+
+			// A loss (damaged/lost) writes off the units' frozen cost. An unknown-cost batch has no
+			// value to write off (#74), so no expense is posted for it.
+			if reasonType != inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND {
+				var unitCost sql.NullInt64
+
+				costErr := tx.Raw(`SELECT unit_cost FROM stock_batches WHERE id = ?`, batchID).Scan(&unitCost).Error
+				if costErr != nil {
+					return costErr
+				}
+
+				if unitCost.Valid {
+					lossAmount = qtyMag * unitCost.Int64
+					postLoss = true
+				}
 			}
 
 			delta = batchDelta
@@ -164,6 +186,13 @@ func (s *Service) StockAdjust(
 	})
 	if err != nil {
 		return nil, writeError(err)
+	}
+
+	// Post the loss value AFTER the stock left the shelf (#211). Best-effort by design: the correction
+	// has committed regardless, and a dropped expense is a gap a report can find — not a reason to fail
+	// a stock adjust because a downstream ledger hiccuped. See ExpensePoster.
+	if postLoss && lossAmount > 0 {
+		_ = s.expense.PostStockLoss(ctx, warehouseID, lossAmount, req.Msg.GetReason())
 	}
 
 	level := &inventory_service_models.StockLevel{

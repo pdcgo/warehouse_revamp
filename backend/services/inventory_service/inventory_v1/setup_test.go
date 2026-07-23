@@ -15,9 +15,33 @@ import (
 func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 	t.Helper()
 
-	// nil poster — NewService substitutes a no-op, so a test receiving a box onto a shelf does not
-	// have to construct a ledger it has no opinion about (#184).
-	return inventory_v1.NewService(db, nil)
+	// nil posters — NewService substitutes no-ops, so a test receiving a box onto a shelf does not
+	// have to construct a settlement ledger (#184) or an expense ledger (#211) it has no opinion about.
+	return inventory_v1.NewService(db, nil, nil)
+}
+
+// recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
+// written off rather than on expense_service's table (#211).
+type recordingExpense struct {
+	posted []stockLoss
+}
+
+type stockLoss struct {
+	warehouseID uint64
+	amount      int64
+	note        string
+}
+
+func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, amount int64, note string) error {
+	e.posted = append(e.posted, stockLoss{warehouseID: warehouseID, amount: amount, note: note})
+	return nil
+}
+
+// newServiceWithExpense is for the tests that care what a written-off batch cost (#211).
+func newServiceWithExpense(t *testing.T, db *gorm.DB, expense inventory_v1.ExpensePoster) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, nil, expense)
 }
 
 // recordingPoster captures the COD obligations a fulfil posts, so a test can assert on WHAT was
@@ -62,7 +86,7 @@ func newServiceWithSettlement(
 ) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, poster)
+	return inventory_v1.NewService(db, poster, nil)
 }
 
 // page1 is the first page at a generous limit — enough for the tiny fixtures here.
