@@ -203,6 +203,28 @@ export function useProductPlaces(args: { warehouseId: bigint | undefined; produc
   });
 }
 
+// The batches (cost layers) of one product at a warehouse (#209/#210) — for the Move/Adjust dialogs'
+// batch pickers. Only batches that still hold something; a large first page since a picker needs the
+// whole (small) set, not a window.
+export function useProductBatches(args: { warehouseId: bigint | undefined; productId: bigint }) {
+  const { warehouseId, productId } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, { batches: productId.toString() }),
+    enabled: warehouseId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.batchList({
+        teamId: warehouseId!,
+        productId,
+        page: { page: 1, limit: 200 },
+      });
+
+      // A depleted batch cannot be moved or adjusted, so it is not offered.
+      return res.batches.filter((b) => b.ready > 0n);
+    },
+  });
+}
+
 // Receive, adjust and move all change what is on a shelf, so they all land here.
 //
 // This also invalidates RESTOCK and RACKS, because stock is the thing those screens are about: a

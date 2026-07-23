@@ -7,6 +7,7 @@ import {
   Dialog,
   Field,
   Input,
+  NativeSelect,
   Portal,
   Stack,
   Text,
@@ -16,7 +17,7 @@ import type { StockMoveRequest } from "../../gen/warehouse/inventory/v1/inventor
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/Toaster";
 import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { useMoveStock } from "../../features/inventory/queries";
+import { useMoveStock, useProductBatches } from "../../features/inventory/queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
 // AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the
@@ -61,11 +62,16 @@ export function MoveStockDialog({
   // applied to the wrong shelf is worse than no move: the ledger would believe it.
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  // WHICH delivery's units move (#210): stock is per (shelf × batch), so a move carries a batch.
+  const [batch, setBatch] = useState("");
   // Held as a string while editing — an empty input is not zero, and coercing it to one would make
   // a blank field look like a legitimate answer.
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+
+  const batches = useProductBatches({ warehouseId, productId: product.id });
+  const batchList = batches.data ?? [];
 
   // A move is the clearest case for the cross-domain fan-out (#177): nothing about the WAREHOUSE
   // total changes, only which shelf holds it — so the rack views are the screens that go stale.
@@ -75,7 +81,7 @@ export function MoveStockDialog({
   const samePlace = from !== "" && from === to;
   const qty = Number(quantity);
   const qtyValid = Number.isInteger(qty) && qty >= 1;
-  const canSubmit = from !== "" && to !== "" && !samePlace && qtyValid;
+  const canSubmit = from !== "" && to !== "" && !samePlace && qtyValid && batch !== "";
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -105,6 +111,7 @@ export function MoveStockDialog({
         to: { place: placeToOneof(to) },
         quantity: BigInt(qty),
         reason,
+        batchId: BigInt(batch),
       },
       {
         onSuccess: () => {
@@ -166,6 +173,33 @@ export function MoveStockDialog({
                     ) : (
                       <Field.HelperText>{t("inventory.moveToHelper")}</Field.HelperText>
                     )}
+                  </Field.Root>
+
+                  {/* WHICH delivery's units (#210). A move relocates one batch, and the batch travels
+                      with them — the server refuses a move of more than that batch holds on the source. */}
+                  <Field.Root required>
+                    <Field.Label>{t("inventory.moveBatch")}</Field.Label>
+                    <NativeSelect.Root>
+                      <NativeSelect.Field
+                        value={batch}
+                        data-testid="move-batch"
+                        onChange={(e) => setBatch(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          {t("inventory.moveBatchPlaceholder")}
+                        </option>
+                        {batchList.map((b) => (
+                          <option key={b.id.toString()} value={b.id.toString()}>
+                            {t("inventory.moveBatchOption", {
+                              id: b.deliveryId.toString(),
+                              ready: b.ready.toString(),
+                            })}
+                          </option>
+                        ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
+                    <Field.HelperText>{t("inventory.moveBatchHelper")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
