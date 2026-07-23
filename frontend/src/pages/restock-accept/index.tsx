@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
+  Box,
   Button,
   Card,
   Flex,
@@ -17,7 +18,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, LayoutGrid, Plus, Trash2 } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type {
@@ -378,33 +379,46 @@ export function RestockAcceptPage() {
     <Stack gap="section">
       {back}
 
-      <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
-        <Badge colorPalette="brand">{current.teamName}</Badge>
-        <Spacer />
+      {/* The action header rides at the top of the scroll (#201 relayout): on a delivery of ten
+          products the Accept button, and the reason it is disabled, must stay in reach without
+          scrolling back up to find them. */}
+      <Box
+        position="sticky"
+        top="0"
+        zIndex="1"
+        bg="bg"
+        borderBottomWidth="1px"
+        borderColor="border"
+        py="card"
+      >
+        <Flex align="center" gap="card" wrap="wrap">
+          <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
+          <Badge colorPalette="brand">{current.teamName}</Badge>
+          <Spacer />
 
-        {/* What is left to do, beside the button it is stopping. Silent once everything is ready —
-            a bar that congratulates you on finishing is noise at the moment you want to press Accept. */}
-        {!ready && (
-          <Text fontSize="sm" color="fg.muted" data-testid="accept-progress">
-            {t("restock.accept.progress", { counted, total: items.length })}
-            {unplaced > 0 && ` · ${t("restock.accept.progressUnplaced", { count: unplaced })}`}
-          </Text>
-        )}
+          {/* What is left to do, beside the button it is stopping. Silent once everything is ready —
+              a bar that congratulates you on finishing is noise at the moment you want to press Accept. */}
+          {!ready && (
+            <Text fontSize="sm" color="fg.muted" data-testid="accept-progress">
+              {t("restock.accept.progress", { counted, total: items.length })}
+              {unplaced > 0 && ` · ${t("restock.accept.progressUnplaced", { count: unplaced })}`}
+            </Text>
+          )}
 
-        {/* H — accepting moves stock and cannot be undone, so it confirms first. */}
-        <ConfirmDialog
-          title={t("restock.accept.confirm.title")}
-          message={t("restock.accept.confirm.message")}
-          confirmLabel={t("restock.accept.confirm.label")}
-          onConfirm={accept}
-          trigger={
-            <Button colorPalette="brand" disabled={!ready} loading={busy} data-testid="accept-submit">
-              {t("restock.accept.action")}
-            </Button>
-          }
-        />
-      </Flex>
+          {/* H — accepting moves stock and cannot be undone, so it confirms first. */}
+          <ConfirmDialog
+            title={t("restock.accept.confirm.title")}
+            message={t("restock.accept.confirm.message")}
+            confirmLabel={t("restock.accept.confirm.label")}
+            onConfirm={accept}
+            trigger={
+              <Button colorPalette="brand" disabled={!ready} loading={busy} data-testid="accept-submit">
+                {t("restock.accept.action")}
+              </Button>
+            }
+          />
+        </Flex>
+      </Box>
 
       {error && (
         <Text color="red.fg" data-testid="accept-error">
@@ -522,29 +536,43 @@ export function RestockAcceptPage() {
                       {delta}
                     </Badge>
                   )}
-
-                  {/* The running total against the count — visible WHILE typing rather than refused at
-                      the end, because being told what is wrong after pressing a disabled button is how
-                      a form wastes somebody's time. */}
-                  {needsPlace(raw) && placed !== toReceived(raw) && (
-                    <Flex align="center" gap="1" color="orange.fg" data-testid={`accept-unbalanced-${item.productId}`}>
-                      <Icon as={TriangleAlert} boxSize="4" />
-                      <Text fontSize="sm">
-                        {t("restock.accept.unbalanced", {
-                          placed: placed.toString(),
-                          counted: toReceived(raw).toString(),
-                        })}
-                      </Text>
-                    </Flex>
-                  )}
                 </Flex>
 
-                {/* E — placements. A delivery of 100 does not go on one shelf (#154). */}
+                {/* E — PUT-AWAY, the heart of accepting (#201 relayout). A delivery of 100 does not
+                    go on one shelf (#154), and naming the shelf is PART of accepting rather than a
+                    later chore (owner, 2026-07-17). The balance pill turns green the moment the
+                    shelves add up to the count beside them — the running total that used to sit up in
+                    the count row, moved to where the decision it judges is made. */}
                 {!noneArrived(raw) && (
-                  <Stack gap="2">
-                    <Text fontSize="sm" fontWeight="medium">
-                      {t("restock.accept.placements")}
-                    </Text>
+                  <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card">
+                    <Stack gap="2">
+                      <Flex align="center" gap="2">
+                        <Icon as={LayoutGrid} boxSize="4" color="brand.fg" />
+                        <Text fontSize="sm" fontWeight="semibold">
+                          {t("restock.accept.putaway")}
+                        </Text>
+                        <Spacer />
+
+                        {/* The balance, WHILE typing — being told what is wrong only after pressing a
+                            disabled button is how a form wastes somebody's time. Green when it adds up,
+                            orange (and carrying the guard's testid) until it does. */}
+                        {needsPlace(raw) &&
+                          (placed === toReceived(raw) ? (
+                            <Badge colorPalette="green" data-testid={`accept-balanced-${item.productId}`}>
+                              {t("restock.accept.balancePlaced", {
+                                placed: placed.toString(),
+                                counted: toReceived(raw).toString(),
+                              })}
+                            </Badge>
+                          ) : (
+                            <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
+                              {t("restock.accept.balancePlaced", {
+                                placed: placed.toString(),
+                                counted: toReceived(raw).toString(),
+                              })}
+                            </Badge>
+                          ))}
+                      </Flex>
 
                     {/* B — where it already lives (#157 relayout). This used to sit up beside the
                         product, which is where you read ABOUT a product; it is really advice about
@@ -600,7 +628,8 @@ export function RestockAcceptPage() {
                       <Icon as={Plus} boxSize="4" />
                       {t("restock.accept.addPlacement")}
                     </Button>
-                  </Stack>
+                    </Stack>
+                  </Box>
                 )}
 
                 {/* F — what arrived broken. Never enters stock (#154).
