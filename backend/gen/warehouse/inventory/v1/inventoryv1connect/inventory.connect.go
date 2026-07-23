@@ -72,6 +72,9 @@ const (
 	// InventoryServiceBatchListProcedure is the fully-qualified name of the InventoryService's
 	// BatchList RPC.
 	InventoryServiceBatchListProcedure = "/warehouse.inventory.v1.InventoryService/BatchList"
+	// InventoryServiceCostLayerListProcedure is the fully-qualified name of the InventoryService's
+	// CostLayerList RPC.
+	InventoryServiceCostLayerListProcedure = "/warehouse.inventory.v1.InventoryService/CostLayerList"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -98,6 +101,8 @@ type InventoryServiceClient interface {
 	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
 	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
 	BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error)
+	// The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
+	CostLayerList(context.Context, *connect.Request[v1.CostLayerListRequest]) (*connect.Response[v1.CostLayerListResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -189,6 +194,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
 			connect.WithClientOptions(opts...),
 		),
+		costLayerList: connect.NewClient[v1.CostLayerListRequest, v1.CostLayerListResponse](
+			httpClient,
+			baseURL+InventoryServiceCostLayerListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("CostLayerList")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -207,6 +218,7 @@ type inventoryServiceClient struct {
 	productPlaces        *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations   *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
 	batchList            *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
+	costLayerList        *connect.Client[v1.CostLayerListRequest, v1.CostLayerListResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -274,6 +286,11 @@ func (c *inventoryServiceClient) BatchList(ctx context.Context, req *connect.Req
 	return c.batchList.CallUnary(ctx, req)
 }
 
+// CostLayerList calls warehouse.inventory.v1.InventoryService.CostLayerList.
+func (c *inventoryServiceClient) CostLayerList(ctx context.Context, req *connect.Request[v1.CostLayerListRequest]) (*connect.Response[v1.CostLayerListResponse], error) {
+	return c.costLayerList.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -299,6 +316,8 @@ type InventoryServiceHandler interface {
 	// The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
 	// detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
 	BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error)
+	// The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
+	CostLayerList(context.Context, *connect.Request[v1.CostLayerListRequest]) (*connect.Response[v1.CostLayerListResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -386,6 +405,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceCostLayerListHandler := connect.NewUnaryHandler(
+		InventoryServiceCostLayerListProcedure,
+		svc.CostLayerList,
+		connect.WithSchema(inventoryServiceMethods.ByName("CostLayerList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -414,6 +439,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceStockPickLocationsHandler.ServeHTTP(w, r)
 		case InventoryServiceBatchListProcedure:
 			inventoryServiceBatchListHandler.ServeHTTP(w, r)
+		case InventoryServiceCostLayerListProcedure:
+			inventoryServiceCostLayerListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -473,4 +500,8 @@ func (UnimplementedInventoryServiceHandler) StockPickLocations(context.Context, 
 
 func (UnimplementedInventoryServiceHandler) BatchList(context.Context, *connect.Request[v1.BatchListRequest]) (*connect.Response[v1.BatchListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) CostLayerList(context.Context, *connect.Request[v1.CostLayerListRequest]) (*connect.Response[v1.CostLayerListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.CostLayerList is not implemented"))
 }

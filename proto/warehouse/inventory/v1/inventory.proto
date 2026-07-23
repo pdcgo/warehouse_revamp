@@ -44,6 +44,9 @@ service InventoryService {
   // The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
   // detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
   rpc BatchList(BatchListRequest) returns (BatchListResponse);
+
+  // The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
+  rpc CostLayerList(CostLayerListRequest) returns (CostLayerListResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -704,4 +707,44 @@ message BatchListResponse {
   // batch, and how many are expiring soon — the batch list's header numbers.
   int64 ready_value_total = 3;
   uint64 expiring_soon_count = 4;
+}
+
+// One row of the PRICES tab (#209) — stock value by cost price. Batches that froze the same unit cost
+// form one cost layer; FIFO draws the oldest batch, but the value view groups by price.
+message CostLayer {
+  // ⚠ cost_known = false is UNKNOWN, not free (#74): unit_cost is then 0 and amount is 0, which the
+  // screen renders "Unknown" — a real Rp 0 layer cannot happen (a batch with no cost has no value).
+  int64 unit_cost = 1;
+  bool cost_known = 2;
+  // Ready units carrying this cost, across every shelf.
+  int64 on_hand = 3;
+  // on_hand × unit_cost, whole rupiah.
+  int64 amount = 4;
+}
+
+message CostLayerListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A product accrues a cost layer per distinct price it ever arrived at, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message CostLayerListResponse {
+  repeated CostLayer layers = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+  // The header total — stock value summed over every layer (known-cost only, #74).
+  int64 total_value = 3;
 }
