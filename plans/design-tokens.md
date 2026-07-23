@@ -40,6 +40,25 @@ than raw hexes. The full violet ramp lives in `theme.ts` as `brand.50…950`.
 | 14px body | `globalCss` body `fontSize: "sm"` | 14px, without rescaling the rem spacing scale |
 | tabular numerics | `textStyles.numeric` | `fontVariantNumeric: tabular-nums` |
 
+## Type scale
+
+The mock's typographic roles, formalized so the app inherits them without every screen restating
+sizes. Headings resolve through the `heading` recipe (a `Heading size="md"` is the app's page title);
+the roles Chakra has no component for are named `textStyles`.
+
+| Role in the mocks | Where | Size / weight |
+| --- | --- | --- |
+| Page title (`.page-head h1`) | `heading` recipe `md` — `Heading size="md"` | 22px / 700 |
+| Section · card title (`.card-title`) | `heading` recipe `sm` — `Heading size="sm"` | 15px / 600 |
+| Large page title | `heading` recipe `lg` | 26px / 700 |
+| Uppercase micro-label (`.stat-label`, `.nav-label`, `thead th`) | `textStyles.label` | 11px / 700, uppercase, `letter-spacing .05em` |
+| Muted caption / subtitle (`.page-head p`, `.stat-sub`) | `textStyles.caption` | 12px |
+| Stat value (`.stat-value`) | `textStyles.statValue` | 21px / 650, tabular |
+
+Chakra's `Heading size="md"` defaults to 16px/600 — too small for the mock's 22px page title, which is
+why the sizes are overridden on the recipe (scoped to Headings) rather than by touching the shared
+`md`/`sm` textStyles other components reference.
+
 Chakra maps `radii.l2`/`l3` onto the control and container recipes, so remapping those two aliases is
 what makes every button/input round to 8px and every card to 12px app-wide.
 
