@@ -75,6 +75,9 @@ const BatchesPage = lazy(() => import("./pages/batches").then((m) => ({ default:
 const BatchDetailPage = lazy(() =>
   import("./pages/batch-detail").then((m) => ({ default: m.BatchDetailPage })),
 );
+const BatchReceiptPage = lazy(() =>
+  import("./pages/batch-receipt").then((m) => ({ default: m.BatchReceiptPage })),
+);
 const WarehouseProductPage = lazy(() =>
   import("./pages/warehouse-product").then((m) => ({ default: m.WarehouseProductPage })),
 );
@@ -211,6 +214,9 @@ export const router = createBrowserRouter([
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },
       // After accepting, print the shelf labels for what landed (#207) — the step after accept.
       { path: "inventories/restock/:requestId/labels", element: <RestockLabelsPage /> },
+      // The goods-received receipt for the delivery (#219) — a printable document, reached from an
+      // accepted restock and from a batch's Print receipt (?batch= highlights that product's line).
+      { path: "inventories/restock/:requestId/receipt", element: <BatchReceiptPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.

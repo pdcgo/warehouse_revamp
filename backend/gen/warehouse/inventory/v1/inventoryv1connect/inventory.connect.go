@@ -87,6 +87,9 @@ const (
 	// InventoryServiceBatchPlacementListProcedure is the fully-qualified name of the InventoryService's
 	// BatchPlacementList RPC.
 	InventoryServiceBatchPlacementListProcedure = "/warehouse.inventory.v1.InventoryService/BatchPlacementList"
+	// InventoryServiceBatchReceiptProcedure is the fully-qualified name of the InventoryService's
+	// BatchReceipt RPC.
+	InventoryServiceBatchReceiptProcedure = "/warehouse.inventory.v1.InventoryService/BatchReceipt"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -125,6 +128,8 @@ type InventoryServiceClient interface {
 	// filtered by batch, so there is no separate event RPC.
 	BatchDetail(context.Context, *connect.Request[v1.BatchDetailRequest]) (*connect.Response[v1.BatchDetailResponse], error)
 	BatchPlacementList(context.Context, *connect.Request[v1.BatchPlacementListRequest]) (*connect.Response[v1.BatchPlacementListResponse], error)
+	// The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
+	BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -246,6 +251,12 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchPlacementList")),
 			connect.WithClientOptions(opts...),
 		),
+		batchReceipt: connect.NewClient[v1.BatchReceiptRequest, v1.BatchReceiptResponse](
+			httpClient,
+			baseURL+InventoryServiceBatchReceiptProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -269,6 +280,7 @@ type inventoryServiceClient struct {
 	productStockSummary  *connect.Client[v1.ProductStockSummaryRequest, v1.ProductStockSummaryResponse]
 	batchDetail          *connect.Client[v1.BatchDetailRequest, v1.BatchDetailResponse]
 	batchPlacementList   *connect.Client[v1.BatchPlacementListRequest, v1.BatchPlacementListResponse]
+	batchReceipt         *connect.Client[v1.BatchReceiptRequest, v1.BatchReceiptResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -361,6 +373,11 @@ func (c *inventoryServiceClient) BatchPlacementList(ctx context.Context, req *co
 	return c.batchPlacementList.CallUnary(ctx, req)
 }
 
+// BatchReceipt calls warehouse.inventory.v1.InventoryService.BatchReceipt.
+func (c *inventoryServiceClient) BatchReceipt(ctx context.Context, req *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error) {
+	return c.batchReceipt.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -398,6 +415,8 @@ type InventoryServiceHandler interface {
 	// filtered by batch, so there is no separate event RPC.
 	BatchDetail(context.Context, *connect.Request[v1.BatchDetailRequest]) (*connect.Response[v1.BatchDetailResponse], error)
 	BatchPlacementList(context.Context, *connect.Request[v1.BatchPlacementListRequest]) (*connect.Response[v1.BatchPlacementListResponse], error)
+	// The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
+	BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -515,6 +534,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchPlacementList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceBatchReceiptHandler := connect.NewUnaryHandler(
+		InventoryServiceBatchReceiptProcedure,
+		svc.BatchReceipt,
+		connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -553,6 +578,8 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceBatchDetailHandler.ServeHTTP(w, r)
 		case InventoryServiceBatchPlacementListProcedure:
 			inventoryServiceBatchPlacementListHandler.ServeHTTP(w, r)
+		case InventoryServiceBatchReceiptProcedure:
+			inventoryServiceBatchReceiptHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -632,4 +659,8 @@ func (UnimplementedInventoryServiceHandler) BatchDetail(context.Context, *connec
 
 func (UnimplementedInventoryServiceHandler) BatchPlacementList(context.Context, *connect.Request[v1.BatchPlacementListRequest]) (*connect.Response[v1.BatchPlacementListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchPlacementList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchReceipt is not implemented"))
 }

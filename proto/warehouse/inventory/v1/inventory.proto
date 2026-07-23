@@ -60,6 +60,9 @@ service InventoryService {
   // filtered by batch, so there is no separate event RPC.
   rpc BatchDetail(BatchDetailRequest) returns (BatchDetailResponse);
   rpc BatchPlacementList(BatchPlacementListRequest) returns (BatchPlacementListResponse);
+
+  // The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
+  rpc BatchReceipt(BatchReceiptRequest) returns (BatchReceiptResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -926,4 +929,61 @@ message BatchPlacementListRequest {
 message BatchPlacementListResponse {
   repeated BatchShelf shelves = 1;
   warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// The goods-received receipt for one DELIVERY (#219) — the printable document behind a batch. A
+// delivery spans several products, so the receipt lists them all; a batch's "Print receipt" opens this
+// with that product's line highlighted (the frontend does the highlight from `batch_id`).
+//
+// It is assembled from the delivery's batches (stock_batches grouped by delivery_id): the stock service
+// owns the acceptance/cost projection, so it owns the receipt. Bounded by one delivery's product count,
+// so it does NOT paginate.
+message BatchReceiptRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The delivery = the restock request id (the batch's delivery_id).
+  uint64 delivery_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// One product line on the receipt. Accepted = arrived − damaged: only accepted units entered stock and
+// froze their cost; damaged units never became stock. Line cost is what the supplier invoiced.
+message BatchReceiptLine {
+  uint64 batch_id = 1;
+  uint64 product_id = 2;
+  string sku = 3;
+  string name = 4;
+  int64 arrived = 5;
+  int64 damaged = 6;
+  int64 accepted = 7; // arrived − damaged
+  int64 unit_cost = 8;
+  bool cost_known = 9; // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
+  int64 line_cost = 10; // arrived × unit_cost
+  // Where this batch's units were put away — 0 = the unplaced pile. A line can span shelves.
+  repeated uint64 rack_ids = 11;
+}
+
+message BatchReceiptResponse {
+  uint64 delivery_id = 1;
+  string receipt_no = 2;
+  uint64 supplier_id = 3; // name resolved client-side
+  uint64 warehouse_id = 4; // the destination warehouse (a team) — name resolved client-side
+  int64 arrived_at_unix = 5; // when the delivery was accepted
+  // The two distinct actors: who RAISED the restock, and who ACCEPTED the delivery. Names client-side.
+  uint64 created_by = 6;
+  uint64 accepted_by = 7;
+  repeated BatchReceiptLine lines = 8;
+  int64 total_accepted = 9; // Σ accepted
+  int64 total_value = 10; // Σ line_cost over known-cost lines only (#74)
 }

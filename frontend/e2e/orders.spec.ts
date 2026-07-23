@@ -581,6 +581,14 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   // One-per-shelf collapses the run to one label per placement — the two shelves, two labels.
   await page.getByTestId("labels-mode").getByText("Shelf").click();
   await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(2);
+
+  // #219 — the goods-received receipt for the whole delivery. One product line, and the numbers the
+  // acceptance wrote: 10 arrived, 2 broken, 8 accepted into stock, so the delivery total is 8.
+  await page.goto(`/inventories/restock/${seeded.requestId}/receipt`);
+  await expect(page.getByTestId("batch-receipt-doc")).toBeVisible();
+  const receiptLine = page.getByTestId("batch-receipt-lines");
+  await expect(receiptLine).toContainText("e2e accept");
+  await expect(page.getByTestId("batch-receipt-total-accepted")).toHaveText("8");
 });
 
 // #145 — a selling team's DEFAULT SHIPPING WAREHOUSE pre-fills the order form.
