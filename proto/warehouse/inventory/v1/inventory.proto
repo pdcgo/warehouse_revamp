@@ -112,6 +112,10 @@ message StockMovement {
   // The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
   // arrived before anyone shelved it, and every movement written before racks carried stock at all.
   uint64 rack_id = 11;
+
+  // Which batch moved (#209). 0 = a batch-less event — a shelf recount reconciles the whole shelf and
+  // shows Batch "—" (#211), even though its delta lands on the oldest batch underneath (FIFO).
+  uint64 batch_id = 12;
 }
 
 // -------------------------------------------------------------------------- reads
@@ -165,6 +169,11 @@ message StockHistoryRequest {
   // would then read as "never" whenever the last stock-take fell off page one — which is precisely
   // when the question is worth asking.
   MovementKind kind = 4;
+
+  // Narrow to ONE batch (#209); 0 = every batch. The Stock History tab's batch filter — and a batch
+  // recount (batch_id 0) drops out of a batch-specific view, as it should. Placement History passes
+  // `kind = MOVE` alongside to become the moves-only, batch-filterable view of the same ledger.
+  uint64 batch_id = 5;
 }
 
 message StockHistoryResponse {

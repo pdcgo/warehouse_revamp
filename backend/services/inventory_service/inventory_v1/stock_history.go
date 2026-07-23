@@ -29,6 +29,13 @@ func (s *Service) StockHistory(
 		query = query.Where("kind = ?", int32(kind))
 	}
 
+	// One batch, or all of them (#209). A batch-specific view drops batch-less events (a shelf recount)
+	// by construction — `batch_id = N` never matches a NULL — which is exactly the "—" row falling out
+	// of the filter.
+	if batchID := req.Msg.GetBatchId(); batchID != 0 {
+		query = query.Where("batch_id = ?", batchID)
+	}
+
 	var total int64
 
 	err := query.Count(&total).Error

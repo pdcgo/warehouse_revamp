@@ -239,7 +239,10 @@ type StockMovement struct {
 	CreatedAt   string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
 	// The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
 	// arrived before anyone shelved it, and every movement written before racks carried stock at all.
-	RackId        uint64 `protobuf:"varint,11,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
+	RackId uint64 `protobuf:"varint,11,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
+	// Which batch moved (#209). 0 = a batch-less event — a shelf recount reconciles the whole shelf and
+	// shows Batch "—" (#211), even though its delta lands on the oldest batch underneath (FIFO).
+	BatchId       uint64 `protobuf:"varint,12,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -347,6 +350,13 @@ func (x *StockMovement) GetCreatedAt() string {
 func (x *StockMovement) GetRackId() uint64 {
 	if x != nil {
 		return x.RackId
+	}
+	return 0
+}
+
+func (x *StockMovement) GetBatchId() uint64 {
+	if x != nil {
+		return x.BatchId
 	}
 	return 0
 }
@@ -466,7 +476,11 @@ type StockHistoryRequest struct {
 	// grows forever, so a client-side filter narrows the loaded page only. "When was this last counted"
 	// would then read as "never" whenever the last stock-take fell off page one — which is precisely
 	// when the question is worth asking.
-	Kind          MovementKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kind,omitempty"`
+	Kind MovementKind `protobuf:"varint,4,opt,name=kind,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kind,omitempty"`
+	// Narrow to ONE batch (#209); 0 = every batch. The Stock History tab's batch filter — and a batch
+	// recount (batch_id 0) drops out of a batch-specific view, as it should. Placement History passes
+	// `kind = MOVE` alongside to become the moves-only, batch-filterable view of the same ledger.
+	BatchId       uint64 `protobuf:"varint,5,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -527,6 +541,13 @@ func (x *StockHistoryRequest) GetKind() MovementKind {
 		return x.Kind
 	}
 	return MovementKind_MOVEMENT_KIND_UNSPECIFIED
+}
+
+func (x *StockHistoryRequest) GetBatchId() uint64 {
+	if x != nil {
+		return x.BatchId
+	}
+	return 0
 }
 
 type StockHistoryResponse struct {
@@ -2951,7 +2972,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04R\vwarehouseId\x12\x17\n" +
-	"\aon_hand\x18\x03 \x01(\x03R\x06onHand\"\xd1\x02\n" +
+	"\aon_hand\x18\x03 \x01(\x03R\x06onHand\"\xec\x02\n" +
 	"\rStockMovement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
@@ -2966,20 +2987,22 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\n" +
 	" \x01(\tR\tcreatedAt\x12\x17\n" +
-	"\arack_id\x18\v \x01(\x04R\x06rackId\"\x8c\x01\n" +
+	"\arack_id\x18\v \x01(\x04R\x06rackId\x12\x19\n" +
+	"\bbatch_id\x18\f \x01(\x04R\abatchId\"\x8c\x01\n" +
 	"\x10StockListRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12;\n" +
 	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\x8b\x01\n" +
 	"\x11StockListResponse\x12:\n" +
 	"\x06levels\x18\x01 \x03(\v2\".warehouse.inventory.v1.StockLevelR\x06levels\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xf1\x01\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x8c\x02\n" +
 	"\x13StockHistoryRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12&\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12;\n" +
 	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x128\n" +
-	"\x04kind\x18\x04 \x01(\x0e2$.warehouse.inventory.v1.MovementKindR\x04kind:\v\x92\xb5\x18\a\n" +
+	"\x04kind\x18\x04 \x01(\x0e2$.warehouse.inventory.v1.MovementKindR\x04kind\x12\x19\n" +
+	"\bbatch_id\x18\x05 \x01(\x04R\abatchId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\x97\x01\n" +
 	"\x14StockHistoryResponse\x12C\n" +
 	"\tmovements\x18\x01 \x03(\v2%.warehouse.inventory.v1.StockMovementR\tmovements\x12:\n" +

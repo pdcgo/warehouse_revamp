@@ -234,5 +234,10 @@ func movementToProto(m *inventory_service_models.StockMovement) *inventoryv1.Sto
 		out.RackId = *m.RackID
 	}
 
+	// A batch-less event (a shelf recount) carries 0 — the "—" in the Batch column (#209/#211).
+	if m.BatchID != nil {
+		out.BatchId = *m.BatchID
+	}
+
 	return out
 }
