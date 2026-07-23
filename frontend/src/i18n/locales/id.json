@@ -28,6 +28,9 @@
     "settlement": "Kewajiban"
   },
   "menu": {
+    "theme": "Tema",
+    "themeLight": "Terang",
+    "themeDark": "Gelap",
     "language": "Bahasa",
     "signOut": "Keluar"
   },
