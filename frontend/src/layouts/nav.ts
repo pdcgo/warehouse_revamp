@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, Layers, MapPin, Package, PackagePlus, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -77,12 +77,6 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
   ];
-
-  // Stock is the on-hand list, and it is the WAREHOUSE's: a selling team RAISES restocks but holds no
-  // stock of its own — the goods live at the warehouse — so it has no on-hand list to show.
-  if (teamType === TeamType.WAREHOUSE) {
-    children.push({ to: "/inventories/stock", label: "nav.stock", icon: PackagePlus });
-  }
 
   // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
   // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
