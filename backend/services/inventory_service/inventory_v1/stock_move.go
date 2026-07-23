@@ -46,6 +46,15 @@ func (s *Service) StockMove(
 	qty := req.Msg.GetQuantity()
 	actor := actorFrom(ctx)
 
+	// Which batch's units are moving (#210). 0 keeps the pre-batch behaviour; a real batch relocates the
+	// shelf_batch rows too and rides on both ledger legs.
+	batchID := req.Msg.GetBatchId()
+
+	var batchPtr *uint64
+	if batchID != 0 {
+		batchPtr = &batchID
+	}
+
 	// Both ends must be NAMED. Proto validation requires them, but this re-checks rather than reading
 	// the zero value, because an absent place is indistinguishable from "unplaced" once it reaches
 	// placeRack — both are nil — and silently moving goods to or from a pile nobody named is exactly
@@ -83,12 +92,30 @@ func (s *Service) StockMove(
 			}
 		}
 
+		// A named batch relocates the (shelf × batch) rows too, and must belong to this warehouse's this
+		// product — another product's or warehouse's batch reads as NotFound. Done before the shelf
+		// totals move, so an over-move of a batch is refused before anything is credited anywhere.
+		if batchID != 0 {
+			ok, checkErr := batchBelongs(tx, warehouseID, productID, batchID)
+			if checkErr != nil {
+				return checkErr
+			}
+			if !ok {
+				return errBatchMissing
+			}
+
+			moveErr := moveShelfBatch(tx, batchID, from, to, qty)
+			if moveErr != nil {
+				return moveErr
+			}
+		}
+
 		fromBalance, err := applyDelta(tx, warehouseID, productID, from, -qty)
 		if err != nil {
 			return err
 		}
 
-		fromMv, err = appendMovement(tx, warehouseID, productID, from, nil, -qty, fromBalance,
+		fromMv, err = appendMovement(tx, warehouseID, productID, from, batchPtr, -qty, fromBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_MOVE, req.Msg.GetReason(), "", actor)
 		if err != nil {
 			return err
@@ -99,7 +126,7 @@ func (s *Service) StockMove(
 			return err
 		}
 
-		toMv, err = appendMovement(tx, warehouseID, productID, to, nil, qty, toBalance,
+		toMv, err = appendMovement(tx, warehouseID, productID, to, batchPtr, qty, toBalance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_MOVE, req.Msg.GetReason(), "", actor)
 
 		return err
@@ -133,4 +160,44 @@ func samePlace(a, b *uint64) bool {
 	}
 
 	return *a == *b
+}
+
+// batchBelongs reports whether a batch is this warehouse's this product — the scope check every
+// batch-aware write makes before touching it, so a batch id cannot reach another building's stock.
+func batchBelongs(tx *gorm.DB, warehouseID, productID, batchID uint64) (bool, error) {
+	var n int64
+
+	err := tx.
+		Raw(`SELECT COUNT(*) FROM stock_batches WHERE id = ? AND warehouse_id = ? AND product_id = ?`,
+			batchID, warehouseID, productID).
+		Scan(&n).
+		Error
+
+	return n > 0, err
+}
+
+// moveShelfBatch relocates `qty` of one batch from one shelf to another (#210): debit the source —
+// refused if it does not hold that many OF THE BATCH — then credit the destination. Both inside the
+// caller's transaction, so this pair is atomic with the shelf-total move it accompanies.
+func moveShelfBatch(tx *gorm.DB, batchID uint64, from, to *uint64, qty int64) error {
+	res := tx.Exec(`
+		UPDATE stock_shelf_batches SET qty = qty - ?, updated_at = NOW()
+		WHERE batch_id = ? AND rack_id IS NOT DISTINCT FROM ? AND qty >= ?`,
+		qty, batchID, from, qty)
+	if res.Error != nil {
+		return res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return errInsufficientBatch
+	}
+
+	// Credit the destination — a new (batch, rack) row, or add to the one already there. NULLS NOT
+	// DISTINCT on the unique index makes ON CONFLICT match the unplaced pile the same way.
+	return tx.Exec(`
+		INSERT INTO stock_shelf_batches (batch_id, rack_id, qty, updated_at)
+		VALUES (?, ?, ?, NOW())
+		ON CONFLICT (batch_id, rack_id) DO UPDATE SET
+		    qty = stock_shelf_batches.qty + EXCLUDED.qty, updated_at = NOW()`,
+		batchID, to, qty).Error
 }

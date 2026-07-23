@@ -1004,8 +1004,13 @@ type StockMoveRequest struct {
 	To   *StockPlace `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
 	// How much to move. Moving MORE than the source holds is refused — the ledger must never record
 	// goods leaving a place that did not have them.
-	Quantity      int64  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Reason        string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	Quantity int64  `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Reason   string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	// WHICH BATCH's units are moving (#209/#210). Stock is per (shelf × batch), so a move relocates one
+	// delivery's units and the batch travels with them — refused if the from-shelf does not hold that
+	// many OF THAT BATCH. 0 keeps the pre-batch behaviour (move the shelf total, no batch tracked) for
+	// legacy stock that predates batches; the Move dialog always sends a real batch.
+	BatchId       uint64 `protobuf:"varint,7,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1080,6 +1085,13 @@ func (x *StockMoveRequest) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *StockMoveRequest) GetBatchId() uint64 {
+	if x != nil {
+		return x.BatchId
+	}
+	return 0
 }
 
 type StockMoveResponse struct {
@@ -3438,7 +3450,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"StockPlace\x12\"\n" +
 	"\arack_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +
 	"\bunplaced\x18\x02 \x01(\bB\a\xbaH\x04j\x02\b\x01H\x00R\bunplacedB\x0e\n" +
-	"\x05place\x12\x05\xbaH\x02\b\x01\"\xba\x02\n" +
+	"\x05place\x12\x05\xbaH\x02\b\x01\"\xd5\x02\n" +
 	"\x10StockMoveRequest\x12.\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\vwarehouseId\x12&\n" +
 	"\n" +
@@ -3446,7 +3458,8 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x04from\x18\x03 \x01(\v2\".warehouse.inventory.v1.StockPlaceB\x06\xbaH\x03\xc8\x01\x01R\x04from\x12:\n" +
 	"\x02to\x18\x04 \x01(\v2\".warehouse.inventory.v1.StockPlaceB\x06\xbaH\x03\xc8\x01\x01R\x02to\x12#\n" +
 	"\bquantity\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\bquantity\x12 \n" +
-	"\x06reason\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason:\v\x92\xb5\x18\a\n" +
+	"\x06reason\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason\x12\x19\n" +
+	"\bbatch_id\x18\a \x01(\x04R\abatchId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\xa7\x01\n" +
 	"\x11StockMoveResponse\x12J\n" +
 	"\rfrom_movement\x18\x01 \x01(\v2%.warehouse.inventory.v1.StockMovementR\ffromMovement\x12F\n" +

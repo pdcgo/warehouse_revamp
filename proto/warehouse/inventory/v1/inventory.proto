@@ -312,6 +312,12 @@ message StockMoveRequest {
   // goods leaving a place that did not have them.
   int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
   string reason = 6 [(buf.validate.field).string.max_len = 200];
+
+  // WHICH BATCH's units are moving (#209/#210). Stock is per (shelf × batch), so a move relocates one
+  // delivery's units and the batch travels with them — refused if the from-shelf does not hold that
+  // many OF THAT BATCH. 0 keeps the pre-batch behaviour (move the shelf total, no batch tracked) for
+  // legacy stock that predates batches; the Move dialog always sends a real batch.
+  uint64 batch_id = 7;
 }
 
 message StockMoveResponse {

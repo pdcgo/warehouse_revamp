@@ -65,8 +65,27 @@ func writeError(err error) error {
 		return connect.NewError(connect.CodeNotFound, errRackMissing)
 	}
 
+	// Not enough of a specific batch on the shelf (#210) — the same class of client error as an
+	// over-draw of the shelf total.
+	if errors.Is(err, errInsufficientBatch) {
+		return connect.NewError(connect.CodeFailedPrecondition, errInsufficientBatch)
+	}
+
+	// A batch that is not this warehouse's this product — indistinguishable from one that does not
+	// exist, like every scoped id.
+	if errors.Is(err, errBatchMissing) {
+		return connect.NewError(connect.CodeNotFound, errBatchMissing)
+	}
+
 	return connect.NewError(connect.CodeInternal, err)
 }
+
+var (
+	// errInsufficientBatch: the from-shelf does not hold that many of the named batch (#210).
+	errInsufficientBatch = errors.New("not enough of this batch on the shelf")
+	// errBatchMissing: the batch is not this warehouse's this product.
+	errBatchMissing = errors.New("batch not found for this product in this warehouse")
+)
 
 // actorFrom pulls the acting user's id from the request identity (0 if somehow absent — the ledger
 // records who, but a missing actor must not fail a movement).
