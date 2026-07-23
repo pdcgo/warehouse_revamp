@@ -1138,6 +1138,10 @@
     "ready": "Ready",
     "amount": "Amount",
     "expiring": "Expiring",
+    "lastOut": "Last out",
+    "lastIn": "Last in",
+    "lastOpnameCol": "Last opname",
+    "readyValue": "Ready value",
     "lineCost": "Line cost",
     "noBatches": "No deliveries of this product yet.",
     "owner": "Owner"

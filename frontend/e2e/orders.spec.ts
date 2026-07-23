@@ -677,10 +677,10 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   // filter earns: without it, page one of the ledger would decide the answer.
   await expect(page.getByTestId("warehouse-product-last-opname")).toHaveText("Never counted");
 
-  // Prices — the cost is known because a fulfilled restock recorded it (#155), so the valuation is a
-  // real figure rather than "Unknown".
+  // Prices — one cost layer, its cost known because a fulfilled restock froze it (#155/#209), so the
+  // layers table and the total valuation are real figures rather than "Unknown".
   await page.getByTestId("wp-tab-prices").click();
-  await expect(page.getByTestId("warehouse-product-unitcost")).not.toHaveText("Unknown");
+  await expect(page.getByTestId("wp-prices-table")).not.toContainText("Unknown");
   await expect(page.getByTestId("warehouse-product-valuation")).not.toHaveText("Unknown");
 
   // Placements — both shelves it was split across.

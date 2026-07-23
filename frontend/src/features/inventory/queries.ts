@@ -244,6 +244,39 @@ export function useCostLayers(args: { warehouseId: bigint | undefined; productId
   });
 }
 
+// The Info tab's stat tiles in one aggregate read (#209): ready & ongoing stock, last counted, the
+// last delivery.
+export function useProductStockSummary(args: { warehouseId: bigint | undefined; productId: bigint }) {
+  const { warehouseId, productId } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, { stockSummary: productId.toString() }),
+    enabled: warehouseId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.productStockSummary({ teamId: warehouseId!, productId });
+      return res;
+    },
+  });
+}
+
+// Where a product sits, per shelf, with the last in/out/opname dates (#209) — the Placement tab.
+export function usePlacementList(args: { warehouseId: bigint | undefined; productId: bigint }) {
+  const { warehouseId, productId } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, { placementList: productId.toString() }),
+    enabled: warehouseId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.placementList({
+        teamId: warehouseId!,
+        productId,
+        page: { page: 1, limit: 100 },
+      });
+      return res.placements;
+    },
+  });
+}
+
 // Receive, adjust and move all change what is on a shelf, so they all land here.
 //
 // This also invalidates RESTOCK and RACKS, because stock is the thing those screens are about: a

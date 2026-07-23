@@ -1138,6 +1138,10 @@
     "ready": "Siap",
     "amount": "Nilai",
     "expiring": "Kedaluwarsa",
+    "lastOut": "Keluar terakhir",
+    "lastIn": "Masuk terakhir",
+    "lastOpnameCol": "Opname terakhir",
+    "readyValue": "Nilai siap",
     "lineCost": "Biaya baris",
     "noBatches": "Belum ada kiriman produk ini.",
     "owner": "Pemilik"

@@ -27,7 +27,9 @@ import { useTeam } from "../../features/team/TeamContext";
 import { kindLabel } from "../../features/inventory/movementKind";
 import {
   useCostLayers,
+  usePlacementList,
   useProductBatches,
+  useProductStockSummary,
   useWarehouseProduct,
   useWarehouseProductActivity,
 } from "../../features/inventory/queries";
@@ -56,6 +58,11 @@ function formatDateUnix(unix: bigint): string {
 // A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
 function isExpiringSoon(unix: bigint): boolean {
   return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
+}
+
+// A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.
+function isStaleOpname(unix: bigint): boolean {
+  return Number(unix) * 1000 < Date.now() - 14 * 24 * 60 * 60 * 1000;
 }
 
 // WarehouseProductPage is what a WAREHOUSE sees when it opens a product (#144/#158).
@@ -112,6 +119,14 @@ export function WarehouseProductPage() {
 
   const batchesQuery = useProductBatches({ warehouseId, productId });
   const batchRows = batchesQuery.data ?? [];
+
+  // The last in/out/opname per shelf (#209) — merged onto the placement rows by rack so a stale count
+  // flags a shelf overdue. `places` carries the rack CODE; this read carries the dates.
+  const placementDates = usePlacementList({ warehouseId, productId }).data ?? [];
+  const datesByRack = new Map(placementDates.map((p) => [p.rackId, p]));
+
+  // The Info tab's money tiles (#209): Ready value, and the estimated value of what is inbound.
+  const summary = useProductStockSummary({ warehouseId, productId }).data;
 
   const loading = stockQuery.isPending && warehouseId !== undefined && productId !== 0n;
   const error = stockQuery.isError ? rpcError(stockQuery.error) : "";
@@ -297,6 +312,11 @@ export function WarehouseProductPage() {
               {onHand.toString()}
             </Stat>
 
+            {/* The value of what is ready now — the sum across cost layers (#209). */}
+            <Stat label={t("warehouseProduct.readyValue")} testId="warehouse-product-ready-value">
+              {summary ? formatRupiah(summary.readyValue) : "—"}
+            </Stat>
+
             <Stat label={t("warehouseProduct.lastOpname")} testId="warehouse-product-last-opname">
               {lastOpname ? lastOpname.createdAt : t("warehouseProduct.neverCounted")}
             </Stat>
@@ -364,25 +384,44 @@ export function WarehouseProductPage() {
           </Stack>
         </Tabs.Content>
 
-        {/* Where it sits right now (#156). */}
+        {/* Where it sits, and when it last moved (#209): a stale Last opname flags a shelf overdue for
+            a count — the whole reason the dates ride beside the quantity. */}
         <Tabs.Content value="placement" flex="1">
           <Table.Root size="sm" data-testid="wp-placement-table">
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader>{t("warehouseProduct.place")}</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("warehouseProduct.lastOut")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("warehouseProduct.lastIn")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("warehouseProduct.lastOpnameCol")}</Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {places.map((p) => (
-                <Table.Row key={`${p.rackId}-${p.rackCode}`}>
-                  <Table.Cell>
-                    {/* The unplaced pile is a REAL place (#135), named in words rather than blank. */}
-                    {p.rackId === 0n ? t("racks.select.unplaced") : p.rackCode}
-                  </Table.Cell>
-                  <Table.Cell textAlign="end">{p.onHand.toString()}</Table.Cell>
-                </Table.Row>
-              ))}
+              {places.map((p) => {
+                const d = datesByRack.get(p.rackId);
+                const opname = d?.lastOpnameUnix ?? 0n;
+                return (
+                  <Table.Row key={`${p.rackId}-${p.rackCode}`}>
+                    <Table.Cell>
+                      {/* The unplaced pile is a REAL place (#135), named in words rather than blank. */}
+                      {p.rackId === 0n ? t("racks.select.unplaced") : p.rackCode}
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">{p.onHand.toString()}</Table.Cell>
+                    <Table.Cell>{d && d.lastOutUnix > 0n ? formatDateUnix(d.lastOutUnix) : "—"}</Table.Cell>
+                    <Table.Cell>{d && d.lastInUnix > 0n ? formatDateUnix(d.lastInUnix) : "—"}</Table.Cell>
+                    <Table.Cell>
+                      {opname > 0n ? (
+                        <Text color={isStaleOpname(opname) ? "orange.fg" : undefined}>
+                          {formatDateUnix(opname)}
+                        </Text>
+                      ) : (
+                        "—"
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
             </Table.Body>
           </Table.Root>
 
