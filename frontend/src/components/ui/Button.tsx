@@ -86,12 +86,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "solid", colorPalette = "brand", size = "sm", loading = false, disabled, className, children, ...rest },
+  { variant = "solid", colorPalette = "brand", size = "sm", loading = false, type = "button", disabled, className, children, ...rest },
   ref,
 ) {
   return (
+    // Default type="button" (as Chakra did): a native <button> inside a <form> is type="submit"
+    // otherwise, so any non-submit button (a picker trigger, a Cancel) would submit the form on click.
     <button
       ref={ref}
+      type={type}
       className={cn(BASE, SIZE[size], variantClasses(variant, colorPalette), className)}
       disabled={disabled || loading}
       {...rest}
@@ -112,12 +115,13 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 
 // A square button for a single icon. Defaults to the ghost look most row/toolbar actions use.
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { variant = "ghost", colorPalette = "gray", size = "sm", className, children, ...rest },
+  { variant = "ghost", colorPalette = "gray", size = "sm", type = "button", className, children, ...rest },
   ref,
 ) {
   return (
     <button
       ref={ref}
+      type={type}
       className={cn(
         "inline-flex items-center justify-center rounded-control transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60",
         ICON_SIZE[size],
