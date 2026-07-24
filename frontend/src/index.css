@@ -146,4 +146,16 @@
     font: inherit;
     cursor: pointer;
   }
+  input,
+  textarea,
+  select {
+    appearance: none;
+    background-color: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+  }
+  select {
+    cursor: pointer;
+  }
 }
