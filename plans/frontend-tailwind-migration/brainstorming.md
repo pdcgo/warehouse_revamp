@@ -1,7 +1,15 @@
 # Frontend: Chakra UI → Tailwind migration
 
-> **Status: DESIGN — awaiting owner's architecture decisions (§4).** No app code migrated yet.
-> Audited read-only across 11 subsystems (2026-07-24). This doc is the plan; code follows it.
+> **Status: DONE (2026-07-24).** Chakra UI is fully removed — the app is **Tailwind CSS v4 + Ark UI**.
+> Every phase landed on `dev`, green (tsc + build) at each commit. `@chakra-ui/react` and
+> `@emotion/react` are uninstalled; no `@chakra-ui`/`@emotion` reference remains in `src/` or `e2e/`.
+> Verified at runtime: the login→walk smoke flow, a dark-mode ([data-theme]) render, and the auth e2e
+> (9/9, incl. the theme toggle). This doc is now the record of how it was done.
+>
+> **Phases:** 0 foundation · 1 primitives (15) · 2 shared components (~30) · 3 pages+layouts+dialogs
+> (~80, two fan-out rounds) · 5 removal. One real regression caught by the smoke and fixed: Ark keeps
+> closed overlays mounted (Chakra unmounted them), so `ui/Dialog`/`Menu`/`Popover` now
+> `lazyMount + unmountOnExit`.
 
 ## Decision log
 
@@ -15,23 +23,23 @@
 | D6 | Dark-mode signal: `.dark` class vs `[data-theme]` attribute | owner | ✅ **`[data-theme]`** (2026-07-24) |
 | D7 | Tailwind **v4** (`@theme`, `@tailwindcss/vite`) vs **v3** (JS config) | owner | ✅ **v4** (2026-07-24) |
 
-**Phase 0 — DONE (2026-07-24, coexistence foundation landed on `dev`):** Tailwind v4 +
-`@tailwindcss/vite` + Ark UI + sonner installed; `src/index.css` holds the dark-aware token block +
-`@theme` mapping (Preflight omitted during coexistence); dark mode moved to `[data-theme]` (both
-signals set until Chakra is gone); all governing docs flipped. `tsc` + `vite build` green.
-**Phase 1 — IN PROGRESS.** Vertical proof landed: **`ConfirmDialog`** rebuilt on Ark UI's `Dialog`
-(focus-trap, scroll-lock, Escape/backdrop, Portal, `role="alertdialog"`) + Tailwind, SAME public API
-and `confirm-action` testid, verified open in light/dark. Established for the rest:
-- **Ark UI import + part-mapping** — `Dialog.Root/Backdrop/Positioner/Content/Title/Description/
-  CloseTrigger` (no Chakra `Header/Body/Footer/ActionTrigger` — plain divs; Cancel = `CloseTrigger`).
-- **Coexistence button reset** (index.css `@layer base`) — Preflight-off means a bare `<button>`
-  shows native UA chrome; a base-specificity reset fixes our Tailwind buttons without touching Chakra.
-- **Verification method** — a throwaway `probe.html` + Vite dev + Playwright screenshot (no backend).
+**All phases DONE (2026-07-24), in order, each green on `dev`:**
+- **Phase 0 — foundation.** Tailwind v4 + `@tailwindcss/vite` + Ark UI + sonner; `src/index.css` holds
+  the dark-aware token block + `@theme` mapping; dark mode on `[data-theme]`; governing docs flipped.
+- **Phase 1 — 15 primitives**, each screenshot-verified light/dark: `Button`/`IconButton`, `Badge`,
+  `Spinner`, `Input`, `Field`, `Select`, `Combobox`, `Menu`, `Dialog`, `Tabs`, `Table`, `Card`,
+  `StatTile`, `Popover`, `Checkbox`, `Toaster` (sonner). Same part-names as Chakra, so migration is an
+  import swap; Ark UI is the same Zag engine Chakra v3 used, so behaviour transfers.
+- **Phase 2 — ~30 shared components** in `components/` migrated (pickers keep #131/#136/#138 rules).
+- **Phase 3 — ~80 pages/layouts/dialogs** migrated in two fan-out rounds (shell + read pages, then
+  form/dialog pages + the 7 feature dialogs), mirroring the mocks.
+- **Phase 5 — removal.** `ChakraProvider` gone, `theme.ts` deleted, Preflight re-enabled, `.dark`
+  dropped (e2e assertions → `[data-theme]`), vite chunk retargeted to `ark`, both deps uninstalled.
 
-**Remaining Phase 1 primitives** (build once, then fan out): a `Dialog` wrapper (extract from
-ConfirmDialog) · `Menu` (row-actions kebab) · `Combobox` (the 7 pickers) · `Select` · `Tabs` ·
-`Field` · `Toaster` (sonner) · `Button` · `Badge`/status badges · `Table` · `Card` · `StatTile` ·
-`Pagination`. Next up per the audit: `Button` + a form `Dialog` + the `UsersTable` row `Menu`.
+**Verified:** `tsc` + `vite build` green throughout; the login→walk smoke, a dark-mode render, and the
+auth e2e (9/9) all pass at runtime. One regression the smoke caught and fixed: closed Ark overlays
+stayed mounted (Chakra unmounted them) → `ui/Dialog`/`Menu`/`Popover` default to
+`lazyMount + unmountOnExit`.
 
 > **D3 rationale (owner):** Ark UI — Chakra v3 is built on it, so composable call-sites port ~1:1;
 > and it has a Combobox (Radix doesn't), which the 7 pickers require. A headless lib is *unstyled*,
