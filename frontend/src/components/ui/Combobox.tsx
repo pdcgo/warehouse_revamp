@@ -60,7 +60,8 @@ function Trigger({ className, ...p }: ComponentProps<typeof ArkCombobox.Trigger>
 }
 
 function Positioner({ className, ...p }: ComponentProps<typeof ArkCombobox.Positioner>) {
-  return <ArkCombobox.Positioner className={cn("z-50", className)} {...p} />;
+  // z-[60] > the Dialog positioner's z-50, so a picker opened inside a modal renders above it.
+  return <ArkCombobox.Positioner className={cn("z-[60]", className)} {...p} />;
 }
 
 function Content({ className, ...p }: ComponentProps<typeof ArkCombobox.Content>) {

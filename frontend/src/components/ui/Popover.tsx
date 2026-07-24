@@ -14,7 +14,8 @@ const Anchor = ArkPopover.Anchor;
 const CloseTrigger = ArkPopover.CloseTrigger;
 
 function Positioner({ className, ...p }: ComponentProps<typeof ArkPopover.Positioner>) {
-  return <ArkPopover.Positioner className={cn("z-50", className)} {...p} />;
+  // z-[60] > the Dialog positioner's z-50, so a popover opened inside a modal renders above it.
+  return <ArkPopover.Positioner className={cn("z-[60]", className)} {...p} />;
 }
 
 function Content({ className, ...p }: ComponentProps<typeof ArkPopover.Content>) {

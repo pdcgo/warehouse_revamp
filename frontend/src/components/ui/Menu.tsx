@@ -21,7 +21,8 @@ function Content({ className, ...p }: ArkMenu.ContentProps) {
   return (
     <ArkMenu.Content
       className={cn(
-        "z-50 min-w-44 rounded-card border border-line bg-surface p-1 shadow-pop outline-none",
+        // z-[60] > the Dialog positioner's z-50, so a menu opened inside a modal renders above it.
+        "z-[60] min-w-44 rounded-card border border-line bg-surface p-1 shadow-pop outline-none",
         className,
       )}
       {...p}
