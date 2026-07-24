@@ -1,7 +1,15 @@
-import type { ComponentProps, HTMLAttributes } from "react";
-import { Combobox as ArkCombobox, Portal, useListCollection } from "@ark-ui/react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
+import { Combobox as ArkCombobox, useListCollection } from "@ark-ui/react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "./cn";
+
+// The listbox renders INLINE, not portalled. A portalled popup lands OUTSIDE an open modal dialog,
+// which Ark makes `inert` — so the options become unclickable inside a dialog (the same reason
+// CategorySelect is inline). Inline, floating-ui still positions the popup against the trigger. This
+// passthrough keeps the `<Portal>` call sites unchanged.
+function Portal({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}
 
 // The app's Combobox, replacing Chakra's — a styled Ark UI Combobox (same Zag machine, so the #131
 // display-text-from-value remount trap, keyboard nav, aria-activedescendant and portalled listbox all

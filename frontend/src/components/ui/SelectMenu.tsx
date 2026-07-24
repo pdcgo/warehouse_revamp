@@ -1,7 +1,13 @@
-import type { ComponentProps, HTMLAttributes } from "react";
-import { Select as ArkSelect, Portal, createListCollection } from "@ark-ui/react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
+import { Select as ArkSelect, createListCollection } from "@ark-ui/react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "./cn";
+
+// The listbox renders INLINE, not portalled — a portalled popup is inert inside an open modal dialog
+// (see ui/Combobox). floating-ui still positions it against the trigger. Keeps `<Portal>` call sites.
+function Portal({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}
 
 // The app's COMPOSABLE Select, replacing Chakra's `Select` (the listbox one, not `NativeSelect`) —
 // a styled Ark UI Select (same Zag machine), same part names as Chakra, so the enum pickers that
