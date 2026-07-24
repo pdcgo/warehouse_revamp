@@ -1,6 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ChakraProvider } from "@chakra-ui/react";
+// Tailwind entry (utilities + design tokens). Imported first so its utilities are available app-wide
+// while Chakra is progressively removed (plans/frontend-tailwind-migration/brainstorming.md).
+import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./features/auth/AuthContext";

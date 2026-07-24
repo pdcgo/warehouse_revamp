@@ -2,13 +2,18 @@ import { useSyncExternalStore } from "react";
 
 // Color mode, without a dependency (#213).
 //
-// Chakra v3's `_dark` condition is the `.dark` class on an ancestor, so the whole mechanism is: put
-// `dark` on <html> or not. This mirrors the mocks' own toggle exactly — system preference by default,
-// a manual override persisted to localStorage, and an inline <head> script (see index.html) that
-// applies the class before first paint so there is no light-then-dark flash.
+// The signal is the `data-theme="light|dark"` ATTRIBUTE on <html> — the mocks' convention, now the
+// source of truth, which Tailwind's dark variant reads (see src/index.css). System preference by
+// default, a manual override persisted to localStorage, and an inline <head> script (see index.html)
+// that applies it before first paint so there is no light-then-dark flash.
+//
+// COEXISTENCE (Chakra→Tailwind migration): Chakra v3's `_dark` condition is the `.dark` CLASS, so
+// while Chakra still renders screens we set BOTH — the `data-theme` attribute (for Tailwind) and the
+// `.dark` class (for Chakra). Once Chakra is gone (Phase 5) the `.dark` line is dropped and only the
+// attribute remains. See plans/frontend-tailwind-migration/brainstorming.md.
 //
 // We deliberately do NOT reach for next-themes: it exists to solve SSR flash and framework routing,
-// neither of which a Vite SPA has. One class on one element is the whole job.
+// neither of which a Vite SPA has. One attribute on one element is the whole job.
 
 export type ColorMode = "light" | "dark";
 
@@ -29,7 +34,11 @@ export function currentMode(): ColorMode {
 }
 
 function apply(mode: ColorMode) {
-  document.documentElement.classList.toggle("dark", mode === "dark");
+  const root = document.documentElement;
+  // Tailwind reads this attribute (src/index.css @custom-variant dark).
+  root.setAttribute("data-theme", mode);
+  // Chakra reads this class (_dark) — dropped at Phase 5 once Chakra is removed.
+  root.classList.toggle("dark", mode === "dark");
 }
 
 // A tiny store so components re-render on a toggle. The subscribers also let a second tab's change (a
@@ -78,8 +87,8 @@ function subscribe(onChange: () => void): () => void {
   };
 }
 
-// The hook a toggle reads. useSyncExternalStore keeps every subscriber in step with the class on
-// <html>, which is the single source of truth.
+// The hook a toggle reads. useSyncExternalStore keeps every subscriber in step with the color mode
+// on <html> (the data-theme attribute), which is the single source of truth.
 export function useColorMode(): ColorMode {
   return useSyncExternalStore(subscribe, currentMode, () => "light" as ColorMode);
 }

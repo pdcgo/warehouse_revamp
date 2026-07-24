@@ -7,8 +7,10 @@
     <title>PDC Warehouse</title>
     <script>
       /* Apply the saved or system color mode before first paint, so there is no light-then-dark
-         flash (#213). Chakra v3 reads dark mode off the `.dark` class on <html>. Kept in sync at
-         runtime by src/lib/colorMode.ts. */
+         flash (#213). Tailwind reads the `data-theme` attribute on <html>; Chakra (being removed —
+         plans/frontend-tailwind-migration/brainstorming.md) reads the `.dark` class. During
+         coexistence we set BOTH; the class is dropped once Chakra is gone. Kept in sync at runtime by
+         src/lib/colorMode.ts. */
       (function () {
         try {
           var v = localStorage.getItem("wh-color-mode");
@@ -17,6 +19,7 @@
             (v !== "light" &&
               window.matchMedia &&
               window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
           document.documentElement.classList.toggle("dark", dark);
         } catch (e) {}
       })();

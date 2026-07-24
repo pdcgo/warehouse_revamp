@@ -1,8 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind CSS v4 is the app's styling layer (migrating off Chakra —
+  // plans/frontend-tailwind-migration/brainstorming.md). The Vite plugin scans the source for
+  // utility classes and emits the CSS from src/index.css; no PostCSS/autoprefixer needed.
+  plugins: [react(), tailwindcss()],
   server: {
     // strictPort: fail loudly on a collision rather than silently drifting to another
     // port (another project on this machine dev-serves on 5173).

@@ -1,0 +1,130 @@
+/* Tailwind CSS — the app's styling layer (migration OFF Chakra, see
+   plans/frontend-tailwind-migration/brainstorming.md).
+
+   COEXISTENCE NOTE (Phase 0): Chakra + Emotion still render every screen today. We therefore import
+   Tailwind WITHOUT its Preflight base reset — Chakra already normalises the document, and a second
+   global reset would fight it and shift existing screens. When Chakra is removed (Phase 5), add
+   `@import "tailwindcss/preflight.css" layer(base);` back to restore box-sizing/margins/etc. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Dark mode rides the `[data-theme="dark"]` ATTRIBUTE (the mocks' convention, now the source of
+   truth), NOT Tailwind's default `.dark` class. During coexistence lib/colorMode.ts sets BOTH the
+   attribute (for Tailwind, below) and the `.dark` class (for Chakra's `_dark`); the class is dropped
+   at Phase 5. Most colours don't need `dark:` at all — the token vars below already flip. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* The design tokens — the ONE source, mirrored by mocks/*.html and documented in
+   plans/design-tokens.md. Values are the promoted mock/theme.ts set (#213). They flip on
+   [data-theme="dark"] as plain CSS, so every token utility below is automatically dark-aware. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f9fafb;
+  --sidebar: #ffffff;
+  --border: #e4e7ec;
+  --border-strong: #d0d5dd;
+  --fg: #101828;
+  --fg-muted: #667085;
+  --fg-subtle: #98a2b3;
+  --accent: #7c3aed;
+  --accent-soft: #f5f3ff;
+  --accent-fg: #6d28d9;
+  --warn: #b54708;
+  --warn-soft: #fffaeb;
+  --warn-border: #fedf89;
+  --pos: #067647;
+  --pos-soft: #ecfdf3;
+  --neg: #d92d20;
+  --neg-soft: #fef3f2;
+  --elev-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  --elev-pop: 0 12px 32px rgba(16, 24, 40, 0.18), 0 2px 8px rgba(16, 24, 40, 0.12);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0e12;
+  --surface: #161a20;
+  --surface-2: #1b2027;
+  --sidebar: #12151b;
+  --border: #262b33;
+  --border-strong: #333a44;
+  --fg: #f0f2f5;
+  --fg-muted: #98a2b3;
+  --fg-subtle: #667085;
+  --accent: #8b5cf6;
+  --accent-soft: #2e1065;
+  --accent-fg: #c4b5fd;
+  --warn: #f5a524;
+  --warn-soft: #2a2113;
+  --warn-border: #4a3a15;
+  --pos: #47c67e;
+  --pos-soft: #13251b;
+  --neg: #f97066;
+  --neg-soft: #2a1615;
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
+  --elev-pop: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Map the tokens into Tailwind's theme so utilities exist:
+   - colours   → bg-bg / bg-surface / bg-surface-2 / text-fg(-muted/-subtle) / border-line(-strong) /
+                 text-accent(-fg) / bg-accent-soft / text-warn/pos/neg (+ -soft/-border). They resolve
+                 to the dark-aware vars above, so they flip with no `dark:` variant.
+   - brand ramp (colorPalette replacement) → bg-brand-600 etc. (static; the working violet identity).
+   - radius    → rounded-control (8px, buttons/inputs) / rounded-card (12px, cards/panels).
+   - shadow    → shadow-card / shadow-pop (menus, dialogs).
+   - spacing   → the semantic scale from theme.ts: p-field / gap-card / gap-section / p-page.
+   - font      → font-sans (the system stack). */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-sidebar: var(--sidebar);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-border: var(--warn-border);
+  --color-pos: var(--pos);
+  --color-pos-soft: var(--pos-soft);
+  --color-neg: var(--neg);
+  --color-neg-soft: var(--neg-soft);
+
+  /* The working-placeholder violet ramp (theme.ts brand.50–950) — what colorPalette="brand" resolved. */
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-200: #ddd6fe;
+  --color-brand-300: #c4b5fd;
+  --color-brand-400: #a78bfa;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+  --color-brand-800: #5b21b6;
+  --color-brand-900: #4c1d95;
+  --color-brand-950: #2e1065;
+
+  /* Radii (theme.ts control/card, via l2/l3). Semantic names avoid colliding with Tailwind's
+     numeric rounded-sm/-lg scale — mock `rounded`→`rounded-card`, `rounded-sm`→`rounded-control`. */
+  --radius-control: 0.5rem; /* 8px */
+  --radius-card: 0.75rem; /* 12px */
+
+  /* Elevation (theme.ts shadows.sm + the mock's pop shadow). */
+  --shadow-card: var(--elev-card);
+  --shadow-pop: var(--elev-pop);
+
+  /* Semantic spacing scale — the one density knob (theme.ts field/card/section/page). */
+  --spacing-field: 0.5rem; /* 8px */
+  --spacing-card: 0.75rem; /* 12px */
+  --spacing-section: 1rem; /* 16px */
+  --spacing-page: 1.25rem; /* 20px */
+
+  /* The system font stack (#213). */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
