@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Adjust Stock</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the  *
+ * Play CDN (the one documented exception to "self-contained" — needs   *
+ * the network to render — see mocks/README.md). Tailwind's theme is    *
+ * mapped onto the shared :root design tokens below, so the mocks still  *
+ * match the Chakra app and stay in step with plans/design-tokens.md;    *
+ * dark mode rides entirely on the tokens flipping at [data-theme=dark]. *
+ * ------------------------------------------------------------------ -->
+<!-- The ADJUST action from the warehouse product detail — correct a shelf's count.
+     The REASON drives the model: a Recount reconciles the whole shelf (no single
+     batch → shows as "—" in Stock History), while Damaged / Lost / Found touch
+     SPECIFIC units, so they carry a batch. In the app this is a Chakra Dialog
+     opened from the "Adjust" button. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* The few things utilities can't express inline: the striped mock banner and the
+     native-select chevron background-image. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .select-chevron {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+  }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Adjust Stock (dialog) · fake data · not the app</div>
+
+  <div class="min-h-[calc(100vh-29px)] bg-[rgba(16,24,40,0.45)] [[data-theme=dark]_&]:bg-[rgba(0,0,0,0.6)] flex items-start justify-center px-4 py-11">
+    <div class="w-full max-w-[460px] bg-surface border border-line rounded shadow-lg overflow-hidden">
+      <div class="p-[18px_20px] border-b border-line flex items-start gap-3">
+        <div class="shrink-0 w-9 h-9 rounded-sm bg-accent-soft text-accent-fg flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div>
+          <div class="text-base font-[650] leading-[1.2]">Adjust Stock</div>
+          <div class="text-fg-subtle text-[13px] mt-0.5 [font-variant-numeric:tabular-nums]">Kaos Polos Hitam L · SKU-1041</div>
+        </div>
+        <a class="ml-auto text-fg-subtle cursor-pointer p-1 rounded-md hover:bg-surface-2 hover:text-fg" href="warehouse-product-detail.html" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </a>
+      </div>
+
+      <div class="p-[18px_20px]">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-fg-muted" for="rack">Rack</label>
+            <select class="select-chevron w-full text-sm text-fg bg-surface border border-line-strong rounded-sm py-2 pl-2.5 pr-[30px] appearance-none cursor-pointer focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent disabled:bg-surface-2 disabled:text-fg-subtle disabled:cursor-not-allowed" id="rack">
+              <option value="A-01-3">A-01-3</option>
+              <option value="B-04-2">B-04-2</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-fg-muted">Current on shelf</label>
+            <div class="inline-flex items-baseline gap-1.5 bg-surface-2 border border-line rounded-sm py-[7px] px-3 [font-variant-numeric:tabular-nums]"><span class="text-lg font-[650]" id="current">195</span><span class="text-xs text-fg-subtle">pcs</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5 mb-[15px] mt-[15px]">
+          <label class="text-xs font-semibold text-fg-muted" for="reason">Reason</label>
+          <select class="select-chevron w-full text-sm text-fg bg-surface border border-line-strong rounded-sm py-2 pl-2.5 pr-[30px] appearance-none cursor-pointer focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent disabled:bg-surface-2 disabled:text-fg-subtle disabled:cursor-not-allowed" id="reason">
+            <option value="damaged">Damaged</option>
+            <option value="lost">Lost</option>
+            <option value="found">Found</option>
+            <option value="recount">Recount</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5 mb-[15px]">
+          <label class="text-xs font-semibold text-fg-muted" for="batch" id="batch-label">Batch (which delivery's units)</label>
+          <select class="select-chevron w-full text-sm text-fg bg-surface border border-line-strong rounded-sm py-2 pl-2.5 pr-[30px] appearance-none cursor-pointer focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent disabled:bg-surface-2 disabled:text-fg-subtle disabled:cursor-not-allowed" id="batch">
+            <option value="3007">#3007</option>
+            <option value="2988">#2988</option>
+          </select>
+          <span class="text-xs text-fg-subtle" id="batch-hint">Which delivery's units are affected.</span>
+        </div>
+
+        <div class="flex flex-col gap-1.5 mb-[15px]">
+          <label class="text-xs font-semibold text-fg-muted" for="qty" id="qty-label">Quantity damaged</label>
+          <input class="w-full text-sm text-fg bg-surface border border-line-strong rounded-sm py-2 px-2.5 focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent disabled:bg-surface-2 disabled:text-fg-subtle disabled:cursor-not-allowed" id="qty" type="number" min="1" value="5" inputmode="numeric" />
+        </div>
+
+        <div class="flex flex-col gap-1.5 mb-[15px]">
+          <label class="text-xs font-semibold text-fg-muted" for="note">Note <span class="font-normal text-fg-subtle">(recommended)</span></label>
+          <textarea class="w-full text-sm text-fg bg-surface border border-line-strong rounded-sm py-2 px-2.5 resize-y min-h-[60px] focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent" id="note" placeholder="What happened — an adjustment should say why"></textarea>
+        </div>
+
+        <div class="bg-surface-2 border border-line rounded-sm p-[12px_14px] mt-1 [font-variant-numeric:tabular-nums]">
+          <div class="text-[13.5px] font-semibold" id="sum-line"></div>
+          <div class="text-[13px] text-fg-muted mt-1.5" id="sum-meta"></div>
+        </div>
+      </div>
+
+      <div class="p-[14px_20px] border-t border-line flex justify-end gap-2.5">
+        <a class="appearance-none border border-line-strong cursor-pointer text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-1.5 no-underline bg-surface text-fg hover:bg-surface-2" href="warehouse-product-detail.html">Cancel</a>
+        <button class="appearance-none border border-accent cursor-pointer text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-1.5 bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] hover:brightness-[1.05]" id="do-adjust">Adjust Stock</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const shelf = { "A-01-3": 195, "B-04-2": 45 };
+  const REASON = {
+    damaged: { label: "Quantity damaged", dir: -1, batch: true },
+    lost:    { label: "Quantity lost",    dir: -1, batch: true },
+    found:   { label: "Quantity found",   dir: +1, batch: true },
+    recount: { label: "New counted quantity", dir: 0, batch: false },
+  };
+
+  const rack    = document.getElementById("rack");
+  const current = document.getElementById("current");
+  const reason  = document.getElementById("reason");
+  const batch   = document.getElementById("batch");
+  const batchHint = document.getElementById("batch-hint");
+  const qty     = document.getElementById("qty");
+  const qtyLabel = document.getElementById("qty-label");
+  const sumLine = document.getElementById("sum-line");
+  const sumMeta = document.getElementById("sum-meta");
+  const doAdjust = document.getElementById("do-adjust");
+
+  function render() {
+    const cur = shelf[rack.value];
+    current.textContent = cur;
+
+    const r = REASON[reason.value];
+    qtyLabel.textContent = r.label;
+
+    // Recount reconciles the whole shelf — no single batch (the "—" case in Stock History).
+    batch.disabled = !r.batch;
+    batchHint.textContent = r.batch
+      ? "Which delivery's units are affected."
+      : "A recount reconciles the whole shelf — no single batch (shows as “—”).";
+
+    const mag = Math.max(0, parseInt(qty.value || "0", 10));
+    let next, delta;
+    if (r.dir === 0) { next = mag; delta = mag - cur; }       // recount: absolute
+    else { delta = r.dir * mag; next = cur + delta; }          // damaged/lost/found: signed
+
+    const cls = delta < 0 ? "text-neg font-[650]" : delta > 0 ? "text-pos font-[650]" : "text-fg-muted font-[650]";
+    const sign = delta > 0 ? "+" : "";
+    sumLine.innerHTML = rack.value + ": <b>" + cur + "</b><span class=\"text-fg-subtle mx-1\">→</span>" +
+      "<b class=\"" + cls + "\">" + next + "</b> <span class=\"" + cls + "\">(" + sign + delta + ")</span>";
+
+    const reasonName = reason.options[reason.selectedIndex].text;
+    sumMeta.textContent = "Reason: " + reasonName + " · " + (r.batch ? "Batch #" + batch.value : "Shelf-level");
+
+    const bad = next < 0 || mag < 1 || delta === 0;
+    doAdjust.disabled = bad;
+    doAdjust.style.opacity = bad ? ".5" : "1";
+    doAdjust.style.cursor = bad ? "not-allowed" : "pointer";
+  }
+
+  [rack, reason, batch, qty].forEach((el) => el.addEventListener("input", render));
+  render();
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

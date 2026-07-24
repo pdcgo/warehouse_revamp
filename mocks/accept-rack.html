@@ -3,557 +3,406 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Mock · Accept Delivery onto Racks</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the  *
+ * Play CDN (the one documented exception to "self-contained" — needs   *
+ * the network to render — see mocks/README.md). Tailwind's theme is    *
+ * mapped onto the shared :root design tokens below, so the mocks still  *
+ * match the Chakra app and stay in step with plans/design-tokens.md;    *
+ * dark mode rides entirely on the tokens flipping at [data-theme=dark]. *
+ * ------------------------------------------------------------------ -->
+<!-- A throwaway preview of a REDESIGN of the wired restock-accept screen
+     (#157/#201) — the real screen is built from Chakra + the shared
+     components, never from this. The accent ramp is a placeholder, same
+     as the app's: no visual identity is chosen yet. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
 <style>
-  /* ------------------------------------------------------------------ *
-   * MOCKUP ONLY. Plain HTML/CSS, hardcoded data, no build. This is a    *
-   * throwaway preview of a REDESIGN of the wired restock-accept screen  *
-   * (#157/#201) — the real screen is built from Chakra + the shared     *
-   * components, never from this. The accent ramp is a placeholder, same *
-   * as the app's: no visual identity is chosen yet.                     *
-   * ------------------------------------------------------------------ */
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
   :root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #f9fafb;
-    --border: #e4e7ec;
-    --border-strong: #d0d5dd;
-    --fg: #101828;
-    --fg-muted: #667085;
-    --fg-subtle: #98a2b3;
-    --accent: #4f46e5;
-    --accent-soft: #eef2ff;
-    --accent-fg: #3730a3;
-    --warn: #b54708;
-    --warn-soft: #fffaeb;
-    --warn-border: #fedf89;
-    --danger: #b42318;
-    --danger-soft: #fef3f2;
-    --ok: #067647;
-    --ok-soft: #ecfdf3;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0c0e12;
-      --surface: #161a20;
-      --surface-2: #1b2027;
-      --border: #262b33;
-      --border-strong: #333a44;
-      --fg: #f0f2f5;
-      --fg-muted: #98a2b3;
-      --fg-subtle: #667085;
-      --accent: #7c74f0;
-      --accent-soft: #1e1b34;
-      --accent-fg: #c7c2f7;
-      --warn: #f5a524;
-      --warn-soft: #2a2113;
-      --warn-border: #4a3a15;
-      --danger: #f97066;
-      --danger-soft: #2a1614;
-      --ok: #47c67e;
-      --ok-soft: #10241a;
-      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
-    }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
   }
 
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--font);
-    font-size: 14px;
-    line-height: 1.45;
-  }
-  .mock-banner {
-    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
-    border-bottom: 1px solid var(--border);
-    color: var(--accent-fg);
-    font-size: 12px;
-    text-align: center;
-    padding: 6px 12px;
-    letter-spacing: .02em;
-  }
-
-  /* Sticky action header ------------------------------------------------ */
-  header.bar {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    backdrop-filter: saturate(180%) blur(8px);
-    border-bottom: 1px solid var(--border);
-  }
-  .bar-inner {
-    max-width: 940px;
-    margin: 0 auto;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .back {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--fg-muted); text-decoration: none; font-size: 13px;
-    padding: 4px 8px; border-radius: var(--radius-sm);
-  }
-  .back:hover { background: var(--surface-2); color: var(--fg); }
-  .title { font-size: 18px; font-weight: 650; margin: 0; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 550; padding: 2px 9px;
-    border-radius: 999px; background: var(--accent-soft); color: var(--accent-fg);
-  }
-  .spacer { flex: 1 1 auto; }
-  .progress {
-    font-size: 12.5px; color: var(--fg-muted); text-align: right;
-    display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3;
-  }
-  .progress b { color: var(--fg); font-weight: 600; }
-  .progress .blocked { color: var(--warn); }
-  .btn {
-    appearance: none; border: 1px solid transparent; cursor: pointer;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    padding: 8px 16px; border-radius: var(--radius-sm);
-    display: inline-flex; align-items: center; gap: 7px;
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { filter: brightness(1.05); }
-  .btn-primary:disabled { background: var(--border-strong); color: var(--fg-subtle); cursor: not-allowed; }
-  .btn-ghost { background: transparent; color: var(--fg-muted); }
-  .btn-ghost:hover { background: var(--surface-2); color: var(--fg); }
-  .btn-outline { background: var(--surface); color: var(--fg); border-color: var(--border-strong); }
-  .btn-outline:hover { background: var(--surface-2); }
-  .btn-sm { padding: 5px 10px; font-size: 12px; }
-
-  main { max-width: 940px; margin: 0 auto; padding: 20px; }
-  .stack { display: flex; flex-direction: column; gap: 16px; }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-  }
-  .card-body { padding: 16px 18px; }
-
-  /* Delivery summary --------------------------------------------------- */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
-  .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
-  .field-value { font-size: 15px; font-weight: 550; margin-top: 2px; }
-  .money-input {
-    margin-top: 4px;
-    display: inline-flex; align-items: center; gap: 4px;
-    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    padding: 5px 10px; background: var(--surface-2); max-width: 160px;
-  }
-  .money-input span { color: var(--fg-subtle); font-size: 13px; }
-  .money-input input {
-    border: none; background: transparent; color: var(--fg);
-    font-family: inherit; font-size: 14px; font-weight: 550; width: 100%;
-    outline: none; text-align: right;
-  }
-  .freight-total { color: var(--accent-fg); }
-  .summary-note {
-    margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border);
-    color: var(--fg-muted); font-size: 13px;
-  }
-
-  /* Line card ---------------------------------------------------------- */
-  .line-head { display: flex; align-items: center; gap: 12px; }
-  .thumb {
-    width: 44px; height: 44px; border-radius: var(--radius-sm); flex: 0 0 auto;
-    background: linear-gradient(135deg, var(--surface-2), var(--border));
-    display: grid; place-items: center; color: var(--fg-subtle); font-size: 11px; font-weight: 700;
-    border: 1px solid var(--border);
-  }
-  .prod-name { font-weight: 600; font-size: 15px; }
-  .prod-sku { color: var(--fg-subtle); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .hpp { text-align: right; margin-left: auto; }
-  .hpp .field-label { text-align: right; }
-  .hpp b { font-size: 15px; }
-
-  .divider { height: 1px; background: var(--border); margin: 14px 0; border: 0; }
-
-  .count-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-  .count-box { display: flex; flex-direction: column; gap: 3px; }
-  .count-box .asked { font-size: 20px; font-weight: 650; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-  .qty-input {
-    width: 84px; text-align: center; font-size: 20px; font-weight: 650;
-    padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    background: var(--surface); color: var(--fg); font-family: inherit;
-    font-variant-numeric: tabular-nums; outline: none;
-  }
-  .qty-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .arrow { color: var(--fg-subtle); font-size: 20px; padding-bottom: 4px; }
-  .pill {
-    font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
-  }
-  .pill-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-border); }
-  .pill-ok { background: var(--ok-soft); color: var(--ok); }
-
-  /* Put-away (the rack section — the heart of this screen) ------------- */
-  .putaway {
-    margin-top: 16px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px;
-  }
-  .putaway-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .putaway-title { font-size: 12.5px; font-weight: 650; letter-spacing: .01em; }
-  .balance {
-    margin-left: auto; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
-    padding: 2px 9px; border-radius: 999px;
-  }
-  .balance.ok { background: var(--ok-soft); color: var(--ok); }
-  .balance.off { background: var(--warn-soft); color: var(--warn); }
-  .already {
-    font-size: 12px; color: var(--fg-muted); margin-bottom: 10px;
-  }
-  .already .rack-chip { margin-left: 4px; }
-  .rack-chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-    padding: 2px 8px; border-radius: 6px;
-    background: var(--accent-soft); color: var(--accent-fg);
-  }
-  .rack-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
-
-  .place-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .rack-select {
-    flex: 1 1 auto;
-    display: flex; align-items: center; gap: 8px;
-    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    background: var(--surface); padding: 7px 10px; min-width: 0;
-  }
-  .rack-select select {
-    appearance: none; border: none; background: transparent; color: var(--fg);
-    font-family: inherit; font-size: 13.5px; font-weight: 550; width: 100%; outline: none; cursor: pointer;
-  }
-  .rack-select .glyph { color: var(--accent); flex: 0 0 auto; }
-  .rack-select .chev { color: var(--fg-subtle); flex: 0 0 auto; }
-  .place-qty {
-    width: 72px; text-align: center; font-variant-numeric: tabular-nums;
-    padding: 7px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    background: var(--surface); color: var(--fg); font-family: inherit; font-size: 13.5px; outline: none;
-  }
-  .icon-btn {
-    appearance: none; border: none; background: transparent; cursor: pointer;
-    color: var(--fg-subtle); padding: 6px; border-radius: 6px; display: inline-flex;
-  }
-  .icon-btn:hover { background: var(--danger-soft); color: var(--danger); }
-  .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
-  .add-place {
-    margin-top: 2px; color: var(--accent); background: transparent; border: 1px dashed var(--border-strong);
-    width: 100%; justify-content: center;
-  }
-  .add-place:hover { background: var(--accent-soft); border-color: var(--accent); }
-
-  /* Damage ------------------------------------------------------------- */
-  .damage-toggle { margin-top: 12px; }
-  .damage {
-    margin-top: 12px; border: 1px solid var(--warn-border); background: var(--warn-soft);
-    border-radius: var(--radius-sm); padding: 12px;
-  }
-  .damage-title { font-size: 12.5px; font-weight: 650; color: var(--warn); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-  .damage-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .damage-row input {
-    padding: 6px 9px; border: 1px solid var(--warn-border); border-radius: 6px;
-    background: var(--surface); color: var(--fg); font-family: inherit; font-size: 13px; outline: none;
-  }
-  .damage-row .dqty { width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
-  .damage-row .dreason { flex: 1 1 auto; min-width: 0; }
-  .damage-row .dval { width: 110px; text-align: right; }
-
-  svg { display: block; }
-  .footer-note { color: var(--fg-subtle); font-size: 12px; text-align: center; padding: 8px 0 4px; }
-
-  @media (max-width: 720px) {
-    .summary-grid { grid-template-columns: repeat(2, 1fr); }
-    .hpp { margin-left: 0; text-align: left; width: 100%; }
-    .hpp .field-label { text-align: left; }
-  }
+  /* The few things utilities can't express inline: the striped mock banner and the
+     translucent, blurred sticky action bar. Everything else is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .bar-blur { background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(180%) blur(8px); }
 </style>
 </head>
-<body>
-  <div class="mock-banner">MOCKUP · redesign of restock-accept (#201) · fake data · not the app</div>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · redesign of restock-accept (#201) · fake data · not the app</div>
 
-  <header class="bar">
-    <div class="bar-inner">
-      <a class="back" href="#">
+  <header class="bar-blur sticky top-0 z-10 border-b border-line">
+    <div class="max-w-[940px] mx-auto p-[12px_20px] flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] py-1 px-2 rounded-sm hover:bg-surface-2 hover:text-fg" href="#">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
         Restock #412
       </a>
-      <h1 class="title">Accept Delivery</h1>
-      <span class="badge">
+      <h1 class="text-lg font-[650] m-0">Accept Delivery</h1>
+      <span class="inline-flex items-center gap-[5px] text-xs font-[550] py-0.5 px-[9px] rounded-full bg-accent-soft text-accent-fg">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
         Gudang Pusat
       </span>
-      <div class="spacer"></div>
-      <div class="progress" id="progress">
-        <span><b id="counted-n">3</b> of 3 counted</span>
-        <span class="blocked" id="blocked-line">· 1 line not placed</span>
+      <div class="flex-auto"></div>
+      <div class="text-[12.5px] text-fg-muted text-right flex flex-col items-end leading-[1.3]" id="progress">
+        <span><b class="text-fg font-semibold" id="total-recv">178</b> pcs · restock count</span>
+        <span class="text-warn" id="blocked-line">· 1 line not placed</span>
       </div>
-      <button class="btn btn-primary" id="accept-btn" disabled>Accept Delivery</button>
+      <button class="appearance-none border border-transparent cursor-pointer text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-[7px] bg-accent text-white hover:brightness-[1.05] disabled:bg-line-strong disabled:text-fg-subtle disabled:cursor-not-allowed" id="accept-btn" disabled>Accept Delivery</button>
     </div>
   </header>
 
-  <main>
-    <div class="stack">
+  <main class="max-w-[940px] mx-auto p-5">
+    <div class="flex flex-col gap-4">
 
       <!-- Delivery summary: what this delivery is, and the fee the courier took at the door -->
-      <section class="card">
-        <div class="card-body">
-          <div class="summary-grid">
+      <section class="bg-surface border border-line rounded shadow">
+        <div class="p-[16px_18px]">
+          <div class="text-xs font-[650] text-fg mb-2.5">Order</div>
+          <div class="grid grid-cols-2 min-[720px]:grid-cols-4 gap-4">
             <div>
-              <div class="field-label">Receipt</div>
-              <div class="field-value">JNE-8842-119</div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Order ID</div>
+              <div class="text-[15px] font-[550] mt-0.5">PO-2026-0412</div>
             </div>
             <div>
-              <div class="field-label">Shipping cost</div>
-              <div class="field-value">Rp 85.000</div>
-            </div>
-            <div>
-              <div class="field-label">COD fee (paid at door)</div>
-              <div class="money-input">
-                <span>Rp</span>
-                <input id="cod-fee" type="text" inputmode="numeric" value="45.000" />
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Supplier</div>
+              <div class="text-[15px] font-[550] mt-0.5 inline-flex items-center gap-1.5">
+                <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                PT Konveksi Jaya
               </div>
             </div>
             <div>
-              <div class="field-label">Freight total</div>
-              <div class="field-value freight-total" id="freight-total">Rp 130.000</div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ordered</div>
+              <div class="text-[15px] font-[550] mt-0.5">18 Jul 2026</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ordered by</div>
+              <div class="text-[15px] font-[550] mt-0.5">Andi Pratama</div>
             </div>
           </div>
-          <div class="summary-note">
+
+          <div class="border-t border-dashed border-line my-[14px]"></div>
+
+          <div class="text-xs font-[650] text-fg mb-2.5">Shipping</div>
+          <div class="grid grid-cols-2 min-[720px]:grid-cols-4 gap-4">
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Courier</div>
+              <div class="text-[15px] font-[550] mt-0.5">JNE Trucking</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">AWB / Resi</div>
+              <div class="text-[15px] font-[550] mt-0.5">JNE-8842-119</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Driver</div>
+              <div class="text-[15px] font-[550] mt-0.5">Budi Santoso</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Shipped</div>
+              <div class="text-[15px] font-[550] mt-0.5">21 Jul 2026</div>
+            </div>
+          </div>
+
+          <div class="border-t border-dashed border-line my-[14px]"></div>
+
+          <div class="text-xs font-[650] text-fg mb-2.5">Freight</div>
+          <div class="grid grid-cols-2 min-[720px]:grid-cols-4 gap-4">
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Shipping cost</div>
+              <div class="text-[15px] font-[550] mt-0.5">Rp 85.000</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">COD fee (paid at door)</div>
+              <div class="mt-1 inline-flex items-center gap-1 border border-line-strong rounded-sm py-[5px] px-2.5 bg-surface-2 max-w-[160px]">
+                <span class="text-fg-subtle text-[13px]">Rp</span>
+                <input class="border-0 bg-transparent text-fg text-sm font-[550] w-full outline-none text-right" id="cod-fee" type="text" inputmode="numeric" value="45.000" />
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Freight total</div>
+              <div class="text-[15px] font-[550] mt-0.5 text-accent-fg" id="freight-total">Rp 130.000</div>
+            </div>
+          </div>
+          <div class="mt-[14px] pt-[14px] border-t border-dashed border-line text-fg-muted text-[13px]">
             <strong>Note.</strong> Driver waited for count. Two chino short — supplier notified.
           </div>
         </div>
       </section>
 
       <!-- Line 1: full arrival, split across two shelves -->
-      <section class="card" data-line data-asked="100" data-unit-cost="40000">
-        <div class="card-body">
-          <div class="line-head">
-            <div class="thumb">KPH</div>
+      <section class="bg-surface border border-line rounded shadow" data-line data-asked="100" data-unit-cost="40000">
+        <div class="p-[16px_18px]">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-sm shrink-0 bg-gradient-to-br from-surface-2 to-line grid place-items-center text-fg-subtle text-[11px] font-bold border border-line">KPH</div>
             <div>
-              <div class="prod-name">Kaos Polos Hitam</div>
-              <div class="prod-sku">KPH-001</div>
+              <div class="font-semibold text-[15px]">Kaos Polos Hitam</div>
+              <div class="text-fg-subtle text-xs [font-variant-numeric:tabular-nums]">KPH-001</div>
             </div>
-            <div class="hpp">
-              <div class="field-label">HPP / pc</div>
-              <b class="hpp-value">Rp 40.739</b>
+            <div class="text-right ml-auto max-[720px]:ml-0 max-[720px]:text-left max-[720px]:w-full">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">HPP / pc</div>
+              <b class="hpp-value text-[15px]">Rp 40.739</b>
             </div>
           </div>
 
-          <hr class="divider" />
+          <hr class="h-px bg-line my-[14px] border-0" />
 
-          <div class="count-row">
-            <div class="count-box">
-              <div class="field-label">Asked</div>
-              <div class="asked">100</div>
-            </div>
-            <div class="arrow">→</div>
-            <div class="count-box">
-              <div class="field-label">Arrived</div>
-              <input class="qty-input arrived" type="text" inputmode="numeric" value="100" />
-            </div>
-            <div class="delta"></div>
-          </div>
-
-          <!-- PUT-AWAY: name the shelf as you count. Put-away is part of accepting (owner, 2026-07-17). -->
-          <div class="putaway">
-            <div class="putaway-head">
+          <!-- PUT-AWAY: what you shelve here + what you flag as a problem IS the restock count.
+               No separate arrived box — you type quantities in ONE place (owner, 2026-07-23). -->
+          <div class="putaway mt-4 bg-surface-2 border border-line rounded-sm p-[14px]">
+            <div class="flex items-center gap-2 mb-1.5">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
-              <span class="putaway-title">Put away to racks</span>
-              <span class="balance ok">100 / 100 placed</span>
+              <span class="text-[12.5px] font-[650] tracking-[.01em]">Put away to racks</span>
+              <span class="text-xs text-fg-muted [font-variant-numeric:tabular-nums]">ordered 100</span>
+              <span class="line-delta inline-flex"></span>
+              <span class="balance ml-auto text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] py-0.5 px-[9px] rounded-full bg-pos-soft text-pos data-[off]:bg-warn-soft data-[off]:text-warn">100 pcs</span>
             </div>
-            <div class="already">
-              Already on <span class="rack-chip"><span class="dot"></span>A-01-3 (120)</span>
+            <div class="mb-3">
+              <span class="inline-flex items-center gap-[5px] text-xs text-fg-muted mb-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                Placed here before
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="A-01-3 — Aisle A"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>A-01-3 <span class="font-medium opacity-[.72]">120 here</span></button>
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="A-02-1 — Aisle A"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>A-02-1 <span class="font-medium opacity-[.72]">45 here</span></button>
+              </div>
             </div>
-            <div class="places">
-              <div class="place-row">
-                <label class="rack-select">
-                  <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-                  <select><option>A-01-3 — Aisle A</option><option>A-02-1 — Aisle A</option><option>B-03-2 — Aisle B</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
-                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            <div>
+              <div class="place-row flex items-center gap-2.5 mb-2">
+                <label class="rack-select flex-auto flex items-center gap-2 border border-line-strong rounded-sm bg-surface py-[7px] px-2.5 min-w-0">
+                  <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                  <select class="appearance-none border-0 bg-transparent text-fg text-[13.5px] font-[550] w-full outline-none cursor-pointer"><option>A-01-3 — Aisle A</option><option>A-02-1 — Aisle A</option><option>B-03-2 — Aisle B</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
+                  <svg class="text-fg-subtle shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </label>
-                <input class="place-qty" type="text" inputmode="numeric" value="60" />
-                <button class="icon-btn" aria-label="Remove shelf">
+                <input class="place-qty w-[72px] text-center [font-variant-numeric:tabular-nums] py-[7px] px-2 border border-line-strong rounded-sm bg-surface text-fg text-[13.5px] outline-none" type="text" inputmode="numeric" value="60" />
+                <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove shelf">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                 </button>
               </div>
-              <div class="place-row">
-                <label class="rack-select">
-                  <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-                  <select><option>A-02-1 — Aisle A</option><option>A-01-3 — Aisle A</option><option>B-03-2 — Aisle B</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
-                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              <div class="place-row flex items-center gap-2.5 mb-2">
+                <label class="rack-select flex-auto flex items-center gap-2 border border-line-strong rounded-sm bg-surface py-[7px] px-2.5 min-w-0">
+                  <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                  <select class="appearance-none border-0 bg-transparent text-fg text-[13.5px] font-[550] w-full outline-none cursor-pointer"><option>A-02-1 — Aisle A</option><option>A-01-3 — Aisle A</option><option>B-03-2 — Aisle B</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
+                  <svg class="text-fg-subtle shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </label>
-                <input class="place-qty" type="text" inputmode="numeric" value="40" />
-                <button class="icon-btn" aria-label="Remove shelf">
+                <input class="place-qty w-[72px] text-center [font-variant-numeric:tabular-nums] py-[7px] px-2 border border-line-strong rounded-sm bg-surface text-fg text-[13.5px] outline-none" type="text" inputmode="numeric" value="40" />
+                <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove shelf">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                 </button>
               </div>
             </div>
-            <button class="btn btn-sm add-place">
+            <button class="appearance-none cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs mt-0.5 text-accent bg-transparent border border-dashed border-line-strong w-full justify-center hover:bg-accent-soft hover:border-accent">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Split to another shelf
             </button>
           </div>
 
-          <button class="btn btn-ghost btn-sm damage-toggle">
+          <button class="appearance-none border border-transparent cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs bg-transparent text-fg-muted hover:bg-surface-2 hover:text-fg mt-3">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            Report broken / lost
+            Report a problem
           </button>
         </div>
       </section>
 
       <!-- Line 2: short count (48 of 50), still fully placed — the unbalanced-when-typing case -->
-      <section class="card" data-line data-asked="50" data-unit-cost="95000">
-        <div class="card-body">
-          <div class="line-head">
-            <div class="thumb">CCN</div>
+      <section class="bg-surface border border-line rounded shadow" data-line data-asked="50" data-unit-cost="95000">
+        <div class="p-[16px_18px]">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-sm shrink-0 bg-gradient-to-br from-surface-2 to-line grid place-items-center text-fg-subtle text-[11px] font-bold border border-line">CCN</div>
             <div>
-              <div class="prod-name">Celana Chino Navy</div>
-              <div class="prod-sku">CCN-014</div>
+              <div class="font-semibold text-[15px]">Celana Chino Navy</div>
+              <div class="text-fg-subtle text-xs [font-variant-numeric:tabular-nums]">CCN-014</div>
             </div>
-            <div class="hpp">
-              <div class="field-label">HPP / pc</div>
-              <b class="hpp-value">Rp 95.739</b>
+            <div class="text-right ml-auto max-[720px]:ml-0 max-[720px]:text-left max-[720px]:w-full">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">HPP / pc</div>
+              <b class="hpp-value text-[15px]">Rp 95.739</b>
             </div>
           </div>
 
-          <hr class="divider" />
+          <hr class="h-px bg-line my-[14px] border-0" />
 
-          <div class="count-row">
-            <div class="count-box">
-              <div class="field-label">Asked</div>
-              <div class="asked">50</div>
-            </div>
-            <div class="arrow">→</div>
-            <div class="count-box">
-              <div class="field-label">Arrived</div>
-              <input class="qty-input arrived" type="text" inputmode="numeric" value="48" />
-            </div>
-            <div class="delta"></div>
-          </div>
-
-          <div class="putaway">
-            <div class="putaway-head">
+          <div class="putaway mt-4 bg-surface-2 border border-line rounded-sm p-[14px]">
+            <div class="flex items-center gap-2 mb-1.5">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
-              <span class="putaway-title">Put away to racks</span>
-              <span class="balance ok">48 / 48 placed</span>
+              <span class="text-[12.5px] font-[650] tracking-[.01em]">Put away to racks</span>
+              <span class="text-xs text-fg-muted [font-variant-numeric:tabular-nums]">ordered 50</span>
+              <span class="line-delta inline-flex"></span>
+              <span class="balance ml-auto text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] py-0.5 px-[9px] rounded-full bg-pos-soft text-pos data-[off]:bg-warn-soft data-[off]:text-warn">48 pcs</span>
             </div>
-            <div class="places">
-              <div class="place-row">
-                <label class="rack-select">
-                  <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-                  <select><option>B-03-2 — Aisle B</option><option>A-01-3 — Aisle A</option><option>A-02-1 — Aisle A</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
-                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            <div class="mb-3">
+              <span class="inline-flex items-center gap-[5px] text-xs text-fg-muted mb-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                Placed here before
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="B-03-2 — Aisle B"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>B-03-2 <span class="font-medium opacity-[.72]">32 here</span></button>
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="C-02-4 — Aisle C"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>C-02-4 <span class="font-medium opacity-[.72]">12 here</span></button>
+              </div>
+            </div>
+            <div>
+              <div class="place-row flex items-center gap-2.5 mb-2">
+                <label class="rack-select flex-auto flex items-center gap-2 border border-line-strong rounded-sm bg-surface py-[7px] px-2.5 min-w-0">
+                  <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                  <select class="appearance-none border-0 bg-transparent text-fg text-[13.5px] font-[550] w-full outline-none cursor-pointer"><option>B-03-2 — Aisle B</option><option>A-01-3 — Aisle A</option><option>A-02-1 — Aisle A</option><option>C-02-4 — Aisle C</option><option>Unplaced (holding)</option></select>
+                  <svg class="text-fg-subtle shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </label>
-                <input class="place-qty" type="text" inputmode="numeric" value="48" />
-                <button class="icon-btn" aria-label="Remove shelf" disabled>
+                <input class="place-qty w-[72px] text-center [font-variant-numeric:tabular-nums] py-[7px] px-2 border border-line-strong rounded-sm bg-surface text-fg text-[13.5px] outline-none" type="text" inputmode="numeric" value="48" />
+                <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove shelf" disabled>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                 </button>
               </div>
             </div>
-            <button class="btn btn-sm add-place">
+            <button class="appearance-none cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs mt-0.5 text-accent bg-transparent border border-dashed border-line-strong w-full justify-center hover:bg-accent-soft hover:border-accent">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Split to another shelf
             </button>
           </div>
 
-          <button class="btn btn-ghost btn-sm damage-toggle">
+          <button class="appearance-none border border-transparent cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs bg-transparent text-fg-muted hover:bg-surface-2 hover:text-fg mt-3">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            Report broken / lost
+            Report a problem
           </button>
         </div>
       </section>
 
       <!-- Line 3: 2 broken (damage open), and NOT YET placed — this is why Accept is disabled -->
-      <section class="card" data-line data-asked="30" data-unit-cost="28000">
-        <div class="card-body">
-          <div class="line-head">
-            <div class="thumb">TTM</div>
+      <section class="bg-surface border border-line rounded shadow" data-line data-asked="30" data-unit-cost="28000">
+        <div class="p-[16px_18px]">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-sm shrink-0 bg-gradient-to-br from-surface-2 to-line grid place-items-center text-fg-subtle text-[11px] font-bold border border-line">TTM</div>
             <div>
-              <div class="prod-name">Topi Trucker Merah</div>
-              <div class="prod-sku">TTM-207</div>
+              <div class="font-semibold text-[15px]">Topi Trucker Merah</div>
+              <div class="text-fg-subtle text-xs [font-variant-numeric:tabular-nums]">TTM-207</div>
             </div>
-            <div class="hpp">
-              <div class="field-label">HPP / pc</div>
-              <b class="hpp-value">Rp 28.739</b>
+            <div class="text-right ml-auto max-[720px]:ml-0 max-[720px]:text-left max-[720px]:w-full">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">HPP / pc</div>
+              <b class="hpp-value text-[15px]">Rp 28.739</b>
             </div>
           </div>
 
-          <hr class="divider" />
+          <hr class="h-px bg-line my-[14px] border-0" />
 
-          <div class="count-row">
-            <div class="count-box">
-              <div class="field-label">Asked</div>
-              <div class="asked">30</div>
-            </div>
-            <div class="arrow">→</div>
-            <div class="count-box">
-              <div class="field-label">Arrived</div>
-              <input class="qty-input arrived" type="text" inputmode="numeric" value="30" />
-            </div>
-            <div class="delta"></div>
-          </div>
-
-          <div class="putaway">
-            <div class="putaway-head">
+          <div class="putaway mt-4 bg-surface-2 border border-line rounded-sm p-[14px]">
+            <div class="flex items-center gap-2 mb-1.5">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
-              <span class="putaway-title">Put away to racks</span>
-              <span class="balance off">0 / 28 placed</span>
+              <span class="text-[12.5px] font-[650] tracking-[.01em]">Put away to racks</span>
+              <span class="text-xs text-fg-muted [font-variant-numeric:tabular-nums]">ordered 30</span>
+              <span class="line-delta inline-flex"></span>
+              <span class="balance ml-auto text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] py-0.5 px-[9px] rounded-full bg-pos-soft text-pos data-[off]:bg-warn-soft data-[off]:text-warn" data-off>28 to place</span>
             </div>
-            <div class="already">
-              28 sellable after breakage — no shelf named yet.
+            <div class="mb-3">
+              <span class="inline-flex items-center gap-[5px] text-xs text-fg-muted mb-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                Placed here before
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="C-02-4 — Aisle C"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>C-02-4 <span class="font-medium opacity-[.72]">18 here</span></button>
+                <button class="rec-chip appearance-none cursor-pointer text-xs font-semibold [font-variant-numeric:tabular-nums] py-[3px] px-2.5 rounded-full border border-dashed border-accent bg-accent-soft text-accent-fg inline-flex items-center gap-[5px] hover:border-solid hover:brightness-[1.02]" data-rack="A-01-3 — Aisle A"><span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>A-01-3 <span class="font-medium opacity-[.72]">6 here</span></button>
+              </div>
             </div>
-            <div class="places">
-              <div class="place-row">
-                <label class="rack-select">
-                  <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
-                  <select><option style="color:var(--fg-subtle)">Choose a shelf…</option><option>C-02-4 — Aisle C</option><option>A-01-3 — Aisle A</option><option>B-03-2 — Aisle B</option><option>Unplaced (holding)</option></select>
-                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            <div>
+              <div class="place-row flex items-center gap-2.5 mb-2">
+                <label class="rack-select flex-auto flex items-center gap-2 border border-line-strong rounded-sm bg-surface py-[7px] px-2.5 min-w-0">
+                  <svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+                  <select class="appearance-none border-0 bg-transparent text-fg text-[13.5px] font-[550] w-full outline-none cursor-pointer"><option class="text-fg-subtle">Choose a shelf…</option><option>C-02-4 — Aisle C</option><option>A-01-3 — Aisle A</option><option>B-03-2 — Aisle B</option><option>Unplaced (holding)</option></select>
+                  <svg class="text-fg-subtle shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </label>
-                <input class="place-qty" type="text" inputmode="numeric" value="0" />
-                <button class="icon-btn" aria-label="Remove shelf" disabled>
+                <input class="place-qty w-[72px] text-center [font-variant-numeric:tabular-nums] py-[7px] px-2 border border-line-strong rounded-sm bg-surface text-fg text-[13.5px] outline-none" type="text" inputmode="numeric" value="28" />
+                <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove shelf" disabled>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                 </button>
               </div>
             </div>
-            <button class="btn btn-sm add-place">
+            <button class="appearance-none cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs mt-0.5 text-accent bg-transparent border border-dashed border-line-strong w-full justify-center hover:bg-accent-soft hover:border-accent">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Split to another shelf
             </button>
           </div>
 
-          <!-- Damage open: 2 broken never enter stock -->
-          <div class="damage">
-            <div class="damage-title">
+          <!-- Problems open: 1 broken + 1 lost, neither enters stock -->
+          <div class="damage mt-3 border border-warn-border bg-warn-soft rounded-sm p-3">
+            <div class="text-[12.5px] font-[650] text-warn mb-2 flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-              Broken / lost — never enters stock
+              Problems — never enters stock
             </div>
-            <div class="damage-row">
-              <input class="dqty" type="text" inputmode="numeric" value="2" aria-label="Quantity" />
-              <input class="dreason" type="text" value="Crushed brims — box corner soaked" aria-label="Reason" />
-              <input class="dval" type="text" value="Rp 56.000" aria-label="Value" />
-              <button class="icon-btn" aria-label="Remove">
+            <div class="damage-row flex items-center gap-2.5 mb-2">
+              <label class="inline-flex items-center gap-1 shrink-0 border border-warn-border rounded-md bg-surface py-0 pl-[9px] pr-[7px]">
+                <select class="dtype appearance-none border-0 bg-transparent text-fg text-[13px] font-semibold py-1.5 outline-none cursor-pointer" aria-label="Problem type"><option>Broken</option><option>Lost</option></select>
+                <svg class="text-fg-subtle shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </label>
+              <input class="dqty w-14 text-center [font-variant-numeric:tabular-nums] py-1.5 px-[9px] border border-warn-border rounded-md bg-surface text-fg text-[13px] outline-none" type="text" inputmode="numeric" value="1" aria-label="Quantity" />
+              <input class="flex-auto min-w-0 py-1.5 px-[9px] border border-warn-border rounded-md bg-surface text-fg text-[13px] outline-none" type="text" value="Crushed brim — box corner soaked" aria-label="Note" />
+              <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
               </button>
             </div>
-            <button class="btn btn-sm btn-outline">
+            <div class="damage-row flex items-center gap-2.5 mb-2">
+              <label class="inline-flex items-center gap-1 shrink-0 border border-warn-border rounded-md bg-surface py-0 pl-[9px] pr-[7px]">
+                <select class="dtype appearance-none border-0 bg-transparent text-fg text-[13px] font-semibold py-1.5 outline-none cursor-pointer" aria-label="Problem type"><option selected>Lost</option><option>Broken</option></select>
+                <svg class="text-fg-subtle shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </label>
+              <input class="dqty w-14 text-center [font-variant-numeric:tabular-nums] py-1.5 px-[9px] border border-warn-border rounded-md bg-surface text-fg text-[13px] outline-none" type="text" inputmode="numeric" value="1" aria-label="Quantity" />
+              <input class="flex-auto min-w-0 py-1.5 px-[9px] border border-warn-border rounded-md bg-surface text-fg text-[13px] outline-none" type="text" value="Short in carton — missing from box" aria-label="Note" />
+              <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-1.5 rounded-md inline-flex hover:bg-neg-soft hover:text-neg disabled:opacity-[.35] disabled:cursor-not-allowed" aria-label="Remove">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+              </button>
+            </div>
+            <button class="appearance-none border border-line-strong cursor-pointer font-semibold rounded-sm inline-flex items-center gap-[7px] py-[5px] px-2.5 text-xs bg-surface text-fg hover:bg-surface-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Add another
             </button>
@@ -563,13 +412,14 @@
 
     </div>
 
-    <p class="footer-note">Static mock · edit the arrived count or COD fee to see the balances, HPP and Accept button react.</p>
+    <p class="text-fg-subtle text-xs text-center pt-2 pb-1">Static mock · type a shelf quantity, pick a shelf, or edit the COD fee — the restock count, HPP and Accept button all react.</p>
   </main>
 
 <script>
   // Just enough behaviour to make this a PREVIEW you can poke at, not a screenshot. None of this is
-  // the real screen — it mirrors the accept logic (count → place → balance → HPP) so the layout can be
-  // judged against the actual job.
+  // the real screen — it mirrors the SIMPLE accept flow, where the restock count is DERIVED, never typed:
+  //   restock count (per line) = what you put away to shelves  +  what you flag broken/lost.
+  // There is no separate "arrived" box — you type quantities in ONE place (the shelves + problem rows).
   const rupiah = (n) => "Rp " + Math.round(n).toLocaleString("id-ID");
   const digits = (s) => parseInt(String(s).replace(/[^0-9]/g, ""), 10) || 0;
 
@@ -577,19 +427,28 @@
   const SHIPPING = 85000;
   const lines = [...document.querySelectorAll("[data-line]")];
 
-  function damagedOf(line) {
+  const chosen = (sel) => !/Choose a shelf/i.test(sel.options[sel.selectedIndex].text);
+
+  function problemsOf(line) {
     let d = 0;
     line.querySelectorAll(".damage .damage-row .dqty").forEach((i) => (d += digits(i.value)));
     return d;
   }
 
-  // A line is ready when it is counted and its shelves add up to the sellable (arrived − broken) count.
+  // placed   = quantities on a NAMED shelf (these enter stock)
+  // unplaced = quantities typed against a row with no shelf chosen yet — this is what blocks Accept
+  // problems = broken/lost (never enter stock)
+  // count    = placed + unplaced + problems  ← the derived restock count for the line
   function lineState(line) {
-    const arrived = digits(line.querySelector(".arrived").value);
-    const sellable = Math.max(0, arrived - damagedOf(line));
-    let placed = 0;
-    line.querySelectorAll(".place-qty").forEach((i) => (placed += digits(i.value)));
-    return { arrived, sellable, placed, ready: placed === sellable };
+    let placed = 0, unplaced = 0;
+    line.querySelectorAll(".place-row").forEach((row) => {
+      const qty = digits(row.querySelector(".place-qty").value);
+      if (qty === 0) return;
+      if (chosen(row.querySelector("select"))) placed += qty;
+      else unplaced += qty;
+    });
+    const problems = problemsOf(line);
+    return { placed, unplaced, problems, count: placed + unplaced + problems, ready: unplaced === 0 };
   }
 
   function recompute() {
@@ -597,45 +456,50 @@
     const freight = SHIPPING + cod;
     document.getElementById("freight-total").textContent = rupiah(freight);
 
-    // Freight rides on every sellable unit across the whole delivery (§accept — HPP includes freight).
-    const totalSellable = lines.reduce((s, l) => s + lineState(l).sellable, 0);
-    const freightPerUnit = totalSellable > 0 ? freight / totalSellable : 0;
+    // Freight rides on every shelved (sellable) unit across the whole delivery — problems carry none.
+    const totalPlaced = lines.reduce((s, l) => s + lineState(l).placed, 0);
+    const freightPerUnit = totalPlaced > 0 ? freight / totalPlaced : 0;
 
-    let counted = 0, unplaced = 0;
+    let received = 0, blockedLines = 0;
     lines.forEach((line) => {
       const st = lineState(line);
-      counted += 1; // every line here has a value typed
+      received += st.count;
 
       // HPP = goods unit cost + this delivery's freight share.
       const unitCost = Number(line.dataset.unitCost);
       line.querySelector(".hpp-value").textContent = rupiah(unitCost + freightPerUnit);
 
-      // Balance pill.
+      // Status pill: a settled total, or a call-to-place while something is unplaced.
       const bal = line.querySelector(".balance");
-      bal.textContent = st.placed + " / " + st.sellable + " placed";
-      bal.classList.toggle("ok", st.ready);
-      bal.classList.toggle("off", !st.ready);
-      if (!st.ready) unplaced += 1;
-
-      // Delta pill on the count row.
-      const asked = Number(line.dataset.asked);
-      const delta = line.querySelector(".delta");
-      const diff = st.arrived - asked;
-      if (diff === 0) {
-        delta.innerHTML = "";
+      if (st.unplaced > 0) {
+        bal.textContent = st.unplaced + " to place";
+        blockedLines += 1;
       } else {
-        const cls = diff < 0 ? "pill pill-warn" : "pill pill-ok";
-        const label = diff < 0 ? diff + " short" : "+" + diff + " over";
-        delta.innerHTML = '<span class="' + cls + '">' + label + "</span>";
+        bal.textContent = st.count + " pcs";
+      }
+      bal.toggleAttribute("data-off", !st.ready);
+
+      // Short / over vs the ordered quantity — the received total (count) against what was ordered.
+      const ordered = Number(line.dataset.asked);
+      const deltaEl = line.querySelector(".line-delta");
+      const diff = st.count - ordered;
+      if (diff === 0 || st.count === 0) {
+        deltaEl.innerHTML = "";
+      } else {
+        const cls = diff < 0
+          ? "text-xs font-semibold px-[9px] py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn border border-warn-border"
+          : "text-xs font-semibold px-[9px] py-0.5 rounded-full whitespace-nowrap bg-pos-soft text-pos";
+        const label = diff < 0 ? -diff + " short" : "+" + diff + " over";
+        deltaEl.innerHTML = '<span class="' + cls + '">' + label + "</span>";
       }
     });
 
-    document.getElementById("counted-n").textContent = counted;
+    document.getElementById("total-recv").textContent = received;
     const blocked = document.getElementById("blocked-line");
     const btn = document.getElementById("accept-btn");
-    if (unplaced > 0) {
+    if (blockedLines > 0) {
       blocked.style.display = "";
-      blocked.textContent = "· " + unplaced + " line" + (unplaced > 1 ? "s" : "") + " not placed";
+      blocked.textContent = "· " + blockedLines + " line" + (blockedLines > 1 ? "s" : "") + " not placed";
       btn.disabled = true;
     } else {
       blocked.style.display = "none";
@@ -643,10 +507,40 @@
     }
   }
 
+  // A recommendation chip drops the product onto the shelf it sat on before: it fills the first row
+  // that has no shelf chosen (else the first row). Click line 3's chip and it goes "28 to place" → placed.
+  document.addEventListener("click", (e) => {
+    const chip = e.target.closest(".rec-chip");
+    if (!chip) return;
+    const rows = [...chip.closest(".putaway").querySelectorAll(".place-row")];
+    const target = rows.find((r) => !chosen(r.querySelector("select"))) || rows[0];
+    const sel = target.querySelector("select");
+    [...sel.options].forEach((o, i) => { if (o.text === chip.dataset.rack) sel.selectedIndex = i; });
+    recompute();
+  });
+
   document.addEventListener("input", (e) => {
-    if (e.target.matches(".arrived, .place-qty, .dqty, #cod-fee")) recompute();
+    if (e.target.matches(".place-qty, .dqty, #cod-fee")) recompute();
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.matches(".rack-select select")) recompute();
   });
   recompute();
 </script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
 </body>
 </html>

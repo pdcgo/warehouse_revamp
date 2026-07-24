@@ -3,342 +3,375 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Mock · Warehouse Product Detail</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY (#202). Hardcoded data, no build. Styled with TAILWIND     *
+ * via the Play CDN (the documented exception to "self-contained"). The   *
+ * WAREHOUSE product detail — what a warehouse team sees when it opens a   *
+ * product it HOLDS but does not own (#144/#158): how much is here, what   *
+ * it is worth, where it sits, what happened to it. NOT the catalogue —    *
+ * a warehouse cannot edit a name or category (#142). Tailwind's theme is  *
+ * mapped onto the shared :root design tokens below; dark mode rides on    *
+ * the tokens flipping at [data-theme=dark].                               *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
 <style>
-  /* ------------------------------------------------------------------ *
-   * MOCKUP ONLY (#202). Plain HTML/CSS, hardcoded data, no build. A     *
-   * throwaway preview of the WAREHOUSE product detail — what a warehouse *
-   * team sees when it opens a product it HOLDS but does not own: how     *
-   * much is here, what it is worth, where it sits, what happened to it   *
-   * (#144/#158). NOT the catalogue page — a warehouse cannot edit a name *
-   * or a category (#142). The real screen is built from Chakra + the     *
-   * shared components; the accent ramp is a placeholder, same as the app.*
-   * ------------------------------------------------------------------ */
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
   :root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #f9fafb;
-    --border: #e4e7ec;
-    --border-strong: #d0d5dd;
-    --fg: #101828;
-    --fg-muted: #667085;
-    --fg-subtle: #98a2b3;
-    --accent: #4f46e5;
-    --accent-soft: #eef2ff;
-    --accent-fg: #3730a3;
-    --warn: #b54708;
-    --warn-soft: #fffaeb;
-    --warn-border: #fedf89;
-    --danger: #b42318;
-    --pos: #067647;
-    --neg: #b42318;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0c0e12;
-      --surface: #161a20;
-      --surface-2: #1b2027;
-      --border: #262b33;
-      --border-strong: #333a44;
-      --fg: #f0f2f5;
-      --fg-muted: #98a2b3;
-      --fg-subtle: #667085;
-      --accent: #7c74f0;
-      --accent-soft: #1e1b34;
-      --accent-fg: #c7c2f7;
-      --warn: #f5a524;
-      --warn-soft: #2a2113;
-      --warn-border: #4a3a15;
-      --danger: #f97066;
-      --pos: #47c67e;
-      --neg: #f97066;
-      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
-    }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
   }
 
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font-family: var(--font); font-size: 14px; line-height: 1.45;
+  /* The few things utilities can't express inline: the striped mock banner and the
+     two form controls whose chevron / search glyph is a background-image data-URI. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .select {
+    appearance: none; font-family: inherit; font-size: 13px; font-weight: 550;
+    color: var(--fg); background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 6px 30px 6px 10px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
   }
-  .mock-banner {
-    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
-    border-bottom: 1px solid var(--border); color: var(--accent-fg);
-    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
+  .select:hover { border-color: var(--accent); }
+  .search-input {
+    font-family: inherit; font-size: 13px; color: var(--fg); min-width: 210px;
+    background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 6px 10px 6px 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 9px center; background-size: 14px;
   }
-
-  header.bar { border-bottom: 1px solid var(--border); background: var(--surface); }
-  .bar-inner {
-    max-width: 1000px; margin: 0 auto; padding: 14px 20px;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  }
-  .back {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--fg-muted); text-decoration: none; font-size: 13px;
-    padding: 4px 8px; border-radius: var(--radius-sm);
-  }
-  .back:hover { background: var(--surface-2); color: var(--fg); }
-  .name-block { display: flex; flex-direction: column; }
-  .prod-name { font-size: 20px; font-weight: 650; line-height: 1.2; }
-  .prod-sku { color: var(--fg-subtle); font-size: 13px; font-variant-numeric: tabular-nums; }
-  .spacer { flex: 1 1 auto; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn {
-    appearance: none; border: 1px solid transparent; cursor: pointer; background: none;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    padding: 7px 14px; border-radius: var(--radius-sm);
-    display: inline-flex; align-items: center; gap: 6px; color: var(--fg);
-  }
-  .btn-outline { background: var(--surface); border-color: var(--border-strong); }
-  .btn-outline:hover { background: var(--surface-2); }
-  .btn .glyph { color: var(--accent); }
-
-  main { max-width: 1000px; margin: 0 auto; padding: 20px; }
-
-  /* Two columns: vertical tabs (#198) + content panel */
-  .layout { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
-  .tabs { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 20px; }
-  .tab {
-    text-align: left; border: none; background: none; cursor: pointer;
-    font-family: inherit; font-size: 13.5px; font-weight: 550; color: var(--fg-muted);
-    padding: 9px 12px; border-radius: var(--radius-sm); border-left: 2px solid transparent;
-    display: flex; align-items: center; gap: 9px;
-  }
-  .tab:hover { background: var(--surface-2); color: var(--fg); }
-  .tab.active {
-    background: var(--accent-soft); color: var(--accent-fg);
-    border-left-color: var(--accent); font-weight: 650;
-  }
-  .tab .glyph { flex: 0 0 auto; opacity: .85; }
-
-  .panel { display: none; }
-  .panel.active { display: block; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-  }
-  .card-body { padding: 18px; }
-  .panel-title { font-size: 15px; font-weight: 650; margin: 0 0 14px; }
-
-  /* Stat tiles */
-  .tiles { display: grid; gap: 14px; }
-  .tiles.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .tiles.cols-2 { grid-template-columns: repeat(2, 1fr); }
-  .tile {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px;
-  }
-  .tile-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
-  .tile-value { font-size: 22px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .tile-value.sm { font-size: 16px; }
-  .tile-value.muted { color: var(--fg-subtle); font-weight: 550; }
-  .tile-sub { font-size: 12px; color: var(--fg-muted); margin-top: 2px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent-fg);
-  }
-  .link { color: var(--accent-fg); font-weight: 650; }
-
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  thead th {
-    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--fg-subtle); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border);
-  }
-  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  tbody tr:last-child td { border-bottom: none; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .mono { font-variant-numeric: tabular-nums; }
-  .place-chip {
-    display: inline-flex; align-items: center; gap: 6px; font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-  .place-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .7; }
-  .place-chip.unplaced { color: var(--fg-muted); }
-  .place-chip.unplaced .dot { background: var(--fg-subtle); }
-  .delta-pos { color: var(--pos); font-weight: 650; font-variant-numeric: tabular-nums; }
-  .delta-neg { color: var(--neg); font-weight: 650; font-variant-numeric: tabular-nums; }
-  .kind {
-    display: inline-flex; align-items: center; font-size: 12px; font-weight: 600;
-    padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--fg-muted);
-    border: 1px solid var(--border);
-  }
-  .foot-total td { font-weight: 700; border-top: 2px solid var(--border); }
-
-  svg { display: block; }
-  .footer-note { color: var(--fg-subtle); font-size: 12px; text-align: center; padding: 16px 0 4px; }
-
-  @media (max-width: 760px) {
-    .layout { grid-template-columns: 1fr; }
-    .tabs { position: static; flex-direction: row; flex-wrap: wrap; }
-    .tab { border-left: none; border-bottom: 2px solid transparent; }
-    .tab.active { border-left: none; border-bottom-color: var(--accent); }
-    .tiles.cols-3, .tiles.cols-2 { grid-template-columns: repeat(2, 1fr); }
-  }
+  .search-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 </style>
 </head>
-<body>
-  <div class="mock-banner">MOCKUP · Warehouse Product Detail (#202) · fake data · not the app</div>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Warehouse Product Detail (#202) · fake data · not the app</div>
 
-  <header class="bar">
-    <div class="bar-inner">
-      <a class="back" href="#">
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1000px] mx-auto p-[14px_20px] flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] px-2 py-1 rounded-sm hover:bg-surface-2 hover:text-fg" href="#">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
         Products
       </a>
-      <div class="spacer" style="flex:0"></div>
-      <div class="name-block">
-        <span class="prod-name">Kaos Polos Hitam L</span>
-        <span class="prod-sku">SKU-1041</span>
+      <div class="grow-0"></div>
+      <div class="flex flex-col">
+        <span class="text-[20px] font-[650] leading-[1.2]">Kaos Polos Hitam L</span>
+        <span class="text-fg-subtle text-[13px] [font-variant-numeric:tabular-nums]">SKU-1041</span>
       </div>
-      <div class="spacer"></div>
+      <div class="flex-1"></div>
       <!-- The SAME shared stock dialogs the stock list uses (#199). A warehouse ACTS on stock here;
            it never edits the catalogue. -->
-      <div class="actions">
-        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M3 21h18"/></svg>Receive</button>
-        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Move</button>
-        <button class="btn btn-outline"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Adjust</button>
+      <div class="flex gap-2 flex-wrap">
+        <a class="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-[7px] rounded-sm text-fg no-underline cursor-pointer border border-line-strong bg-surface hover:bg-surface-2" href="stock-move.html"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Move</a>
+        <a class="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-[7px] rounded-sm text-fg no-underline cursor-pointer border border-line-strong bg-surface hover:bg-surface-2" href="stock-adjust.html"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Adjust</a>
       </div>
     </div>
   </header>
 
-  <main>
-    <div class="layout">
+  <main class="max-w-[1000px] mx-auto p-5">
+    <div class="grid grid-cols-[200px_1fr] gap-5 items-start max-[760px]:grid-cols-1">
       <!-- VERTICAL tabs (#198) — sections of one record, read one at a time -->
-      <nav class="tabs" id="tabs">
-        <button class="tab active" data-tab="info"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Info</button>
-        <button class="tab" data-tab="prices"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Prices</button>
-        <button class="tab" data-tab="placement"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>Placement</button>
-        <button class="tab" data-tab="batches"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>Batches</button>
-        <button class="tab" data-tab="stock-history"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stock History</button>
-        <button class="tab" data-tab="placement-history"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg>Placement History</button>
+      <nav class="flex flex-col gap-0.5 sticky top-5 max-[760px]:static max-[760px]:flex-row max-[760px]:flex-wrap" id="tabs">
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="info" data-active><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Info</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="prices"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Prices</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="placement"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>Placement</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="batches"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>Batches</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="stock-history"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stock History</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="placement-history"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg>Placement History</button>
       </nav>
 
       <section>
         <!-- INFO -->
-        <div class="panel active" data-panel="info">
-          <div class="tiles cols-3">
-            <div class="tile">
-              <div class="tile-label">Owner</div>
-              <div class="tile-value sm"><span class="badge">
+        <div class="hidden data-[active]:block" data-panel="info" data-active>
+          <!-- Product identity — catalogue detail the warehouse SEES but cannot edit (#142). -->
+          <div class="bg-surface border border-line rounded shadow mb-3.5"><div class="p-[18px]">
+            <div class="flex gap-[18px] items-start max-[520px]:flex-col">
+              <div class="shrink-0 w-[120px] h-[120px] rounded border border-line bg-surface-2 flex items-center justify-center text-fg-subtle overflow-hidden">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[18px] font-[650] leading-[1.2]">Kaos Polos Hitam L</div>
+                <div class="text-fg-subtle text-[13px] [font-variant-numeric:tabular-nums] mt-0.5">SKU-1041 · Barcode 8991002104105</div>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-2.5 mt-3.5">
+                  <div class="flex flex-col gap-px"><span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Category</span><span class="font-[550]">Apparel › T-Shirts</span></div>
+                  <div class="flex flex-col gap-px"><span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Unit</span><span class="font-[550]">Piece (pcs)</span></div>
+                  <div class="flex flex-col gap-px"><span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Weight</span><span class="font-[550]">180 g</span></div>
+                  <div class="flex flex-col gap-px"><span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Size</span><span class="font-[550]">L</span></div>
+                </div>
+                <p class="text-fg-muted text-[12.5px] mt-3.5">Plain cotton crew-neck tee, black, size L. Read-only here — the catalogue is owned by the selling team (#142).</p>
+              </div>
+            </div>
+          </div></div>
+
+          <div class="grid gap-3.5 grid-cols-3 max-[760px]:grid-cols-2">
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Owner</div>
+              <div class="text-base font-[650] mt-1 [font-variant-numeric:tabular-nums]"><span class="inline-flex items-center gap-[5px] text-xs font-semibold px-[9px] py-[3px] rounded-full bg-accent-soft text-accent-fg">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
                 Catalogue: Selling Alpha</span></div>
-              <div class="tile-sub">This warehouse holds another team's goods (#142).</div>
+              <div class="text-xs text-fg-muted mt-0.5">This warehouse holds another team's goods (#142).</div>
             </div>
-            <div class="tile">
-              <div class="tile-label">On hand</div>
-              <div class="tile-value">240</div>
-              <div class="tile-sub">Summed across every shelf (#135).</div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ready stock</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">240 <span class="text-[13px] text-fg-muted font-[550]">pcs</span></div>
+              <div class="text-xs text-fg-muted mt-0.5">Value Rp 5.957.000 · on hand across every shelf (#135).</div>
             </div>
-            <div class="tile">
-              <div class="tile-label">On its way</div>
-              <div class="tile-value">120</div>
-              <div class="tile-sub">Pending restocks inbound.</div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ongoing stock</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">120 <span class="text-[13px] text-fg-muted font-[550]">pcs</span></div>
+              <div class="text-xs text-fg-muted mt-0.5">Value ~Rp 3.000.000 (est.) · inbound restocks not yet arrived.</div>
             </div>
-            <div class="tile">
-              <div class="tile-label">Last counted</div>
-              <div class="tile-value sm">2026-07-23</div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Last counted</div>
+              <div class="text-base font-[650] mt-1 [font-variant-numeric:tabular-nums]">2026-07-23</div>
             </div>
-            <div class="tile">
-              <div class="tile-label">Last order</div>
-              <div class="tile-value sm"><span class="link">#5821</span></div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Last order</div>
+              <div class="text-base font-[650] mt-1 [font-variant-numeric:tabular-nums]"><span class="text-accent-fg font-[650]">#5821</span></div>
             </div>
-            <div class="tile">
-              <div class="tile-label">Last delivery</div>
-              <div class="tile-value sm"><span class="link">#3007</span></div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Last arrived restock</div>
+              <div class="text-base font-[650] mt-1 [font-variant-numeric:tabular-nums]"><span class="text-accent-fg font-[650]">#3007</span></div>
+              <div class="text-xs text-fg-muted mt-0.5">Arrived 2026-07-21 · +200 pcs.</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Last return</div>
+              <div class="text-base font-[650] mt-1 [font-variant-numeric:tabular-nums]"><span class="text-accent-fg font-[650]">#RET-118</span></div>
+              <div class="text-xs text-fg-muted mt-0.5">2026-07-19 · 4 pcs came back.</div>
             </div>
           </div>
         </div>
 
         <!-- PRICES -->
-        <div class="panel" data-panel="prices">
-          <div class="tiles cols-2">
-            <div class="tile">
-              <div class="tile-label">Cost / pc</div>
-              <div class="tile-value">Rp 25.000</div>
-              <div class="tile-sub">Frozen HPP from the last delivery.</div>
+        <div class="hidden data-[active]:block" data-panel="prices">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Stock value by cost price</h2>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Cost / pc</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">On hand</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Amount</th></tr></thead>
+              <tbody class="[&>tr:last-child>td]:border-b-0">
+                <tr><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">Rp 25.000</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">197</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 4.925.000</td></tr>
+                <tr><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">Rp 24.000</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">43</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 1.032.000</td></tr>
+              </tbody>
+            </table>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–2 of 2 cost layers</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+              </div>
             </div>
-            <div class="tile">
-              <div class="tile-label">Stock value</div>
-              <div class="tile-value">Rp 6.000.000</div>
-              <div class="tile-sub">240 on hand × cost. Unknown cost would read "Unknown", never Rp 0 (#74).</div>
-            </div>
-          </div>
+            <p class="text-xs text-fg-muted mt-3">Each delivery freezes its own cost (HPP), so on hand splits into cost layers — stock value is the sum across them, not on-hand × one price. An unknown-cost layer would read "Unknown", never Rp 0 (#74).</p>
+          </div></div>
         </div>
 
         <!-- PLACEMENT -->
-        <div class="panel" data-panel="placement">
-          <div class="card"><div class="card-body">
-            <h2 class="panel-title">Where it sits</h2>
-            <table>
-              <thead><tr><th>Place</th><th class="num">On hand</th></tr></thead>
-              <tbody>
-                <tr><td><span class="place-chip"><span class="dot"></span>A-01-3</span></td><td class="num">180</td></tr>
-                <tr><td><span class="place-chip"><span class="dot"></span>B-04-2</span></td><td class="num">45</td></tr>
-                <!-- Unplaced is a real place, spelled out — not a blank (#135). -->
-                <tr><td><span class="place-chip unplaced"><span class="dot"></span>Unplaced</span></td><td class="num">15</td></tr>
+        <div class="hidden data-[active]:block" data-panel="placement">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Where it sits</h2>
+            <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Place</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">On hand</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Last out</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Last in</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Last opname</th></tr></thead>
+              <tbody class="[&>tr:last-child>td]:border-b-0">
+                <tr><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center gap-1.5 font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>A-01-3</span></td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">195</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-23</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-21</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-23</td></tr>
+                <tr><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center gap-1.5 font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>B-04-2</span></td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">45</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-20</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-22</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums] text-warn">2026-07-12</td></tr>
               </tbody>
-              <tfoot><tr class="foot-total"><td>Total</td><td class="num">240</td></tr></tfoot>
             </table>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–2 of 2 shelves</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+              </div>
+            </div>
+            <p class="text-xs text-fg-muted mt-3"><strong>Last out</strong> — last pick or move off this shelf. <strong>Last in</strong> — last receive or move onto it. <strong>Last opname</strong> — last physical count (stock opname). A stale opname (amber) flags a shelf that hasn't been verified lately.</p>
           </div></div>
         </div>
 
         <!-- BATCHES -->
-        <div class="panel" data-panel="batches">
-          <div class="card"><div class="card-body">
-            <h2 class="panel-title">Deliveries of this product</h2>
-            <table>
-              <thead><tr><th>Delivery</th><th class="num">Arrived</th><th class="num">Damaged</th><th class="num">Line cost</th></tr></thead>
-              <tbody>
-                <tr><td><span class="link">#3007</span></td><td class="num">200</td><td class="num">3</td><td class="num">Rp 5.000.000</td></tr>
-                <tr><td><span class="link">#2988</span></td><td class="num">60</td><td class="num">0</td><td class="num">Rp 1.500.000</td></tr>
+        <div class="hidden data-[active]:block" data-panel="batches">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <div class="flex items-center justify-between gap-3 mb-3.5 flex-wrap">
+              <h2 class="text-[15px] font-[650] m-0">Deliveries of this product</h2>
+              <div class="inline-flex items-center gap-2">
+                <input class="search-input" id="batch-search" type="search" placeholder="Search batch or receipt #…" aria-label="Search deliveries" />
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Delivery</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Restock created</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Restock arrived</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Qty</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Damaged</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Used</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Ready</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Line cost</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Expiring</th></tr></thead>
+              <tbody id="batch-body" class="[&>tr:last-child>td]:border-b-0">
+                <tr data-search="3007 grn-0721">
+                  <td class="px-3 py-2.5 border-b border-line"><a class="text-accent-fg font-[650]" href="batch-detail.html">#3007</a><div class="text-fg-subtle text-[11.5px] mt-0.5">Receipt GRN-0721</div></td>
+                  <td class="px-3 py-2.5 border-b border-line"><div class="font-[550] [font-variant-numeric:tabular-nums]">2026-07-14</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+                  <td class="px-3 py-2.5 border-b border-line"><div class="font-[550] [font-variant-numeric:tabular-nums]">2026-07-21</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Budi</div></td>
+                  <td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">200</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">3</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">0</td><td class="px-3 py-2.5 border-b border-line text-right text-pos font-[650] [font-variant-numeric:tabular-nums]">197</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 5.000.000</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums] text-warn">2026-07-30</td>
+                </tr>
+                <tr data-search="2988 grn-0712">
+                  <td class="px-3 py-2.5 border-b border-line"><a class="text-accent-fg font-[650]" href="batch-detail.html">#2988</a><div class="text-fg-subtle text-[11.5px] mt-0.5">Receipt GRN-0712</div></td>
+                  <td class="px-3 py-2.5 border-b border-line"><div class="font-[550] [font-variant-numeric:tabular-nums]">2026-07-05</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+                  <td class="px-3 py-2.5 border-b border-line"><div class="font-[550] [font-variant-numeric:tabular-nums]">2026-07-12</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Rina</div></td>
+                  <td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">60</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">0</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">17</td><td class="px-3 py-2.5 border-b border-line text-right text-pos font-[650] [font-variant-numeric:tabular-nums]">43</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 1.440.000</td><td class="px-3 py-2.5 border-b border-line text-fg-subtle text-[11.5px]">—</td>
+                </tr>
               </tbody>
             </table>
-            <p class="tile-sub" style="margin-top:12px">A batch is a delivery — no lot numbers or expiry (owner, 2026-07-21). Only this product's lines within each delivery are summed.</p>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–2 of 2 deliveries</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+              </div>
+            </div>
+            <p class="text-xs text-fg-muted mt-3">A delivery comes from a restock order — <strong>Restock created</strong> is when it was raised (by whom), <strong>Restock arrived</strong> when it landed and was accepted (by whom). Click a delivery # for its <strong>receipt</strong>. <strong>Qty = Damaged + Used + Ready.</strong> Used is what's been picked/shipped; Ready is what's still available. Oldest delivery is drawn down first (FIFO), so total Ready (240) equals On hand. No lot numbers. <strong>Expiring</strong> is optional — set only for perishable goods (amber = expiring soon), blank when it doesn't apply.</p>
           </div></div>
         </div>
 
         <!-- STOCK HISTORY -->
-        <div class="panel" data-panel="stock-history">
-          <div class="card"><div class="card-body">
-            <h2 class="panel-title">Everything that happened here</h2>
-            <table>
-              <thead><tr><th>When</th><th>What</th><th>Place</th><th class="num">Change</th><th class="num">After</th></tr></thead>
-              <tbody>
-                <tr><td class="mono">2026-07-23 10:00</td><td><span class="kind">Counted</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−1</td><td class="num">170</td></tr>
-                <tr><td class="mono">2026-07-23 08:30</td><td><span class="kind">Picked</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−9</td><td class="num">171</td></tr>
-                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−20</td><td class="num">180</td></tr>
-                <tr><td class="mono">2026-07-21 09:14</td><td><span class="kind">Received</span></td><td class="mono">A-01-3</td><td class="num delta-pos">+200</td><td class="num">200</td></tr>
+        <div class="hidden data-[active]:block" data-panel="stock-history">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <div class="flex items-center justify-between gap-3 mb-3.5 flex-wrap">
+              <h2 class="text-[15px] font-[650] m-0">Everything that happened here</h2>
+              <!-- Filter by the delivery (batch) an event belongs to. Batch-less events (a shelf
+                   reconcile, a move) carry "—" and drop out when a specific batch is chosen. -->
+              <div class="inline-flex items-center gap-2">
+                <label class="text-xs text-fg-muted font-semibold" for="batch-filter">Batch</label>
+                <select class="select" id="batch-filter">
+                  <option value="">All batches</option>
+                  <option value="3007">#3007</option>
+                  <option value="2988">#2988</option>
+                </select>
+              </div>
+            </div>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">When</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">What</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">By</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Batch</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Place</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Change</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">After</th></tr></thead>
+              <tbody id="sh-body" class="[&>tr:last-child>td]:border-b-0">
+                <tr data-batch="2988"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-23 11:30</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Picked</span></td><td class="px-3 py-2.5 border-b border-line">Rina</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#2988</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−5</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">165</td></tr>
+                <tr data-batch=""><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-23 10:00</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Counted</span></td><td class="px-3 py-2.5 border-b border-line">Budi</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums] text-fg-subtle">—</td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−1</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">170</td></tr>
+                <tr data-batch="2988"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-23 08:30</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Picked</span></td><td class="px-3 py-2.5 border-b border-line">Rina</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#2988</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−9</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">171</td></tr>
+                <tr data-batch="3007"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-22 14:02</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="px-3 py-2.5 border-b border-line">Andi</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#3007</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−20</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">180</td></tr>
+                <tr data-batch="3007"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-21 09:14</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Received</span></td><td class="px-3 py-2.5 border-b border-line">Budi</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#3007</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-pos font-[650] [font-variant-numeric:tabular-nums]">+200</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">200</td></tr>
               </tbody>
             </table>
-            <p class="tile-sub" style="margin-top:12px">"After" is this SHELF's balance, not the warehouse total (#135).</p>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–5 of 5 events</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+              </div>
+            </div>
+            <p class="text-xs text-fg-muted mt-3">"After" is this SHELF's balance, not the warehouse total (#135). Picks draw the oldest delivery first (FIFO), so they're tagged #2988; a move carries the batch it relocated (#3007). Only a shelf count reconciles the whole shelf and touches no single batch, so it reads "—".</p>
           </div></div>
         </div>
 
         <!-- PLACEMENT HISTORY -->
-        <div class="panel" data-panel="placement-history">
-          <div class="card"><div class="card-body">
-            <h2 class="panel-title">Moves between shelves</h2>
-            <table>
-              <thead><tr><th>When</th><th>What</th><th>Place</th><th class="num">Change</th><th class="num">After</th></tr></thead>
-              <tbody>
-                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">B-04-2</td><td class="num delta-pos">+20</td><td class="num">45</td></tr>
-                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td class="mono">A-01-3</td><td class="num delta-neg">−20</td><td class="num">180</td></tr>
+        <div class="hidden data-[active]:block" data-panel="placement-history">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <div class="flex items-center justify-between gap-3 mb-3.5 flex-wrap">
+              <h2 class="text-[15px] font-[650] m-0">Moves for this rack</h2>
+              <!-- Always scoped to ONE rack — opens on the product's main rack, never an all-view.
+                   Real screen uses the shared RackSelect (#136/#139), not a bare <select>. -->
+              <div class="inline-flex items-center gap-3.5 flex-wrap">
+                <div class="inline-flex items-center gap-2">
+                  <label class="text-xs text-fg-muted font-semibold" for="rack-filter">Rack</label>
+                  <select class="select" id="rack-filter">
+                    <option value="A-01-3" selected>A-01-3</option>
+                    <option value="B-04-2">B-04-2</option>
+                    <option value="">All racks</option>
+                  </select>
+                </div>
+                <div class="inline-flex items-center gap-2">
+                  <label class="text-xs text-fg-muted font-semibold" for="ph-batch-filter">Batch</label>
+                  <select class="select" id="ph-batch-filter">
+                    <option value="">All batches</option>
+                    <option value="3007">#3007</option>
+                    <option value="2988">#2988</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">When</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">What</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">By</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Batch</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line">Place</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">Change</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-2 border-b border-line text-right [font-variant-numeric:tabular-nums]">After</th></tr></thead>
+              <tbody id="ph-body" class="[&>tr:last-child>td]:border-b-0">
+                <tr data-place="B-04-2" data-batch="3007"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-22 14:02</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="px-3 py-2.5 border-b border-line">Andi</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#3007</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">B-04-2</td><td class="px-3 py-2.5 border-b border-line text-right text-pos font-[650] [font-variant-numeric:tabular-nums]">+20</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">45</td></tr>
+                <tr data-place="A-01-3" data-batch="3007"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-22 14:02</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="px-3 py-2.5 border-b border-line">Andi</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#3007</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−20</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">195</td></tr>
+                <tr data-place="A-01-3" data-batch="2988"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-20 09:30</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="px-3 py-2.5 border-b border-line">Siti</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#2988</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="px-3 py-2.5 border-b border-line text-right text-pos font-[650] [font-variant-numeric:tabular-nums]">+10</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">215</td></tr>
+                <tr data-place="B-04-2" data-batch="2988"><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-20 09:30</td><td class="px-3 py-2.5 border-b border-line"><span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="px-3 py-2.5 border-b border-line">Siti</td><td class="px-3 py-2.5 border-b border-line"><span class="text-accent-fg font-[650]">#2988</span></td><td class="px-3 py-2.5 border-b border-line [font-variant-numeric:tabular-nums]">B-04-2</td><td class="px-3 py-2.5 border-b border-line text-right text-neg font-[650] [font-variant-numeric:tabular-nums]">−10</td><td class="px-3 py-2.5 border-b border-line text-right [font-variant-numeric:tabular-nums]">25</td></tr>
               </tbody>
             </table>
-            <p class="tile-sub" style="margin-top:12px">MOVE-only (#136) — a shelf-to-shelf transfer shows as a pair that nets to zero across the warehouse.</p>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–4 of 4 moves</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+              </div>
+            </div>
+            <p class="text-xs text-fg-muted mt-3">MOVE-only (#136), scoped to one rack. A shelf-to-shelf transfer is a pair — switch to "All racks" to see both legs net to zero across the warehouse. Each move relocates one delivery's units, so both legs carry the same Batch — which means stock is tracked per shelf <em>and</em> per batch.</p>
           </div></div>
         </div>
       </section>
     </div>
 
-    <p class="footer-note">Static mock · click the tabs on the left to move between sections.</p>
+    <p class="text-fg-subtle text-xs text-center pt-4 pb-1">Static mock · click the tabs on the left to move between sections.</p>
   </main>
 
 <script>
@@ -347,9 +380,61 @@
   tabs.addEventListener("click", (e) => {
     const btn = e.target.closest(".tab");
     if (!btn) return;
-    tabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === btn));
-    panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+    tabs.querySelectorAll(".tab").forEach((t) => t.toggleAttribute("data-active", t === btn));
+    panels.forEach((p) => p.toggleAttribute("data-active", p.dataset.panel === btn.dataset.tab));
+  });
+
+  // Placement history filters by rack AND batch — default the main rack, all batches, on load.
+  const rackFilter = document.getElementById("rack-filter");
+  const phBatchFilter = document.getElementById("ph-batch-filter");
+  const phRows = [...document.querySelectorAll("#ph-body tr")];
+  const applyPlacementFilters = () => {
+    const rack = rackFilter.value;
+    const batch = phBatchFilter.value;
+    phRows.forEach((r) => {
+      const show = (!rack || r.dataset.place === rack) && (!batch || r.dataset.batch === batch);
+      r.style.display = show ? "" : "none";
+    });
+  };
+  rackFilter.addEventListener("change", applyPlacementFilters);
+  phBatchFilter.addEventListener("change", applyPlacementFilters);
+  applyPlacementFilters();
+
+  // Stock history filters by batch (delivery). "All batches" default; a specific batch hides
+  // batch-less rows (a shelf count, a move — they carry no single delivery).
+  const batchFilter = document.getElementById("batch-filter");
+  const shRows = [...document.querySelectorAll("#sh-body tr")];
+  const applyBatchFilter = () => {
+    const v = batchFilter.value;
+    shRows.forEach((r) => { r.style.display = (!v || r.dataset.batch === v) ? "" : "none"; });
+  };
+  batchFilter.addEventListener("change", applyBatchFilter);
+  applyBatchFilter();
+
+  // Batches list: search by batch id or receipt no (they share the delivery number).
+  const batchSearch = document.getElementById("batch-search");
+  const batchListRows = [...document.querySelectorAll("#batch-body tr")];
+  batchSearch.addEventListener("input", () => {
+    const q = batchSearch.value.trim().toLowerCase().replace(/^#/, "");
+    batchListRows.forEach((r) => {
+      r.style.display = (!q || r.dataset.search.includes(q)) ? "" : "none";
+    });
   });
 </script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
 </body>
 </html>

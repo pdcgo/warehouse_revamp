@@ -5,85 +5,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Mock · Batch Receipt</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. The RECEIPT for one delivery  *
+ * (batch) — the goods-received record behind a batch row on the        *
+ * warehouse product detail. It is the step between accept-rack (count a *
+ * delivery onto racks) and print-labels (the stickers): the document of *
+ * WHAT ARRIVED, what was damaged, what was accepted into stock, at what *
+ * cost, onto which rack. A whole delivery spans several products; this  *
+ * product's line is highlighted. Styled with TAILWIND via the Play CDN, *
+ * theme mapped onto the shared :root design tokens below. Has a real    *
+ * print stylesheet (kept in <style> — a receipt is meant to be printed).*
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
 <style>
-  /* ------------------------------------------------------------------ *
-   * MOCKUP ONLY. Plain HTML/CSS, hardcoded data, no build. The RECEIPT  *
-   * for one delivery (batch) — the goods-received record behind a batch *
-   * row on the warehouse product detail. It is the step between         *
-   * accept-rack (count a delivery onto racks) and print-labels (the     *
-   * stickers): the document of WHAT ARRIVED, what was damaged, what was *
-   * accepted into stock, at what cost, onto which rack. A whole delivery *
-   * spans several products; this product's line is highlighted. Has a   *
-   * real print stylesheet — a receipt is meant to be printed.           *
-   * ------------------------------------------------------------------ */
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
-    --border: #e4e7ec; --border-strong: #d0d5dd;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
     --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
     --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
-    --pos: #067647; --neg: #b42318;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
     --radius: 12px; --radius-sm: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-      --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
-      --border: #262b33; --border-strong: #333a44;
-      --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
-      --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
-      --pos: #47c67e; --neg: #f97066;
-      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
-  .mock-banner {
-    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
-    border-bottom: 1px solid var(--border); color: var(--accent-fg);
-    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
   }
 
-  .toolbar { max-width: 800px; margin: 0 auto; padding: 16px 20px 0; display: flex; justify-content: flex-end; gap: 10px; }
-  .btn { appearance: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; }
-  .btn-outline { background: var(--surface); border-color: var(--border-strong); color: var(--fg); }
-  .btn-outline:hover { background: var(--surface-2); }
-  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  :root[data-theme="dark"] .btn-primary { color: #0c0e12; }
-  .btn .glyph { opacity: .9; }
-
-  main { max-width: 800px; margin: 0 auto; padding: 16px 20px 40px; }
-  .receipt { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px 34px; }
-
-  .r-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 2px solid var(--fg); padding-bottom: 18px; }
-  .r-org { font-size: 17px; font-weight: 700; }
-  .r-org-sub { color: var(--fg-muted); font-size: 12.5px; margin-top: 2px; }
-  .r-title { text-align: right; }
-  .r-title h1 { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: .01em; }
-  .r-title .num { font-size: 15px; font-weight: 650; color: var(--accent-fg); font-variant-numeric: tabular-nums; margin-top: 3px; }
-
-  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 22px; margin: 20px 0 24px; }
-  .meta .m-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
-  .meta .m-val { font-weight: 550; margin-top: 1px; font-variant-numeric: tabular-nums; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border-strong); }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .mono { font-variant-numeric: tabular-nums; }
-  .prod { font-weight: 600; }
-  .prod .sku { display: block; color: var(--fg-subtle); font-size: 11.5px; font-weight: 400; font-variant-numeric: tabular-nums; }
-  .rack-chip { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .rack-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .7; }
-  .this-row { background: var(--accent-soft); }
-  .this-row td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
-  .tag { display: inline-block; font-size: 10px; font-weight: 700; color: var(--accent-fg); background: var(--surface); border: 1px solid var(--accent); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
-  .dmg { color: var(--neg); font-weight: 600; }
-  .foot-total td { font-weight: 700; border-top: 2px solid var(--border-strong); border-bottom: none; }
-
-  .r-note { margin-top: 18px; font-size: 12.5px; color: var(--fg-muted); }
-  .sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-  .sig .line { border-top: 1px solid var(--fg-muted); padding-top: 6px; font-size: 12px; color: var(--fg-muted); }
-  .sig .who { font-weight: 600; color: var(--fg); }
+  /* The striped mock banner, plus the real print stylesheet — a receipt is meant to
+     be printed, and print rules can't be utilities. The print block hides chrome and
+     flattens the document; it targets hook classes kept on the elements below. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
 
   @media print {
     .theme-toggle { display: none !important; }
@@ -94,116 +88,109 @@
     .receipt { border: none; box-shadow: none; border-radius: 0; padding: 0; }
     .this-row { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
-  /* light / dark preview toggle */
-  .theme-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 9999; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg-muted); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .theme-toggle:hover { color: var(--fg); border-color: var(--accent); }
-  .theme-toggle .sun { display: none; }
-  .theme-toggle .moon { display: block; }
-  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
-  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
 </style>
 </head>
-<body>
-  <div class="mock-banner">MOCKUP · Batch Receipt (delivery #3007) · fake data · not the app</div>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Batch Receipt (delivery #3007) · fake data · not the app</div>
 
-  <div class="toolbar">
-    <a class="btn btn-outline" href="batch-detail.html">
-      <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+  <div class="toolbar max-w-[800px] mx-auto p-[16px_20px_0] flex justify-end gap-2.5">
+    <a class="border border-line-strong bg-surface text-fg cursor-pointer text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-1.5 no-underline hover:bg-surface-2" href="batch-detail.html">
+      <svg class="opacity-90" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
       Back to batch
     </a>
-    <button class="btn btn-primary" onclick="window.print()">
-      <svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    <button class="bg-accent border border-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] cursor-pointer text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-1.5" onclick="window.print()">
+      <svg class="opacity-90" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print
     </button>
   </div>
 
-  <main>
-    <div class="receipt">
-      <div class="r-head">
+  <main class="max-w-[800px] mx-auto p-[16px_20px_40px]">
+    <div class="receipt bg-surface border border-line rounded shadow p-[32px_34px]">
+      <div class="flex justify-between items-start gap-5 border-b-2 border-fg pb-[18px]">
         <div>
-          <div class="r-org">Central Warehouse</div>
-          <div class="r-org-sub">Goods received &amp; put-away record</div>
+          <div class="text-[17px] font-bold">Central Warehouse</div>
+          <div class="text-fg-muted text-[12.5px] mt-0.5">Goods received &amp; put-away record</div>
         </div>
-        <div class="r-title">
-          <h1>Batch Receipt</h1>
-          <div class="num">Delivery #3007</div>
+        <div class="text-right">
+          <h1 class="text-[18px] font-bold m-0 tracking-[.01em]">Batch Receipt</h1>
+          <div class="text-[15px] font-[650] text-accent-fg [font-variant-numeric:tabular-nums] mt-[3px]">Delivery #3007</div>
         </div>
       </div>
 
-      <div class="meta">
-        <div><div class="m-label">Supplier</div><div class="m-val">Konveksi Maju Jaya</div></div>
-        <div><div class="m-label">Catalogue owner</div><div class="m-val">Selling Alpha</div></div>
-        <div><div class="m-label">Restock created</div><div class="m-val">2026-07-14</div></div>
-        <div><div class="m-label">Arrived</div><div class="m-val">2026-07-21</div></div>
-        <div><div class="m-label">Received by</div><div class="m-val">Budi</div></div>
-        <div><div class="m-label">Lines</div><div class="m-val">3 products</div></div>
+      <div class="grid grid-cols-3 gap-y-3.5 gap-x-[22px] mt-5 mb-6">
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Supplier</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">Konveksi Maju Jaya</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Catalogue owner</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">Selling Alpha</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Restock created</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">2026-07-14</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Arrived</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">2026-07-21</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Received by</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">Budi</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Lines</div><div class="font-[550] mt-px [font-variant-numeric:tabular-nums]">3 products</div></div>
       </div>
 
-      <table>
+      <table class="w-full border-collapse text-[13px]">
         <thead>
           <tr>
-            <th>Product</th>
-            <th class="num">Arrived</th>
-            <th class="num">Damaged</th>
-            <th class="num">Accepted</th>
-            <th class="num">Unit cost</th>
-            <th class="num">Line cost</th>
-            <th>Rack</th>
+            <th class="text-left text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Product</th>
+            <th class="text-right text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Arrived</th>
+            <th class="text-right text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Damaged</th>
+            <th class="text-right text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Accepted</th>
+            <th class="text-right text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Unit cost</th>
+            <th class="text-right text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Line cost</th>
+            <th class="text-left text-[10.5px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-2.5 border-b border-line-strong">Rack</th>
           </tr>
         </thead>
         <tbody>
-          <tr class="this-row">
-            <td class="prod">Kaos Polos Hitam L <span class="tag">THIS PRODUCT</span><span class="sku">SKU-1041</span></td>
-            <td class="num">200</td>
-            <td class="num dmg">3</td>
-            <td class="num">197</td>
-            <td class="num">Rp 25.000</td>
-            <td class="num">Rp 5.000.000</td>
-            <td><span class="rack-chip"><span class="dot"></span>A-01-3</span></td>
+          <tr class="this-row bg-accent-soft">
+            <td class="py-[9px] px-2.5 border-b border-line align-top font-semibold shadow-[inset_3px_0_0_var(--accent)]">Kaos Polos Hitam L <span class="inline-block text-[10px] font-bold text-accent-fg bg-surface border border-accent rounded-[5px] px-[5px] py-px ml-1.5 align-middle">THIS PRODUCT</span><span class="block text-fg-subtle text-[11.5px] font-normal [font-variant-numeric:tabular-nums]">SKU-1041</span></td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">200</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] text-neg font-semibold">3</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">197</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 25.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 5.000.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top"><span class="inline-flex items-center gap-[5px] font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>A-01-3</span></td>
           </tr>
           <tr>
-            <td class="prod">Kaos Polos Putih L<span class="sku">SKU-1042</span></td>
-            <td class="num">150</td>
-            <td class="num">0</td>
-            <td class="num">150</td>
-            <td class="num">Rp 25.000</td>
-            <td class="num">Rp 3.750.000</td>
-            <td><span class="rack-chip"><span class="dot"></span>A-02-1</span></td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top font-semibold">Kaos Polos Putih L<span class="block text-fg-subtle text-[11.5px] font-normal [font-variant-numeric:tabular-nums]">SKU-1042</span></td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">150</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">0</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">150</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 25.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 3.750.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top"><span class="inline-flex items-center gap-[5px] font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>A-02-1</span></td>
           </tr>
           <tr>
-            <td class="prod">Celana Chino 32<span class="sku">SKU-1108</span></td>
-            <td class="num">80</td>
-            <td class="num dmg">1</td>
-            <td class="num">79</td>
-            <td class="num">Rp 60.000</td>
-            <td class="num">Rp 4.800.000</td>
-            <td><span class="rack-chip"><span class="dot"></span>C-03-4</span></td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top font-semibold">Celana Chino 32<span class="block text-fg-subtle text-[11.5px] font-normal [font-variant-numeric:tabular-nums]">SKU-1108</span></td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">80</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] text-neg font-semibold">1</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">79</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 60.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top text-right [font-variant-numeric:tabular-nums]">Rp 4.800.000</td>
+            <td class="py-[9px] px-2.5 border-b border-line align-top"><span class="inline-flex items-center gap-[5px] font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>C-03-4</span></td>
           </tr>
         </tbody>
         <tfoot>
-          <tr class="foot-total">
-            <td>Total</td>
-            <td class="num">430</td>
-            <td class="num">4</td>
-            <td class="num">426</td>
-            <td></td>
-            <td class="num">Rp 13.550.000</td>
-            <td></td>
+          <tr>
+            <td class="font-bold border-t-2 border-line-strong border-b-0">Total</td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0 text-right [font-variant-numeric:tabular-nums]">430</td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0 text-right [font-variant-numeric:tabular-nums]">4</td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0 text-right [font-variant-numeric:tabular-nums]">426</td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0"></td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0 text-right [font-variant-numeric:tabular-nums]">Rp 13.550.000</td>
+            <td class="font-bold border-t-2 border-line-strong border-b-0"></td>
           </tr>
         </tfoot>
       </table>
 
-      <p class="r-note">Line cost is what the supplier invoiced (arrived × unit cost). <strong>Accepted</strong> = arrived − damaged — only accepted units enter stock and freeze their cost (HPP); damaged units never became stock. Each product's accepted units were put away onto the rack shown.</p>
+      <p class="mt-[18px] text-[12.5px] text-fg-muted">Line cost is what the supplier invoiced (arrived × unit cost). <strong>Accepted</strong> = arrived − damaged — only accepted units enter stock and freeze their cost (HPP); damaged units never became stock. Each product's accepted units were put away onto the rack shown.</p>
 
-      <div class="sigs">
-        <div class="sig"><div class="line"><span class="who">Budi</span> · Received by</div></div>
-        <div class="sig"><div class="line">&nbsp; · Checked by</div></div>
+      <div class="grid grid-cols-2 gap-10 mt-10">
+        <div><div class="border-t border-fg-muted pt-1.5 text-xs text-fg-muted"><span class="font-semibold text-fg">Budi</span> · Received by</div></div>
+        <div><div class="border-t border-fg-muted pt-1.5 text-xs text-fg-muted">&nbsp; · Checked by</div></div>
       </div>
     </div>
   </main>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
-    <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-    <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  <button class="theme-toggle fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
   </button>
   <script>
     (function(){

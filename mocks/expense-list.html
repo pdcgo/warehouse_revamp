@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Expenses</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the   *
+ * Play CDN (the documented exception to "self-contained"). A throwaway   *
+ * preview of the EXPENSE / COST LIST (expense_service §4.1, #161).       *
+ * A cost is money that NO ORDER caused — a person types it, about a      *
+ * PERIOD, after the money left. Three rules this screen exists on:       *
+ *   1. THE DATE RANGE IS THE PRIMARY CONTROL.                            *
+ *   2. THE ROW SAYS WHO TYPED IT — correctable (Edit), retractable       *
+ *      (Void), never deleted.                                            *
+ *   3. A VOIDED ROW STAYS VISIBLE but counts for nothing.               *
+ * Kinds are a PROTO ENUM (Ads / Payroll / Operational / Other). Real     *
+ * screen is Chakra + shared components.                                  *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* Per-kind hues — each cost kind reads the same colour everywhere it appears. Not part of the
+     shared set; also SET BY JS (kindChip.className), so they stay class-based, not utilities.
+     The neg fills/text use the shared --neg; only its soft border needs a token. */
+  :root {
+    --ads: #b54708; --ads-soft: #fffaeb; --ads-border: #fedf89;
+    --pay: #6941c6; --pay-soft: #f4f3ff; --pay-border: #d9d6fe;
+    --ops: #026aa2; --ops-soft: #f0f9ff; --ops-border: #b9e6fe;
+    --oth: #475467; --oth-soft: #f2f4f7; --oth-border: #e4e7ec;
+    --neg-border: #fecdca;
+  }
+  :root[data-theme="dark"] {
+    --ads: #f5a524; --ads-soft: #2a2113; --ads-border: #4a3a15;
+    --pay: #c4b5fd; --pay-soft: #24203a; --pay-border: #3a3260;
+    --ops: #6fc7f0; --ops-soft: #10222c; --ops-border: #1c3d4c;
+    --oth: #98a2b3; --oth-soft: #1b2027; --oth-border: #333a44;
+    --neg-border: #5c2620;
+  }
+
+  /* The striped mock banner. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+
+  /* JS-toggled show/hide state: kebab menus (block), dialog overlays (flex-centred),
+     and the record form's live kind echo (inline-flex). */
+  .js-menu { display: none; } .js-menu.open { display: block; }
+  .js-overlay { display: none; } .js-overlay.open { display: flex; }
+  .kind-echo { display: none; } .kind-echo.show { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; }
+
+  /* KIND chip — one colour per proto enum value, so a kind reads the same on tile, filter and row.
+     Kept class-based because the record form rewrites the chip's className in JS. */
+  .kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .kind .swatch { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+  .kind.ads { color: var(--ads); background: var(--ads-soft); border-color: var(--ads-border); } .kind.ads .swatch { background: var(--ads); }
+  .kind.pay { color: var(--pay); background: var(--pay-soft); border-color: var(--pay-border); } .kind.pay .swatch { background: var(--pay); }
+  .kind.ops { color: var(--ops); background: var(--ops-soft); border-color: var(--ops-border); } .kind.ops .swatch { background: var(--ops); }
+  .kind.oth { color: var(--oth); background: var(--oth-soft); border-color: var(--oth-border); } .kind.oth .swatch { background: var(--oth); }
+
+  /* form hint gets the ads colour when Ads is chosen — toggled by JS (.classList.toggle("ads")). */
+  .form-hint.ads { color: var(--ads); font-weight: 600; }
+
+  /* Native controls — genuinely awkward as utilities: the data-URI select chevron, the date
+     input's webkit picker pseudo + color-scheme, and the currency field's focus-within ring. */
+  .select { appearance: none; font-size: 13px; font-weight: 500; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 30px 7px 11px; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    background-repeat: no-repeat; background-position: right 8px center; }
+  .date-input { appearance: none; font-size: 14px; font-weight: 600; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 11px; cursor: pointer; color-scheme: light dark; }
+  .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .6; }
+  .date-input:hover { border-color: var(--accent); }
+  .currency { display: flex; align-items: stretch; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+  .currency:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent); }
+  .currency .rp { display: flex; align-items: center; padding: 0 11px; font-size: 13px; font-weight: 700; color: var(--fg-muted); background: color-mix(in srgb, var(--border) 40%, transparent); border-right: 1px solid var(--border-strong); }
+  .currency input { flex: 1 1 auto; min-width: 0; border: none; background: none; padding: 8px 11px; font-size: 15px; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .currency input:focus { outline: none; }
+  .currency input::placeholder { color: var(--fg-subtle); font-weight: 500; }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Expenses — the cost list (expense_service §4.1, #161) · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1000px] mx-auto p-[12px_20px] flex items-center gap-3.5">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted text-[13px] font-semibold hover:text-fg" href="index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Mocks
+      </a>
+      <div class="flex flex-col">
+        <span class="text-[15px] font-bold">Expenses</span>
+        <span class="text-xs text-fg-subtle">Costs no order caused — ads, payroll, operational</span>
+      </div>
+      <div class="flex-1"></div>
+      <a class="text-xs inline-flex items-center gap-1.5 text-accent-fg font-[650]" href="#" title="revenue − cost for the month (a separate screen)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        Profit
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-[1000px] mx-auto p-5">
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <span class="inline-flex items-center gap-1.5 text-xs font-[650] text-accent-fg bg-accent-soft rounded-md py-0.5 px-[9px]">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        Selling Alpha
+      </span>
+      <span class="text-xs text-fg-muted">manager view · owner &amp; admin only</span>
+    </div>
+    <p class="text-fg-muted text-[13px] mt-3 mb-4 max-w-[700px]">Everything this team spent that no order asked for — the ads that brought buyers in, the people who packed the boxes, the electricity. Each row is <strong>typed by a person</strong> and carries the <strong>date the cost belongs to</strong>, not the day it was entered. Pick a <strong>date range</strong>, and the tiles total everything in it by kind. A mistyped row is fixed with <strong>Edit</strong> or retracted with <strong>Void</strong> — never deleted.</p>
+
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <div class="inline-flex items-center gap-2">
+        <span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Period</span>
+        <input class="date-input" id="from" type="date" value="2026-07-01" aria-label="From date" />
+        <span class="text-fg-subtle font-semibold">→</span>
+        <input class="date-input" id="to" type="date" value="2026-07-31" aria-label="To date" />
+        <button class="appearance-none text-xs font-semibold text-fg-muted bg-transparent border border-line-strong rounded-full py-[5px] px-[11px] cursor-pointer hover:text-accent-fg hover:border-accent hover:bg-accent-soft" id="presetMonth" title="Set the range to the current month">This month</button>
+      </div>
+      <div class="flex-1"></div>
+      <button class="inline-flex items-center gap-[7px] text-[13px] font-[650] text-white bg-accent border border-accent rounded-sm py-2 px-3.5 cursor-pointer enabled:hover:brightness-[1.06] disabled:opacity-45 disabled:cursor-not-allowed [[data-theme=dark]_&]:text-[#0c0e12]" id="recordBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Record Cost
+      </button>
+    </div>
+
+    <div class="grid grid-cols-5 max-[860px]:grid-cols-3 max-[560px]:grid-cols-2 gap-3 mb-[18px]">
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:var(--ads)"></span>Ads</div>
+        <div class="text-[18px] font-bold mt-[5px] [font-variant-numeric:tabular-nums]" style="color:var(--ads)">Rp 3.500.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">2 records</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:var(--pay)"></span>Payroll</div>
+        <div class="text-[18px] font-bold mt-[5px] [font-variant-numeric:tabular-nums]" style="color:var(--pay)">Rp 12.000.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">1 record</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:var(--ops)"></span>Operational</div>
+        <div class="text-[18px] font-bold mt-[5px] [font-variant-numeric:tabular-nums]" style="color:var(--ops)">Rp 4.300.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">2 records</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:var(--oth)"></span>Other</div>
+        <div class="text-[18px] font-bold mt-[5px] [font-variant-numeric:tabular-nums]" style="color:var(--oth)">Rp 450.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">1 record</div>
+      </div>
+      <div class="bg-surface border border-line-strong rounded shadow p-[13px_15px] bg-surface-2">
+        <div class="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Total · range</div>
+        <div class="text-[18px] font-bold mt-[5px] [font-variant-numeric:tabular-nums] text-fg">Rp 20.250.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">6 records · 1 voided excluded</div>
+      </div>
+    </div>
+
+    <div class="bg-surface border border-line rounded shadow">
+      <div class="flex items-center gap-2.5 p-[12px_14px] border-b border-line flex-wrap">
+        <input class="appearance-none text-[13px] text-fg bg-surface-2 border border-line-strong rounded-sm py-[7px] px-[11px] min-w-[220px] flex-[1_1_220px] placeholder:text-fg-subtle" id="q" type="search" placeholder="Search note or shop…" aria-label="Search notes" />
+        <select class="select" id="kindFilter" aria-label="Kind">
+          <option value="">All kinds</option>
+          <option value="ads">Ads</option>
+          <option value="pay">Payroll</option>
+          <option value="ops">Operational</option>
+          <option value="oth">Other</option>
+        </select>
+        <select class="select" id="shopFilter" aria-label="Shop">
+          <option value="">All shops</option>
+          <option value="toko sehat">Toko Sehat</option>
+          <option value="toko prima">Toko Prima</option>
+          <option value="__none">No shop</option>
+        </select>
+        <span class="flex-1"></span>
+        <label class="inline-flex items-center gap-2 text-[12.5px] font-semibold text-fg-muted select-none cursor-pointer whitespace-nowrap"><input type="checkbox" id="hideVoided" class="w-4 h-4 accent-accent cursor-pointer m-0" /> Hide voided</label>
+      </div>
+
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Date</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Kind</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Shop</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2 max-[560px]:hidden">Note</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2 max-[560px]:hidden">Entered by</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Amount</th>
+            <th class="w-[44px] text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2"></th>
+          </tr>
+        </thead>
+        <tbody id="rows" class="[&>tr:last-child>td]:border-b-0">
+          <!-- PAYROLL — the biggest number, no shop. occurred_at (5 Jul) is the pay date; it is June's wages. -->
+          <tr data-kind="pay" data-shop="__none" data-void="0" data-search="june packing wages payroll">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">05 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind pay"><span class="swatch"></span>Payroll</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">June packing wages — 4 packers</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Andi</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 12.000.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="June packing wages" data-amt="Rp 12.000.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- ADS — names the shop the budget was spent on. "Which shop is burning ads money" is why ads carries a shop. -->
+          <tr data-kind="ads" data-shop="toko sehat" data-void="0" data-search="shopee ads top-up toko sehat">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">03 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind ads"><span class="swatch"></span>Ads</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-[13px] text-fg">Toko Sehat</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">Shopee ads top-up</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Andi</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 2.100.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="Shopee ads top-up · Toko Sehat" data-amt="Rp 2.100.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- ADS on the OTHER shop, entered by a different manager — the row names who typed it. -->
+          <tr data-kind="ads" data-shop="toko prima" data-void="0" data-search="tiktok ads toko prima">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">02 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind ads"><span class="swatch"></span>Ads</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-[13px] text-fg">Toko Prima</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">TikTok ads campaign</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Rina</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 1.400.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="TikTok ads campaign · Toko Prima" data-amt="Rp 1.400.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- OPERATIONAL — §2.1's "payment": rent share. No shop. -->
+          <tr data-kind="ops" data-shop="__none" data-void="0" data-search="warehouse rent share operational">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">10 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind ops"><span class="swatch"></span>Operational</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">Office &amp; storage rent share</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Andi</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 3.500.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="Office &amp; storage rent share" data-amt="Rp 3.500.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- OPERATIONAL — a subscription charged automatically (not a bill anybody receives → OPERATIONAL, not BILL). -->
+          <tr data-kind="ops" data-shop="__none" data-void="0" data-search="electricity internet subscription operational">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">01 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind ops"><span class="swatch"></span>Operational</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">Electricity + internet</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Andi</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 800.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="Electricity + internet" data-amt="Rp 800.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- OTHER — the escape hatch so nothing is unrecordable (OTHER exists on purpose). -->
+          <tr data-kind="oth" data-shop="__none" data-void="0" data-search="courier packaging supplies other">
+            <td class="p-[12px_14px] border-b border-line align-middle"><div class="font-semibold text-fg whitespace-nowrap">08 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="kind oth"><span class="swatch"></span>Other</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden">Packaging &amp; tape restock</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden">Rina</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap">Rp 450.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                  <button class="act-void flex items-center gap-[9px] w-full text-[13px] font-medium text-neg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-neg-soft" data-note="Packaging &amp; tape restock" data-amt="Rp 450.000"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64 6.64 18.36M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/></svg>Void</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- VOIDED — entered against the wrong shop, then retracted. Stays visible, struck, out of every total. Only Edit is left. -->
+          <tr data-kind="ads" data-shop="toko sehat" data-void="1" data-search="shopee ads wrong shop voided">
+            <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]"><div class="font-semibold text-fg whitespace-nowrap line-through opacity-70">06 Jul</div><div class="text-[11px] text-fg-subtle font-medium">2026</div></td>
+            <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]"><span class="kind ads opacity-60"><span class="swatch"></span>Ads</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]"><span class="text-[13px] text-fg line-through opacity-70">Toko Sehat</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted max-w-[240px] max-[560px]:hidden bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)] line-through opacity-70">Shopee ads <span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[.04em] text-neg bg-neg-soft border border-[var(--neg-border)] rounded-full py-px px-[7px] ml-2 align-middle"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Voided</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-fg-subtle text-[12.5px] whitespace-nowrap max-[560px]:hidden bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]">Rina</td>
+            <td class="p-[12px_14px] border-b border-line align-middle text-right bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]"><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap line-through opacity-70">Rp 900.000</span></td>
+            <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--neg-soft)_55%,transparent)]">
+              <div class="relative flex justify-end">
+                <button class="kebab appearance-none border border-transparent bg-transparent text-fg-subtle rounded-sm p-[5px] cursor-pointer inline-flex hover:text-fg hover:bg-surface-2 hover:border-line" aria-label="Row actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                <div class="js-menu absolute right-0 top-[calc(100%+4px)] z-40 min-w-[148px] bg-surface border border-line-strong rounded-sm shadow-lg p-[5px]">
+                  <button class="act-edit flex items-center gap-[9px] w-full text-[13px] font-medium text-fg bg-transparent border-0 rounded-md py-2 px-[9px] cursor-pointer text-left hover:bg-surface-2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="hidden text-center text-fg-subtle text-[13px] p-[28px_14px]" id="empty">No costs match.</div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+      <span class="text-[12.5px] text-fg-subtle" id="pinfo">7 records · 1 Jul – 31 Jul 2026 · 1 voided</span>
+      <div class="inline-flex items-center gap-1.5">
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed enabled:hover:bg-surface-2" disabled aria-label="Previous page">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1</span>
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed enabled:hover:bg-surface-2" aria-label="Next page">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <p class="text-fg-subtle text-xs mt-3">Static mock · the <strong>date range</strong> is the primary control — the same span the <em>Profit</em> screen subtracts costs on, and wide enough for a pay-cycle or a campaign week, not just a calendar month. Summary tiles total the range <strong>by kind</strong> and <strong>exclude voided rows</strong>. Row actions live behind the kebab: <em>Edit</em> (a person typed it, so it is fixable) and <em>Void</em> (retracts it through a confirm — it moves the profit figure). A voided row is kept, struck through, and can only be edited, never voided again.</p>
+  </main>
+
+  <!-- Void confirm — a ConfirmDialog stand-in. Title Case title; it changes a profit number, so it confirms. -->
+  <div class="js-overlay fixed inset-0 bg-[rgba(16,24,40,.45)] z-[100] items-center justify-center p-5" id="voidOverlay">
+    <div class="bg-surface border border-line rounded shadow-lg w-full max-w-[420px] p-5" role="dialog" aria-modal="true" aria-labelledby="voidTitle">
+      <h3 class="m-0 mb-2 text-[16px] font-bold" id="voidTitle">Void Cost Record</h3>
+      <p class="m-0 mb-1.5 text-[13.5px] text-fg-muted">This stops the cost counting toward any total, but keeps the row visible so the history shows it was entered and then retracted. It is not deleted.</p>
+      <div class="mt-3 mb-[18px] p-[11px_13px] bg-surface-2 border border-line rounded-sm text-[13px] flex items-center gap-2.5"><span id="voidNote" class="[font-variant-numeric:tabular-nums]"></span><span class="text-[14.5px] font-bold [font-variant-numeric:tabular-nums] text-fg whitespace-nowrap ml-auto" id="voidAmt"></span></div>
+      <div class="flex justify-end gap-2.5">
+        <button class="text-[13px] font-semibold rounded-sm py-2 px-3.5 cursor-pointer border border-line-strong bg-surface text-fg hover:bg-surface-2" id="voidCancel">Cancel</button>
+        <button class="text-[13px] font-semibold rounded-sm py-2 px-3.5 cursor-pointer border border-neg bg-neg text-white hover:brightness-[1.06] [[data-theme=dark]_&]:text-[#0c0e12]" id="voidConfirm">Void Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record Cost — the §4.2 form dialog. Kind / Amount / Date / Shop / Note. A focused ACTION, so a
+       dialog not a page. Kind is required and amount must be > 0 (that gates the Record button). -->
+  <div class="js-overlay fixed inset-0 bg-[rgba(16,24,40,.45)] z-[100] items-center justify-center p-5" id="recordOverlay">
+    <div class="bg-surface border border-line rounded shadow-lg w-full max-w-[460px] p-5" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+      <h3 class="m-0 mb-2 text-[16px] font-bold" id="recTitle">Record Cost</h3>
+      <p class="m-0 mb-4 text-[13.5px] text-fg-muted">A cost no order caused — typed by a manager, dated to the day it belongs to, for
+        <span class="inline-flex items-center gap-1.5 text-xs font-[650] text-accent-fg bg-accent-soft rounded-md py-0.5 px-[9px] align-middle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>Selling Alpha</span>.
+      </p>
+
+      <!-- Kind — the new CostKindSelect. A fixed proto enum, so "ads across all teams" means one thing. -->
+      <div class="mb-3.5">
+        <label class="block text-xs font-[650] text-fg mb-1.5" for="fKind">Kind</label>
+        <select class="select w-full" id="fKind" aria-describedby="kindHint">
+          <option value="" disabled selected>Choose a kind…</option>
+          <option value="ads">Ads</option>
+          <option value="pay">Payroll</option>
+          <option value="ops">Operational</option>
+          <option value="oth">Other</option>
+        </select>
+        <span class="kind-echo" id="kindEcho"><span class="kind" id="kindChip"><span class="swatch"></span><span id="kindChipText"></span></span></span>
+        <div class="form-hint text-[11.5px] text-fg-subtle mt-[5px]" id="kindHint">Ads · Payroll · Operational · Other — a fixed set, so totals compare across teams.</div>
+      </div>
+
+      <div class="flex gap-3">
+        <!-- Amount — CurrencyInput. Whole rupiah, always positive (the kind already says it goes out). -->
+        <div class="flex-1 mb-3.5">
+          <label class="block text-xs font-[650] text-fg mb-1.5" for="fAmount">Amount</label>
+          <div class="currency">
+            <span class="rp">Rp</span>
+            <input id="fAmount" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="Amount in rupiah" aria-describedby="amtHint" />
+          </div>
+          <div class="form-hint text-[11.5px] text-fg-subtle mt-[5px]" id="amtHint">Whole rupiah, more than zero.</div>
+        </div>
+        <!-- Date — the day the cost BELONGS TO, not the entry time. Defaults to today. -->
+        <div class="flex-1 mb-3.5">
+          <label class="block text-xs font-[650] text-fg mb-1.5" for="fDate">Date <span class="text-fg-subtle font-medium">· belongs to</span></label>
+          <input class="date-input w-full" id="fDate" type="date" value="2026-07-23" aria-label="Date the cost belongs to" />
+          <div class="form-hint text-[11.5px] text-fg-subtle mt-[5px]">Payroll paid on the 5th is dated to the month it's for.</div>
+        </div>
+      </div>
+
+      <!-- Shop — ShopSelect. Optional on ANY kind (owner, 2026-07-21); an ads row usually names one. -->
+      <div class="mb-3.5">
+        <label class="block text-xs font-[650] text-fg mb-1.5" for="fShop">Shop <span class="text-fg-subtle font-medium">· optional</span></label>
+        <select class="select w-full" id="fShop" aria-describedby="shopHint">
+          <option value="">No specific shop — the whole team</option>
+          <option>Toko Sehat</option>
+          <option>Toko Prima</option>
+        </select>
+        <div class="form-hint text-[11.5px] text-fg-subtle mt-[5px]" id="shopHint">Attribute it to one shop, or leave it on the team.</div>
+      </div>
+
+      <!-- Note — a Textarea. What it actually was; carries the detail the enum doesn't. -->
+      <div class="mb-3.5">
+        <label class="block text-xs font-[650] text-fg mb-1.5" for="fNote">Note</label>
+        <textarea class="w-full appearance-none text-[13.5px] text-fg bg-surface-2 border border-line-strong rounded-sm py-2 px-[11px] resize-y min-h-[60px] leading-[1.45] placeholder:text-fg-subtle" id="fNote" placeholder="What it actually was — “June packing wages”, “Shopee ads top-up”…"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-2.5 mt-[18px]">
+        <button class="text-[13px] font-semibold rounded-sm py-2 px-3.5 cursor-pointer border border-line-strong bg-surface text-fg hover:bg-surface-2" id="recordClose">Cancel</button>
+        <button class="inline-flex items-center gap-[7px] text-[13px] font-[650] text-white bg-accent border border-accent rounded-sm py-2 px-3.5 cursor-pointer enabled:hover:brightness-[1.06] disabled:opacity-45 disabled:cursor-not-allowed [[data-theme=dark]_&]:text-[#0c0e12]" id="recordSave" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Record Cost
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Filters: search (note/shop), kind, shop, and a "Hide voided" toggle. The date range is the primary
+  // control; in the mock all rows fall inside the default span, so it is illustrative rather than live.
+  const q = document.getElementById("q");
+  const fromDate = document.getElementById("from");
+  const toDate = document.getElementById("to");
+  const kindFilter = document.getElementById("kindFilter");
+  const shopFilter = document.getElementById("shopFilter");
+  const hideVoided = document.getElementById("hideVoided");
+  const rows = [...document.querySelectorAll("#rows tr")];
+  const empty = document.getElementById("empty");
+  const pinfo = document.getElementById("pinfo");
+
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    const kind = kindFilter.value;
+    const shop = shopFilter.value;
+    const noVoided = hideVoided.checked;
+    let shown = 0, voided = 0;
+    rows.forEach((r) => {
+      const matchTerm = !term || r.dataset.search.includes(term);
+      const matchKind = !kind || r.dataset.kind === kind;
+      const matchShop = !shop || r.dataset.shop === shop;
+      const matchVoid = !noVoided || r.dataset.void === "0";
+      const show = matchTerm && matchKind && matchShop && matchVoid;
+      r.style.display = show ? "" : "none";
+      if (show) { shown++; if (r.dataset.void === "1") voided++; }
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+    pinfo.textContent = shown + " record" + (shown === 1 ? "" : "s") + " · " + rangeLabel()
+      + (voided ? " · " + voided + " voided" : "");
+  }
+  // "1 Jul – 31 Jul 2026" from the two date inputs, without pulling in a date library.
+  function rangeLabel() {
+    const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fmt = (v) => { const p = v.split("-"); return p.length === 3 ? (+p[2]) + " " + MON[+p[1] - 1] + " " + p[0] : v; };
+    if (!fromDate.value || !toDate.value) return "all dates";
+    return fmt(fromDate.value) + " – " + fmt(toDate.value);
+  }
+  q.addEventListener("input", apply);
+  kindFilter.addEventListener("change", apply);
+  shopFilter.addEventListener("change", apply);
+  hideVoided.addEventListener("change", apply);
+  fromDate.addEventListener("change", apply);
+  toDate.addEventListener("change", apply);
+  // "This month" preset — snaps the range to the current calendar month (July 2026 in this mock).
+  document.getElementById("presetMonth").addEventListener("click", () => {
+    fromDate.value = "2026-07-01";
+    toDate.value = "2026-07-31";
+    apply();
+  });
+  apply();
+
+  // Kebab menus — one open at a time; click elsewhere closes.
+  const menus = [...document.querySelectorAll(".js-menu")];
+  function closeMenus(except) { menus.forEach((m) => { if (m !== except) m.classList.remove("open"); }); }
+  document.querySelectorAll(".kebab").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const menu = btn.parentElement.querySelector(".js-menu");
+      const willOpen = !menu.classList.contains("open");
+      closeMenus(menu);
+      menu.classList.toggle("open", willOpen);
+    });
+  });
+  document.addEventListener("click", () => closeMenus(null));
+
+  // Void → confirm dialog (Title Case). Static: confirming just closes.
+  const voidOverlay = document.getElementById("voidOverlay");
+  const voidNote = document.getElementById("voidNote");
+  const voidAmt = document.getElementById("voidAmt");
+  document.querySelectorAll(".act-void").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeMenus(null);
+      voidNote.textContent = item.dataset.note;
+      voidAmt.textContent = item.dataset.amt;
+      voidOverlay.classList.add("open");
+    });
+  });
+  document.getElementById("voidCancel").addEventListener("click", () => voidOverlay.classList.remove("open"));
+  document.getElementById("voidConfirm").addEventListener("click", () => voidOverlay.classList.remove("open"));
+  voidOverlay.addEventListener("click", (e) => { if (e.target === voidOverlay) voidOverlay.classList.remove("open"); });
+
+  // Edit — static stub.
+  document.querySelectorAll(".act-edit").forEach((item) => {
+    item.addEventListener("click", (e) => { e.stopPropagation(); closeMenus(null); });
+  });
+
+  // Record Cost — the §4.2 form dialog.
+  const recordOverlay = document.getElementById("recordOverlay");
+  const fKind = document.getElementById("fKind");
+  const fAmount = document.getElementById("fAmount");
+  const fShop = document.getElementById("fShop");
+  const fNote = document.getElementById("fNote");
+  const recordSave = document.getElementById("recordSave");
+  const kindEcho = document.getElementById("kindEcho");
+  const kindChip = document.getElementById("kindChip");
+  const kindChipText = document.getElementById("kindChipText");
+  const shopHint = document.getElementById("shopHint");
+
+  const KIND = {
+    ads: { cls: "ads", label: "Ads",         shop: "Which shop is burning the ads budget? Recommended, still optional.", adsHint: true },
+    pay: { cls: "pay", label: "Payroll",     shop: "Wages are usually the whole team — a shop split is allowed but rare." },
+    ops: { cls: "ops", label: "Operational", shop: "Rent, electricity, subscriptions — attribute to a shop or leave on the team." },
+    oth: { cls: "oth", label: "Other",       shop: "Attribute it to one shop, or leave it on the team." },
+  };
+
+  // CurrencyInput: strip to digits, group with dots as you type. "" stays "" so the placeholder shows.
+  function groupDigits(s) {
+    const d = s.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+  }
+  function amountValue() { return parseInt(fAmount.value.replace(/\D/g, "") || "0", 10); }
+
+  function validateForm() {
+    const ok = fKind.value !== "" && amountValue() > 0;
+    recordSave.disabled = !ok;
+  }
+  fAmount.addEventListener("input", () => {
+    const pos = fAmount.value.length - fAmount.selectionStart;
+    fAmount.value = groupDigits(fAmount.value);
+    // keep the caret sane after re-grouping
+    const p = Math.max(0, fAmount.value.length - pos);
+    fAmount.setSelectionRange(p, p);
+    validateForm();
+  });
+  fKind.addEventListener("change", () => {
+    const k = KIND[fKind.value];
+    if (k) {
+      kindChip.className = "kind " + k.cls;
+      kindChipText.textContent = k.label;
+      kindEcho.classList.add("show");
+      shopHint.textContent = k.shop;
+      shopHint.classList.toggle("ads", !!k.adsHint);
+    } else {
+      kindEcho.classList.remove("show");
+    }
+    validateForm();
+  });
+
+  function resetForm() {
+    fKind.value = "";
+    fAmount.value = "";
+    fShop.value = "";
+    fNote.value = "";
+    document.getElementById("fDate").value = "2026-07-23";
+    kindEcho.classList.remove("show");
+    shopHint.textContent = "Attribute it to one shop, or leave it on the team.";
+    shopHint.classList.remove("ads");
+    validateForm();
+  }
+  function closeRecord() { recordOverlay.classList.remove("open"); }
+
+  document.getElementById("recordBtn").addEventListener("click", () => { resetForm(); recordOverlay.classList.add("open"); });
+  document.getElementById("recordClose").addEventListener("click", closeRecord);
+  // Static mock — "Record Cost" just closes; a real submit would call CostCreate and prepend the row.
+  recordSave.addEventListener("click", () => { if (!recordSave.disabled) closeRecord(); });
+  recordOverlay.addEventListener("click", (e) => { if (e.target === recordOverlay) closeRecord(); });
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

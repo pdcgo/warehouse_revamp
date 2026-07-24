@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Liability</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the  *
+ * Play CDN. The LIABILITY payables & receivables list (§5.1 A, #185):   *
+ * ONE ROW PER COUNTERPARTY, BOTH DIRECTIONS in one list (Q11). Payable  *
+ * and receivable are two COLUMNS, never a sign; ageing is the point.    *
+ * A count badge surfaces payments awaiting THIS team's confirmation.    *
+ * Tailwind's theme is mapped onto the shared :root design tokens below. *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* The few things utilities can't express inline: the striped mock banner and the
+     select's SVG dropdown arrow (a data-URI background image). Everything else is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .sel-arrow { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 8px center; }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Liability — payables &amp; receivables (settlement §5.1 A) · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1000px] mx-auto px-5 py-3 flex items-center gap-3.5">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted text-[13px] font-semibold hover:text-fg" href="index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Mocks
+      </a>
+      <div class="flex flex-col">
+        <span class="text-[15px] font-bold">Liability</span>
+        <span class="text-xs text-fg-subtle">Payables &amp; receivables between teams</span>
+      </div>
+      <div class="flex-1"></div>
+      <!-- Nav badge: total payments awaiting Selling Alpha's confirmation, across all counterparties. -->
+      <span class="inline-flex items-center gap-[7px] text-[12.5px] font-[650] text-accent-fg bg-accent-soft border border-[color:color-mix(in_srgb,var(--accent)_30%,transparent)] px-[11px] py-[5px] rounded-full" title="Payments recorded by others, waiting for you to confirm they arrived">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-[5px] text-[11px] font-extrabold text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-accent rounded-full">2</span> awaiting your confirmation
+      </span>
+    </div>
+  </header>
+
+  <main class="max-w-[1000px] mx-auto p-5">
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <span class="inline-flex items-center gap-1.5 text-xs font-[650] text-accent-fg bg-accent-soft rounded-md px-[9px] py-0.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        Selling Alpha
+      </span>
+      <span class="text-xs text-fg-muted">as of 23 Jul 2026</span>
+    </div>
+    <p class="text-fg-muted text-[13px] mt-3 mb-4 max-w-[680px]">One row per team you have a running balance with — a <strong>Payable</strong> column for what you owe them and a <strong>Receivable</strong> column for what they owe you, so direction is the column, never a sign. Scan the <strong>Oldest unsettled</strong> column and chase the old ones first. The <strong>Payable limit</strong> column shows how much headroom you have left before a creditor blocks your next order.</p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-[18px]">
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Total payable</div>
+        <div class="text-[19px] font-bold mt-1 [font-variant-numeric:tabular-nums] text-warn">Rp 3.120.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">across 2 teams</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Total receivable</div>
+        <div class="text-[19px] font-bold mt-1 [font-variant-numeric:tabular-nums] text-pos">Rp 1.345.000</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">across 2 teams</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Awaiting your confirm</div>
+        <div class="text-[19px] font-bold mt-1 [font-variant-numeric:tabular-nums]">2</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">payments to check arrived</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[13px_15px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Oldest unsettled</div>
+        <div class="text-[19px] font-bold mt-1 [font-variant-numeric:tabular-nums] text-neg">47 days</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">Gudang Pusat</div>
+      </div>
+    </div>
+
+    <div class="bg-surface border border-line rounded shadow">
+      <div class="flex items-center gap-2.5 p-[12px_14px] border-b border-line flex-wrap">
+        <input class="appearance-none text-[13px] text-fg bg-surface-2 border border-line-strong rounded-sm px-[11px] py-[7px] min-w-[240px] flex-1 basis-[240px] placeholder:text-fg-subtle" id="q" type="search" placeholder="Search a team…" aria-label="Search counterparty" />
+        <select class="sel-arrow appearance-none text-[13px] font-medium text-fg bg-surface-2 border border-line-strong rounded-sm pl-[11px] pr-[30px] py-[7px] cursor-pointer" id="teamType" aria-label="Team type">
+          <option value="">All team types</option>
+          <option value="warehouse">Warehouses</option>
+          <option value="selling">Selling teams</option>
+        </select>
+        <span class="flex-1"></span>
+        <label class="inline-flex items-center gap-2 text-[12.5px] font-semibold text-fg-muted select-none cursor-pointer whitespace-nowrap has-[:checked]:text-accent-fg"><input class="w-4 h-4 accent-[var(--accent)] cursor-pointer m-0" type="checkbox" id="awaitingOnly" /> Awaiting my confirmation</label>
+        <label class="inline-flex items-center gap-2 text-[12.5px] font-semibold text-fg-muted select-none cursor-pointer whitespace-nowrap"><input class="w-4 h-4 accent-[var(--accent)] cursor-pointer m-0" type="checkbox" id="unsettled" checked /> Unsettled only</label>
+      </div>
+
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Counterparty</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Payable</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Receivable</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Payable limit</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Oldest unsettled</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Awaiting</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2"></th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <!-- YOU OWE — a warehouse that fulfils Alpha's orders (handling + COD fees). Badly overdue. -->
+          <tr class="group cursor-pointer hover:bg-surface-2" data-cp="gudang pusat" data-type="warehouse" data-settled="0" data-awaiting="0">
+            <td class="p-[13px_14px] border-b border-line align-middle"><div class="font-[650] text-fg">Gudang Pusat</div><div class="text-[11.5px] text-fg-subtle mt-px">Warehouse · handling + COD fees</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-[15px] font-bold [font-variant-numeric:tabular-nums] text-warn">Rp 2.480.000</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle [font-variant-numeric:tabular-nums]">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle">
+              <span class="inline-flex flex-col gap-1 min-w-[120px]">
+                <span class="h-1.5 rounded-full bg-surface-2 border border-line overflow-hidden"><span class="block h-full rounded-full bg-warn" style="width:83%"></span></span>
+                <span class="text-[11.5px] font-[650] [font-variant-numeric:tabular-nums] text-warn">Rp 520.000 left <span class="text-fg-subtle font-medium">/ Rp 3.000.000</span></span>
+              </span>
+            </td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-bold [font-variant-numeric:tabular-nums] text-neg"><span class="w-[7px] h-[7px] rounded-full flex-none bg-neg"></span>47 days</span><div class="text-[11px] text-fg-subtle font-medium">since 6 Jun 2026</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><svg class="text-fg-subtle group-hover:text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></td>
+          </tr>
+          <!-- OWED TO YOU — another selling team sold Alpha's products (product fee). Payment waiting to confirm. -->
+          <tr class="group cursor-pointer hover:bg-surface-2" data-cp="selling beta" data-type="selling" data-settled="0" data-awaiting="1">
+            <td class="p-[13px_14px] border-b border-line align-middle"><div class="font-[650] text-fg">Selling Beta</div><div class="text-[11.5px] text-fg-subtle mt-px">Selling team · product fees (borrowed your goods)</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle [font-variant-numeric:tabular-nums]">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-[15px] font-bold [font-variant-numeric:tabular-nums] text-pos">Rp 1.250.000</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle" title="A receivable — the limit YOU set on them lives in Rates &amp; Limits">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] text-warn"><span class="w-[7px] h-[7px] rounded-full flex-none bg-warn"></span>8 days</span><div class="text-[11px] text-fg-subtle font-medium">since 15 Jul 2026</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-xs font-bold text-accent-fg bg-accent-soft border border-[color:color-mix(in_srgb,var(--accent)_26%,transparent)] px-[9px] py-0.5 rounded-full whitespace-nowrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>1 to confirm</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><svg class="text-fg-subtle group-hover:text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></td>
+          </tr>
+          <!-- YOU OWE — a second warehouse. -->
+          <tr class="group cursor-pointer hover:bg-surface-2" data-cp="gudang timur" data-type="warehouse" data-settled="0" data-awaiting="0">
+            <td class="p-[13px_14px] border-b border-line align-middle"><div class="font-[650] text-fg">Gudang Timur</div><div class="text-[11.5px] text-fg-subtle mt-px">Warehouse · handling + COD fees</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-[15px] font-bold [font-variant-numeric:tabular-nums] text-warn">Rp 640.000</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle [font-variant-numeric:tabular-nums]">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle">
+              <span class="text-xs font-semibold text-fg-subtle inline-flex items-center gap-[5px]" title="No credit limit configured — unlimited, not zero">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.6 18.6A9 9 0 0 1 5.4 5.4m1.6-1.2A9 9 0 0 1 19.8 17M3 3l18 18"/></svg>
+                No limit
+              </span>
+            </td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] text-warn"><span class="w-[7px] h-[7px] rounded-full flex-none bg-warn"></span>12 days</span><div class="text-[11px] text-fg-subtle font-medium">since 11 Jul 2026</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><svg class="text-fg-subtle group-hover:text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></td>
+          </tr>
+          <!-- OWED TO YOU — small, fresh, another payment waiting to confirm. -->
+          <tr class="group cursor-pointer hover:bg-surface-2" data-cp="selling gamma" data-type="selling" data-settled="0" data-awaiting="1">
+            <td class="p-[13px_14px] border-b border-line align-middle"><div class="font-[650] text-fg">Selling Gamma</div><div class="text-[11.5px] text-fg-subtle mt-px">Selling team · product fees (borrowed your goods)</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle [font-variant-numeric:tabular-nums]">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-[15px] font-bold [font-variant-numeric:tabular-nums] text-pos">Rp 95.000</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="text-fg-subtle" title="A receivable — the limit YOU set on them lives in Rates &amp; Limits">—</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] text-fg-muted"><span class="w-[7px] h-[7px] rounded-full flex-none bg-fg-subtle"></span>3 days</span><div class="text-[11px] text-fg-subtle font-medium">since 20 Jul 2026</div></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><span class="inline-flex items-center gap-1.5 text-xs font-bold text-accent-fg bg-accent-soft border border-[color:color-mix(in_srgb,var(--accent)_26%,transparent)] px-[9px] py-0.5 rounded-full whitespace-nowrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>1 to confirm</span></td>
+            <td class="p-[13px_14px] border-b border-line align-middle"><svg class="text-fg-subtle group-hover:text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></td>
+          </tr>
+          <!-- SQUARE — hidden by the default "Unsettled only" filter; toggle it off to see settled pairs. -->
+          <tr class="group cursor-pointer hover:bg-surface-2" data-cp="toko menara" data-type="selling" data-settled="1" data-awaiting="0">
+            <td class="p-[13px_14px] align-middle"><div class="font-[650] text-fg">Toko Menara</div><div class="text-[11.5px] text-fg-subtle mt-px">Selling team</div></td>
+            <td class="p-[13px_14px] align-middle"><span class="text-[11px] font-semibold text-fg-subtle">Settled</span></td>
+            <td class="p-[13px_14px] align-middle"><span class="text-fg-subtle [font-variant-numeric:tabular-nums]">—</span></td>
+            <td class="p-[13px_14px] align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[13px_14px] align-middle"><span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold [font-variant-numeric:tabular-nums] text-fg-subtle">—</span></td>
+            <td class="p-[13px_14px] align-middle"><span class="text-fg-subtle">—</span></td>
+            <td class="p-[13px_14px] align-middle"><svg class="text-fg-subtle group-hover:text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="hidden text-center text-fg-subtle text-[13px] p-[28px_14px]" id="empty">No teams match.</div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+      <span class="text-[12.5px] text-fg-subtle" id="pinfo">4 unsettled of 12 relationships</span>
+      <div class="inline-flex items-center gap-1.5">
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1</span>
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" aria-label="Next page">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <p class="text-fg-subtle text-xs mt-3">Static mock · a row opens that counterparty's running history (record / confirm a payment there). <em>Awaiting my confirmation</em> narrows to the rows behind the nav badge; toggle <em>Unsettled only</em> off to reveal the settled pair. Each row's one signed balance from the API lands in either the <strong>Payable</strong> or the <strong>Receivable</strong> column — never a bare minus. <strong>No limit</strong> (unlimited) and a configured cap look deliberately different: an absent limit is never a zero.</p>
+  </main>
+
+<script>
+  // Direction is words, ageing drives attention, and "Unsettled only" (default on) hides squared rows —
+  // a list padded with settled zeros buries the rows a manager is looking for.
+  const q = document.getElementById("q");
+  const teamType = document.getElementById("teamType");
+  const unsettled = document.getElementById("unsettled");
+  const awaitingOnly = document.getElementById("awaitingOnly");
+  const rows = [...document.querySelectorAll("#rows tr")];
+  const empty = document.getElementById("empty");
+  const pinfo = document.getElementById("pinfo");
+
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    const type = teamType.value;
+    const onlyUnsettled = unsettled.checked;
+    const onlyAwaiting = awaitingOnly.checked;
+    let shown = 0;
+    rows.forEach((r) => {
+      const matchTerm = !term || r.dataset.cp.includes(term);
+      const matchType = !type || r.dataset.type === type;
+      const matchSettled = !onlyUnsettled || r.dataset.settled === "0";
+      const matchAwaiting = !onlyAwaiting || r.dataset.awaiting !== "0";
+      const show = matchTerm && matchType && matchSettled && matchAwaiting;
+      r.style.display = show ? "" : "none";
+      if (show) shown++;
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+    // "Awaiting" narrows to a job to finish, so it names that; otherwise fall back to the unsettled/all count.
+    pinfo.textContent = onlyAwaiting
+      ? shown + " awaiting your confirmation"
+      : onlyUnsettled
+      ? shown + " unsettled of 12 relationships"
+      : shown + " of 12 relationships";
+  }
+  q.addEventListener("input", apply);
+  teamType.addEventListener("change", apply);
+  unsettled.addEventListener("change", apply);
+  awaitingOnly.addEventListener("change", apply);
+  // A row opens that counterparty's running history (§5.1 B). All demo to the same detail mock.
+  rows.forEach((r) => r.addEventListener("click", () => { window.location.href = "liability-detail.html"; }));
+  apply();
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -5,240 +5,183 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Mock · Batch Detail</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. The BATCH PAGE — the living   *
+ * detail of one batch, drilled into from a delivery on the warehouse    *
+ * product detail's Batches tab. A batch = one product's units from one  *
+ * delivery, with a frozen cost (HPP). Shows its identity, its lifecycle *
+ * (arrived → damaged → used → ready), where its ready units sit NOW,    *
+ * and its own history. The printable goods-received document is the     *
+ * separate batch-receipt.html. Styled with TAILWIND via the Play CDN,   *
+ * theme mapped onto the shared :root design tokens below.               *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
 <style>
-  /* ------------------------------------------------------------------ *
-   * MOCKUP ONLY. Plain HTML/CSS, hardcoded data, no build. The BATCH    *
-   * PAGE — the living detail of one batch, drilled into from a delivery *
-   * on the warehouse product detail's Batches tab. A batch = one        *
-   * product's units from one delivery, with a frozen cost (HPP). Shows  *
-   * its identity, its lifecycle (arrived → damaged → used → ready),     *
-   * where its ready units sit NOW, and its own history. The printable   *
-   * goods-received document is the separate batch-receipt.html.         *
-   * ------------------------------------------------------------------ */
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
-    --border: #e4e7ec; --border-strong: #d0d5dd;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
     --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
     --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
     --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
-    --pos: #067647; --neg: #b42318;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
     --radius: 12px; --radius-sm: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-      --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
-      --border: #262b33; --border-strong: #333a44;
-      --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
-      --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
-      --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
-      --pos: #47c67e; --neg: #f97066;
-      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
-  a { color: inherit; }
-  .mock-banner {
-    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
-    border-bottom: 1px solid var(--border); color: var(--accent-fg);
-    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
   }
 
-  header.bar { border-bottom: 1px solid var(--border); background: var(--surface); }
-  .bar-inner { max-width: 920px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .back { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-muted); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: var(--radius-sm); }
-  .back:hover { background: var(--surface-2); color: var(--fg); }
-  .name-block { display: flex; flex-direction: column; }
-  .batch-name { font-size: 20px; font-weight: 650; line-height: 1.2; display: flex; align-items: center; gap: 10px; }
-  .batch-sub { color: var(--fg-subtle); font-size: 13px; }
-  .spacer { flex: 1 1 auto; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .btn { appearance: none; border: 1px solid transparent; cursor: pointer; background: none; font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; color: var(--fg); text-decoration: none; }
-  .btn-outline { background: var(--surface); border-color: var(--border-strong); }
-  .btn-outline:hover { background: var(--surface-2); }
-  .btn .glyph { color: var(--accent); }
-
-  main { max-width: 920px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
-  .card-body { padding: 18px; }
-  .card-title { font-size: 15px; font-weight: 650; margin: 0 0 14px; }
-
-  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-fg); }
-  .badge.warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-border); }
-  .link { color: var(--accent-fg); font-weight: 650; }
-
-  /* Vertical tabs — Placements / History (#198) */
-  .layout { display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: start; }
-  .tabs { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 20px; }
-  .tab { text-align: left; border: none; background: none; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 550; color: var(--fg-muted); padding: 9px 12px; border-radius: var(--radius-sm); border-left: 2px solid transparent; display: flex; align-items: center; gap: 9px; }
-  .tab:hover { background: var(--surface-2); color: var(--fg); }
-  .tab.active { background: var(--accent-soft); color: var(--accent-fg); border-left-color: var(--accent); font-weight: 650; }
-  .tab .glyph { flex: 0 0 auto; opacity: .85; }
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* identity meta grid */
-  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 22px; }
-  .m-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
-  .m-val { font-weight: 550; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  .m-sub { color: var(--fg-subtle); font-size: 12px; margin-top: 1px; }
-
-  /* lifecycle tiles */
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
-  .tile-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; }
-  .tile-value { font-size: 22px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .tile-value.pos { color: var(--pos); }
-  .tile-value.neg { color: var(--neg); }
-  .tile-sub { font-size: 12px; color: var(--fg-muted); margin-top: 2px; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--border); }
-  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  tbody tr:last-child td { border-bottom: none; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .mono { font-variant-numeric: tabular-nums; }
-  .place-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .place-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .7; }
-  .kind { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--fg-muted); border: 1px solid var(--border); }
-  .flow-cell { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-  .flow-cell .arr { color: var(--fg-subtle); }
-  .delta-pos { color: var(--pos); font-weight: 650; font-variant-numeric: tabular-nums; }
-
-  .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-  .pager-info { font-size: 12.5px; color: var(--fg-subtle); }
-  .pager-controls { display: inline-flex; align-items: center; gap: 6px; }
-  .pager-btn { appearance: none; font-family: inherit; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: var(--radius-sm); padding: 5px 8px; cursor: pointer; display: inline-flex; align-items: center; }
-  .pager-btn:disabled { opacity: .45; cursor: not-allowed; }
-  .pager-page { font-size: 12.5px; color: var(--fg-muted); font-variant-numeric: tabular-nums; padding: 0 4px; }
-
-  .note { color: var(--fg-subtle); font-size: 12px; margin-top: 12px; }
-  .footer-note { color: var(--fg-subtle); font-size: 12px; text-align: center; padding: 8px 0 4px; }
-  svg { display: block; }
-
-  @media (max-width: 760px) {
-    .layout { grid-template-columns: 1fr; }
-    .tabs { position: static; flex-direction: row; flex-wrap: wrap; }
-    .tab { border-left: none; border-bottom: 2px solid transparent; }
-    .tab.active { border-left: none; border-bottom-color: var(--accent); }
-  }
-  @media (max-width: 680px) {
-    .meta { grid-template-columns: repeat(2, 1fr); }
-    .tiles { grid-template-columns: repeat(2, 1fr); }
-  }
-  /* light / dark preview toggle */
-  .theme-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 9999; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg-muted); box-shadow: var(--shadow); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .theme-toggle:hover { color: var(--fg); border-color: var(--accent); }
-  .theme-toggle .sun { display: none; }
-  .theme-toggle .moon { display: block; }
-  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
-  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+  /* The one thing utilities can't express inline: the striped mock banner.
+     Everything else — including the vertical tabs' active state — is Tailwind
+     (tabs/panels use a data-active attribute toggled by the script). */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
 </style>
 </head>
-<body>
-  <div class="mock-banner">MOCKUP · Batch Detail (#3007 · Kaos Polos Hitam L) · fake data · not the app</div>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Batch Detail (#3007 · Kaos Polos Hitam L) · fake data · not the app</div>
 
-  <header class="bar">
-    <div class="bar-inner">
-      <a class="back" href="warehouse-product-detail.html">
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[920px] mx-auto p-[14px_20px] flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] px-2 py-1 rounded-sm hover:bg-surface-2 hover:text-fg" href="warehouse-product-detail.html">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
         Product
       </a>
-      <div class="spacer" style="flex:0"></div>
-      <div class="name-block">
-        <span class="batch-name">Batch #3007 <span class="badge warn">Expiring 2026-07-30</span></span>
-        <span class="batch-sub">Kaos Polos Hitam L · SKU-1041</span>
+      <div class="flex-none"></div>
+      <div class="flex flex-col">
+        <span class="text-[20px] font-[650] leading-[1.2] flex items-center gap-2.5">Batch #3007 <span class="inline-flex items-center gap-[5px] text-xs font-semibold py-[3px] px-[9px] rounded-full bg-warn-soft text-warn border border-warn-border">Expiring 2026-07-30</span></span>
+        <span class="text-fg-subtle text-[13px]">Kaos Polos Hitam L · SKU-1041</span>
       </div>
-      <div class="spacer"></div>
-      <div class="actions">
-        <a class="btn btn-outline" href="stock-move.html"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Move</a>
-        <a class="btn btn-outline" href="stock-adjust.html"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Adjust</a>
-        <a class="btn btn-outline" href="batch-receipt.html"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print receipt</a>
+      <div class="flex-auto"></div>
+      <div class="flex gap-2 flex-wrap">
+        <a class="border border-line-strong bg-surface cursor-pointer text-[13px] font-semibold py-[7px] px-3.5 rounded-sm inline-flex items-center gap-1.5 text-fg no-underline hover:bg-surface-2" href="stock-move.html"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Move</a>
+        <a class="border border-line-strong bg-surface cursor-pointer text-[13px] font-semibold py-[7px] px-3.5 rounded-sm inline-flex items-center gap-1.5 text-fg no-underline hover:bg-surface-2" href="stock-adjust.html"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Adjust</a>
+        <a class="border border-line-strong bg-surface cursor-pointer text-[13px] font-semibold py-[7px] px-3.5 rounded-sm inline-flex items-center gap-1.5 text-fg no-underline hover:bg-surface-2" href="batch-receipt.html"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print receipt</a>
       </div>
     </div>
   </header>
 
-  <main>
+  <main class="max-w-[920px] mx-auto p-5 flex flex-col gap-4">
     <!-- IDENTITY -->
-    <div class="card"><div class="card-body">
-      <div class="meta">
-        <div><div class="m-label">Product</div><div class="m-val">Kaos Polos Hitam L</div><div class="m-sub">SKU-1041</div></div>
-        <div><div class="m-label">Team (owner)</div><div class="m-val"><span class="badge">Selling Alpha</span></div><div class="m-sub">Whose goods these are (#142).</div></div>
-        <div><div class="m-label">Delivery · receipt</div><div class="m-val"><a class="link" href="batch-receipt.html">#3007 · GRN-0721</a></div></div>
-        <div><div class="m-label">Supplier</div><div class="m-val">Konveksi Maju Jaya</div></div>
-        <div><div class="m-label">Cost / pc (frozen HPP)</div><div class="m-val">Rp 25.000</div></div>
-        <div><div class="m-label">Restock created</div><div class="m-val">2026-07-14</div><div class="m-sub">by Siti</div></div>
-        <div><div class="m-label">Arrived · accepted</div><div class="m-val">2026-07-21</div><div class="m-sub">by Budi</div></div>
+    <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+      <div class="grid grid-cols-3 max-[680px]:grid-cols-2 gap-y-4 gap-x-[22px]">
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Product</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]">Kaos Polos Hitam L</div><div class="text-fg-subtle text-xs mt-px">SKU-1041</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Team (owner)</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]"><span class="inline-flex items-center gap-[5px] text-xs font-semibold py-[3px] px-[9px] rounded-full bg-accent-soft text-accent-fg">Selling Alpha</span></div><div class="text-fg-subtle text-xs mt-px">Whose goods these are (#142).</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Delivery · receipt</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]"><a class="text-accent-fg font-[650]" href="batch-receipt.html">#3007 · GRN-0721</a></div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Supplier</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]">Konveksi Maju Jaya</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Cost / pc (frozen HPP)</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]">Rp 25.000</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Restock created</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]">2026-07-14</div><div class="text-fg-subtle text-xs mt-px">by Siti</div></div>
+        <div><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Arrived · accepted</div><div class="font-[550] mt-0.5 [font-variant-numeric:tabular-nums]">2026-07-21</div><div class="text-fg-subtle text-xs mt-px">by Budi</div></div>
       </div>
     </div></div>
 
     <!-- LIFECYCLE -->
-    <div class="tiles">
-      <div class="tile"><div class="tile-label">Arrived</div><div class="tile-value">200</div><div class="tile-sub">On this delivery.</div></div>
-      <div class="tile"><div class="tile-label">Damaged</div><div class="tile-value neg">3</div><div class="tile-sub">Never entered stock.</div></div>
-      <div class="tile"><div class="tile-label">Used</div><div class="tile-value">0</div><div class="tile-sub">Picked / shipped out.</div></div>
-      <div class="tile"><div class="tile-label">Ready</div><div class="tile-value pos">197</div><div class="tile-sub">Rp 4.925.000 · available now.</div></div>
+    <div class="grid grid-cols-4 max-[680px]:grid-cols-2 gap-3.5">
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Arrived</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">200</div><div class="text-xs text-fg-muted mt-0.5">On this delivery.</div></div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Damaged</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-neg">3</div><div class="text-xs text-fg-muted mt-0.5">Never entered stock.</div></div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Used</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">0</div><div class="text-xs text-fg-muted mt-0.5">Picked / shipped out.</div></div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ready</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-pos">197</div><div class="text-xs text-fg-muted mt-0.5">Rp 4.925.000 · available now.</div></div>
     </div>
-    <p class="note" style="margin-top:-4px"><strong>Arrived = Damaged + Used + Ready</strong> (200 = 3 + 0 + 197). A move doesn't change Ready — it only changes where the units sit.</p>
+    <p class="text-fg-subtle text-xs mt-[-4px]"><strong>Arrived = Damaged + Used + Ready</strong> (200 = 3 + 0 + 197). A move doesn't change Ready — it only changes where the units sit.</p>
 
     <!-- TABS: Placements / History (#198) -->
-    <div class="layout">
-      <nav class="tabs" id="tabs">
-        <button class="tab active" data-tab="placements"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>Placements</button>
-        <button class="tab" data-tab="history"><svg class="glyph" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg>History</button>
+    <div class="grid grid-cols-[190px_1fr] max-[760px]:grid-cols-1 gap-5 items-start">
+      <nav class="flex flex-col gap-0.5 sticky top-5 max-[760px]:static max-[760px]:flex-row max-[760px]:flex-wrap" id="tabs">
+        <button class="tab text-left bg-transparent cursor-pointer text-[13.5px] font-[550] text-fg-muted py-[9px] px-3 rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="placements" data-active><svg class="flex-none opacity-[.85]" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>Placements</button>
+        <button class="tab text-left bg-transparent cursor-pointer text-[13.5px] font-[550] text-fg-muted py-[9px] px-3 rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[760px]:border-l-0 max-[760px]:border-b-2 max-[760px]:border-b-transparent max-[760px]:data-[active]:border-b-accent" data-tab="history"><svg class="flex-none opacity-[.85]" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg>History</button>
       </nav>
 
       <section>
         <!-- PLACEMENTS -->
-        <div class="panel active" data-panel="placements">
-          <div class="card"><div class="card-body">
-            <h2 class="card-title">Where this batch sits now</h2>
-            <table>
-              <thead><tr><th>Place</th><th class="num">Ready here</th></tr></thead>
-              <tbody>
-                <tr><td><span class="place-chip"><span class="dot"></span>A-01-3</span></td><td class="num">152</td></tr>
-                <tr><td><span class="place-chip"><span class="dot"></span>B-04-2</span></td><td class="num">45</td></tr>
+        <div class="hidden data-[active]:block" data-panel="placements" data-active>
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Where this batch sits now</h2>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">Place</th><th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">Ready here</th></tr></thead>
+              <tbody class="[&_tr:last-child_td]:border-b-0">
+                <tr><td class="py-2.5 px-3 border-b border-line"><span class="inline-flex items-center gap-1.5 font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>A-01-3</span></td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums]">152</td></tr>
+                <tr><td class="py-2.5 px-3 border-b border-line"><span class="inline-flex items-center gap-1.5 font-semibold [font-variant-numeric:tabular-nums]"><span class="w-1.5 h-1.5 rounded-full bg-accent opacity-70"></span>B-04-2</span></td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums]">45</td></tr>
               </tbody>
             </table>
-            <div class="pager">
-              <span class="pager-info">Showing 1–2 of 2 shelves</span>
-              <div class="pager-controls">
-                <button class="pager-btn" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-                <span class="pager-page">Page 1 of 1</span>
-                <button class="pager-btn" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–2 of 2 shelves</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
               </div>
             </div>
-            <p class="note">Ready across shelves (152 + 45) = 197, the batch's Ready total.</p>
+            <p class="text-fg-subtle text-xs mt-3">Ready across shelves (152 + 45) = 197, the batch's Ready total.</p>
           </div></div>
         </div>
 
         <!-- HISTORY -->
-        <div class="panel" data-panel="history">
-          <div class="card"><div class="card-body">
-            <h2 class="card-title">This batch's history</h2>
-            <table>
-              <thead><tr><th>When</th><th>What</th><th>Where</th><th>By</th><th class="num">Qty</th><th class="num">Ready after</th></tr></thead>
-              <tbody>
-                <tr><td class="mono">2026-07-22 14:02</td><td><span class="kind">Moved</span></td><td><span class="flow-cell">A-01-3 <span class="arr">→</span> B-04-2</span></td><td>Andi</td><td class="num">45</td><td class="num">197</td></tr>
-                <tr><td class="mono">2026-07-21 09:14</td><td><span class="kind">Received</span></td><td class="mono">A-01-3</td><td>Budi</td><td class="num delta-pos">+197</td><td class="num">197</td></tr>
+        <div class="hidden data-[active]:block" data-panel="history">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">This batch's history</h2>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">When</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">What</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">Where</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">By</th><th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">Qty</th><th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-2 px-3 border-b border-line">Ready after</th></tr></thead>
+              <tbody class="[&_tr:last-child_td]:border-b-0">
+                <tr><td class="py-2.5 px-3 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-22 14:02</td><td class="py-2.5 px-3 border-b border-line"><span class="inline-flex items-center text-xs font-semibold py-0.5 px-2 rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="py-2.5 px-3 border-b border-line"><span class="inline-flex items-center gap-1.5 [font-variant-numeric:tabular-nums]">A-01-3 <span class="text-fg-subtle">→</span> B-04-2</span></td><td class="py-2.5 px-3 border-b border-line">Andi</td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums]">45</td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums]">197</td></tr>
+                <tr><td class="py-2.5 px-3 border-b border-line [font-variant-numeric:tabular-nums]">2026-07-21 09:14</td><td class="py-2.5 px-3 border-b border-line"><span class="inline-flex items-center text-xs font-semibold py-0.5 px-2 rounded-md bg-surface-2 text-fg-muted border border-line">Received</span></td><td class="py-2.5 px-3 border-b border-line [font-variant-numeric:tabular-nums]">A-01-3</td><td class="py-2.5 px-3 border-b border-line">Budi</td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums] text-pos font-[650]">+197</td><td class="py-2.5 px-3 border-b border-line text-right [font-variant-numeric:tabular-nums]">197</td></tr>
               </tbody>
             </table>
-            <div class="pager">
-              <span class="pager-info">Showing 1–2 of 2 events</span>
-              <div class="pager-controls">
-                <button class="pager-btn" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-                <span class="pager-page">Page 1 of 1</span>
-                <button class="pager-btn" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+              <span class="text-[12.5px] text-fg-subtle">Showing 1–2 of 2 events</span>
+              <div class="inline-flex items-center gap-1.5">
+                <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 1</span>
+                <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer inline-flex items-center disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
               </div>
             </div>
-            <p class="note">Received 197 (200 arrived − 3 damaged). A move relocates units but leaves Ready unchanged — only picks and adjustments change a batch's Ready.</p>
+            <p class="text-fg-subtle text-xs mt-3">Received 197 (200 arrived − 3 damaged). A move relocates units but leaves Ready unchanged — only picks and adjustments change a batch's Ready.</p>
           </div></div>
         </div>
       </section>
     </div>
 
-    <p class="footer-note">Static mock · the batch's living detail, drilled into from a delivery on the product's Batches tab.</p>
+    <p class="text-fg-subtle text-xs text-center p-[8px_0_4px]">Static mock · the batch's living detail, drilled into from a delivery on the product's Batches tab.</p>
   </main>
 
 <script>
@@ -247,13 +190,13 @@
   tabs.addEventListener("click", (e) => {
     const btn = e.target.closest(".tab");
     if (!btn) return;
-    tabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === btn));
-    panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+    tabs.querySelectorAll(".tab").forEach((t) => t.toggleAttribute("data-active", t === btn));
+    panels.forEach((p) => p.toggleAttribute("data-active", p.dataset.panel === btn.dataset.tab));
   });
 </script>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
-    <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-    <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
   </button>
   <script>
     (function(){

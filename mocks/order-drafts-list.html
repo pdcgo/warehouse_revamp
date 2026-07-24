@@ -3,172 +3,163 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Mock · Order Drafts</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY (#203). Hardcoded data, no build. Styled with TAILWIND    *
+ * via the Play CDN (the documented exception to "self-contained").      *
+ * A throwaway preview of the ORDER DRAFTS list (#195): incomplete orders *
+ * a third-party app scraped and pushed in, waiting for a person to       *
+ * finish them. Two jobs — open one to finish it, or PRUNE (bulk delete   *
+ * is load-bearing, nothing expires on its own). Real screen is Chakra.   *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
 <style>
-  /* ------------------------------------------------------------------ *
-   * MOCKUP ONLY (#203). Plain HTML/CSS, hardcoded data, no build. A     *
-   * throwaway preview of the ORDER DRAFTS list (#195): incomplete orders *
-   * a third-party app scraped and pushed in, waiting for a person to     *
-   * finish them. Two jobs — open one to finish it, or PRUNE (bulk delete *
-   * is load-bearing, nothing expires on its own). Real screen is Chakra. *
-   * ------------------------------------------------------------------ */
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
-    --border: #e4e7ec; --border-strong: #d0d5dd;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
     --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
-    --accent: #4f46e5; --accent-soft: #eef2ff; --accent-fg: #3730a3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
     --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
-    --danger: #b42318; --danger-soft: #fef3f2; --danger-border: #fecdca;
-    --ok: #067647; --ok-soft: #ecfdf3;
-    --gap-soft: #f2f4f7; --gap-fg: #475467; --gap-border: #e4e7ec;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
     --radius: 12px; --radius-sm: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
-      --border: #262b33; --border-strong: #333a44;
-      --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
-      --accent: #7c74f0; --accent-soft: #1e1b34; --accent-fg: #c7c2f7;
-      --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
-      --danger: #f97066; --danger-soft: #2a1614; --danger-border: #5c2620;
-      --ok: #47c67e; --ok-soft: #10241a;
-      --gap-soft: #222831; --gap-fg: #98a2b3; --gap-border: #333a44;
-      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
-    }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45; }
-  .mock-banner {
-    background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px);
-    border-bottom: 1px solid var(--border); color: var(--accent-fg);
-    font-size: 12px; text-align: center; padding: 6px 12px; letter-spacing: .02em;
-  }
-  main { max-width: 940px; margin: 0 auto; padding: 22px 20px; }
 
-  .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  h1 { font-size: 20px; font-weight: 650; margin: 0; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
-    padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-fg);
-  }
-  .spacer { flex: 1 1 auto; }
-  .btn {
-    appearance: none; border: 1px solid transparent; cursor: pointer; background: none;
-    font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm);
-    display: inline-flex; align-items: center; gap: 7px;
-  }
-  .btn-danger { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
-  .btn-danger:hover { filter: brightness(0.98); }
-  .intro { color: var(--fg-muted); font-size: 13px; margin: 6px 0 18px; max-width: 640px; }
+  /* File-specific hues the shared set doesn't carry: the neutral "gap" chip, and the
+     soft border of the destructive button (the fill/text use the shared --neg). */
+  :root { --gap-soft: #f2f4f7; --gap-fg: #475467; --gap-border: #e4e7ec; --neg-border: #fecdca; }
+  :root[data-theme="dark"] { --gap-soft: #222831; --gap-fg: #98a2b3; --gap-border: #333a44; --neg-border: #5c2620; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  thead th {
-    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--fg-subtle); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--border);
-    background: var(--surface-2);
-  }
-  tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr.selected { background: var(--accent-soft); }
-  .chk { width: 30px; }
-  input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; }
-  .ref { font-weight: 650; color: var(--accent-fg); cursor: pointer; }
-  .ref:hover { text-decoration: underline; }
-  .source { color: var(--fg-subtle); font-size: 12px; margin-top: 1px; }
-  .muted { color: var(--fg-subtle); }
-
-  .pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; display: inline-flex; }
-  .pill-ok { background: var(--ok-soft); color: var(--ok); }
-  .pill-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-border); }
-  .gaps { display: flex; gap: 6px; flex-wrap: wrap; }
-  .gap { font-size: 12px; font-weight: 550; padding: 2px 8px; border-radius: 6px; background: var(--gap-soft); color: var(--gap-fg); border: 1px solid var(--gap-border); }
-
-  .pager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; padding: 12px 4px 0; color: var(--fg-muted); font-size: 13px; }
-  .pager .pg { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 6px; padding: 5px 10px; cursor: pointer; color: var(--fg); font-weight: 600; }
-  .pager .pg[disabled] { opacity: .4; cursor: not-allowed; }
-  svg { display: block; }
-  .footer-note { color: var(--fg-subtle); font-size: 12px; text-align: center; padding: 16px 0 4px; }
+  /* The one thing utilities can't express inline: the striped mock banner. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
 </style>
 </head>
-<body>
-  <div class="mock-banner">MOCKUP · Order Drafts — list (#203) · fake data · not the app</div>
-  <main>
-    <div class="head">
-      <h1>Order Drafts</h1>
-      <span class="badge">
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Order Drafts — list (#203) · fake data · not the app</div>
+  <main class="max-w-[940px] mx-auto p-[22px_20px]">
+    <div class="flex items-center gap-3 flex-wrap">
+      <h1 class="text-[20px] font-[650] m-0">Order Drafts</h1>
+      <span class="inline-flex items-center gap-[5px] text-xs font-semibold py-[3px] px-[9px] rounded-full bg-accent-soft text-accent-fg">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
         Gudang Jakarta
       </span>
-      <div class="spacer"></div>
+      <div class="flex-1"></div>
       <!-- Appears only when rows are selected — pruning is a real job here. -->
-      <button class="btn btn-danger" id="delete-btn" style="display:none">
+      <button class="inline-flex items-center gap-[7px] text-[13px] font-semibold py-2 px-3.5 rounded-sm cursor-pointer border border-[var(--neg-border)] bg-neg-soft text-neg hover:brightness-[0.98]" id="delete-btn" style="display:none">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
         Delete <span id="delete-count">0</span>
       </button>
     </div>
-    <p class="intro">Incomplete orders pushed in by another app. Finish one and promote it, or delete what you will not use — nothing here expires on its own.</p>
+    <p class="text-fg-muted text-[13px] mt-1.5 mb-[18px] max-w-[640px]">Incomplete orders pushed in by another app. Finish one and promote it, or delete what you will not use — nothing here expires on its own.</p>
 
-    <div class="card">
-      <table>
+    <div class="bg-surface border border-line rounded shadow overflow-hidden">
+      <table class="w-full border-collapse text-[13.5px]">
         <thead>
           <tr>
-            <th class="chk"><input type="checkbox" id="select-all" aria-label="Select all" /></th>
-            <th>Reference</th>
-            <th>Customer</th>
-            <th>Lines</th>
-            <th>Still needed</th>
+            <th class="w-[30px] text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[11px] px-3.5 border-b border-line bg-surface-2"><input type="checkbox" id="select-all" aria-label="Select all" class="w-4 h-4 accent-accent cursor-pointer m-0" /></th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[11px] px-3.5 border-b border-line bg-surface-2">Reference</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[11px] px-3.5 border-b border-line bg-surface-2">Customer</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[11px] px-3.5 border-b border-line bg-surface-2">Lines</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[11px] px-3.5 border-b border-line bg-surface-2">Still needed</th>
           </tr>
         </thead>
-        <tbody id="rows">
-          <tr>
-            <td class="chk"><input type="checkbox" class="row-chk" /></td>
-            <td><div class="ref">SHP-341</div><div class="source">shopee-bot</div></td>
-            <td>Budi Santoso</td>
-            <td>3</td>
-            <td><span class="pill pill-ok">Ready to promote</span></td>
+        <tbody id="rows" class="[&>tr:last-child>td]:border-b-0">
+          <tr class="data-[selected]:bg-accent-soft">
+            <td class="w-[30px] py-3 px-3.5 border-b border-line align-middle"><input type="checkbox" class="row-chk w-4 h-4 accent-accent cursor-pointer m-0" /></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="font-[650] text-accent-fg cursor-pointer hover:underline">SHP-341</div><div class="text-fg-subtle text-xs mt-px">shopee-bot</div></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">Budi Santoso</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">3</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><span class="text-xs font-semibold py-[3px] px-[9px] rounded-full whitespace-nowrap inline-flex bg-pos-soft text-pos">Ready to promote</span></td>
           </tr>
-          <tr>
-            <td class="chk"><input type="checkbox" class="row-chk" /></td>
-            <td><div class="ref">TKP-8842</div><div class="source">tokopedia-sync</div></td>
-            <td>Siti Rahayu</td>
-            <td><span class="pill pill-warn">2 of 5 unmapped</span></td>
-            <td><div class="gaps"><span class="gap">Warehouse</span><span class="gap">Unmapped lines</span></div></td>
+          <tr class="data-[selected]:bg-accent-soft">
+            <td class="w-[30px] py-3 px-3.5 border-b border-line align-middle"><input type="checkbox" class="row-chk w-4 h-4 accent-accent cursor-pointer m-0" /></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="font-[650] text-accent-fg cursor-pointer hover:underline">TKP-8842</div><div class="text-fg-subtle text-xs mt-px">tokopedia-sync</div></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">Siti Rahayu</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><span class="text-xs font-semibold py-[3px] px-[9px] rounded-full whitespace-nowrap inline-flex bg-warn-soft text-warn border border-warn-border">2 of 5 unmapped</span></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="flex gap-1.5 flex-wrap"><span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">Warehouse</span><span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">Unmapped lines</span></div></td>
           </tr>
-          <tr>
-            <td class="chk"><input type="checkbox" class="row-chk" /></td>
-            <td><div class="ref">SHP-100</div><div class="source">scraper-app</div></td>
-            <td class="muted">—</td>
-            <td>1</td>
-            <td><div class="gaps"><span class="gap">Shop</span><span class="gap">Customer</span></div></td>
+          <tr class="data-[selected]:bg-accent-soft">
+            <td class="w-[30px] py-3 px-3.5 border-b border-line align-middle"><input type="checkbox" class="row-chk w-4 h-4 accent-accent cursor-pointer m-0" /></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="font-[650] text-accent-fg cursor-pointer hover:underline">SHP-100</div><div class="text-fg-subtle text-xs mt-px">scraper-app</div></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle text-fg-subtle">—</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">1</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="flex gap-1.5 flex-wrap"><span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">Shop</span><span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">Customer</span></div></td>
           </tr>
-          <tr>
-            <td class="chk"><input type="checkbox" class="row-chk" /></td>
-            <td><div class="ref">OTH-1</div><div class="source">scraper-app</div></td>
-            <td>Agus Wijaya</td>
-            <td class="muted">0</td>
-            <td><div class="gaps"><span class="gap">No lines</span></div></td>
+          <tr class="data-[selected]:bg-accent-soft">
+            <td class="w-[30px] py-3 px-3.5 border-b border-line align-middle"><input type="checkbox" class="row-chk w-4 h-4 accent-accent cursor-pointer m-0" /></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="font-[650] text-accent-fg cursor-pointer hover:underline">OTH-1</div><div class="text-fg-subtle text-xs mt-px">scraper-app</div></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">Agus Wijaya</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle text-fg-subtle">0</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="flex gap-1.5 flex-wrap"><span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">No lines</span></div></td>
           </tr>
-          <tr>
-            <td class="chk"><input type="checkbox" class="row-chk" /></td>
-            <td><div class="ref">SHP-200</div><div class="source">shopee-bot</div></td>
-            <td>Dewi Lestari</td>
-            <td>4</td>
-            <td><span class="pill pill-ok">Ready to promote</span></td>
+          <tr class="data-[selected]:bg-accent-soft">
+            <td class="w-[30px] py-3 px-3.5 border-b border-line align-middle"><input type="checkbox" class="row-chk w-4 h-4 accent-accent cursor-pointer m-0" /></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><div class="font-[650] text-accent-fg cursor-pointer hover:underline">SHP-200</div><div class="text-fg-subtle text-xs mt-px">shopee-bot</div></td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">Dewi Lestari</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle">4</td>
+            <td class="py-3 px-3.5 border-b border-line align-middle"><span class="text-xs font-semibold py-[3px] px-[9px] rounded-full whitespace-nowrap inline-flex bg-pos-soft text-pos">Ready to promote</span></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="pager">
+    <div class="flex items-center gap-2.5 justify-end pt-3 px-1 text-fg-muted text-[13px]">
       <span>1–5 of 23</span>
-      <button class="pg" disabled>‹ Prev</button>
-      <button class="pg">Next ›</button>
+      <button class="border border-line-strong bg-surface rounded-md py-[5px] px-2.5 cursor-pointer text-fg font-semibold disabled:opacity-40 disabled:cursor-not-allowed" disabled>‹ Prev</button>
+      <button class="border border-line-strong bg-surface rounded-md py-[5px] px-2.5 cursor-pointer text-fg font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Next ›</button>
     </div>
 
-    <p class="footer-note">Static mock · tick a row (or the header box) to see the bulk-delete action appear.</p>
+    <p class="text-fg-subtle text-xs text-center pt-4 pb-1">Static mock · tick a row (or the header box) to see the bulk-delete action appear.</p>
   </main>
 
 <script>
@@ -184,7 +175,7 @@
   function sync() {
     let n = 0;
     boxes.forEach((b, i) => {
-      rows[i].classList.toggle("selected", b.checked);
+      rows[i].toggleAttribute("data-selected", b.checked);
       if (b.checked) n++;
     });
     count.textContent = n;
@@ -197,5 +188,20 @@
   // Start with two ticked so the delete action is visible on load.
   boxes[1].checked = true; boxes[2].checked = true; sync();
 </script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
 </body>
 </html>

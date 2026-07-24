@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Restocks</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. The RESTOCK LIST — the         *
+ * warehouse team's inbound work queue. Shows restocks that are shipped   *
+ * onward (In transit → Arrived → Accepted). The job: find ARRIVED        *
+ * restocks and accept them onto racks (→ accept-rack.html), which turns  *
+ * them into batches. Receive-only (no "new restock" here). An accepted   *
+ * restock links to its receipt. Styled with TAILWIND via the Play CDN;   *
+ * Tailwind's theme is mapped onto the shared :root design tokens below,  *
+ * and dark mode rides on those tokens flipping at [data-theme=dark].     *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* Extra status colours this page needs that aren't canonical tokens, plus the few
+     things utilities can't express: the striped banner, the icon-in-background form
+     controls, and the amber left edge on ARRIVED rows (styled from a data-attribute). */
+  :root { --pos-border: #abefc6; --accent-line: color-mix(in srgb, var(--accent) 28%, transparent); }
+  :root[data-theme="dark"] { --pos-border: #1f3d2c; }
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .search-input {
+    font-family: inherit; font-size: 13px; color: var(--fg); min-width: 230px;
+    background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 10px 7px 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 9px center; background-size: 14px;
+  }
+  .search-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .select {
+    appearance: none; font-family: inherit; font-size: 13px; font-weight: 550;
+    color: var(--fg); background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 30px 7px 10px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+  }
+  tbody tr[data-status="arrived"] td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Restocks (warehouse inbound queue) · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1140px] mx-auto py-3.5 px-5 flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] py-1 px-2 rounded-sm hover:bg-surface-2 hover:text-fg" href="index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Mocks
+      </a>
+      <div class="[flex:0]"></div>
+      <div class="flex flex-col">
+        <span class="text-[20px] font-[650] leading-[1.2]">Restocks</span>
+        <span class="text-fg-subtle text-[13px]">Incoming stock for Gudang Pusat</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1140px] mx-auto p-5">
+    <div class="grid grid-cols-3 max-[720px]:grid-cols-1 gap-3.5 mb-4">
+      <div class="bg-warn-soft border border-warn-border rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-warn font-semibold">Arrived · needs accepting</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-warn">2</div></div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">In transit</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">3</div></div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Inbound value</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">Rp 27.020.000</div></div>
+    </div>
+
+    <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+      <div class="flex items-center gap-3 flex-wrap mb-4">
+        <input class="search-input" id="q" type="search" placeholder="Search restock, supplier, or team…" aria-label="Search restocks" />
+        <span class="flex-auto"></span>
+        <div class="inline-flex items-center gap-2">
+          <label class="text-[12px] text-fg-muted font-semibold" for="f-status">Status</label>
+          <select class="select" id="f-status">
+            <option value="">All</option>
+            <option value="arrived">Needs accepting</option>
+            <option value="transit">In transit</option>
+            <option value="accepted">Accepted</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="inline-flex items-center gap-2">
+          <label class="text-[12px] text-fg-muted font-semibold" for="f-team">Team</label>
+          <select class="select" id="f-team">
+            <option value="">All teams</option>
+            <option value="Selling Alpha">Selling Alpha</option>
+            <option value="Selling Beta">Selling Beta</option>
+          </select>
+        </div>
+        <div class="inline-flex items-center gap-2">
+          <label class="text-[12px] text-fg-muted font-semibold" for="f-supplier">Supplier</label>
+          <select class="select" id="f-supplier">
+            <option value="">All suppliers</option>
+            <option value="Konveksi Maju Jaya">Konveksi Maju Jaya</option>
+            <option value="Garmen Sentosa">Garmen Sentosa</option>
+            <option value="Medika Supplies">Medika Supplies</option>
+            <option value="Aksesoris Prima">Aksesoris Prima</option>
+            <option value="Roti Bakery Co">Roti Bakery Co</option>
+          </select>
+        </div>
+        <div class="inline-flex items-center gap-2">
+          <select class="select" id="f-date-field" aria-label="Date field">
+            <option value="created">Created</option>
+            <option value="arrival">Arrival</option>
+          </select>
+          <input class="text-[13px] text-fg [color-scheme:light_dark] bg-surface border border-line-strong rounded-sm py-1.5 px-2" id="f-from" type="date" aria-label="From date" />
+          <span class="text-fg-subtle text-[12px]">→</span>
+          <input class="text-[13px] text-fg [color-scheme:light_dark] bg-surface border border-line-strong rounded-sm py-1.5 px-2" id="f-to" type="date" aria-label="To date" />
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Restock</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Team</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Created</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Status</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Arrival</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Items</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Value</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap"></th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <!-- ARRIVED — needs accepting -->
+          <tr class="hover:bg-surface-2" data-status="arrived" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-created="2026-07-20" data-arrival="2026-07-23" data-search="3110 konveksi maju jaya selling alpha arrived">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3110</span><div class="text-fg-subtle text-[11.5px]">Konveksi Maju Jaya</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Alpha</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-20</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-warn bg-warn-soft border-warn-border">Arrived</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-23</div><div class="text-fg-subtle text-[11.5px] mt-0.5">today</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">8 products · 430 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 13.550.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><a class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] border border-accent no-underline hover:brightness-105" href="accept-rack.html">Accept →</a></td>
+          </tr>
+          <tr class="hover:bg-surface-2" data-status="arrived" data-team="Selling Beta" data-supplier="Garmen Sentosa" data-created="2026-07-18" data-arrival="2026-07-21" data-search="3108 garmen sentosa selling beta arrived">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3108</span><div class="text-fg-subtle text-[11.5px]">Garmen Sentosa</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Beta</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-18</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Dewi</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-warn bg-warn-soft border-warn-border">Arrived</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-21</div><div class="text-warn font-semibold text-[11px]">2 days overdue</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">3 products · 180 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 6.200.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><a class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] border border-accent no-underline hover:brightness-105" href="accept-rack.html">Accept →</a></td>
+          </tr>
+          <!-- IN TRANSIT -->
+          <tr class="hover:bg-surface-2" data-status="transit" data-team="Selling Beta" data-supplier="Aksesoris Prima" data-created="2026-07-21" data-arrival="2026-07-25" data-search="3115 aksesoris prima selling beta in transit">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3115</span><div class="text-fg-subtle text-[11.5px]">Aksesoris Prima</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Beta</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-21</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color:var(--accent-line)]">In transit</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-25</div><div class="text-fg-subtle text-[11.5px] mt-0.5">ETA</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">4 products · 240 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 4.320.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-fg-subtle">—</span></td>
+          </tr>
+          <tr class="hover:bg-surface-2" data-status="transit" data-team="Selling Alpha" data-supplier="Medika Supplies" data-created="2026-07-22" data-arrival="2026-07-26" data-search="3118 medika supplies selling alpha in transit">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3118</span><div class="text-fg-subtle text-[11.5px]">Medika Supplies</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Alpha</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-22</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color:var(--accent-line)]">In transit</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-26</div><div class="text-fg-subtle text-[11.5px] mt-0.5">ETA</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">1 product · 500 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 1.750.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-fg-subtle">—</span></td>
+          </tr>
+          <tr class="hover:bg-surface-2" data-status="transit" data-team="Selling Alpha" data-supplier="Roti Bakery Co" data-created="2026-07-22" data-arrival="2026-07-27" data-search="3121 roti bakery co selling alpha in transit">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3121</span><div class="text-fg-subtle text-[11.5px]">Roti Bakery Co</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Alpha</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-22</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color:var(--accent-line)]">In transit</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-27</div><div class="text-fg-subtle text-[11.5px] mt-0.5">ETA</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">2 products · 96 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 1.200.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-fg-subtle">—</span></td>
+          </tr>
+          <!-- ACCEPTED -->
+          <tr class="hover:bg-surface-2" data-status="accepted" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-created="2026-07-14" data-arrival="2026-07-21" data-search="3007 grn-0721 konveksi maju jaya selling alpha accepted">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3007</span><div class="text-fg-subtle text-[11.5px]">Konveksi Maju Jaya</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Alpha</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-14</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[color:var(--pos-border)]">Accepted</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-21</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Budi</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">3 products · 260 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 13.550.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><a class="text-accent-fg font-semibold text-[12.5px] no-underline inline-flex items-center gap-1 hover:underline" href="batch-receipt.html">Receipt →</a></td>
+          </tr>
+          <tr class="hover:bg-surface-2" data-status="accepted" data-team="Selling Alpha" data-supplier="Konveksi Maju Jaya" data-created="2026-07-05" data-arrival="2026-07-12" data-search="2988 grn-0712 konveksi maju jaya selling alpha accepted">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#2988</span><div class="text-fg-subtle text-[11.5px]">Konveksi Maju Jaya</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Alpha</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-05</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Siti</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[color:var(--pos-border)]">Accepted</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-12</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Rina</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">1 product · 60 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums]">Rp 1.440.000</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><a class="text-accent-fg font-semibold text-[12.5px] no-underline inline-flex items-center gap-1 hover:underline" href="batch-receipt.html">Receipt →</a></td>
+          </tr>
+          <!-- CANCELLED (hard case) -->
+          <tr class="hover:bg-surface-2" data-status="cancelled" data-team="Selling Beta" data-supplier="Garmen Sentosa" data-created="2026-07-19" data-arrival="" data-search="3095 garmen sentosa selling beta cancelled">
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="font-[650] text-fg [font-variant-numeric:tabular-nums]">#3095</span><div class="text-fg-subtle text-[11.5px]">Garmen Sentosa</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-[11px] font-semibold text-accent-fg bg-accent-soft rounded-[5px] py-px px-[7px]">Selling Beta</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><div class="[font-variant-numeric:tabular-nums]">2026-07-19</div><div class="text-fg-subtle text-[11.5px] mt-0.5">by Dewi</div></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-[9px] rounded-full border whitespace-nowrap text-fg-subtle bg-surface-2 border-line">Cancelled</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-fg-subtle">—</span></td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top">2 products · 120 pcs</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top text-right [font-variant-numeric:tabular-nums] text-fg-subtle">—</td>
+            <td class="py-[11px] px-3 border-b border-line whitespace-nowrap align-top"><span class="text-fg-subtle">—</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+        <span class="text-[12.5px] text-fg-subtle" id="pager-info">Showing 1–8 of 32 restocks</span>
+        <div class="inline-flex items-center gap-1.5">
+          <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+          <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 4</span>
+          <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+      </div>
+
+      <p class="text-fg-subtle text-[12px] mt-3"><strong>Arrived</strong> rows (amber edge) are the work — <strong>Accept →</strong> opens the put-away screen, which turns the restock into batches. <strong>In transit</strong> is on its way (ETA shown); <strong>Accepted</strong> is done (links to its receipt). Team = the catalogue owner whose goods these are (#142); Supplier = who ships them. Shipped-onward only — a restock appears here once it's moving, not while it's a draft. Filters &amp; search re-query the full set.</p>
+    </div></div>
+  </main>
+
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+
+<script>
+  const q = document.getElementById("q");
+  const fStatus = document.getElementById("f-status");
+  const fTeam = document.getElementById("f-team");
+  const fSupplier = document.getElementById("f-supplier");
+  const fDateField = document.getElementById("f-date-field");
+  const fFrom = document.getElementById("f-from");
+  const fTo = document.getElementById("f-to");
+  const rows = [...document.querySelectorAll("#rows tr")];
+  const info = document.getElementById("pager-info");
+
+  function inDateRange(r) {
+    const from = fFrom.value, to = fTo.value;
+    if (!from && !to) return true;
+    const v = fDateField.value === "arrival" ? r.dataset.arrival : r.dataset.created;
+    if (!v) return false;
+    if (from && v < from) return false;
+    if (to && v > to) return false;
+    return true;
+  }
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    const st = fStatus.value, team = fTeam.value, sup = fSupplier.value;
+    let shown = 0;
+    rows.forEach((r) => {
+      const ok =
+        (!term || r.dataset.search.includes(term)) &&
+        (!st || r.dataset.status === st) &&
+        (!team || r.dataset.team === team) &&
+        (!sup || r.dataset.supplier === sup) &&
+        inDateRange(r);
+      r.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    });
+    const filtering = term || st || team || sup || fFrom.value || fTo.value;
+    info.textContent = filtering ? "Showing " + shown + " of " + shown + " (filtered)" : "Showing 1–8 of 32 restocks";
+  }
+  [q, fStatus, fTeam, fSupplier, fDateField, fFrom, fTo].forEach((el) => el.addEventListener("input", apply));
+  apply();
+
+  (function(){
+    var tt = document.getElementById('themeToggle');
+    if (!tt) return;
+    tt.addEventListener('click', function(){
+      var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', d);
+      try { localStorage.setItem('mock-theme', d); } catch(e){}
+    });
+  })();
+</script>
+</body>
+</html>

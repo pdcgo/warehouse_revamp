@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Restock #3007 (selling team)</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. The SELLING TEAM's restock      *
+ * DETAIL — one restock it originated, seen from the owner's side         *
+ * (counterpart to the warehouse's accept-rack / batch-receipt). The      *
+ * RICH, HARD case: a Received restock that came up SHORT and with        *
+ * DAMAGE, so the doc makes the ordered-vs-received gap unmissable — the   *
+ * owner is billed on what actually landed, not what was ordered (#74).    *
+ * Leads with the lifecycle timeline, then per-line reconciliation, then   *
+ * shipping and the cost basis, then a link to the warehouse receipt.      *
+ * Styled with TAILWIND via the Play CDN; Tailwind's theme is mapped onto  *
+ * the shared :root design tokens, dark mode riding on [data-theme=dark].  *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* Extra status colours (the soft pos border, the accent hairline) plus what
+     utilities can't express: the striped banner, the lifecycle timeline (its ::after
+     connectors and dot states), and the amber left edge on SHORT lines. */
+  :root { --pos-border: #abefc6; --accent-line-2: color-mix(in srgb, var(--accent) 22%, transparent); }
+  :root[data-theme="dark"] { --pos-border: #1f3d2c; }
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+
+  .timeline { display: flex; gap: 0; overflow-x: auto; padding: 4px 0; }
+  .step { flex: 1 1 0; min-width: 130px; position: relative; padding: 0 6px; }
+  .step:not(:last-child)::after { content: ""; position: absolute; top: 11px; left: 50%; right: -50%; height: 2px; background: var(--pos); }
+  .step.pending:not(:last-child)::after { background: var(--border); }
+  .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; position: relative; z-index: 1; background: var(--pos); color: #fff; margin: 0 auto 8px; }
+  :root[data-theme="dark"] .dot { color: #0c0e12; }
+  .step.pending .dot { background: var(--surface-2); border: 2px solid var(--border-strong); color: var(--fg-subtle); }
+  .step-name { font-size: 12.5px; font-weight: 650; text-align: center; }
+  .step-date { font-size: 11.5px; color: var(--fg-subtle); text-align: center; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .step-who { font-size: 11px; color: var(--fg-subtle); text-align: center; margin-top: 1px; }
+  .step.pending .step-name { color: var(--fg-subtle); }
+
+  tbody tr[data-flag="short"] td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Restock detail — selling team · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1000px] mx-auto py-3.5 px-5 flex items-center gap-3.5 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] py-1 px-2 rounded-sm hover:bg-surface-2 hover:text-fg" href="restock-list.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Restocks
+      </a>
+      <div class="w-[42px] h-[42px] rounded-sm shrink-0 bg-accent-soft text-accent-fg grid place-items-center border border-[color:var(--accent-line-2)]">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M3 21h18"/></svg>
+      </div>
+      <div class="flex flex-col gap-[3px] min-w-0">
+        <span class="text-[19px] font-[650] leading-[1.2] flex items-center gap-2.5">Restock #3007 <span class="inline-flex items-center gap-1.5 text-[11.5px] font-bold py-0.5 px-2.5 rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[color:var(--pos-border)]">Received</span></span>
+        <span class="text-fg-subtle text-[12.5px]"><b class="text-fg-muted font-[550]">Konveksi Maju Jaya</b> → <b class="text-fg-muted font-[550]">Gudang Jakarta</b> · ordered by you · Selling Alpha</span>
+      </div>
+      <div class="flex-auto"></div>
+      <div class="flex gap-2 flex-wrap">
+        <button class="appearance-none border border-line-strong cursor-pointer font-[inherit] text-[13px] font-semibold py-2 px-3.5 rounded-sm inline-flex items-center gap-1.5 no-underline text-fg bg-surface hover:bg-surface-2"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Reorder</button>
+        <a class="appearance-none border border-transparent cursor-pointer font-[inherit] text-[13px] font-semibold py-2 px-3.5 rounded-sm inline-flex items-center gap-1.5 no-underline bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] hover:brightness-105" href="../batch-receipt.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>View receipt</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1000px] mx-auto p-5 flex flex-col gap-4">
+    <!-- SUMMARY TILES -->
+    <div class="grid gap-3.5 grid-cols-4 max-[820px]:grid-cols-2 max-[480px]:grid-cols-1">
+      <div class="bg-accent-soft border border-transparent rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] font-semibold text-accent-fg opacity-85">Cost billed to you</div>
+        <div class="text-[20px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-accent-fg">Rp 13.550.000</div>
+        <div class="text-[12px] text-fg-muted mt-[3px]">On what landed, incl. shipping</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ordered</div>
+        <div class="text-[20px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">273 <span class="text-[13px] font-[550] text-fg-subtle">pcs</span></div>
+        <div class="text-[12px] text-fg-muted mt-[3px]">3 products · Rp 14.100.000 goods</div>
+      </div>
+      <div class="bg-warn-soft border border-warn-border rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] font-semibold text-warn">Received</div>
+        <div class="text-[20px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-warn">260 <span class="text-[13px] font-[550]">pcs</span></div>
+        <div class="text-[12px] text-fg-muted mt-[3px]">13 short of ordered</div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Landed</div>
+        <div class="text-[16px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">2026-07-12</div>
+        <div class="text-[12px] text-fg-muted mt-[3px]">7 days after ordering</div>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+      <div class="timeline">
+        <div class="step">
+          <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="step-name">Drafted</div>
+          <div class="step-date">2026-07-05</div>
+          <div class="step-who">by you</div>
+        </div>
+        <div class="step">
+          <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="step-name">Ordered</div>
+          <div class="step-date">2026-07-06</div>
+          <div class="step-who">by you · paid supplier</div>
+        </div>
+        <div class="step">
+          <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="step-name">In transit</div>
+          <div class="step-date">2026-07-08</div>
+          <div class="step-who">JNE · JP1830042</div>
+        </div>
+        <div class="step">
+          <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="step-name">Arrived</div>
+          <div class="step-date">2026-07-12</div>
+          <div class="step-who">at Gudang Jakarta</div>
+        </div>
+        <div class="step">
+          <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="step-name">Received</div>
+          <div class="step-date">2026-07-12</div>
+          <div class="step-who">by Rina · onto racks</div>
+        </div>
+      </div>
+    </div></div>
+
+    <!-- DISCREPANCY CALLOUT -->
+    <div class="flex gap-3 items-start py-3.5 px-4 rounded border border-warn-border bg-warn-soft">
+      <svg class="text-warn shrink-0 mt-px" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>
+        <div class="font-[650] text-[13.5px] text-warn">This restock came up short</div>
+        <div class="text-[13px] text-fg-muted mt-[3px]">You ordered <b class="text-fg font-[650]">273 pcs</b> but <b class="text-fg font-[650]">260</b> were accepted onto racks — <b class="text-fg font-[650]">8 arrived damaged</b> and <b class="text-fg font-[650]">5 never turned up</b>. You're billed for the <b class="text-fg font-[650]">260 good pieces only</b>; the 13 missing/damaged are credited back against Konveksi Maju Jaya on your <a class="text-accent-fg font-semibold no-underline hover:underline" href="../liability-list.html">liability</a>. Cost per piece is unchanged — the shortfall lowers the total, not the HPP (#74).</div>
+      </div>
+    </div>
+
+    <!-- LINES -->
+    <div class="bg-surface border border-line rounded shadow">
+      <div class="flex items-center gap-2.5 py-3.5 px-[18px] border-b border-line">
+        <svg class="text-accent shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        <h2 class="text-[14px] font-[650] m-0">Lines — ordered vs received</h2>
+        <span class="flex-auto"></span>
+        <span class="text-[12px] text-fg-subtle">3 products · billed on received</span>
+      </div>
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Product</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Ordered</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Received</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Damaged</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Missing</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Unit cost</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Line (billed)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="hover:bg-surface-2" data-flag="short">
+            <td class="py-[11px] px-3 border-b border-line align-top">
+              <div class="flex items-center gap-2.5">
+                <span class="w-[34px] h-[34px] rounded-md shrink-0 grid place-items-center text-white text-[10px] font-bold bg-[linear-gradient(135deg,#c4b5fd,#8b5cf6)]">IMG</span>
+                <div>
+                  <div class="font-semibold"><a class="text-accent-fg no-underline hover:underline" href="../product-detail-selling.html">Kaos Polos Cotton Combed 30s — Hitam</a></div>
+                  <div class="text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums] mt-px">KAOS-CC30-HTM-L</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">120</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn font-[650]">112</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-neg font-[650]">5</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn font-[650]">3</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 42.000</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 4.704.000</td>
+          </tr>
+          <tr class="hover:bg-surface-2" data-flag="short">
+            <td class="py-[11px] px-3 border-b border-line align-top">
+              <div class="flex items-center gap-2.5">
+                <span class="w-[34px] h-[34px] rounded-md shrink-0 grid place-items-center text-white text-[10px] font-bold bg-[linear-gradient(135deg,#c4b5fd,#8b5cf6)]">IMG</span>
+                <div>
+                  <div class="font-semibold"><a class="text-accent-fg no-underline hover:underline" href="../product-detail-selling.html">Kaos Polos Cotton Combed 30s — Putih</a></div>
+                  <div class="text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums] mt-px">KAOS-CC30-PTH-L</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">90</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn font-[650]">85</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-neg font-[650]">3</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn font-[650]">2</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 42.000</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 3.570.000</td>
+          </tr>
+          <tr class="hover:bg-surface-2">
+            <td class="py-[11px] px-3 border-b border-line align-top">
+              <div class="flex items-center gap-2.5">
+                <span class="w-[34px] h-[34px] rounded-md shrink-0 grid place-items-center text-white text-[10px] font-bold bg-[linear-gradient(135deg,#c4b5fd,#8b5cf6)]">IMG</span>
+                <div>
+                  <div class="font-semibold"><a class="text-accent-fg no-underline hover:underline" href="../product-detail-selling.html">Kemeja Flanel Kotak — Merah</a></div>
+                  <div class="text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums] mt-px">KMJ-FLN-MRH-M</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">63</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">63</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-fg-subtle">—</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap text-fg-subtle">—</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 82.000</td>
+            <td class="py-[11px] px-3 border-b border-line align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 5.166.000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="py-[11px] px-3 align-top font-bold border-t-2 border-line-strong">Total</td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong">273</td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong">260</td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong text-neg">8</td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong text-warn">5</td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong"></td>
+            <td class="py-[11px] px-3 align-top text-right [font-variant-numeric:tabular-nums] whitespace-nowrap font-bold border-t-2 border-line-strong">Rp 13.440.000</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+    </div>
+
+    <!-- SHIPPING + COST -->
+    <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-4">
+      <!-- SHIPPING -->
+      <div class="bg-surface border border-line rounded shadow">
+        <div class="flex items-center gap-2.5 py-3.5 px-[18px] border-b border-line">
+          <svg class="text-accent shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+          <h2 class="text-[14px] font-[650] m-0">Shipping</h2>
+        </div>
+        <div class="p-[18px]">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[13px]">
+            <dt class="text-fg-subtle">Supplier</dt><dd class="m-0 text-right font-[550]">Konveksi Maju Jaya</dd>
+            <dt class="text-fg-subtle">Destination</dt><dd class="m-0 text-right font-[550]">Gudang Jakarta</dd>
+            <dt class="text-fg-subtle">Courier</dt><dd class="m-0 text-right font-[550]">JNE Trucking</dd>
+            <dt class="text-fg-subtle">Tracking</dt><dd class="m-0 text-right font-[550]"><a class="text-accent-fg font-semibold no-underline hover:underline" href="#">JP1830042 →</a></dd>
+            <dt class="text-fg-subtle">Shipped</dt><dd class="m-0 text-right font-[550] [font-variant-numeric:tabular-nums]">2026-07-08</dd>
+            <dt class="text-fg-subtle">ETA</dt><dd class="m-0 text-right font-[550] [font-variant-numeric:tabular-nums]">2026-07-11</dd>
+            <dt class="text-fg-subtle">Landed</dt><dd class="m-0 text-right font-[550] [font-variant-numeric:tabular-nums]">2026-07-12 · +1 day</dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- COST BASIS -->
+      <div class="bg-surface border border-line rounded shadow">
+        <div class="flex items-center gap-2.5 py-3.5 px-[18px] border-b border-line">
+          <svg class="text-accent shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <h2 class="text-[14px] font-[650] m-0">Cost</h2>
+          <span class="flex-auto"></span>
+          <span class="text-[12px] text-fg-subtle">what you owe</span>
+        </div>
+        <div class="p-[18px]">
+          <div class="flex flex-col gap-[9px] text-[13.5px]">
+            <div class="flex justify-between gap-4">
+              <span class="text-fg-muted">Goods ordered <small class="text-fg-subtle text-[11.5px] block">273 pcs</small></span>
+              <span class="[font-variant-numeric:tabular-nums] font-[550]">Rp 14.100.000</span>
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-fg-muted">Less short / damaged <small class="text-fg-subtle text-[11.5px] block">13 pcs never entered stock</small></span>
+              <span class="[font-variant-numeric:tabular-nums] font-[550] text-pos">− Rp 660.000</span>
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-fg-muted">Goods received <small class="text-fg-subtle text-[11.5px] block">260 pcs · the billed basis</small></span>
+              <span class="[font-variant-numeric:tabular-nums] font-[550]">Rp 13.440.000</span>
+            </div>
+            <div class="flex justify-between gap-4">
+              <span class="text-fg-muted">Shipping <small class="text-fg-subtle text-[11.5px] block">JNE Trucking</small></span>
+              <span class="[font-variant-numeric:tabular-nums] font-[550]">Rp 110.000</span>
+            </div>
+          </div>
+          <div class="flex justify-between gap-4 pt-2.5 border-t-2 border-line-strong font-bold text-[15px]">
+            <span>Total billed</span>
+            <span class="[font-variant-numeric:tabular-nums]">Rp 13.550.000</span>
+          </div>
+          <p class="text-[11.5px] text-fg-subtle mt-1">Cost is settled on the <b class="text-fg font-[650]">received</b> count, not the ordered one — a piece that never made it onto a rack was never bought (#74). This total posts to your Konveksi Maju Jaya <a class="text-accent-fg font-semibold no-underline hover:underline" href="../liability-list.html">liability</a>.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-fg-subtle text-[12px] text-center pt-1 pb-2">Static mock · the header actions (Reorder, View receipt) and links don't do anything here.</p>
+  </main>
+
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>
