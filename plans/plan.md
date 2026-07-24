@@ -159,10 +159,18 @@ name the person and the moment, the screen doesn't get built.
 | **Scan-first or type-first?** | If the warehouse has (or can have) barcodes, scanning is 10× faster and near-zero error. If not — should we introduce labelling? That's a *physical process* decision, and the highest-leverage one available. |
 | **Density** | An operator console lives or dies on how much is visible at a glance. Whatever component library we choose, we commit to a sizing scale on day one and enforce it. |
 
-### 2.2 Open — the stack
+### 2.2 The stack — DECIDED
 
-Not decided. Candidates and what each buys us — to be argued once §1 and §2.1 are answered.
-(The choice should follow the device and density answers, not precede them.)
+**The styling layer is Tailwind CSS (v4) + Ark UI**, replacing Chakra UI. Ark UI is the
+headless behaviour library (built on the same Ark/Zag state-machine engine that Chakra v3
+sits on), so the interaction primitives carry over while the styling moves to Tailwind. The
+**mocks are the living source of truth for the UI design** — the app is built to match them,
+not the other way round. (owner, 2026-07-24)
+
+The migration is **coexistence / incremental**: Chakra is removed gradually rather than in one
+cut, the shared-component API is preserved so pages don't churn, and dark mode stays on the
+`[data-theme]` signal. The full plan lives in
+[frontend-tailwind-migration/brainstorming.md](frontend-tailwind-migration/brainstorming.md).
 
 ---
 
@@ -192,6 +200,13 @@ Nothing to write here yet.
 - **2026-07-13** — Owner: *"dont bring all legacy concept of legacy at this starting point,
   we build completely new"* → the doc was reset to first principles; all legacy-derived
   content removed. Old repos are now **reference only, and only when explicitly invoked**.
+- **2026-07** — Frontend stack decided (§2.2). The mocks were converted to Tailwind and
+  promoted to the **living source of truth** for UI design; the app is migrating off Chakra UI
+  to **Tailwind v4 + Ark UI**. Decisions locked: **Ark UI** (headless) as the behaviour layer,
+  a **coexistence / incremental** transition (Chakra removed gradually), the shared-component
+  API is **preserved** so pages don't churn, the **`[data-theme]`** dark-mode signal, and
+  **Tailwind v4**. Full plan in
+  [frontend-tailwind-migration/brainstorming.md](frontend-tailwind-migration/brainstorming.md).
 
 ---
 

@@ -393,8 +393,11 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 - **Contract** — protobuf + [buf](https://buf.build) v2 (single module), Connect RPC.
 - **Backend** — Go 1.25, `connectrpc.com/connect`, h2c, plain `net/http` mux.
   Dev CLI: `urfave/cli/v3`. Migrations: `pressly/goose/v3` (Postgres via `pgx`).
-- **Frontend** — React 18, TypeScript, Vite, **Chakra UI v3**, react-router-dom v7,
-  `@connectrpc/connect-web`, Playwright for e2e.
+- **Frontend** — React 18, TypeScript, Vite, **Tailwind CSS v4** (styling) + **Ark UI** (headless
+  behaviour — dialogs, menus, comboboxes, tabs), react-router-dom v7, `@connectrpc/connect-web`,
+  Playwright for e2e. **Migrating off Chakra UI v3:** Chakra still renders many screens and is being
+  removed incrementally — see
+  [plans/frontend-tailwind-migration/brainstorming.md](plans/frontend-tailwind-migration/brainstorming.md).
   Connect-ES v2 needs no separate service plugin: `protoc-gen-es` emits the service
   descriptor, and the client is `createClient(HelloService, transport)`.
 
@@ -451,22 +454,25 @@ it (#138). A fresh `<select>` gets none of that.
 If nothing fits, prefer **extending the shared component over forking it** — and if you do add one,
 it needs an `export const description` and a gallery entry in the same change (see below).
 
-**Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
-request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
-`Select`/`NativeSelect`, `Table`, `Dialog`, `Stack`, …), never a hand-rolled `<button>`, `<input>`,
-`<select>`, or a bare `<div>` styled by hand — Chakra components carry the theme's sizing, spacing,
-colours, and a11y wiring, and skipping them is how an app drifts off its design system. For a rich
-picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
-native element is genuinely needed, get an explicit ask first.
+**Build UI from the shared components + Ark UI primitives, styled with Tailwind — reach for a raw,
+unmanaged native element only on explicit request.** A control, a layout, a piece of chrome should be
+a shared component from `components/`, or — for overlay/keyboard behaviour — an **Ark UI** primitive
+(`Dialog`, `Menu`, `Combobox`, `Select`, `Tabs`, `Popover`) styled with the token utilities, never a
+hand-rolled `<button>`/`<input>`/`<select>` or a bare `<div>` styled ad hoc. The reason is
+**behaviour, not looks**: Ark UI carries the focus-trap, keyboard nav, ARIA and positioning that raw
+markup — and the mocks' `.js-menu` — do not. Tailwind styles it; Ark makes it work. Keep semantic
+HTML underneath (`<button>`, `<a>`, `<nav>`, `<table>`) so the a11y and the e2e role selectors stay
+sound. For a rich picker (searchable, multi-level) use an Ark UI `Combobox`, not a bare `<select>`.
+If an unmanaged native element is genuinely needed, get an explicit ask first.
 
 Two more UI rules:
 
 - **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three
   or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
-  opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
-  menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
+  opening an **Ark UI** `Menu` — not a row of buttons. **Every menu item carries a leading icon**
+  (a lucide SVG). One or two actions may stay inline.
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
-  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
+  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (an Ark UI
   `Dialog`) before it runs. Never a bare one-click destructive button.
 - **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
   "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
@@ -480,26 +486,24 @@ Two more UI rules:
   is living documentation generated from the components, not a parallel list that drifts. Adding a
   new shared component to the gallery means adding its `description` in the same file.
 
-[frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
-set. Two things are centralised there on purpose:
+[frontend/src/index.css](frontend/src/index.css) is the **only** place the design tokens, density
+and spacing live — the `:root` var block plus the Tailwind `@theme` mapping. Two things are
+centralised there on purpose:
 
-- **Control sizing** defaults to `sm` for button/input/textarea/select. Do **not** sprinkle
-  `size="sm"` through the app — an explicit size on a control is an override, and should be
-  rare (e.g. `size="xs"` on a table row action).
-- **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
-  those, never raw spacing values, so the whole app's density is retuned in one place.
+- **Control sizing** is baked into the shared control components (the old Chakra `size="sm"`
+  default). Do **not** re-declare sizes ad hoc — an explicit size is an override and should be rare.
+- **Semantic spacing tokens** — `field` / `card` / `section` / `page` (utilities `p-field`,
+  `gap-card`, `gap-section`, `p-page`). Reference those, never raw pixel spacing, so the whole app's
+  density is retuned in one place.
 
-**Icons come from [lucide-react](https://lucide.dev), rendered through Chakra's `<Icon>` wrapper.**
-Import the named icon, then wrap it: `import { Pencil } from "lucide-react"` →
-`<Icon as={Pencil} boxSize="4" />`. lucide is the only icon source; `<Icon>` is what makes the
-icon obey Chakra's sizing/colour tokens, so **size is a `boxSize` token, not a raw pixel prop**
-(`"4"` = 16px, the size for an `xs` row action). Do **not** import lucide icons bare
-(`<Pencil size={16} />`), and do **not** use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as
-icons — they render differently on every platform. Keep the button's `aria-label` — the icon is
-decorative, the label is the name. Chakra's own `CloseButton` is a primitive, not an icon, and
-stays.
+**Icons come from [lucide-react](https://lucide.dev), rendered as a sized SVG.** Import the named
+icon and size it with a Tailwind utility: `import { Pencil } from "lucide-react"` →
+`<Pencil className="size-4" />` (`size-4` = 16px, the size for a row action). lucide icons inherit
+`currentColor`, so a `text-*` utility on the parent colours them. lucide is the only icon source. Do
+**not** use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as icons — they render differently on
+every platform. Keep the button's `aria-label` — the icon is decorative, the label is the name.
 
-The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
+The violet `brand` ramp there is a **placeholder** — no visual identity has been chosen yet.
 
 Auth is deliberately **not wired** into the frontend shell: it's still being designed in
 `plans/user_service/brainstorming.md`.

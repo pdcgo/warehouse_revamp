@@ -26,15 +26,20 @@ a line of real React is written (#201).
 - **Fake data, real jobs.** The data is invented, but the screen shows the actual task a real person
   is trying to finish. A mock that skips the hard case (a short count, a broken item, an unplaced
   line) is a mock that designs the easy screen.
-- **Not the design system.** These are throwaway previews to argue about layout, not the app —
-  styled with **Tailwind utilities** (via the CDN above), which is deliberately NOT the app's stack.
-  When a mock is agreed, the real screen is built from **Chakra** and the shared components (see
-  `CLAUDE.md` — "The design system"), and the mock has done its job. Tailwind here is a fast styling
-  layer for previews; it never graduates — only the token set does.
-- **Shared tokens (#213).** The one thing that DID graduate from the mocks is their token set — the
-  `:root` palette (colors + dark variants), radii, shadows, the system font stack. It now lives in
-  `frontend/src/theme.ts` as Chakra `semanticTokens`; the mock-var → theme-token mapping is
-  [`plans/design-tokens.md`](../plans/design-tokens.md). Keep a mock's `:root` values in step with it.
+- **The source of truth for UI design.** A mock is not a throwaway — it ships the same **Tailwind
+  utilities** and `:root` tokens (below) the app does, so an agreed mock *is* the visual spec the real
+  screen is built to match. The one thing a mock does **not** carry is behaviour: the app's
+  interaction and a11y come from **Ark UI** (the headless behaviour lib) wired to these same utilities
+  (see `CLAUDE.md` — "The design system"), not from a mock's hand-rolled `.js-menu`. So read a mock as
+  a **visual / layout** spec, and take behaviour from the app.
+- **Shared tokens (#213).** The mocks and the app share ONE token set — the `:root` palette (colors +
+  dark variants, keyed off `[data-theme]`), radii, shadows, the system font stack. Its home is
+  [`frontend/src/index.css`](../frontend/src/index.css): the `:root` var block plus the Tailwind v4
+  `@theme` mapping that turns those vars into utilities. The mocks carry the same `:root` values via
+  the Play CDN; a few class-name differences (mock `rounded`/`rounded-sm`/`shadow`/`shadow-lg` → app
+  `rounded-card`/`rounded-control`/`shadow-card`/`shadow-pop`) are reconciled in
+  [`plans/design-tokens.md`](../plans/design-tokens.md). One source — keep a mock's `:root` in step
+  with `index.css`.
 
 ## What is here
 
