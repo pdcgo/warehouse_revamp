@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Flex, Heading, Icon, Spacer, Stack, Table, Text } from "@chakra-ui/react";
 import { Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../../components/ui/Button";
+import { Table } from "../../../components/ui/Table";
 import { shopClient } from "../../../api/clients";
 import type { Shop } from "../../../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../../../features/team/TeamContext";
@@ -40,10 +41,10 @@ export function ShopsSection({ teamId }: { teamId: bigint }) {
   const isCurrent = current?.teamId === teamId;
 
   return (
-    <Stack gap="card" data-testid="selling-detail-section">
-      <Flex align="center" gap="card">
-        <Heading size="sm">{t("teams.shops")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-card" data-testid="selling-detail-section">
+      <div className="flex items-center gap-card">
+        <h2 className="text-[15px] font-semibold">{t("teams.shops")}</h2>
+        <div className="flex-1" />
         {isCurrent && (
           <Button
             size="xs"
@@ -51,18 +52,18 @@ export function ShopsSection({ teamId }: { teamId: bigint }) {
             data-testid="selling-detail-manage-shops"
             onClick={() => navigate("/shops")}
           >
-            <Icon as={Store} boxSize="4" />
+            <Store className="size-4" />
             {t("teams.manageShops")}
           </Button>
         )}
-      </Flex>
+      </div>
 
       {shops.length === 0 ? (
-        <Text color="fg.muted" data-testid="selling-detail-no-shops">
+        <p className="text-fg-muted" data-testid="selling-detail-no-shops">
           {t("teams.noShops")}
-        </Text>
+        </p>
       ) : (
-        <Table.Root size="sm" data-testid="selling-detail-shops">
+        <Table.Root data-testid="selling-detail-shops">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("teams.name")}</Table.ColumnHeader>
@@ -83,6 +84,6 @@ export function ShopsSection({ teamId }: { teamId: bigint }) {
           </Table.Body>
         </Table.Root>
       )}
-    </Stack>
+    </div>
   );
 }

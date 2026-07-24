@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
+import { Badge } from "../../components/ui/Badge";
+import { Tabs } from "../../components/ui/Tabs";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
@@ -30,28 +31,28 @@ export function UsersPage() {
   const teamScoped = !globalAdmin || tab === "team";
 
   const header = (
-    <Flex align="center" gap="card">
-      <Heading size="md">{t("users.title")}</Heading>
+    <div className="flex items-center gap-card">
+      <h1 className="text-[22px] font-bold">{t("users.title")}</h1>
       {!globalAdmin && current && (
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
       )}
-      <Spacer />
+      <div className="flex-1" />
       {teamScoped && <AddMemberDialog />}
       <CreateUserDialog />
-    </Flex>
+    </div>
   );
 
   if (!globalAdmin) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {header}
         <UsersTable mode="team" />
-      </Stack>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
+    <div className="flex flex-col gap-section">
       {header}
 
       {/* lazyMount + unmountOnExit: only the visible tab's table is mounted, so exactly one user
@@ -73,6 +74,6 @@ export function UsersPage() {
           <UsersTable mode="all" />
         </Tabs.Content>
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }

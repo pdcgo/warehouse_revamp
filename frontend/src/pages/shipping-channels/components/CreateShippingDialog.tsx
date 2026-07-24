@@ -1,17 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { toaster } from "../../../components/Toaster";
 import { useCreateShipping } from "../queries";
 
@@ -73,40 +67,40 @@ export function CreateShippingDialog() {
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="create-shipping-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="create-shipping-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("catalog.shipping.code")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={code}
                       data-testid="new-channel-code"
                       onChange={(e) => setCode(e.target.value)}
                     />
-                    <Field.HelperText>
-                      {t("catalog.shipping.codeHelpCreate")}
-                    </Field.HelperText>
+                    <Field.HelperText>{t("catalog.shipping.codeHelpCreate")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("catalog.name")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={name}
                       data-testid="new-channel-name"
                       onChange={(e) => setName(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("catalog.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray">
+                    {t("catalog.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -119,7 +113,9 @@ export function CreateShippingDialog() {
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton type="button" size="sm" aria-label="Close" className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

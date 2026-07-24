@@ -1,16 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
@@ -135,21 +129,21 @@ export function ShopFormDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="shop-form-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="shop-form-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("shops.form.name")}</Field.Label>
-                    <Input value={name} data-testid="shop-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="shop-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("shops.form.shopCode")}</Field.Label>
-                    <Input value={shopCode} data-testid="shop-code" onChange={(e) => setShopCode(e.target.value)} />
+                    <Field.Input value={shopCode} data-testid="shop-code" onChange={(e) => setShopCode(e.target.value)} />
                     <Field.HelperText>{t("shops.form.shopCodeHelp")}</Field.HelperText>
                   </Field.Root>
 
@@ -160,19 +154,19 @@ export function ShopFormDialog({
 
                   <Field.Root>
                     <Field.Label>{t("shops.form.description")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={description}
                       data-testid="shop-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("shops.form.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} disabled={!canSave} data-testid="submit-shop">
                   {editing ? t("shops.form.save") : t("shops.form.create")}
@@ -180,7 +174,9 @@ export function ShopFormDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("shops.form.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

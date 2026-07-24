@@ -1,16 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { rpcError } from "../../../api/clients";
 import type { Supplier } from "../../../gen/warehouse/inventory/v1/supplier_pb";
 import { useTeam } from "../../../features/team/TeamContext";
@@ -144,27 +138,27 @@ export function SupplierFormDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="supplier-form-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="supplier-form-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("suppliers.form.code")}</Field.Label>
-                    <Input value={code} data-testid="supplier-code" onChange={(e) => setCode(e.target.value)} />
+                    <Field.Input value={code} data-testid="supplier-code" onChange={(e) => setCode(e.target.value)} />
                     <Field.HelperText>{t("suppliers.form.codeHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("suppliers.form.name")}</Field.Label>
-                    <Input value={name} data-testid="supplier-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="supplier-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.contact")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={contact}
                       data-testid="supplier-contact"
                       onChange={(e) => setContact(e.target.value)}
@@ -173,7 +167,7 @@ export function SupplierFormDialog({
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.province")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={province}
                       data-testid="supplier-province"
                       onChange={(e) => setProvince(e.target.value)}
@@ -182,12 +176,12 @@ export function SupplierFormDialog({
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.city")}</Field.Label>
-                    <Input value={city} data-testid="supplier-city" onChange={(e) => setCity(e.target.value)} />
+                    <Field.Input value={city} data-testid="supplier-city" onChange={(e) => setCity(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.address")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={address}
                       data-testid="supplier-address"
                       onChange={(e) => setAddress(e.target.value)}
@@ -196,19 +190,19 @@ export function SupplierFormDialog({
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.description")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={description}
                       data-testid="supplier-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("suppliers.form.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -222,7 +216,9 @@ export function SupplierFormDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("suppliers.form.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

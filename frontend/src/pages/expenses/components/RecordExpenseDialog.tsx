@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CloseButton, Dialog, Field, Icon, Input, Portal, Stack, Textarea } from "@chakra-ui/react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { rpcError } from "../../../api/clients";
 import { useSaveExpense } from "../queries";
 import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
@@ -130,12 +132,12 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => change(e.open)} placement="center">
+    <Dialog.Root open={open} onOpenChange={(e) => change(e.open)}>
       {/* In edit mode the caller opens it, so there is no trigger to render. */}
       {!isEdit && (
         <Dialog.Trigger asChild>
           <Button colorPalette="brand" size="xs" data-testid="open-record-cost">
-            <Icon as={Plus} boxSize="4" />
+            <Plus className="size-4" />
             {t("expenses.record")}
           </Button>
         </Dialog.Trigger>
@@ -151,7 +153,7 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="field">
+                <div className="flex flex-col gap-field">
                   <Field.Root required>
                     <Field.Label>{t("expenses.table.kind")}</Field.Label>
                     <ExpenseKindSelect value={kind} onChange={setKind} disabled={busy} />
@@ -170,7 +172,7 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
 
                   <Field.Root required>
                     <Field.Label>{t("expenses.table.date")}</Field.Label>
-                    <Input
+                    <Field.Input
                       type="date"
                       value={occurredAt}
                       disabled={busy}
@@ -190,7 +192,7 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
 
                   <Field.Root>
                     <Field.Label>{t("expenses.table.note")}</Field.Label>
-                    <Textarea
+                    <Field.Textarea
                       value={note}
                       disabled={busy}
                       data-testid="expense-note"
@@ -199,19 +201,19 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="expense-form-error">
+                    <p className="text-sm text-red-600 dark:text-red-400" data-testid="expense-form-error">
                       {error}
-                    </Dialog.Description>
+                    </p>
                   )}
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline" disabled={busy}>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray" disabled={busy}>
                     {t("common.cancel")}
                   </Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
                 <Button type="submit" colorPalette="brand" loading={busy} disabled={!ready} data-testid="submit-cost">
                   {t("expenses.save")}
                 </Button>
@@ -219,7 +221,9 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
             </form>
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton type="button" size="sm" aria-label={t("common.cancel")} className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

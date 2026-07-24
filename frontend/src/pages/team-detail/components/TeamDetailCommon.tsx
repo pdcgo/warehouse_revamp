@@ -1,25 +1,13 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Button,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Separator,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, Pencil, UserMinus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Input } from "../../../components/ui/Input";
+import { Spinner } from "../../../components/ui/Spinner";
+import { Table } from "../../../components/ui/Table";
+import { Tabs } from "../../../components/ui/Tabs";
 import { rpcError } from "../../../api/clients";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
@@ -40,14 +28,10 @@ const MEMBER_PAGE_SIZE = 20;
 // A labelled read-only field. Falls back to a dash for an empty value so the layout never collapses.
 export function DetailField({ label, value }: { label: string; value: string }) {
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <p className="text-xs font-medium uppercase text-fg-muted">{label}</p>
+      <p className="line-clamp-3 text-sm">{value || "—"}</p>
+    </div>
   );
 }
 
@@ -117,28 +101,29 @@ export function TeamDetailCommon({
   const info = team.info;
 
   return (
-    <Stack gap="section" data-testid="team-detail-page">
+    <div className="flex flex-col gap-section" data-testid="team-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        colorPalette="gray"
+        className="self-start"
         data-testid="team-detail-back"
         onClick={() => navigate(backTo)}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("teams.backToNoun", { noun })}
       </Button>
 
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("teams.nounDetails", { noun })}</Heading>
-        <Spacer />
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("teams.nounDetails", { noun })}</h1>
+        <div className="flex-1" />
         {admin && (
           <Button size="xs" variant="outline" data-testid="team-detail-edit" onClick={() => setEditing(true)}>
-            <Icon as={Pencil} boxSize="4" />
+            <Pencil className="size-4" />
             {t("teams.edit")}
           </Button>
         )}
-      </Flex>
+      </div>
 
       <Tabs.Root defaultValue="general">
         <Tabs.List>
@@ -151,114 +136,112 @@ export function TeamDetailCommon({
         </Tabs.List>
 
         <Tabs.Content value="general">
-          <Stack gap="section">
+          <div className="flex flex-col gap-section">
             <TeamItem
               team={{
-          teamName: team.name,
-          teamType: team.type,
-          teamId: team.id,
-          imageUrl: team.imageUrl,
-        }}
-      />
+                teamName: team.name,
+                teamType: team.type,
+                teamId: team.id,
+                imageUrl: team.imageUrl,
+              }}
+            />
 
-      <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-        <DetailField label={t("teams.code")} value={team.teamCode} />
-        <DetailField label={t("teams.description")} value={team.description} />
-      </SimpleGrid>
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
+              <DetailField label={t("teams.code")} value={team.teamCode} />
+              <DetailField label={t("teams.description")} value={team.description} />
+            </div>
 
-      <Separator />
+            <div className="h-px bg-line" />
 
-      <Stack gap="card">
-        <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-          {t("teams.contactBank")}
-        </Text>
-        <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-          <DetailField label={t("teams.contactNumber")} value={info?.contactNumber ?? ""} />
-          <DetailField label={t("teams.bank")} value={info?.bankType ?? ""} />
-          <DetailField label={t("teams.accountHolder")} value={info?.bankOwnerName ?? ""} />
-          <DetailField label={t("teams.accountNumber")} value={info?.bankAccountNumber ?? ""} />
-        </SimpleGrid>
-      </Stack>
+            <div className="flex flex-col gap-card">
+              <p className="text-sm font-medium text-fg-muted">{t("teams.contactBank")}</p>
+              <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
+                <DetailField label={t("teams.contactNumber")} value={info?.contactNumber ?? ""} />
+                <DetailField label={t("teams.bank")} value={info?.bankType ?? ""} />
+                <DetailField label={t("teams.accountHolder")} value={info?.bankOwnerName ?? ""} />
+                <DetailField label={t("teams.accountNumber")} value={info?.bankAccountNumber ?? ""} />
+              </div>
+            </div>
 
             {/* The type-specific section (warehouse hours + location, selling shops, …). */}
             {extra && (
               <>
-                <Separator />
+                <div className="h-px bg-line" />
                 {extra}
               </>
             )}
-          </Stack>
+          </div>
         </Tabs.Content>
 
         <Tabs.Content value="member">
-          <Stack gap="card">
-            <Flex align="center" gap="card">
-              <Heading size="sm">{t("teams.members")}</Heading>
-          <Spacer />
-          {admin && <AddMemberDialog teamId={team.id} teamType={team.type} />}
-        </Flex>
+          <div className="flex flex-col gap-card">
+            <div className="flex items-center gap-card">
+              <h2 className="text-[15px] font-semibold">{t("teams.members")}</h2>
+              <div className="flex-1" />
+              {admin && <AddMemberDialog teamId={team.id} teamType={team.type} />}
+            </div>
 
-        <Input
-          maxW="sm"
-          size="sm"
-          placeholder={t("teams.searchMembers")}
-          value={memberQuery}
-          data-testid="member-list-search"
-          onChange={(e) => {
-            setMemberQuery(e.target.value);
-            setMemberPage(1);
-          }}
-        />
-
-        {membersLoading ? (
-          <Spinner colorPalette="brand" size="sm" />
-        ) : members.length === 0 ? (
-          <Text color="fg.muted" data-testid="team-detail-no-members">
-            {memberQuery ? t("teams.noMembersMatch") : t("teams.noMembers")}
-          </Text>
-        ) : (
-          <>
-            <Table.Root size="sm" data-testid="team-detail-members">
-              <Table.Body>
-                {members.map((user) => {
-                  const isSelf = identity?.identityId === user.id;
-
-                  return (
-                    <Table.Row key={user.id.toString()} data-testid={`member-row-${user.username}`}>
-                      <Table.Cell>
-                        <UserItem user={user} />
-                      </Table.Cell>
-                      <Table.Cell textAlign="end">
-                        {admin && !isSelf && (
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="red"
-                            aria-label={`Remove ${user.username}`}
-                            data-testid={`remove-member-${user.username}`}
-                            onClick={() => setRemoving(user)}
-                          >
-                            <Icon as={UserMinus} boxSize="4" />
-                          </IconButton>
-                        )}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-
-            <HStack justify="end">
-              <Pagination
-                count={memberTotal}
-                pageSize={MEMBER_PAGE_SIZE}
-                page={memberPage}
-                onPageChange={setMemberPage}
+            <div className="max-w-sm">
+              <Input
+                placeholder={t("teams.searchMembers")}
+                value={memberQuery}
+                data-testid="member-list-search"
+                onChange={(e) => {
+                  setMemberQuery(e.target.value);
+                  setMemberPage(1);
+                }}
               />
-            </HStack>
-          </>
-        )}
-          </Stack>
+            </div>
+
+            {membersLoading ? (
+              <Spinner />
+            ) : members.length === 0 ? (
+              <p className="text-fg-muted" data-testid="team-detail-no-members">
+                {memberQuery ? t("teams.noMembersMatch") : t("teams.noMembers")}
+              </p>
+            ) : (
+              <>
+                <Table.Root data-testid="team-detail-members">
+                  <Table.Body>
+                    {members.map((user) => {
+                      const isSelf = identity?.identityId === user.id;
+
+                      return (
+                        <Table.Row key={user.id.toString()} data-testid={`member-row-${user.username}`}>
+                          <Table.Cell>
+                            <UserItem user={user} />
+                          </Table.Cell>
+                          <Table.Cell className="text-right">
+                            {admin && !isSelf && (
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                colorPalette="red"
+                                aria-label={`Remove ${user.username}`}
+                                data-testid={`remove-member-${user.username}`}
+                                onClick={() => setRemoving(user)}
+                              >
+                                <UserMinus className="size-4" />
+                              </IconButton>
+                            )}
+                          </Table.Cell>
+                        </Table.Row>
+                      );
+                    })}
+                  </Table.Body>
+                </Table.Root>
+
+                <div className="flex justify-end">
+                  <Pagination
+                    count={memberTotal}
+                    pageSize={MEMBER_PAGE_SIZE}
+                    page={memberPage}
+                    onPageChange={setMemberPage}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </Tabs.Content>
       </Tabs.Root>
 
@@ -284,6 +267,6 @@ export function TeamDetailCommon({
           onConfirm={() => removeMember(removing)}
         />
       )}
-    </Stack>
+    </div>
   );
 }

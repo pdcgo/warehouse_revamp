@@ -1,19 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../../api/clients";
 import { isRemembered, setToken } from "../../../features/auth/tokenStorage";
 import { PasswordInput } from "../../../components/PasswordInput";
 import { toaster } from "../../../components/Toaster";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 
 // ChangePasswordDialog calls ResetPassword — the SELF-SERVE one, which has no user_id field.
 //
@@ -84,11 +79,11 @@ export function ChangePasswordDialog() {
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="password-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="password-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
@@ -121,13 +116,13 @@ export function ChangePasswordDialog() {
                       onChange={(e) => setConfirm(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("account.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-change-password">
                   {t("account.changePassword")}
@@ -135,7 +130,9 @@ export function ChangePasswordDialog() {
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("account.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

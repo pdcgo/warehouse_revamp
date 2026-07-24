@@ -1,16 +1,25 @@
-import { useState } from "react";
-import { Avatar, Button, FileUpload, HStack, Icon, Stack, Text } from "@chakra-ui/react";
+import { useRef, useState } from "react";
 import { Camera } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { documentClient, rpcError, userClient } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
 import { useTeam } from "../../../features/team/TeamContext";
 import { toaster } from "../../../components/Toaster";
+import { Button } from "../../../components/ui/Button";
 
 interface ProfilePictureProps {
   avatarUrl?: string;
   name?: string;
   onUpdated: (newAvatarUrl: string) => void;
+}
+
+// The first letter of the first and last word of a name, upper-cased — the avatar's fallback when
+// there is no picture (or the picture fails to load).
+function initials(name: string | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
 // ProfilePicture shows the caller's avatar and lets them replace it.
@@ -27,6 +36,7 @@ export function ProfilePicture({ avatarUrl, name, onUpdated }: ProfilePicturePro
   const { t } = useTranslation();
   const { current } = useTeam();
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const noTeam = !current;
 
@@ -78,43 +88,59 @@ export function ProfilePicture({ avatarUrl, name, onUpdated }: ProfilePicturePro
   }
 
   return (
-    <HStack gap="card" align="center">
-      <Avatar.Root size="2xl" colorPalette="brand" data-testid="profile-picture">
-        <Avatar.Fallback name={name} />
-        <Avatar.Image src={avatarUrl || undefined} alt={name} />
-      </Avatar.Root>
+    <div className="flex items-center gap-card">
+      {/* Avatar: a brand-tinted circle showing initials, with the picture layered on top. The
+          <img> hides itself if it fails to load, revealing the initials beneath. */}
+      <div
+        className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-lg font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+        data-testid="profile-picture"
+      >
+        <span>{initials(name)}</span>
+        {avatarUrl && (
+          <img
+            key={avatarUrl}
+            src={avatarUrl}
+            alt={name}
+            className="absolute inset-0 size-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        )}
+      </div>
 
-      <Stack gap="1">
-        <FileUpload.Root
+      <div className="flex flex-col gap-1">
+        <input
+          ref={inputRef}
+          type="file"
           accept="image/*"
+          className="hidden"
           disabled={busy || noTeam}
-          onFileChange={(details) => {
-            const file = details.acceptedFiles[0];
-
+          onChange={(e) => {
+            const file = e.target.files?.[0];
             if (file) {
               void upload(file);
             }
+            // Reset so picking the SAME file again still fires a change.
+            e.target.value = "";
           }}
+        />
+        <Button
+          variant="outline"
+          colorPalette="brand"
+          loading={busy}
+          disabled={noTeam}
+          data-testid="change-picture"
+          onClick={() => inputRef.current?.click()}
         >
-          <FileUpload.HiddenInput />
-          <FileUpload.Trigger asChild>
-            <Button
-              variant="outline"
-              colorPalette="brand"
-              loading={busy}
-              disabled={noTeam}
-              data-testid="change-picture"
-            >
-              <Icon as={Camera} />
-              {t("account.changePicture")}
-            </Button>
-          </FileUpload.Trigger>
-        </FileUpload.Root>
+          <Camera className="size-4" />
+          {t("account.changePicture")}
+        </Button>
 
-        <Text color="fg.muted" fontSize="xs">
+        <span className="text-xs text-fg-muted">
           {noTeam ? t("account.selectTeamForPicture") : t("account.pictureHint")}
-        </Text>
-      </Stack>
-    </HStack>
+        </span>
+      </div>
+    </div>
   );
 }

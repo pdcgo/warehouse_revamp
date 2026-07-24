@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Button, Card, Field, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
@@ -9,6 +8,9 @@ import { TeamPicture } from "./components/TeamPicture";
 import { toaster } from "../../components/Toaster";
 import { isTeamManager } from "../../lib/roles";
 import { TeamSelect } from "../../components/TeamSelect";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 
 // SettingsPage (#44) lets a team manager change the CURRENT team's picture and name.
@@ -52,12 +54,12 @@ export function SettingsPage() {
 
   if (!current) {
     return (
-      <Stack gap="section" maxW="lg">
-        <Heading size="md">{t("account.settings")}</Heading>
-        <Text color="fg.muted" data-testid="settings-no-team">
+      <div className="flex max-w-lg flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("account.settings")}</h1>
+        <p className="text-fg-muted" data-testid="settings-no-team">
           {t("account.selectTeamToManage")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -114,27 +116,27 @@ export function SettingsPage() {
   }
 
   return (
-    <Stack gap="section" maxW="lg">
-      <Heading size="md">{t("account.settings")}</Heading>
+    <div className="flex max-w-lg flex-col gap-section">
+      <h1 className="text-[22px] font-bold">{t("account.settings")}</h1>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Heading size="sm">{t("account.teamPicture")}</Heading>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <h2 className="text-[15px] font-semibold">{t("account.teamPicture")}</h2>
             <TeamPicture />
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
+      <Card>
+        <CardBody>
           <form onSubmit={saveName}>
-            <Stack gap="card">
-              <Heading size="sm">{t("account.teamName")}</Heading>
+            <div className="flex flex-col gap-card">
+              <h2 className="text-[15px] font-semibold">{t("account.teamName")}</h2>
 
               <Field.Root>
                 <Field.Label>{t("account.name")}</Field.Label>
-                <Input
+                <Field.Input
                   value={name}
                   disabled={!canEdit || busy}
                   data-testid="settings-team-name"
@@ -143,9 +145,9 @@ export function SettingsPage() {
               </Field.Root>
 
               {!canEdit && (
-                <Text color="fg.muted" fontSize="xs" data-testid="settings-name-hint">
+                <p className="text-xs text-fg-muted" data-testid="settings-name-hint">
                   {t("account.onlyOwnerCanRename")}
-                </Text>
+                </p>
               )}
 
               <Button
@@ -157,23 +159,21 @@ export function SettingsPage() {
               >
                 {t("account.save")}
               </Button>
-            </Stack>
+            </div>
           </form>
-        </Card.Body>
-      </Card.Root>
+        </CardBody>
+      </Card>
 
       {/* The default shipping warehouse (#145) — a SELLING team's setting only. A warehouse does not
           ship from a warehouse, so the card is absent rather than disabled for one. */}
       {current.teamType === TeamType.SELLING && (
-        <Card.Root>
-          <Card.Body>
+        <Card>
+          <CardBody>
             <form onSubmit={saveDefaultWarehouse}>
-              <Stack gap="card">
-                <Heading size="sm">{t("account.defaultWarehouse")}</Heading>
+              <div className="flex flex-col gap-card">
+                <h2 className="text-[15px] font-semibold">{t("account.defaultWarehouse")}</h2>
 
-                <Text color="fg.muted" fontSize="xs">
-                  {t("account.defaultWarehouseHint")}
-                </Text>
+                <p className="text-xs text-fg-muted">{t("account.defaultWarehouseHint")}</p>
 
                 <Field.Root>
                   <Field.Label>{t("account.warehouse")}</Field.Label>
@@ -194,11 +194,11 @@ export function SettingsPage() {
                 >
                   {t("account.save")}
                 </Button>
-              </Stack>
+              </div>
             </form>
-          </Card.Body>
-        </Card.Root>
+          </CardBody>
+        </Card>
       )}
-    </Stack>
+    </div>
   );
 }

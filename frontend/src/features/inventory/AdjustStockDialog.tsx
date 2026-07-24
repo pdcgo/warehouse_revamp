@@ -1,18 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  NativeSelect,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
+import { Select } from "../../components/ui/Select";
 import { rpcError } from "../../api/clients";
 import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { StockAdjustReason } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -155,20 +148,20 @@ export function AdjustStockDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="adjust-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="adjust-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
-                  <Text fontSize="sm" color="fg.muted">
+                  <p className="text-sm text-fg-muted">
                     {t("inventory.adjustProductSummary", {
                       name: product.name,
                       sku: product.sku,
                       onHand: currentOnHand.toString(),
                     })}
-                  </Text>
+                  </p>
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.placeCounted")}</Field.Label>
@@ -179,51 +172,45 @@ export function AdjustStockDialog({
                   {/* The reason first — it decides whether a batch and which quantity the rest asks for. */}
                   <Field.Root required>
                     <Field.Label>{t("inventory.adjustReasonType")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={reasonType}
-                        data-testid="adjust-reason-type"
-                        onChange={(e) => setReasonType(e.target.value as Reason)}
-                      >
-                        <option value="recount">{t("inventory.adjustReasonRecount")}</option>
-                        <option value="damaged">{t("inventory.adjustReasonDamaged")}</option>
-                        <option value="lost">{t("inventory.adjustReasonLost")}</option>
-                        <option value="found">{t("inventory.adjustReasonFound")}</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                    <Select
+                      value={reasonType}
+                      data-testid="adjust-reason-type"
+                      onChange={(e) => setReasonType(e.target.value as Reason)}
+                    >
+                      <option value="recount">{t("inventory.adjustReasonRecount")}</option>
+                      <option value="damaged">{t("inventory.adjustReasonDamaged")}</option>
+                      <option value="lost">{t("inventory.adjustReasonLost")}</option>
+                      <option value="found">{t("inventory.adjustReasonFound")}</option>
+                    </Select>
                   </Field.Root>
 
                   {/* Which delivery's units — only for the batch reasons; a recount is batch-agnostic. */}
                   {isBatch && (
                     <Field.Root required>
                       <Field.Label>{t("inventory.adjustBatch")}</Field.Label>
-                      <NativeSelect.Root>
-                        <NativeSelect.Field
-                          value={batch}
-                          data-testid="adjust-batch"
-                          onChange={(e) => setBatch(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            {t("inventory.adjustBatchPlaceholder")}
+                      <Select
+                        value={batch}
+                        data-testid="adjust-batch"
+                        onChange={(e) => setBatch(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          {t("inventory.adjustBatchPlaceholder")}
+                        </option>
+                        {batchList.map((b) => (
+                          <option key={b.id.toString()} value={b.id.toString()}>
+                            {t("inventory.moveBatchOption", {
+                              id: b.deliveryId.toString(),
+                              ready: b.ready.toString(),
+                            })}
                           </option>
-                          {batchList.map((b) => (
-                            <option key={b.id.toString()} value={b.id.toString()}>
-                              {t("inventory.moveBatchOption", {
-                                id: b.deliveryId.toString(),
-                                ready: b.ready.toString(),
-                              })}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
+                        ))}
+                      </Select>
                     </Field.Root>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{amountLabel}</Field.Label>
-                    <Input
+                    <Field.Input
                       type="number"
                       min={isBatch ? "1" : "0"}
                       value={amount}
@@ -235,7 +222,7 @@ export function AdjustStockDialog({
 
                   <Field.Root>
                     <Field.Label>{t("inventory.adjustNote")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={note}
                       placeholder={t("inventory.adjustReasonPlaceholder")}
                       data-testid="adjust-reason"
@@ -246,30 +233,34 @@ export function AdjustStockDialog({
                   {/* The delta preview — what the shelf reads before → after, so a correction is never a
                       blind commit (#211). */}
                   {canSubmit && (
-                    <Box
-                      borderWidth="1px"
-                      borderColor="border"
-                      borderRadius="md"
-                      bg="bg.muted"
-                      p="card"
+                    <div
+                      className="rounded-control border border-line bg-surface-2 p-card"
                       data-testid="adjust-delta"
                     >
-                      <Text fontSize="sm" fontVariantNumeric="tabular-nums">
+                      <p className="text-sm tabular-nums">
                         <b>{current.toString()}</b> → <b>{next.toString()}</b>{" "}
-                        <Text as="span" color={signedDelta < 0n ? "red.fg" : "green.fg"}>
+                        <span
+                          className={
+                            signedDelta < 0n
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-green-600 dark:text-green-400"
+                          }
+                        >
                           ({signedDelta > 0n ? "+" : ""}
                           {signedDelta.toString()})
-                        </Text>
-                      </Text>
-                    </Box>
+                        </span>
+                      </p>
+                    </div>
                   )}
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("inventory.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline">
+                    {t("inventory.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -283,7 +274,14 @@ export function AdjustStockDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton
+                  type="button"
+                  size="sm"
+                  aria-label={t("inventory.cancel")}
+                  className="absolute right-3 top-3"
+                >
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Flex, Heading, Link, SimpleGrid, Stack, Text } from "@chakra-ui/react";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
 // Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
 // them here so it is documentation generated from the components themselves, not a parallel list
 // that can drift.
@@ -84,7 +85,7 @@ function PaginationDemo() {
   const [pageSize, setPageSize] = useState(10);
 
   return (
-    <Stack gap="1">
+    <div className="flex flex-col gap-1">
       <Pagination
         count={45}
         pageSize={pageSize}
@@ -96,10 +97,10 @@ function PaginationDemo() {
           setPage(1);
         }}
       />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         45 items · {pageSize} per page · page {page}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -109,9 +110,9 @@ function ShippingDemo() {
   return (
     <>
       <ShippingSelect value={code} onChange={setCode} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected code: {code || "(none)"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -121,27 +122,27 @@ function CategoryDemo() {
   const [leafId, setLeafId] = useState(0n);
 
   return (
-    <Stack gap="card">
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+    <div className="flex flex-col gap-card">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           Any category selectable (default)
-        </Text>
+        </p>
         <CategorySelect value={id} onChange={setId} />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected id: {id.toString()}
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           End categories only — <code>leafOnly</code>
-        </Text>
+        </p>
         <CategorySelect value={leafId} onChange={setLeafId} leafOnly />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected id: {leafId.toString()}
-        </Text>
-      </Stack>
-    </Stack>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -151,9 +152,9 @@ function TeamTypeDemo() {
   return (
     <>
       <TeamTypeSelect value={type} onChange={setType} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected type: {TeamType[type]}
-      </Text>
+      </p>
     </>
   );
 }
@@ -166,37 +167,37 @@ function TeamSelectDemo() {
   const [selling, setSelling] = useState(0n);
 
   return (
-    <Stack gap="card">
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+    <div className="flex flex-col gap-card">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           All teams (default) — no <code>teamType</code>
-        </Text>
+        </p>
         <TeamSelect value={all || undefined} onChange={setAll} />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected team id: {all.toString()}
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           Warehouse teams only — <code>teamType={"{TeamType.WAREHOUSE}"}</code>
-        </Text>
+        </p>
         <TeamSelect teamType={TeamType.WAREHOUSE} value={warehouse || undefined} onChange={setWarehouse} />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected team id: {warehouse.toString()}
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           Selling teams only — <code>teamType={"{TeamType.SELLING}"}</code>
-        </Text>
+        </p>
         <TeamSelect teamType={TeamType.SELLING} value={selling || undefined} onChange={setSelling} />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected team id: {selling.toString()}
-        </Text>
-      </Stack>
-    </Stack>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -206,32 +207,32 @@ function UserSelectDemo() {
   const { current } = useTeam();
 
   return (
-    <Stack gap="card">
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+    <div className="flex flex-col gap-card">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           All users (default)
-        </Text>
+        </p>
         <UserSelect value={all || undefined} onChange={setAll} />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected user id: {all.toString()}
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Stack gap="1">
-        <Text fontSize="xs" fontWeight="medium">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium">
           Scoped to the current team{current ? ` (${current.teamName || `#${current.teamId}`})` : ""}
-        </Text>
+        </p>
         <UserSelect
           value={scoped || undefined}
           onChange={setScoped}
           teamId={current?.teamId}
           placeholder="Search this team's members"
         />
-        <Text fontSize="xs" color="fg.muted">
+        <p className="text-xs text-fg-muted">
           Selected user id: {scoped.toString()}
-        </Text>
-      </Stack>
-    </Stack>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -241,9 +242,9 @@ function RoleSelectDemo() {
   return (
     <>
       <RoleSelect value={role || undefined} onChange={setRole} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected role: {role ? roleLabel(role) : "(none)"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -254,9 +255,9 @@ function MarketplaceDemo() {
   return (
     <>
       <MarketplaceSelect value={m} onChange={setM} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected: {m ? marketplaceLabel(m) : "(none)"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -270,9 +271,9 @@ function PaymentTypeDemo() {
   return (
     <>
       <PaymentTypeSelect value={type} onChange={setType} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected: {paymentTypeLabel(t, type) || "(not recorded)"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -284,10 +285,10 @@ function ShopSelectDemo() {
   return (
     <>
       <ShopSelect teamId={current?.teamId ?? 0n} value={id} onChange={setId} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected shop id: {id.toString()}
         {current ? "" : " — select a selling team to load shops"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -299,9 +300,9 @@ function ExpenseKindDemo() {
   return (
     <>
       <ExpenseKindSelect value={kind} onChange={setKind} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected: {expenseKindLabel(t, kind) || "(none yet)"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -312,11 +313,11 @@ function CurrencyInputDemo() {
   return (
     <>
       <CurrencyInput value={amount} onChange={setAmount} placeholder="0" />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         {/* The RAW value is what the caller holds and what every parse sees — the grouping is display
             only, so nothing downstream has to strip a separator back off. */}
         Raw value sent to the caller: {amount === "" ? "(empty)" : amount}
-      </Text>
+      </p>
     </>
   );
 }
@@ -328,10 +329,10 @@ function SupplierSelectDemo() {
   return (
     <>
       <SupplierSelect teamId={current?.teamId ?? 0n} value={id} onChange={setId} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Selected supplier id: {id.toString()}
         {current ? "" : " — select a team to load suppliers"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -346,12 +347,12 @@ function RackSelectDemo() {
   return (
     <>
       <RackSelect warehouseId={current?.teamId ?? 0n} value={place} onChange={setPlace} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         {place === "" ? "No place chosen yet — a stock-take would be refused" : null}
         {place === UNPLACED ? "The unplaced pile (a real place)" : null}
         {place !== "" && place !== UNPLACED ? `Rack id: ${place}` : null}
         {current ? "" : " — select a warehouse team to load racks"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -367,10 +368,10 @@ function ProductSelectDemo() {
         value={picked?.id}
         onChange={setPicked}
       />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Picked: {picked ? `${picked.sku} — ${picked.name}` : "(none)"}
         {current ? "" : " — select a team to search its catalogue"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -398,11 +399,11 @@ function ProductPickerDemo() {
         onChange={setScoped}
         trigger={<Button variant="outline">Select products (this team)</Button>}
       />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         This team: {summary(scoped)}
         {current ? "" : " — select a team to browse its catalogue"}
         {warehouseId ? " · showing stock (this team is a warehouse)" : " · no stock (not a warehouse)"}
-      </Text>
+      </p>
 
       {/* `teamId` UNSET → products from every team. The current team still rides along inside the
           picker to AUTHORIZE the discover call; it does not filter the results. */}
@@ -411,10 +412,10 @@ function ProductPickerDemo() {
         onChange={setAll}
         trigger={<Button variant="outline">Select products (all teams)</Button>}
       />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         All teams: {summary(all)}
         {current ? "" : " — select a team to authorize discovery"}
-      </Text>
+      </p>
     </>
   );
 }
@@ -425,10 +426,10 @@ function AddressPickerDemo() {
   return (
     <>
       <AddressPicker value={address} onChange={setAddress} />
-      <Text fontSize="xs" color="fg.muted">
+      <p className="text-xs text-fg-muted">
         Picked: {address.desaCode ? `${address.desaName} (${address.desaCode})` : "(no village yet)"}
         {address.kodePos ? ` · ${address.kodePos}` : ""}
-      </Text>
+      </p>
     </>
   );
 }
@@ -486,7 +487,7 @@ const ENTRIES: Entry[] = [
     title: "ProductListItem",
     description: productListItemDescription,
     render: () => (
-      <Stack gap="card">
+      <div className="flex flex-col gap-card">
         {/* Ready stock is the OPTIONAL half of the spec (#128), so all three states are here:
             in stock, zero (the case worth seeing), and omitted entirely. */}
         <ProductListItem
@@ -518,7 +519,7 @@ const ENTRIES: Entry[] = [
         />
         {/* No `teamName` resolved by the caller → falls back to "Team #<id>". */}
         <ProductListItem product={{ id: 4n, teamId: 12n, sku: "SKU-004", name: "Tas Ransel Kanvas" }} stock={7n} />
-      </Stack>
+      </div>
     ),
   },
   {
@@ -529,7 +530,7 @@ const ENTRIES: Entry[] = [
     // across a row are half of what the component is for. Same four states as ProductListItem above,
     // so the two entries can be read against each other.
     render: () => (
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap="card">
+      <div className="grid grid-cols-1 gap-card sm:grid-cols-2 md:grid-cols-3">
         <ProductCard
           product={{
             id: 1n,
@@ -565,7 +566,7 @@ const ENTRIES: Entry[] = [
         />
         {/* No `teamName` resolved by the caller → falls back to "Team #<id>". */}
         <ProductCard product={{ id: 4n, teamId: 12n, sku: "SKU-004", name: "Tas Ransel Kanvas" }} stock={7n} />
-      </SimpleGrid>
+      </div>
     ),
   },
   {
@@ -603,7 +604,7 @@ const ENTRIES: Entry[] = [
     title: "MarketplaceBadge",
     description: marketplaceBadgeDescription,
     render: () => (
-      <Flex gap="2" wrap="wrap">
+      <div className="flex flex-wrap gap-2">
         {[
           Marketplace.SHOPEE,
           Marketplace.TOKOPEDIA,
@@ -615,7 +616,7 @@ const ENTRIES: Entry[] = [
         ].map((m) => (
           <MarketplaceBadge key={m} marketplace={m} />
         ))}
-      </Flex>
+      </div>
     ),
   },
   {
@@ -625,7 +626,7 @@ const ENTRIES: Entry[] = [
     render: () => (
       // The seeded catalogue, plus the two edge cases the map has to survive: a courier that isn't in
       // it (gray) and no courier at all ("—").
-      <Flex gap="2" wrap="wrap" align="center">
+      <div className="flex flex-wrap items-center gap-2">
         {[
           "jne",
           "jnt",
@@ -644,7 +645,7 @@ const ENTRIES: Entry[] = [
         ].map((code) => (
           <ShippingBadge key={code || "empty"} code={code} />
         ))}
-      </Flex>
+      </div>
     ),
   },
   {
@@ -652,11 +653,11 @@ const ENTRIES: Entry[] = [
     title: "OrderStatusBadge",
     description: orderStatusBadgeDescription,
     render: () => (
-      <Flex gap="2" wrap="wrap">
+      <div className="flex flex-wrap gap-2">
         {[OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.CANCELLED].map((s) => (
           <OrderStatusBadge key={s} status={s} />
         ))}
-      </Flex>
+      </div>
     ),
   },
   {
@@ -664,7 +665,7 @@ const ENTRIES: Entry[] = [
     title: "RestockStatusBadge",
     description: restockStatusBadgeDescription,
     render: () => (
-      <Flex gap="2" wrap="wrap">
+      <div className="flex flex-wrap gap-2">
         {[
           RestockRequestStatus.PENDING,
           RestockRequestStatus.FULFILLED,
@@ -673,7 +674,7 @@ const ENTRIES: Entry[] = [
         ].map((s) => (
           <RestockStatusBadge key={s} status={s} />
         ))}
-      </Flex>
+      </div>
     ),
   },
   {
@@ -754,58 +755,45 @@ const ENTRIES: Entry[] = [
 // navigates between them; each card is anchored so the link scrolls straight to it.
 export function ComponentsPage() {
   return (
-    <Flex gap="section" align="start" data-testid="components-page">
-      <Stack
-        as="nav"
-        gap="1"
-        w="180px"
-        flexShrink={0}
-        position="sticky"
-        top="page"
-        display={{ base: "none", md: "flex" }}
-      >
-        <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase" mb="1">
+    <div className="flex items-start gap-section" data-testid="components-page">
+      <nav className="sticky top-page hidden w-[180px] shrink-0 flex-col gap-1 md:flex">
+        <span className="mb-1 text-xs font-semibold uppercase text-fg-muted">
           Components
-        </Text>
+        </span>
         {ENTRIES.map((entry) => (
-          <Link
+          <a
             key={entry.id}
             href={`#${entry.id}`}
-            fontSize="sm"
-            color="fg.muted"
-            rounded="md"
-            px="2"
-            py="1.5"
-            _hover={{ bg: "brand.subtle", color: "brand.fg", textDecoration: "none" }}
+            className="rounded-md px-2 py-1.5 text-sm text-fg-muted no-underline hover:bg-accent-soft hover:text-accent-fg"
           >
             {entry.title}
-          </Link>
+          </a>
         ))}
-      </Stack>
+      </nav>
 
-      <Stack gap="section" flex="1" minW="0" maxW="2xl">
-        <Stack gap="1">
-          <Heading size="md">Shared components</Heading>
-          <Text color="fg.muted">A live gallery of the app's reusable components.</Text>
-        </Stack>
+      <div className="flex min-w-0 max-w-2xl flex-1 flex-col gap-section">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[22px] font-bold">Shared components</h1>
+          <p className="text-fg-muted">A live gallery of the app's reusable components.</p>
+        </div>
 
         {ENTRIES.map((entry) => (
-          <Card.Root key={entry.id} id={entry.id} scrollMarginTop="page">
-            <Card.Body>
-              <Stack gap="card">
-                <Stack gap="1">
-                  <Heading size="sm">{entry.title}</Heading>
-                  <Text fontSize="sm" color="fg.muted">
+          <Card key={entry.id} id={entry.id} className="scroll-mt-page">
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-[15px] font-semibold">{entry.title}</h2>
+                  <p className="text-sm text-fg-muted">
                     {entry.description}
-                  </Text>
-                </Stack>
+                  </p>
+                </div>
 
                 {entry.render()}
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
         ))}
-      </Stack>
-    </Flex>
+      </div>
+    </div>
   );
 }

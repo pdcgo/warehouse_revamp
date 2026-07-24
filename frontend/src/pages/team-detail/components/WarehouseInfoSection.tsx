@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Flex, Heading, Icon, SimpleGrid, Spacer, Stack, Table, Text } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../../components/ui/Button";
+import { Table } from "../../../components/ui/Table";
 import { teamClient } from "../../../api/clients";
 import { Weekday } from "../../../gen/warehouse/team/v1/team_pb";
 import type { DayHours, WarehouseInfo } from "../../../gen/warehouse/team/v1/team_pb";
@@ -26,11 +27,9 @@ function ScheduleTable({ title, hours, testId }: { title: string; hours: DayHour
   const byDay = new Map(hours.map((h) => [h.weekday, h]));
 
   return (
-    <Stack gap="1" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {title}
-      </Text>
-      <Table.Root size="sm" data-testid={testId}>
+    <div className="flex min-w-0 flex-col gap-1">
+      <p className="text-xs font-medium uppercase text-fg-muted">{title}</p>
+      <Table.Root data-testid={testId}>
         <Table.Body>
           {WEEKDAYS.map(({ day, labelKey }) => {
             const h = byDay.get(day);
@@ -38,8 +37,8 @@ function ScheduleTable({ title, hours, testId }: { title: string; hours: DayHour
 
             return (
               <Table.Row key={day}>
-                <Table.Cell py="1">{t(labelKey)}</Table.Cell>
-                <Table.Cell py="1" textAlign="end" color={open ? "fg" : "fg.muted"}>
+                <Table.Cell className="py-1">{t(labelKey)}</Table.Cell>
+                <Table.Cell className={`py-1 text-right ${open ? "text-fg" : "text-fg-muted"}`}>
                   {open ? `${h?.openTime || "—"}–${h?.closeTime || "—"}` : t("teams.closed")}
                 </Table.Cell>
               </Table.Row>
@@ -47,7 +46,7 @@ function ScheduleTable({ title, hours, testId }: { title: string; hours: DayHour
           })}
         </Table.Body>
       </Table.Root>
-    </Stack>
+    </div>
   );
 }
 
@@ -80,10 +79,10 @@ export function WarehouseInfoSection({ teamId }: { teamId: bigint }) {
   }, [teamId]);
 
   return (
-    <Stack gap="card" data-testid="warehouse-detail-section">
-      <Flex align="center" gap="card">
-        <Heading size="sm">{t("teams.warehouse")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-card" data-testid="warehouse-detail-section">
+      <div className="flex items-center gap-card">
+        <h2 className="text-[15px] font-semibold">{t("teams.warehouse")}</h2>
+        <div className="flex-1" />
         {admin && (
           <Button
             size="xs"
@@ -91,18 +90,18 @@ export function WarehouseInfoSection({ teamId }: { teamId: bigint }) {
             data-testid="warehouse-detail-edit"
             onClick={() => navigate(`/teams/${teamId}/edit`)}
           >
-            <Icon as={Pencil} boxSize="4" />
+            <Pencil className="size-4" />
             {t("teams.editWarehouse")}
           </Button>
         )}
-      </Flex>
+      </div>
 
       <DetailField label={t("teams.location")} value={info?.location ?? ""} />
 
-      <SimpleGrid columns={{ base: 1, md: 2 }} gap="card">
+      <div className="grid grid-cols-1 gap-card md:grid-cols-2">
         <ScheduleTable title={t("teams.operatingHours")} hours={info?.operatingHours ?? []} testId="warehouse-detail-operating" />
         <ScheduleTable title={t("teams.receivingHours")} hours={info?.receivingHours ?? []} testId="warehouse-detail-receiving" />
-      </SimpleGrid>
-    </Stack>
+      </div>
+    </div>
   );
 }

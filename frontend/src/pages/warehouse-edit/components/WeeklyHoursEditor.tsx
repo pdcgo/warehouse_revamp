@@ -1,7 +1,8 @@
-import { Box, HStack, Input, Stack, Switch, Text } from "@chakra-ui/react";
+import { Switch } from "@ark-ui/react";
 import { useTranslation } from "react-i18next";
 import { Weekday } from "../../../gen/warehouse/team/v1/team_pb";
 import type { DayHours } from "../../../gen/warehouse/team/v1/team_pb";
+import { Input } from "../../../components/ui/Input";
 
 // The seven weekdays in display order (Mon..Sun), matching the backend's Weekday 1..7.
 const WEEKDAYS: { day: Weekday; labelKey: string }[] = [
@@ -70,56 +71,53 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
   }
 
   return (
-    <Stack gap="card" data-testid={testId}>
-      <Text fontSize="sm" fontWeight="semibold">
-        {label}
-      </Text>
+    <div className="flex flex-col gap-card" data-testid={testId}>
+      <p className="text-sm font-semibold">{label}</p>
 
       {WEEKDAYS.map((wd, i) => {
         const row = value[i];
 
         return (
-          <HStack key={wd.day} gap="card" align="center">
-            <Box w="90px" fontSize="sm">
-              {t(wd.labelKey)}
-            </Box>
+          <div key={wd.day} className="flex items-center gap-card">
+            <div className="w-22.5 text-sm">{t(wd.labelKey)}</div>
 
             <Switch.Root
               checked={row.open}
               onCheckedChange={(e) => setRow(i, { open: !!e.checked })}
               data-testid={`${testId}-open-${wd.day}`}
+              className="inline-flex cursor-pointer items-center gap-2"
             >
+              <Switch.Control className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-line-strong transition-colors data-[state=checked]:bg-accent">
+                <Switch.Thumb className="inline-block size-4 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-4.5" />
+              </Switch.Control>
+              <Switch.Label className="text-sm text-fg">
+                {row.open ? t("teams.open") : t("teams.closed")}
+              </Switch.Label>
               <Switch.HiddenInput />
-              <Switch.Control />
-              <Switch.Label>{row.open ? t("teams.open") : t("teams.closed")}</Switch.Label>
             </Switch.Root>
 
             {row.open && (
-              <HStack gap="2">
+              <div className="flex items-center gap-2">
                 <Input
                   type="time"
-                  size="xs"
-                  w="110px"
+                  className="w-27.5"
                   value={row.openTime}
                   data-testid={`${testId}-from-${wd.day}`}
                   onChange={(e) => setRow(i, { openTime: e.target.value })}
                 />
-                <Text fontSize="xs" color="fg.muted">
-                  {t("teams.to")}
-                </Text>
+                <span className="text-xs text-fg-muted">{t("teams.to")}</span>
                 <Input
                   type="time"
-                  size="xs"
-                  w="110px"
+                  className="w-27.5"
                   value={row.closeTime}
                   data-testid={`${testId}-to-${wd.day}`}
                   onChange={(e) => setRow(i, { closeTime: e.target.value })}
                 />
-              </HStack>
+              </div>
             )}
-          </HStack>
+          </div>
         );
       })}
-    </Stack>
+    </div>
   );
 }

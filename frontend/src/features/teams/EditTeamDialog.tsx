@@ -1,19 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Icon,
-  IconButton,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { Pencil } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
 import { rpcError } from "../../api/clients";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../components/Toaster";
@@ -84,7 +75,7 @@ export function EditTeamDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-team-${team.teamCode}`}>
-            <Icon as={Pencil} boxSize="4" />
+            <Pencil className="size-4" />
           </IconButton>
         </Dialog.Trigger>
       )}
@@ -99,37 +90,37 @@ export function EditTeamDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="edit-team-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="edit-team-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root>
                     <Field.Label>{t("teams.name")}</Field.Label>
-                    <Input value={name} data-testid="edit-team-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="edit-team-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("teams.description")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={description}
                       data-testid="edit-team-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </Field.Root>
 
-                  <Text fontSize="xs" color="fg.muted">
+                  <p className="text-xs text-fg-muted">
                     {t("teams.typeCodeFixed", { code: team.teamCode })}
-                  </Text>
-                </Stack>
+                  </p>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("teams.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-edit-team">
                   {t("teams.save")}
@@ -137,7 +128,9 @@ export function EditTeamDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("teams.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

@@ -1,21 +1,11 @@
-import {
-  Box,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import type { Category } from "../../gen/warehouse/category/v1/category_pb";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { IconButton } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { toaster } from "../../components/Toaster";
 import { flattenTree } from "../../features/categories/categoryTree";
 import { CreateCategoryDialog } from "./components/CreateCategoryDialog";
@@ -52,27 +42,27 @@ export function CategoriesPage() {
   const nodes = flattenTree(categories);
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("catalog.categories.title")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("catalog.categories.title")}</h1>
+        <div className="flex-1" />
         <CreateCategoryDialog />
-      </Flex>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="categories-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="categories-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="categories-table">
+        <Table.Root data-testid="categories-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("catalog.name")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("catalog.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("catalog.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -80,14 +70,17 @@ export function CategoriesPage() {
             {nodes.map(({ category, depth }) => (
               <Table.Row key={category.id.toString()} data-testid={`category-row-${category.id}`}>
                 <Table.Cell>
-                  <Box as="span" ps={depth * 4} color={depth === 0 ? "fg" : "fg.muted"}>
+                  <span
+                    className={depth === 0 ? "text-fg" : "text-fg-muted"}
+                    style={{ paddingInlineStart: `${depth}rem` }}
+                  >
                     {depth > 0 ? "— " : ""}
                     {category.name}
-                  </Box>
+                  </span>
                 </Table.Cell>
 
-                <Table.Cell textAlign="end">
-                  <HStack justify="end" gap="1">
+                <Table.Cell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
                     <EditCategoryDialog category={category} />
 
                     <ConfirmDialog
@@ -103,11 +96,11 @@ export function CategoriesPage() {
                           aria-label="Delete"
                           data-testid={`delete-cat-${category.id}`}
                         >
-                          <Icon as={Trash2} boxSize="4" />
+                          <Trash2 className="size-4" />
                         </IconButton>
                       }
                     />
-                  </HStack>
+                  </div>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -116,10 +109,10 @@ export function CategoriesPage() {
       )}
 
       {!loading && nodes.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="categories-empty">
+        <p className="text-fg-muted" data-testid="categories-empty">
           {t("catalog.categories.empty")}
-        </Text>
+        </p>
       )}
-    </Stack>
+    </div>
   );
 }

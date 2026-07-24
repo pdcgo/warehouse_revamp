@@ -1,22 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Icon,
-  IconButton,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { KeyRound } from "lucide-react";
+import { KeyRound, X } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { PasswordInput } from "../../../components/PasswordInput";
 import { toaster } from "../../../components/Toaster";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { useAdminResetPassword } from "../../../features/users/queries";
 
 // AdminResetPasswordDialog calls AdminResetPassword — a DIFFERENT RPC from the self-serve
@@ -103,7 +95,7 @@ export function AdminResetPasswordDialog({
             aria-label="Reset password"
             data-testid={`reset-password-${user.username}`}
           >
-            <Icon as={KeyRound} boxSize="4" />
+            <KeyRound className="size-4" />
           </IconButton>
         </Dialog.Trigger>
       )}
@@ -118,16 +110,14 @@ export function AdminResetPasswordDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="admin-reset-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="admin-reset-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
-                  <Text fontSize="sm" color="fg.muted">
-                    {t("users.reset.description")}
-                  </Text>
+                  <p className="text-sm text-fg-muted">{t("users.reset.description")}</p>
 
                   <Field.Root required>
                     <Field.Label>{t("users.reset.newPassword")}</Field.Label>
@@ -149,13 +139,15 @@ export function AdminResetPasswordDialog({
                       onChange={(e) => setConfirm(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("users.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray">
+                    {t("users.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -168,7 +160,9 @@ export function AdminResetPasswordDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("users.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

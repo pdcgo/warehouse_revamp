@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CloseButton, Dialog, Field, Portal, Stack, Text } from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -8,6 +8,9 @@ import { useTeam } from "../team/TeamContext";
 import { toaster } from "../../components/Toaster";
 import { RoleSelect } from "../../components/RoleSelect";
 import { UserSelect } from "../../components/UserSelect";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
 import { rolesFor } from "../../lib/roles";
 import { useAddTeamMember } from "./queries";
 
@@ -77,7 +80,7 @@ export function AddMemberDialog({
       }}
     >
       <Dialog.Trigger asChild>
-        <Button size="xs" variant="outline" data-testid="open-add-member">
+        <Button size="xs" variant="outline" colorPalette="gray" data-testid="open-add-member">
           {t("users.addMember.trigger")}
         </Button>
       </Dialog.Trigger>
@@ -91,11 +94,11 @@ export function AddMemberDialog({
             </Dialog.Header>
 
             <Dialog.Body>
-              <Stack gap="card">
+              <div className="flex flex-col gap-card">
                 {error && (
-                  <Text color="red.fg" data-testid="add-member-error">
+                  <p className="text-red-600 dark:text-red-400" data-testid="add-member-error">
                     {error}
-                  </Text>
+                  </p>
                 )}
 
                 <Field.Root>
@@ -108,15 +111,15 @@ export function AddMemberDialog({
                   <Field.Label>{t("users.field.role")}</Field.Label>
                   <RoleSelect teamType={targetTeamType} value={role} onChange={setRole} />
                 </Field.Root>
-              </Stack>
+              </div>
             </Dialog.Body>
 
             <Dialog.Footer>
-              <Dialog.ActionTrigger asChild>
-                <Button type="button" variant="outline">
+              <Dialog.CloseTrigger asChild>
+                <Button type="button" variant="outline" colorPalette="gray">
                   {t("users.cancel")}
                 </Button>
-              </Dialog.ActionTrigger>
+              </Dialog.CloseTrigger>
 
               <Button
                 colorPalette="brand"
@@ -130,7 +133,9 @@ export function AddMemberDialog({
             </Dialog.Footer>
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton size="sm" aria-label={t("users.cancel")} className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

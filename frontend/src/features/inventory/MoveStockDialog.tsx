@@ -1,18 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  NativeSelect,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
+import { Select } from "../../components/ui/Select";
 import { rpcError } from "../../api/clients";
 import type { StockMoveRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -162,20 +155,20 @@ export function MoveStockDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="move-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="move-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
-                  <Text fontSize="sm" color="fg.muted">
+                  <p className="text-sm text-fg-muted">
                     {t("inventory.moveProductSummary", {
                       name: product.name,
                       sku: product.sku,
                       onHand: currentOnHand.toString(),
                     })}
-                  </Text>
+                  </p>
 
                   {/* From, then To, then how many — the order the act happens in. The two ends come
                       before the figure because they are what the figure is bounded by. */}
@@ -203,32 +196,29 @@ export function MoveStockDialog({
                       with them — the server refuses a move of more than that batch holds on the source. */}
                   <Field.Root required>
                     <Field.Label>{t("inventory.moveBatch")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={batch}
-                        data-testid="move-batch"
-                        onChange={(e) => setBatch(e.target.value)}
-                      >
-                        <option value="" disabled>
-                          {t("inventory.moveBatchPlaceholder")}
+                    <Select
+                      value={batch}
+                      data-testid="move-batch"
+                      onChange={(e) => setBatch(e.target.value)}
+                    >
+                      <option value="" disabled>
+                        {t("inventory.moveBatchPlaceholder")}
+                      </option>
+                      {batchList.map((b) => (
+                        <option key={b.id.toString()} value={b.id.toString()}>
+                          {t("inventory.moveBatchOption", {
+                            id: b.deliveryId.toString(),
+                            ready: b.ready.toString(),
+                          })}
                         </option>
-                        {batchList.map((b) => (
-                          <option key={b.id.toString()} value={b.id.toString()}>
-                            {t("inventory.moveBatchOption", {
-                              id: b.deliveryId.toString(),
-                              ready: b.ready.toString(),
-                            })}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                      ))}
+                    </Select>
                     <Field.HelperText>{t("inventory.moveBatchHelper")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.quantity")}</Field.Label>
-                    <Input
+                    <Field.Input
                       type="number"
                       min="1"
                       value={quantity}
@@ -240,7 +230,7 @@ export function MoveStockDialog({
 
                   <Field.Root>
                     <Field.Label>{t("inventory.reason")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={reason}
                       placeholder={t("inventory.moveReasonPlaceholder")}
                       data-testid="move-reason"
@@ -251,30 +241,28 @@ export function MoveStockDialog({
                   {/* What the move does to both ends, before it commits (#210). A shelf's total moves
                       by the quantity whichever batch it draws from. */}
                   {canSubmit && (
-                    <Box
-                      borderWidth="1px"
-                      borderColor="border"
-                      borderRadius="md"
-                      bg="bg.muted"
-                      p="card"
+                    <div
+                      className="rounded-control border border-line bg-surface-2 p-card"
                       data-testid="move-balances"
                     >
-                      <Text fontSize="sm" fontVariantNumeric="tabular-nums">
+                      <p className="text-sm tabular-nums">
                         {shelfLabel(from)}: <b>{shelfOnHand(from).toString()}</b> →{" "}
                         {(shelfOnHand(from) - BigInt(qty)).toString()}
                         {"   ·   "}
                         {shelfLabel(to)}: <b>{shelfOnHand(to).toString()}</b> →{" "}
                         {(shelfOnHand(to) + BigInt(qty)).toString()}
-                      </Text>
-                    </Box>
+                      </p>
+                    </div>
                   )}
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("inventory.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline">
+                    {t("inventory.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 {/* Belt and braces with the checks in submit(): disabled so the dialog never LOOKS
                     submittable while it is invalid, and submit() still guards so a form sent by
@@ -291,7 +279,14 @@ export function MoveStockDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton
+                  type="button"
+                  size="sm"
+                  aria-label={t("inventory.cancel")}
+                  className="absolute right-3 top-3"
+                >
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

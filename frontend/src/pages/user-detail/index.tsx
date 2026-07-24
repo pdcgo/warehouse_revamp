@@ -1,21 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  HStack,
-  Heading,
-  Icon,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { useUserTeams } from "../../features/users/queries";
 import { UserItem } from "../../components/UserItem";
 import { TeamItem } from "../../components/TeamItem";
 import { Pagination } from "../../components/Pagination";
+import { Button } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
 
 const TEAM_PAGE_SIZE = 20;
 
@@ -53,42 +46,41 @@ export function UserDetailPage() {
 
 
   return (
-    <Stack gap="section" data-testid="user-detail-page">
+    <div className="flex flex-col gap-section" data-testid="user-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        colorPalette="gray"
+        className="self-start"
         data-testid="user-detail-back"
         onClick={() => navigate(-1)}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("users.detail.back")}
       </Button>
 
       {error && (
-        <Text color="red.fg" data-testid="user-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="user-detail-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
         user && (
           <>
-            <Heading size="md">{t("users.detail.title")}</Heading>
+            <h1 className="text-[22px] font-bold">{t("users.detail.title")}</h1>
 
             <UserItem user={user} size="md" />
 
-            <Stack gap="card">
-              <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-                {t("users.detail.teams")}
-              </Text>
+            <div className="flex flex-col gap-card">
+              <p className="text-sm font-medium text-fg-muted">{t("users.detail.teams")}</p>
 
               {teams.length === 0 ? (
-                <Text color="fg.muted" data-testid="user-detail-empty">
+                <p className="text-fg-muted" data-testid="user-detail-empty">
                   {t("users.detail.noTeams")}
-                </Text>
+                </p>
               ) : (
                 teams.map((t) => (
                   <TeamItem
@@ -103,18 +95,18 @@ export function UserDetailPage() {
                 ))
               )}
 
-              <HStack justify="end">
+              <div className="flex items-center justify-end">
                 <Pagination
                   count={Number(pageInfo?.totalItems ?? 0n)}
                   pageSize={TEAM_PAGE_SIZE}
                   page={page}
                   onPageChange={setPage}
                 />
-              </HStack>
-            </Stack>
+              </div>
+            </div>
           </>
         )
       )}
-    </Stack>
+    </div>
   );
 }

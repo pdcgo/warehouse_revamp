@@ -1,16 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/Toaster";
@@ -82,20 +76,20 @@ export function ReceiveStockDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="receive-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="receive-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
-                  <Text fontSize="sm" color="fg.muted">
+                  <p className="text-sm text-fg-muted">
                     {product.name} ({product.sku})
-                  </Text>
+                  </p>
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.quantity")}</Field.Label>
-                    <Input
+                    <Field.Input
                       type="number"
                       min="1"
                       value={quantity}
@@ -106,20 +100,22 @@ export function ReceiveStockDialog({
 
                   <Field.Root>
                     <Field.Label>{t("inventory.reason")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={reason}
                       placeholder={t("inventory.receiveReasonPlaceholder")}
                       data-testid="receive-reason"
                       onChange={(e) => setReason(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("inventory.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline">
+                    {t("inventory.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-receive">
                   {t("inventory.receive")}
@@ -127,7 +123,14 @@ export function ReceiveStockDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton
+                  type="button"
+                  size="sm"
+                  aria-label={t("inventory.cancel")}
+                  className="absolute right-3 top-3"
+                >
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

@@ -3,30 +3,17 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Badge,
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Portal,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Stat,
-  Table,
-  Tabs,
-  Text,
-  Textarea,
-} from "@chakra-ui/react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Dialog, Portal } from "../../components/ui/Dialog";
+import { Field } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { StatTile } from "../../components/ui/StatTile";
+import { Table } from "../../components/ui/Table";
+import { Tabs } from "../../components/ui/Tabs";
 import { rpcError, teamClient } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
@@ -36,7 +23,7 @@ import {
 import type { SettlementPayment } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { directionCopy, directionPalette } from "../../features/settlement/direction";
+import { directionCopy } from "../../features/settlement/direction";
 import {
   useConfirmPayment,
   useRecordPayment,
@@ -96,7 +83,7 @@ function statusKey(status: SettlementPaymentStatus): string {
   }
 }
 
-function statusPalette(status: SettlementPaymentStatus): string {
+function statusPalette(status: SettlementPaymentStatus): "orange" | "green" | "gray" {
   switch (status) {
     case SettlementPaymentStatus.RECORDED:
       return "orange";
@@ -172,10 +159,10 @@ export function LiabilityDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("liabilityDetail.title")}</Heading>
-        <Text color="fg.muted">{t("liabilityDetail.selectTeamView")}</Text>
-      </Stack>
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("liabilityDetail.title")}</h1>
+        <p className="text-fg-muted">{t("liabilityDetail.selectTeamView")}</p>
+      </div>
     );
   }
 
@@ -204,6 +191,10 @@ export function LiabilityDetailPage() {
   const receivable = balance > 0n ? balance : 0n;
   const payable = balance < 0n ? -balance : 0n;
 
+  // Green when money is coming to you, orange when it is going out, grey when square — colour SUPPORTS
+  // the sentence, never replaces it.
+  const balanceColor = balance > 0n ? "text-pos" : balance < 0n ? "text-warn" : "text-fg-muted";
+
   const name = counterparty?.name ?? t("liabilityDetail.teamFallback", { id: counterpartyId.toString() });
 
   const receivableRows = entries.filter((e) => e.amount > 0n && inRange(e.createdAtUnix));
@@ -223,49 +214,45 @@ export function LiabilityDetailPage() {
 
   function renderEntryTable(rows: typeof entries, emptyKey: string) {
     if (rows.length === 0) {
-      return (
-        <Text color="fg.muted" py="card">
-          {t(emptyKey)}
-        </Text>
-      );
+      return <p className="py-card text-fg-muted">{t(emptyKey)}</p>;
     }
 
     return (
-      <Table.Root size="sm">
+      <Table.Root>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("liabilityDetail.colCause")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colBalance")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("liabilityDetail.colBalance")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {rows.map((e) => (
             <Table.Row
               key={e.id.toString()}
-              bg={e.reversal ? "bg.muted" : undefined}
+              className={e.reversal ? "bg-surface-2" : undefined}
               data-testid={`liability-detail-entry-${e.id}`}
             >
-              <Table.Cell whiteSpace="nowrap">{fmtDate(e.createdAtUnix)}</Table.Cell>
+              <Table.Cell className="whitespace-nowrap">{fmtDate(e.createdAtUnix)}</Table.Cell>
               <Table.Cell>
-                <Flex align="center" gap="2">
-                  <Text>{t(causeKey(e.sourceType), { id: e.sourceId.toString() })}</Text>
+                <div className="flex items-center gap-2">
+                  <span>{t(causeKey(e.sourceType), { id: e.sourceId.toString() })}</span>
                   {/* A reversal is labelled, not left to be inferred from a sign. */}
                   {e.reversal && (
                     <Badge colorPalette="orange" data-testid={`liability-detail-reversal-${e.id}`}>
                       {t("liabilityDetail.reversal")}
                     </Badge>
                   )}
-                </Flex>
+                </div>
               </Table.Cell>
               {/* The one place a sign is legitimate: an entry is a MOVEMENT, and +/− means "this made
                   the balance go up / down". */}
-              <Table.Cell textAlign="end" whiteSpace="nowrap">
+              <Table.Cell className="whitespace-nowrap text-right">
                 {e.amount > 0n ? "+" : "−"}
                 {formatRupiah(e.amount < 0n ? -e.amount : e.amount)}
               </Table.Cell>
-              <Table.Cell textAlign="end" color="fg.muted" whiteSpace="nowrap">
+              <Table.Cell className="whitespace-nowrap text-right text-fg-muted">
                 {formatRupiah(e.balanceAfter)}
               </Table.Cell>
             </Table.Row>
@@ -277,19 +264,15 @@ export function LiabilityDetailPage() {
 
   function renderPaymentTable(rows: SettlementPayment[], emptyKey: string, withConfirm: boolean) {
     if (rows.length === 0) {
-      return (
-        <Text color="fg.muted" py="card">
-          {t(emptyKey)}
-        </Text>
-      );
+      return <p className="py-card text-fg-muted">{t(emptyKey)}</p>;
     }
 
     return (
-      <Table.Root size="sm">
+      <Table.Root>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("liabilityDetail.colNote")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("liabilityDetail.colStatus")}</Table.ColumnHeader>
           </Table.Row>
@@ -297,13 +280,11 @@ export function LiabilityDetailPage() {
         <Table.Body>
           {rows.map((p) => (
             <Table.Row key={p.id.toString()} data-testid={`liability-detail-payment-${p.id}`}>
-              <Table.Cell whiteSpace="nowrap">{fmtDate(p.createdAtUnix)}</Table.Cell>
-              <Table.Cell textAlign="end" whiteSpace="nowrap">
-                {formatRupiah(p.amount)}
-              </Table.Cell>
-              <Table.Cell color="fg.muted">{p.note || "—"}</Table.Cell>
+              <Table.Cell className="whitespace-nowrap">{fmtDate(p.createdAtUnix)}</Table.Cell>
+              <Table.Cell className="whitespace-nowrap text-right">{formatRupiah(p.amount)}</Table.Cell>
+              <Table.Cell className="text-fg-muted">{p.note || "—"}</Table.Cell>
               <Table.Cell>
-                <Flex align="center" gap="2">
+                <div className="flex items-center gap-2">
                   <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
                   {withConfirm && p.status === SettlementPaymentStatus.RECORDED && (
                     <Button
@@ -315,7 +296,7 @@ export function LiabilityDetailPage() {
                       {t("liabilityDetail.confirm")}
                     </Button>
                   )}
-                </Flex>
+                </div>
               </Table.Cell>
             </Table.Row>
           ))}
@@ -325,8 +306,8 @@ export function LiabilityDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="liability-detail-page">
-      <Flex align="flex-start" gap="card" wrap="wrap">
+    <div className="flex flex-col gap-section" data-testid="liability-detail-page">
+      <div className="flex flex-wrap items-start gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -334,74 +315,71 @@ export function LiabilityDetailPage() {
           data-testid="liability-detail-back"
           onClick={() => navigate("/liability")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Stack gap="0">
-          <Heading size="md">{name}</Heading>
+        <div className="flex flex-col">
+          <h1 className="text-[22px] font-bold">{name}</h1>
           {counterparty && (
-            <Text color="fg.subtle" fontSize="sm">
-              {t(teamKindKey(counterparty.type))}
-            </Text>
+            <span className="text-sm text-fg-subtle">{t(teamKindKey(counterparty.type))}</span>
           )}
-        </Stack>
-        <Spacer />
+        </div>
+        <div className="flex-1" />
         <Button
           colorPalette="brand"
           data-testid="liability-detail-make-payment"
           onClick={() => setRecordOpen(true)}
         >
-          <Icon as={Plus} boxSize="4" />
+          <Plus className="size-4" />
           {t("liabilityDetail.makePayment")}
         </Button>
-      </Flex>
+      </div>
 
       {/* The position, in words, and the two gross sides of it. */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} gap="card">
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.positionLabel")}</Stat.Label>
-          <Stat.ValueText color={`${directionPalette(balance)}.fg`} data-testid="liability-detail-balance">
-            {t(copy.key, { amount: copy.amount })}
-          </Stat.ValueText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.receivableLabel")}</Stat.Label>
-          <Stat.ValueText color="green.fg">{formatRupiah(receivable)}</Stat.ValueText>
-          <Stat.HelpText>{t("liabilityDetail.receivableHint")}</Stat.HelpText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("liabilityDetail.payableLabel")}</Stat.Label>
-          <Stat.ValueText color="orange.fg">{formatRupiah(payable)}</Stat.ValueText>
-          <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
-        </Stat.Root>
-      </SimpleGrid>
+      <div className="grid grid-cols-1 gap-card md:grid-cols-3">
+        <StatTile
+          label={t("liabilityDetail.positionLabel")}
+          value={<span data-testid="liability-detail-balance">{t(copy.key, { amount: copy.amount })}</span>}
+          valueClassName={balanceColor}
+        />
+        <StatTile
+          label={t("liabilityDetail.receivableLabel")}
+          value={formatRupiah(receivable)}
+          valueClassName="text-pos"
+          sub={t("liabilityDetail.receivableHint")}
+        />
+        <StatTile
+          label={t("liabilityDetail.payableLabel")}
+          value={formatRupiah(payable)}
+          valueClassName="text-warn"
+          sub={t("liabilityDetail.payableHint")}
+        />
+      </div>
       {/* The position row carries no oldest-unsettled timestamp — SettlementEntryList returns only the
           balance, so "oldest unsettled N days" is omitted here (it lives on the list's position row). */}
 
       {/* Date range — OUTSIDE the tabs: one filter over whichever tab is open. */}
-      <Flex align="center" gap="card" wrap="wrap">
-        <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-          {t("liabilityDetail.history")}
-        </Text>
-        <Spacer />
-        <Input
-          type="date"
-          size="sm"
-          maxW="40"
-          aria-label={t("liabilityDetail.dateFrom")}
-          value={fromDate}
-          data-testid="liability-detail-from"
-          onChange={(e) => setFromDate(e.target.value)}
-        />
-        <Text color="fg.subtle">→</Text>
-        <Input
-          type="date"
-          size="sm"
-          maxW="40"
-          aria-label={t("liabilityDetail.dateTo")}
-          value={toDate}
-          data-testid="liability-detail-to"
-          onChange={(e) => setToDate(e.target.value)}
-        />
+      <div className="flex flex-wrap items-center gap-card">
+        <span className="text-sm font-medium text-fg-muted">{t("liabilityDetail.history")}</span>
+        <div className="flex-1" />
+        <div className="w-40">
+          <Input
+            type="date"
+            aria-label={t("liabilityDetail.dateFrom")}
+            value={fromDate}
+            data-testid="liability-detail-from"
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+        <span className="text-fg-subtle">→</span>
+        <div className="w-40">
+          <Input
+            type="date"
+            aria-label={t("liabilityDetail.dateTo")}
+            value={toDate}
+            data-testid="liability-detail-to"
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -414,18 +392,18 @@ export function LiabilityDetailPage() {
         >
           {t("liabilityDetail.clearDates")}
         </Button>
-      </Flex>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="liability-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="liability-detail-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Tabs.Root defaultValue="receivable" variant="line">
+        <Tabs.Root defaultValue="receivable">
           <Tabs.List>
             <Tabs.Trigger value="receivable" data-testid="liability-detail-tab-receivable">
               {t("liabilityDetail.tabReceivable")}
@@ -442,7 +420,7 @@ export function LiabilityDetailPage() {
           </Tabs.List>
 
           <Tabs.Content value="receivable">
-            <Stack gap="card" data-testid="liability-detail-receivable">
+            <div className="flex flex-col gap-card" data-testid="liability-detail-receivable">
               {renderEntryTable(receivableRows, "liabilityDetail.emptyReceivable")}
               <Pagination
                 page={entryPage}
@@ -450,11 +428,11 @@ export function LiabilityDetailPage() {
                 count={entriesTotal}
                 onPageChange={setEntryPage}
               />
-            </Stack>
+            </div>
           </Tabs.Content>
 
           <Tabs.Content value="payable">
-            <Stack gap="card" data-testid="liability-detail-payable">
+            <div className="flex flex-col gap-card" data-testid="liability-detail-payable">
               {renderEntryTable(payableRows, "liabilityDetail.emptyPayable")}
               <Pagination
                 page={entryPage}
@@ -462,11 +440,11 @@ export function LiabilityDetailPage() {
                 count={entriesTotal}
                 onPageChange={setEntryPage}
               />
-            </Stack>
+            </div>
           </Tabs.Content>
 
           <Tabs.Content value="mine">
-            <Stack gap="card" data-testid="liability-detail-mine">
+            <div className="flex flex-col gap-card" data-testid="liability-detail-mine">
               {renderPaymentTable(minePayments, "liabilityDetail.emptyMine", false)}
               <Pagination
                 page={paymentPage}
@@ -474,11 +452,11 @@ export function LiabilityDetailPage() {
                 count={paymentsTotal}
                 onPageChange={setPaymentPage}
               />
-            </Stack>
+            </div>
           </Tabs.Content>
 
           <Tabs.Content value="team">
-            <Stack gap="card" data-testid="liability-detail-team">
+            <div className="flex flex-col gap-card" data-testid="liability-detail-team">
               {renderPaymentTable(teamPayments, "liabilityDetail.emptyTeam", true)}
               <Pagination
                 page={paymentPage}
@@ -486,7 +464,7 @@ export function LiabilityDetailPage() {
                 count={paymentsTotal}
                 onPageChange={setPaymentPage}
               />
-            </Stack>
+            </div>
           </Tabs.Content>
         </Tabs.Root>
       )}
@@ -518,7 +496,7 @@ export function LiabilityDetailPage() {
         creditorTeamId={counterpartyId}
         counterpartyName={name}
       />
-    </Stack>
+    </div>
   );
 }
 
@@ -575,7 +553,7 @@ function MakePaymentDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => change(e.open)} placement="center">
+    <Dialog.Root open={open} onOpenChange={(e) => change(e.open)}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -586,10 +564,10 @@ function MakePaymentDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="field">
-                  <Text color="fg.muted" fontSize="sm">
+                <div className="flex flex-col gap-field">
+                  <p className="text-sm text-fg-muted">
                     {t("liabilityDetail.recordDescription", { name: counterpartyName })}
-                  </Text>
+                  </p>
 
                   <Field.Root required>
                     <Field.Label>{t("liabilityDetail.recordAmount")}</Field.Label>
@@ -605,11 +583,11 @@ function MakePaymentDialog({
                   <Field.Root>
                     <Field.Label>
                       {t("liabilityDetail.recordNote")}{" "}
-                      <Text as="span" color="fg.subtle" fontWeight="normal">
+                      <span className="font-normal text-fg-subtle">
                         {t("liabilityDetail.recordNoteOptional")}
-                      </Text>
+                      </span>
                     </Field.Label>
-                    <Textarea
+                    <Field.Textarea
                       value={note}
                       disabled={busy}
                       data-testid="record-note"
@@ -619,19 +597,19 @@ function MakePaymentDialog({
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="record-error">
+                    <p className="text-sm text-red-600 dark:text-red-400" data-testid="record-error">
                       {error}
-                    </Dialog.Description>
+                    </p>
                   )}
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline" disabled={busy}>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray" disabled={busy}>
                     {t("common.cancel")}
                   </Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
                 <Button
                   type="submit"
                   colorPalette="brand"
@@ -645,7 +623,9 @@ function MakePaymentDialog({
             </form>
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton type="button" size="sm" aria-label={t("common.cancel")} className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

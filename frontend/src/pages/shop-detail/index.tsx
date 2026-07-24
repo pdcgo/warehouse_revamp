@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Flex, Heading, Icon, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useShop } from "../../features/shops/queries";
@@ -22,14 +24,10 @@ function parseShopId(raw: string | undefined): bigint {
 // A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
+      <span className="line-clamp-3 text-sm">{value || "—"}</span>
+    </div>
   );
 }
 
@@ -59,84 +57,84 @@ export function ShopDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("shops.title")}</Heading>
-        <Text color="fg.muted" data-testid="shop-detail-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("shops.title")}</h1>
+        <p className="text-fg-muted" data-testid="shop-detail-no-team">
           {t("shops.detail.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !shop) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          className="self-start"
           data-testid="shop-detail-back"
           onClick={() => navigate("/shops")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("shops.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="shop-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="shop-detail-error">
           {error || t("shops.detail.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section" data-testid="shop-detail-page">
+    <div className="flex flex-col gap-section" data-testid="shop-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        className="self-start"
         data-testid="shop-detail-back"
         onClick={() => navigate("/shops")}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("shops.detail.back")}
       </Button>
 
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("shops.detail.title")}</Heading>
-        <Spacer />
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("shops.detail.title")}</h1>
+        <div className="flex-1" />
         <Button size="xs" variant="outline" data-testid="shop-detail-edit" onClick={() => setEditing(true)}>
-          <Icon as={Pencil} boxSize="4" />
+          <Pencil className="size-4" />
           {t("shops.detail.edit")}
         </Button>
-      </Flex>
+      </div>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Flex align="center" gap="card">
-              <Heading size="sm" data-testid="shop-detail-name">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <div className="flex items-center gap-card">
+              <h2 className="text-[15px] font-semibold" data-testid="shop-detail-name">
                 {shop.name}
-              </Heading>
+              </h2>
               <MarketplaceBadge marketplace={shop.marketplace} />
-            </Flex>
+            </div>
 
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
               <Field label={t("shops.detail.code")} value={shop.shopCode} />
               <Field label={t("shops.detail.description")} value={shop.description} />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
+      <Card>
+        <CardBody>
           <ShopUsersSection teamId={current.teamId} shopId={shop.id} />
-        </Card.Body>
-      </Card.Root>
+        </CardBody>
+      </Card>
 
       {editing && (
         <ShopFormDialog
@@ -147,6 +145,6 @@ export function ShopDetailPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

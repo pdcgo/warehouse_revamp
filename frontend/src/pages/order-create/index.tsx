@@ -2,22 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Card,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Separator,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
 import { useTeam } from "../../features/team/TeamContext";
 import { useCreateOrder } from "../../features/orders/queries";
 import { ShopSelect } from "../../components/ShopSelect";
@@ -211,18 +200,18 @@ export function OrderCreatePage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orders.title")}</Heading>
-        <Text color="fg.muted" data-testid="order-create-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orders.title")}</h1>
+        <p className="text-fg-muted" data-testid="order-create-no-team">
           {t("orders.selectTeamCreate")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section" maxW="3xl" data-testid="order-create-page">
-      <Flex align="center" gap="card">
+    <div className="flex max-w-3xl flex-col gap-section" data-testid="order-create-page">
+      <div className="flex items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -230,27 +219,27 @@ export function OrderCreatePage() {
           data-testid="order-create-back"
           onClick={() => navigate("/orders")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">{t("orders.newOrderTitle")}</Heading>
-      </Flex>
+        <h1 className="text-[22px] font-bold">{t("orders.newOrderTitle")}</h1>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="order-create-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="order-create-error">
           {error}
-        </Text>
+        </p>
       )}
 
       <form onSubmit={save} noValidate>
-        <Stack gap="section">
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Text fontWeight="medium">{t("orders.customerAndShop")}</Text>
+        <div className="flex flex-col gap-section">
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <p className="font-medium">{t("orders.customerAndShop")}</p>
 
                 <Field.Root required>
                   <Field.Label>{t("orders.customerName")}</Field.Label>
-                  <Input
+                  <Field.Input
                     value={customerName}
                     data-testid="order-create-customer-name"
                     onChange={(e) => setCustomerName(e.target.value)}
@@ -259,7 +248,7 @@ export function OrderCreatePage() {
 
                 <Field.Root>
                   <Field.Label>{t("orders.phone")}</Field.Label>
-                  <Input
+                  <Field.Input
                     value={customerPhone}
                     data-testid="order-create-customer-phone"
                     onChange={(e) => setCustomerPhone(e.target.value)}
@@ -276,13 +265,13 @@ export function OrderCreatePage() {
                     somewhere nobody picked. */}
                 <Field.Root required>
                   <Field.Label>{t("orders.warehouse")}</Field.Label>
-                  <Box w="full" data-testid="order-warehouse">
+                  <div className="w-full" data-testid="order-warehouse">
                     <TeamSelect
                       teamType={TeamType.WAREHOUSE}
                       value={warehouseId}
                       onChange={setWarehouseId}
                     />
-                  </Box>
+                  </div>
                   <Field.HelperText>{t("orders.warehouseHelp")}</Field.HelperText>
                 </Field.Root>
 
@@ -290,55 +279,53 @@ export function OrderCreatePage() {
                   <Field.Label>{t("orders.shipping")}</Field.Label>
                   <ShippingSelect value={shippingCode} onChange={setShippingCode} />
                 </Field.Root>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
           {/* The address gets its own card: the shared AddressPicker is seven controls tall, and
               wedging it between "Phone" and "Shop" would push the shop/shipping pair out of sight.
               It is NOT required — nothing here gates the Create button. */}
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Text fontWeight="medium">{t("orders.deliveryAddress")}</Text>
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <p className="font-medium">{t("orders.deliveryAddress")}</p>
                 <AddressPicker value={address} onChange={setAddress} />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Flex align="center">
-                  <Text fontWeight="medium">{t("orders.items")}</Text>
-                </Flex>
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <div className="flex items-center">
+                  <p className="font-medium">{t("orders.items")}</p>
+                </div>
 
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {lines.map((line, i) => (
-                    <Box
+                    <div
                       key={line.key}
-                      borderWidth="1px"
-                      rounded="md"
-                      p="card"
+                      className="rounded-control border border-line p-card"
                       data-testid={`order-line-${i}`}
                     >
-                      <Flex gap="card" align="start" wrap="wrap">
-                        <Box flex="1" minW="52">
+                      <div className="flex flex-wrap items-start gap-card">
+                        <div className="min-w-52 flex-1">
                           <ProductSelect
                             teamId={teamId ?? 0n}
                             value={line.productId}
                             onChange={(p) => pickProduct(line.key, p)}
                           />
                           {line.productId > 0n && (
-                            <Text fontSize="xs" color="fg.muted" mt="1" data-testid={`order-line-picked-${i}`}>
+                            <p className="mt-1 text-xs text-fg-muted" data-testid={`order-line-picked-${i}`}>
                               {line.sku} — {line.name}
-                            </Text>
+                            </p>
                           )}
-                        </Box>
+                        </div>
 
-                        <Field.Root w="20">
-                          <Field.Label fontSize="xs">{t("orders.qty")}</Field.Label>
-                          <Input
+                        <Field.Root className="w-20">
+                          <Field.Label className="text-xs">{t("orders.qty")}</Field.Label>
+                          <Field.Input
                             type="number"
                             min="1"
                             value={line.quantity}
@@ -347,8 +334,8 @@ export function OrderCreatePage() {
                           />
                         </Field.Root>
 
-                        <Field.Root w="32">
-                          <Field.Label fontSize="xs">{t("orders.unitPrice")}</Field.Label>
+                        <Field.Root className="w-32">
+                          <Field.Label className="text-xs">{t("orders.unitPrice")}</Field.Label>
                           <CurrencyInput
                             value={line.unitPrice}
                             data-testid={`order-line-price-${i}`}
@@ -356,13 +343,13 @@ export function OrderCreatePage() {
                           />
                         </Field.Root>
 
-                        <Stack gap="0.5" minW="24" pt="6" align="end">
-                          <Text fontSize="sm" data-testid={`order-line-total-${i}`}>
+                        <div className="flex min-w-24 flex-col items-end gap-0.5 pt-6">
+                          <span className="text-sm" data-testid={`order-line-total-${i}`}>
                             {formatRupiah(lineTotal(line))}
-                          </Text>
-                        </Stack>
+                          </span>
+                        </div>
 
-                        <Box pt="5">
+                        <div className="pt-5">
                           <IconButton
                             size="xs"
                             variant="ghost"
@@ -372,35 +359,36 @@ export function OrderCreatePage() {
                             data-testid={`order-line-remove-${i}`}
                             onClick={() => removeLine(line.key)}
                           >
-                            <Icon as={Trash2} boxSize="4" />
+                            <Trash2 className="size-4" />
                           </IconButton>
-                        </Box>
-                      </Flex>
-                    </Box>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </Stack>
+                </div>
 
                 <Button
                   size="xs"
                   variant="outline"
-                  alignSelf="flex-start"
+                  colorPalette="gray"
+                  className="self-start"
                   data-testid="order-create-add-line"
                   onClick={addLine}
                 >
-                  <Icon as={Plus} boxSize="4" />
+                  <Plus className="size-4" />
                   {t("orders.addLine")}
                 </Button>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Flex align="center" gap="card">
-                  <Text color="fg.muted">{t("orders.subtotal")}</Text>
-                  <Text data-testid="order-create-subtotal">{formatRupiah(subtotal)}</Text>
-                </Flex>
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <div className="flex items-center gap-card">
+                  <span className="text-fg-muted">{t("orders.subtotal")}</span>
+                  <span data-testid="order-create-subtotal">{formatRupiah(subtotal)}</span>
+                </div>
 
                 <Field.Root>
                   <Field.Label>{t("orders.shippingCost")}</Field.Label>
@@ -412,19 +400,19 @@ export function OrderCreatePage() {
                   />
                 </Field.Root>
 
-                <Separator />
+                <div className="border-t border-line" />
 
-                <Flex align="center" gap="card">
-                  <Text fontWeight="semibold">{t("orders.total")}</Text>
-                  <Text fontWeight="semibold" data-testid="order-create-total">
+                <div className="flex items-center gap-card">
+                  <span className="font-semibold">{t("orders.total")}</span>
+                  <span className="font-semibold" data-testid="order-create-total">
                     {formatRupiah(total)}
-                  </Text>
-                </Flex>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+                  </span>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Flex justify="end">
+          <div className="flex justify-end">
             <Button
               type="submit"
               colorPalette="brand"
@@ -434,9 +422,9 @@ export function OrderCreatePage() {
             >
               {t("orders.createOrder")}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 }

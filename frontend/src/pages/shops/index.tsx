@@ -1,22 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
+import { Badge } from "../../components/ui/Badge";
+import { IconButton } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { rpcError } from "../../api/clients";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -70,27 +60,26 @@ export function ShopsPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("shops.title")}</Heading>
-        <Text color="fg.muted" data-testid="shops-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("shops.title")}</h1>
+        <p className="text-fg-muted" data-testid="shops-no-team">
           {t("shops.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("shops.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("shops.title")}</h1>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        <Spacer />
+        <div className="flex-1" />
         <ShopFormDialog />
-      </Flex>
+      </div>
 
-      <HStack>
+      <div className="max-w-sm">
         <Input
-          maxW="sm"
           placeholder={t("shops.searchPlaceholder")}
           value={q}
           data-testid="shop-search"
@@ -99,24 +88,24 @@ export function ShopsPage() {
             setQ(e.target.value);
           }}
         />
-      </HStack>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="shops-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="shops-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="shops-table">
+        <Table.Root data-testid="shops-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("shops.table.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("shops.table.code")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("shops.table.marketplace")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("shops.table.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("shops.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -124,21 +113,21 @@ export function ShopsPage() {
             {shops.map((shop) => (
               <Table.Row key={shop.id.toString()} data-testid={`shop-row-${shop.shopCode}`}>
                 <Table.Cell>
-                  <Box
-                    cursor="pointer"
+                  <div
+                    className="cursor-pointer"
                     data-testid={`open-shop-${shop.shopCode}`}
                     onClick={() => navigate(`/shops/${shop.id}`)}
                   >
                     {shop.name}
-                  </Box>
+                  </div>
                 </Table.Cell>
                 <Table.Cell>{shop.shopCode}</Table.Cell>
                 <Table.Cell>
                   <MarketplaceBadge marketplace={shop.marketplace} />
                 </Table.Cell>
 
-                <Table.Cell textAlign="end">
-                  <HStack justify="end" gap="1">
+                <Table.Cell className="text-right">
+                  <div className="flex justify-end gap-1">
                     <IconButton
                       size="xs"
                       variant="ghost"
@@ -146,7 +135,7 @@ export function ShopsPage() {
                       data-testid={`edit-${shop.shopCode}`}
                       onClick={() => setEditing(shop)}
                     >
-                      <Icon as={Pencil} boxSize="4" />
+                      <Pencil className="size-4" />
                     </IconButton>
 
                     <ConfirmDialog
@@ -162,11 +151,11 @@ export function ShopsPage() {
                           aria-label="Delete"
                           data-testid={`delete-${shop.shopCode}`}
                         >
-                          <Icon as={Trash2} boxSize="4" />
+                          <Trash2 className="size-4" />
                         </IconButton>
                       }
                     />
-                  </HStack>
+                  </div>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -175,9 +164,9 @@ export function ShopsPage() {
       )}
 
       {!loading && shops.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="shops-empty">
+        <p className="text-fg-muted" data-testid="shops-empty">
           {t("shops.empty")}
-        </Text>
+        </p>
       )}
 
       <Pagination
@@ -203,6 +192,6 @@ export function ShopsPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

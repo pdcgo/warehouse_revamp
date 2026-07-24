@@ -1,21 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  HStack,
-  Icon,
-  IconButton,
-  Input,
-  Menu,
-  NativeSelect,
-  Portal,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Eye, KeyRound, MoreHorizontal, Pause, Pencil, Play, Trash2, UserMinus } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
@@ -25,6 +10,13 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { UserItem } from "../../../components/UserItem";
 import { Pagination } from "../../../components/Pagination";
 import { toaster } from "../../../components/Toaster";
+import { Badge } from "../../../components/ui/Badge";
+import { IconButton } from "../../../components/ui/Button";
+import { Input } from "../../../components/ui/Input";
+import { Menu, Portal } from "../../../components/ui/Menu";
+import { Select } from "../../../components/ui/Select";
+import { Spinner } from "../../../components/ui/Spinner";
+import { Table } from "../../../components/ui/Table";
 import { isGlobalAdmin } from "../../../lib/roles";
 import { useTeams } from "../../../features/teams/queries";
 import { EditUserDialog } from "./EditUserDialog";
@@ -133,22 +125,23 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
   }
 
   return (
-    <Stack gap="section">
-      <HStack gap="card">
-        <Input
-          maxW="sm"
-          placeholder={t("users.searchPlaceholder")}
-          value={q}
-          data-testid="user-search"
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-        />
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <div className="w-full max-w-sm">
+          <Input
+            placeholder={t("users.searchPlaceholder")}
+            value={q}
+            data-testid="user-search"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
 
         {mode === "all" && (
-          <NativeSelect.Root maxW="xs">
-            <NativeSelect.Field
+          <div className="w-full max-w-xs">
+            <Select
               value={filterTeamId.toString()}
               data-testid="users-team-filter"
               onChange={(e) => {
@@ -162,28 +155,27 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                   {team.name || `Team #${team.id}`}
                 </option>
               ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+            </Select>
+          </div>
         )}
-      </HStack>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="users-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="users-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="users-table">
+        <Table.Root data-testid="users-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("users.table.user")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("users.table.email")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("users.table.status")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("users.table.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("users.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -199,13 +191,13 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                     {globalAdmin ? (
                       // The detail PAGE reads UserTeams (root/admin only), so only offer
                       // click-to-open where it will actually work.
-                      <Box
-                        cursor="pointer"
+                      <div
+                        className="cursor-pointer"
                         data-testid={`open-user-${user.username}`}
                         onClick={() => navigate(`/users/${user.id}`)}
                       >
                         <UserItem user={user} />
-                      </Box>
+                      </div>
                     ) : (
                       <UserItem user={user} />
                     )}
@@ -221,7 +213,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                     )}
                   </Table.Cell>
 
-                  <Table.Cell textAlign="end">
+                  <Table.Cell className="text-right">
                     <Menu.Root>
                       <Menu.Trigger asChild>
                         <IconButton
@@ -230,7 +222,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                           aria-label="Actions"
                           data-testid={`row-actions-${user.username}`}
                         >
-                          <Icon as={MoreHorizontal} boxSize="4" />
+                          <MoreHorizontal className="size-4" />
                         </IconButton>
                       </Menu.Trigger>
 
@@ -240,9 +232,9 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                             <Menu.Item
                               value="edit"
                               data-testid={`edit-${user.username}`}
-                              onClick={() => setDialog({ kind: "edit", user })}
+                              onSelect={() => setDialog({ kind: "edit", user })}
                             >
-                              <Icon as={Pencil} boxSize="4" />
+                              <Pencil className="size-4" />
                               {t("users.action.edit")}
                             </Menu.Item>
 
@@ -251,9 +243,9 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                               <Menu.Item
                                 value="details"
                                 data-testid={`details-${user.username}`}
-                                onClick={() => navigate(`/users/${user.id}`)}
+                                onSelect={() => navigate(`/users/${user.id}`)}
                               >
-                                <Icon as={Eye} boxSize="4" />
+                                <Eye className="size-4" />
                                 {t("users.action.details")}
                               </Menu.Item>
                             )}
@@ -262,9 +254,9 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                               <Menu.Item
                                 value="remove"
                                 data-testid={`remove-${user.username}`}
-                                onClick={() => setDialog({ kind: "remove", user })}
+                                onSelect={() => setDialog({ kind: "remove", user })}
                               >
-                                <Icon as={UserMinus} boxSize="4" />
+                                <UserMinus className="size-4" />
                                 {t("users.action.removeFromTeam")}
                               </Menu.Item>
                             )}
@@ -276,28 +268,32 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                                 <Menu.Item
                                   value="reset"
                                   data-testid={`reset-password-${user.username}`}
-                                  onClick={() => setDialog({ kind: "reset", user })}
+                                  onSelect={() => setDialog({ kind: "reset", user })}
                                 >
-                                  <Icon as={KeyRound} boxSize="4" />
+                                  <KeyRound className="size-4" />
                                   {t("users.action.resetPassword")}
                                 </Menu.Item>
 
                                 <Menu.Item
                                   value="suspend"
                                   data-testid={`suspend-${user.username}`}
-                                  onClick={() => setDialog({ kind: "suspend", user })}
+                                  onSelect={() => setDialog({ kind: "suspend", user })}
                                 >
-                                  <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
+                                  {user.isSuspended ? (
+                                    <Play className="size-4" />
+                                  ) : (
+                                    <Pause className="size-4" />
+                                  )}
                                   {user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
                                 </Menu.Item>
 
                                 <Menu.Item
                                   value="delete"
-                                  color="fg.error"
+                                  className="text-neg [&_svg]:text-neg!"
                                   data-testid={`delete-${user.username}`}
-                                  onClick={() => setDialog({ kind: "delete", user })}
+                                  onSelect={() => setDialog({ kind: "delete", user })}
                                 >
-                                  <Icon as={Trash2} boxSize="4" />
+                                  <Trash2 className="size-4" />
                                   {t("users.action.delete")}
                                 </Menu.Item>
                               </>
@@ -315,9 +311,9 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
       )}
 
       {!loading && users.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="users-empty">
+        <p className="text-fg-muted" data-testid="users-empty">
           {t("users.empty")}
-        </Text>
+        </p>
       )}
 
       {!loading && (
@@ -403,6 +399,6 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
           onConfirm={() => remove(dialog.user)}
         />
       )}
-    </Stack>
+    </div>
   );
 }

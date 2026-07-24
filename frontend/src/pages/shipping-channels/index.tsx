@@ -1,20 +1,11 @@
-import {
-  Badge,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Power, PowerOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
+import { Badge } from "../../components/ui/Badge";
+import { IconButton } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { toaster } from "../../components/Toaster";
 import { useShippingChannels, useUpdateShipping } from "./queries";
 import { CreateShippingDialog } from "./components/CreateShippingDialog";
@@ -66,29 +57,29 @@ export function ShippingChannelsPage() {
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("catalog.shipping.title")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("catalog.shipping.title")}</h1>
+        <div className="flex-1" />
         <CreateShippingDialog />
-      </Flex>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="shipping-channels-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="shipping-channels-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="shipping-channels-table">
+        <Table.Root data-testid="shipping-channels-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("catalog.shipping.code")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("catalog.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("catalog.shipping.status")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("catalog.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("catalog.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -103,8 +94,8 @@ export function ShippingChannelsPage() {
                   </Badge>
                 </Table.Cell>
 
-                <Table.Cell textAlign="end">
-                  <HStack justify="end" gap="1">
+                <Table.Cell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
                     <EditShippingDialog shipping={channel} />
 
                     <IconButton
@@ -115,9 +106,13 @@ export function ShippingChannelsPage() {
                       data-testid={`toggle-channel-${channel.id}`}
                       onClick={() => toggleActive(channel)}
                     >
-                      <Icon as={channel.active ? PowerOff : Power} boxSize="4" />
+                      {channel.active ? (
+                        <PowerOff className="size-4" />
+                      ) : (
+                        <Power className="size-4" />
+                      )}
                     </IconButton>
-                  </HStack>
+                  </div>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -126,10 +121,10 @@ export function ShippingChannelsPage() {
       )}
 
       {!loading && channels.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="shipping-channels-empty">
+        <p className="text-fg-muted" data-testid="shipping-channels-empty">
           {t("catalog.shipping.empty")}
-        </Text>
+        </p>
       )}
-    </Stack>
+    </div>
   );
 }

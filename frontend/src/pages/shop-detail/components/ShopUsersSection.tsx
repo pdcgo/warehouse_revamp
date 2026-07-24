@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { UserMinus } from "lucide-react";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Field } from "../../../components/ui/Field";
+import { Spinner } from "../../../components/ui/Spinner";
+import { Table } from "../../../components/ui/Table";
 import { rpcError, shopClient, userClient } from "../../../api/clients";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
@@ -78,11 +81,11 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
   }
 
   return (
-    <Stack gap="card" data-testid="shop-users-section">
-      <Heading size="sm">{t("shops.users.heading")}</Heading>
+    <div className="flex flex-col gap-card" data-testid="shop-users-section">
+      <h2 className="text-[15px] font-semibold">{t("shops.users.heading")}</h2>
 
-      <HStack gap="card" align="end">
-        <Field.Root>
+      <div className="flex items-end gap-card">
+        <Field.Root className="flex-1">
           <Field.Label>{t("shops.users.addLabel")}</Field.Label>
           <UserSelect value={adding} onChange={setAdding} placeholder={t("shops.users.searchPlaceholder")} />
         </Field.Root>
@@ -95,22 +98,22 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
         >
           {t("shops.users.add")}
         </Button>
-      </HStack>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="shop-users-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="shop-users-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner size="sm" colorPalette="brand" />
+        <Spinner className="size-4" />
       ) : userIds.length === 0 ? (
-        <Text color="fg.muted" data-testid="shop-users-empty">
+        <p className="text-fg-muted" data-testid="shop-users-empty">
           {t("shops.users.empty")}
-        </Text>
+        </p>
       ) : (
-        <Table.Root size="sm" data-testid="shop-users-table">
+        <Table.Root data-testid="shop-users-table">
           <Table.Body>
             {userIds.map((id) => {
               const u = users[id.toString()];
@@ -121,7 +124,7 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
                   <Table.Cell>
                     <UserItem user={u ?? { username: label, name: "", avatarUrl: "" }} />
                   </Table.Cell>
-                  <Table.Cell textAlign="end">
+                  <Table.Cell className="text-right">
                     <IconButton
                       size="xs"
                       variant="ghost"
@@ -130,7 +133,7 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
                       data-testid={`remove-shop-user-${label}`}
                       onClick={() => setRemoving({ id, label })}
                     >
-                      <Icon as={UserMinus} boxSize="4" />
+                      <UserMinus className="size-4" />
                     </IconButton>
                   </Table.Cell>
                 </Table.Row>
@@ -152,6 +155,6 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
           onConfirm={() => remove(removing.id)}
         />
       )}
-    </Stack>
+    </div>
   );
 }

@@ -1,23 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Icon,
-  IconButton,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { Pencil } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
 import { toaster } from "../../../components/Toaster";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { useSaveUser } from "../../../features/users/queries";
 
 // EditUserDialog calls UpdateProfile when you are editing YOURSELF, and UpdateUser otherwise.
@@ -95,7 +86,7 @@ export function EditUserDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <IconButton size="xs" variant="ghost" aria-label="Edit" data-testid={`edit-${user.username}`}>
-            <Icon as={Pencil} boxSize="4" />
+            <Pencil className="size-4" />
           </IconButton>
         </Dialog.Trigger>
       )}
@@ -110,34 +101,36 @@ export function EditUserDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="edit-user-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="edit-user-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root>
                     <Field.Label>{t("users.field.name")}</Field.Label>
-                    <Input value={name} data-testid="edit-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="edit-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("users.field.email")}</Field.Label>
-                    <Input value={email} data-testid="edit-email" onChange={(e) => setEmail(e.target.value)} />
+                    <Field.Input value={email} data-testid="edit-email" onChange={(e) => setEmail(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("users.field.phone")}</Field.Label>
-                    <Input value={phone} data-testid="edit-phone" onChange={(e) => setPhone(e.target.value)} />
+                    <Field.Input value={phone} data-testid="edit-phone" onChange={(e) => setPhone(e.target.value)} />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("users.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray">
+                    {t("users.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-edit-user">
                   {t("users.edit.save")}
@@ -145,7 +138,9 @@ export function EditUserDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("users.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

@@ -1,24 +1,14 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  Card,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Spinner,
-  Stack,
-  Text,
-  Textarea,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../../api/clients";
 import { toaster } from "../../components/Toaster";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Spinner } from "../../components/ui/Spinner";
 import { useSaveWarehouse } from "./queries";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./components/WeeklyHoursEditor";
 import type { WeekHours } from "./components/WeeklyHoursEditor";
@@ -110,12 +100,12 @@ export function WarehouseEditPage() {
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   return (
-    <Stack gap="section" maxW="2xl" data-testid="warehouse-edit-page">
-      <Flex align="center" gap="card">
+    <div className="flex max-w-2xl flex-col gap-section" data-testid="warehouse-edit-page">
+      <div className="flex items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -123,25 +113,25 @@ export function WarehouseEditPage() {
           data-testid="warehouse-edit-back"
           onClick={() => navigate(`/teams/${teamId}`)}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">{t("teams.editWarehouseTitle")}</Heading>
-      </Flex>
+        <h1 className="text-[22px] font-bold">{t("teams.editWarehouseTitle")}</h1>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="warehouse-edit-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="warehouse-edit-error">
           {error}
-        </Text>
+        </p>
       )}
 
       <form onSubmit={save}>
-        <Stack gap="section">
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
+        <div className="flex flex-col gap-section">
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
                 <Field.Root required>
                   <Field.Label>{t("teams.name")}</Field.Label>
-                  <Input
+                  <Field.Input
                     value={name}
                     data-testid="warehouse-edit-name"
                     onChange={(e) => setName(e.target.value)}
@@ -150,7 +140,7 @@ export function WarehouseEditPage() {
 
                 <Field.Root>
                   <Field.Label>{t("teams.description")}</Field.Label>
-                  <Textarea
+                  <Field.Textarea
                     value={description}
                     data-testid="warehouse-edit-description"
                     onChange={(e) => setDescription(e.target.value)}
@@ -159,20 +149,20 @@ export function WarehouseEditPage() {
 
                 <Field.Root>
                   <Field.Label>{t("teams.location")}</Field.Label>
-                  <Textarea
+                  <Field.Textarea
                     value={location}
                     data-testid="warehouse-edit-location"
                     onChange={(e) => setLocation(e.target.value)}
                   />
                   <Field.HelperText>{t("teams.warehouseAddressHelp")}</Field.HelperText>
                 </Field.Root>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="section">
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-section">
                 <WeeklyHoursEditor
                   label={t("teams.operatingHours")}
                   value={operating}
@@ -186,17 +176,17 @@ export function WarehouseEditPage() {
                   onChange={setReceiving}
                   testId="receiving-hours"
                 />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Flex justify="end">
+          <div className="flex justify-end">
             <Button type="submit" colorPalette="brand" loading={saving} data-testid="warehouse-edit-save">
               {t("teams.save")}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 }

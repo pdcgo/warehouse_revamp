@@ -1,22 +1,16 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../../../features/team/TeamContext";
 import { PasswordInput } from "../../../components/PasswordInput";
 import { RoleSelect } from "../../../components/RoleSelect";
 import { toaster } from "../../../components/Toaster";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { rolesFor } from "../../../lib/roles";
 import { useCreateUser } from "../../../features/users/queries";
 
@@ -122,16 +116,16 @@ export function CreateUserDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="create-user-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="create-user-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("users.field.username")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={username}
                       data-testid="new-username"
                       onChange={(e) => setUsername(e.target.value)}
@@ -151,25 +145,27 @@ export function CreateUserDialog({
 
                   <Field.Root>
                     <Field.Label>{t("users.field.name")}</Field.Label>
-                    <Input value={name} data-testid="new-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="new-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("users.field.email")}</Field.Label>
-                    <Input value={email} data-testid="new-email" onChange={(e) => setEmail(e.target.value)} />
+                    <Field.Input value={email} data-testid="new-email" onChange={(e) => setEmail(e.target.value)} />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("users.create.roleInTeam", { team: current?.teamName || t("users.thisTeam") })}</Field.Label>
                     <RoleSelect teamType={current?.teamType} value={role} onChange={setRole} />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("users.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray">
+                    {t("users.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-create-user">
                   {t("users.create.submit")}
@@ -177,7 +173,9 @@ export function CreateUserDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("users.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

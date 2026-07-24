@@ -1,20 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Icon,
-  IconButton,
-  Input,
-  Portal,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { Landmark } from "lucide-react";
+import { Landmark, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
+import { Spinner } from "../../../components/ui/Spinner";
 import { rpcError } from "../../../api/clients";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../../components/Toaster";
@@ -121,7 +112,7 @@ export function TeamInfoDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
-            <Icon as={Landmark} boxSize="4" />
+            <Landmark className="size-4" />
           </IconButton>
         </Dialog.Trigger>
       )}
@@ -137,18 +128,18 @@ export function TeamInfoDialog({
 
               <Dialog.Body>
                 {loading ? (
-                  <Spinner colorPalette="brand" />
+                  <Spinner />
                 ) : (
-                  <Stack gap="card">
+                  <div className="flex flex-col gap-card">
                     {shownError && (
-                      <Text color="red.fg" data-testid="team-info-error">
+                      <p className="text-red-600 dark:text-red-400" data-testid="team-info-error">
                         {shownError}
-                      </Text>
+                      </p>
                     )}
 
                     <Field.Root>
                       <Field.Label>{t("teams.contactNumber")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={contactNumber}
                         data-testid="info-contact"
                         onChange={(e) => setContactNumber(e.target.value)}
@@ -157,7 +148,7 @@ export function TeamInfoDialog({
 
                     <Field.Root>
                       <Field.Label>{t("teams.bank")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={bankType}
                         data-testid="info-bank-type"
                         onChange={(e) => setBankType(e.target.value)}
@@ -166,7 +157,7 @@ export function TeamInfoDialog({
 
                     <Field.Root>
                       <Field.Label>{t("teams.accountHolder")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={bankOwnerName}
                         data-testid="info-bank-owner"
                         onChange={(e) => setBankOwnerName(e.target.value)}
@@ -175,20 +166,20 @@ export function TeamInfoDialog({
 
                     <Field.Root>
                       <Field.Label>{t("teams.accountNumber")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={bankAccountNumber}
                         data-testid="info-bank-account"
                         onChange={(e) => setBankAccountNumber(e.target.value)}
                       />
                     </Field.Root>
-                  </Stack>
+                  </div>
                 )}
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("teams.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-team-info">
                   {t("teams.save")}
@@ -196,7 +187,9 @@ export function TeamInfoDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("teams.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

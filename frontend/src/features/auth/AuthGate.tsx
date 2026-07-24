@@ -1,6 +1,6 @@
-import { Center, Spinner } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { Spinner } from "../../components/ui/Spinner";
 import { useAuth } from "./AuthContext";
 
 // AuthGate blocks the first render until CheckAccess has settled.
@@ -12,9 +12,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <Center minH="100dvh">
-        <Spinner size="lg" colorPalette="brand" />
-      </Center>
+      <div className="flex min-h-dvh items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
     );
   }
 

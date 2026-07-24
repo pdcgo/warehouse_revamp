@@ -1,18 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconButton } from "../../../components/ui/Button";
+import { Menu, Portal } from "../../../components/ui/Menu";
+import { Spinner } from "../../../components/ui/Spinner";
+import { Table } from "../../../components/ui/Table";
 import { rpcError } from "../../../api/clients";
 import type { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
@@ -73,22 +66,22 @@ export function TeamTable({
   }
 
   return (
-    <Stack gap="section">
+    <div className="flex flex-col gap-section">
       {error && (
-        <Text color="red.fg" data-testid="teams-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="teams-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="teams-table">
+        <Table.Root data-testid="teams-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("teams.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("teams.code")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("teams.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("teams.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -99,8 +92,8 @@ export function TeamTable({
               return (
                 <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
                   <Table.Cell>
-                    <Box
-                      cursor="pointer"
+                    <div
+                      className="cursor-pointer"
                       data-testid={`open-team-${team.teamCode}`}
                       onClick={() => navigate(`/teams/${team.id}`)}
                     >
@@ -112,11 +105,11 @@ export function TeamTable({
                           imageUrl: team.imageUrl,
                         }}
                       />
-                    </Box>
+                    </div>
                   </Table.Cell>
                   <Table.Cell>{team.teamCode}</Table.Cell>
 
-                  <Table.Cell textAlign="end">
+                  <Table.Cell className="text-right">
                     <Menu.Root>
                       <Menu.Trigger asChild>
                         <IconButton
@@ -125,7 +118,7 @@ export function TeamTable({
                           aria-label="Actions"
                           data-testid={`row-actions-team-${team.teamCode}`}
                         >
-                          <Icon as={MoreHorizontal} boxSize="4" />
+                          <MoreHorizontal className="size-4" />
                         </IconButton>
                       </Menu.Trigger>
 
@@ -135,18 +128,18 @@ export function TeamTable({
                             <Menu.Item
                               value="detail"
                               data-testid={`detail-team-${team.teamCode}`}
-                              onClick={() => navigate(`/teams/${team.id}`)}
+                              onSelect={() => navigate(`/teams/${team.id}`)}
                             >
-                              <Icon as={Eye} boxSize="4" />
+                              <Eye className="size-4" />
                               {t("teams.detailsAction")}
                             </Menu.Item>
 
                             <Menu.Item
                               value="info"
                               data-testid={`info-team-${team.teamCode}`}
-                              onClick={() => setDialog({ kind: "info", team })}
+                              onSelect={() => setDialog({ kind: "info", team })}
                             >
-                              <Icon as={Landmark} boxSize="4" />
+                              <Landmark className="size-4" />
                               {t("teams.contactBank")}
                             </Menu.Item>
 
@@ -155,24 +148,24 @@ export function TeamTable({
                                 <Menu.Item
                                   value="edit"
                                   data-testid={`edit-team-${team.teamCode}`}
-                                  onClick={() =>
+                                  onSelect={() =>
                                     editAsPage
                                       ? navigate(`/teams/${team.id}/edit`)
                                       : setDialog({ kind: "edit", team })
                                   }
                                 >
-                                  <Icon as={Pencil} boxSize="4" />
+                                  <Pencil className="size-4" />
                                   {t("teams.edit")}
                                 </Menu.Item>
 
                                 {!isRoot && (
                                   <Menu.Item
                                     value="delete"
-                                    color="fg.error"
+                                    className="text-red-600 dark:text-red-400 [&_svg]:text-red-600 dark:[&_svg]:text-red-400"
                                     data-testid={`delete-team-${team.teamCode}`}
-                                    onClick={() => setDialog({ kind: "delete", team })}
+                                    onSelect={() => setDialog({ kind: "delete", team })}
                                   >
-                                    <Icon as={Trash2} boxSize="4" />
+                                    <Trash2 className="size-4" />
                                     {t("teams.delete")}
                                   </Menu.Item>
                                 )}
@@ -224,6 +217,6 @@ export function TeamTable({
           onConfirm={() => remove(dialog.team)}
         />
       )}
-    </Stack>
+    </div>
   );
 }

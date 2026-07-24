@@ -1,20 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Icon,
-  Input,
-  NativeSelect,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
+import { Select } from "../../../components/ui/Select";
 import { rpcError } from "../../../api/clients";
 import type { SupplierChannel } from "../../../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { SupplierChannelType } from "../../../gen/warehouse/inventory/v1/supplier_channel_pb";
@@ -146,7 +137,7 @@ export function SupplierChannelFormDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <Button size="xs" colorPalette="brand" data-testid="add-channel">
-            <Icon as={Plus} boxSize="4" />
+            <Plus className="size-4" />
             {t("supplierChannel.form.addChannel")}
           </Button>
         </Dialog.Trigger>
@@ -164,46 +155,43 @@ export function SupplierChannelFormDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="channel-form-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="channel-form-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root>
                     <Field.Label>{t("supplierChannel.form.type")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={online ? "online" : "offline"}
-                        data-testid="channel-type"
-                        onChange={(e) => setOnline(e.currentTarget.value === "online")}
-                      >
-                        <option value="online">{t("supplierChannel.type.online")}</option>
-                        <option value="offline">{t("supplierChannel.type.offline")}</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                    <Select
+                      value={online ? "online" : "offline"}
+                      data-testid="channel-type"
+                      onChange={(e) => setOnline(e.target.value === "online")}
+                    >
+                      <option value="online">{t("supplierChannel.type.online")}</option>
+                      <option value="offline">{t("supplierChannel.type.offline")}</option>
+                    </Select>
                   </Field.Root>
 
                   {online && (
                     <Field.Root required>
                       <Field.Label>{t("supplierChannel.form.marketplace")}</Field.Label>
-                      <Box w="full" data-testid="channel-marketplace">
+                      <div className="w-full" data-testid="channel-marketplace">
                         <MarketplaceSelect value={marketplace} onChange={setMarketplace} />
-                      </Box>
+                      </div>
                     </Field.Root>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("supplierChannel.form.name")}</Field.Label>
-                    <Input value={name} data-testid="channel-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.Input value={name} data-testid="channel-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
                   {online ? (
                     <Field.Root>
                       <Field.Label>{t("supplierChannel.form.url")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={url}
                         data-testid="channel-url"
                         onChange={(e) => setUrl(e.target.value)}
@@ -213,7 +201,7 @@ export function SupplierChannelFormDialog({
                     <>
                       <Field.Root>
                         <Field.Label>{t("supplierChannel.form.contact")}</Field.Label>
-                        <Input
+                        <Field.Input
                           value={contact}
                           data-testid="channel-contact"
                           onChange={(e) => setContact(e.target.value)}
@@ -222,7 +210,7 @@ export function SupplierChannelFormDialog({
 
                       <Field.Root>
                         <Field.Label>{t("supplierChannel.form.location")}</Field.Label>
-                        <Input
+                        <Field.Input
                           value={location}
                           data-testid="channel-location"
                           onChange={(e) => setLocation(e.target.value)}
@@ -230,13 +218,13 @@ export function SupplierChannelFormDialog({
                       </Field.Root>
                     </>
                   )}
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("supplierChannel.form.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -250,7 +238,9 @@ export function SupplierChannelFormDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("supplierChannel.form.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
+import { Tabs } from "../../components/ui/Tabs";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin } from "../../lib/roles";
@@ -36,15 +36,15 @@ export function TeamsPage() {
   const activeType = TABS.find((item) => item.value === tab)?.type;
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("teams.heading")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("teams.heading")}</h1>
+        <div className="flex-1" />
         {admin && (
           // Keyed by the active tab so the locked type (and label/testid) reset when tabs change.
           <CreateTeamDialog key={tab} fixedType={activeType} />
         )}
-      </Flex>
+      </div>
 
       <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value)} lazyMount unmountOnExit>
         <Tabs.List>
@@ -61,6 +61,6 @@ export function TeamsPage() {
           </Tabs.Content>
         ))}
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Box, Button, FileUpload, Icon, IconButton, Image, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { ImagePlus, X } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
+import { Badge } from "../../../components/ui/Badge";
+import { Button, IconButton } from "../../../components/ui/Button";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
 import { toaster } from "../../../components/Toaster";
 
@@ -18,11 +19,11 @@ export interface ProductImageValue {
 // team/profile picture) and the resulting public URL + thumbnail are appended. The FIRST image is
 // the cover, badged as such. Upload is scoped to `teamId` (document_service reads it via use_scope).
 //
-// `value` (the uploaded URLs) is our single source of truth for how many images exist. Chakra's
-// FileUpload keeps its OWN cumulative list of picked File objects, which would drift from `value`
-// (it accumulates across picks and is not touched by our Remove) — so we REMOUNT it after every
-// commit (a bumped `pickerKey`) to reset that internal list, and cap `maxFiles` to the remaining
-// room. That way each pick's `acceptedFiles` is exactly the newly-chosen files, never a stale sum.
+// `value` (the uploaded URLs) is our single source of truth for how many images exist. The native
+// file input keeps NO cumulative list of its own, so — unlike Chakra's FileUpload — there is nothing
+// to drift from `value`; we still REMOUNT it after every commit (a bumped `pickerKey`) so its
+// `.value` clears, which both resets the picked-file state and lets the same file be chosen again
+// right after a Remove. Each pick's `files` is exactly the newly-chosen files, never a stale sum.
 export function ProductImagesInput({
   teamId,
   value,
@@ -37,13 +38,14 @@ export function ProductImagesInput({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [pickerKey, setPickerKey] = useState(0);
-  // A synchronous guard: FileUpload can fire onFileChange more than once per pick (accept + reject
-  // events), and React state updates lag — a ref prevents the second fire from re-uploading.
+  const inputRef = useRef<HTMLInputElement>(null);
+  // A synchronous guard: the change handler can fire more than once per pick, and React state
+  // updates lag — a ref prevents the second fire from re-uploading.
   const uploadingRef = useRef(false);
 
   const full = value.length >= max;
 
-  // commit updates the images AND resets the picker so its internal file list can't accumulate.
+  // commit updates the images AND resets the picker so its file value can't linger.
   function commit(next: ProductImageValue[]) {
     onChange(next);
     setPickerKey((k) => k + 1);
@@ -86,8 +88,7 @@ export function ProductImagesInput({
       return;
     }
 
-    // Only take as many as there is room for; ignore the rest with a nudge. (The picker's maxFiles
-    // already caps a single pick to the remaining room; this is the belt-and-suspenders cap.)
+    // Only take as many as there is room for; ignore the rest with a nudge.
     const room = max - value.length;
     const take = files.slice(0, room);
 
@@ -127,67 +128,75 @@ export function ProductImagesInput({
   }
 
   return (
-    <Stack gap="card" data-testid="product-images-input">
+    <div className="flex flex-col gap-card" data-testid="product-images-input">
       {value.length > 0 && (
-        <SimpleGrid columns={{ base: 3, md: 5 }} gap="card">
+        <div className="grid grid-cols-3 gap-card md:grid-cols-5">
           {value.map((img, i) => (
-            <Box key={`${img.url}-${i}`} position="relative" borderWidth="1px" borderRadius="md" overflow="hidden">
-              <Image
+            <div
+              key={`${img.url}-${i}`}
+              className="relative overflow-hidden rounded-control border border-line"
+            >
+              <img
                 src={img.thumbnailUrl || img.url}
                 alt={`Image ${i + 1}`}
-                aspectRatio={1}
-                objectFit="cover"
-                w="full"
+                className="aspect-square w-full object-cover"
                 data-testid={`product-image-${i}`}
               />
 
               {i === 0 && (
-                <Badge position="absolute" top="1" left="1" size="xs" colorPalette="brand">
+                <Badge colorPalette="brand" className="absolute left-1 top-1">
                   {t("products.cover")}
                 </Badge>
               )}
 
               <IconButton
-                position="absolute"
-                top="1"
-                right="1"
-                size="2xs"
+                size="xs"
                 variant="solid"
                 colorPalette="red"
                 aria-label="Remove image"
                 data-testid={`remove-product-image-${i}`}
+                className="absolute right-1 top-1"
                 onClick={() => removeAt(i)}
               >
-                <Icon as={X} boxSize="3" />
+                <X className="size-3" />
               </IconButton>
-            </Box>
+            </div>
           ))}
-        </SimpleGrid>
+        </div>
       )}
 
-      <FileUpload.Root
+      {/* A hidden native input remounted on `pickerKey` so its value resets after every commit.
+          The button below opens it; `onFiles` caps a pick to the remaining room. */}
+      <input
         key={pickerKey}
+        ref={inputRef}
+        type="file"
         accept="image/*"
-        maxFiles={Math.max(1, max - value.length)}
+        multiple
+        className="hidden"
         disabled={busy || full}
-        onFileChange={(details) => {
-          if (details.acceptedFiles.length > 0) {
-            void onFiles(details.acceptedFiles);
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          if (files.length > 0) {
+            void onFiles(files);
           }
         }}
-      >
-        <FileUpload.HiddenInput />
-        <FileUpload.Trigger asChild>
-          <Button variant="outline" colorPalette="brand" loading={busy} disabled={full} data-testid="add-product-image">
-            <Icon as={ImagePlus} />
-            {t("products.addImages")}
-          </Button>
-        </FileUpload.Trigger>
-      </FileUpload.Root>
+      />
 
-      <Text color="fg.muted" fontSize="xs">
-        {t("products.imagesHelp", { used: value.length, max })}
-      </Text>
-    </Stack>
+      <Button
+        type="button"
+        variant="outline"
+        colorPalette="brand"
+        loading={busy}
+        disabled={full}
+        data-testid="add-product-image"
+        onClick={() => inputRef.current?.click()}
+      >
+        <ImagePlus className="size-4" />
+        {t("products.addImages")}
+      </Button>
+
+      <p className="text-xs text-fg-muted">{t("products.imagesHelp", { used: value.length, max })}</p>
+    </div>
   );
 }

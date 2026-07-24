@@ -2,26 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Card,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Separator,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-  Textarea,
-} from "@chakra-ui/react";
 import { ArrowLeft, PackagePlus, Trash2 } from "lucide-react";
 import { restockClient, rpcError } from "../../api/clients";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Spinner } from "../../components/ui/Spinner";
 import { RestockPaymentType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -343,21 +329,21 @@ export function RestockRequestFormPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{title}</Heading>
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{title}</h1>
         {/* Mode-aware, like the heading above it: a request is loaded and saved in a team's scope, so
             with none chosen there is nothing to edit either — but telling someone who came to EDIT to
             "select a team to create a request" describes a task they are not doing. */}
-        <Text color="fg.muted" data-testid="restock-create-no-team">
+        <p className="text-fg-muted" data-testid="restock-create-no-team">
           {isEdit ? t("restock.selectTeamEdit") : t("restock.selectTeamCreate")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   // Edit mode has nothing to show until the row is in hand — the same spinner the detail page shows.
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   // The row could not be read, so there is no form: an empty one here would offer to REPLACE the
@@ -365,31 +351,31 @@ export function RestockRequestFormPage() {
   // `backTo`: whatever stopped this row loading (bad id, not found, not ours) stops its detail page too.
   if (loadError) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          colorPalette="gray"
+          className="self-start"
           data-testid="restock-edit-back"
           onClick={() => navigate("/inventories/restock")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-edit-load-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="restock-edit-load-error">
           {loadError.key ? t(loadError.key) : loadError.text}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack
-      gap="section"
-      maxW="7xl"
+    <div
+      className="flex max-w-7xl flex-col gap-section"
       data-testid={isEdit ? "restock-edit-page" : "restock-create-page"}
     >
-      <Flex align="center" gap="card">
+      <div className="flex items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -397,33 +383,33 @@ export function RestockRequestFormPage() {
           data-testid={isEdit ? "restock-edit-back" : "restock-create-back"}
           onClick={() => navigate(backTo)}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">{title}</Heading>
-      </Flex>
+        <h1 className="text-[22px] font-bold">{title}</h1>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="restock-create-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="restock-create-error">
           {error}
-        </Text>
+        </p>
       )}
 
       <form onSubmit={save} noValidate>
         {/* The two columns collapse to one below `lg`: on a narrow screen the sidebar's summary
             reads as the tail of the form, which is the right order to fill it in anyway. */}
-        <Flex direction={{ base: "column", lg: "row" }} align="start" gap="section">
-          <Stack flex="2" minW="0" w="full" gap="section">
+        <div className="flex flex-col items-start gap-section lg:flex-row">
+          <div className="flex w-full min-w-0 flex-col gap-section lg:flex-2">
             {/* ─── A — the picked products ─────────────────────────────────────────────────── */}
             {/* No count and no total here (#165, owner): the sidebar already carries both, and the
                 two columns sit side by side on a wide screen — so the same two numbers appeared
                 twice, a hand's width apart. When they agree the repetition is noise, and if they
                 ever disagree the screen has no way to say which one is right. */}
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Flex align="center" gap="card">
-                    <Text fontWeight="medium">{t("restock.form.products")}</Text>
-                    <Spacer />
+            <Card>
+              <CardBody>
+                <div className="flex flex-col gap-card">
+                  <div className="flex items-center gap-card">
+                    <p className="font-medium">{t("restock.form.products")}</p>
+                    <div className="flex-1" />
 
                     {/* THE way products get onto this request (#165, owner: "not product select but
                         product-picker"). A restock is a shopping list — you decide what to buy in one
@@ -443,36 +429,34 @@ export function RestockRequestFormPage() {
                       value={pickedIds}
                       onChange={pickProducts}
                       trigger={
-                        <Button type="button" size="xs" variant="outline" data-testid="restock-pick-products">
-                          <Icon as={PackagePlus} boxSize="4" />
+                        <Button type="button" size="xs" variant="outline" colorPalette="gray" data-testid="restock-pick-products">
+                          <PackagePlus className="size-4" />
                           {t("restock.form.addProduct")}
                         </Button>
                       }
                     />
-                  </Flex>
+                  </div>
 
                   {lines.length === 0 && (
-                    <Text fontSize="sm" color="fg.muted" data-testid="restock-no-products">
+                    <p className="text-sm text-fg-muted" data-testid="restock-no-products">
                       {t("restock.form.noProducts")}
-                    </Text>
+                    </p>
                   )}
 
-                  <Stack gap="card">
+                  <div className="flex flex-col gap-card">
                     {lines.map((line, i) => (
-                      <Box
+                      <div
                         key={line.productId.toString()}
-                        borderWidth="1px"
-                        rounded="md"
-                        p="card"
+                        className="rounded-control border border-line p-card"
                         data-testid={`restock-line-${i}`}
                       >
                         <ProductListItem
                           product={{ id: line.productId, sku: line.sku, name: line.name }}
                           action={
-                            <Flex gap="card" align="end" justify="end" wrap="wrap">
-                              <Field.Root w="20">
-                                <Field.Label fontSize="xs">{t("restock.form.quantity")}</Field.Label>
-                                <Input
+                            <div className="flex flex-wrap items-end justify-end gap-card">
+                              <Field.Root className="w-20">
+                                <Field.Label className="text-xs">{t("restock.form.quantity")}</Field.Label>
+                                <Field.Input
                                   type="number"
                                   min="1"
                                   value={line.quantity}
@@ -483,8 +467,8 @@ export function RestockRequestFormPage() {
                                 />
                               </Field.Root>
 
-                              <Field.Root w="28">
-                                <Field.Label fontSize="xs">{t("restock.form.totalPrice")}</Field.Label>
+                              <Field.Root className="w-28">
+                                <Field.Label className="text-xs">{t("restock.form.totalPrice")}</Field.Label>
                                 <CurrencyInput
                                   value={line.totalPrice}
                                   data-testid={`restock-total-price-${i}`}
@@ -492,16 +476,12 @@ export function RestockRequestFormPage() {
                                 />
                               </Field.Root>
 
-                              <Text
-                                fontSize="sm"
-                                fontWeight="medium"
-                                minW="24"
-                                pb="1.5"
-                                textAlign="end"
+                              <span
+                                className="min-w-24 pb-1.5 text-end text-sm font-medium"
                                 data-testid={`restock-line-total-${i}`}
                               >
                                 {formatRupiah(lineTotal(line))}
-                              </Text>
+                              </span>
 
                               {/* No "change product" beside it any more: swapping one product for
                                   another is picking, and picking is the dialog. Remove stays because
@@ -511,30 +491,30 @@ export function RestockRequestFormPage() {
                                 size="xs"
                                 variant="ghost"
                                 colorPalette="red"
-                                mb="1"
+                                className="mb-1"
                                 aria-label={t("restock.form.removeProduct")}
                                 data-testid={`restock-remove-${i}`}
                                 onClick={() => removeLine(line.productId)}
                               >
-                                <Icon as={Trash2} boxSize="4" />
+                                <Trash2 className="size-4" />
                               </IconButton>
-                            </Flex>
+                            </div>
                           }
                         />
-                      </Box>
+                      </div>
                     ))}
-                  </Stack>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
 
             {/* ─── B and C, side by side under A ───────────────────────────────────────────── */}
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap="section" alignItems="start">
+            <div className="grid grid-cols-1 items-start gap-section md:grid-cols-2">
               {/* ─── B — everything about the order the goods come from ────────────────────── */}
-              <Card.Root>
-                <Card.Body>
-                  <Stack gap="card">
-                    <Text fontWeight="medium">{t("restock.form.orderDetails")}</Text>
+              <Card>
+                <CardBody>
+                  <div className="flex flex-col gap-card">
+                    <p className="font-medium">{t("restock.form.orderDetails")}</p>
 
                     <Field.Root>
                       <Field.Label>{t("restock.form.shippingCost")}</Field.Label>
@@ -555,7 +535,7 @@ export function RestockRequestFormPage() {
 
                     <Field.Root>
                       <Field.Label>{t("restock.form.receipt")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={receipt}
                         maxLength={100}
                         data-testid="restock-receipt"
@@ -566,7 +546,7 @@ export function RestockRequestFormPage() {
 
                     <Field.Root>
                       <Field.Label>{t("restock.form.orderRef")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={orderRef}
                         maxLength={100}
                         data-testid="restock-order-ref"
@@ -590,18 +570,18 @@ export function RestockRequestFormPage() {
                       <PaymentTypeSelect value={paymentType} onChange={setPaymentType} />
                       <Field.HelperText>{t("restock.form.paymentTypeHelp")}</Field.HelperText>
                     </Field.Root>
-                  </Stack>
-                </Card.Body>
-              </Card.Root>
+                  </div>
+                </CardBody>
+              </Card>
 
               {/* ─── C — the restock note ──────────────────────────────────────────────────── */}
-              <Card.Root>
-                <Card.Body>
-                  <Stack gap="card">
-                    <Text fontWeight="medium">{t("restock.form.note")}</Text>
+              <Card>
+                <CardBody>
+                  <div className="flex flex-col gap-card">
+                    <p className="font-medium">{t("restock.form.note")}</p>
 
                     <Field.Root>
-                      <Textarea
+                      <Field.Textarea
                         rows={12}
                         maxLength={1000}
                         value={note}
@@ -611,59 +591,55 @@ export function RestockRequestFormPage() {
                       />
                       <Field.HelperText>{t("restock.form.noteHelp")}</Field.HelperText>
                     </Field.Root>
-                  </Stack>
-                </Card.Body>
-              </Card.Root>
-            </SimpleGrid>
-          </Stack>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          </div>
 
           {/* ─── The sidebar: D, then the E/F/G summary ──────────────────────────────────── */}
-          <Stack flex="1" minW="0" w="full" maxW={{ lg: "sm" }} gap="section">
+          <div className="flex w-full min-w-0 flex-col gap-section lg:flex-1 lg:max-w-sm">
             {/* ─── D — which warehouse receives the stock ────────────────────────────────── */}
-            <Card.Root>
-              <Card.Body>
+            <Card>
+              <CardBody>
                 <Field.Root required>
                   <Field.Label>{t("restock.form.warehouse")}</Field.Label>
-                  <Box w="full" data-testid="restock-warehouse">
+                  <div className="w-full" data-testid="restock-warehouse">
                     <TeamSelect
                       teamType={TeamType.WAREHOUSE}
                       value={warehouseId}
                       onChange={setWarehouseId}
                     />
-                  </Box>
+                  </div>
                   <Field.HelperText>{t("restock.form.warehouseHelp")}</Field.HelperText>
                 </Field.Root>
-              </Card.Body>
-            </Card.Root>
+              </CardBody>
+            </Card>
 
             {/* ─── E — the products, each at its per-piece price, and their total ────────── */}
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Flex align="center" justify="space-between" gap="card">
-                    <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+            <Card>
+              <CardBody>
+                <div className="flex flex-col gap-card">
+                  <div className="flex items-center justify-between gap-card">
+                    <span className="text-sm font-medium text-fg-muted">
                       {t("restock.summary.totalProducts")}
-                    </Text>
-                    <Text fontSize="sm" fontWeight="medium" data-testid="restock-summary-count">
+                    </span>
+                    <span className="text-sm font-medium" data-testid="restock-summary-count">
                       {lines.length}
-                    </Text>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  <Separator />
+                  <div className="border-t border-line" />
 
                   {lines.length === 0 ? (
-                    <Text fontSize="sm" color="fg.muted">
-                      {t("restock.summary.noProducts")}
-                    </Text>
+                    <span className="text-sm text-fg-muted">{t("restock.summary.noProducts")}</span>
                   ) : (
-                    <Stack gap="card">
+                    <div className="flex flex-col gap-card">
                       {lines.map((line) => (
-                        <Flex key={line.productId.toString()} gap="card" justify="space-between" align="start">
-                          <Stack gap="0" flex="1" minW="0">
-                            <Text fontSize="sm" lineClamp={1}>
-                              {line.name || line.sku}
-                            </Text>
-                            <Text fontSize="xs" color="fg.muted">
+                        <div key={line.productId.toString()} className="flex items-start justify-between gap-card">
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="line-clamp-1 text-sm">{line.name || line.sku}</span>
+                            <span className="text-xs text-fg-muted">
                               {t("restock.summary.perPiece", {
                                 qty: toQty(line.quantity),
                                 // Derived for the eye only (#140) — the TOTAL is what is stored and sent.
@@ -673,55 +649,49 @@ export function RestockRequestFormPage() {
                                     : 0n,
                                 ),
                               })}
-                            </Text>
-                          </Stack>
-                          <Text fontSize="sm" flexShrink={0}>
-                            {formatRupiah(lineTotal(line))}
-                          </Text>
-                        </Flex>
+                            </span>
+                          </div>
+                          <span className="shrink-0 text-sm">{formatRupiah(lineTotal(line))}</span>
+                        </div>
                       ))}
-                    </Stack>
+                    </div>
                   )}
 
-                  <Separator />
+                  <div className="border-t border-line" />
 
-                  <Flex align="center" justify="space-between" gap="card">
-                    <Text fontSize="sm" fontWeight="medium">
-                      {t("restock.summary.productsTotal")}
-                    </Text>
-                    <Text fontSize="sm" fontWeight="semibold" data-testid="restock-summary-products">
+                  <div className="flex items-center justify-between gap-card">
+                    <span className="text-sm font-medium">{t("restock.summary.productsTotal")}</span>
+                    <span className="text-sm font-semibold" data-testid="restock-summary-products">
                       {formatRupiah(productsTotal)}
-                    </Text>
-                  </Flex>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+                    </span>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
 
             {/* ─── F — the freight, as entered in B ──────────────────────────────────────── */}
-            <Card.Root>
-              <Card.Body>
-                <Flex align="center" justify="space-between" gap="card">
-                  <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-                    {t("restock.form.shippingCost")}
-                  </Text>
-                  <Text fontSize="sm" fontWeight="semibold" data-testid="restock-summary-shipping">
+            <Card>
+              <CardBody>
+                <div className="flex items-center justify-between gap-card">
+                  <span className="text-sm font-medium text-fg-muted">{t("restock.form.shippingCost")}</span>
+                  <span className="text-sm font-semibold" data-testid="restock-summary-shipping">
                     {formatRupiah(shippingCostValue)}
-                  </Text>
-                </Flex>
-              </Card.Body>
-            </Card.Root>
+                  </span>
+                </div>
+              </CardBody>
+            </Card>
 
             {/* ─── G — products + freight, the number being agreed to ────────────────────── */}
-            <Card.Root bg="brand.subtle" borderColor="brand.emphasized">
-              <Card.Body>
-                <Flex align="center" justify="space-between" gap="card">
-                  <Text fontWeight="semibold">{t("restock.summary.grandTotal")}</Text>
-                  <Text fontSize="lg" fontWeight="bold" data-testid="restock-summary-total">
+            <div className="rounded-card border border-transparent bg-accent-soft shadow-card">
+              <div className="p-4">
+                <div className="flex items-center justify-between gap-card">
+                  <span className="font-semibold">{t("restock.summary.grandTotal")}</span>
+                  <span className="text-lg font-bold" data-testid="restock-summary-total">
                     {formatRupiah(grandTotal)}
-                  </Text>
-                </Flex>
-              </Card.Body>
-            </Card.Root>
+                  </span>
+                </div>
+              </div>
+            </div>
 
             <Button
               type="submit"
@@ -732,9 +702,9 @@ export function RestockRequestFormPage() {
             >
               {isEdit ? t("restock.form.saveChanges") : t("restock.form.submit")}
             </Button>
-          </Stack>
-        </Flex>
+          </div>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 }

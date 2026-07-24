@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  Card,
-  Field,
-  Heading,
-  Input,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../api/clients";
 import { useAuth } from "../../features/auth/AuthContext";
 import { toaster } from "../../components/Toaster";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Spinner } from "../../components/ui/Spinner";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { ProfilePicture } from "./components/ProfilePicture";
 
@@ -72,67 +66,65 @@ export function ProfilePage() {
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   return (
-    <Stack gap="section" maxW="md">
-      <Heading size="md">{t("account.myProfile")}</Heading>
+    <div className="flex max-w-md flex-col gap-section">
+      <h1 className="text-[22px] font-bold">{t("account.myProfile")}</h1>
 
-      <Card.Root>
-        <Card.Body>
+      <Card>
+        <CardBody>
           <ProfilePicture
             avatarUrl={avatarUrl || undefined}
             name={name || identity?.username}
             onUpdated={(newAvatarUrl) => setAvatarUrl(newAvatarUrl)}
           />
-        </Card.Body>
-      </Card.Root>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
+      <Card>
+        <CardBody>
           <form onSubmit={save}>
-            <Stack gap="card">
-              <Text color="fg.muted" fontSize="sm" data-testid="profile-username">
+            <div className="flex flex-col gap-card">
+              <p className="text-sm text-fg-muted" data-testid="profile-username">
                 {t("account.signedInAs")} <strong>{identity?.username}</strong>
-              </Text>
+              </p>
 
               <Field.Root>
                 <Field.Label>{t("account.name")}</Field.Label>
-                <Input value={name} data-testid="profile-name" onChange={(e) => setName(e.target.value)} />
+                <Field.Input value={name} data-testid="profile-name" onChange={(e) => setName(e.target.value)} />
               </Field.Root>
 
               <Field.Root>
                 <Field.Label>{t("account.email")}</Field.Label>
-                <Input value={email} data-testid="profile-email" onChange={(e) => setEmail(e.target.value)} />
+                <Field.Input value={email} data-testid="profile-email" onChange={(e) => setEmail(e.target.value)} />
               </Field.Root>
 
               <Field.Root>
                 <Field.Label>{t("account.phone")}</Field.Label>
-                <Input value={phone} data-testid="profile-phone" onChange={(e) => setPhone(e.target.value)} />
+                <Field.Input value={phone} data-testid="profile-phone" onChange={(e) => setPhone(e.target.value)} />
               </Field.Root>
 
               <Button type="submit" colorPalette="brand" loading={busy} data-testid="save-profile">
                 {t("account.save")}
               </Button>
-            </Stack>
+            </div>
           </form>
-        </Card.Body>
-      </Card.Root>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Heading size="sm">{t("account.password")}</Heading>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <h2 className="text-[15px] font-semibold">{t("account.password")}</h2>
 
-            <Text color="fg.muted" fontSize="sm">
-              {t("account.changePasswordWarning")}
-            </Text>
+            <p className="text-sm text-fg-muted">{t("account.changePasswordWarning")}</p>
 
             <ChangePasswordDialog />
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

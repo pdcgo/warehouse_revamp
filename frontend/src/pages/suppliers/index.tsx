@@ -1,21 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
+import { Badge } from "../../components/ui/Badge";
+import { IconButton } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { rpcError } from "../../api/clients";
 import type { Supplier } from "../../gen/warehouse/inventory/v1/supplier_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -73,27 +64,26 @@ export function SuppliersPage() {
   // No current team means there is no scope to list against — the whole page is meaningless.
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("suppliers.title")}</Heading>
-        <Text color="fg.muted" data-testid="suppliers-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("suppliers.title")}</h1>
+        <p className="text-fg-muted" data-testid="suppliers-no-team">
           {t("suppliers.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("suppliers.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("suppliers.title")}</h1>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        <Spacer />
+        <div className="flex-1" />
         {canManage && <SupplierFormDialog />}
-      </Flex>
+      </div>
 
-      <HStack>
+      <div className="max-w-sm">
         <Input
-          maxW="sm"
           placeholder={t("suppliers.searchPlaceholder")}
           value={q}
           data-testid="supplier-search"
@@ -102,18 +92,18 @@ export function SuppliersPage() {
             setQ(e.target.value);
           }}
         />
-      </HStack>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="suppliers-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="suppliers-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="suppliers-table">
+        <Table.Root data-testid="suppliers-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("suppliers.table.code")}</Table.ColumnHeader>
@@ -121,7 +111,7 @@ export function SuppliersPage() {
               <Table.ColumnHeader>{t("suppliers.table.contact")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("suppliers.table.city")}</Table.ColumnHeader>
               {canManage && (
-                <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>
+                <Table.ColumnHeader className="text-right">{t("suppliers.table.actions")}</Table.ColumnHeader>
               )}
             </Table.Row>
           </Table.Header>
@@ -131,8 +121,7 @@ export function SuppliersPage() {
               <Table.Row
                 key={supplier.id.toString()}
                 data-testid={`supplier-row-${supplier.code}`}
-                cursor="pointer"
-                _hover={{ bg: "bg.subtle" }}
+                className="cursor-pointer hover:bg-surface-2"
                 onClick={() => navigate(`/inventories/suppliers/${supplier.id}`)}
               >
                 <Table.Cell data-testid={`supplier-open-${supplier.id}`}>{supplier.code}</Table.Cell>
@@ -142,8 +131,8 @@ export function SuppliersPage() {
 
                 {canManage && (
                   // Stop the row's navigate from firing when a row action is used.
-                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                    <HStack justify="end" gap="1">
+                  <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-1">
                       <IconButton
                         size="xs"
                         variant="ghost"
@@ -151,7 +140,7 @@ export function SuppliersPage() {
                         data-testid={`edit-${supplier.code}`}
                         onClick={() => setEditing(supplier)}
                       >
-                        <Icon as={Pencil} boxSize="4" />
+                        <Pencil className="size-4" />
                       </IconButton>
 
                       <ConfirmDialog
@@ -167,11 +156,11 @@ export function SuppliersPage() {
                             aria-label="Delete"
                             data-testid={`delete-${supplier.code}`}
                           >
-                            <Icon as={Trash2} boxSize="4" />
+                            <Trash2 className="size-4" />
                           </IconButton>
                         }
                       />
-                    </HStack>
+                    </div>
                   </Table.Cell>
                 )}
               </Table.Row>
@@ -181,9 +170,9 @@ export function SuppliersPage() {
       )}
 
       {!loading && suppliers.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="suppliers-empty">
+        <p className="text-fg-muted" data-testid="suppliers-empty">
           {t("suppliers.empty")}
-        </Text>
+        </p>
       )}
 
       <Pagination
@@ -209,6 +198,6 @@ export function SuppliersPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

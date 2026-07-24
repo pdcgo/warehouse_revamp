@@ -1,16 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { rpcError } from "../../../api/clients";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../../components/Toaster";
@@ -105,11 +99,11 @@ export function CreateTeamDialog({
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="create-team-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="create-team-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   {fixedType === undefined ? (
@@ -121,16 +115,16 @@ export function CreateTeamDialog({
                   ) : (
                     <Field.Root>
                       <Field.Label>{t("teams.type")}</Field.Label>
-                      <Text fontWeight="medium" data-testid="new-team-type-fixed">
+                      <p className="font-medium" data-testid="new-team-type-fixed">
                         {lockedLabel}
-                      </Text>
+                      </p>
                       <Field.HelperText>{t("teams.lockedForView")}</Field.HelperText>
                     </Field.Root>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("teams.name")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={name}
                       data-testid="new-team-name"
                       onChange={(e) => setName(e.target.value)}
@@ -140,7 +134,7 @@ export function CreateTeamDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("teams.teamCode")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={teamCode}
                       data-testid="new-team-code"
                       onChange={(e) => setTeamCode(e.target.value)}
@@ -150,19 +144,19 @@ export function CreateTeamDialog({
 
                   <Field.Root>
                     <Field.Label>{t("teams.description")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={description}
                       data-testid="new-team-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
+                <Dialog.CloseTrigger asChild>
                   <Button variant="outline">{t("teams.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                </Dialog.CloseTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-create-team">
                   {t("teams.create")}
@@ -170,7 +164,9 @@ export function CreateTeamDialog({
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton size="sm" aria-label={t("teams.cancel")} className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

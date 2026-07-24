@@ -1,18 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Alert,
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+import { TriangleAlert, X } from "lucide-react";
 import { authClient, rpcError } from "../../../api/clients";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { PasswordInput } from "../../../components/PasswordInput";
 import { toaster } from "../../../components/Toaster";
 
@@ -26,6 +19,20 @@ import { toaster } from "../../../components/Toaster";
 //   2. ResetPasswordWithOtp(username, code, new_password) — verifies the code and sets the
 //      password. It returns NO token: recovery ends at the login screen, a clean new session.
 type Step = "request" | "verify";
+
+// A bordered error alert — the app's replacement for Chakra's Alert. Same shape in both steps.
+function ErrorAlert({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      data-testid="forgot-error"
+      className="flex items-start gap-2 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+    >
+      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
 
 export function ForgotPasswordDialog() {
   const { t } = useTranslation();
@@ -131,36 +138,29 @@ export function ForgotPasswordDialog() {
             {step === "request" ? (
               <form onSubmit={requestCode}>
                 <Dialog.Body>
-                  <Stack gap="card">
-                    <Text color="fg.muted" fontSize="sm">
-                      {t("account.enterUsernameHint")}
-                    </Text>
+                  <div className="flex flex-col gap-card">
+                    <p className="text-sm text-fg-muted">{t("account.enterUsernameHint")}</p>
 
-                    {error && (
-                      <Alert.Root status="error" data-testid="forgot-error">
-                        <Alert.Indicator />
-                        <Alert.Content>{error}</Alert.Content>
-                      </Alert.Root>
-                    )}
+                    {error && <ErrorAlert message={error} />}
 
                     <Field.Root required>
                       <Field.Label>{t("account.username")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={username}
                         autoComplete="username"
                         data-testid="forgot-username"
                         onChange={(e) => setUsername(e.target.value)}
                       />
                     </Field.Root>
-                  </Stack>
+                  </div>
                 </Dialog.Body>
 
                 <Dialog.Footer>
-                  <Dialog.ActionTrigger asChild>
-                    <Button type="button" variant="outline">
+                  <Dialog.CloseTrigger asChild>
+                    <Button type="button" variant="outline" colorPalette="gray">
                       {t("account.cancel")}
                     </Button>
-                  </Dialog.ActionTrigger>
+                  </Dialog.CloseTrigger>
 
                   <Button type="submit" colorPalette="brand" loading={busy} data-testid="request-otp">
                     {t("account.sendCode")}
@@ -170,22 +170,17 @@ export function ForgotPasswordDialog() {
             ) : (
               <form onSubmit={submitReset}>
                 <Dialog.Body>
-                  <Stack gap="card">
-                    <Text color="fg.muted" fontSize="sm">
+                  <div className="flex flex-col gap-card">
+                    <p className="text-sm text-fg-muted">
                       {t("account.enterCodePrefix")} <strong>{username}</strong>{" "}
                       {t("account.enterCodeSuffix")}
-                    </Text>
+                    </p>
 
-                    {error && (
-                      <Alert.Root status="error" data-testid="forgot-error">
-                        <Alert.Indicator />
-                        <Alert.Content>{error}</Alert.Content>
-                      </Alert.Root>
-                    )}
+                    {error && <ErrorAlert message={error} />}
 
                     <Field.Root required>
                       <Field.Label>{t("account.code")}</Field.Label>
-                      <Input
+                      <Field.Input
                         value={code}
                         inputMode="numeric"
                         autoComplete="one-time-code"
@@ -214,11 +209,11 @@ export function ForgotPasswordDialog() {
                         onChange={(e) => setConfirm(e.target.value)}
                       />
                     </Field.Root>
-                  </Stack>
+                  </div>
                 </Dialog.Body>
 
                 <Dialog.Footer>
-                  <Button type="button" variant="outline" onClick={() => setStep("request")}>
+                  <Button type="button" variant="outline" colorPalette="gray" onClick={() => setStep("request")}>
                     {t("account.back")}
                   </Button>
 
@@ -230,7 +225,9 @@ export function ForgotPasswordDialog() {
             )}
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton size="sm" aria-label={t("account.cancel")} className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

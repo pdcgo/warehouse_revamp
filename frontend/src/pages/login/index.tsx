@@ -1,18 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Alert,
-  Button,
-  Card,
-  Checkbox,
-  Field,
-  Flex,
-  Heading,
-  Input,
-  Stack,
-} from "@chakra-ui/react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { TriangleAlert } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { Field } from "../../components/ui/Field";
 import { Logo } from "../../components/Logo";
 import { PasswordInput } from "../../components/PasswordInput";
 import { ForgotPasswordDialog } from "./components/ForgotPasswordDialog";
@@ -52,25 +46,29 @@ export function LoginPage() {
   }
 
   return (
-    <Stack align="center" justify="center" minH="100dvh" p="page">
-      <Card.Root maxW="sm" w="full">
-        <Card.Body>
+    <div className="flex min-h-dvh flex-col items-center justify-center p-page">
+      <Card className="w-full max-w-sm">
+        <CardBody>
           <form onSubmit={onSubmit}>
-            <Stack gap="section">
+            <div className="flex flex-col gap-section">
               <Logo size={40} className="justify-center pb-1" />
 
-              <Heading size="md">{t("account.signIn")}</Heading>
+              <h1 className="text-[22px] font-bold">{t("account.signIn")}</h1>
 
               {error && (
-                <Alert.Root status="error" data-testid="login-error">
-                  <Alert.Indicator />
-                  <Alert.Content>{error}</Alert.Content>
-                </Alert.Root>
+                <div
+                  role="alert"
+                  data-testid="login-error"
+                  className="flex items-start gap-2 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+                >
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
 
               <Field.Root>
                 <Field.Label>{t("account.username")}</Field.Label>
-                <Input
+                <Field.Input
                   value={username}
                   autoComplete="username"
                   onChange={(e) => setUsername(e.target.value)}
@@ -86,26 +84,21 @@ export function LoginPage() {
                 />
               </Field.Root>
 
-              <Checkbox.Root
-                checked={remember}
-                onCheckedChange={(e) => setRemember(!!e.checked)}
-              >
-                <Checkbox.HiddenInput />
-                <Checkbox.Control />
-                <Checkbox.Label>{t("account.rememberMe")}</Checkbox.Label>
-              </Checkbox.Root>
+              <Checkbox checked={remember} onCheckedChange={setRemember}>
+                {t("account.rememberMe")}
+              </Checkbox>
 
               <Button type="submit" colorPalette="brand" loading={busy}>
                 {t("account.signIn")}
               </Button>
 
-              <Flex justify="center">
+              <div className="flex justify-center">
                 <ForgotPasswordDialog />
-              </Flex>
-            </Stack>
+              </div>
+            </div>
           </form>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

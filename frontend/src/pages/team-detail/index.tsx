@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Icon, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamDetailCommon } from "./components/TeamDetailCommon";
@@ -41,26 +42,27 @@ export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
   const error = teamId === 0n ? "Invalid team id." : query.isError ? rpcError(query.error) : "";
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !team) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          colorPalette="gray"
+          className="self-start"
           data-testid="team-detail-back"
           onClick={() => navigate(backTo)}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           Back
         </Button>
-        <Text color="red.fg" data-testid="team-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="team-detail-error">
           {error || "Team not found."}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 

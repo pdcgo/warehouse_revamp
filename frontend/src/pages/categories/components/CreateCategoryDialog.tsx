@@ -1,17 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
+import { Button, IconButton } from "../../../components/ui/Button";
+import { Dialog, Portal } from "../../../components/ui/Dialog";
+import { Field } from "../../../components/ui/Field";
 import { toaster } from "../../../components/Toaster";
 import { CategorySelect } from "../../../components/CategorySelect";
 import { useSaveCategory } from "../queries";
@@ -68,16 +62,16 @@ export function CreateCategoryDialog() {
               </Dialog.Header>
 
               <Dialog.Body>
-                <Stack gap="card">
+                <div className="flex flex-col gap-card">
                   {error && (
-                    <Text color="red.fg" data-testid="create-category-error">
+                    <p className="text-red-600 dark:text-red-400" data-testid="create-category-error">
                       {error}
-                    </Text>
+                    </p>
                   )}
 
                   <Field.Root required>
                     <Field.Label>{t("catalog.name")}</Field.Label>
-                    <Input
+                    <Field.Input
                       value={name}
                       data-testid="new-category-name"
                       onChange={(e) => setName(e.target.value)}
@@ -89,13 +83,15 @@ export function CreateCategoryDialog() {
                     <CategorySelect value={parentId} onChange={setParentId} />
                     <Field.HelperText>{t("catalog.categories.parentHelpCreate")}</Field.HelperText>
                   </Field.Root>
-                </Stack>
+                </div>
               </Dialog.Body>
 
               <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("catalog.cancel")}</Button>
-                </Dialog.ActionTrigger>
+                <Dialog.CloseTrigger asChild>
+                  <Button type="button" variant="outline" colorPalette="gray">
+                    {t("catalog.cancel")}
+                  </Button>
+                </Dialog.CloseTrigger>
 
                 <Button
                   type="submit"
@@ -108,7 +104,9 @@ export function CreateCategoryDialog() {
               </Dialog.Footer>
 
               <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
+                <IconButton type="button" size="sm" aria-label="Close" className="absolute right-3 top-3">
+                  <X className="size-4" />
+                </IconButton>
               </Dialog.CloseTrigger>
             </form>
           </Dialog.Content>

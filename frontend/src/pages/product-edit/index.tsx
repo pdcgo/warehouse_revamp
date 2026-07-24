@@ -2,22 +2,12 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  Card,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Spinner,
-  Stack,
-  Text,
-  Textarea,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { productClient, rpcError } from "../../api/clients";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Spinner } from "../../components/ui/Spinner";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveProduct } from "../../features/products/queries";
@@ -140,25 +130,25 @@ export function ProductEditPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("products.heading")}</Heading>
-        <Text color="fg.muted" data-testid="product-edit-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("products.heading")}</h1>
+        <p className="text-fg-muted" data-testid="product-edit-no-team">
           {t("products.noTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   // Category is required; SKU and name too. The backend enforces all three regardless.
   const canSave = sku.trim() !== "" && name.trim() !== "" && categoryId > 0n;
 
   return (
-    <Stack gap="section" maxW="2xl" data-testid="product-edit-page">
-      <Flex align="center" gap="card">
+    <div className="flex max-w-2xl flex-col gap-section" data-testid="product-edit-page">
+      <div className="flex items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -166,35 +156,37 @@ export function ProductEditPage() {
           data-testid="product-edit-back"
           onClick={() => navigate("/products")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">{editing ? t("products.form.editTitle") : t("products.form.newTitle")}</Heading>
-      </Flex>
+        <h1 className="text-[22px] font-bold">
+          {editing ? t("products.form.editTitle") : t("products.form.newTitle")}
+        </h1>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="product-edit-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="product-edit-error">
           {error}
-        </Text>
+        </p>
       )}
 
       <form onSubmit={save} noValidate>
-        <Stack gap="section">
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
+        <div className="flex flex-col gap-section">
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
                 <Field.Root required>
                   <Field.Label>{t("products.field.sku")}</Field.Label>
-                  <Input value={sku} data-testid="product-edit-sku" onChange={(e) => setSku(e.target.value)} />
+                  <Field.Input value={sku} data-testid="product-edit-sku" onChange={(e) => setSku(e.target.value)} />
                 </Field.Root>
 
                 <Field.Root required>
                   <Field.Label>{t("products.field.name")}</Field.Label>
-                  <Input value={name} data-testid="product-edit-name" onChange={(e) => setName(e.target.value)} />
+                  <Field.Input value={name} data-testid="product-edit-name" onChange={(e) => setName(e.target.value)} />
                 </Field.Root>
 
                 <Field.Root>
                   <Field.Label>{t("products.field.description")}</Field.Label>
-                  <Textarea
+                  <Field.Textarea
                     value={description}
                     data-testid="product-edit-description"
                     onChange={(e) => setDescription(e.target.value)}
@@ -211,20 +203,20 @@ export function ProductEditPage() {
                   />
                   <Field.HelperText>{t("products.form.categoryHelp")}</Field.HelperText>
                 </Field.Root>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Text fontWeight="medium">{t("products.images")}</Text>
+          <Card>
+            <CardBody>
+              <div className="flex flex-col gap-card">
+                <p className="font-medium">{t("products.images")}</p>
                 <ProductImagesInput teamId={teamId ?? 0n} value={images} onChange={setImages} />
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
 
-          <Flex justify="end">
+          <div className="flex justify-end">
             <Button
               type="submit"
               colorPalette="brand"
@@ -234,9 +226,9 @@ export function ProductEditPage() {
             >
               {editing ? t("products.save") : t("products.create")}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 }
