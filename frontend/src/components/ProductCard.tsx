@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Avatar, Badge, Box, Card, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Package } from "lucide-react";
+import { Badge } from "./ui/Badge";
+import { Card } from "./ui/Card";
 
 export interface ProductCardProps {
   // The SAME shape ProductListItem takes — any product-shaped object, everything optional, so a
@@ -39,8 +40,8 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
 
   // The FULL image first here, thumbnail as the fallback — the reverse of ProductListItem, and
   // deliberate: this cover is a few hundred pixels wide, so a list-sized thumbnail would be upscaled
-  // and soft. A product may have NEITHER — Avatar.Fallback then shows the package icon, which also
-  // covers a URL that 404s (an <img> that fails to load would otherwise leave a broken-image glyph).
+  // and soft. A product may have NEITHER — the package icon then shows, which also covers a URL that
+  // 404s (an <img> that fails to load would otherwise leave a broken-image glyph).
   const cover = product.defaultImageUrl || product.defaultImageThumbnailUrl;
 
   const title =
@@ -65,58 +66,60 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
   const inStock = stock !== undefined && stock > 0n;
 
   return (
-    // `h="full"` so cards in a grid row share a height regardless of how long their names run; the
+    // `h-full` so cards in a grid row share a height regardless of how long their names run; the
     // cover then lines up across the row, which is what makes a grid scannable. Outside a grid the
     // percentage resolves against an auto-height parent and does nothing.
-    <Card.Root variant="outline" overflow="hidden" h="full" data-testid={`product-card-${product.id ?? ""}`}>
+    <Card
+      className="flex h-full flex-col overflow-hidden"
+      data-testid={`product-card-${product.id ?? ""}`}
+    >
       {/* A square cover — the marketplace convention, and it keeps every card the same shape whatever
-          the source image is. Avatar sizes itself from --avatar-size, so size="full" hands the sizing
-          to this Box; the Box's aspect ratio is then the single thing deciding the cover's height. */}
-      <Box aspectRatio="1" w="full">
-        {/* `display="flex"` overrides the recipe's inline-flex: an inline-level box sits on the text
-            baseline, which would leave a sliver of gap under the cover. It keeps the recipe's
-            centring, so the fallback icon stays centred. */}
-        <Avatar.Root size="full" shape="square" variant="subtle" colorPalette="gray" display="flex">
-          <Avatar.Fallback>
-            <Icon as={Package} boxSize="8" />
-          </Avatar.Fallback>
-          <Avatar.Image src={cover || undefined} alt={title} />
-        </Avatar.Root>
-      </Box>
-
-      <Card.Body p="card" gap="field">
-        <Stack gap="0.5" minW="0">
-          <Text fontWeight="medium" lineClamp={2}>
-            {title}
-          </Text>
-          {sku && (
-            <Text fontSize="xs" color="fg.muted" lineClamp={1}>
-              {sku}
-            </Text>
+          the source image is. The aspect-square box decides the cover's height; the tinted panel
+          inside fills it and centres the package placeholder, and the image (when it loads) covers
+          both. The <img> hides itself on load failure, revealing the placeholder beneath. */}
+      <div className="aspect-square w-full">
+        <div className="relative flex size-full items-center justify-center overflow-hidden bg-surface-2 text-fg-muted">
+          <Package className="size-8" />
+          {cover && (
+            <img
+              key={cover}
+              src={cover}
+              alt={title}
+              className="absolute inset-0 size-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
           )}
-        </Stack>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-field p-card">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="line-clamp-2 font-medium">{title}</p>
+          {sku && <p className="line-clamp-1 text-xs text-fg-muted">{sku}</p>}
+        </div>
 
         {(team || showStock) && (
-          <HStack gap="2" wrap="wrap" mt="auto">
+          <div className="mt-auto flex flex-wrap items-center gap-2">
             {team && (
-              <Badge colorPalette="gray" size="xs" lineClamp={1}>
+              <Badge colorPalette="gray" className="line-clamp-1">
                 {team}
               </Badge>
             )}
             {showStock && (
               <Badge
                 colorPalette={inStock ? "green" : "red"}
-                size="xs"
                 data-testid={`product-card-stock-${product.id ?? ""}`}
               >
                 {inStock ? t("productListItem.stock", { n: stock.toString() }) : t("productListItem.outOfStock")}
               </Badge>
             )}
-          </HStack>
+          </div>
         )}
-      </Card.Body>
+      </div>
 
-      {action && <Card.Footer p="card" pt="0">{action}</Card.Footer>}
-    </Card.Root>
+      {action && <div className="p-card pt-0">{action}</div>}
+    </Card>
   );
 }

@@ -405,7 +405,7 @@ export function OrderCreatePage() {
                 <Field.Root>
                   <Field.Label>{t("orders.shippingCost")}</Field.Label>
                   <CurrencyInput
-                    w="40"
+                    className="w-40"
                     value={shippingCost}
                     data-testid="order-create-shipping-cost"
                     onChange={setShippingCost}

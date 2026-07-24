@@ -1,5 +1,5 @@
-import { IconButton, Icon } from "@chakra-ui/react";
 import { Moon, Sun } from "lucide-react";
+import { IconButton } from "./ui/Button";
 import { useColorMode, toggleColorMode } from "../lib/colorMode";
 
 export const description =
@@ -10,6 +10,7 @@ export const description =
 export function ColorModeToggle() {
   const mode = useColorMode();
   const next = mode === "dark" ? "light" : "dark";
+  const ModeIcon = mode === "dark" ? Sun : Moon;
 
   return (
     <IconButton
@@ -20,7 +21,7 @@ export function ColorModeToggle() {
       data-testid="color-mode-toggle"
       onClick={toggleColorMode}
     >
-      <Icon as={mode === "dark" ? Sun : Moon} boxSize="4" />
+      <ModeIcon className="size-4" />
     </IconButton>
   );
 }

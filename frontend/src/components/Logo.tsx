@@ -1,5 +1,5 @@
-import { HStack, Text } from "@chakra-ui/react";
-import type { StackProps } from "@chakra-ui/react";
+import type { HTMLAttributes } from "react";
+import { cn } from "./ui/cn";
 
 // The brand mark: a minimalist pitched-roof warehouse with a roller door. Line style (stroke,
 // currentColor, no fill) so it matches the lucide icons; it inherits the surrounding `color`, which
@@ -33,16 +33,15 @@ export function WarehouseMark({ size = 24 }: { size?: number }) {
 export function Logo({
   size = 24,
   showWordmark = true,
+  className,
   ...rest
-}: { size?: number; showWordmark?: boolean } & StackProps) {
+}: { size?: number; showWordmark?: boolean } & HTMLAttributes<HTMLDivElement>) {
   return (
-    <HStack gap="2.5" color="brand.solid" {...rest}>
+    <div className={cn("flex items-center gap-2.5 text-accent", className)} {...rest}>
       <WarehouseMark size={size} />
       {showWordmark && (
-        <Text fontSize="lg" fontWeight="semibold" letterSpacing="tight" lineHeight="1">
-          PDC Warehouse
-        </Text>
+        <span className="text-lg font-semibold leading-none tracking-tight">PDC Warehouse</span>
       )}
-    </HStack>
+    </div>
   );
 }

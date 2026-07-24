@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Portal, Select, createListCollection } from "@chakra-ui/react";
+import { Select } from "./ui/Select";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 
 // teamTypeLabel is the shared display name for a team type — used by the picker below and by
@@ -37,7 +37,7 @@ export interface TeamTypeSelectProps {
 
 // TeamTypeSelect is the shared team-type picker (#45), built on Chakra's composable Select. It
 // emits a TeamType, so callers work in the enum, not strings.
-export const description = "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.";
+export const description = "Team-type picker (Select). Emits a TeamType; defaults to the creatable set.";
 
 export function TeamTypeSelect({
   value,
@@ -46,47 +46,28 @@ export function TeamTypeSelect({
   placeholder = "Team type",
   disabled,
 }: TeamTypeSelectProps) {
-  const collection = useMemo(
-    () =>
-      createListCollection({ items: types.map((t) => ({ label: teamTypeLabel(t), value: String(t) })) }),
+  const options = useMemo(
+    () => types.map((t) => ({ label: teamTypeLabel(t), value: String(t) })),
     [types],
   );
 
   return (
-    <Select.Root
-      collection={collection}
+    <Select
+      data-testid="team-type-select"
       disabled={disabled}
-      value={value !== undefined ? [String(value)] : []}
-      onValueChange={(e) => {
-        const picked = e.value[0];
-        if (picked !== undefined) {
-          onChange?.(Number(picked) as TeamType);
-        }
+      value={value !== undefined ? String(value) : ""}
+      onChange={(e) => {
+        if (e.target.value !== "") onChange?.(Number(e.target.value) as TeamType);
       }}
     >
-      <Select.HiddenSelect />
-
-      <Select.Control>
-        <Select.Trigger data-testid="team-type-select">
-          <Select.ValueText placeholder={placeholder} />
-        </Select.Trigger>
-        <Select.IndicatorGroup>
-          <Select.Indicator />
-        </Select.IndicatorGroup>
-      </Select.Control>
-
-      <Portal>
-        <Select.Positioner>
-          <Select.Content>
-            {collection.items.map((item) => (
-              <Select.Item item={item} key={item.value}>
-                <Select.ItemText>{item.label}</Select.ItemText>
-                <Select.ItemIndicator />
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Positioner>
-      </Portal>
-    </Select.Root>
+      <option value="" disabled>
+        {placeholder}
+      </option>
+      {options.map((item) => (
+        <option key={item.value} value={item.value}>
+          {item.label}
+        </option>
+      ))}
+    </Select>
   );
 }

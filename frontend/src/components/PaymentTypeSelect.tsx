@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Portal, Select, createListCollection } from "@chakra-ui/react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { Select } from "./ui/Select";
 import { RestockPaymentType } from "../gen/warehouse/inventory/v1/restock_request_pb";
 
 // paymentTypeLabel is the shared display name for a payment type — used by the picker below and by
@@ -49,40 +49,34 @@ export interface PaymentTypeSelectProps {
 // bundle for the other pickers, so there is no weight to earn, and a native dropdown does not look or
 // behave like the rest of the form around it.
 export const description =
-  'Payment-type picker (Chakra Select). Emits a RestockPaymentType; the "not recorded" option is selectable, because having recorded no payment is a real answer.';
+  'Payment-type picker (Select). Emits a RestockPaymentType; the "not recorded" option is selectable, because having recorded no payment is a real answer.';
 
 export function PaymentTypeSelect({ value, onChange, placeholder, disabled }: PaymentTypeSelectProps) {
   const { t } = useTranslation();
 
   const noneLabel = placeholder ?? t("restock.form.paymentTypeNone");
 
-  const collection = useMemo(
-    () =>
-      createListCollection({
-        // "Not recorded" is an ITEM, not a disabled placeholder — unlike the pickers where an
-        // unanswered field is invalid. A person must be able to go back to having recorded no payment
-        // type, and #131 is the bug that taught this: a picker you cannot un-set is write-once.
-        items: [
-          { label: noneLabel, value: NONE },
-          ...PAYMENT_TYPES.map((type) => ({
-            label: paymentTypeLabel(t, type),
-            value: String(type),
-          })),
-        ],
-      }),
+  const items = useMemo(
+    () => [
+      // "Not recorded" is an ITEM, not a disabled placeholder — unlike the pickers where an
+      // unanswered field is invalid. A person must be able to go back to having recorded no payment
+      // type, and #131 is the bug that taught this: a picker you cannot un-set is write-once.
+      { label: noneLabel, value: NONE },
+      ...PAYMENT_TYPES.map((type) => ({
+        label: paymentTypeLabel(t, type),
+        value: String(type),
+      })),
+    ],
     [t, noneLabel],
   );
 
   return (
-    <Select.Root
-      collection={collection}
+    <Select
+      data-testid="restock-payment-type"
       disabled={disabled}
-      value={[
-        value === undefined || value === RestockPaymentType.UNSPECIFIED ? NONE : String(value),
-      ]}
-      onValueChange={(e) => {
-        const picked = e.value[0];
-        if (picked === undefined) return;
+      value={value === undefined || value === RestockPaymentType.UNSPECIFIED ? NONE : String(value)}
+      onChange={(e) => {
+        const picked = e.target.value;
 
         onChange?.(
           picked === NONE
@@ -91,29 +85,11 @@ export function PaymentTypeSelect({ value, onChange, placeholder, disabled }: Pa
         );
       }}
     >
-      <Select.HiddenSelect />
-
-      <Select.Control>
-        <Select.Trigger data-testid="restock-payment-type">
-          <Select.ValueText placeholder={noneLabel} />
-        </Select.Trigger>
-        <Select.IndicatorGroup>
-          <Select.Indicator />
-        </Select.IndicatorGroup>
-      </Select.Control>
-
-      <Portal>
-        <Select.Positioner>
-          <Select.Content>
-            {collection.items.map((item) => (
-              <Select.Item item={item} key={item.value} data-testid={`payment-type-${item.value}`}>
-                <Select.ItemText>{item.label}</Select.ItemText>
-                <Select.ItemIndicator />
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Positioner>
-      </Portal>
-    </Select.Root>
+      {items.map((item) => (
+        <option key={item.value} value={item.value} data-testid={`payment-type-${item.value}`}>
+          {item.label}
+        </option>
+      ))}
+    </Select>
   );
 }

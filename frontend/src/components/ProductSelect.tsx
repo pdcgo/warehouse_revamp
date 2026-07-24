@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, Span, Stack, useListCollection } from "@chakra-ui/react";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
 import { useProductSearch } from "../features/products/queries";
 import { useDebounced } from "../lib/useDebounced";
 
@@ -36,7 +36,7 @@ export interface ProductSelectProps {
 // a catalogue grows without limit, so this searches SERVER-side (ProductList's `q`, min 2 chars) the
 // way UserSelect does, and renders each option as "sku — name". It emits the whole PickedProduct so
 // the caller can snapshot sku/name onto the line; the buyer-paid unit price is entered separately.
-export const description = "Searchable product picker (Chakra Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
+export const description = "Searchable product picker (Combobox, server-side). Emits the picked product's id + sku + name snapshot. `scope`: \"team\" (default, this team's catalogue) or \"all\" (cross-team discovery, #110).";
 
 export function ProductSelect({
   teamId,
@@ -95,12 +95,10 @@ export function ProductSelect({
             </Combobox.Empty>
             {collection.items.map((p) => (
               <Combobox.Item item={p} key={p.id.toString()} data-testid={`product-select-option-${p.sku}`}>
-                <Stack gap="0">
-                  <Span fontWeight="medium">{p.sku}</Span>
-                  <Span fontSize="xs" color="fg.muted">
-                    {p.name}
-                  </Span>
-                </Stack>
+                <div className="flex flex-col">
+                  <span className="font-medium">{p.sku}</span>
+                  <span className="text-xs text-fg-muted">{p.name}</span>
+                </div>
                 <Combobox.ItemIndicator />
               </Combobox.Item>
             ))}

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Portal, Select, createListCollection } from "@chakra-ui/react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { Select } from "./ui/Select";
 import { ExpenseKind } from "../gen/warehouse/expense/v1/expense_pb";
 
 // expenseKindLabel is the shared display name for a cost kind — used by the picker below and by callers
@@ -60,7 +60,7 @@ export interface ExpenseKindSelectProps {
 // Chakra's composable Select, matching PaymentTypeSelect after #165 — a native dropdown does not look
 // or behave like the form around it, and Select is already in the bundle.
 export const description =
-  'Cost-kind picker (Chakra Select). Emits a ExpenseKind. With `filter`, it also offers "any kind" for narrowing a list; without it, every option is a real kind because the contract refuses UNSPECIFIED on create.';
+  'Cost-kind picker (Select). Emits a ExpenseKind. With `filter`, it also offers "any kind" for narrowing a list; without it, every option is a real kind because the contract refuses UNSPECIFIED on create.';
 
 export function ExpenseKindSelect({
   value,
@@ -74,7 +74,7 @@ export function ExpenseKindSelect({
 
   const anyLabel = placeholder ?? t("expenses.kind.any");
 
-  const collection = useMemo(() => {
+  const items = useMemo(() => {
     const kinds = COST_KINDS.map((kind) => ({
       label: expenseKindLabel(t, kind),
       value: String(kind),
@@ -82,51 +82,36 @@ export function ExpenseKindSelect({
 
     // The "any" option exists ONLY for the filter. On a form it would be a choice the server refuses,
     // which is worse than not offering it: the person picks it, submits, and is told no.
-    return createListCollection({
-      items: filter ? [{ label: anyLabel, value: ANY }, ...kinds] : kinds,
-    });
+    return filter ? [{ label: anyLabel, value: ANY }, ...kinds] : kinds;
   }, [t, filter, anyLabel]);
 
   const selected = value === undefined || value === ExpenseKind.UNSPECIFIED ? ANY : String(value);
 
   return (
-    <Select.Root
-      collection={collection}
+    <Select
+      data-testid={testId}
       disabled={disabled}
       // On a FORM, an unset value shows the placeholder rather than silently selecting the first kind
       // — picking a kind is the person's decision, and pre-selecting "Ads" would file rent as ads for
       // anybody who did not look.
-      value={selected === ANY && !filter ? [] : [selected]}
-      onValueChange={(e) => {
-        const picked = e.value[0];
-        if (picked === undefined) return;
+      value={selected === ANY && !filter ? "" : selected}
+      onChange={(e) => {
+        const picked = e.target.value;
+        if (picked === "") return;
 
         onChange?.(picked === ANY ? ExpenseKind.UNSPECIFIED : (Number(picked) as ExpenseKind));
       }}
     >
-      <Select.HiddenSelect />
-
-      <Select.Control>
-        <Select.Trigger data-testid={testId}>
-          <Select.ValueText placeholder={filter ? anyLabel : t("expenses.kind.choose")} />
-        </Select.Trigger>
-        <Select.IndicatorGroup>
-          <Select.Indicator />
-        </Select.IndicatorGroup>
-      </Select.Control>
-
-      <Portal>
-        <Select.Positioner>
-          <Select.Content>
-            {collection.items.map((item) => (
-              <Select.Item item={item} key={item.value} data-testid={`${testId}-${item.value}`}>
-                <Select.ItemText>{item.label}</Select.ItemText>
-                <Select.ItemIndicator />
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Positioner>
-      </Portal>
-    </Select.Root>
+      {!filter && (
+        <option value="" disabled>
+          {t("expenses.kind.choose")}
+        </option>
+      )}
+      {items.map((item) => (
+        <option key={item.value} value={item.value} data-testid={`${testId}-${item.value}`}>
+          {item.label}
+        </option>
+      ))}
+    </Select>
   );
 }

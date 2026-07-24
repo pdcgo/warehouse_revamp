@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
+import { Spinner } from "./ui/Spinner";
 import { useTeams } from "../features/teams/queries";
 import type { Team } from "../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
@@ -19,7 +20,7 @@ export interface TeamSelectProps {
 // on team NAME or team CODE. Each option renders with TeamItem, so the picker looks like every other
 // place a team is shown. It fetches the team list itself and emits the selected team id. Pass the
 // optional teamType prop to restrict the list to one team type (filtered server-side by TeamList).
-export const description = "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id. Optional teamType prop restricts it to one team type.";
+export const description = "Searchable team picker (Combobox) — search by name or code, options render with TeamItem. Emits a team id. Optional teamType prop restricts it to one team type.";
 
 export function TeamSelect({
   value,
@@ -126,7 +127,7 @@ export function TeamSelect({
           <Combobox.Content>
             {loading ? (
               <Combobox.Empty>
-                <Spinner size="sm" colorPalette="brand" />
+                <Spinner className="size-4" />
               </Combobox.Empty>
             ) : (
               <>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
+import { Spinner } from "./ui/Spinner";
 import { useTranslation } from "react-i18next";
 import type { Shipping } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { useShippingCatalogue } from "../features/shipping/catalogue";
@@ -18,7 +19,7 @@ export interface ShippingSelectProps {
 //
 // A Chakra Combobox (#146) rather than a NativeSelect: the courier catalogue is curated but it is a
 // list of dozens, and a searchable field beats scrolling a native dropdown to find "JNE REG".
-export const description = "Searchable courier picker (Chakra Combobox) backed by the shipping catalogue — matches on name or code. Emits a courier code, and can be cleared back to none.";
+export const description = "Searchable courier picker (Combobox) backed by the shipping catalogue — matches on name or code. Emits a courier code, and can be cleared back to none.";
 
 export function ShippingSelect({
   value,
@@ -95,7 +96,7 @@ export function ShippingSelect({
           <Combobox.Content>
             {loading ? (
               <Combobox.Empty>
-                <Spinner size="sm" colorPalette="brand" />
+                <Spinner className="size-4" />
               </Combobox.Empty>
             ) : (
               <>

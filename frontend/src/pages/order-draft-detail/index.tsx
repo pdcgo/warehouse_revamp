@@ -524,7 +524,7 @@ export function OrderDraftDetailPage() {
             <Field.Root>
               <Field.Label>{t("orders.shippingCost")}</Field.Label>
               <CurrencyInput
-                w="40"
+                className="w-40"
                 value={shippingCost}
                 data-testid="draft-shipping-cost"
                 onChange={setShippingCost}

@@ -1,5 +1,5 @@
-import { Input } from "@chakra-ui/react";
-import type { InputProps } from "@chakra-ui/react";
+import type { InputHTMLAttributes } from "react";
+import { Input } from "./ui/Input";
 
 // Strips everything that is not a digit, then removes leading zeros (#166).
 //
@@ -32,7 +32,8 @@ export function formatDigits(digits: string): string {
   return Number(digits).toLocaleString("id-ID");
 }
 
-export interface CurrencyInputProps extends Omit<InputProps, "value" | "onChange" | "type"> {
+export interface CurrencyInputProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> {
   /** The RAW value — digits only, no separators. "" means nothing typed yet. */
   value: string;
   /** Receives the RAW digits, never the formatted text. */

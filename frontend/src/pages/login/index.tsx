@@ -57,7 +57,7 @@ export function LoginPage() {
         <Card.Body>
           <form onSubmit={onSubmit}>
             <Stack gap="section">
-              <Logo size={40} justify="center" pb="1" />
+              <Logo size={40} className="justify-center pb-1" />
 
               <Heading size="md">{t("account.signIn")}</Heading>
 

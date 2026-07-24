@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Box, Icon, IconButton, Input } from "@chakra-ui/react";
-import type { InputProps } from "@chakra-ui/react";
+import type { InputHTMLAttributes } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { Field } from "./ui/Field";
+import { IconButton } from "./ui/Button";
 
 // PasswordInput is a password field with a show/hide toggle. It renders a plain <Input> (so it
 // still consumes the surrounding Field's context — the label→control id wiring, `required`,
@@ -12,14 +13,22 @@ import { Eye, EyeOff } from "lucide-react";
 // curated shared component carries one so the gallery reads like living documentation.
 export const description = "A password field with a show/hide toggle. Drop-in for any masked input.";
 
-export function PasswordInput(props: InputProps) {
+export function PasswordInput({ className, style, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <Box position="relative" w="full">
-      {/* pe leaves room for the toggle so long values don't run under it. It comes after the
-          spread so a caller can't accidentally reclaim that space. */}
-      <Input type={visible ? "text" : "password"} {...props} pe="2.5rem" />
+    <div className="relative w-full">
+      {/* Field.Input is the field-aware input (Ark's Field.Input): it reads the surrounding Field's
+          context for the control id / required / aria-invalid wiring, which is the whole reason the
+          label associates with it. */}
+      <Field.Input
+        type={visible ? "text" : "password"}
+        {...props}
+        className={className}
+        // paddingInlineEnd leaves room for the toggle so long values don't run under it. It comes
+        // after the spread so a caller can't accidentally reclaim that space.
+        style={{ ...style, paddingInlineEnd: "2.5rem" }}
+      />
       <IconButton
         // type="button": inside a form a bare <button> defaults to submit — a show/hide toggle
         // must never submit the form it lives in.
@@ -30,13 +39,10 @@ export function PasswordInput(props: InputProps) {
         // Not a tab stop: tabbing a form should move field-to-field, not into the toggle.
         tabIndex={-1}
         onClick={() => setVisible((v) => !v)}
-        position="absolute"
-        top="50%"
-        insetEnd="1"
-        transform="translateY(-50%)"
+        className="absolute right-1 top-1/2 -translate-y-1/2"
       >
-        {visible ? <Icon as={EyeOff} boxSize="4" /> : <Icon as={Eye} boxSize="4" />}
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </IconButton>
-    </Box>
+    </div>
   );
 }

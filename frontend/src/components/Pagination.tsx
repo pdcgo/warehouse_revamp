@@ -1,20 +1,10 @@
-import { useMemo } from "react";
-import {
-  ButtonGroup,
-  Flex,
-  HStack,
-  IconButton,
-  Icon,
-  Pagination as ChakraPagination,
-  Select,
-  Text,
-  createListCollection,
-} from "@chakra-ui/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconButton } from "./ui/Button";
+import { Select } from "./ui/Select";
 
 export const description =
-  "The shared pager (#96/#99): right-aligned, compact (previous · page-of-total · next), with an optional page-size selector (Chakra Select). One control on every list so paging looks and behaves the same app-wide.";
+  "The shared pager (#96/#99): right-aligned, compact (previous · page-of-total · next), with an optional page-size selector (Select). One control on every list so paging looks and behaves the same app-wide.";
 
 export interface PaginationProps {
   // Total number of items across all pages (not the page count).
@@ -43,90 +33,67 @@ export function Pagination({
   const { t } = useTranslation();
   const showSizePicker = !!(pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange);
 
-  const sizeCollection = useMemo(
-    () =>
-      createListCollection({
-        items: (pageSizeOptions ?? []).map((n) => ({ label: String(n), value: String(n) })),
-      }),
-    [pageSizeOptions],
-  );
-
   // Nothing to show for an empty list; and with no size picker, hide when it all fits on one page.
   if (count === 0 || (count <= pageSize && !showSizePicker)) {
     return null;
   }
 
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
   return (
-    <Flex justify="flex-end" align="center" gap="4" w="full" data-testid="pagination-bar">
+    <div className="flex w-full items-center justify-end gap-4" data-testid="pagination-bar">
       {showSizePicker && (
-        <HStack gap="2">
-          <Text fontSize="sm" color="fg.muted">
-            {t("common.perPage")}
-          </Text>
-          <Select.Root
-            collection={sizeCollection}
-            size="xs"
-            width="20"
-            value={[String(pageSize)]}
-            onValueChange={(e) => {
-              const picked = e.value[0];
-              if (picked !== undefined) {
-                onPageSizeChange?.(Number(picked));
-              }
-            }}
-          >
-            <Select.HiddenSelect />
-            <Select.Control>
-              <Select.Trigger data-testid="page-size" aria-label={t("common.perPage")}>
-                <Select.ValueText />
-              </Select.Trigger>
-              <Select.IndicatorGroup>
-                <Select.Indicator />
-              </Select.IndicatorGroup>
-            </Select.Control>
-            <Select.Positioner>
-              <Select.Content>
-                {sizeCollection.items.map((item) => (
-                  <Select.Item item={item} key={item.value}>
-                    <Select.ItemText>{item.label}</Select.ItemText>
-                    <Select.ItemIndicator />
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Positioner>
-          </Select.Root>
-        </HStack>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-fg-muted">{t("common.perPage")}</span>
+          {/* Fixed-width wrapper so the (w-full) Select renders compact, the way the old size="xs"
+              width="20" control did — without appending a conflicting width utility to the Select. */}
+          <div className="w-20">
+            <Select
+              data-testid="page-size"
+              aria-label={t("common.perPage")}
+              value={String(pageSize)}
+              onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+            >
+              {pageSizeOptions?.map((n) => (
+                <option key={n} value={String(n)}>
+                  {n}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
       )}
 
-      <ChakraPagination.Root
-        count={count}
-        pageSize={pageSize}
-        page={page}
-        onPageChange={(e) => onPageChange(e.page)}
-      >
-        <ButtonGroup variant="ghost" size="sm" gap="1" alignItems="center" data-testid="pagination">
-          <ChakraPagination.PrevTrigger asChild>
-            <IconButton aria-label="Previous page" data-testid="page-prev">
-              <Icon as={ChevronLeft} boxSize="4" />
-            </IconButton>
-          </ChakraPagination.PrevTrigger>
+      <div className="flex items-center gap-1" data-testid="pagination">
+        <IconButton
+          aria-label="Previous page"
+          data-testid="page-prev"
+          size="sm"
+          variant="ghost"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="size-4" />
+        </IconButton>
 
-          <ChakraPagination.PageText
-            data-testid="page-text"
-            fontSize="sm"
-            fontWeight="medium"
-            color="fg.muted"
-            minW="16"
-            textAlign="center"
-          />
+        <span
+          data-testid="page-text"
+          className="min-w-16 text-center text-sm font-medium text-fg-muted"
+        >
+          {page} of {totalPages}
+        </span>
 
-          <ChakraPagination.NextTrigger asChild>
-            <IconButton aria-label="Next page" data-testid="page-next">
-              <Icon as={ChevronRight} boxSize="4" />
-            </IconButton>
-          </ChakraPagination.NextTrigger>
-        </ButtonGroup>
-      </ChakraPagination.Root>
-    </Flex>
+        <IconButton
+          aria-label="Next page"
+          data-testid="page-next"
+          size="sm"
+          variant="ghost"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="size-4" />
+        </IconButton>
+      </div>
+    </div>
   );
 }

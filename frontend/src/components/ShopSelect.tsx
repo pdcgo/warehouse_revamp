@@ -1,5 +1,4 @@
-
-import { NativeSelect } from "@chakra-ui/react";
+import { Select } from "./ui/Select";
 import { useShopOptions } from "../features/shops/queries";
 import { marketplaceLabel } from "./MarketplaceSelect";
 
@@ -17,7 +16,7 @@ export interface ShopSelectProps {
 // shops, so — like ShippingSelect over the courier catalogue — it loads them all once into a
 // NativeSelect rather than paging or searching. It emits a shop id; the label shows the shop's name
 // and its marketplace so two shops with similar names stay distinguishable.
-export const description = "Marketplace-shop picker for a selling team (NativeSelect over ShopList). Emits a shop id; labels each shop with its marketplace.";
+export const description = "Marketplace-shop picker for a selling team (native Select over ShopList). Emits a shop id; labels each shop with its marketplace.";
 
 export function ShopSelect({
   teamId,
@@ -38,22 +37,20 @@ export function ShopSelect({
   const error = query.isError;
 
   return (
-    <NativeSelect.Root disabled={disabled}>
-      <NativeSelect.Field
-        data-testid="shop-select"
-        value={value && value > 0n ? value.toString() : ""}
-        onChange={(e) => onChange?.(e.target.value ? BigInt(e.target.value) : 0n)}
-      >
-        <option value="" disabled>
-          {error ? "Shops unavailable" : placeholder}
+    <Select
+      data-testid="shop-select"
+      value={value && value > 0n ? value.toString() : ""}
+      disabled={disabled}
+      onChange={(e) => onChange?.(e.target.value ? BigInt(e.target.value) : 0n)}
+    >
+      <option value="" disabled>
+        {error ? "Shops unavailable" : placeholder}
+      </option>
+      {shops.map((shop) => (
+        <option key={shop.id.toString()} value={shop.id.toString()}>
+          {shop.name} · {marketplaceLabel(shop.marketplace)}
         </option>
-        {shops.map((shop) => (
-          <option key={shop.id.toString()} value={shop.id.toString()}>
-            {shop.name} · {marketplaceLabel(shop.marketplace)}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+      ))}
+    </Select>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, useListCollection } from "@chakra-ui/react";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
 import { useUserSearch } from "../features/users/queries";
 import { useDebounced } from "../lib/useDebounced";
 import { UserItem } from "./UserItem";
@@ -29,7 +29,7 @@ export interface UserSelectProps {
 // UserSelect is the shared user picker (#56): a Chakra Combobox whose options render with the
 // shared UserItem. Search is SERVER-side (min 2 characters) so it scales; it emits the selected
 // user id. Pass `teamId` to scope the search to one team's members, or omit it to search everyone.
-export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList).";
+export const description = "Searchable user picker (Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList).";
 
 export function UserSelect({
   value,

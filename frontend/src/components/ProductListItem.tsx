@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Avatar, Badge, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Package } from "lucide-react";
+import { Badge } from "./ui/Badge";
 
 export interface ProductListItemProps {
   // Any product-shaped object — a Product, or the trimmed shape a list RPC returns. Everything is
@@ -35,7 +35,7 @@ export function ProductListItem({ product, stock, teamName, action }: ProductLis
   const { t } = useTranslation();
 
   // The thumbnail is the list-sized render; the full image is the fallback. A product may have
-  // NEITHER — Avatar.Fallback then shows the package icon, which also covers a URL that 404s.
+  // NEITHER — the package icon then shows, which also covers a URL that 404s.
   const cover = product.defaultImageThumbnailUrl || product.defaultImageUrl;
 
   const title =
@@ -57,36 +57,40 @@ export function ProductListItem({ product, stock, teamName, action }: ProductLis
   const inStock = stock !== undefined && stock > 0n;
 
   return (
-    <HStack gap="card" w="full" data-testid={`product-list-item-${product.id ?? ""}`}>
-      <Avatar.Root shape="rounded" size="md" colorPalette="gray" flexShrink={0}>
-        <Avatar.Fallback>
-          <Icon as={Package} boxSize="4" />
-        </Avatar.Fallback>
-        <Avatar.Image src={cover || undefined} alt={title} />
-      </Avatar.Root>
+    <div className="flex w-full items-center gap-card" data-testid={`product-list-item-${product.id ?? ""}`}>
+      {/* Cover: a gray-tinted rounded box holding the package placeholder, with the image layered on
+          top. The <img> hides itself if it fails to load, revealing the placeholder beneath. */}
+      <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-control bg-surface-2 text-fg-muted">
+        <Package className="size-4" />
+        {cover && (
+          <img
+            key={cover}
+            src={cover}
+            alt={title}
+            className="absolute inset-0 size-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        )}
+      </div>
 
-      <Stack gap="0.5" flex="1" minW="0">
-        <Text fontWeight="medium" lineClamp={1} textAlign="start">
-          {title}
-        </Text>
-        <HStack gap="2" minW="0">
-          {sku && (
-            <Text fontSize="xs" color="fg.muted" lineClamp={1} flexShrink={0}>
-              {sku}
-            </Text>
-          )}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="line-clamp-1 text-start font-medium">{title}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          {sku && <span className="line-clamp-1 shrink-0 text-xs text-fg-muted">{sku}</span>}
           {team && (
-            <Badge colorPalette="gray" size="xs" lineClamp={1}>
+            <Badge colorPalette="gray" className="line-clamp-1">
               {team}
             </Badge>
           )}
-        </HStack>
-      </Stack>
+        </div>
+      </div>
 
       {showStock && (
         <Badge
           colorPalette={inStock ? "green" : "red"}
-          flexShrink={0}
+          className="shrink-0"
           data-testid={`product-list-item-stock-${product.id ?? ""}`}
         >
           {inStock ? t("productListItem.stock", { n: stock.toString() }) : t("productListItem.outOfStock")}
@@ -94,6 +98,6 @@ export function ProductListItem({ product, stock, teamName, action }: ProductLis
       )}
 
       {action}
-    </HStack>
+    </div>
   );
 }
