@@ -5,7 +5,10 @@ import { cn } from "./cn";
 // The app's Popover, replacing Chakra's — a styled Ark UI Popover (positioning, focus, dismissal).
 // Same part names as Chakra. Render Content WITHOUT wrapping it in <Portal> to keep it inline (the
 // CategorySelect-inside-a-modal case, Chakra's portalled={false}). Re-exports Portal.
-const Root = ArkPopover.Root;
+// Unmount closed popover content (Chakra's behaviour), so a closed picker leaves nothing in the DOM.
+function Root(props: ComponentProps<typeof ArkPopover.Root>) {
+  return <ArkPopover.Root lazyMount unmountOnExit {...props} />;
+}
 const Trigger = ArkPopover.Trigger;
 const Anchor = ArkPopover.Anchor;
 const CloseTrigger = ArkPopover.CloseTrigger;

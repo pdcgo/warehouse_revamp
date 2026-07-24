@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { Menu as ArkMenu, Portal } from "@ark-ui/react";
 import { Check } from "lucide-react";
 import { cn } from "./cn";
@@ -6,7 +7,11 @@ import { cn } from "./cn";
 // migrating a row-actions kebab or the sidebar user menu is an import swap. Ark gives focus roving,
 // typeahead, Escape, and menuitemradio/aria-checked. NOTE: item click handlers are `onSelect` (Ark),
 // not `onClick`. Portal is re-exported so call sites keep `<Portal>` around the positioner.
-const Root = ArkMenu.Root;
+// Unmount closed menu content (Chakra's behaviour) — so N row-action menus don't each leave a full
+// copy of their items in the DOM (duplicate testids, wasted nodes).
+function Root(props: ComponentProps<typeof ArkMenu.Root>) {
+  return <ArkMenu.Root lazyMount unmountOnExit {...props} />;
+}
 const Trigger = ArkMenu.Trigger;
 const ItemGroup = ArkMenu.ItemGroup;
 const RadioItemGroup = ArkMenu.RadioItemGroup;

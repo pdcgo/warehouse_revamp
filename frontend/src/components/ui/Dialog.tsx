@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { ComponentProps, HTMLAttributes } from "react";
 import { Dialog as ArkDialog, Portal } from "@ark-ui/react";
 import { cn } from "./cn";
 
@@ -6,7 +6,12 @@ import { cn } from "./cn";
 // Escape/backdrop, aria-modal) plus Header/Body/Footer div slots (Ark has no such parts). Same shape
 // the form dialogs already use, so migrating one is an import swap (+ ActionTrigger → CloseTrigger).
 // Portal is re-exported so call sites keep `<Portal>` around the positioner.
-const Root = ArkDialog.Root;
+
+// Default to unmounting closed content (Chakra's behaviour): a closed dialog's fields must not sit in
+// the DOM/tab order — otherwise, e.g., two "Username" inputs (the page + a closed dialog) collide.
+function Root(props: ComponentProps<typeof ArkDialog.Root>) {
+  return <ArkDialog.Root lazyMount unmountOnExit {...props} />;
+}
 const Trigger = ArkDialog.Trigger;
 const CloseTrigger = ArkDialog.CloseTrigger;
 

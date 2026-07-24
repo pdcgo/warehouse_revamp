@@ -66,6 +66,8 @@ export function ConfirmDialog({
       open={open}
       onOpenChange={(e) => setOpen(e.open)}
       role="alertdialog"
+      lazyMount
+      unmountOnExit
     >
       {trigger && <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>}
 
