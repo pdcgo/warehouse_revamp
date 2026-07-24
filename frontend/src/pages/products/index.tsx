@@ -1,23 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Image,
-  Input,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -26,6 +9,11 @@ import { useTeam } from "../../features/team/TeamContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Pagination } from "../../components/Pagination";
 import { toaster } from "../../components/Toaster";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { useProducts, useDeleteProduct } from "../../features/products/queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -72,21 +60,21 @@ export function ProductsPage() {
   // No current team means there is no scope to list against — the whole page is meaningless.
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("products.heading")}</Heading>
-        <Text color="fg.muted" data-testid="products-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("products.heading")}</h1>
+        <p className="text-fg-muted" data-testid="products-no-team">
           {t("products.noTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("products.heading")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("products.heading")}</h1>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        <Spacer />
+        <div className="flex-1" />
         {/* A warehouse team stocks products but does not create them (#101) — no create action. */}
         {current.teamType !== TeamType.WAREHOUSE && (
           <Button
@@ -98,14 +86,14 @@ export function ProductsPage() {
             {t("products.newProduct")}
           </Button>
         )}
-      </Flex>
+      </div>
 
       {/* No search for a warehouse (#142): WarehouseProductList takes no query, so the box would look
           like a working control and do nothing. A dead input is worse than an absent one. */}
       {!isWarehouse && (
-        <HStack>
+        <div className="flex">
           <Input
-            maxW="sm"
+            className="max-w-sm"
             placeholder={t("products.searchPlaceholder")}
             value={q}
             data-testid="product-search"
@@ -114,26 +102,26 @@ export function ProductsPage() {
               setQ(e.target.value);
             }}
           />
-        </HStack>
+        </div>
       )}
 
       {error && (
-        <Text color="red.fg" data-testid="products-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="products-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="products-table">
+        <Table.Root data-testid="products-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader w="12">{t("products.table.image")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="w-12">{t("products.table.image")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("products.table.sku")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("products.table.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("products.table.description")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("products.table.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("products.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -145,7 +133,7 @@ export function ProductsPage() {
                 <Table.Row
                   key={product.id.toString()}
                   data-testid={`product-row-${product.sku}`}
-                  cursor="pointer"
+                  className="cursor-pointer hover:bg-surface-2"
                   // A WAREHOUSE opens the stock view (#158), not the catalogue entry it does not own.
                   onClick={() =>
                     navigate(isWarehouse ? `/inventories/products/${product.id}` : `/products/${product.id}`)
@@ -153,67 +141,63 @@ export function ProductsPage() {
                 >
                   <Table.Cell>
                     {cover ? (
-                      <Image
+                      <img
                         src={cover}
                         alt={product.name}
-                        boxSize="8"
-                        borderRadius="sm"
-                        objectFit="cover"
+                        className="size-8 rounded-control object-cover"
                         data-testid={`product-cover-${product.sku}`}
                       />
                     ) : (
-                      <Text color="fg.muted" fontSize="xs">
-                        —
-                      </Text>
+                      <span className="text-xs text-fg-muted">—</span>
                     )}
                   </Table.Cell>
                   <Table.Cell>{product.sku}</Table.Cell>
                   <Table.Cell>
                     {/* The whole row navigates to the detail page (#92); this keeps the stable
                         testid the e2e clicks. */}
-                    <Box data-testid={`open-product-${product.sku}`}>{product.name}</Box>
+                    <span data-testid={`open-product-${product.sku}`}>{product.name}</span>
                   </Table.Cell>
                   <Table.Cell>{product.description}</Table.Cell>
 
                   {/* Row-action clicks must not bubble to the row's navigate. */}
-                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                  <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {/* A warehouse HANDLES these products; it does not own them (#142). Editing or
                         deleting somebody else's catalogue entry is not its call — and ProductUpdate /
                         ProductDelete are scoped to the OWNING team, so these would only ever produce a
                         refusal. Offering an action that cannot work is worse than omitting it. */}
-                    <HStack justify="end" gap="1">
+                    <div className="flex justify-end gap-1">
                       {!isWarehouse && (
-                      <IconButton
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Edit"
-                        data-testid={`edit-${product.sku}`}
-                        onClick={() => navigate(`/products/${product.id}/edit`)}
-                      >
-                        <Icon as={Pencil} boxSize="4" />
-                      </IconButton>
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          aria-label="Edit"
+                          data-testid={`edit-${product.sku}`}
+                          onClick={() => navigate(`/products/${product.id}/edit`)}
+                        >
+                          <Pencil className="size-4" />
+                        </IconButton>
                       )}
 
                       {!isWarehouse && (
-                      <ConfirmDialog
-                        title={t("products.deleteDialog.title")}
-                        message={t("products.deleteDialog.message", { sku: product.sku })}
-                        confirmLabel={t("products.deleteDialog.confirmLabel")}
-                        onConfirm={() => remove(product)}
-                        trigger={
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="red"
-                            aria-label="Delete"
-                            data-testid={`delete-${product.sku}`}
-                          >
-                            <Icon as={Trash2} boxSize="4" />
-                          </IconButton>
-                        }
-                      />
+                        <ConfirmDialog
+                          title={t("products.deleteDialog.title")}
+                          message={t("products.deleteDialog.message", { sku: product.sku })}
+                          confirmLabel={t("products.deleteDialog.confirmLabel")}
+                          onConfirm={() => remove(product)}
+                          trigger={
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              colorPalette="red"
+                              aria-label="Delete"
+                              data-testid={`delete-${product.sku}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </IconButton>
+                          }
+                        />
                       )}
-                    </HStack>
+                    </div>
                   </Table.Cell>
                 </Table.Row>
               );
@@ -223,9 +207,9 @@ export function ProductsPage() {
       )}
 
       {!loading && products.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="products-empty">
+        <p className="text-fg-muted" data-testid="products-empty">
           {t("products.empty")}
-        </Text>
+        </p>
       )}
 
       <Pagination
@@ -239,6 +223,6 @@ export function ProductsPage() {
           setPage(1);
         }}
       />
-    </Stack>
+    </div>
   );
 }

@@ -1,21 +1,13 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Badge,
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Icon,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../../components/OrderStatusBadge";
@@ -104,23 +96,23 @@ export function PickOrderPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("picking.detail.title", { id: String(orderId) })}</Heading>
-        <Text color="fg.muted" data-testid="pick-order-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("picking.detail.title", { id: String(orderId) })}</h1>
+        <p className="text-fg-muted" data-testid="pick-order-no-team">
           {t("picking.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (!isWarehouse) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("picking.detail.title", { id: String(orderId) })}</Heading>
-        <Text color="fg.muted" data-testid="pick-order-not-warehouse">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("picking.detail.title", { id: String(orderId) })}</h1>
+        <p className="text-fg-muted" data-testid="pick-order-not-warehouse">
           {t("picking.warehouseOnly")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -128,32 +120,32 @@ export function PickOrderPage() {
     <Button
       size="xs"
       variant="ghost"
-      alignSelf="flex-start"
+      className="self-start"
       onClick={() => navigate("/inventories/picking")}
       data-testid="pick-order-back"
     >
-      <Icon as={ArrowLeft} boxSize="4" />
+      <ArrowLeft className="size-4" />
       {t("picking.detail.back")}
     </Button>
   );
 
   if (loading) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
+        <Spinner />
+      </div>
     );
   }
 
   if (error || !order) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Text color="red.fg" data-testid="pick-order-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="pick-order-error">
           {error || t("picking.detail.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -165,13 +157,13 @@ export function PickOrderPage() {
   const step = NEXT_STEP[order.status];
 
   return (
-    <Stack gap="section">
+    <div className="flex flex-col gap-section">
       {back}
 
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("picking.detail.title", { id: String(order.id) })}</Heading>
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("picking.detail.title", { id: String(order.id) })}</h1>
         <OrderStatusBadge status={order.status} />
-        <Spacer />
+        <div className="flex-1" />
         {step && (
           <Button
             colorPalette="brand"
@@ -182,27 +174,23 @@ export function PickOrderPage() {
             {t(step.labelKey)}
           </Button>
         )}
-      </Flex>
+      </div>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" color="fg.muted" textTransform="uppercase">
-              {t("picking.detail.customer")}
-            </Text>
-            <Text data-testid="pick-order-customer">{order.customerName}</Text>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm uppercase text-fg-muted">{t("picking.detail.customer")}</p>
+            <p data-testid="pick-order-customer">{order.customerName}</p>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" color="fg.muted" textTransform="uppercase">
-              {t("picking.detail.pickList")}
-            </Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm uppercase text-fg-muted">{t("picking.detail.pickList")}</p>
 
-            <Table.Root size="sm" data-testid="pick-list-table">
+            <Table.Root data-testid="pick-list-table">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("picking.table.product")}</Table.ColumnHeader>
@@ -217,12 +205,10 @@ export function PickOrderPage() {
                   return (
                     <Table.Row key={String(item.id)} data-testid={`pick-line-${item.productId}`}>
                       <Table.Cell>
-                        <Stack gap="0">
-                          <Text>{item.name}</Text>
-                          <Text fontSize="xs" color="fg.muted">
-                            {item.sku}
-                          </Text>
-                        </Stack>
+                        <div className="flex flex-col">
+                          <span>{item.name}</span>
+                          <span className="text-xs text-fg-muted">{item.sku}</span>
+                        </div>
                       </Table.Cell>
                       <Table.Cell>{item.quantity}</Table.Cell>
                       <Table.Cell>
@@ -230,31 +216,30 @@ export function PickOrderPage() {
                           // No recorded draw. An order placed before stock integration (#149) never took
                           // stock, so there is no shelf to name — and saying so plainly beats a blank
                           // cell, which reads as "we forgot" rather than "there is nothing to know".
-                          <Flex align="center" gap="1" color="fg.muted">
-                            <Icon as={TriangleAlert} boxSize="4" />
-                            <Text fontSize="sm" data-testid={`pick-line-noshelf-${item.productId}`}>
+                          <div className="flex items-center gap-1 text-fg-muted">
+                            <TriangleAlert className="size-4" />
+                            <span className="text-sm" data-testid={`pick-line-noshelf-${item.productId}`}>
                               {t("picking.table.noRecordedShelf")}
-                            </Text>
-                          </Flex>
+                            </span>
+                          </div>
                         ) : (
                           // EVERY shelf the goods came from, each with its own quantity — never one
                           // shelf chosen on the picker's behalf (#135/#151). Two shelves means two
                           // walks, and the screen has to say so.
-                          <Stack gap="1">
+                          <div className="flex flex-col gap-1">
                             {shelves.map((loc) => (
-                              <Flex
+                              <div
                                 key={`${loc.rackId}-${loc.rackCode}`}
-                                align="center"
-                                gap="2"
+                                className="flex items-center gap-2"
                                 data-testid={`pick-shelf-${item.productId}-${loc.rackId}`}
                               >
                                 <Badge colorPalette={loc.rackId === 0n ? "gray" : "brand"}>
                                   {loc.rackId === 0n ? t("picking.table.unplaced") : loc.rackCode}
                                 </Badge>
-                                <Text fontSize="sm">×{String(loc.quantity)}</Text>
-                              </Flex>
+                                <span className="text-sm">×{String(loc.quantity)}</span>
+                              </div>
                             ))}
-                          </Stack>
+                          </div>
                         )}
                       </Table.Cell>
                     </Table.Row>
@@ -262,9 +247,9 @@ export function PickOrderPage() {
                 })}
               </Table.Body>
             </Table.Root>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

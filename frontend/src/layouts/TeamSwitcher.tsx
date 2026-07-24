@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Avatar, Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../components/TeamItem";
+import { IconButton } from "../components/ui/Button";
+import { Dialog, Portal } from "../components/ui/Dialog";
+import { Input } from "../components/ui/Input";
+import { cn } from "../components/ui/cn";
 import { useTeam } from "../features/team/TeamContext";
 
-// Each team type carries a colour so the current scope's avatar fallback is recognisable at a glance.
+// Each team type carries a colour so the current scope's avatar chip is recognisable at a glance.
 function typePalette(type: TeamType | undefined): string {
   switch (type) {
     case TeamType.WAREHOUSE:
@@ -20,6 +23,16 @@ function typePalette(type: TeamType | undefined): string {
       return "gray";
   }
 }
+
+// The solid chip fill per palette — a recognisable colour block behind the team's initials (the
+// mock's trigger). Written as literal classes so Tailwind's JIT can see them.
+const CHIP: Record<string, string> = {
+  blue: "bg-blue-600 text-white",
+  green: "bg-green-600 text-white",
+  purple: "bg-purple-600 text-white",
+  brand: "bg-brand-600 text-white",
+  gray: "bg-gray-500 text-white",
+};
 
 function typeLabel(type: TeamType | undefined): string {
   switch (type) {
@@ -36,6 +49,14 @@ function typeLabel(type: TeamType | undefined): string {
   }
 }
 
+// The first letter of the first and last word of a name, upper-cased — the chip's initials.
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 // TeamSwitcher is the sidebar's current-team control: a card showing the active team (colour keyed
 // to its type) that opens a CENTERED dialog to search and switch teams. THE CURRENT TEAM IS THE
 // SCOPE, so switching re-scopes the whole app. Collapsed, the trigger shrinks to just the colour chip.
@@ -49,6 +70,7 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
   }
 
   const name = current?.teamName || (current ? `Team #${current.teamId}` : "Select a team");
+  const palette = typePalette(current?.teamType);
 
   const q = query.trim().toLowerCase();
   const filtered = teams.filter((team) =>
@@ -64,85 +86,64 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
           setQuery("");
         }
       }}
-      placement="center"
-      size="sm"
     >
       <Dialog.Trigger asChild>
-        <Flex
-          as="button"
+        <button
+          type="button"
           data-testid="team-switcher"
-          align="center"
-          gap="2.5"
-          w="full"
-          rounded="md"
-          borderWidth="1px"
-          borderColor="border"
-          px="2.5"
-          py="2"
-          cursor="pointer"
-          _hover={{ bg: "bg.muted" }}
-          justify={collapsed ? "center" : "flex-start"}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-control border border-line bg-surface-2 px-2.5 py-2 text-left text-fg hover:border-line-strong",
+            collapsed ? "justify-center" : "justify-start",
+          )}
         >
-          <Avatar.Root
-            shape="rounded"
-            size="sm"
-            colorPalette={typePalette(current?.teamType)}
-            flexShrink={0}
+          <span
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-[7px] text-xs font-bold",
+              CHIP[palette],
+            )}
           >
-            <Avatar.Fallback name={name} />
-            <Avatar.Image src={current?.imageUrl || undefined} alt={name} />
-          </Avatar.Root>
+            {initials(name)}
+          </span>
 
           {!collapsed && (
             <>
-              <Box textAlign="start" flex="1" minW="0">
-                <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
-                  {name}
-                </Text>
-                <Text fontSize="xs" color="fg.muted">
-                  {typeLabel(current?.teamType)}
-                </Text>
-              </Box>
-              <Icon as={ChevronsUpDown} boxSize="4" color="fg.muted" flexShrink={0} />
+              <span className="min-w-0 flex-1 text-start">
+                <span className="block truncate text-sm font-semibold">{name}</span>
+                <span className="block text-xs text-fg-subtle">{typeLabel(current?.teamType)}</span>
+              </span>
+              <ChevronsUpDown className="size-4 shrink-0 text-fg-subtle" />
             </>
           )}
-        </Flex>
+        </button>
       </Dialog.Trigger>
 
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content>
+          <Dialog.Content className="max-w-sm">
             <Dialog.Header>
               <Dialog.Title>Switch Team</Dialog.Title>
             </Dialog.Header>
 
             <Dialog.Body>
               <Input
-                size="sm"
                 autoFocus
                 placeholder="Search teams"
                 data-testid="team-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                mb="3"
+                className="mb-3"
               />
 
-              <Stack gap="0.5" maxH="320px" overflowY="auto">
+              <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
                 {filtered.map((team) => (
-                  <Flex
-                    as="button"
+                  <button
+                    type="button"
                     key={team.teamId.toString()}
                     data-testid={`team-option-${team.teamId}`}
-                    w="full"
-                    rounded="md"
-                    px="2.5"
-                    py="2"
-                    cursor="pointer"
                     // A <button> defaults to text-align:center, which would centre the team name
-                    // inside TeamItem — start-align it so the row reads avatar → name, left to right.
-                    textAlign="start"
-                    _hover={{ bg: "bg.muted" }}
+                    // inside TeamItem — start-align it so the row reads chip → name, left to right.
+                    className="w-full rounded-control px-2.5 py-2 text-start hover:bg-surface-2"
                     onClick={() => {
                       selectTeam(team.teamId);
                       setOpen(false);
@@ -157,23 +158,23 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                       }}
                       action={
                         current?.teamId === team.teamId ? (
-                          <Icon as={Check} boxSize="4" color="brand.fg" flexShrink={0} />
+                          <Check className="size-4 shrink-0 text-accent-fg" />
                         ) : undefined
                       }
                     />
-                  </Flex>
+                  </button>
                 ))}
 
                 {filtered.length === 0 && (
-                  <Text fontSize="sm" color="fg.muted" px="2.5" py="2">
-                    No teams found.
-                  </Text>
+                  <p className="px-2.5 py-2 text-sm text-fg-muted">No teams found.</p>
                 )}
-              </Stack>
+              </div>
             </Dialog.Body>
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton size="sm" aria-label="Close" className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

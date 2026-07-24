@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Badge,
-  Card,
-  Flex,
-  Heading,
-  Icon,
-  Input,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { Minus, TriangleAlert } from "lucide-react";
 
+import { Badge } from "../../components/ui/Badge";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { cn } from "../../components/ui/cn";
 import { rpcError } from "../../api/clients";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { expenseKindLabel } from "../../components/ExpenseKindSelect";
@@ -64,12 +56,12 @@ export function ProfitPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("profit.title")}</Heading>
-        <Text color="fg.muted" data-testid="profit-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("profit.title")}</h1>
+        <p className="text-fg-muted" data-testid="profit-no-team">
           {t("profit.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -78,39 +70,40 @@ export function ProfitPage() {
   const profit = margin - spent;
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("profit.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("profit.title")}</h1>
         <Badge colorPalette="brand">{current.teamName}</Badge>
-        <Spacer />
+        <div className="flex-1" />
 
         {/* The same month control the other two money screens carry, reading the same shared helper.
             All three MUST agree what a month selects — this screen subtracts one of them from the
             other, and two definitions of July would make the bottom line quietly meaningless. */}
-        <Input
-          type="month"
-          w="40"
-          value={month}
-          data-testid="profit-month"
-          onChange={(e) => setMonth(e.target.value)}
-        />
-      </Flex>
+        <div className="w-40">
+          <Input
+            type="month"
+            value={month}
+            data-testid="profit-month"
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        </div>
+      </div>
 
       {/* Not decoration. Half of this subtraction is an expectation, and an unlabelled money screen is
           read as cash in the bank. */}
-      <Flex align="center" gap="2" color="fg.muted" data-testid="profit-expected-notice">
-        <Icon as={TriangleAlert} boxSize="4" />
-        <Text fontSize="sm">{t("profit.expectedNotice")}</Text>
-      </Flex>
+      <div className="flex items-center gap-2 text-fg-muted" data-testid="profit-expected-notice">
+        <TriangleAlert className="size-4" />
+        <span className="text-sm">{t("profit.expectedNotice")}</span>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="profit-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="profit-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
         !error && (
           <>
@@ -118,102 +111,92 @@ export function ProfitPage() {
                 rather than a lone bottom line: a profit figure whose two inputs are not on the same
                 screen is a number nobody can check, and both inputs come from somewhere the reader
                 can go and look (Revenue, Costs). */}
-            <Card.Root data-testid="profit-summary">
-              <Card.Body>
-                <SimpleGrid columns={{ base: 1, md: 3 }} gap="card" alignItems="center">
-                  <Stack gap="0">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("profit.expectedMargin")}
-                    </Text>
-                    <Text fontSize="xl" fontWeight="medium" data-testid="profit-margin">
+            <Card data-testid="profit-summary">
+              <CardBody>
+                <div className="grid grid-cols-1 items-center gap-card md:grid-cols-3">
+                  <div className="flex flex-col">
+                    <p className="text-xs text-fg-muted">{t("profit.expectedMargin")}</p>
+                    <p className="text-xl font-medium" data-testid="profit-margin">
                       {formatRupiah(margin)}
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("profit.marginSource")}
-                    </Text>
-                  </Stack>
+                    </p>
+                    <p className="text-xs text-fg-muted">{t("profit.marginSource")}</p>
+                  </div>
 
-                  <Stack gap="0">
-                    <Flex align="center" gap="1">
-                      <Icon as={Minus} boxSize="4" color="fg.muted" />
-                      <Text fontSize="xs" color="fg.muted">
-                        {t("profit.totalCost")}
-                      </Text>
-                    </Flex>
-                    <Text fontSize="xl" fontWeight="medium" data-testid="profit-cost">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <Minus className="size-4 text-fg-muted" />
+                      <p className="text-xs text-fg-muted">{t("profit.totalCost")}</p>
+                    </div>
+                    <p className="text-xl font-medium" data-testid="profit-cost">
                       {formatRupiah(spent)}
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("profit.costSource")}
-                    </Text>
-                  </Stack>
+                    </p>
+                    <p className="text-xs text-fg-muted">{t("profit.costSource")}</p>
+                  </div>
 
-                  <Stack gap="0">
-                    <Text fontSize="xs" color="fg.muted">
-                      {t("profit.profit")}
-                    </Text>
+                  <div className="flex flex-col">
+                    <p className="text-xs text-fg-muted">{t("profit.profit")}</p>
                     {/* A LOSS is coloured, not hidden or dressed up as a smaller gain. It is the one
                         number on this screen somebody has to notice. */}
-                    <Text
-                      fontSize="2xl"
-                      fontWeight="bold"
-                      color={profit < 0n ? "red.fg" : undefined}
+                    <p
+                      className={cn(
+                        "text-2xl font-bold",
+                        profit < 0n && "text-red-600 dark:text-red-400",
+                      )}
                       data-testid="profit-total"
                     >
                       {formatRupiah(profit)}
-                    </Text>
+                    </p>
                     {profit < 0n && (
-                      <Text fontSize="xs" color="red.fg" data-testid="profit-loss">
+                      <p className="text-xs text-red-600 dark:text-red-400" data-testid="profit-loss">
                         {t("profit.loss")}
-                      </Text>
+                      </p>
                     )}
-                  </Stack>
-                </SimpleGrid>
-              </Card.Body>
-            </Card.Root>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
 
             {/* How much of the margin above is not to be trusted (#74). It matters MORE here than on
                 the revenue screen: an order whose cost is unknown counts as pure profit, so it pushes
                 this bottom line UP. A reader who cannot see that is reading an overstatement. */}
             {(revenue?.unknownCostOrders ?? 0n) > 0n && (
-              <Flex align="center" gap="2" color="orange.fg" data-testid="profit-unknown-cost-warning">
-                <Icon as={TriangleAlert} boxSize="4" />
-                <Text fontSize="sm">
+              <div
+                className="flex items-center gap-2 text-orange-600 dark:text-orange-400"
+                data-testid="profit-unknown-cost-warning"
+              >
+                <TriangleAlert className="size-4" />
+                <span className="text-sm">
                   {t("profit.unknownCost", { count: Number(revenue?.unknownCostOrders ?? 0n) })}
-                </Text>
-              </Flex>
+                </span>
+              </div>
             )}
 
             {/* What the costs were made of. Free — ExpenseTotals already carries the breakdown (#168), so
                 showing it needs no second call, and "why is the cost that high" is the first question
                 a bad month provokes. */}
-            <Card.Root data-testid="profit-cost-breakdown">
-              <Card.Body>
-                <Stack gap="card">
-                  <Text fontSize="sm" color="fg.muted" textTransform="uppercase">
-                    {t("profit.breakdown")}
-                  </Text>
+            <Card data-testid="profit-cost-breakdown">
+              <CardBody>
+                <div className="flex flex-col gap-card">
+                  <p className="text-sm uppercase text-fg-muted">{t("profit.breakdown")}</p>
 
-                  <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+                  <div className="grid grid-cols-2 gap-card md:grid-cols-3">
                     {[ExpenseKind.ADS, ExpenseKind.PAYROLL, ExpenseKind.OPERATIONAL].map((k) => (
-                      <Stack key={k} gap="0">
-                        <Text fontSize="xs" color="fg.muted">
-                          {expenseKindLabel(t, k)}
-                        </Text>
-                        <Text fontWeight="medium" data-testid={`profit-cost-kind-${k}`}>
+                      <div key={k} className="flex flex-col">
+                        <p className="text-xs text-fg-muted">{expenseKindLabel(t, k)}</p>
+                        <p className="font-medium" data-testid={`profit-cost-kind-${k}`}>
                           {/* A kind with nothing this month is ABSENT from the map (#168) rather than
                               zero — on a summary card the two mean the same thing. */}
                           {formatRupiah(expenses?.byKind[k] ?? 0n)}
-                        </Text>
-                      </Stack>
+                        </p>
+                      </div>
                     ))}
-                  </SimpleGrid>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
           </>
         )
       )}
-    </Stack>
+    </div>
   );
 }

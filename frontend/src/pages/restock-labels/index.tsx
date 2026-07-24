@@ -1,22 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Flex,
-  Heading,
-  Icon,
-  NativeSelect,
-  SegmentGroup,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Check, Download, Info, Printer, TriangleAlert } from "lucide-react";
 
@@ -26,6 +10,13 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useRestockLabels } from "../../features/restock/queries";
 import { formatRupiah } from "../../lib/money";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { Select } from "../../components/ui/Select";
+import { Spinner } from "../../components/ui/Spinner";
+import { cn } from "../../components/ui/cn";
 
 // One printable job entry — a label to draw, plus which copy of how many it is (piece mode).
 interface JobEntry {
@@ -122,53 +113,52 @@ export function RestockLabelsPage() {
     <Button
       size="xs"
       variant="ghost"
-      alignSelf="flex-start"
-      className="no-print"
+      className="self-start no-print"
       onClick={() => navigate(`/inventories/restock/${rawId ?? ""}`)}
       data-testid="labels-back"
     >
-      <Icon as={ArrowLeft} boxSize="4" />
+      <ArrowLeft className="size-4" />
       {t("restock.labels.back", { id: rawId ?? "" })}
     </Button>
   );
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.labels.title")}</Heading>
-        <Text color="fg.muted">{t("restock.selectTeam")}</Text>
-      </Stack>
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.labels.title")}</h1>
+        <p className="text-fg-muted">{t("restock.selectTeam")}</p>
+      </div>
     );
   }
 
   if (!isWarehouse) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.labels.title")}</Heading>
-        <Text color="fg.muted" data-testid="labels-not-warehouse">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.labels.title")}</h1>
+        <p className="text-fg-muted" data-testid="labels-not-warehouse">
           {t("restock.labels.warehouseOnly")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (query.isPending && teamId !== undefined && requestId !== 0n) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
+        <Spinner />
+      </div>
     );
   }
 
   if (query.isError || !data) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Text color="red.fg" data-testid="labels-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="labels-error">
           {query.isError ? rpcError(query.error) : t("restock.labels.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -176,78 +166,80 @@ export function RestockLabelsPage() {
   const overflow = job.slice(PREVIEW_CAP);
 
   return (
-    <Stack gap="section">
+    <div className="flex flex-col gap-section">
       <PrintStyles />
 
       {back}
 
       {/* The action header — count of what will print, and Print / Download (both the browser's own
           print dialog, which is where a PDF is saved too). */}
-      <Flex align="center" gap="card" wrap="wrap" className="no-print">
-        <Heading size="md">{t("restock.labels.heading", { id: data.restockId.toString() })}</Heading>
+      <div className="flex flex-wrap items-center gap-card no-print">
+        <h1 className="text-[22px] font-bold">{t("restock.labels.heading", { id: data.restockId.toString() })}</h1>
         <Badge colorPalette="green">
-          <Icon as={Check} boxSize="3.5" />
+          <Check className="size-3.5" />
           {t("restock.labels.accepted")}
         </Badge>
-        <Spacer />
-        <Stack gap="0" textAlign="end" mr="2">
-          <Text fontSize="sm">
-            <Text as="span" fontWeight="semibold">
-              {job.length}
-            </Text>{" "}
-            {t("restock.labels.count", { products: productCount })}
-          </Text>
-          <Text fontSize="xs" color="fg.muted">
+        <div className="flex-1" />
+        <div className="mr-2 flex flex-col text-right">
+          <p className="text-sm">
+            <span className="font-semibold">{job.length}</span> {t("restock.labels.count", { products: productCount })}
+          </p>
+          <p className="text-xs text-fg-muted">
             {mode === "piece" ? t("restock.labels.perPiece") : t("restock.labels.perShelf")}
-          </Text>
-        </Stack>
+          </p>
+        </div>
         <Button variant="outline" onClick={() => window.print()} data-testid="labels-download">
-          <Icon as={Download} boxSize="4" />
+          <Download className="size-4" />
           {t("restock.labels.downloadPdf")}
         </Button>
         <Button colorPalette="brand" onClick={() => window.print()} data-testid="labels-print">
-          <Icon as={Printer} boxSize="4" />
+          <Printer className="size-4" />
           {t("restock.labels.print")}
         </Button>
-      </Flex>
+      </div>
 
       {/* Controls: how many labels, how big, what goes on them. */}
-      <Card.Root className="no-print">
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="semibold">
-              {t("restock.labels.controls")}
-            </Text>
-            <Text fontSize="xs" color="fg.muted" mt="-2">
-              {t("restock.labels.qrHint")}
-            </Text>
+      <Card className="no-print">
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-semibold">{t("restock.labels.controls")}</p>
+            <p className="-mt-2 text-xs text-fg-muted">{t("restock.labels.qrHint")}</p>
 
-            <Flex gap="8" wrap="wrap" align="flex-start">
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
+            <div className="flex flex-wrap items-start gap-8">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold uppercase text-fg-subtle">
                   {t("restock.labels.oneLabelPer")}
-                </Text>
-                <SegmentGroup.Root
-                  value={mode}
-                  onValueChange={(e) => setMode((e.value as "piece" | "shelf") ?? "piece")}
+                </span>
+                <div
+                  className="inline-flex rounded-control border border-line-strong bg-surface-2 p-0.5"
                   data-testid="labels-mode"
                 >
-                  <SegmentGroup.Indicator />
-                  <SegmentGroup.Items
-                    items={[
-                      { value: "piece", label: t("restock.labels.piece") },
-                      { value: "shelf", label: t("restock.labels.shelf") },
-                    ]}
-                  />
-                </SegmentGroup.Root>
-              </Stack>
+                  {[
+                    { value: "piece", label: t("restock.labels.piece") },
+                    { value: "shelf", label: t("restock.labels.shelf") },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={mode === opt.value}
+                      onClick={() => setMode(opt.value as "piece" | "shelf")}
+                      className={cn(
+                        "cursor-pointer rounded-control px-3 py-1 text-sm font-medium text-fg-muted transition-colors",
+                        mode === opt.value && "bg-surface text-fg shadow-card",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold uppercase text-fg-subtle">
                   {t("restock.labels.size")}
-                </Text>
-                <NativeSelect.Root width="40">
-                  <NativeSelect.Field
+                </span>
+                <div className="w-40">
+                  <Select
                     value={size}
                     onChange={(e) => setSize(e.target.value as LabelSize)}
                     data-testid="labels-size"
@@ -257,16 +249,15 @@ export function RestockLabelsPage() {
                         {s.replace("x", " × ")} mm
                       </option>
                     ))}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-              </Stack>
+                  </Select>
+                </div>
+              </div>
 
-              <Stack gap="1.5">
-                <Text fontSize="xs" color="fg.subtle" fontWeight="semibold" textTransform="uppercase">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold uppercase text-fg-subtle">
                   {t("restock.labels.showOn")}
-                </Text>
-                <Stack gap="1.5">
+                </span>
+                <div className="flex flex-col gap-1.5">
                   <LabelToggle
                     checked={showRack}
                     onChange={setShowRack}
@@ -282,37 +273,31 @@ export function RestockLabelsPage() {
                     onChange={setShowHpp}
                     label={t("restock.labels.showHpp")}
                   />
-                </Stack>
-              </Stack>
-            </Flex>
+                </div>
+              </div>
+            </div>
 
             {/* The honest hard case: broken/lost never entered stock, so they got no label. */}
             {data.excludedCount > 0n && (
-              <Flex
-                align="center"
-                gap="2"
-                borderTopWidth="1px"
-                borderColor="border"
-                pt="card"
-                color="fg.muted"
-                fontSize="sm"
+              <div
+                className="flex items-center gap-2 border-t border-line pt-card text-sm text-fg-muted"
                 data-testid="labels-excluded"
               >
-                <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
-                <Text>{t("restock.labels.excluded", { count: Number(data.excludedCount) })}</Text>
-              </Flex>
+                <TriangleAlert className="size-4 text-warn" />
+                <span>{t("restock.labels.excluded", { count: Number(data.excludedCount) })}</span>
+              </div>
             )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
       {job.length === 0 ? (
-        <Text color="fg.muted" data-testid="labels-empty">
+        <p className="text-fg-muted" data-testid="labels-empty">
           {t("restock.labels.none")}
-        </Text>
+        </p>
       ) : (
-        <Box>
-          <Box className="labels-sheet" data-testid="labels-sheet">
+        <div>
+          <div className="labels-sheet" data-testid="labels-sheet">
             {preview.map((entry, i) => (
               <LabelCard
                 key={`p${i}`}
@@ -328,7 +313,7 @@ export function RestockLabelsPage() {
             {/* Rendered but hidden on screen — the print stylesheet reveals them so the whole job
                 prints even when the preview shows a sample. */}
             {overflow.map((entry, i) => (
-              <Box key={`o${i}`} className="print-only-label">
+              <div key={`o${i}`} className="print-only-label">
                 <LabelCard
                   entry={entry}
                   size={size}
@@ -338,21 +323,19 @@ export function RestockLabelsPage() {
                   restockRef={restockRef}
                   receivedOn={receivedOn}
                 />
-              </Box>
+              </div>
             ))}
-          </Box>
+          </div>
 
           {overflow.length > 0 && (
-            <Flex align="center" gap="2" mt="card" color="fg.subtle" fontSize="sm" className="no-print">
-              <Icon as={Info} boxSize="4" />
-              <Text>
-                {t("restock.labels.previewNote", { shown: PREVIEW_CAP, total: job.length })}
-              </Text>
-            </Flex>
+            <div className="mt-card flex items-center gap-2 text-sm text-fg-subtle no-print">
+              <Info className="size-4" />
+              <span>{t("restock.labels.previewNote", { shown: PREVIEW_CAP, total: job.length })}</span>
+            </div>
           )}
-        </Box>
+        </div>
       )}
-    </Stack>
+    </div>
   );
 }
 
@@ -366,15 +349,9 @@ function LabelToggle({
   label: string;
 }) {
   return (
-    <Checkbox.Root
-      checked={checked}
-      onCheckedChange={(e) => onChange(e.checked === true)}
-      size="sm"
-    >
-      <Checkbox.HiddenInput />
-      <Checkbox.Control />
-      <Checkbox.Label>{label}</Checkbox.Label>
-    </Checkbox.Root>
+    <Checkbox checked={checked} onCheckedChange={onChange}>
+      {label}
+    </Checkbox>
   );
 }
 
@@ -428,7 +405,7 @@ function LabelCard({
   );
 }
 
-// Print + label styling. Kept as a scoped stylesheet rather than Chakra props because it is genuinely
+// Print + label styling. Kept as a scoped stylesheet rather than utilities because it is genuinely
 // CSS's job: physical mm dimensions, point-sized type that fits a 30×15 sticker, and an @media print
 // block that strips the app chrome and lays the labels out as a sheet of real stickers. The class
 // names are local to this page.

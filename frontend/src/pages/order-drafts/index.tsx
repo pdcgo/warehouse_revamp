@@ -1,23 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Pagination } from "../../components/Pagination";
 import { toaster } from "../../components/Toaster";
@@ -116,23 +106,23 @@ export function OrderDraftsPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orderDrafts.title")}</Heading>
-        <Text color="fg.muted" data-testid="order-drafts-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orderDrafts.title")}</h1>
+        <p className="text-fg-muted" data-testid="order-drafts-no-team">
           {t("orderDrafts.selectTeamView")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("orderDrafts.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("orderDrafts.title")}</h1>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
-        <Spacer />
+        <div className="flex-1" />
 
         {selected.size > 0 && (
           <Button
@@ -141,39 +131,33 @@ export function OrderDraftsPage() {
             data-testid="delete-selected-drafts"
             onClick={() => setConfirmOpen(true)}
           >
-            <Icon as={Trash2} boxSize="4" />
+            <Trash2 className="size-4" />
             {t("orderDrafts.deleteSelected", { count: selected.size })}
           </Button>
         )}
-      </Flex>
+      </div>
 
-      <Text color="fg.muted" fontSize="sm">
-        {t("orderDrafts.intro")}
-      </Text>
+      <p className="text-sm text-fg-muted">{t("orderDrafts.intro")}</p>
 
       {error && (
-        <Text color="red.fg" data-testid="order-drafts-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="order-drafts-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="order-drafts-table">
+        <Table.Root data-testid="order-drafts-table">
           <Table.Header>
             <Table.Row>
-              <Table.ColumnHeader width="1">
-                <Checkbox.Root
-                  size="sm"
+              <Table.ColumnHeader className="w-1">
+                <Checkbox
                   checked={allOnPageSelected}
                   onCheckedChange={toggleAllOnPage}
                   aria-label={t("orderDrafts.selectAll")}
                   data-testid="select-all-drafts"
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                </Checkbox.Root>
+                />
               </Table.ColumnHeader>
               <Table.ColumnHeader>{t("orderDrafts.reference")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
@@ -189,32 +173,25 @@ export function OrderDraftsPage() {
               return (
                 <Table.Row key={d.id.toString()} data-testid={`draft-row-${d.id}`}>
                   <Table.Cell>
-                    <Checkbox.Root
-                      size="sm"
+                    <Checkbox
                       checked={selected.has(d.id.toString())}
                       onCheckedChange={() => toggle(d.id.toString())}
                       aria-label={t("orderDrafts.selectOne", { id: d.id.toString() })}
                       data-testid={`select-draft-${d.id}`}
-                    >
-                      <Checkbox.HiddenInput />
-                      <Checkbox.Control />
-                    </Checkbox.Root>
+                    />
                   </Table.Cell>
 
                   <Table.Cell>
-                    <Box
-                      cursor="pointer"
-                      fontWeight="medium"
+                    <div
+                      className="cursor-pointer font-medium text-accent-fg hover:underline"
                       data-testid={`open-draft-${d.id}`}
                       onClick={() => navigate(`/order-drafts/${d.id}`)}
                     >
                       {d.externalId}
-                    </Box>
+                    </div>
                     {/* WHICH APP pushed it, kept beside the reference: two apps can scrape the same
                         marketplace, and an external id alone does not say whose it is. */}
-                    <Text fontSize="xs" color="fg.muted">
-                      {d.source}
-                    </Text>
+                    <p className="text-xs text-fg-muted">{d.source}</p>
                   </Table.Cell>
 
                   <Table.Cell>{d.customerName || "—"}</Table.Cell>
@@ -228,7 +205,7 @@ export function OrderDraftsPage() {
                         })}
                       </Badge>
                     ) : (
-                      <Text>{d.itemCount}</Text>
+                      <span>{d.itemCount}</span>
                     )}
                   </Table.Cell>
 
@@ -241,13 +218,13 @@ export function OrderDraftsPage() {
                         {t("orderDrafts.ready")}
                       </Badge>
                     ) : (
-                      <HStack gap="1" wrap="wrap">
+                      <div className="flex flex-wrap items-center gap-1">
                         {gaps.map((gap) => (
                           <Badge key={gap.key} colorPalette="gray">
                             {t(gap.key)}
                           </Badge>
                         ))}
-                      </HStack>
+                      </div>
                     )}
                   </Table.Cell>
                 </Table.Row>
@@ -258,9 +235,9 @@ export function OrderDraftsPage() {
       )}
 
       {!loading && drafts.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="order-drafts-empty">
+        <p className="text-fg-muted" data-testid="order-drafts-empty">
           {t("orderDrafts.noDrafts")}
-        </Text>
+        </p>
       )}
 
       {!loading && (
@@ -285,6 +262,6 @@ export function OrderDraftsPage() {
         confirmLabel={t("orderDrafts.deleteConfirm")}
         onConfirm={deleteSelected}
       />
-    </Stack>
+    </div>
   );
 }

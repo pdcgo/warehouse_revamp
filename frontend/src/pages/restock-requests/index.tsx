@@ -1,22 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Button,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Spacer,
-  Spinner,
-  Span,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
 import { Ban, PackageCheck } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type {
@@ -32,6 +16,11 @@ import { Pagination } from "../../components/Pagination";
 import { RestockStatusBadge } from "../../components/RestockStatusBadge";
 import { ShippingBadge } from "../../components/ShippingBadge";
 import { toaster } from "../../components/Toaster";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
+import { Tabs } from "../../components/ui/Tabs";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -65,25 +54,19 @@ function ItemsSummary({ items }: { items: RestockRequestItem[] }) {
   const [first, ...rest] = items;
 
   if (!first) {
-    return (
-      <Span fontSize="xs" color="fg.muted">
-        {t("restock.table.noProducts")}
-      </Span>
-    );
+    return <span className="text-xs text-fg-muted">{t("restock.table.noProducts")}</span>;
   }
 
   return (
-    <Stack gap="0">
-      <Span fontWeight="medium">{first.sku}</Span>
-      <Span fontSize="xs" color="fg.muted">
-        {first.name}
-      </Span>
+    <div className="flex flex-col">
+      <span className="font-medium">{first.sku}</span>
+      <span className="text-xs text-fg-muted">{first.name}</span>
       {rest.length > 0 && (
-        <Span fontSize="xs" color="fg.muted">
+        <span className="text-xs text-fg-muted">
           {t("restock.table.moreProducts", { count: rest.length })}
-        </Span>
+        </span>
       )}
-    </Stack>
+    </div>
   );
 }
 
@@ -145,23 +128,23 @@ export function RestockRequestsPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.title")}</Heading>
-        <Text color="fg.muted" data-testid="restock-requests-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.title")}</h1>
+        <p className="text-fg-muted" data-testid="restock-requests-no-team">
           {t("restock.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("restock.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("restock.title")}</h1>
         <Badge colorPalette="brand">
           {current.teamName || t("restock.teamRef", { id: current.teamId.toString() })}
         </Badge>
-        <Spacer />
+        <div className="flex-1" />
         {/* Only a SELLING team creates restock requests; a warehouse team only fulfils them. */}
         {current.teamType === TeamType.SELLING && (
           <Button
@@ -173,7 +156,7 @@ export function RestockRequestsPage() {
             {t("restock.newRequest")}
           </Button>
         )}
-      </Flex>
+      </div>
 
       {/* One panel, whose value tracks the active tab: every tab shows the SAME table — only the
           `status` sent to the RPC differs — so there is nothing to duplicate per tab, and no
@@ -188,26 +171,26 @@ export function RestockRequestsPage() {
         </Tabs.List>
 
         <Tabs.Content value={tab}>
-          <Stack gap="section">
+          <div className="flex flex-col gap-section">
             {error && (
-              <Text color="red.fg" data-testid="restock-requests-error">
+              <p className="text-red-600 dark:text-red-400" data-testid="restock-requests-error">
                 {error}
-              </Text>
+              </p>
             )}
 
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <Spinner />
             ) : (
-              <Table.Root size="sm" data-testid="restock-requests-table">
+              <Table.Root data-testid="restock-requests-table">
                 <Table.Header>
                   <Table.Row>
                     <Table.ColumnHeader>{t("restock.table.status")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.warehouse")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.requestedBy")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.product")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("restock.table.qty")}</Table.ColumnHeader>
+                    <Table.ColumnHeader className="text-right">{t("restock.table.qty")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.shipment")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("restock.table.actions")}</Table.ColumnHeader>
+                    <Table.ColumnHeader className="text-right">{t("restock.table.actions")}</Table.ColumnHeader>
                   </Table.Row>
                 </Table.Header>
 
@@ -221,8 +204,7 @@ export function RestockRequestsPage() {
                       <Table.Row
                         key={request.id.toString()}
                         data-testid={`restock-row-${request.id}`}
-                        cursor="pointer"
-                        _hover={{ bg: "bg.subtle" }}
+                        className="cursor-pointer hover:bg-surface-2"
                         onClick={() => navigate(`/inventories/restock/${request.id}`)}
                       >
                         <Table.Cell data-testid={`restock-open-${request.id}`}>
@@ -237,14 +219,14 @@ export function RestockRequestsPage() {
                         <Table.Cell>
                           <ItemsSummary items={request.items} />
                         </Table.Cell>
-                        <Table.Cell textAlign="end">{totalQuantity(request.items).toString()}</Table.Cell>
+                        <Table.Cell className="text-right">{totalQuantity(request.items).toString()}</Table.Cell>
                         <Table.Cell>
                           <ShippingBadge code={request.shippingCode} />
                         </Table.Cell>
 
                         {/* Stop the row's navigate from firing when a row action is used. */}
-                        <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                          <HStack justify="end" gap="1">
+                        <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
                             {isPending && isRequester && (
                               <ConfirmDialog
                                 title={t("restock.cancel.title")}
@@ -259,7 +241,7 @@ export function RestockRequestsPage() {
                                     aria-label={t("restock.cancel.action")}
                                     data-testid={`cancel-${request.id}`}
                                   >
-                                    <Icon as={Ban} boxSize="4" />
+                                    <Ban className="size-4" />
                                   </IconButton>
                                 }
                               />
@@ -278,10 +260,10 @@ export function RestockRequestsPage() {
                                 data-testid={`fulfil-${request.id}`}
                                 onClick={() => navigate(`/inventories/restock/${request.id}/accept`)}
                               >
-                                <Icon as={PackageCheck} boxSize="4" />
+                                <PackageCheck className="size-4" />
                               </IconButton>
                             )}
-                          </HStack>
+                          </div>
                         </Table.Cell>
                       </Table.Row>
                     );
@@ -291,7 +273,7 @@ export function RestockRequestsPage() {
             )}
 
             {!loading && requests.length === 0 && !error && (
-              <Text color="fg.muted" data-testid="restock-requests-empty">
+              <p className="text-fg-muted" data-testid="restock-requests-empty">
                 {/* "…none yet" is only true of the whole list. Under a tab the list is not empty,
                     THIS STATUS is — so say which one, reusing the tab's OWN labelKey rather than
                     rebuilding it from the tab value: a key spelled by concatenation breaks silently
@@ -299,7 +281,7 @@ export function RestockRequestsPage() {
                 {activeTab.status === RestockRequestStatus.UNSPECIFIED
                   ? t("restock.empty")
                   : t("restock.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
-              </Text>
+              </p>
             )}
 
             {!loading && (
@@ -315,9 +297,9 @@ export function RestockRequestsPage() {
                 }}
               />
             )}
-          </Stack>
+          </div>
         </Tabs.Content>
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }

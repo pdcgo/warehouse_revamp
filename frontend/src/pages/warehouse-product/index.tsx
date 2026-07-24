@@ -1,23 +1,18 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
-  Button,
-  Field,
-  Flex,
-  Heading,
-  Icon,
-  NativeSelect,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
-import { ArrowLeft } from "lucide-react";
+  ArrowLeft,
+  ArrowLeftRight,
+  DollarSign,
+  History,
+  Info,
+  LayoutGrid,
+  LineChart,
+  Package,
+  Pencil,
+} from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -37,6 +32,15 @@ import {
 } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Field } from "../../components/ui/Field";
+import { Select } from "../../components/ui/Select";
+import { Spinner } from "../../components/ui/Spinner";
+import { StatTile } from "../../components/ui/StatTile";
+import { Table } from "../../components/ui/Table";
+import { Tabs } from "../../components/ui/Tabs";
+import { cn } from "../../components/ui/cn";
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -65,6 +69,12 @@ function isExpiringSoon(unix: bigint): boolean {
 function isStaleOpname(unix: bigint): boolean {
   return Number(unix) * 1000 < Date.now() - 14 * 24 * 60 * 60 * 1000;
 }
+
+// VERTICAL tabs down the left, content beside them (#198). ui/Tabs is a horizontal primitive by
+// default, so the two-column layout and the left-accent trigger look are opted into per-instance:
+// stacked on mobile, list-left/content-right from md up.
+const TRIGGER_CLS =
+  "flex items-center gap-2 md:w-full md:justify-start md:rounded-control md:border-b-0 md:border-l-2 md:px-3 md:py-2 md:hover:bg-surface-2 md:data-[selected]:bg-accent-soft";
 
 // WarehouseProductPage is what a WAREHOUSE sees when it opens a product (#144/#158).
 //
@@ -175,93 +185,83 @@ export function WarehouseProductPage() {
     <Button
       size="xs"
       variant="ghost"
-      alignSelf="flex-start"
+      className="self-start"
       onClick={() => navigate("/products")}
       data-testid="warehouse-product-back"
     >
-      <Icon as={ArrowLeft} boxSize="4" />
+      <ArrowLeft className="size-4" />
       {t("warehouseProduct.back")}
     </Button>
   );
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("warehouseProduct.title")}</Heading>
-        <Text color="fg.muted" data-testid="warehouse-product-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("warehouseProduct.title")}</h1>
+        <p className="text-fg-muted" data-testid="warehouse-product-no-team">
           {t("products.noTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (!isWarehouse) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("warehouseProduct.title")}</Heading>
-        <Text color="fg.muted" data-testid="warehouse-product-not-warehouse">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("warehouseProduct.title")}</h1>
+        <p className="text-fg-muted" data-testid="warehouse-product-not-warehouse">
           {t("warehouseProduct.warehouseOnly")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
+        <Spinner />
+      </div>
     );
   }
 
   if (error || !product) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Text color="red.fg" data-testid="warehouse-product-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="warehouse-product-error">
           {error || t("warehouseProduct.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section" data-testid="warehouse-product-page">
+    <div className="flex flex-col gap-section" data-testid="warehouse-product-page">
       {back}
 
       {/* THE HEADER (#198): the product, and what a person standing here can DO to it. */}
-      <Flex align="center" gap="card" wrap="wrap">
-        <Stack gap="0">
-          <Heading size="md">{product.name}</Heading>
-          <Text fontSize="sm" color="fg.muted">
-            {product.sku}
-          </Text>
-        </Stack>
-        <Spacer />
+      <div className="flex flex-wrap items-center gap-card">
+        <div className="flex flex-col">
+          <h1 className="text-[22px] font-bold">{product.name}</h1>
+          <span className="text-sm text-fg-muted">{product.sku}</span>
+        </div>
+        <div className="flex-1" />
 
         {/* THE ACTION GROUP — Move and Adjust only (#209). There is deliberately NO Receive here:
             stock enters through restock ACCEPTANCE, which freezes a cost layer (#155/#208). A manual
             receive would create batch-less, cost-unknown stock and undo the whole cost-layer model.
             Both are the dialogs the stock list already uses — a second set scoped to one product would
             be a second place for "adjust to a counted figure" to mean something slightly different. */}
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-move"
-          onClick={() => setMoving(true)}
-        >
+        <Button size="xs" variant="outline" data-testid="wp-action-move" onClick={() => setMoving(true)}>
+          <ArrowLeftRight className="size-4" />
           {t("inventory.move")}
         </Button>
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="wp-action-adjust"
-          onClick={() => setAdjusting(true)}
-        >
+        <Button size="xs" variant="outline" data-testid="wp-action-adjust" onClick={() => setAdjusting(true)}>
+          <Pencil className="size-4" />
           {t("inventory.adjust")}
         </Button>
-      </Flex>
+      </div>
 
       {warehouseId !== undefined && (
         <>
@@ -284,24 +284,35 @@ export function WarehouseProductPage() {
 
       {/* VERTICAL tabs down the left, content beside them (#198) — the same shape the rack detail
           uses, because they are the same kind of screen: one record, read section by section. */}
-      <Tabs.Root defaultValue="info" orientation="vertical" data-testid="wp-tabs">
-        <Tabs.List minW="48">
-          <Tabs.Trigger value="info" data-testid="wp-tab-info">
+      <Tabs.Root
+        defaultValue="info"
+        orientation="vertical"
+        data-testid="wp-tabs"
+        className="gap-4 md:flex-row md:items-start md:gap-5"
+      >
+        <Tabs.List className="flex-wrap md:sticky md:top-4 md:w-48 md:flex-col md:items-stretch md:gap-0.5 md:self-start md:border-b-0">
+          <Tabs.Trigger value="info" className={TRIGGER_CLS} data-testid="wp-tab-info">
+            <Info className="size-4 shrink-0" />
             {t("warehouseProduct.tab.info")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="prices" data-testid="wp-tab-prices">
+          <Tabs.Trigger value="prices" className={TRIGGER_CLS} data-testid="wp-tab-prices">
+            <DollarSign className="size-4 shrink-0" />
             {t("warehouseProduct.tab.prices")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="placement" data-testid="wp-tab-placement">
+          <Tabs.Trigger value="placement" className={TRIGGER_CLS} data-testid="wp-tab-placement">
+            <LayoutGrid className="size-4 shrink-0" />
             {t("warehouseProduct.tab.placement")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="batches" data-testid="wp-tab-batches">
+          <Tabs.Trigger value="batches" className={TRIGGER_CLS} data-testid="wp-tab-batches">
+            <Package className="size-4 shrink-0" />
             {t("warehouseProduct.tab.batches")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="history" data-testid="wp-tab-history">
+          <Tabs.Trigger value="history" className={TRIGGER_CLS} data-testid="wp-tab-history">
+            <LineChart className="size-4 shrink-0" />
             {t("warehouseProduct.tab.stockHistory")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="placementHistory" data-testid="wp-tab-placement-history">
+          <Tabs.Trigger value="placementHistory" className={TRIGGER_CLS} data-testid="wp-tab-placement-history">
+            <History className="size-4 shrink-0" />
             {t("warehouseProduct.tab.placementHistory")}
           </Tabs.Trigger>
         </Tabs.List>
@@ -311,13 +322,11 @@ export function WarehouseProductPage() {
             on purpose — "what comes back after shipping is a RETURN, a different event with different
             money" — and only the cancel half was ever built. Showing restock alone is honest;
             inventing a returns figure from cancelled orders would not be. */}
-        <Tabs.Content value="info" flex="1" data-testid="wp-info-panel">
-          <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+        <Tabs.Content value="info" className="min-w-0 md:flex-1 md:pt-0" data-testid="wp-info-panel">
+          <div className="grid grid-cols-2 gap-card md:grid-cols-3">
             <Stat label={t("warehouseProduct.owner")} testId="warehouse-product-owner">
               {ownerName ? (
-                <Badge colorPalette="brand">
-                  {t("warehouseProduct.ownedBy", { team: ownerName })}
-                </Badge>
+                <Badge colorPalette="brand">{t("warehouseProduct.ownedBy", { team: ownerName })}</Badge>
               ) : (
                 t("warehouseProduct.none")
               )}
@@ -358,19 +367,19 @@ export function WarehouseProductPage() {
             <Stat label={t("warehouseProduct.lastRestock")} testId="warehouse-product-last-restock">
               {restocks[0] ? `#${restocks[0].id}` : t("warehouseProduct.none")}
             </Stat>
-          </SimpleGrid>
+          </div>
         </Tabs.Content>
 
         {/* PRICES — stock value by COST LAYER (#209): each delivery froze its own HPP, so on-hand
             splits into layers and the shelf's value is their sum, not on-hand × one price. */}
-        <Tabs.Content value="prices" flex="1" data-testid="wp-prices-panel">
-          <Stack gap="card">
-            <Table.Root size="sm" data-testid="wp-prices-table">
+        <Tabs.Content value="prices" className="min-w-0 md:flex-1 md:pt-0" data-testid="wp-prices-panel">
+          <div className="flex flex-col gap-card">
+            <Table.Root data-testid="wp-prices-table">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("warehouseProduct.unitCost")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.amount")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.amount")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -380,8 +389,8 @@ export function WarehouseProductPage() {
                     <Table.Cell>
                       {layer.costKnown ? formatRupiah(layer.unitCost) : t("warehouseProduct.costUnknown")}
                     </Table.Cell>
-                    <Table.Cell textAlign="end">{layer.onHand.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">
+                    <Table.Cell className="text-right">{layer.onHand.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">
                       {layer.costKnown ? formatRupiah(layer.amount) : t("warehouseProduct.costUnknown")}
                     </Table.Cell>
                   </Table.Row>
@@ -390,25 +399,25 @@ export function WarehouseProductPage() {
             </Table.Root>
 
             {layers.length === 0 ? (
-              <Text color="fg.muted" data-testid="wp-prices-empty">
+              <p className="text-fg-muted" data-testid="wp-prices-empty">
                 {t("warehouseProduct.noStock")}
-              </Text>
+              </p>
             ) : (
               <Stat label={t("warehouseProduct.valuation")} testId="warehouse-product-valuation">
                 {formatRupiah(layersTotal)}
               </Stat>
             )}
-          </Stack>
+          </div>
         </Tabs.Content>
 
         {/* Where it sits, and when it last moved (#209): a stale Last opname flags a shelf overdue for
             a count — the whole reason the dates ride beside the quantity. */}
-        <Tabs.Content value="placement" flex="1">
-          <Table.Root size="sm" data-testid="wp-placement-table">
+        <Tabs.Content value="placement" className="min-w-0 md:flex-1 md:pt-0">
+          <Table.Root data-testid="wp-placement-table">
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader>{t("warehouseProduct.place")}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
+                <Table.ColumnHeader className="text-right">{t("warehouseProduct.onHand")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("warehouseProduct.lastOut")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("warehouseProduct.lastIn")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("warehouseProduct.lastOpnameCol")}</Table.ColumnHeader>
@@ -424,14 +433,14 @@ export function WarehouseProductPage() {
                       {/* The unplaced pile is a REAL place (#135), named in words rather than blank. */}
                       {p.rackId === 0n ? t("racks.select.unplaced") : p.rackCode}
                     </Table.Cell>
-                    <Table.Cell textAlign="end">{p.onHand.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">{p.onHand.toString()}</Table.Cell>
                     <Table.Cell>{d && d.lastOutUnix > 0n ? formatDateUnix(d.lastOutUnix) : "—"}</Table.Cell>
                     <Table.Cell>{d && d.lastInUnix > 0n ? formatDateUnix(d.lastInUnix) : "—"}</Table.Cell>
                     <Table.Cell>
                       {opname > 0n ? (
-                        <Text color={isStaleOpname(opname) ? "orange.fg" : undefined}>
+                        <span className={isStaleOpname(opname) ? "text-warn" : undefined}>
                           {formatDateUnix(opname)}
-                        </Text>
+                        </span>
                       ) : (
                         "—"
                       )}
@@ -443,16 +452,16 @@ export function WarehouseProductPage() {
           </Table.Root>
 
           {places.length === 0 && (
-            <Text color="fg.muted" data-testid="wp-placement-empty">
+            <p className="mt-card text-fg-muted" data-testid="wp-placement-empty">
               {t("warehouseProduct.noStock")}
-            </Text>
+            </p>
           )}
         </Tabs.Content>
 
         {/* Tab 4 — everything that ever happened to it here, filterable by batch (#209). */}
-        <Tabs.Content value="history" flex="1">
-          <Stack gap="card">
-            <Flex gap="card" wrap="wrap">
+        <Tabs.Content value="history" className="min-w-0 md:flex-1 md:pt-0">
+          <div className="flex flex-col gap-card">
+            <div className="flex flex-wrap gap-card">
               <FilterSelect
                 label={t("warehouseProduct.batch")}
                 value={historyBatch}
@@ -461,7 +470,7 @@ export function WarehouseProductPage() {
                 allLabel={t("warehouseProduct.allBatches")}
                 options={batchOptions}
               />
-            </Flex>
+            </div>
             <MovementTable
               movements={filteredHistory}
               t={t}
@@ -470,13 +479,13 @@ export function WarehouseProductPage() {
               actorNames={actorNames}
               rackLabel={rackLabel}
             />
-          </Stack>
+          </div>
         </Tabs.Content>
 
         {/* Tab 5 — only the shelf-to-shelf moves (#136), filterable by rack AND batch (#209). */}
-        <Tabs.Content value="placementHistory" flex="1">
-          <Stack gap="card">
-            <Flex gap="card" wrap="wrap">
+        <Tabs.Content value="placementHistory" className="min-w-0 md:flex-1 md:pt-0">
+          <div className="flex flex-col gap-card">
+            <div className="flex flex-wrap gap-card">
               {/* A FILTER, not a destination picker: it offers "All" and only the racks in view, which
                   is why it is a NativeSelect rather than RackSelect (that one is for choosing where
                   stock GOES, and deliberately has no "All"). */}
@@ -496,7 +505,7 @@ export function WarehouseProductPage() {
                 allLabel={t("warehouseProduct.allBatches")}
                 options={batchOptions}
               />
-            </Flex>
+            </div>
             <MovementTable
               movements={filteredPlacementHistory}
               t={t}
@@ -505,22 +514,22 @@ export function WarehouseProductPage() {
               actorNames={actorNames}
               rackLabel={rackLabel}
             />
-          </Stack>
+          </div>
         </Tabs.Content>
 
         {/* BATCHES — the deliveries of this product as COST LAYERS (#209): each carries its own frozen
             cost and a lifecycle (Arrived = Damaged + Used + Ready), and the number optionally expires. */}
-        <Tabs.Content value="batches" flex="1">
-          <Stack gap="card">
-            <Table.Root size="sm" data-testid="wp-batches-table">
+        <Tabs.Content value="batches" className="min-w-0 md:flex-1 md:pt-0">
+          <div className="flex flex-col gap-card">
+            <Table.Root data-testid="wp-batches-table">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("warehouseProduct.delivery")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.arrived")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.damaged")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.used")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.ready")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("warehouseProduct.lineCost")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.arrived")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.damaged")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.used")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.ready")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("warehouseProduct.lineCost")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("warehouseProduct.expiring")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
@@ -528,27 +537,21 @@ export function WarehouseProductPage() {
                 {batchRows.map((b) => (
                   <Table.Row key={b.id.toString()} data-testid={`wp-batch-${b.deliveryId}`}>
                     <Table.Cell>
-                      <Text as="span" fontWeight="medium">
-                        #{b.deliveryId.toString()}
-                      </Text>
-                      {b.receiptNo && (
-                        <Text as="span" color="fg.subtle" ml="1">
-                          {b.receiptNo}
-                        </Text>
-                      )}
+                      <span className="font-medium">#{b.deliveryId.toString()}</span>
+                      {b.receiptNo && <span className="ml-1 text-fg-subtle">{b.receiptNo}</span>}
                     </Table.Cell>
-                    <Table.Cell textAlign="end">{b.arrived.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">{b.damaged.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">{b.used.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">{b.ready.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">
+                    <Table.Cell className="text-right">{b.arrived.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">{b.damaged.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">{b.used.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">{b.ready.toString()}</Table.Cell>
+                    <Table.Cell className="text-right">
                       {b.costKnown ? formatRupiah(b.lineCost) : t("warehouseProduct.costUnknown")}
                     </Table.Cell>
                     <Table.Cell>
                       {b.expiresOnUnix > 0n ? (
-                        <Text color={isExpiringSoon(b.expiresOnUnix) ? "orange.fg" : undefined}>
+                        <span className={isExpiringSoon(b.expiresOnUnix) ? "text-warn" : undefined}>
                           {formatDateUnix(b.expiresOnUnix)}
-                        </Text>
+                        </span>
                       ) : (
                         "—"
                       )}
@@ -559,33 +562,25 @@ export function WarehouseProductPage() {
             </Table.Root>
 
             {batchRows.length === 0 && (
-              <Text color="fg.muted" data-testid="wp-batches-empty">
+              <p className="text-fg-muted" data-testid="wp-batches-empty">
                 {t("warehouseProduct.noBatches")}
-              </Text>
+              </p>
             )}
-          </Stack>
+          </div>
         </Tabs.Content>
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }
 
 // One labelled figure. Extracted because the Info and Prices tabs are nine of them between them, and
-// nine copies of a label-over-value Stack is how two of them end up styled differently.
-function Stat({ label, testId, children }: { label: string; testId: string; children: React.ReactNode }) {
-  return (
-    <Stack gap="0">
-      <Text fontSize="xs" color="fg.muted">
-        {label}
-      </Text>
-      <Text fontWeight="medium" data-testid={testId}>
-        {children}
-      </Text>
-    </Stack>
-  );
+// nine copies of a label-over-value tile is how two of them end up styled differently. Reuses the
+// shared StatTile primitive, keeping the value's data-testid the tests query.
+function Stat({ label, testId, children }: { label: string; testId: string; children: ReactNode }) {
+  return <StatTile label={label} value={<span data-testid={testId}>{children}</span>} />;
 }
 
-// A labelled filter dropdown, "All" first. A filter over data in view — NativeSelect, not a picker.
+// A labelled filter dropdown, "All" first. A filter over data in view — a native Select, not a picker.
 function FilterSelect({
   label,
   value,
@@ -602,23 +597,16 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <Field.Root maxW="52">
+    <Field.Root className="max-w-52">
       <Field.Label>{label}</Field.Label>
-      <NativeSelect.Root>
-        <NativeSelect.Field
-          value={value}
-          data-testid={testId}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">{allLabel}</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </NativeSelect.Field>
-        <NativeSelect.Indicator />
-      </NativeSelect.Root>
+      <Select value={value} data-testid={testId} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{allLabel}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
     </Field.Root>
   );
 }
@@ -643,8 +631,8 @@ function MovementTable({
   rackLabel: (rackId: bigint) => string;
 }) {
   return (
-    <Stack gap="card">
-      <Table.Root size="sm" data-testid={testId}>
+    <div className="flex flex-col gap-card">
+      <Table.Root data-testid={testId}>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("warehouseProduct.when")}</Table.ColumnHeader>
@@ -652,39 +640,50 @@ function MovementTable({
             <Table.ColumnHeader>{t("warehouseProduct.by")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("warehouseProduct.batch")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("warehouseProduct.place")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("warehouseProduct.change")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("warehouseProduct.after")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("warehouseProduct.change")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("warehouseProduct.after")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {movements.map((m) => (
             <Table.Row key={m.id.toString()}>
               <Table.Cell>{m.createdAt}</Table.Cell>
-              <Table.Cell>{label(t, m.kind)}</Table.Cell>
               <Table.Cell>
-                {m.actorUserId > 0n
-                  ? actorNames.get(m.actorUserId.toString()) ?? `#${m.actorUserId}`
-                  : "—"}
+                <Badge colorPalette="gray">{label(t, m.kind)}</Badge>
+              </Table.Cell>
+              <Table.Cell>
+                {m.actorUserId > 0n ? actorNames.get(m.actorUserId.toString()) ?? `#${m.actorUserId}` : "—"}
               </Table.Cell>
               {/* A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211). */}
-              <Table.Cell>{m.batchId > 0n ? `#${m.batchId}` : "—"}</Table.Cell>
+              <Table.Cell>
+                {m.batchId > 0n ? (
+                  <span className="font-semibold text-accent-fg">#{m.batchId.toString()}</span>
+                ) : (
+                  <span className="text-fg-subtle">—</span>
+                )}
+              </Table.Cell>
               <Table.Cell>{rackLabel(m.rackId)}</Table.Cell>
               {/* Signed, and shown as such: +9 and -9 are different events, and a bare 9 hides which. */}
-              <Table.Cell textAlign="end">
+              <Table.Cell
+                className={cn(
+                  "text-right font-semibold",
+                  m.delta > 0n ? "text-pos" : m.delta < 0n ? "text-neg" : undefined,
+                )}
+              >
                 {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}
               </Table.Cell>
               {/* THIS PLACE's balance after the movement, not the warehouse total (#135). */}
-              <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
+              <Table.Cell className="text-right">{m.balance.toString()}</Table.Cell>
             </Table.Row>
           ))}
         </Table.Body>
       </Table.Root>
 
       {movements.length === 0 && (
-        <Text color="fg.muted" data-testid={`${testId}-empty`}>
+        <p className="text-fg-muted" data-testid={`${testId}-empty`}>
           {t("warehouseProduct.noMovements")}
-        </Text>
+        </p>
       )}
-    </Stack>
+    </div>
   );
 }

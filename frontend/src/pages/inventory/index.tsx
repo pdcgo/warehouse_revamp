@@ -1,21 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Menu,
-  Portal,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowRightLeft, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -27,6 +11,11 @@ import { Pagination } from "../../components/Pagination";
 import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Menu, Portal } from "../../components/ui/Menu";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // StockList is not filterable by product, so we pull a generous page of levels and join client-side.
@@ -68,10 +57,10 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   const error = query.isError ? rpcError(query.error) : "";
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">{title ?? t("inventory.title")}</Heading>
-        <Spacer />
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{title ?? t("inventory.title")}</h1>
+        <div className="flex-1" />
         <TeamSelect
           value={warehouseId}
           onChange={(id) => {
@@ -80,47 +69,48 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           }}
           placeholder={t("inventory.pickWarehousePlaceholder")}
         />
-      </Flex>
+      </div>
 
       {warehouseId === undefined ? (
-        <Text color="fg.muted" data-testid="inventory-pick-warehouse">
+        <p className="text-fg-muted" data-testid="inventory-pick-warehouse">
           {t("inventory.pickWarehousePrompt")}
-        </Text>
+        </p>
       ) : (
         <>
-          <HStack>
-            <Input
-              maxW="sm"
-              placeholder={t("inventory.searchPlaceholder")}
-              value={q}
-              data-testid="inventory-search"
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-            />
-          </HStack>
+          <div className="flex items-center gap-2">
+            <div className="w-full max-w-sm">
+              <Input
+                placeholder={t("inventory.searchPlaceholder")}
+                value={q}
+                data-testid="inventory-search"
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
 
           {error && (
-            <Text color="red.fg" data-testid="inventory-error">
+            <p className="text-neg" data-testid="inventory-error">
               {error}
-            </Text>
+            </p>
           )}
 
           {loading ? (
-            <Spinner colorPalette="brand" />
+            <Spinner />
           ) : products.length === 0 ? (
-            <Text color="fg.muted" data-testid="inventory-empty">
+            <p className="text-fg-muted" data-testid="inventory-empty">
               {t("inventory.empty")}
-            </Text>
+            </p>
           ) : (
-            <Table.Root size="sm" data-testid="inventory-table">
+            <Table.Root data-testid="inventory-table">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("inventory.table.sku")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("inventory.table.product")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("inventory.table.onHand")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("inventory.table.actions")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("inventory.table.onHand")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("inventory.table.actions")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
 
@@ -132,7 +122,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                     <Table.Row key={product.id.toString()} data-testid={`stock-row-${product.sku}`}>
                       <Table.Cell>{product.sku}</Table.Cell>
                       <Table.Cell>{product.name}</Table.Cell>
-                      <Table.Cell textAlign="end" data-testid={`stock-onhand-${product.sku}`}>
+                      <Table.Cell className="text-right" data-testid={`stock-onhand-${product.sku}`}>
                         {stock.toString()}
                       </Table.Cell>
                       {/* Receive stays inline — it is the one action someone comes to this row to do,
@@ -140,15 +130,15 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                           and Move collapse into the overflow: three actions is where the house rule
                           says a row stops being a row and starts being a toolbar, and #136's Move is
                           what pushed this one over. */}
-                      <Table.Cell textAlign="end">
-                        <HStack justify="end" gap="1">
+                      <Table.Cell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="xs"
                             variant="outline"
                             data-testid={`receive-${product.sku}`}
                             onClick={() => setDialog({ kind: "receive", product })}
                           >
-                            <Icon as={Plus} boxSize="4" />
+                            <Plus className="size-4" />
                             {t("inventory.receive")}
                           </Button>
 
@@ -160,7 +150,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                                 aria-label={t("inventory.rowActions")}
                                 data-testid={`row-actions-${product.sku}`}
                               >
-                                <Icon as={MoreHorizontal} boxSize="4" />
+                                <MoreHorizontal className="size-4" />
                               </IconButton>
                             </Menu.Trigger>
 
@@ -170,25 +160,25 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                                   <Menu.Item
                                     value="adjust"
                                     data-testid={`adjust-${product.sku}`}
-                                    onClick={() => setDialog({ kind: "adjust", product })}
+                                    onSelect={() => setDialog({ kind: "adjust", product })}
                                   >
-                                    <Icon as={Pencil} boxSize="4" />
+                                    <Pencil className="size-4" />
                                     {t("inventory.adjust")}
                                   </Menu.Item>
 
                                   <Menu.Item
                                     value="move"
                                     data-testid={`move-${product.sku}`}
-                                    onClick={() => setDialog({ kind: "move", product })}
+                                    onSelect={() => setDialog({ kind: "move", product })}
                                   >
-                                    <Icon as={ArrowRightLeft} boxSize="4" />
+                                    <ArrowRightLeft className="size-4" />
                                     {t("inventory.move")}
                                   </Menu.Item>
                                 </Menu.Content>
                               </Menu.Positioner>
                             </Portal>
                           </Menu.Root>
-                        </HStack>
+                        </div>
                       </Table.Cell>
                     </Table.Row>
                   );
@@ -198,7 +188,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           )}
 
           {!loading && (
-            <HStack justify="end">
+            <div className="flex items-center justify-end">
               <Pagination
                 count={totalItems}
                 pageSize={pageSize}
@@ -210,7 +200,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
                   setPage(1);
                 }}
               />
-            </HStack>
+            </div>
           )}
         </>
       )}
@@ -252,6 +242,6 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

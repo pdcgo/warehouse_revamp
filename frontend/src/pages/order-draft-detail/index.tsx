@@ -1,26 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Field,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  IconButton,
-  Input,
-  Separator,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Spinner } from "../../components/ui/Spinner";
 import { AddressPicker, emptyAddress } from "../../components/AddressPicker";
 import type { AddressValue } from "../../components/AddressPicker";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -296,31 +283,31 @@ export function OrderDraftDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orderDrafts.title")}</Heading>
-        <Text color="fg.muted">{t("orderDrafts.selectTeamView")}</Text>
-      </Stack>
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orderDrafts.title")}</h1>
+        <p className="text-fg-muted">{t("orderDrafts.selectTeamView")}</p>
+      </div>
     );
   }
 
   if (query.isPending) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (!draft) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orderDrafts.title")}</Heading>
-        <Text color="fg.muted" data-testid="draft-not-found">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orderDrafts.title")}</h1>
+        <p className="text-fg-muted" data-testid="draft-not-found">
           {t("orderDrafts.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section" maxW="3xl" data-testid="draft-detail-page">
-      <Flex align="center" gap="card">
+    <div className="flex max-w-3xl flex-col gap-section" data-testid="draft-detail-page">
+      <div className="flex flex-wrap items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -328,11 +315,11 @@ export function OrderDraftDetailPage() {
           data-testid="draft-back"
           onClick={() => navigate("/order-drafts")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">{t("orderDrafts.draftTitle", { ref: draft.externalId })}</Heading>
+        <h1 className="text-[22px] font-bold">{t("orderDrafts.draftTitle", { ref: draft.externalId })}</h1>
         <Badge colorPalette="gray">{draft.source}</Badge>
-        <Spacer />
+        <div className="flex-1" />
         <Button
           size="xs"
           variant="outline"
@@ -340,25 +327,25 @@ export function OrderDraftDetailPage() {
           data-testid="draft-delete"
           onClick={() => setConfirmDelete(true)}
         >
-          <Icon as={Trash2} boxSize="4" />
+          <Trash2 className="size-4" />
           {t("orderDrafts.deleteConfirm")}
         </Button>
-      </Flex>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="draft-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="draft-error">
           {error}
-        </Text>
+        </p>
       )}
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontWeight="medium">{t("orders.customerAndShop")}</Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="font-medium">{t("orders.customerAndShop")}</p>
 
             <Field.Root required>
               <Field.Label>{t("orders.customerName")}</Field.Label>
-              <Input
+              <Field.Input
                 value={customerName}
                 data-testid="draft-customer-name"
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -367,7 +354,7 @@ export function OrderDraftDetailPage() {
 
             <Field.Root>
               <Field.Label>{t("orders.phone")}</Field.Label>
-              <Input
+              <Field.Input
                 value={customerPhone}
                 data-testid="draft-customer-phone"
                 onChange={(e) => setCustomerPhone(e.target.value)}
@@ -381,13 +368,13 @@ export function OrderDraftDetailPage() {
 
             <Field.Root required>
               <Field.Label>{t("orders.warehouse")}</Field.Label>
-              <Box w="full" data-testid="draft-warehouse">
+              <div className="w-full" data-testid="draft-warehouse">
                 <TeamSelect
                   teamType={TeamType.WAREHOUSE}
                   value={warehouseId}
                   onChange={setWarehouseId}
                 />
-              </Box>
+              </div>
               <Field.HelperText>{t("orders.warehouseHelp")}</Field.HelperText>
             </Field.Root>
 
@@ -395,79 +382,71 @@ export function OrderDraftDetailPage() {
               <Field.Label>{t("orders.shipping")}</Field.Label>
               <ShippingSelect value={shippingCode} onChange={setShippingCode} />
             </Field.Root>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontWeight="medium">{t("orders.deliveryAddress")}</Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="font-medium">{t("orders.deliveryAddress")}</p>
             <AddressPicker value={address} onChange={setAddress} />
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontWeight="medium">{t("orderDrafts.mapLines")}</Text>
-            <Text fontSize="sm" color="fg.muted">
-              {t("orderDrafts.mapLinesHelp")}
-            </Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="font-medium">{t("orderDrafts.mapLines")}</p>
+            <p className="text-sm text-fg-muted">{t("orderDrafts.mapLinesHelp")}</p>
 
-            <Stack gap="card">
+            <div className="flex flex-col gap-card">
               {lines.map((line, i) => (
-                <Box
+                <div
                   key={line.id.toString()}
-                  borderWidth="1px"
-                  rounded="md"
-                  p="card"
+                  className="rounded-control border border-line bg-surface-2 p-card"
                   data-testid={`draft-line-${i}`}
                 >
                   {/* THE SCRAPED TEXT, ABOVE THE MAPPING AND NEVER REPLACED BY IT. It is the evidence
                       of what the buyer actually ordered — the only thing anybody can check a mapping
                       against, and the reason a wrong one is visible at all. */}
-                  <Stack gap="1" mb="card">
-                    <HStack gap="2">
+                  <div className="mb-card flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
                       <Badge colorPalette="gray">{t("orderDrafts.scraped")}</Badge>
                       {line.externalSku && (
-                        <Text fontSize="xs" color="fg.muted">
-                          {line.externalSku}
-                        </Text>
+                        <span className="text-xs text-fg-muted">{line.externalSku}</span>
                       )}
-                    </HStack>
-                    <Text fontSize="sm" data-testid={`draft-line-scraped-${i}`}>
+                    </div>
+                    <span className="text-sm" data-testid={`draft-line-scraped-${i}`}>
                       {line.externalName || t("orderDrafts.noScrapedName")}
-                    </Text>
-                  </Stack>
+                    </span>
+                  </div>
 
-                  <Flex gap="card" align="start" wrap="wrap">
-                    <Box flex="1" minW="52">
+                  <div className="flex flex-wrap items-start gap-card">
+                    <div className="min-w-52 flex-1">
                       <ProductSelect
                         teamId={teamId ?? 0n}
                         value={line.productId}
                         onChange={(p) => pickProduct(line.id, p)}
                       />
                       {line.productId > 0n ? (
-                        <Text
-                          fontSize="xs"
-                          color="fg.muted"
-                          mt="1"
-                          data-testid={`draft-line-mapped-${i}`}
-                        >
+                        <p className="mt-1 text-xs text-fg-muted" data-testid={`draft-line-mapped-${i}`}>
                           {line.productLabel || t("orderDrafts.mapped")}
-                        </Text>
+                        </p>
                       ) : (
-                        <Text fontSize="xs" color="orange.fg" mt="1" data-testid={`draft-line-unmapped-${i}`}>
+                        <p
+                          className="mt-1 text-xs text-orange-600 dark:text-orange-400"
+                          data-testid={`draft-line-unmapped-${i}`}
+                        >
                           {t("orderDrafts.notMappedYet")}
-                        </Text>
+                        </p>
                       )}
-                    </Box>
+                    </div>
 
-                    <Field.Root w="20">
-                      <Field.Label fontSize="xs">{t("orders.qty")}</Field.Label>
-                      <Input
+                    <Field.Root className="w-20">
+                      <Field.Label className="text-xs">{t("orders.qty")}</Field.Label>
+                      <Field.Input
                         type="number"
                         min="1"
                         value={line.quantity}
@@ -476,8 +455,8 @@ export function OrderDraftDetailPage() {
                       />
                     </Field.Root>
 
-                    <Field.Root w="32">
-                      <Field.Label fontSize="xs">{t("orders.unitPrice")}</Field.Label>
+                    <Field.Root className="w-32">
+                      <Field.Label className="text-xs">{t("orders.unitPrice")}</Field.Label>
                       <CurrencyInput
                         value={line.unitPrice}
                         data-testid={`draft-line-price-${i}`}
@@ -485,7 +464,7 @@ export function OrderDraftDetailPage() {
                       />
                     </Field.Root>
 
-                    <Box pt="5">
+                    <div className="pt-5">
                       {/* A buyer who cancelled one line of three must be able to say so, or the
                           draft stays unpromotable forever over a line nobody wants. */}
                       <IconButton
@@ -496,30 +475,30 @@ export function OrderDraftDetailPage() {
                         data-testid={`draft-line-remove-${i}`}
                         onClick={() => removeLine(line.id)}
                       >
-                        <Icon as={Trash2} boxSize="4" />
+                        <Trash2 className="size-4" />
                       </IconButton>
-                    </Box>
-                  </Flex>
-                </Box>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </Stack>
+            </div>
 
             {lines.length === 0 && (
-              <Text color="fg.muted" data-testid="draft-no-lines">
+              <p className="text-fg-muted" data-testid="draft-no-lines">
                 {t("orderDrafts.missingLines")}
-              </Text>
+              </p>
             )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Flex align="center" gap="card">
-              <Text color="fg.muted">{t("orders.subtotal")}</Text>
-              <Text data-testid="draft-subtotal">{formatRupiah(subtotal)}</Text>
-            </Flex>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <div className="flex items-center gap-card">
+              <span className="text-fg-muted">{t("orders.subtotal")}</span>
+              <span data-testid="draft-subtotal">{formatRupiah(subtotal)}</span>
+            </div>
 
             <Field.Root>
               <Field.Label>{t("orders.shippingCost")}</Field.Label>
@@ -531,35 +510,33 @@ export function OrderDraftDetailPage() {
               />
             </Field.Root>
 
-            <Separator />
+            <div className="border-t border-line" />
 
-            <Flex align="center" gap="card">
-              <Text fontWeight="semibold">{t("orders.total")}</Text>
-              <Text fontWeight="semibold" data-testid="draft-total">
+            <div className="flex items-center gap-card">
+              <span className="font-semibold">{t("orders.total")}</span>
+              <span className="font-semibold" data-testid="draft-total">
                 {formatRupiah(subtotal + toRupiah(shippingCost))}
-              </Text>
-            </Flex>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+              </span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Flex align="center" gap="card" wrap="wrap">
+      <div className="flex flex-wrap items-center gap-card">
         {/* WHY Promote is disabled, beside the button rather than behind a click. The alternative is
             a person pressing it and reading a rejection to learn what they already could have seen. */}
         {!ready && (
-          <HStack gap="1" wrap="wrap" data-testid="draft-gaps">
-            <Text fontSize="sm" color="fg.muted">
-              {t("orderDrafts.remaining")}:
-            </Text>
+          <div className="flex flex-wrap items-center gap-1" data-testid="draft-gaps">
+            <span className="text-sm text-fg-muted">{t("orderDrafts.remaining")}:</span>
             {gaps.map((gap) => (
               <Badge key={gap.key} colorPalette="gray">
                 {t(gap.key)}
               </Badge>
             ))}
-          </HStack>
+          </div>
         )}
 
-        <Spacer />
+        <div className="flex-1" />
 
         <Button
           variant="outline"
@@ -582,7 +559,7 @@ export function OrderDraftDetailPage() {
         >
           {dirty ? t("orderDrafts.saveFirst") : t("orderDrafts.promote")}
         </Button>
-      </Flex>
+      </div>
 
       <ConfirmDialog
         open={confirmDelete}
@@ -592,6 +569,6 @@ export function OrderDraftDetailPage() {
         confirmLabel={t("orderDrafts.deleteConfirm")}
         onConfirm={doDelete}
       />
-    </Stack>
+    </div>
   );
 }

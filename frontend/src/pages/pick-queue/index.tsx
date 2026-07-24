@@ -1,21 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Badge,
-  Flex,
-  Heading,
-  Icon,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
 import { PackageSearch } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
+import { Badge } from "../../components/ui/Badge";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
+import { Tabs } from "../../components/ui/Tabs";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge } from "../../components/OrderStatusBadge";
 import { Pagination } from "../../components/Pagination";
@@ -74,33 +66,33 @@ export function PickQueuePage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("picking.title")}</Heading>
-        <Text color="fg.muted" data-testid="pick-queue-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("picking.title")}</h1>
+        <p className="text-fg-muted" data-testid="pick-queue-no-team">
           {t("picking.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (!isWarehouse) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("picking.title")}</Heading>
-        <Text color="fg.muted" data-testid="pick-queue-not-warehouse">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("picking.title")}</h1>
+        <p className="text-fg-muted" data-testid="pick-queue-not-warehouse">
           {t("picking.warehouseOnly")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("picking.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("picking.title")}</h1>
         <Badge colorPalette="brand">{current.teamName}</Badge>
-        <Spacer />
-      </Flex>
+        <div className="flex-1" />
+      </div>
 
       <Tabs.Root value={tab} onValueChange={(e) => selectTab(e.value)}>
         <Tabs.List>
@@ -112,17 +104,17 @@ export function PickQueuePage() {
         </Tabs.List>
 
         <Tabs.Content value={tab}>
-          <Stack gap="card">
+          <div className="flex flex-col gap-card">
             {error && (
-              <Text color="red.fg" data-testid="pick-queue-error">
+              <p className="text-red-600 dark:text-red-400" data-testid="pick-queue-error">
                 {error}
-              </Text>
+              </p>
             )}
 
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <Spinner />
             ) : (
-              <Table.Root size="sm" data-testid="pick-queue-table">
+              <Table.Root data-testid="pick-queue-table">
                 <Table.Header>
                   <Table.Row>
                     <Table.ColumnHeader>{t("picking.table.order")}</Table.ColumnHeader>
@@ -134,7 +126,7 @@ export function PickQueuePage() {
                   {orders.map((order) => (
                     <Table.Row
                       key={String(order.id)}
-                      cursor="pointer"
+                      className="cursor-pointer hover:bg-surface-2"
                       onClick={() => navigate(`/inventories/picking/${order.id}`)}
                       data-testid={`pick-queue-row-${order.id}`}
                     >
@@ -150,14 +142,14 @@ export function PickQueuePage() {
             )}
 
             {!loading && orders.length === 0 && !error && (
-              <Flex align="center" gap="card" color="fg.muted" data-testid="pick-queue-empty">
-                <Icon as={PackageSearch} boxSize="4" />
-                <Text>
+              <div className="flex items-center gap-card text-fg-muted" data-testid="pick-queue-empty">
+                <PackageSearch className="size-4" />
+                <span>
                   {status === OrderStatus.UNSPECIFIED
                     ? t("picking.empty")
                     : t("picking.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
-                </Text>
-              </Flex>
+                </span>
+              </div>
             )}
 
             {!loading && (
@@ -173,9 +165,9 @@ export function PickQueuePage() {
                 }}
               />
             )}
-          </Stack>
+          </div>
         </Tabs.Content>
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }

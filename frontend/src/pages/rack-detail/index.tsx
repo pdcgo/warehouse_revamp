@@ -1,18 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  Card,
-  Heading,
-  Icon,
-  SimpleGrid,
-  Spinner,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
@@ -23,6 +11,11 @@ import { Pagination } from "../../components/Pagination";
 import { ProductListItem } from "../../components/ProductListItem";
 import { PLACEMENT_KINDS, kindLabel } from "../../features/inventory/movementKind";
 import { formatRupiah } from "../../lib/money";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
+import { Tabs } from "../../components/ui/Tabs";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -43,10 +36,8 @@ function parseRackId(raw: string | undefined): bigint {
 // this, what is on it, what it is worth, and what has happened to it — a PAGE, not a dialog, because
 // it is a record being read.
 //
-// THE LAYOUT IS THE OWNER'S (#197): the name and two header tiles across the top, then VERTICAL tabs
-// down the left with their content beside them. Vertical rather than the horizontal tabs
-// WarehouseProductPage uses, because five labels do not read well in a row and these are sections of
-// one record rather than alternative views of one thing.
+// THE LAYOUT IS THE OWNER'S (#197): the name and two header tiles across the top, then tabs down the
+// sections of one record.
 //
 // The page exists because a warehouse holds OTHER TEAMS' goods: a selling team raises a restock for
 // its own product and accepting it (#137) puts that product on this warehouse's shelf. So RackStock
@@ -238,36 +229,36 @@ export function RackDetailPage() {
   // No current team means there is no warehouse to read a rack against — the whole page is meaningless.
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("racks.detail.title")}</Heading>
-        <Text color="fg.muted" data-testid="rack-detail-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("racks.detail.title")}</h1>
+        <p className="text-fg-muted" data-testid="rack-detail-no-team">
           {t("racks.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !rack) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          className="self-start"
           data-testid="rack-detail-back"
           onClick={() => navigate("/inventories/racks")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("racks.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="rack-detail-error">
+        <p className="text-neg" data-testid="rack-detail-error">
           {error || t("racks.detail.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -283,80 +274,76 @@ export function RackDetailPage() {
   );
 
   return (
-    <Stack gap="section" data-testid="rack-detail-page">
+    <div className="flex flex-col gap-section" data-testid="rack-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        className="self-start"
         data-testid="rack-detail-back"
         onClick={() => navigate("/inventories/racks")}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("racks.detail.back")}
       </Button>
 
       {/* THE HEADER (#197): the shelf's label, then the two numbers somebody wants at a glance. */}
-      <SimpleGrid columns={{ base: 1, md: 3 }} gap="card" alignItems="stretch">
-        <Stack gap="1" justify="center">
+      <div className="grid grid-cols-1 items-stretch gap-card md:grid-cols-3">
+        <div className="flex flex-col justify-center gap-1">
           {/* The CODE is what is painted on the shelf — it is how a person finds this rack in the
               building, so it is the heading. The name only qualifies it, and is legitimately empty. */}
-          <Heading size="lg" data-testid="rack-detail-code">
+          <h1 className="text-2xl font-bold" data-testid="rack-detail-code">
             {rack.code}
-          </Heading>
+          </h1>
           {rack.name && (
-            <Text fontSize="sm" fontWeight="medium" data-testid="rack-detail-name">
+            <p className="text-sm font-medium" data-testid="rack-detail-name">
               {rack.name}
-            </Text>
+            </p>
           )}
-        </Stack>
+        </div>
 
-        <Card.Root>
-          <Card.Body>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("racks.detail.countAndValue")}
-              </Text>
-              <Text fontWeight="medium" data-testid="rack-summary-count">
+        <Card>
+          <CardBody>
+            <div className="flex flex-col">
+              <div className="text-xs text-fg-muted">{t("racks.detail.countAndValue")}</div>
+              <div className="font-medium" data-testid="rack-summary-count">
                 {t("racks.detail.unitsOnShelf", {
                   count: Number(summary?.totalOnHand ?? 0n),
                 })}
-              </Text>
-              <Text fontSize="sm" data-testid="rack-summary-value">
+              </div>
+              <div className="text-sm" data-testid="rack-summary-value">
                 {formatRupiah(summary?.totalValue ?? 0n)}
-              </Text>
+              </div>
 
               {/* ⚠ THE VALUE IS A FLOOR, AND THE SCREEN SAYS SO. A product with no recorded cost adds
                   nothing to it, so a shelf of never-restocked goods would otherwise read as a
                   confident small number. */}
               {(summary?.unknownCostProducts ?? 0) > 0 && (
-                <Text fontSize="xs" color="orange.fg" data-testid="rack-summary-unknown-cost">
+                <div className="text-xs text-warn" data-testid="rack-summary-unknown-cost">
                   {t("racks.detail.unknownCost", { count: summary?.unknownCostProducts ?? 0 })}
-                </Text>
+                </div>
               )}
-            </Stack>
-          </Card.Body>
-        </Card.Root>
+            </div>
+          </CardBody>
+        </Card>
 
-        <Card.Root>
-          <Card.Body>
-            <Stack gap="0">
-              <Text fontSize="xs" color="fg.muted">
-                {t("racks.detail.lastCounted")}
-              </Text>
+        <Card>
+          <CardBody>
+            <div className="flex flex-col">
+              <div className="text-xs text-fg-muted">{t("racks.detail.lastCounted")}</div>
               {/* "Never counted" is a real answer for a new shelf, and it must not render as a date. */}
-              <Text fontWeight="medium" data-testid="rack-summary-last-counted">
+              <div className="font-medium" data-testid="rack-summary-last-counted">
                 {summary?.lastCountedAt
                   ? new Date(summary.lastCountedAt).toLocaleDateString()
                   : t("racks.detail.neverCounted")}
-              </Text>
-            </Stack>
-          </Card.Body>
-        </Card.Root>
-      </SimpleGrid>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
 
-      {/* VERTICAL tabs down the left, content beside them (#197). */}
-      <Tabs.Root defaultValue="products" orientation="vertical" data-testid="rack-tabs">
-        <Tabs.List minW="48">
+      {/* Tabs — the sections of this record (#197). */}
+      <Tabs.Root defaultValue="products" data-testid="rack-tabs">
+        <Tabs.List>
           <Tabs.Trigger value="info" data-testid="rack-tab-info">
             {t("racks.detail.tab.info")}
           </Tabs.Trigger>
@@ -374,8 +361,8 @@ export function RackDetailPage() {
           </Tabs.Trigger>
         </Tabs.List>
 
-        <Tabs.Content value="info" flex="1" data-testid="rack-info-panel">
-          <Stack gap="card">
+        <Tabs.Content value="info" data-testid="rack-info-panel">
+          <div className="flex flex-col gap-card">
             <Field label={t("racks.detail.code")} value={rack.code} testId="rack-info-code" />
             <Field
               label={t("racks.detail.name")}
@@ -387,11 +374,11 @@ export function RackDetailPage() {
               value={rack.description || t("racks.detail.noDescription")}
               testId="rack-info-description"
             />
-          </Stack>
+          </div>
         </Tabs.Content>
 
-        <Tabs.Content value="products" flex="1" data-testid="rack-products-panel">
-          <Stack gap="card">
+        <Tabs.Content value="products" data-testid="rack-products-panel">
+          <div className="flex flex-col gap-card">
             {productsTable}
             <Pagination
               count={totalItems}
@@ -404,13 +391,13 @@ export function RackDetailPage() {
                 setPage(1);
               }}
             />
-          </Stack>
+          </div>
         </Tabs.Content>
 
         {/* PRICES reads the SAME call the Products tab does — one query, two views, so the count and
             the money beside it can never come from two different reads of the shelf. */}
-        <Tabs.Content value="prices" flex="1" data-testid="rack-prices-panel">
-          <Stack gap="card">
+        <Tabs.Content value="prices" data-testid="rack-prices-panel">
+          <div className="flex flex-col gap-card">
             <RackStockTable
               lines={lines}
               products={products}
@@ -430,16 +417,16 @@ export function RackDetailPage() {
                 setPage(1);
               }}
             />
-          </Stack>
+          </div>
         </Tabs.Content>
 
-        <Tabs.Content value="stockHistory" flex="1" data-testid="rack-stock-history-panel">
+        <Tabs.Content value="stockHistory" data-testid="rack-stock-history-panel">
           <RackHistory teamId={teamId} rackId={rackId} testId="rack-stock-history" />
         </Tabs.Content>
 
         {/* PLACEMENT HISTORY is the same ledger narrowed to the movements that decided goods LIVE
             here — put-aways and moves, rather than every change to a count. */}
-        <Tabs.Content value="placementHistory" flex="1" data-testid="rack-placement-history-panel">
+        <Tabs.Content value="placementHistory" data-testid="rack-placement-history-panel">
           <RackHistory
             teamId={teamId}
             rackId={rackId}
@@ -448,18 +435,16 @@ export function RackDetailPage() {
           />
         </Tabs.Content>
       </Tabs.Root>
-    </Stack>
+    </div>
   );
 }
 
 function Field({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
-    <Stack gap="0">
-      <Text fontSize="xs" color="fg.muted">
-        {label}
-      </Text>
-      <Text data-testid={testId}>{value}</Text>
-    </Stack>
+    <div className="flex flex-col">
+      <div className="text-xs text-fg-muted">{label}</div>
+      <div data-testid={testId}>{value}</div>
+    </div>
   );
 }
 
@@ -487,14 +472,14 @@ function RackStockTable({
 
   if (error) {
     return (
-      <Text color="red.fg" data-testid="rack-detail-stock-error">
+      <p className="text-neg" data-testid="rack-detail-stock-error">
         {error}
-      </Text>
+      </p>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   // Distinct testid per tab: BOTH panels mount this table (Products and Prices are one component,
@@ -502,25 +487,25 @@ function RackStockTable({
   // than wrong — the worst kind of test failure to read.
   if (lines.length === 0) {
     return (
-      <Text color="fg.muted" data-testid={showMoney ? "rack-prices-empty" : "rack-detail-empty"}>
+      <p className="text-fg-muted" data-testid={showMoney ? "rack-prices-empty" : "rack-detail-empty"}>
         {t("racks.detail.empty")}
-      </Text>
+      </p>
     );
   }
 
   return (
-    <Table.Root size="sm" data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
+    <Table.Root data-testid={showMoney ? "rack-detail-prices" : "rack-detail-stock"}>
       <Table.Header>
         <Table.Row>
           <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
           {/* NOT "On hand" — the app already uses that for the warehouse-wide number
               (inventory.table.onHand), and this is one shelf's share of it. Naming both the same is
               how someone reads a rack's count as the warehouse's. */}
-          <Table.ColumnHeader textAlign="end">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
+          <Table.ColumnHeader className="text-right">{t("racks.detail.onThisRack")}</Table.ColumnHeader>
           {showMoney && (
             <>
-              <Table.ColumnHeader textAlign="end">{t("racks.detail.unitCost")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("racks.detail.lineValue")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("racks.detail.unitCost")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("racks.detail.lineValue")}</Table.ColumnHeader>
             </>
           )}
         </Table.Row>
@@ -555,8 +540,7 @@ function RackStockTable({
               {/* Deliberately its own column rather than ProductListItem's `stock` badge: that badge
                   means READY STOCK across the warehouse, and this is the count on THIS rack. */}
               <Table.Cell
-                textAlign="end"
-                fontWeight="medium"
+                className="text-right font-medium"
                 data-testid={`rack-stock-onhand-${line.productId}`}
               >
                 {line.onHand.toString()}
@@ -567,12 +551,11 @@ function RackStockTable({
                   {/* ⚠ UNKNOWN IS NOT FREE. A dash rather than "Rp 0", because a zero here would say
                       the goods cost nothing — and the difference is the whole reason the server sends
                       `cost_known` rather than letting a screen infer it. */}
-                  <Table.Cell textAlign="end" data-testid={`rack-unit-cost-${line.productId}`}>
+                  <Table.Cell className="text-right" data-testid={`rack-unit-cost-${line.productId}`}>
                     {line.costKnown ? formatRupiah(line.unitCost) : t("racks.detail.costUnknown")}
                   </Table.Cell>
                   <Table.Cell
-                    textAlign="end"
-                    fontWeight="medium"
+                    className="text-right font-medium"
                     data-testid={`rack-line-value-${line.productId}`}
                   >
                     {line.costKnown ? formatRupiah(line.value) : t("racks.detail.costUnknown")}
@@ -653,34 +636,34 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
 
   if (error) {
     return (
-      <Text color="red.fg" data-testid={`${testId}-error`}>
+      <p className="text-neg" data-testid={`${testId}-error`}>
         {error}
-      </Text>
+      </p>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (movements.length === 0) {
     return (
-      <Text color="fg.muted" data-testid={`${testId}-empty`}>
+      <p className="text-fg-muted" data-testid={`${testId}-empty`}>
         {t("racks.detail.noHistory")}
-      </Text>
+      </p>
     );
   }
 
   return (
-    <Stack gap="card">
-      <Table.Root size="sm" data-testid={`${testId}-table`}>
+    <div className="flex flex-col gap-card">
+      <Table.Root data-testid={`${testId}-table`}>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("racks.detail.when")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("racks.detail.what")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.change")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.after")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("racks.detail.change")}</Table.ColumnHeader>
+            <Table.ColumnHeader className="text-right">{t("racks.detail.after")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
 
@@ -692,11 +675,11 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
               <Table.Cell>#{m.productId.toString()}</Table.Cell>
               {/* A ledger line IS a movement, so a sign is the honest rendering here — it says which
                   way the count went, which is what the row is about. */}
-              <Table.Cell textAlign="end">
+              <Table.Cell className="text-right">
                 {m.delta > 0n ? "+" : ""}
                 {m.delta.toString()}
               </Table.Cell>
-              <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
+              <Table.Cell className="text-right">{m.balance.toString()}</Table.Cell>
             </Table.Row>
           ))}
         </Table.Body>
@@ -713,6 +696,6 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
           setPage(1);
         }}
       />
-    </Stack>
+    </div>
   );
 }

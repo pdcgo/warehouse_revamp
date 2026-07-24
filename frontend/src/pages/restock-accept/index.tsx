@@ -1,24 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  NativeSelect,
-  Separator,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, History, LayoutGrid, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
@@ -30,6 +12,12 @@ import { ProductListItem } from "../../components/ProductListItem";
 import { RackSelect, UNPLACED } from "../../components/RackSelect";
 import { ShippingBadge } from "../../components/ShippingBadge";
 import { toaster } from "../../components/Toaster";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Input } from "../../components/ui/Input";
+import { Select } from "../../components/ui/Select";
+import { Spinner } from "../../components/ui/Spinner";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
@@ -301,79 +289,79 @@ export function RestockAcceptPage() {
     <Button
       size="xs"
       variant="ghost"
-      alignSelf="flex-start"
+      className="self-start"
       onClick={() => navigate(`/inventories/restock/${rawId ?? ""}`)}
       data-testid="accept-back"
     >
-      <Icon as={ArrowLeft} boxSize="4" />
+      <ArrowLeft className="size-4" />
       {t("restock.accept.back")}
     </Button>
   );
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.accept.title")}</Heading>
-        <Text color="fg.muted" data-testid="accept-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.accept.title")}</h1>
+        <p className="text-fg-muted" data-testid="accept-no-team">
           {t("restock.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (!isWarehouse) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.accept.title")}</Heading>
-        <Text color="fg.muted" data-testid="accept-not-warehouse">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.accept.title")}</h1>
+        <p className="text-fg-muted" data-testid="accept-not-warehouse">
           {t("restock.accept.warehouseOnly")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Spinner colorPalette="brand" />
-      </Stack>
+        <Spinner />
+      </div>
     );
   }
 
   if (error || !request) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         {back}
-        <Text color="red.fg" data-testid="accept-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="accept-error">
           {error || t("restock.accept.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
+    <div className="flex flex-col gap-section">
       {back}
 
       {/* The action header rides at the top of the scroll (#201): on a long delivery the Accept button
           and the reason it is disabled must stay in reach. */}
-      <Box position="sticky" top="0" zIndex="1" bg="bg" borderBottomWidth="1px" borderColor="border" py="card">
-        <Flex align="center" gap="card" wrap="wrap">
-          <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
+      <div className="sticky top-0 z-1 border-b border-line bg-bg py-card">
+        <div className="flex flex-wrap items-center gap-card">
+          <h1 className="text-[22px] font-bold">{t("restock.accept.heading", { id: request.id.toString() })}</h1>
           <Badge colorPalette="brand">{current.teamName}</Badge>
-          <Spacer />
+          <div className="flex-1" />
 
-          <Stack gap="0" textAlign="end" mr="1">
-            <Text fontSize="sm" data-testid="accept-restock-count">
+          <div className="mr-1 flex flex-col text-right">
+            <span className="text-sm" data-testid="accept-restock-count">
               {t("restock.accept.restockCount", { count: totalReceived.toString() })}
-            </Text>
+            </span>
             {blockedLines > 0 && (
-              <Text fontSize="xs" color="orange.fg" data-testid="accept-progress">
+              <span className="text-xs text-orange-600 dark:text-orange-400" data-testid="accept-progress">
                 {t("restock.accept.notPlaced", { count: blockedLines })}
-              </Text>
+              </span>
             )}
-          </Stack>
+          </div>
 
           {/* Accepting moves stock and cannot be undone, so it confirms first. */}
           <ConfirmDialog
@@ -387,92 +375,84 @@ export function RestockAcceptPage() {
               </Button>
             }
           />
-        </Flex>
-      </Box>
+        </div>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="accept-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="accept-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {/* Delivery summary, grouped (#206): the order, the shipment, and the freight the courier took at
           the door. Only the fields the model actually holds — a driver/receiver name and a shipped date
           are on the mock but not yet in the schema, so they are left out rather than faked. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-fg-muted">
                 {t("restock.accept.summary.order")}
-              </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+              </p>
+              <div className="grid grid-cols-2 gap-card md:grid-cols-3">
                 <SummaryField label={t("restock.accept.summary.orderRef")} value={request.orderRef || "—"} />
                 <SummaryField
                   label={t("restock.accept.summary.supplier")}
                   value={request.supplierId !== 0n ? `#${request.supplierId.toString()}` : "—"}
                 />
                 <SummaryField label={t("restock.accept.summary.ordered")} value={formatDate(request.createdAtUnix) || "—"} />
-              </SimpleGrid>
-            </Box>
+              </div>
+            </div>
 
-            <Separator />
+            <div className="border-t border-dashed border-line" />
 
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-fg-muted">
                 {t("restock.accept.summary.shipping")}
-              </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.summary.courier")}
-                  </Text>
-                  {request.shippingCode ? <ShippingBadge code={request.shippingCode} /> : <Text>—</Text>}
-                </Stack>
+              </p>
+              <div className="grid grid-cols-2 gap-card md:grid-cols-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-fg-subtle">{t("restock.accept.summary.courier")}</span>
+                  {request.shippingCode ? <ShippingBadge code={request.shippingCode} /> : <span>—</span>}
+                </div>
                 <SummaryField
                   label={t("restock.accept.summary.receipt")}
                   value={request.receipt || "—"}
                   testId="accept-receipt"
                 />
-              </SimpleGrid>
-            </Box>
+              </div>
+            </div>
 
-            <Separator />
+            <div className="border-t border-dashed border-line" />
 
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-fg-muted">
                 {t("restock.accept.summary.freight")}
-              </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+              </p>
+              <div className="grid grid-cols-2 gap-card md:grid-cols-3">
                 <SummaryField label={t("restock.form.shippingCost")} value={formatRupiah(request.shippingCost)} />
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.codFee")}
-                  </Text>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-fg-subtle">{t("restock.accept.codFee")}</span>
                   <CurrencyInput value={codFee} data-testid="accept-cod-fee" onChange={setCodFee} />
-                </Stack>
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.freightTotal")}
-                  </Text>
-                  <Text fontWeight="medium" data-testid="accept-freight-total">
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-fg-subtle">{t("restock.accept.freightTotal")}</span>
+                  <span className="font-medium text-accent-fg" data-testid="accept-freight-total">
                     {formatRupiah(freight)}
-                  </Text>
-                </Stack>
-              </SimpleGrid>
-            </Box>
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {request.note && (
-              <Box borderTopWidth="1px" borderColor="border" pt="card">
-                <Text fontSize="xs" color="fg.subtle">
-                  {t("restock.form.note")}
-                </Text>
-                <Text data-testid="accept-note">{request.note}</Text>
-              </Box>
+              <div className="border-t border-line pt-card">
+                <span className="text-xs text-fg-subtle">{t("restock.form.note")}</span>
+                <p data-testid="accept-note">{request.note}</p>
+              </div>
             )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
       {items.map((item) => {
         const st = lineState(item);
@@ -482,42 +462,38 @@ export function RestockAcceptPage() {
         const problemRows = problems[st.key] ?? [];
 
         return (
-          <Card.Root key={st.key} data-testid={`accept-line-${item.productId}`}>
-            <Card.Body>
-              <Stack gap="card">
+          <Card key={st.key} data-testid={`accept-line-${item.productId}`}>
+            <CardBody>
+              <div className="flex flex-col gap-card">
                 {/* The product, through the shared component (#143). No stock badge — that means the
                     warehouse total (#138), and nothing here has loaded one. */}
                 <ProductListItem
                   product={{ id: item.productId, sku: item.sku, name: item.name }}
                   action={
-                    <Stack gap="0" textAlign="end">
-                      <Text fontSize="xs" color="fg.muted">
-                        {t("restock.accept.hpp")}
-                      </Text>
-                      <Text fontWeight="medium" data-testid={`accept-hpp-${item.productId}`}>
+                    <div className="flex flex-col text-right">
+                      <span className="text-xs text-fg-muted">{t("restock.accept.hpp")}</span>
+                      <span className="font-medium" data-testid={`accept-hpp-${item.productId}`}>
                         {/* No unit cost until something is shelved — "Rp 0" would read as free (#74),
                             so an unplaced line shows a dash until it has a sellable count to divide. */}
                         {st.placed > 0n ? t("restock.accept.perPiece", { price: formatRupiah(hpp) }) : "—"}
-                      </Text>
-                    </Stack>
+                      </span>
+                    </div>
                   }
                 />
 
-                <Separator />
+                <div className="border-t border-line" />
 
                 {/* PUT-AWAY is the whole line now (#206): what you shelve here + what you flag is the
                     count. The balance pill turns from "{n} to place" to a settled total as every typed
                     quantity gets a shelf. */}
-                <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card">
-                  <Stack gap="card">
-                    <Flex align="center" gap="2" wrap="wrap">
-                      <Icon as={LayoutGrid} boxSize="4" color="brand.fg" />
-                      <Text fontSize="sm" fontWeight="semibold">
-                        {t("restock.accept.putaway")}
-                      </Text>
-                      <Text fontSize="xs" color="fg.subtle">
+                <div className="rounded-control border border-line bg-surface-2 p-card">
+                  <div className="flex flex-col gap-card">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <LayoutGrid className="size-4 text-accent-fg" />
+                      <span className="text-sm font-semibold">{t("restock.accept.putaway")}</span>
+                      <span className="text-xs text-fg-subtle">
                         {t("restock.accept.ordered", { n: item.quantity.toString() })}
-                      </Text>
+                      </span>
                       {delta && (
                         <Badge
                           colorPalette={st.count < item.quantity ? "orange" : "green"}
@@ -526,7 +502,7 @@ export function RestockAcceptPage() {
                           {delta}
                         </Badge>
                       )}
-                      <Spacer />
+                      <div className="flex-1" />
                       {st.blocking > 0n ? (
                         <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
                           {t("restock.accept.toPlace", { count: st.blocking.toString() })}
@@ -536,15 +512,15 @@ export function RestockAcceptPage() {
                           {t("restock.accept.pcs", { count: st.count.toString() })}
                         </Badge>
                       )}
-                    </Flex>
+                    </div>
 
                     {/* Placed here before — clickable, drops it onto a shelf it already sits on (#156). */}
                     {recs.length > 0 && (
-                      <Flex align="center" gap="2" wrap="wrap">
-                        <Flex align="center" gap="1" color="fg.muted">
-                          <Icon as={History} boxSize="3.5" />
-                          <Text fontSize="xs">{t("restock.accept.placedBefore")}</Text>
-                        </Flex>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1 text-fg-muted">
+                          <History className="size-3.5" />
+                          <span className="text-xs">{t("restock.accept.placedBefore")}</span>
+                        </div>
                         {recs.map((rec) => (
                           <Button
                             key={rec.rackId.toString()}
@@ -554,31 +530,33 @@ export function RestockAcceptPage() {
                             onClick={() => applyRecommendation(st.key, rec.rackId)}
                           >
                             {rec.rackCode}
-                            <Text as="span" color="fg.subtle" ml="1">
+                            <span className="ml-1 text-fg-subtle">
                               {t("restock.accept.hereCount", { count: rec.onHand.toString() })}
-                            </Text>
+                            </span>
                           </Button>
                         ))}
-                      </Flex>
+                      </div>
                     )}
 
                     {st.rows.map((row) => (
-                      <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                        <Box flex="1" minW="48">
+                      <div key={row.key} className="flex flex-wrap items-center gap-2">
+                        <div className="min-w-48 flex-1">
                           <RackSelect
                             warehouseId={teamId ?? 0n}
                             value={row.place}
                             onChange={(v) => patchPlacement(st.key, row.key, { place: v })}
                           />
-                        </Box>
-                        <Input
-                          type="number"
-                          min="0"
-                          maxW="24"
-                          value={row.quantity}
-                          data-testid={`accept-placement-qty-${item.productId}-${row.key}`}
-                          onChange={(e) => patchPlacement(st.key, row.key, { quantity: e.target.value })}
-                        />
+                        </div>
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            min="0"
+                            className="text-center"
+                            value={row.quantity}
+                            data-testid={`accept-placement-qty-${item.productId}-${row.key}`}
+                            onChange={(e) => patchPlacement(st.key, row.key, { quantity: e.target.value })}
+                          />
+                        </div>
                         <IconButton
                           size="xs"
                           variant="ghost"
@@ -587,23 +565,23 @@ export function RestockAcceptPage() {
                           disabled={st.rows.length === 1}
                           onClick={() => removePlacement(st.key, row.key)}
                         >
-                          <Icon as={Trash2} boxSize="4" />
+                          <Trash2 className="size-4" />
                         </IconButton>
-                      </Flex>
+                      </div>
                     ))}
 
                     <Button
                       size="xs"
                       variant="outline"
-                      alignSelf="flex-start"
+                      className="self-start"
                       data-testid={`accept-add-placement-${item.productId}`}
                       onClick={() => addPlacement(st.key)}
                     >
-                      <Icon as={Plus} boxSize="4" />
+                      <Plus className="size-4" />
                       {t("restock.accept.addPlacement")}
                     </Button>
-                  </Stack>
-                </Box>
+                  </div>
+                </div>
 
                 {/* Problems — broken or lost, never enter stock (#154). Collapsed until there is one to
                     report: most deliveries have none. */}
@@ -611,27 +589,27 @@ export function RestockAcceptPage() {
                   <Button
                     size="xs"
                     variant="ghost"
-                    alignSelf="flex-start"
+                    className="self-start"
                     data-testid={`accept-add-problem-${item.productId}`}
                     onClick={() => addProblem(st.key)}
                   >
-                    <Icon as={Plus} boxSize="4" />
+                    <Plus className="size-4" />
                     {t("restock.accept.reportProblem")}
                   </Button>
                 ) : (
-                  <Box borderWidth="1px" borderColor="orange.emphasized" borderRadius="md" bg="orange.subtle" p="card">
-                    <Stack gap="2">
-                      <Flex align="center" gap="2">
-                        <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
-                        <Text fontSize="sm" fontWeight="semibold" color="orange.fg">
+                  <div className="rounded-control border border-warn-border bg-warn-soft p-card">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <TriangleAlert className="size-4 text-warn" />
+                        <span className="text-sm font-semibold text-warn">
                           {t("restock.accept.problems")}
-                        </Text>
-                      </Flex>
+                        </span>
+                      </div>
 
                       {problemRows.map((row) => (
-                        <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                          <NativeSelect.Root maxW="28" size="sm">
-                            <NativeSelect.Field
+                        <div key={row.key} className="flex flex-wrap items-center gap-2">
+                          <div className="w-28">
+                            <Select
                               value={row.type}
                               data-testid={`accept-problem-type-${item.productId}-${row.key}`}
                               onChange={(e) =>
@@ -642,25 +620,26 @@ export function RestockAcceptPage() {
                             >
                               <option value="broken">{t("restock.accept.problemBroken")}</option>
                               <option value="lost">{t("restock.accept.problemLost")}</option>
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                          </NativeSelect.Root>
-                          <Input
-                            type="number"
-                            min="1"
-                            maxW="20"
-                            value={row.quantity}
-                            data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
-                            onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
-                          />
-                          <Input
-                            flex="1"
-                            minW="40"
-                            placeholder={t("restock.accept.problemNote")}
-                            value={row.note}
-                            data-testid={`accept-problem-note-${item.productId}-${row.key}`}
-                            onChange={(e) => patchProblem(st.key, row.key, { note: e.target.value })}
-                          />
+                            </Select>
+                          </div>
+                          <div className="w-20">
+                            <Input
+                              type="number"
+                              min="1"
+                              className="text-center"
+                              value={row.quantity}
+                              data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
+                              onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
+                            />
+                          </div>
+                          <div className="min-w-40 flex-1">
+                            <Input
+                              placeholder={t("restock.accept.problemNote")}
+                              value={row.note}
+                              data-testid={`accept-problem-note-${item.productId}-${row.key}`}
+                              onChange={(e) => patchProblem(st.key, row.key, { note: e.target.value })}
+                            />
+                          </div>
                           <IconButton
                             size="xs"
                             variant="ghost"
@@ -668,40 +647,40 @@ export function RestockAcceptPage() {
                             aria-label={t("restock.accept.removeProblem")}
                             onClick={() => removeProblem(st.key, row.key)}
                           >
-                            <Icon as={Trash2} boxSize="4" />
+                            <Trash2 className="size-4" />
                           </IconButton>
-                        </Flex>
+                        </div>
                       ))}
 
                       <Button
                         size="xs"
                         variant="outline"
-                        alignSelf="flex-start"
+                        className="self-start"
                         data-testid={`accept-add-more-problem-${item.productId}`}
                         onClick={() => addProblem(st.key)}
                       >
-                        <Icon as={Plus} boxSize="4" />
+                        <Plus className="size-4" />
                         {t("restock.accept.addProblem")}
                       </Button>
-                    </Stack>
-                  </Box>
+                    </div>
+                  </div>
                 )}
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+              </div>
+            </CardBody>
+          </Card>
         );
       })}
-    </Stack>
+    </div>
   );
 }
 
 function SummaryField({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
-    <Stack gap="0.5">
-      <Text fontSize="xs" color="fg.subtle">
-        {label}
-      </Text>
-      <Text data-testid={testId}>{value}</Text>
-    </Stack>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-fg-subtle">{label}</span>
+      <span className="text-[15px] font-medium" data-testid={testId}>
+        {value}
+      </span>
+    </div>
   );
 }

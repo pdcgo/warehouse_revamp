@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, Flex, Heading, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { rpcError } from "../../api/clients";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrders } from "../../features/orders/queries";
 import { OrderStatusBadge } from "../../components/OrderStatusBadge";
@@ -33,23 +36,23 @@ export function OrdersPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orders.title")}</Heading>
-        <Text color="fg.muted" data-testid="orders-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orders.title")}</h1>
+        <p className="text-fg-muted" data-testid="orders-no-team">
           {t("orders.selectTeamView")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("orders.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("orders.title")}</h1>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
-        <Spacer />
+        <div className="flex-1" />
         <Button
           size="xs"
           colorPalette="brand"
@@ -58,24 +61,24 @@ export function OrdersPage() {
         >
           {t("orders.newOrder")}
         </Button>
-      </Flex>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="orders-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="orders-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="orders-table">
+        <Table.Root data-testid="orders-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("orders.orderColumn")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.status")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("orders.total")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("orders.total")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -83,20 +86,19 @@ export function OrdersPage() {
             {orders.map((o) => (
               <Table.Row key={o.id.toString()} data-testid={`order-row-${o.id}`}>
                 <Table.Cell>
-                  <Box
-                    cursor="pointer"
-                    fontWeight="medium"
+                  <div
+                    className="cursor-pointer font-medium text-accent-fg hover:underline"
                     data-testid={`open-order-${o.id}`}
                     onClick={() => navigate(`/orders/${o.id}`)}
                   >
                     #{o.id.toString()}
-                  </Box>
+                  </div>
                 </Table.Cell>
                 <Table.Cell>{o.customerName}</Table.Cell>
                 <Table.Cell>
                   <OrderStatusBadge status={o.status} />
                 </Table.Cell>
-                <Table.Cell textAlign="end">{formatRupiah(o.total)}</Table.Cell>
+                <Table.Cell className="text-right">{formatRupiah(o.total)}</Table.Cell>
               </Table.Row>
             ))}
           </Table.Body>
@@ -104,9 +106,9 @@ export function OrdersPage() {
       )}
 
       {!loading && orders.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="orders-empty">
+        <p className="text-fg-muted" data-testid="orders-empty">
           {t("orders.noOrders")}
-        </Text>
+        </p>
       )}
 
       {!loading && (
@@ -122,6 +124,6 @@ export function OrdersPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

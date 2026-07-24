@@ -2,9 +2,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Flex, Heading, Icon, Separator, SimpleGrid, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Check } from "lucide-react";
 import { rpcError } from "../../api/clients";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import type { OrderAddress } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -29,14 +32,10 @@ function parseOrderId(raw: string | undefined): bigint {
 // component decides its own empty state.
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text as="div" fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
+      <div className="line-clamp-3 text-sm">{value || "—"}</div>
+    </div>
   );
 }
 
@@ -60,21 +59,19 @@ function AddressField({ label, address }: { label: string; address?: OrderAddres
     .join(", ");
 
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
 
       {street === "" && region === "" && kodePos === "" ? (
-        <Text fontSize="sm">—</Text>
+        <span className="text-sm">—</span>
       ) : (
-        <Stack gap="0" data-testid="order-detail-address">
-          {street !== "" && <Text fontSize="sm">{street}</Text>}
-          {region !== "" && <Text fontSize="sm">{region}</Text>}
-          {kodePos !== "" && <Text fontSize="sm">{kodePos}</Text>}
-        </Stack>
+        <div className="flex flex-col" data-testid="order-detail-address">
+          {street !== "" && <span className="text-sm">{street}</span>}
+          {region !== "" && <span className="text-sm">{region}</span>}
+          {kodePos !== "" && <span className="text-sm">{kodePos}</span>}
+        </div>
       )}
-    </Stack>
+    </div>
   );
 }
 
@@ -140,58 +137,58 @@ export function OrderDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("orders.title")}</Heading>
-        <Text color="fg.muted" data-testid="order-detail-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("orders.title")}</h1>
+        <p className="text-fg-muted" data-testid="order-detail-no-team">
           {t("orders.selectTeamView")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !order) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          className="self-start"
           data-testid="order-detail-back"
           onClick={() => navigate("/orders")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("orders.backToOrders")}
         </Button>
-        <Text color="red.fg" data-testid="order-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="order-detail-error">
           {error || t("orders.orderNotFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section" data-testid="order-detail-page">
+    <div className="flex flex-col gap-section" data-testid="order-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        className="self-start"
         data-testid="order-detail-back"
         onClick={() => navigate("/orders")}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("orders.backToOrders")}
       </Button>
 
-      <Flex align="center" gap="card">
-        <Heading size="md" data-testid="order-detail-title">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold" data-testid="order-detail-title">
           {t("orders.orderTitle", { id: order.id.toString() })}
-        </Heading>
+        </h1>
         <OrderStatusBadge status={order.status} />
-        <Spacer />
+        <div className="flex-1" />
 
         {order.status === OrderStatus.PLACED && (
           <Button
@@ -200,7 +197,7 @@ export function OrderDetailPage() {
             data-testid="order-confirm"
             onClick={() => void confirmOrder()}
           >
-            <Icon as={Check} boxSize="4" />
+            <Check className="size-4" />
             {t("orders.confirm")}
           </Button>
         )}
@@ -213,45 +210,41 @@ export function OrderDetailPage() {
             onConfirm={cancelOrder}
             trigger={
               <Button variant="outline" colorPalette="red" data-testid="order-cancel">
-                <Icon as={Ban} boxSize="4" />
+                <Ban className="size-4" />
                 {t("orders.cancel")}
               </Button>
             }
           />
         )}
-      </Flex>
+      </div>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("orders.customerAndShipping")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("orders.customerAndShipping")}</p>
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
               <Field label={t("orders.customer")} value={order.customerName} />
               <Field label={t("orders.phone")} value={order.customerPhone} />
               <AddressField label={t("orders.address")} address={order.address} />
               <Field label={t("orders.shipping")} value={<ShippingBadge code={order.shippingCode} />} />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("orders.items")}
-            </Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("orders.items")}</p>
 
-            <Table.Root size="sm" data-testid="order-detail-items">
+            <Table.Root data-testid="order-detail-items">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("orders.sku")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("orders.name")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("orders.unitPrice")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("orders.qty")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("orders.unitPrice")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("orders.lineTotal")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -259,30 +252,30 @@ export function OrderDetailPage() {
                   <Table.Row key={it.id.toString()} data-testid={`order-item-${it.sku}`}>
                     <Table.Cell>{it.sku}</Table.Cell>
                     <Table.Cell>{it.name}</Table.Cell>
-                    <Table.Cell textAlign="end">{it.quantity}</Table.Cell>
-                    <Table.Cell textAlign="end">{formatRupiah(it.unitPrice)}</Table.Cell>
-                    <Table.Cell textAlign="end">{formatRupiah(BigInt(it.quantity) * it.unitPrice)}</Table.Cell>
+                    <Table.Cell className="text-right">{it.quantity}</Table.Cell>
+                    <Table.Cell className="text-right">{formatRupiah(it.unitPrice)}</Table.Cell>
+                    <Table.Cell className="text-right">{formatRupiah(BigInt(it.quantity) * it.unitPrice)}</Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
             </Table.Root>
 
-            <Separator />
+            <div className="border-t border-line" />
 
-            <Stack gap="1" align="end">
-              <Text fontSize="sm" color="fg.muted">
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-sm text-fg-muted">
                 {t("orders.subtotal")}: {formatRupiah(order.subtotal)}
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
+              </span>
+              <span className="text-sm text-fg-muted">
                 {t("orders.shipping")}: {formatRupiah(order.shippingCost)}
-              </Text>
-              <Text fontSize="md" fontWeight="semibold" data-testid="order-detail-total">
+              </span>
+              <span className="text-base font-semibold" data-testid="order-detail-total">
                 {t("orders.total")}: {formatRupiah(order.total)}
-              </Text>
-            </Stack>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+              </span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

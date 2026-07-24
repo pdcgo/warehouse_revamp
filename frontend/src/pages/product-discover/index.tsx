@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Flex, HStack, Heading, Input, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
 import { rpcError, teamClient } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDiscoverProducts } from "../../features/products/queries";
 import { Pagination } from "../../components/Pagination";
 import { ProductCard } from "../../components/ProductCard";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -94,27 +95,25 @@ export function DiscoverProductsPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("discover.title")}</Heading>
-        <Text color="fg.muted" data-testid="discover-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("discover.title")}</h1>
+        <p className="text-fg-muted" data-testid="discover-no-team">
           {t("discover.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("discover.title")}</Heading>
-      </Flex>
-      <Text fontSize="sm" color="fg.muted">
-        {t("discover.subtitle")}
-      </Text>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("discover.title")}</h1>
+      </div>
+      <p className="text-sm text-fg-muted">{t("discover.subtitle")}</p>
 
-      <HStack>
+      <div className="flex">
         <Input
-          maxW="sm"
+          className="max-w-sm"
           placeholder={t("discover.searchPlaceholder")}
           value={q}
           data-testid="discover-search"
@@ -123,33 +122,36 @@ export function DiscoverProductsPage() {
             setQ(e.target.value);
           }}
         />
-      </HStack>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="discover-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="discover-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} gap="card" data-testid="discover-grid">
+        <div
+          className="grid grid-cols-1 gap-card sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          data-testid="discover-grid"
+        >
           {products.map((product) => (
             // The card carries its own testid keyed by id; this cell keys the SAME card by SKU, which
-            // is what a test naming a product actually knows. It is also the grid cell, so `h="full"`
+            // is what a test naming a product actually knows. It is also the grid cell, so `h-full`
             // on the Card inside has a stretched box to fill.
-            <Box key={product.id.toString()} data-testid={`discover-card-${product.sku}`}>
+            <div key={product.id.toString()} data-testid={`discover-card-${product.sku}`}>
               <ProductCard product={product} teamName={teamNames.get(product.teamId.toString())} />
-            </Box>
+            </div>
           ))}
-        </SimpleGrid>
+        </div>
       )}
 
       {!loading && products.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="discover-empty">
+        <p className="text-fg-muted" data-testid="discover-empty">
           {t("discover.empty")}
-        </Text>
+        </p>
       )}
 
       <Pagination
@@ -163,6 +165,6 @@ export function DiscoverProductsPage() {
           setPage(1);
         }}
       />
-    </Stack>
+    </div>
   );
 }

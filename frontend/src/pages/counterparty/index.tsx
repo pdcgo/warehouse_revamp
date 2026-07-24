@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Badge,
-  Card,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+
+import { Badge, type BadgePalette } from "../../components/ui/Badge";
+import { Card, CardBody } from "../../components/ui/Card";
+import { IconButton } from "../../components/ui/Button";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { rpcError, teamClient } from "../../api/clients";
 import { Pagination } from "../../components/Pagination";
 import { SettlementSourceType } from "../../gen/warehouse/settlement/v1/settlement_pb";
@@ -99,18 +92,18 @@ export function CounterpartyPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("settlement.title")}</Heading>
-        <Text color="fg.muted">{t("settlement.selectTeamView")}</Text>
-      </Stack>
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("settlement.title")}</h1>
+        <p className="text-fg-muted">{t("settlement.selectTeamView")}</p>
+      </div>
     );
   }
 
   const copy = directionCopy(balance);
 
   return (
-    <Stack gap="section" data-testid="counterparty-page">
-      <Flex align="center" gap="card">
+    <div className="flex flex-col gap-section" data-testid="counterparty-page">
+      <div className="flex items-center gap-card">
         <IconButton
           size="xs"
           variant="ghost"
@@ -118,41 +111,41 @@ export function CounterpartyPage() {
           data-testid="counterparty-back"
           onClick={() => navigate("/settlement")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
         </IconButton>
-        <Heading size="md">
+        <h1 className="text-[22px] font-bold">
           {name || t("orders.teamFallback", { id: counterpartyId.toString() })}
-        </Heading>
-        <Spacer />
-      </Flex>
+        </h1>
+        <div className="flex-1" />
+      </div>
 
       {/* The position, in words, at the top — the question somebody opened this page holding. */}
-      <Card.Root>
-        <Card.Body>
-          <Flex align="center" gap="card">
-            <Text color="fg.muted">{t("settlement.position")}</Text>
-            <Badge colorPalette={directionPalette(balance)} data-testid="counterparty-balance">
+      <Card>
+        <CardBody>
+          <div className="flex items-center gap-card">
+            <span className="text-fg-muted">{t("settlement.position")}</span>
+            <Badge colorPalette={directionPalette(balance) as BadgePalette} data-testid="counterparty-balance">
               {t(copy.key, { amount: copy.amount })}
             </Badge>
-          </Flex>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
       {error && (
-        <Text color="red.fg" data-testid="counterparty-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="counterparty-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="counterparty-table">
+        <Table.Root data-testid="counterparty-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("settlement.what")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("settlement.amount")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("settlement.balanceAfter")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("settlement.amount")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("settlement.balanceAfter")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("settlement.when")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
@@ -161,10 +154,10 @@ export function CounterpartyPage() {
             {entries.map((e) => (
               <Table.Row key={e.id.toString()} data-testid={`entry-row-${e.id}`}>
                 <Table.Cell>
-                  <Flex align="center" gap="2">
-                    <Text>
+                  <div className="flex items-center gap-2">
+                    <span>
                       {t(sourceKey(e.sourceType))} · #{e.sourceId.toString()}
-                    </Text>
+                    </span>
                     {/* A reversal is labelled rather than left to be inferred from a sign — the pair
                         of rows should read as "charged, then returned". */}
                     {e.reversal && (
@@ -172,18 +165,18 @@ export function CounterpartyPage() {
                         {t("settlement.reversal")}
                       </Badge>
                     )}
-                  </Flex>
+                  </div>
                 </Table.Cell>
 
                 {/* The one place a sign is legitimate: an entry is a MOVEMENT, and "+" / "−" here
                     means "this made the balance go up / down", which is what a ledger line is. The
                     POSITION above is the thing that must never be a bare number. */}
-                <Table.Cell textAlign="end" data-testid={`entry-amount-${e.id}`}>
+                <Table.Cell className="text-right" data-testid={`entry-amount-${e.id}`}>
                   {e.amount > 0n ? "+" : "−"}
                   {formatRupiah(e.amount < 0n ? -e.amount : e.amount)}
                 </Table.Cell>
 
-                <Table.Cell textAlign="end">{formatRupiah(e.balanceAfter)}</Table.Cell>
+                <Table.Cell className="text-right">{formatRupiah(e.balanceAfter)}</Table.Cell>
 
                 <Table.Cell>
                   {new Date(Number(e.createdAtUnix) * 1000).toLocaleDateString()}
@@ -195,9 +188,9 @@ export function CounterpartyPage() {
       )}
 
       {!loading && entries.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="counterparty-empty">
+        <p className="text-fg-muted" data-testid="counterparty-empty">
           {t("settlement.noEntries")}
-        </Text>
+        </p>
       )}
 
       {!loading && (
@@ -213,6 +206,6 @@ export function CounterpartyPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

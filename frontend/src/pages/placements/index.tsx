@@ -1,4 +1,3 @@
-import { Heading, Icon, Stack, Text, VStack } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { MapPin } from "lucide-react";
 
@@ -10,16 +9,14 @@ export function PlacementsPage() {
   const { t } = useTranslation();
 
   return (
-    <Stack gap="section" data-testid="placements-page">
-      <Heading size="md">{t("inventory.placementsTitle")}</Heading>
+    <div className="flex flex-col gap-section" data-testid="placements-page">
+      <h1 className="text-[22px] font-bold">{t("inventory.placementsTitle")}</h1>
 
-      <VStack gap="card" py="10" color="fg.muted">
-        <Icon as={MapPin} boxSize="8" />
-        <Text fontWeight="medium">{t("inventory.placementsComingSoon")}</Text>
-        <Text fontSize="sm" maxW="md" textAlign="center">
-          {t("inventory.placementsBody")}
-        </Text>
-      </VStack>
-    </Stack>
+      <div className="flex flex-col items-center gap-card py-10 text-fg-muted">
+        <MapPin className="size-8" />
+        <p className="font-medium">{t("inventory.placementsComingSoon")}</p>
+        <p className="max-w-md text-center text-sm">{t("inventory.placementsBody")}</p>
+      </div>
+    </div>
   );
 }

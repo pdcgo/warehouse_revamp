@@ -3,21 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Badge,
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Icon,
-  Separator,
-  SimpleGrid,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, Pencil, Printer } from "lucide-react";
 import { rackClient, rpcError, supplierClient } from "../../api/clients";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -31,6 +16,11 @@ import { paymentTypeLabel } from "../../components/PaymentTypeSelect";
 import { ShippingBadge } from "../../components/ShippingBadge";
 import { toaster } from "../../components/Toaster";
 import { formatRupiah } from "../../lib/money";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -46,14 +36,12 @@ function parseRequestId(raw: string | undefined): bigint {
 // page shows; a component decides its own empty state.
 function Field({ label, value, testId }: { label: string; value: ReactNode; testId?: string }) {
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text as="div" fontSize="sm" lineClamp={3} data-testid={testId}>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
+      <div className="line-clamp-3 text-sm" data-testid={testId}>
         {value || "—"}
-      </Text>
-    </Stack>
+      </div>
+    </div>
   );
 }
 
@@ -258,36 +246,36 @@ export function RestockRequestDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("restock.detail.title")}</Heading>
-        <Text color="fg.muted" data-testid="restock-detail-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("restock.detail.title")}</h1>
+        <p className="text-fg-muted" data-testid="restock-detail-no-team">
           {t("restock.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !request) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          className="self-start"
           data-testid="restock-detail-back"
           onClick={() => navigate("/inventories/restock")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="restock-detail-error">
           {error || t("restock.detail.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -295,24 +283,24 @@ export function RestockRequestDetailPage() {
   const isRequester = request.requestingTeamId === current.teamId;
 
   return (
-    <Stack gap="section" data-testid="restock-detail-page">
+    <div className="flex flex-col gap-section" data-testid="restock-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        className="self-start"
         data-testid="restock-detail-back"
         onClick={() => navigate("/inventories/restock")}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         {t("restock.detail.back")}
       </Button>
 
-      <Flex align="center" gap="card">
-        <Heading size="md" data-testid="restock-detail-title">
+      <div className="flex flex-wrap items-center gap-card">
+        <h1 className="text-[22px] font-bold" data-testid="restock-detail-title">
           {t("restock.detail.requestTitle", { id: request.id.toString() })}
-        </Heading>
+        </h1>
         <RestockStatusBadge status={request.status} />
-        <Spacer />
+        <div className="flex-1" />
 
         {/* Accepting is COUNTING (#133) — and since #154 it is also saying WHERE each part of a line
             went and what arrived broken, with the COD fee (#155) changing what it all cost. That is a
@@ -323,7 +311,7 @@ export function RestockRequestDetailPage() {
             data-testid="restock-detail-fulfil"
             onClick={() => navigate(`/inventories/restock/${request.id}/accept`)}
           >
-            <Icon as={PackageCheck} boxSize="4" />
+            <PackageCheck className="size-4" />
             {t("restock.receive.title")}
           </Button>
         )}
@@ -336,7 +324,7 @@ export function RestockRequestDetailPage() {
             data-testid="restock-detail-labels"
             onClick={() => navigate(`/inventories/restock/${request.id}/labels`)}
           >
-            <Icon as={Printer} boxSize="4" />
+            <Printer className="size-4" />
             {t("restock.labels.action")}
           </Button>
         )}
@@ -351,7 +339,7 @@ export function RestockRequestDetailPage() {
             data-testid="restock-detail-edit"
             onClick={() => navigate(`/inventories/restock/${request.id}/edit`)}
           >
-            <Icon as={Pencil} boxSize="4" />
+            <Pencil className="size-4" />
             {t("restock.edit")}
           </Button>
         )}
@@ -364,21 +352,19 @@ export function RestockRequestDetailPage() {
             onConfirm={cancelRequest}
             trigger={
               <Button variant="outline" colorPalette="red" data-testid="restock-detail-cancel">
-                <Icon as={Ban} boxSize="4" />
+                <Ban className="size-4" />
                 {t("restock.cancel.action")}
               </Button>
             }
           />
         )}
-      </Flex>
+      </div>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.detail.request")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("restock.detail.request")}</p>
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
               <Field
                 label={t("restock.table.warehouse")}
                 value={t("restock.warehouseRef", { id: request.warehouseId.toString() })}
@@ -391,20 +377,18 @@ export function RestockRequestDetailPage() {
                 label={t("restock.table.shipment")}
                 value={<ShippingBadge code={request.shippingCode} />}
               />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {/* The order the goods came from, mirroring the create form's B. Each field is legitimately
           absent (0n / ""), and an absent one renders the same muted "—" as anywhere else. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.orderDetails")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("restock.form.orderDetails")}</p>
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
               <Field
                 label={t("restock.form.supplier")}
                 value={
@@ -431,48 +415,44 @@ export function RestockRequestDetailPage() {
                 value={paymentTypeLabel(t, request.paymentType)}
                 testId="restock-detail-payment-type"
               />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {/* The restock note (#127) — the create form's C. Free text up to 1000 chars, so it gets its
           own full-width card rather than a cell in the grid above. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.note")}
-            </Text>
-            <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="restock-detail-note">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("restock.form.note")}</p>
+            <p className="whitespace-pre-wrap text-sm" data-testid="restock-detail-note">
               {request.note || "—"}
-            </Text>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+            </p>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.products")}
-            </Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="text-sm font-medium text-fg-muted">{t("restock.form.products")}</p>
 
             {/* The Arrived column exists only once the count HAS been made. `receivedQuantity` is 0
                 on a pending request because nobody has opened the box yet — rendering that would
                 read as "nothing came", when the truth is "not counted yet". So the asked quantity
                 is the only meaningful number until the request is fulfilled, and it keeps its
                 neutral "Qty" heading until there is a second number to tell it apart from. */}
-            <Table.Root size="sm" data-testid="restock-detail-items">
+            <Table.Root data-testid="restock-detail-items">
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("restock.detail.sku")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("restock.detail.name")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
+                  <Table.ColumnHeader className="text-right">
                     {isFulfilled ? t("restock.detail.asked") : t("restock.table.qty")}
                   </Table.ColumnHeader>
                   {isFulfilled && (
-                    <Table.ColumnHeader textAlign="end">
+                    <Table.ColumnHeader className="text-right">
                       {t("restock.detail.arrived")}
                     </Table.ColumnHeader>
                   )}
@@ -482,8 +462,8 @@ export function RestockRequestDetailPage() {
                   {showPlaces && (
                     <Table.ColumnHeader>{t("restock.detail.place")}</Table.ColumnHeader>
                   )}
-                  <Table.ColumnHeader textAlign="end">{t("restock.detail.unitPrice")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("restock.detail.lineTotal")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("restock.detail.unitPrice")}</Table.ColumnHeader>
+                  <Table.ColumnHeader className="text-right">{t("restock.detail.lineTotal")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -497,16 +477,16 @@ export function RestockRequestDetailPage() {
                     >
                       <Table.Cell>{item.sku}</Table.Cell>
                       <Table.Cell>{item.name}</Table.Cell>
-                      <Table.Cell textAlign="end">{item.quantity.toString()}</Table.Cell>
+                      <Table.Cell className="text-right">{item.quantity.toString()}</Table.Cell>
                       {isFulfilled && (
                         <Table.Cell
-                          textAlign="end"
+                          className="text-right"
                           data-testid={`restock-detail-received-${item.productId}`}
                         >
-                          <Flex align="center" justify="end" gap="2" wrap="wrap">
-                            <Text as="span" fontWeight={delta ? "semibold" : "normal"}>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <span className={delta ? "font-semibold" : ""}>
                               {item.receivedQuantity.toString()}
-                            </Text>
+                            </span>
                             {/* Short and over are BOTH worth chasing, but they are not the same
                                 problem: red is stock that never arrived, orange is stock that
                                 arrived unasked. */}
@@ -518,7 +498,7 @@ export function RestockRequestDetailPage() {
                                 {delta}
                               </Badge>
                             )}
-                          </Flex>
+                          </div>
                         </Table.Cell>
                       )}
                       {showPlaces && (
@@ -526,47 +506,43 @@ export function RestockRequestDetailPage() {
                           {rackLabel(t, item, rackCodes) || "—"}
                         </Table.Cell>
                       )}
-                      <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
-                      <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
+                      <Table.Cell className="text-right">{formatRupiah(unitPrice(item))}</Table.Cell>
+                      <Table.Cell className="text-right">{formatRupiah(lineTotal(item))}</Table.Cell>
                     </Table.Row>
                   );
                 })}
               </Table.Body>
             </Table.Root>
 
-            <Separator />
+            <div className="border-t border-line" />
 
             {/* The create form's E/F/G breakdown, read back: the goods, the freight, the sum. */}
-            <Stack gap="1" align="end">
+            <div className="flex flex-col items-end gap-1">
               {/* What the warehouse is actually holding because of this restock — the one number
                   the money breakdown below cannot tell you, since the money is what was ORDERED. */}
               {isFulfilled && (
-                <Text fontSize="sm" color="fg.muted">
+                <p className="text-sm text-fg-muted">
                   {t("restock.detail.receivedTotal")}:{" "}
-                  <Text as="span" fontWeight="medium" data-testid="restock-detail-received-total">
+                  <span className="font-medium" data-testid="restock-detail-received-total">
                     {receivedTotal.toString()} / {askedTotal.toString()}
-                  </Text>
-                </Text>
+                  </span>
+                </p>
               )}
-              <Text fontSize="sm" color="fg.muted">
+              <p className="text-sm text-fg-muted">
                 {t("restock.summary.productsTotal")}:{" "}
-                <Text as="span" data-testid="restock-detail-products-total">
-                  {formatRupiah(productsTotal)}
-                </Text>
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
+                <span data-testid="restock-detail-products-total">{formatRupiah(productsTotal)}</span>
+              </p>
+              <p className="text-sm text-fg-muted">
                 {t("restock.form.shippingCost")}:{" "}
-                <Text as="span" data-testid="restock-detail-shipping">
-                  {formatRupiah(request.shippingCost)}
-                </Text>
-              </Text>
-              <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
+                <span data-testid="restock-detail-shipping">{formatRupiah(request.shippingCost)}</span>
+              </p>
+              <p className="text-base font-semibold" data-testid="restock-detail-total">
                 {t("restock.summary.grandTotal")}: {formatRupiah(grandTotal)}
-              </Text>
-            </Stack>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+              </p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

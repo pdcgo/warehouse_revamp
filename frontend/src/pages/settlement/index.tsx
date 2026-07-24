@@ -1,19 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Checkbox,
-  Flex,
-  Heading,
-  HStack,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
+
+import { Badge, type BadgePalette } from "../../components/ui/Badge";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 import { rpcError, teamClient } from "../../api/clients";
 import { Pagination } from "../../components/Pagination";
 import { useTeam } from "../../features/team/TeamContext";
@@ -99,26 +91,25 @@ export function SettlementPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("settlement.title")}</Heading>
-        <Text color="fg.muted" data-testid="settlement-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("settlement.title")}</h1>
+        <p className="text-fg-muted" data-testid="settlement-no-team">
           {t("settlement.selectTeamView")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("settlement.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("settlement.title")}</h1>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
-        <Spacer />
+        <div className="flex-1" />
 
-        <Checkbox.Root
-          size="sm"
+        <Checkbox
           checked={unsettledOnly}
           onCheckedChange={() => {
             setUnsettledOnly((v) => !v);
@@ -126,26 +117,22 @@ export function SettlementPage() {
           }}
           data-testid="settlement-unsettled-only"
         >
-          <Checkbox.HiddenInput />
-          <Checkbox.Control />
-          <Checkbox.Label>{t("settlement.unsettledOnly")}</Checkbox.Label>
-        </Checkbox.Root>
-      </Flex>
+          {t("settlement.unsettledOnly")}
+        </Checkbox>
+      </div>
 
-      <Text color="fg.muted" fontSize="sm">
-        {t("settlement.intro")}
-      </Text>
+      <p className="text-sm text-fg-muted">{t("settlement.intro")}</p>
 
       {error && (
-        <Text color="red.fg" data-testid="settlement-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="settlement-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="settlement-table">
+        <Table.Root data-testid="settlement-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("settlement.counterparty")}</Table.ColumnHeader>
@@ -165,34 +152,30 @@ export function SettlementPage() {
                   data-testid={`settlement-row-${p.counterpartyId}`}
                 >
                   <Table.Cell>
-                    <HStack gap="2">
-                      <Box
-                        cursor="pointer"
-                        fontWeight="medium"
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="cursor-pointer font-medium"
                         data-testid={`open-counterparty-${p.counterpartyId}`}
                         onClick={() => navigate(`/settlement/${p.counterpartyId}`)}
                       >
                         {teamNames.get(p.counterpartyId.toString()) ??
                           t("orders.teamFallback", { id: p.counterpartyId.toString() })}
-                      </Box>
+                      </div>
 
                       {/* A payment waiting for THIS team to confirm. A payment nobody notices is a
                           debt that stays open for no reason, so it is on the row, not behind a tab. */}
                       {p.awaitingConfirmation > 0 && (
-                        <Badge
-                          colorPalette="purple"
-                          data-testid={`awaiting-${p.counterpartyId}`}
-                        >
+                        <Badge colorPalette="purple" data-testid={`awaiting-${p.counterpartyId}`}>
                           {t("settlement.awaiting", { count: p.awaitingConfirmation })}
                         </Badge>
                       )}
-                    </HStack>
+                    </div>
                   </Table.Cell>
 
                   {/* WORDS, NEVER A SIGN. The colour supports the sentence; it does not replace it. */}
                   <Table.Cell>
                     <Badge
-                      colorPalette={directionPalette(p.balance)}
+                      colorPalette={directionPalette(p.balance) as BadgePalette}
                       data-testid={`position-${p.counterpartyId}`}
                     >
                       {t(copy.key, { amount: copy.amount })}
@@ -201,11 +184,11 @@ export function SettlementPage() {
 
                   <Table.Cell>
                     {p.oldestUnsettledAtUnix === 0n ? (
-                      <Text color="fg.muted">—</Text>
+                      <span className="text-fg-muted">—</span>
                     ) : (
-                      <Text data-testid={`ageing-${p.counterpartyId}`}>
+                      <span data-testid={`ageing-${p.counterpartyId}`}>
                         {t("settlement.oldestUnsettled", { days })}
-                      </Text>
+                      </span>
                     )}
                   </Table.Cell>
                 </Table.Row>
@@ -216,9 +199,9 @@ export function SettlementPage() {
       )}
 
       {!loading && positions.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="settlement-empty">
+        <p className="text-fg-muted" data-testid="settlement-empty">
           {unsettledOnly ? t("settlement.allSquare") : t("settlement.noCounterparties")}
-        </Text>
+        </p>
       )}
 
       {!loading && (
@@ -234,6 +217,6 @@ export function SettlementPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

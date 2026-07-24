@@ -1,20 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Spacer,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
@@ -24,6 +10,11 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Pagination } from "../../components/Pagination";
 import { toaster } from "../../components/Toaster";
 import { RackFormDialog } from "./components/RackFormDialog";
+import { Badge } from "../../components/ui/Badge";
+import { IconButton } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Spinner } from "../../components/ui/Spinner";
+import { Table } from "../../components/ui/Table";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -77,53 +68,54 @@ export function RacksPage() {
   // No current team means there is no warehouse to list against — the whole page is meaningless.
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("racks.title")}</Heading>
-        <Text color="fg.muted" data-testid="racks-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("racks.title")}</h1>
+        <p className="text-fg-muted" data-testid="racks-no-team">
           {t("racks.selectTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack gap="section">
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("racks.title")}</Heading>
+    <div className="flex flex-col gap-section">
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("racks.title")}</h1>
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        <Spacer />
+        <div className="flex-1" />
         <RackFormDialog />
-      </Flex>
+      </div>
 
-      <HStack>
-        <Input
-          maxW="sm"
-          placeholder={t("racks.searchPlaceholder")}
-          value={q}
-          data-testid="rack-search"
-          onChange={(e) => {
-            setPage(1);
-            setQ(e.target.value);
-          }}
-        />
-      </HStack>
+      <div className="flex items-center gap-2">
+        <div className="w-full max-w-sm">
+          <Input
+            placeholder={t("racks.searchPlaceholder")}
+            value={q}
+            data-testid="rack-search"
+            onChange={(e) => {
+              setPage(1);
+              setQ(e.target.value);
+            }}
+          />
+        </div>
+      </div>
 
       {error && (
-        <Text color="red.fg" data-testid="racks-error">
+        <p className="text-neg" data-testid="racks-error">
           {error}
-        </Text>
+        </p>
       )}
 
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <Spinner />
       ) : (
-        <Table.Root size="sm" data-testid="racks-table">
+        <Table.Root data-testid="racks-table">
           <Table.Header>
             <Table.Row>
               <Table.ColumnHeader>{t("racks.table.code")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("racks.table.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("racks.table.description")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("racks.table.actions")}</Table.ColumnHeader>
+              <Table.ColumnHeader className="text-right">{t("racks.table.actions")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
 
@@ -132,19 +124,18 @@ export function RacksPage() {
               <Table.Row
                 key={rack.id.toString()}
                 data-testid={`rack-row-${rack.code}`}
-                cursor="pointer"
-                _hover={{ bg: "bg.subtle" }}
+                className="cursor-pointer hover:bg-surface-2"
                 onClick={() => navigate(`/inventories/racks/${rack.id}`)}
               >
                 {/* The code is what is painted on the shelf — it IS the rack's identity, so it
                     carries the row. */}
-                <Table.Cell fontWeight="medium">{rack.code}</Table.Cell>
+                <Table.Cell className="font-medium">{rack.code}</Table.Cell>
                 <Table.Cell>{rack.name}</Table.Cell>
-                <Table.Cell color="fg.muted">{rack.description}</Table.Cell>
+                <Table.Cell className="text-fg-muted">{rack.description}</Table.Cell>
 
                 {/* Stop the row's navigate from firing when a row action is used. */}
-                <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                  <HStack justify="end" gap="1">
+                <Table.Cell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1">
                     <IconButton
                       size="xs"
                       variant="ghost"
@@ -152,7 +143,7 @@ export function RacksPage() {
                       data-testid={`edit-rack-${rack.code}`}
                       onClick={() => setEditing(rack)}
                     >
-                      <Icon as={Pencil} boxSize="4" />
+                      <Pencil className="size-4" />
                     </IconButton>
 
                     <ConfirmDialog
@@ -168,11 +159,11 @@ export function RacksPage() {
                           aria-label="Delete"
                           data-testid={`delete-rack-${rack.code}`}
                         >
-                          <Icon as={Trash2} boxSize="4" />
+                          <Trash2 className="size-4" />
                         </IconButton>
                       }
                     />
-                  </HStack>
+                  </div>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -181,9 +172,9 @@ export function RacksPage() {
       )}
 
       {!loading && racks.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="racks-empty">
+        <p className="text-fg-muted" data-testid="racks-empty">
           {t("racks.empty")}
-        </Text>
+        </p>
       )}
 
       <Pagination
@@ -209,6 +200,6 @@ export function RacksPage() {
           }}
         />
       )}
-    </Stack>
+    </div>
   );
 }

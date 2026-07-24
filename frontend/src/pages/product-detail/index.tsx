@@ -1,11 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Flex, Heading, Icon, Image, SimpleGrid, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useProductDetail } from "../../features/products/queries";
 import { pathToRoot } from "../../features/categories/categoryTree";
+import { Button } from "../../components/ui/Button";
+import { Card, CardBody } from "../../components/ui/Card";
+import { Spinner } from "../../components/ui/Spinner";
 
 function parseProductId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -19,14 +21,10 @@ function parseProductId(raw: string | undefined): bigint {
 // A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
+      <span className="line-clamp-3 text-sm">{value || "—"}</span>
+    </div>
   );
 }
 
@@ -55,36 +53,36 @@ export function ProductDetailPage() {
 
   if (!current) {
     return (
-      <Stack gap="section">
-        <Heading size="md">{t("products.heading")}</Heading>
-        <Text color="fg.muted" data-testid="product-detail-no-team">
+      <div className="flex flex-col gap-section">
+        <h1 className="text-[22px] font-bold">{t("products.heading")}</h1>
+        <p className="text-fg-muted" data-testid="product-detail-no-team">
           {t("products.detail.noTeam")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <Spinner />;
   }
 
   if (error || !product) {
     return (
-      <Stack gap="section">
+      <div className="flex flex-col gap-section">
         <Button
           size="xs"
           variant="ghost"
-          alignSelf="flex-start"
+          className="self-start"
           data-testid="product-detail-back"
           onClick={() => navigate("/products")}
         >
-          <Icon as={ArrowLeft} boxSize="4" />
+          <ArrowLeft className="size-4" />
           {t("products.backToProducts")}
         </Button>
-        <Text color="red.fg" data-testid="product-detail-error">
+        <p className="text-red-600 dark:text-red-400" data-testid="product-detail-error">
           {error || t("products.detail.notFound")}
-        </Text>
-      </Stack>
+        </p>
+      </div>
     );
   }
 
@@ -92,77 +90,73 @@ export function ProductDetailPage() {
     product.categoryId > 0n ? pathToRoot(categories, product.categoryId).map((c) => c.name).join(" › ") : "";
 
   return (
-    <Stack gap="section" data-testid="product-detail-page">
+    <div className="flex flex-col gap-section" data-testid="product-detail-page">
       <Button
         size="xs"
         variant="ghost"
-        alignSelf="flex-start"
+        className="self-start"
         data-testid="product-detail-back"
         onClick={() => navigate("/products")}
       >
-        <Icon as={ArrowLeft} boxSize="4" />
+        <ArrowLeft className="size-4" />
         Back to Products
       </Button>
 
-      <Flex align="center" gap="card">
-        <Heading size="md">{t("products.detail.heading")}</Heading>
-        <Spacer />
+      <div className="flex items-center gap-card">
+        <h1 className="text-[22px] font-bold">{t("products.detail.heading")}</h1>
+        <div className="flex-1" />
         <Button
           size="xs"
           variant="outline"
           data-testid="product-detail-edit"
           onClick={() => navigate(`/products/${product.id}/edit`)}
         >
-          <Icon as={Pencil} boxSize="4" />
+          <Pencil className="size-4" />
           {t("products.edit")}
         </Button>
-      </Flex>
+      </div>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Heading size="sm" data-testid="product-detail-name">
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <h2 className="text-[15px] font-semibold" data-testid="product-detail-name">
               {product.name}
-            </Heading>
+            </h2>
 
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+            <div className="grid grid-cols-1 gap-card sm:grid-cols-2">
               <Field label={t("products.field.sku")} value={product.sku} />
               <Field label={t("products.field.category")} value={categoryLabel} />
-            </SimpleGrid>
+            </div>
 
             <Field label={t("products.field.description")} value={product.description} />
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+          </div>
+        </CardBody>
+      </Card>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontWeight="medium">{t("products.images")}</Text>
+      <Card>
+        <CardBody>
+          <div className="flex flex-col gap-card">
+            <p className="font-medium">{t("products.images")}</p>
             {product.images.length === 0 ? (
-              <Text color="fg.muted" fontSize="sm" data-testid="product-detail-no-images">
+              <p className="text-sm text-fg-muted" data-testid="product-detail-no-images">
                 {t("products.detail.noImages")}
-              </Text>
+              </p>
             ) : (
-              <SimpleGrid columns={{ base: 3, md: 5 }} gap="card" data-testid="product-detail-images">
+              <div className="grid grid-cols-3 gap-card md:grid-cols-5" data-testid="product-detail-images">
                 {product.images.map((img, i) => (
-                  <Image
+                  <img
                     key={`${img.url}-${i}`}
                     src={img.thumbnailUrl || img.url}
                     alt={`${product.name} image ${i + 1}`}
-                    aspectRatio={1}
-                    objectFit="cover"
-                    w="full"
-                    borderWidth="1px"
-                    borderRadius="md"
+                    className="aspect-square w-full rounded-control border border-line object-cover"
                     data-testid={`product-detail-image-${i}`}
                   />
                 ))}
-              </SimpleGrid>
+              </div>
             )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
-    </Stack>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }
