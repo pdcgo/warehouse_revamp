@@ -1,8 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ChakraProvider } from "@chakra-ui/react";
-// Tailwind entry (utilities + design tokens). Imported first so its utilities are available app-wide
-// while Chakra is progressively removed (plans/frontend-tailwind-migration/brainstorming.md).
+// Tailwind entry (utilities + design tokens) — the app's styling layer.
 import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
@@ -11,7 +9,6 @@ import "./i18n/config";
 import { queryClient } from "./api/queryClient";
 import { Toaster } from "./components/Toaster";
 import { router } from "./router";
-import { system } from "./theme";
 
 // QueryClientProvider sits OUTSIDE AuthProvider (#174): AuthProvider's first act is a CheckAccess on
 // page load, so a cache has to exist before it runs for that call ever to become a query. Nesting it
@@ -19,13 +16,11 @@ import { system } from "./theme";
 // the cache.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ChakraProvider value={system}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </AuthProvider>
-      </QueryClientProvider>
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster />
+      </AuthProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );

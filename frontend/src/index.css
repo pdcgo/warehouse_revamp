@@ -1,12 +1,8 @@
-/* Tailwind CSS — the app's styling layer (migration OFF Chakra, see
-   plans/frontend-tailwind-migration/brainstorming.md).
-
-   COEXISTENCE NOTE (Phase 0): Chakra + Emotion still render every screen today. We therefore import
-   Tailwind WITHOUT its Preflight base reset — Chakra already normalises the document, and a second
-   global reset would fight it and shift existing screens. When Chakra is removed (Phase 5), add
-   `@import "tailwindcss/preflight.css" layer(base);` back to restore box-sizing/margins/etc. */
+/* Tailwind CSS — the app's styling layer (migrated off Chakra UI;
+   plans/frontend-tailwind-migration/brainstorming.md). Full Tailwind, Preflight included. */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /* Dark mode rides the `[data-theme="dark"]` ATTRIBUTE (the mocks' convention, now the source of
@@ -129,33 +125,13 @@
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* COEXISTENCE reset. Full Preflight is off (above), so a bare <button> would render with native UA
-   chrome (border, background, focus ring). Reset just the interactive elements our Tailwind
-   components build on — at `base` (element-selector) specificity, so Chakra's own class-based styles
-   still win and its widgets are untouched. Folded into Preflight when it returns at Phase 5. */
+/* Preflight (above) resets buttons/inputs. Two supplements it doesn't cover: our controls are
+   built on transparent buttons, and the custom-chevron Select needs the native arrow stripped. */
 @layer base {
-  button,
-  [type="button"],
-  [type="submit"],
-  [type="reset"] {
-    appearance: none;
-    background-color: transparent;
-    background-image: none;
-    border: 0;
-    color: inherit;
-    font: inherit;
+  button {
     cursor: pointer;
   }
-  input,
-  textarea,
   select {
     appearance: none;
-    background-color: transparent;
-    border: 0;
-    color: inherit;
-    font: inherit;
-  }
-  select {
-    cursor: pointer;
   }
 }

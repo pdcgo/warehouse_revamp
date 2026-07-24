@@ -130,18 +130,19 @@ test("the user menu switches the theme, and the choice sticks across a reload (#
 
   const html = page.locator("html");
 
-  // Theme lives in the sidebar-foot user menu. Pick Dark → the `.dark` class Chakra reads goes on <html>.
+  // Theme lives in the sidebar-foot user menu. Pick Dark → data-theme="dark" goes on <html> (the
+  // attribute Tailwind's dark variant reads).
   await page.getByTestId("user-menu").click();
   await page.getByTestId("theme-dark").click();
-  await expect(html).toHaveClass(/dark/);
+  await expect(html).toHaveAttribute("data-theme", "dark");
 
   // The choice is persisted (localStorage), so it survives a full reload rather than snapping back.
   await page.reload();
   await expect(page.getByTestId("home-user")).toContainText("root");
-  await expect(html).toHaveClass(/dark/);
+  await expect(html).toHaveAttribute("data-theme", "dark");
 
-  // And back to Light removes it.
+  // And back to Light flips it.
   await page.getByTestId("user-menu").click();
   await page.getByTestId("theme-light").click();
-  await expect(html).not.toHaveClass(/dark/);
+  await expect(html).toHaveAttribute("data-theme", "light");
 });

@@ -128,16 +128,14 @@ test("Revenue: the totals cover every order, not the page in front of you (#78)"
   const rows = page.getByTestId("revenue-table").locator("tbody tr");
 
   // A SMALL page: truncated, and demonstrably so.
-  await page.getByTestId("page-size").click();
-  await page.getByRole("option", { name: "10", exact: true }).click();
+  await page.getByTestId("page-size").selectOption({ label: "10" });
   await expect(rows).toHaveCount(10);
 
   const totalOnSmallPage = await page.getByTestId("revenue-total-revenue").innerText();
   const marginOnSmallPage = await page.getByTestId("revenue-total-margin").innerText();
 
   // A LARGER page: strictly more rows visible...
-  await page.getByTestId("page-size").click();
-  await page.getByRole("option", { name: "50", exact: true }).click();
+  await page.getByTestId("page-size").selectOption({ label: "50" });
   await expect(rows).not.toHaveCount(10);
 
   // ...and the headline figures did not move. They are computed over the whole team in the database, so

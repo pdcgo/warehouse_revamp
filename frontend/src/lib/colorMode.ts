@@ -7,11 +7,6 @@ import { useSyncExternalStore } from "react";
 // default, a manual override persisted to localStorage, and an inline <head> script (see index.html)
 // that applies it before first paint so there is no light-then-dark flash.
 //
-// COEXISTENCE (Chakra→Tailwind migration): Chakra v3's `_dark` condition is the `.dark` CLASS, so
-// while Chakra still renders screens we set BOTH — the `data-theme` attribute (for Tailwind) and the
-// `.dark` class (for Chakra). Once Chakra is gone (Phase 5) the `.dark` line is dropped and only the
-// attribute remains. See plans/frontend-tailwind-migration/brainstorming.md.
-//
 // We deliberately do NOT reach for next-themes: it exists to solve SSR flash and framework routing,
 // neither of which a Vite SPA has. One attribute on one element is the whole job.
 
@@ -34,11 +29,8 @@ export function currentMode(): ColorMode {
 }
 
 function apply(mode: ColorMode) {
-  const root = document.documentElement;
-  // Tailwind reads this attribute (src/index.css @custom-variant dark).
-  root.setAttribute("data-theme", mode);
-  // Chakra reads this class (_dark) — dropped at Phase 5 once Chakra is removed.
-  root.classList.toggle("dark", mode === "dark");
+  // Tailwind's dark variant reads this attribute (src/index.css @custom-variant dark).
+  document.documentElement.setAttribute("data-theme", mode);
 }
 
 // A tiny store so components re-render on a toggle. The subscribers also let a second tab's change (a

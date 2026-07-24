@@ -21,9 +21,8 @@ export default defineConfig({
         // themselves are code-split at the route (React.lazy in router.tsx).
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@chakra-ui") || id.includes("@zag-js") || id.includes("@emotion")) {
-            return "chakra";
-          }
+          // Ark UI + its Zag.js state machines are the headless-behaviour layer.
+          if (id.includes("@ark-ui") || id.includes("@zag-js")) return "ark";
           if (id.includes("@connectrpc") || id.includes("@bufbuild")) return "connect";
           if (
             id.includes("react-dom") ||
