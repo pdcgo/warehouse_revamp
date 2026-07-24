@@ -1,0 +1,417 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// OrderService owns `orders` + `order_items` — the SELLING side of an order (#67): who ordered, from
+// which shop, the lines, and the money. Fulfillment (pick→pack→ship) is a separate concern that
+// waits on the warehouse core (plans/plan.md §1), so it is deliberately absent here. Team-scoped
+// like the rest of selling_service; OrderCreate does NOT touch inventory (that is #69).
+service OrderService {
+  rpc OrderCreate(OrderCreateRequest) returns (OrderCreateResponse);
+  rpc OrderList(OrderListRequest) returns (OrderListResponse);
+  rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
+
+  // Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
+  // CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
+  // stock + money reversal once stock integration (#69) lands.
+  rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
+  rpc OrderCancel(OrderCancelRequest) returns (OrderCancelResponse);
+
+  // The WAREHOUSE's side of an order (#150): the crew records what it has done.
+  //
+  // These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
+  // why that is the only scope that can work.
+  rpc OrderPick(OrderPickRequest) returns (OrderPickResponse);
+  rpc OrderPack(OrderPackRequest) returns (OrderPackResponse);
+  rpc OrderShip(OrderShipRequest) returns (OrderShipResponse);
+}
+
+// Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
+// warehouse core.
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLACED = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_CANCELLED = 3;
+
+  // The warehouse's states (#150). Each is an action a person STARTS AND FINISHES, so an order being
+  // worked on right now is visibly different from one nobody has touched — which is the whole reason
+  // "just record it shipped" was rejected.
+  //
+  //   CONFIRMED → PICKING → PACKED → SHIPPED
+  //
+  // Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
+  // somebody is guessing at what happened.
+  ORDER_STATUS_PICKING = 4;
+  ORDER_STATUS_PACKED = 5;
+  ORDER_STATUS_SHIPPED = 6;
+}
+
+// OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
+// SNAPSHOT taken at order time, so later catalogue edits never rewrite an order's history. Money is
+// whole rupiah (int64). Used for both input (create; `id` ignored) and output.
+message OrderItem {
+  uint64 id = 1;
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  uint32 quantity = 5 [(buf.validate.field).uint32.gte = 1];
+  int64 unit_price = 6 [(buf.validate.field).int64.gte = 0];
+
+  // What this product COST us, per unit, frozen when the order was placed (#74). `unit_price` is what
+  // the buyer pays; this is what we paid, and the gap between them is the margin.
+  //
+  // SERVER-SET AND IGNORED ON INPUT. The cost is looked up from the warehouse's restock history at
+  // order time — a client supplying it would be writing its own margin, which is the one number
+  // nobody placing an order should get to choose.
+  //
+  // 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
+  // say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
+  // flag that the number is not to be trusted rather than a value to compute with.
+  int64 unit_cost = 7;
+}
+
+// A customer's delivery address, FROZEN onto the order (#118).
+//
+// A SNAPSHOT, not a live reference. region_service's rows change — a desa is renamed, merged, split —
+// and a historical order must keep reading exactly what was agreed, so the codes AND the names are
+// stored. Rendering a past order therefore never needs region_service at all. This is the same
+// decision the order already makes about its money and its line items: it freezes them.
+//
+// selling_service defines its OWN address shape rather than importing region_service's
+// RegionAncestry: a snapshot is THIS service's data (HARD RULE 3), and it must not track another
+// service's contract.
+message OrderAddress {
+  string provinsi_code = 1;
+  string provinsi_name = 2;
+  string kabupaten_code = 3;
+  string kabupaten_name = 4;
+  string kecamatan_code = 5;
+  string kecamatan_name = 6;
+  string desa_code = 7;
+  string desa_name = 8;
+  // The desa's postcode as chosen — editable in the picker, so not necessarily the dataset's.
+  string kode_pos = 9;
+  // Jalan, no. rumah, RT/RW — the part no dataset can supply. This is what the old free-text
+  // `customer_address` carried.
+  string address_line = 10;
+}
+
+message Order {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  uint64 shop_id = 3;
+  OrderStatus status = 4;
+
+  string customer_name = 5;
+  string customer_phone = 6;
+  // was `string customer_address` — free text, replaced by the structured snapshot `address` (#118).
+  reserved 7;
+  reserved "customer_address";
+  // A shipping_service courier code (opaque; no FK).
+  string shipping_code = 8;
+
+  // The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes
+  // shipping_cost. COGS/margin/fees are the revenue side (#74), not here.
+  int64 subtotal = 9;
+  int64 shipping_cost = 10;
+  int64 total = 11;
+
+  // The lines — populated by OrderDetail (OrderList returns a summary without them).
+  repeated OrderItem items = 12;
+
+  int64 created_at_unix = 13;
+
+  // The frozen delivery address (#118).
+  OrderAddress address = 14;
+
+  // What the whole order's goods COST us, frozen at order time (#74) — the sum of every line's
+  // quantity × unit_cost.
+  //
+  // Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that
+  // wants to show margin would otherwise have to load every order's items. It is frozen exactly like
+  // `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
+  //
+  //   margin = total − cogs − shipping_cost
+  //
+  // 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
+  int64 cogs = 16;
+
+  // WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
+  // here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
+  //
+  // It is on the ORDER, not looked up from the shop, on purpose: a shop's default changing later
+  // would otherwise silently make old orders read as if they had shipped from a building they never
+  // shipped from. What an order says happened must stay what happened.
+  //
+  // This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
+  // says which warehouse to deduct FROM.
+  uint64 warehouse_id = 15;
+}
+
+message OrderCreateRequest {
+  // Write: the selling team's managers and customer service (CS types orders in).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Which warehouse fulfils it (#72). REQUIRED, and deliberately so: from #69 an order takes its
+  // stock out of this warehouse at placement, and an order that cannot say where its goods come from
+  // is not an order the system can honour. Making it optional would mean inventing a default at the
+  // moment stock moves, which is the guess this whole design refuses.
+  uint64 warehouse_id = 12 [(buf.validate.field).uint64.gt = 0];
+
+  string customer_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string customer_phone = 4 [(buf.validate.field).string.max_len = 40];
+  // was `string customer_address` — free text, replaced by `address` below (#118).
+  reserved 5;
+  reserved "customer_address";
+  string shipping_code = 6 [(buf.validate.field).string.max_len = 40];
+
+  int64 subtotal = 7 [(buf.validate.field).int64.gte = 0];
+  int64 shipping_cost = 8 [(buf.validate.field).int64.gte = 0];
+  int64 total = 9 [(buf.validate.field).int64.gte = 0];
+
+  // At least one line; `id` on each is ignored.
+  repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
+
+  // The delivery address, snapshotted onto the order. Optional — exactly as the free text it
+  // replaces was: an order can be taken before the address is known, and forcing four region levels
+  // to place one would be a new rule, not a port of the old one.
+  OrderAddress address = 11;
+}
+
+message OrderCreateResponse {
+  Order order = 1;
+}
+
+message OrderListRequest {
+  // Read: BOTH SIDES of an order (#151). A selling team sees the orders it placed; a WAREHOUSE sees the
+  // orders shipping FROM it, which is the queue its crew picks from.
+  //
+  // One RPC rather than two, following RestockRequestList: it is the same order approached from
+  // whichever end you stand at, and two RPCs would drift apart. So `team_id` means "the team you hold a
+  // role in", and the handler matches it against EITHER side — not "the team whose orders you get".
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Filter to ONE status; UNSPECIFIED (the default) means ALL of them (#151).
+  //
+  // Server-side because the list is PAGINATED: filtering the loaded page in the client would show only
+  // the confirmed orders that happened to land in this page, and count them wrong. It is what makes a
+  // pick queue possible — "the CONFIRMED orders shipping from my warehouse".
+  OrderStatus status = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Only orders carrying THIS product on one of their lines (#159). 0 = no filter.
+  //
+  // Server-side, like the status above: the list is paginated, so a client-side filter would narrow
+  // the loaded page only and report the unfiltered total beside it. "When did this product last go
+  // out" is exactly the question whose answer is off page one.
+  uint64 product_id = 4;
+}
+
+message OrderListResponse {
+  // Order summaries (no line items).
+  repeated Order orders = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message OrderDetailRequest {
+  // Read: BOTH SIDES, exactly as OrderList (#151). The warehouse needs this one more than anybody — the
+  // PICK LIST IS THE ORDER'S LINES, and nothing else returns them. A crew that can list its queue but
+  // cannot open an order can see there is work and not what the work is.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderDetailResponse {
+  Order order = 1;
+}
+
+// OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
+// managers and customer service.
+message OrderConfirmRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderConfirmResponse {
+  Order order = 1;
+}
+
+// OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
+// cancelled order is rejected. Selling-side only — no stock/money is reversed yet (that is #70).
+message OrderCancelRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderCancelResponse {
+  Order order = 1;
+}
+
+message OrderPickRequest {
+  // Write: the WAREHOUSE crew, staff included — staff are the ones who actually walk the aisles, so
+  // excluding them would leave the people doing the work unable to record it.
+  //
+  // ⚠ THE SCOPE IS THE ORDER'S WAREHOUSE, NOT ITS SELLING TEAM (#150, owner's call), and this is the
+  // only scope that can work: the crew holds no role in the selling team that owns the order, so
+  // scoping to the selling team would deny every real caller. Scoping to the warehouse asks the
+  // question that matters — "do you work in the building this order ships from?"
+  //
+  // The handler finds the order by (order_id, warehouse_id), so a crew can only ever touch orders
+  // shipping from its own warehouse; another warehouse's reads as NotFound. Same shape as
+  // RestockRequestFulfill, where the warehouse also acts on a record a selling team created.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The WAREHOUSE doing the work — not the team that placed the order.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderPickResponse {
+  Order order = 1;
+}
+
+message OrderPackRequest {
+  // Same crew, same scope as OrderPick — see there for why the warehouse and not the selling team.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderPackResponse {
+  Order order = 1;
+}
+
+message OrderShipRequest {
+  // Same crew, same scope. Handing to the courier is the last thing the warehouse does with an order —
+  // after this it has left the building, and a cancel is refused (#70/#150).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderShipResponse {
+  Order order = 1;
+}

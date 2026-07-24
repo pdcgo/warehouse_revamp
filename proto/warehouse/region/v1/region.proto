@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package warehouse.region.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/region/v1;regionv1";
+
+// RegionService serves Indonesia's administrative regions — provinsi → kabupaten/kota → kecamatan →
+// desa/kelurahan, with a kode pos on each desa (#112/#115). It is the reference data behind the
+// shared AddressPicker.
+//
+// GLOBAL REFERENCE DATA, so this service is unlike almost every other one here:
+//   - No team scope. Regions are the same for everyone, so no request carries a (use_scope) field
+//     and the policy is `allow_only_authenticated` — the same shape CategoryService uses for the
+//     global taxonomy. (Putting a team-level role on an unscoped message would be a dead letter:
+//     it would be evaluated against the root team, where almost nobody is a member.)
+//   - Read-only. The rows are loaded from a pinned upstream seed (#113/#114), never typed in, so
+//     there is no create/update/delete to expose.
+service RegionService {
+  // Children of one region — the cascading picker's only query.
+  rpc RegionList(RegionListRequest) returns (RegionListResponse);
+  // Typeahead over the name ("type your village"), capped.
+  rpc RegionSearch(RegionSearchRequest) returns (RegionSearchResponse);
+  // The full ancestry of one code — hydrate a saved address, or back-fill the picker.
+  rpc RegionResolve(RegionResolveRequest) returns (RegionResolveResponse);
+}
+
+// The four administrative tiers. The numbers are the `level` column verbatim (1..4), a structure
+// fixed by law rather than a list that grows.
+enum RegionLevel {
+  REGION_LEVEL_UNSPECIFIED = 0;
+  REGION_LEVEL_PROVINSI = 1;
+  REGION_LEVEL_KABUPATEN = 2;
+  REGION_LEVEL_KECAMATAN = 3;
+  REGION_LEVEL_DESA = 4;
+}
+
+// One administrative region.
+message Region {
+  // The government's dotted kode wilayah ('11.01.01.2001') — the identity, and what a snapshot keeps.
+  string code = 1;
+  // The code with its last segment removed; empty for a provinsi.
+  string parent_code = 2;
+  RegionLevel level = 3;
+  string name = 4;
+  // Desa only; empty elsewhere.
+  string kode_pos = 5;
+}
+
+// A region flattened together with its ancestors — every level filled in from provinsi down to the
+// region itself, and empty below it.
+//
+// This is deliberately the shape a SAVED ADDRESS snapshots (codes + names + kode pos), so a consumer
+// can freeze an address without walking the tree itself, and a picker can back-fill all four selects
+// from one response.
+message RegionAncestry {
+  string provinsi_code = 1;
+  string provinsi_name = 2;
+  string kabupaten_code = 3;
+  string kabupaten_name = 4;
+  string kecamatan_code = 5;
+  string kecamatan_name = 6;
+  string desa_code = 7;
+  string desa_name = 8;
+  // The desa's kode pos; empty when the ancestry stops above desa (or the desa has none).
+  string kode_pos = 9;
+}
+
+message RegionListRequest {
+  // Reference data — any authenticated user may read it (the address picker needs it). Unscoped:
+  // there is no team_id, because regions are not a team's data.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The parent whose children to list. EMPTY means the top level — the 38 provinsi.
+  string parent_code = 1 [(buf.validate.field).string.max_len = 20];
+
+  // Required (HARD RULE 9). A level is small in practice (a kecamatan has dozens of desa), but desa
+  // overall is 83.762 rows — an unpaginated list over this table is a slow query waiting to happen.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message RegionListResponse {
+  repeated Region regions = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message RegionSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // What the user typed. At least 2 characters: a single letter over 91.599 rows is not a search,
+  // it is a table scan the user cannot use anyway.
+  string q = 1 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 100
+  }];
+
+  // Optional filter — UNSPECIFIED searches every level. ("Find a kecamatan named X.")
+  RegionLevel level = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // CAPPED, not paged — a typeahead can never return "everything", which is what HARD RULE 9 is
+  // actually protecting against (same shape as SearchUser).
+  uint32 limit = 3 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 20
+  }];
+}
+
+message RegionSearchResponse {
+  // Each hit carries its full ancestry: 83.762 desa share a lot of names ("Sukamaju"), so a bare
+  // name is ambiguous to show AND useless to back-fill from. This is what makes the picker's fast
+  // path ("type your village") one round-trip.
+  repeated RegionAncestry results = 1;
+}
+
+message RegionResolveRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // Any level's code — the ancestry is filled from provinsi down to this region.
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 20
+  }];
+}
+
+message RegionResolveResponse {
+  RegionAncestry ancestry = 1;
+}

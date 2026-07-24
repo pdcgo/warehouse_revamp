@@ -50,8 +50,19 @@ Everything else we invent fresh.
 
 ## 1. The real world — what actually happens in the warehouse
 
-> **⚠ THIS IS THE FOUNDATION AND IT IS EMPTY. Nothing below can be designed until this is
+> **⚠ THIS IS THE FOUNDATION AND IT IS MOSTLY EMPTY. Nothing below can be designed until it is
 > filled in — by the owner, from the actual operation.**
+>
+> **Update (2026-07-20): it is filling in sideways.** Four of §1.2's jobs are now answered, and none of
+> them were answered by anyone sitting down to write this section — each was settled by the owner when
+> a screen forced the question and would not build without it (the #134 family). That turns out to be
+> a workable way to fill this in: **ask the §1 question the next screen actually needs, not the whole
+> section at once.**
+>
+> **What is still blocked by what is left.** The order/fulfilment run (#69–#78, ten issues, the whole
+> Ready column) waits on the *unticked* boxes below — principally **picking**, **packing**, **courier
+> handover**, and **returns**. Those four are the warehouse half of an order's life, and no amount of
+> selling-side work substitutes for them.
 
 ### 1.1 The people
 
@@ -63,19 +74,62 @@ Everything else we invent fresh.
 
 For each: who does it, what triggers it, what they touch, what can go wrong.
 
-- [ ] **Goods arrive** — a delivery shows up at the door. Then what?
-- [ ] **Goods get put away** — do they go to a specific place? Who decides where?
-- [ ] **An order needs picking** — how does a person know what to pick and where it is?
-- [ ] **Packing** — what gets checked? what gets printed?
-- [ ] **Handover to courier** — what's recorded?
-- [ ] **Counting / stock-take** — how often, who, how is it reconciled?
+> **Four of these are now ANSWERED — not in the abstract, but by owner decisions made when a screen
+> forced the question** (the #134 family, 2026-07-17/20). They are recorded here because this section
+> is the foundation the order/fulfilment work (#69–#78) is blocked on, and a decision that lives only
+> in an issue thread cannot unblock anything. Ticked = decided and built; unticked = still open.
+>
+> Detail and reasoning for each live in `plans/inventory_service/brainstorming.md` §3/§4.
+
+- [x] **Goods arrive** — a delivery shows up at the door. Then what? → **The warehouse COUNTS it**
+      (#133). Accepting a restock is a count, not a confirmation: staff open the box and record how
+      many of each line actually turned up. A short delivery is ordinary and still completes the
+      request; both the asked-for and the arrived quantity are kept, because the gap is what someone
+      chases the supplier about. Stock receives *the count*, never the promise.
+- [x] **Goods get put away** — do they go to a specific place? Who decides where? → **Yes, a rack, and
+      the person counting decides** (#137). Put-away is part of accepting: the warehouse names the
+      shelf as it counts, in one step, so nothing routinely sits unplaced. Stock that has arrived but
+      is not yet shelved is a real state ("unplaced"), and #136 is how it gets shelved later or moved
+      shelf-to-shelf.
+- [x] **An order needs picking** — how does a person know what to pick and where it is? → **ONE ORDER
+      AT A TIME** (owner, 2026-07-20). A picker takes a single order, walks to the shelves it needs,
+      collects it, packs it. Not batch picking — no collecting for several orders in one trip and
+      sorting them at a bench.
+      - **This maps straight onto what already exists**: the order names its lines, and #135–#138 know
+        which shelf each product sits on, so "here is the order, here is where each line lives" needs
+        no new model — only a screen. That is #71.
+      - Batch picking was considered and not chosen: far more efficient at volume, but it needs a
+        sorting step and guards against one order's goods being confused with another's. Worth
+        revisiting when volume demands it; the per-order data does not change if it is.
+- [x] **What the crew RECORDS as they work** — **PICKING → PACKED → SHIPPED** (owner, 2026-07-20).
+      Three states, each an action a person starts and finishes, so an order being worked on right now
+      is visibly different from one nobody has touched. An order today has only PLACED / CONFIRMED /
+      CANCELLED, so these are genuinely new (#71).
+      - **DELIVERED was considered and not taken**: it needs a source of truth for "it arrived" — a
+        courier webhook, or someone updating it by hand — and neither exists. Add it when there is
+        something to populate it, not before.
+      - "Just record it shipped" was also rejected: it is the smallest build, but an order mid-pick
+        would look identical to one nobody had started, which is exactly the thing a crew needs to see.
+- [ ] **Packing** — what gets *checked*? what gets *printed*? *(The STATE is decided above; what
+      physically happens at the packing bench — a label, a checklist, a weight — is still open.)*
+- [ ] **Handover to courier** — what's recorded? *(SHIPPED exists as a state; whether a resi/tracking
+      number is captured at that moment is still open.)*
+- [x] **Counting / stock-take** — how often, who, how is it reconciled? → **It counts a SHELF** (#139).
+      Someone stands at A-01-3, counts what is on it, and corrects *that place*; the correction is an
+      ADJUST movement in the ledger naming the shelf, so it is auditable. Warehouse owners/admins do
+      it. **How often is still open** — nothing schedules or prompts a stock-take today.
 - [ ] **Something comes back (return)** — what happens to it?
-- [ ] **Goods move between warehouses** — does this happen?
+- [x] **Goods move between warehouses** — does this happen? → **Yes** (`StockTransfer`, a manager
+      action): stock leaves one warehouse and enters another, atomically, as two ledger legs. Moving
+      stock *within* one warehouse is a different act with its own kind (#136).
 - [ ] _(what's missing from this list?)_
 
 ### 1.3 The physical facts
 
 - [ ] How many warehouses? How big? How many racks/locations?
+      *(Partly answered: **racks are real and labelled** — a warehouse writes down its shelves by the
+      code painted on them (#129), and stock is counted per shelf (#135). The counts — how many
+      warehouses, how many racks — are still unknown.)*
 - [ ] How many SKUs? How many orders a day?
 - [ ] How many people working at once?
 - [ ] **Is anything labelled with a barcode/QR today?** Products? Racks? Boxes? Orders?

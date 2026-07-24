@@ -1,0 +1,312 @@
+syntax = "proto3";
+
+package warehouse.product.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
+
+// ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team owns
+// its own catalogue), and every WRITE is team-scoped: `team_id` carries (use_scope), and the handler
+// only ever touches rows with that team_id — you cannot create, edit or delete another team's product
+// by passing its id.
+//
+// READS are not all so narrow, and deliberately: `team_id` on those means "the team you hold a role in"
+// and NOT "the team whose products you get back".
+//
+//   - ProductList     — this team's own catalogue. Narrow.
+//   - ProductDiscover — every team's catalogue, for SELLING roles: a selling team browses to find
+//                       things to sell (#106).
+//   - ProductByIds    — a KNOWN set of ids, across any team, for selling AND warehouse roles (#138).
+service ProductService {
+  rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
+  rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  // ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
+  rpc ProductDiscover(ProductDiscoverRequest) returns (ProductDiscoverResponse);
+  // ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
+  rpc ProductByIds(ProductByIdsRequest) returns (ProductByIdsResponse);
+  rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
+  rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
+  rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
+}
+
+message Product {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  bool deleted = 6;
+
+  // The product's category (a node in the global category taxonomy). Required on create/update —
+  // 0 only appears on rows created before categories existed.
+  uint64 category_id = 7;
+
+  // The COVER image, denormalised onto the product row so a list/card can render a picture without
+  // joining product_images. Mirrors the first entry of `images`; empty when the product has none.
+  string default_image_url = 8;
+  string default_image_thumbnail_url = 9;
+
+  // The full gallery (up to 5), ordered; the first is the cover. Populated by ProductDetail ONLY —
+  // ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
+  // denormalised cover) so a list never has to join product_images.
+  repeated ProductImage images = 10;
+}
+
+// ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
+// are produced by the two-phase document_service upload and stored verbatim on the product.
+message ProductImage {
+  string url = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2048
+  }];
+  string thumbnail_url = 2 [(buf.validate.field).string.max_len = 2048];
+}
+
+// ProductImages wraps the gallery for UPDATE: a message field has presence, so a nil wrapper means
+// "leave the images alone" while a present (even empty) wrapper means "replace with exactly these".
+message ProductImages {
+  repeated ProductImage items = 1 [(buf.validate.field).repeated.max_items = 5];
+}
+
+message ProductCreateRequest {
+  // Write: the team's managers. Team-level roles are legal here because team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string sku = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string description = 4 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category is required — every new product is filed under one taxonomy node.
+  uint64 category_id = 5 [(buf.validate.field).uint64.gt = 0];
+
+  // Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
+  repeated ProductImage images = 6 [(buf.validate.field).repeated.max_items = 5];
+}
+
+message ProductCreateResponse {
+  Product product = 1;
+}
+
+message ProductListRequest {
+  // Read: anyone in the team, including staff and customer service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ProductListResponse {
+  repeated Product products = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductDiscover lists products across ALL teams (open cross-team discovery, #106) so a selling team
+// can browse other teams' catalogues to order from. `team_id` is the CALLER's team — it authorizes the
+// request (use_scope: the caller must be a member with a listed role), but the results are NOT filtered
+// to it. Read-only; each Product carries its owning team_id.
+message ProductDiscoverRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message ProductDiscoverResponse {
+  repeated Product products = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
+//
+// It exists because a warehouse physically holds other teams' goods: a selling team raises a restock
+// for its own product, and fulfilling it puts that product on the warehouse's shelf. So "what is on
+// rack A-01-3" starts from stock rows whose product ids belong to somebody else's catalogue, and a
+// screen that could only name the warehouse's OWN products would silently omit half the shelf.
+message ProductByIdsRequest {
+  // Read: selling roles AND warehouse roles. The warehouse ones are the point — a person standing at a
+  // shelf must be able to read the label on a box that is sitting on it, and Discover deliberately does
+  // not serve them (it is a selling team's "find things to sell", not a warehouse's "what is this?").
+  //
+  // This IS new exposure for warehouse roles: they could not read another team's product names before.
+  // The bound is that a by-ids lookup is not a browse — a caller must already know the id — and that
+  // what comes back is a catalogue label, not money. See plans/inventory_service/brainstorming.md §4:
+  // "only what it holds" is NOT enforced and cannot be here, because product_service does not know what
+  // any warehouse holds; enforcing it would mean moving this behind inventory_service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The team the CALLER holds a role in — not the team whose products come back. A warehouse asking
+  // about a selling team's product passes its own id, exactly as it does for every other scoped call.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The ids to resolve. It does not page and does not need to: the caller supplies the set, so the
+  // response can never be larger than what was asked for — which is why max_items is the whole story
+  // here, and a page cursor would be ceremony. The cap is what stops this becoming a bulk export.
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message ProductByIdsResponse {
+  // The products that exist, in no guaranteed order — match them by id, not by position.
+  //
+  // An id that resolves to nothing is simply ABSENT rather than an error: a caller holding a stock row
+  // for a product that was since deleted is asking a reasonable question, and failing the whole lookup
+  // would blank a rack over one dead id. The caller renders what it cannot resolve as unknown.
+  repeated Product products = 1;
+}
+
+message ProductUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  optional string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string description = 5 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category stays required: when present it must be a real node. Absent = leave alone.
+  optional uint64 category_id = 6 [(buf.validate.field).uint64.gt = 0];
+
+  // The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
+  // exactly its items (the edit page always sends the full desired set). The first is the cover.
+  ProductImages images = 7;
+}
+
+message ProductUpdateResponse {
+  Product product = 1;
+}
+
+message ProductDetailRequest {
+  // Read: anyone in the team (same audience as ProductList).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDetailResponse {
+  Product product = 1;
+}
+
+message ProductDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDeleteResponse {}

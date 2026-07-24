@@ -20,3 +20,8 @@ development_data/
 # env
 .env
 .env.local
+
+# run-warehouse-revamp driver output (screenshots, server logs, tracked pids)
+.claude/skills/run-warehouse-revamp/shots/
+.claude/skills/run-warehouse-revamp/logs/
+.claude/skills/run-warehouse-revamp/.driver-state.json

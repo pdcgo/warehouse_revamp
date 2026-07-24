@@ -1,0 +1,1017 @@
+# Database schema
+
+The authoritative schema is the goose migrations under
+`backend/services/<service>/db_migrations/` — this document mirrors them for humans. **Keep it in
+sync: any migration that changes the schema updates this file in the same commit** (HARD RULE 3).
+
+Each service owns its own tables. **There are no cross-service foreign keys** — a service refers to
+another's rows by an *opaque id* it never joins on (it resolves them over RPC, e.g.
+`team_service.TeamByIds`). Those logical links are described in the prose and are not enforced by
+the database.
+
+---
+
+## team_service
+
+`backend/services/team_service/db_migrations/`
+
+```mermaid
+erDiagram
+    teams ||--o| team_infos : "has 1 to 1"
+    teams ||--o| warehouse_infos : "1 to 1 (warehouse teams)"
+
+    teams {
+        bigserial   id          PK
+        text        type        "root admin warehouse or selling"
+        text        name        "required"
+        text        team_code   UK "required unique"
+        text        description
+        text        image_url   "compact team picture, empty if none"
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    team_infos {
+        bigserial   id                  PK
+        bigint      team_id             FK "unique, on delete cascade"
+        bigint      return_warehouse_id "nullable opaque cross-service id"
+        bigint      return_user_id      "nullable opaque cross-service id"
+        bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
+        text        contact_number
+        text        bank_type
+        text        bank_owner_name
+        text        bank_account_number
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    warehouse_infos {
+        bigserial   id              PK
+        bigint      team_id         FK "unique, the warehouse team"
+        jsonb       operating_hours "weekly open/close grid"
+        jsonb       receiving_hours "weekly order-receiving grid"
+        text        location        "physical address, free text"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`teams`** — one row per team (a warehouse *is* a team; see `plans/team_service/`). Root-ness is
+  structural: `CHECK ((type = 'root') = (id = 1))` ties `id = 1` and `type = 'root'` together so the
+  hardcoded root-team scope in the access interceptor can never drift from the data. Indexes:
+  `UNIQUE (team_code)`, and a partial `(type) WHERE deleted = FALSE`.
+- **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
+  real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
+  services — no FK is possible across the service boundary.
+  - **`default_warehouse_id`** (#145) — the warehouse a SELLING team ships from by default. Every
+    order must name a warehouse (#72), and a team almost always ships from the same building, so this
+    is that answer held once rather than asked every time.
+    It is a **default, not a rule**: the order form pre-fills an *untouched* field with it, the person
+    may still choose another, and the server keeps refusing an order that names none. A server-side
+    fallback would quietly undo that refusal — which exists so a warehouse-less order cannot reach the
+    database at all.
+- **`warehouse_infos`** — 1:1 with a WAREHOUSE `teams` row (`UNIQUE (team_id)`, so `WarehouseInfoUpdate`
+  is an `ON CONFLICT` upsert). The two schedules are stored as JSONB (a per-day open/close grid; the
+  handler validates and marshals). `location` is the warehouse's physical address (#39). A warehouse
+  with no row yet reads as "every day closed, no location".
+
+---
+
+## user_service
+
+`backend/services/user_service/db_migrations/`
+
+```mermaid
+erDiagram
+    users ||--o{ user_team_roles : "member of"
+
+    users {
+        bigserial   id                  PK
+        text        name
+        text        username            UK "unique on lower, required"
+        text        password            "bcrypt hash, empty means cannot log in"
+        text        email               UK "unique on lower when set"
+        text        phone_number
+        boolean     is_suspended        "default false"
+        text        avatar_url          "profile picture thumbnail url"
+        timestamptz last_password_reset "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    user_team_roles {
+        bigserial   id         PK
+        bigint      team_id    "opaque cross-service id, no FK to teams"
+        bigint      user_id    FK "on delete cascade"
+        bigint      role       "role_base.v1.Role enum number"
+        text        alias
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
+  (bcrypt never matches an empty hash), used by the seeded root account until a password is set.
+  Case-insensitive uniqueness on both `username` and (non-empty) `email`.
+- **`user_team_roles`** — a user's role within a team. `role` stores the raw proto `Role` enum
+  *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
+  the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`
+  is opaque — **no FK to `team_service.teams`** (that would couple the two services' databases);
+  team display data is resolved over RPC, never joined.
+
+---
+
+## shipping_service
+
+`backend/services/shipping_service/db_migrations/`
+
+```mermaid
+erDiagram
+    shippings {
+        bigserial   id         PK
+        text        code       UK "required unique, stable machine key"
+        text        name       "required, display label"
+        boolean     active     "default true"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`shippings`** — the courier catalogue (JNE, J&T, SiCepat, …), seeded by the migration as stable
+  reference data, and curated by root/admin. `code` is unique and is what a shipment stores;
+  `active = false` retires a courier without deleting it. No relations — it stands alone.
+
+---
+
+## product_service
+
+`backend/services/product_service/db_migrations/`
+
+```mermaid
+erDiagram
+    products ||--o{ product_images : "product_id"
+
+    products {
+        bigserial   id                          PK
+        bigint      team_id                     "owning team, opaque cross-service id, no FK"
+        text        sku                         "required, unique per team among active"
+        text        name                        "required"
+        text        description
+        bigint      category_id                 "required on write, opaque cross-service id, no FK"
+        text        default_image_url           "denormalised cover, mirrors images[0]"
+        text        default_image_thumbnail_url "denormalised cover thumbnail"
+        boolean     deleted                     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    product_images {
+        bigserial   id            PK
+        bigint      product_id    FK "-> products(id), ON DELETE CASCADE"
+        text        url           "required, public URL from document_service"
+        text        thumbnail_url "best-effort thumbnail"
+        int         position      "gallery order, 0 = cover"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`products`** — a team's catalogue items. Every RPC is team-scoped (`team_id` carries
+  `use_scope`), so a product is only ever reachable within its owning team. `sku` is unique per team
+  **among active products only** (`UNIQUE (team_id, sku) WHERE deleted = FALSE`), so a soft-deleted
+  product frees its SKU for reuse and two teams may share a SKU. `team_id` is opaque — no FK to
+  `team_service.teams`. `category_id` is likewise an **opaque cross-service id** (a `category_service`
+  node, no FK); it is **required on write** (the handler rejects 0), `DEFAULT 0` only so pre-existing
+  rows survive the migration. `default_image_url` / `default_image_thumbnail_url` are the
+  **denormalised cover** (mirror of the first `product_images` row) so a list renders a picture
+  without a join.
+- **`product_images`** — a product's gallery, **up to 5** (enforced by the handler + proto, not the
+  DB), ordered by `position` (0 = cover). `url`/`thumbnail_url` are produced by the two-phase
+  `document_service` upload (resource type `PRODUCT_IMAGE`, served at a stable public URL) and stored
+  verbatim. `ProductUpdate` replaces the whole set when its `images` wrapper is present. `ON DELETE
+  CASCADE` covers a hard delete; products are normally soft-deleted, so images stay with them.
+
+---
+
+## selling_service
+
+`backend/services/selling_service/db_migrations/`
+
+```mermaid
+erDiagram
+    shops ||--o{ shop_users : "shop_id"
+    shops ||--o{ orders : "shop_id"
+    orders ||--o{ order_items : "order_id"
+    order_drafts ||--o{ order_draft_items : "draft_id"
+
+    shops {
+        bigserial   id          PK
+        bigint      team_id     "owning SELLING team, opaque cross-service id, no FK"
+        text        name        "required"
+        text        shop_code   "required, unique per team among active"
+        text        marketplace "Marketplace enum as text (shopee, tokopedia, …); no CHECK"
+        text        description
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    shop_users {
+        bigserial   id         PK
+        bigint      shop_id    FK "-> shops(id), ON DELETE CASCADE"
+        bigint      user_id    "opaque user_service id, no FK"
+        timestamptz created_at
+    }
+
+    orders {
+        bigserial   id               PK
+        bigint      team_id          "owning SELLING team, opaque, no FK"
+        bigint      shop_id          FK "-> shops(id)"
+        text        status           "OrderStatus enum as text (placed/confirmed/cancelled); no CHECK"
+        text        customer_name    "required"
+        text        customer_phone
+        text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
+        text        provinsi_name    "frozen name — survives a rename upstream"
+        text        kabupaten_code
+        text        kabupaten_name
+        text        kecamatan_code
+        text        kecamatan_name
+        text        desa_code
+        text        desa_name
+        text        kode_pos         "as chosen (editable in the picker)"
+        text        address_line     "jalan, no. rumah, RT/RW — free text"
+        text        shipping_code    "opaque shipping_service courier code"
+        bigint      subtotal         "whole rupiah"
+        bigint      shipping_cost
+        bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
+        bigint      total
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_items {
+        bigserial   id         PK
+        bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
+        bigint      product_id "opaque product_service id, no FK"
+        text        sku        "snapshot at order time"
+        text        name       "snapshot"
+        int         quantity   ">= 1"
+        bigint      unit_price "whole rupiah snapshot"
+        bigint      unit_cost     "per-unit cost frozen at order time (#74); server-set, 0 = unknown"
+        timestamptz created_at
+    }
+
+    order_drafts {
+        bigserial   id             PK
+        bigint      team_id        "the scope, carries use_scope"
+        bigint      author_user_id "personal — only the author lists it; opaque, no FK"
+        text        source         "which app pushed it"
+        text        external_id    "the marketplace's own id — UNIQUE with team_id and source"
+        jsonb       touched_fields "field names a human has edited; the push writes only what is absent here"
+        bigint      shop_id        "0 until known — no FK, can go stale"
+        bigint      warehouse_id   "0 until known — no FK, can go stale"
+        text        customer_name  "optional, like everything below"
+        text        customer_phone
+        text        provinsi_code  "same frozen-address shape as orders (#118)"
+        text        provinsi_name
+        text        kabupaten_code
+        text        kabupaten_name
+        text        kecamatan_code
+        text        kecamatan_name
+        text        desa_code
+        text        desa_name
+        text        kode_pos
+        text        address_line
+        text        shipping_code
+        bigint      shipping_cost  "as scraped, whole rupiah — promote recomputes the money"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_draft_items {
+        bigserial   id            PK
+        bigint      draft_id      FK "-> order_drafts(id), ON DELETE CASCADE"
+        text        external_sku  "what the app scraped, never overwritten"
+        text        external_name "what the app scraped, never overwritten"
+        bigint      product_id    "0 until a person maps it — the unmapped line IS the incompleteness"
+        int         quantity      "no CHECK, unlike order_items — a scrape may not have read it"
+        bigint      unit_price
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`shops`** — a selling team's marketplace storefronts (#66). Team-scoped (`team_id` carries
+  `use_scope`), so a shop is only ever reachable within its owning team. `shop_code` is unique per
+  team **among active shops only** (`UNIQUE (team_id, shop_code) WHERE deleted = FALSE`), so a
+  soft-deleted shop frees its code and two teams may share one. `marketplace` stores the shared
+  `warehouse.marketplace.v1.Marketplace` enum **as text**, mapped via `pkgs/san_marketplace` — the
+  same helper `inventory_service.supplier_channels` uses, so the two domains cannot drift to different
+  encodings (#120). Deliberately **without** a `CHECK` IN-list: the mapper + proto validation guard
+  the value, and an IN-list is just one more place to drift when the enum grows (the trap behind #80).
+  No credentials are stored — "just shop info". selling_service also owns orders (the #23
+  decomposition).
+- **`shop_users`** — which users may work on a shop (#86); one row per (shop, user) grant, `UNIQUE
+  (shop_id, user_id)`. `user_id` is an **opaque** user_service id (no FK). The RPCs are scoped
+  through the shop's team (the request carries the team_id, and the handler verifies the shop
+  belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
+  the grants when a shop is hard-deleted.
+- **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
+  as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
+  **`margin = total − cogs − shipping_cost`** is computable from the order alone.
+  - **Server-set, ignored on input.** The cost is looked up from the warehouse's restock history at
+    order time (`StockCost`), because a client supplying it would be writing its own margin — the one
+    number nobody placing an order should get to choose. `orderItemModels` deliberately does not read
+    it, the same way it ignores `id`.
+  - **The line stores its TOTAL, not a per-unit price** (#140, owner). People buying stock read a
+    total off an invoice — "that box of 12 cost 240.000" — and asking for a per-unit figure makes them
+    divide in their head, storing a rounded number whose product no longer equals what they paid. The
+    total is therefore the stored truth, and **StockCost DERIVES** the per-unit cost as
+    `total_price / quantity`, rounded down. That rounding happens at READ time and is never written
+    back: 10.000 over 3 pieces reports 3.333 a piece while the stored total stays 10.000.
+  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
+    product cost, so an order's COGS carries it:
+
+    
+
+    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken
+    ones too (#154), and that cost lands on the good units, so a damaged delivery correctly reads as
+    more expensive per piece. Spread by **unit count** across the request's lines, so every unit
+    carries the same freight whichever line it is on. Both divisions round DOWN — rounding up would
+    have an order claim it paid more than the invoice says.
+  - A line that received **nothing is skipped**: dividing by its zero would fail, and "what did the
+    units cost" has no answer when none came. The product falls back to its previous delivery rather
+    than to a fabricated figure.
+  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
+    product cost, so an order's COGS carries it. Before this it did not, and every margin in the
+    revenue report was optimistic by exactly the freight.
+
+    ```
+    additional = (shipping_cost + cod_shipping_fee) / sellable units on the request
+    hpp        = (line total / that line's sellable units) + additional
+    ```
+
+    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken ones
+    too (#154), and that cost lands on the good units — so a damaged delivery correctly reads as more
+    expensive per piece instead of hiding the loss. Split across the request's lines by **unit count**,
+    so every unit carries the same freight whichever line it sits on. Both divisions round **down**:
+    rounding up would have an order claim it paid more than the invoice says.
+  - A line that received **nothing is skipped**. Dividing by its zero would fail, and "what did the
+    units cost" has no answer when none came — so the product falls back to its previous delivery
+    rather than to a fabricated figure.
+  - **The rule is the LATEST FULFILLED restock's price** for that product into that warehouse. Only
+    fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
+    That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
+    model nothing has yet — and it is safe to change because the answer is **frozen onto the line**, so
+    a new rule changes future orders and never rewrites what past ones recorded. See
+    `plans/revenue_service/brainstorming.md`.
+  - **0 means UNKNOWN, not free.** A product never restocked has no recorded cost, and every row
+    predating this column is in that position. A margin computed over an unknown cost reads as pure
+    profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
+    rather than returning zero for them, precisely to keep the two apart.
+  - `cogs` is denormalised onto the header because `OrderList` returns a summary **without** lines; it
+    cannot drift, because the lines it was computed from are frozen too — exactly like `subtotal`.
+- **`orders`** / **`order_items`** — the SELLING side of an order (#67): who ordered, from which
+  shop, and the frozen money (whole rupiah). Team-scoped (`team_id` opaque); `shop_id` is a real FK
+  (same service). `status` is the `OrderStatus` enum as text (`placed`/`confirmed`/`cancelled` —
+  selling-side only; fulfillment states wait on the warehouse core), no `CHECK` (mapper + proto
+  guard it). `order_items` snapshots each line (`product_id` opaque; `sku`/`name`/`unit_price` frozen
+  at order time), `ON DELETE CASCADE`. `OrderCreate` does **not** touch inventory (that is #69), and
+  COGS/margin are the revenue side (#74). The UI is #68.
+- **The order's delivery address is a SNAPSHOT** (#118) — the ten `provinsi_*` … `address_line`
+  columns, which replaced the old free-text `customer_address` (the migration carries that text into
+  `address_line`, since the street detail is exactly what it held). Both the **codes and the names**
+  are frozen: `region_service`'s rows change (a desa is renamed, merged, split) and a historical order
+  must keep reading what was agreed — so rendering a past order never touches `region_service`, and
+  there is **no FK** to it (HARD RULE 3; each consumer keeps its own snapshot). Flat columns rather
+  than one JSONB blob: an address is a fixed 4-tier shape, and "which orders ship to this kecamatan"
+  is a question worth being able to ask. The whole address is **optional** — as the free text it
+  replaced was.
+- **`order_drafts`** / **`order_draft_items`** — an incomplete order **pushed in by a third-party
+  app** (#190, `plans/selling_service/brainstorming.md` §6), finished by a person here and promoted
+  into a real order. A draft is not a quotation, not a reservation, not an unpaid marketplace order,
+  and it holds no stock.
+  - **Its own table, not an `ORDER_STATUS_DRAFT` on `orders`.** The reason is not tidiness: on one
+    table, *every* reader of `orders` becomes responsible for excluding drafts — the list, the pick
+    queue, the revenue chain, every count — and one forgotten `AND status <> 'draft'` puts an
+    unfinished scrape into somebody's revenue report. Apart, `orders` keeps every `NOT NULL` it has
+    (a real order always has a shop, a warehouse, a customer) while this table carries almost none,
+    because incompleteness is what a draft **is**. A draft never publishes `OrderCreatedEvent` —
+    placement does, and a draft was never placed.
+  - **`UNIQUE (team_id, source, external_id)` is what makes the push idempotent.** An external caller
+    on a flaky network will retry, and without this one bad connection quietly fills the list with
+    near-identical drafts nobody can tell apart. Per **team**, not per author, so the same marketplace
+    order cannot become two drafts because two people's logins pushed it. The `CHECK` that both are
+    non-empty exists because empty strings would make that index collide across unrelated drafts.
+  - **`touched_fields` is how a re-scrape cannot destroy someone's work.** `OrderDraftPush` writes
+    only fields absent from this list; `OrderDraftUpdate` (a person, in our UI) always wins and adds
+    to it. The app and the person authenticate as the *same user*, so identity cannot tell them
+    apart — the **RPC** is what carries the distinction.
+  - **A line keeps BOTH the scrape and the mapping.** `external_sku`/`external_name` are what the
+    marketplace said and are never overwritten, even by a person editing the line: they are the
+    evidence of what the buyer ordered, and keeping them beside `product_id` is what lets somebody
+    spot a wrong mapping. `product_id` is `0` until mapped, and an unmapped line is precisely the
+    incompleteness that keeps this a draft.
+  - **No `quantity >= 1` CHECK**, unlike `order_items` — a scrape can arrive with a quantity it could
+    not read, and refusing the whole push over one unreadable line would lose the other nine. Promote
+    is where every requirement lands, by running the same validation `OrderCreate` runs.
+  - `author_user_id` makes a draft **personal**, as a *handler filter* — the request still carries
+    `team_id` with `use_scope`, because a team-level policy without a scope is a dead letter.
+    `shop_id` / `warehouse_id` / a mapped `product_id` have **no FK** and can go stale underneath a
+    draft; promote re-checks them and names which reference died.
+
+`backend/services/category_service/db_migrations/`
+
+```mermaid
+erDiagram
+    categories ||--o{ categories : "parent_id self-referential"
+
+    categories {
+        bigserial   id          PK
+        text        name        "required, unique per parent among active"
+        bigint      parent_id   FK "nullable self-referential, null means top-level"
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`categories`** — a **global**, nested product-category taxonomy. Unlike `products`, it is **not
+  team-scoped** (there is no `team_id`): root/admin curate one shared tree and every authenticated
+  user reads it. `parent_id` is a **self-referential FK** to `categories(id)` — `NULL` marks a
+  top-level category — so the table is a single tree the client assembles from the flat list. `name`
+  is unique among **active** siblings (`UNIQUE (COALESCE(parent_id, 0), name) WHERE deleted = FALSE`,
+  which folds the NULL top-level parent into one bucket), so a soft delete frees the name for reuse.
+  A category with active children cannot be deleted.
+
+---
+
+## document_service
+
+`backend/services/document_service/db_migrations/`
+
+```mermaid
+erDiagram
+    documents {
+        text        id            PK "uuid"
+        bigint      team_id       "owning team, opaque cross-service id, no FK"
+        text        resource_type "general | profile_picture | product_image (CHECK)"
+        text        object_key    "storage path, incoming then assets on confirm"
+        text        mime_type
+        bigint      size_bytes
+        text        filename
+        bigint      created_by_id "uploader, best-effort audit"
+        text        status        "pending or active"
+        text        public_url    "public resource types only"
+        text        thumbnail_key "generated thumbnail path for images"
+        text        thumbnail_url "public thumbnail url for public images"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`documents`** — metadata for one stored file; the bytes live in object storage, not the DB.
+  Team-scoped (`team_id` opaque, no FK). `status` goes `pending` → `active` on ConfirmUpload, which
+  also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url`/`thumbnail_url` are
+  set only for public resource types (`profile_picture`, `product_image`); an image upload also gets
+  a generated thumbnail.
+
+---
+
+## inventory_service
+
+`backend/services/inventory_service/db_migrations/`
+
+```mermaid
+erDiagram
+    stock_levels {
+        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id   "opaque product_service id, no FK"
+        bigint      rack_id      FK "-> racks(id) ON DELETE RESTRICT; NULL = UNPLACED (#135)"
+        bigint      on_hand      "THIS PLACE's running total, CHECK >= 0; a warehouse total is a SUM"
+        timestamptz updated_at
+    }
+
+    stock_movements {
+        bigserial   id            PK
+        bigint      warehouse_id  "opaque, no FK"
+        bigint      product_id    "opaque, no FK"
+        bigint      rack_id       FK "-> racks(id); the place moved onto/off; NULL = unplaced (#135)"
+        bigint      batch_id      FK "-> stock_batches(id); which batch moved; NULL = batch-less recount (#211)"
+        bigint      delta         "signed: + in, - out"
+        bigint      balance       "THIS PLACE's on-hand after this movement"
+        smallint    kind          "MovementKind enum number"
+        text        reason
+        text        ref
+        bigint      actor_user_id "who, best-effort audit"
+        timestamptz created_at
+    }
+
+    stock_batches {
+        bigserial   id                      PK
+        bigint      warehouse_id            "opaque team id, scope"
+        bigint      product_id              "opaque product_service id"
+        bigint      delivery_id             "the accepted restock request id (display '#3007')"
+        bigint      restock_request_item_id FK "-> restock_request_items(id); UNIQUE — the line IS the batch (#207)"
+        bigint      unit_cost               "FROZEN HPP, whole rupiah; NULL = Unknown, never 0 (#74)"
+        bigint      arrived_qty             "units on the line, CHECK >= 0; Ready = sum shelf_batch.qty"
+        bigint      damaged_qty             "never entered stock, CHECK >= 0"
+        date        expires_on              "NULLABLE — perishables only (#208)"
+        bigint      created_by              "who raised the restock, opaque user id, 0=unknown"
+        bigint      accepted_by             "who accepted it"
+        timestamptz created_at
+        timestamptz accepted_at
+    }
+
+    stock_shelf_batches {
+        bigserial   id       PK
+        bigint      batch_id FK "-> stock_batches(id) ON DELETE RESTRICT"
+        bigint      rack_id  FK "-> racks(id) ON DELETE RESTRICT; NULL = unplaced (#135)"
+        bigint      qty      "READY units of this batch on this shelf, CHECK >= 0; UNIQUE(batch,rack) NULLS NOT DISTINCT"
+        timestamptz updated_at
+    }
+
+    stock_batches ||--o{ stock_shelf_batches : "batch_id"
+    restock_request_items ||--o| stock_batches : "restock_request_item_id (one batch per line)"
+
+    suppliers ||--o{ supplier_channels : "supplier_id"
+
+    racks {
+        bigserial   id           PK
+        bigint      warehouse_id "the WAREHOUSE team it stands in, opaque, no FK"
+        text        code         "the label on the shelf (A-01-3); unique per warehouse among active"
+        text        name         "optional human name"
+        text        description
+        boolean     deleted      "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    suppliers {
+        bigserial   id          PK
+        bigint      team_id     "owning team, opaque cross-service id, no FK"
+        text        code        "required, unique per team among active"
+        text        name        "required"
+        text        contact
+        text        province
+        text        city
+        text        address
+        text        description
+        boolean     deleted     "soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    supplier_channels {
+        bigserial   id          PK
+        bigint      supplier_id FK "-> suppliers(id), ON DELETE CASCADE"
+        text        type        "SupplierChannelType as text (online/offline); no CHECK"
+        text        marketplace "online only: marketplace code (shopee/tiktok/...); empty otherwise"
+        text        name        "required, the store/shop name"
+        text        url         "online only, optional link to the store"
+        text        contact     "phone/WA, primary for an offline shop"
+        text        location    "offline only, physical address"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    restock_requests ||--o{ restock_request_items : "restock_request_id"
+    suppliers ||--o{ restock_requests : "supplier_id (nullable)"
+
+    restock_requests {
+        bigserial   id                 PK
+        bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
+        bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
+        text        shipping_code      "opaque shipping_service courier code"
+        text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
+        text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
+        text        receipt            "optional: courier tracking number (resi)"
+        bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
+        bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
+        bigint      cod_shipping_fee   "fee paid AT THE DOOR by the warehouse at acceptance (#155), CHECK >= 0"
+        text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
+        text        note               "optional free text"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    restock_request_items {
+        bigserial   id                 PK
+        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
+        bigint      product_id         "opaque product_service id, no FK"
+        text        sku                "snapshot at request time"
+        text        name               "snapshot"
+        bigint      quantity           "how many were ASKED FOR, CHECK > 0"
+        bigint      total_price        "whole rupiah, THE LINE TOTAL (#140), CHECK >= 0"
+        bigint      received_quantity  "what is SELLABLE and entered stock, counted at acceptance; EXCLUDES damage (#154); 0 until fulfilled"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    restock_received_placements {
+        bigserial   id                      PK
+        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
+        bigint      rack_id                 FK "-> racks(id) ON DELETE RESTRICT; NULL = the unplaced pile (#135)"
+        bigint      quantity                "how many went to THIS place, CHECK > 0"
+        timestamptz created_at
+    }
+
+    restock_damaged_units {
+        bigserial   id                      PK
+        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
+        bigint      quantity                "CHECK > 0"
+        text        reason                  "required, CHECK <> empty"
+        text        damage_type             "broken | lost (mapper-guarded, #80)"
+        timestamptz created_at
+    }
+
+    warehouse_products {
+        bigserial   id           PK
+        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
+        bigint      product_id   "opaque product_service id, no FK"
+        timestamptz created_at
+    }
+```
+
+- **`warehouse_products`** (#142) — WHICH PRODUCTS A WAREHOUSE HANDLES. A warehouse must not see the
+  whole catalogue: it holds no products of its own (products belong to selling teams), so a
+  team-scoped product list shows it nothing useful. This is the list it should see instead.
+  - **Written by `RestockRequestCreate`**, in the same transaction as the request (owner,
+    2026-07-20): asking a warehouse to stock something is what makes that product visible there, and a
+    request whose products the crew cannot see is one nobody can act on. That is the only writer today.
+  - **Not derivable from `stock_levels`**, which is why it is its own table rather than a query over
+    that one. A product asked for but not yet received has no stock level at all, and the crew
+    expecting it still have to be able to find it. "Handles" and "currently holds" are two facts.
+  - `UNIQUE (warehouse_id, product_id)` — the arrangement exists once. Writers upsert with
+    `ON CONFLICT DO NOTHING`, because a second restock request for a product a warehouse already
+    stocks is the normal case, not an error worth failing the request over.
+  - It lives in **inventory_service** because this service already owns warehouse×product facts
+    (`stock_levels` is keyed on exactly that pair) and owns the restock flow that writes it — so no
+    cross-service write is needed to maintain it (HARD RULE 3).
+- **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
+  `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
+  cache of the running on-hand, maintained inside each movement's transaction, with a
+  `CHECK (on_hand >= 0)` that turns an over-draw into a failed movement rather than a negative on-hand.
+  Scoped by `warehouse_id` (`use_scope`); `product_id` is an opaque `product_service` id. Both ids are
+  opaque cross-service ids — no FK. `rack_id` **is** a real FK: racks live in the same service.
+- **Stock is located ON a rack** (#135) — the grain is **(warehouse, rack, product)**, and a row's
+  `on_hand` is **that place's**, not the warehouse's total for the product. A warehouse total is a
+  **SUM across a product's places** (`StockList` groups by `(warehouse_id, product_id)`); a ledger
+  row's `balance` is likewise that place's running balance, because a movement is a statement about
+  one place — "this shelf went from 40 to 49".
+  - **`rack_id IS NULL` means UNPLACED** — "somewhere in this warehouse, not yet on a shelf". It is a
+    real, workable state (the put-away queue, #136), not a missing value: it is what arrived before
+    anyone shelved it. Every row predating #135 is unplaced, which is the truth — the system had never
+    been told where anything sits, and it must not invent a location it was never given.
+  - **The identity is a UNIQUE INDEX, not a PK**, because a PK column may not be NULL and "unplaced"
+    must be. `stock_levels_place_unique` carries **`NULLS NOT DISTINCT`** (Postgres 15+; compose pins
+    17) and that clause is load-bearing: by default Postgres treats every NULL as distinct from every
+    other, so a plain unique index would accept *many* unplaced rows for one (warehouse, product) —
+    each a separate "somewhere", silently double-counting the same goods on every read.
+  - **Consequently every query matches the rack with `IS NOT DISTINCT FROM`, never `=`.** In SQL
+    `rack_id = NULL` is never true, not even against a NULL row, so a plain `=` would fail to find
+    unplaced stock and report a phantom shortage for goods sitting right there. This is also why
+    writes to `stock_levels` go through raw SQL rather than GORM's primary-key path — see the model.
+  - **`ON DELETE RESTRICT`** on both `rack_id` FKs: stock on a rack being deleted must be dealt with
+    explicitly (#138), never stranded at a location nobody can reach.
+- **`suppliers`** — a team's vendors (who it buys stock from). Team-scoped (`team_id` carries
+  `use_scope`), so a supplier is only ever reachable within its owning team. `code` is unique per team
+  **among active suppliers only** (`UNIQUE (team_id, code) WHERE deleted = FALSE`), so a soft-deleted
+  supplier frees its code for reuse and two teams may share one. `team_id` is opaque — no FK to
+  `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
+  fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
+  delete, search, pagination).
+- **`racks`** — the physical places inside one warehouse (#129). Scoped to the `warehouse_id`, which
+  **is** a team (a warehouse is a team), carrying `use_scope`; opaque, no FK. `code` is the label
+  someone reads off the shelf and is unique per warehouse **among active racks only**
+  (`UNIQUE (warehouse_id, code) WHERE deleted = FALSE`), so a soft-deleted rack frees its label for
+  re-use — a shelf gets re-labelled — and two warehouses may both have an `A-01-3`. Only **warehouse**
+  teams have racks; a selling team has nowhere to put a shelf.
+- **`racks` is the REGISTRY, not a location model.** Nothing references a rack yet: stock is still
+  counted per `(warehouse_id, product_id)` in `stock_levels`. Putting stock **on** a rack is
+  `plans/inventory_service/` §3's open decision (warehouse-level vs bin-level), and writing down the
+  racks a warehouse has does not settle it — it is the prerequisite, not the answer.
+- **`supplier_channels`** — the ways a team can reach or order from a supplier (#120): an **online**
+  channel (a store on a marketplace) or an **offline** channel (a physical shop). `supplier_id` is a
+  **real FK** to `suppliers` (same service, `ON DELETE CASCADE`); scope to a team is enforced by the
+  handler (it verifies the supplier is in the team before touching its channels), not by a column on
+  this table. `type` and `marketplace` are stored **as text** (mapped in the handler, no `CHECK`
+  IN-list, cf. #80); the `marketplace` code is the shared `warehouse.marketplace.v1.Marketplace`
+  vocabulary (the same enum `selling_service.shops.marketplace` uses — promoted to a neutral proto so
+  neither domain owns it, #120), set only for an online channel. An online channel must name a
+  marketplace;
+  an offline one keeps `contact`/`location`. Channels are hard-deleted (no history to keep).
+- **`restock_requests`** / **`restock_request_items`** — a SELLING team's request for a WAREHOUSE to
+  restock (#105/#124). Two-sided: `requesting_team_id` (the selling team, `use_scope` on
+  create/cancel/list) raises a `pending` request naming a `warehouse_id` (the target warehouse,
+  `use_scope` on fulfil/list) and a `shipping_code`. The warehouse **fulfils** it in one transaction —
+  a `stock_movements` RECEIVE for **every line** plus a status flip to `fulfilled`, so the ledger and
+  the request can't diverge and a request is never half-received; the requester may **cancel** a
+  still-pending one. `status` is the `RestockRequestStatus` enum **as text** (mapped in the handler,
+  no `CHECK` IN-list, cf. #80). Both team ids are opaque — no FK; indexes on `requesting_team_id` and
+  `warehouse_id` serve the two list views.
+- A request carries **many priced lines** (#124), same shape as `orders`/`order_items`:
+  `restock_request_items` snapshots each line's `sku`/`name` at request time (the product may live in
+  another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `price`
+  (whole rupiah **per unit**, `CHECK >= 0` — zero is legitimate for a transfer or a sample).
+  `ON DELETE CASCADE`.
+- **`quantity` is what was ASKED FOR; `received_quantity` is what ARRIVED** (#133), and the two are
+  different facts, which is why both are stored. A request is a *promise*; the delivery is a *fact*,
+  and they disagree often enough — 9 of the 10, one line that never turned up, occasionally 11 — that
+  conflating them would mean recording stock the warehouse does not physically have. **Stock receives
+  `received_quantity`**, counted by the warehouse at acceptance. The asked-for is never overwritten by
+  it: the **gap between the two is the point**, being what someone chases the supplier about, and a row
+  that quietly said 9 were asked for would erase the discrepancy it exists to record.
+  - `received_quantity` is `0` until acceptance and stays `0` for a line that never arrived, so it only
+    means anything once `status = 'fulfilled'` — on a pending request it reads as *uncounted*, not as
+    *nothing came*.
+  - **No `CHECK` against `quantity`.** A short delivery is ordinary and an over-delivery is real; the
+    column records what was counted, and the person counting is the authority. A constraint here would
+    only force them to write down a number they can see is wrong.
+  - **`restock_received_placements` says WHERE it went** (#137/#154) — counting and shelving are one
+    act, so acceptance records both. A LIST, because a delivery of 100 does not go on one shelf: the
+    quantities must sum to `received_quantity` exactly, and a mismatch is refused rather than
+    interpreted (somebody who counts 8 and places 7 has erred in one of the two, and which is not
+    knowable). `rack_id IS NULL` is the **unplaced pile** — a real place (#135), not a missing answer —
+    and `UNIQUE NULLS NOT DISTINCT` is what stops a line naming that pile, or any shelf, twice.
+    Each placement is its **own ledger row**, so the movements say where the goods actually sat rather
+    than averaging a location they never occupied.
+  - **`restock_damaged_units` says what NEVER became stock** (#154, owner). Units that arrived broken
+    are recorded with a reason and a value and are **never on-hand** — `received_quantity` counts what
+    is sellable, so what physically arrived is `received_quantity + Σ damaged.quantity`. Rows rather
+    than a note, because the point is that breakage is a **number something can total**. Deliberately
+    not a `StockAdjust` afterwards: the goods never became stock, and adjusting them out would claim
+    they sat on a shelf for an instant when they never did.
+  - `received_quantity`, the placements and the damage are all **write-only-by-the-warehouse**. They
+    ride the shared line message so a line can READ back what happened to it, and `restockItemModels`
+    therefore ignores every one of them on the way in — a requesting team that could set them would be
+    declaring its own delivery received, saying which shelf it went on, and writing off goods the
+    warehouse never saw.
+- **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
+  **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
+  who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the
+  *same service* (`ON DELETE SET NULL`, so a request keeps its history if a supplier is ever
+  hard-deleted). The handler additionally requires the supplier to belong to the **requesting team** —
+  another team's supplier reads as `NotFound`, so the error can't be used to confirm an id exists.
+- `order_ref` **was** a `uint64 order_id` (#124) and became text in #127. That was a shape fix, not a
+  rename: the order is written down from a marketplace or a chat *elsewhere*, so it was never a row in
+  this system — a reference that happens to be numeric never pointed at anything here, and a real one
+  like `SHP-2026-ABC/01` could not be stored at all. The migration carries the old ids across as text.
+- The restock's own money (#127): `shipping_cost` is the **freight** (whole rupiah, `CHECK >= 0`) —
+  the goods' cost lives per line in `restock_request_items.price`, and this sits on top, which is what
+  the create screen's summary adds to the products' total. `payment_type` is the `RestockPaymentType`
+  enum **as text** (`shopee_pay` / `bank_account`, mapped in the handler, no `CHECK` IN-list per #80;
+  `''` = none recorded), and `note` is free text.
+
+---
+
+## region_service
+
+`backend/services/region_service/db_migrations/`
+
+```mermaid
+erDiagram
+    regions ||--o{ regions : "parent_code (self-referential)"
+
+    regions {
+        varchar     code        PK "dotted kode wilayah, e.g. 32.04.14.2001"
+        varchar     parent_code FK "-> regions(code); NULL for a provinsi"
+        smallint    level       "1=provinsi 2=kabupaten/kota 3=kecamatan 4=desa; CHECK 1..4"
+        text        name        "required"
+        varchar     kode_pos    "level 4 only (CHECK), nullable"
+    }
+```
+
+- **`regions`** — Indonesia's administrative hierarchy (provinsi → kabupaten/kota → kecamatan →
+  desa/kelurahan) with a kode pos on each desa (#112/#114). **Global reference data**: unlike almost
+  every other table here there is **no `team_id`** and no `use_scope` — regions are the same for
+  everyone, so the reads are unscoped and open to any authenticated user.
+- **One self-referential table, not four typed ones** (owner call, `plans/region_service/` §4.2
+  option A). `code` — the government's dotted kode wilayah — **is** the identity, and the hierarchy is
+  derivable from it (`11` → `11.01` → `11.01.01` → `11.01.01.2001`), so the upstream source loads
+  near-verbatim and "children of X" is a single indexed predicate (`WHERE parent_code = ?`).
+  `parent_code` is a **real self-FK** (`ON DELETE CASCADE`) — an orphan is a picker that dead-ends.
+- `level` carries a range `CHECK (1..4)`: a 4-tier structure fixed by law, so unlike an enum IN-list
+  it cannot drift as the data grows (cf. #80). `kode_pos` is `CHECK`-confined to level 4 — officially
+  one postcode per desa, so it is a column, not a table.
+- **Indexes:** `parent_code` (the cascading picker's only query), `LOWER(name) text_pattern_ops`
+  (case-insensitive **prefix** typeahead — a leading-wildcard "contains" search would need `pg_trgm`),
+  and `level` (a scoped search: "find a kecamatan named X").
+- **The 91 599 rows are NOT in the migration.** They are generated from pinned upstream dumps and
+  loaded separately — `go run ./cmd/tool region build-seed` then `… region load-seed` (idempotent
+  upsert; ~5 s). Postgres runs in Docker and cannot read a host file, so a server-side `COPY … FROM
+  '<path>'` inside the migration would not work; this mirrors how the category taxonomy is seeded
+  from a file. See
+  [the seed README](../backend/services/region_service/db_migrations/seed/README.md).
+- **Consumers snapshot, they do not FK.** A saved address (an order's customer address, a warehouse
+  address) freezes the codes **+** names **+** kode pos on its own record, so history cannot mutate
+  when a desa is renamed or merged. `region_service` is reached only via its RPCs — no cross-service
+  FK (HARD RULE 3).
+
+---
+
+## Cross-service links (logical, not enforced)
+
+```mermaid
+erDiagram
+    teams ||--o{ user_team_roles : "team_id, opaque via RPC"
+    teams ||--o{ products : "team_id, opaque via RPC"
+    teams ||--o{ shops : "team_id, opaque via RPC"
+    teams ||--o{ documents : "team_id, opaque via RPC"
+    categories ||--o{ products : "category_id, opaque via RPC"
+```
+
+`user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
+`team_infos.return_warehouse_id`, and `team_infos.return_user_id` point at rows owned by other
+services. They carry no database foreign key by design (HARD RULE 3 — services stay independent);
+the owning service resolves them over Connect RPC.
+
+---
+
+## revenue_service
+
+`backend/services/revenue_service/db_migrations/`
+
+```mermaid
+erDiagram
+    order_revenues {
+        bigserial   id              PK
+        bigint      team_id         "the SELLING team, opaque cross-service id, no FK"
+        bigint      order_id        UK "the order, opaque; UNIQUE — one record per order"
+        timestamptz voided_at       "NULL = still counts; set when the order was cancelled (#164)"
+        bigint      revenue         "what the buyer paid, copied from the order"
+        bigint      cogs            "what the goods cost us, copied"
+        bigint      shipping_cost   "copied"
+        bigint      expected_margin "revenue - cogs - shipping_cost, computed once and stored"
+        boolean     cost_known      "false = cogs is a stand-in for UNKNOWN, not a real 0 (#74)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`order_revenues`** — what each order was **expected** to make, frozen when it was placed (#75).
+  - **A stored record rather than a calculation**, which is the owner's call against a genuinely
+    cheaper option: #74 already froze `total`, `cogs` and `shipping_cost` onto the order, so a screen
+    could compute the margin with no table at all. What this buys is a **home for #76** — settlement
+    compares expected against what the payout actually was, and "actual" has nowhere to live without a
+    row beside it.
+  - **The money is COPIED, not referenced.** If the order is later edited, or #74's cost rule is
+    replaced (it is explicitly replaceable), this row must still say what was expected *at the time* —
+    which is the only thing it is for. That it duplicates the order's numbers is the accepted cost;
+    what keeps it honest is that it is written **once**, from figures that are themselves frozen.
+  - **`expected_margin` is stored, not derived on read**, because #76 reconciles against it — and a
+    number you reconcile against has to be the one you actually promised, not one recomputed later
+    from inputs that may since have been corrected.
+  - **`cost_known = false` means the cost was UNKNOWN** (#74), not zero. A margin over an unknown cost
+    reads as pure profit, so the flag is what stops that being mistaken for a good month. The row is
+    kept anyway — an order with no revenue record at all is a worse kind of missing than one marked
+    untrustworthy.
+  - `UNIQUE (order_id)`: recording twice would **double** every total computed from this table, which
+    is the kind of error that looks like good news.
+
+---
+
+## expense_service
+
+`backend/services/expense_service/db_migrations/`
+
+```mermaid
+erDiagram
+    expense_records {
+        bigserial   id          PK
+        bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
+        bigint      shop_id     "optional on ANY kind, opaque; 0 = not attributed to one shop"
+        int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
+        bigint      amount      "whole rupiah, CHECK > 0 — the kind carries the direction"
+        date        occurred_at "the date the cost BELONGS TO, chosen by the person"
+        text        note        "what it actually was"
+        bigint      created_by  "who typed it, opaque user_service id"
+        timestamptz voided_at   "NULL while it still counts (#164's pattern)"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`expense_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
+  payroll, rent. `revenue_service` already knows what an order earned; this is everything else.
+  - **A PERSON TYPES IT**, and every decision here follows from that. A revenue row is written by the
+    system from an order and frozen (#153); a cost row is entered by hand about a period, so it can be
+    wrong — hence correctable, hence `created_by`, hence `voided_at` rather than a delete.
+  - **`amount` is CHECK > 0.** The `kind` already says the money is going out, so a signed amount would
+    let a negative cost silently become revenue. It is a database constraint rather than a handler rule
+    because that is the one arithmetic mistake this table must not permit.
+  - **`occurred_at` is a DATE the person picks**, not the insert timestamp. Payroll is paid on the 5th
+    for the month before, and filing it under the 5th puts it in the wrong month for every report that
+    matters. A date, not a timestamp — nobody records the hour the rent was paid.
+  - **ONE team per row.** A warehouse *is* a team, so warehouse payroll is a cost on that warehouse's
+    `team_id` — and it is **never recharged onward** to the selling teams it fulfils for (owner,
+    2026-07-21). A recharge would have been a second team here, which is why it was settled before
+    this table was written rather than migrated in later.
+  - **`shop_id` is optional on EVERY kind** (owner), not only ads: a team running two shops may split
+    its packing wages or a subscription between them.
+  - **`kind` has no DB `CHECK`** (cf. #80). Proto enums are open and append-only, so a check
+    constraint would reject a kind the contract already allows on the day one is added.
+  - Indexed on `(team_id, occurred_at DESC, id DESC) WHERE voided_at IS NULL` — every screen and every
+    total asks for one team's live costs over a period.
+
+---
+
+## settlement_service
+
+`backend/services/settlement_service/db_migrations/`
+
+```mermaid
+erDiagram
+    settlement_entries }o--|| settlement_balances : "projected into"
+    settlement_terms {
+        bigserial   id                PK
+        bigint      team_id           "the CREDITOR who set these terms"
+        bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
+        bigint      handling_fee      "flat per order, whole rupiah; 0 = charge nothing"
+        bigint      product_markup_bp "basis points over cost, 2000 = 20 percent"
+        bigint      credit_limit      "NULL = UNLIMITED, 0 = no credit at all"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    settlement_entries {
+        bigserial   id              PK
+        bigint      team_id         "whose books this leg is in, opaque, no FK"
+        bigint      counterparty_id "the other side"
+        bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
+        text        source_type     "cod_fee / handling_fee / product_fee / payment; no CHECK"
+        bigint      source_id       "opaque id in the service that owns the cause, no FK"
+        boolean     reversal        "undoes an earlier leg — part of the idempotency key"
+        bigint      group_id        "both legs of one movement share it"
+        bigint      balance_after   "derived; the entries stay the truth"
+        timestamptz created_at
+    }
+
+    settlement_balances {
+        bigserial   id                  PK
+        bigint      team_id             "one row per ORDERED pair — two per relationship"
+        bigint      counterparty_id
+        bigint      balance             "same sign convention; positive = they owe you"
+        timestamptz oldest_unsettled_at "when the current run of debt began, NULL when square"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **`settlement_entries`** — the ledger of what teams owe each other (#183,
+  `plans/settlement_service/brainstorming.md`). Immutable and append-only: a correction is a
+  **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
+  anything.
+  - **Every movement writes TWO legs in one transaction**, one per side, holding exact negatives —
+    posting half a movement is impossible by construction rather than by discipline. `group_id` (from
+    `settlement_group_seq`) is what lets "show me both sides of this posting" be a query instead of a
+    heuristic match on amount, opposite sign and a near timestamp.
+  - **One sign convention, stated once**: from `team_id`'s side, a receivable is **positive** and a
+    payable is **negative**. Nothing anywhere returns an `abs()` of it under another name — two fields
+    called "payable" that disagree in sign is a bug that reaches the screen. The UI renders direction
+    as **words** from this one signed number.
+  - **`(source_type, source_id)` rather than a note.** "Why do I owe this?" is the first question
+    anyone asks a balance, and a note cannot be joined, filtered or counted. It is also what lets an
+    order's fee and its cancellation reversal read as one story.
+  - **`UNIQUE (team_id, counterparty_id, source_type, source_id, reversal)` is load-bearing.** The
+    order fees arrive on Pub/Sub, which delivers **at least once**, so a redelivered order is normal
+    rather than an error — the consumer can only safely ACK a duplicate because this index makes the
+    duplicate harmless. `counterparty_id` is in the key because **one order posts several entries** (a
+    handling fee plus one product fee per owning team), and `reversal` is in it because a compensating
+    entry shares the other four values with the entry it undoes.
+  - `CHECK (team_id <> counterparty_id)` — a team owing itself could only come from a bug upstream,
+    and a ledger is the wrong place to discover one quietly.
+- **`settlement_balances`** — a **projection** of the entries, kept because "what do we owe each
+  other" is asked far more often than it changes. Every balance must stay recomputable by summing the
+  entries alone, or the ledger cannot be audited; there is a test that does exactly that.
+  - **`UNIQUE (team_id, counterparty_id)` is in the FIRST migration, deliberately.** Lock-then-read
+    cannot protect a row that does not exist yet: two concurrent first-postings for a new pair both
+    find nothing, both insert, and one update is lost. Only a database constraint prevents it, and
+    the posting path upserts against this index (`ON CONFLICT … DO UPDATE … RETURNING`) so the
+    database serialises them.
+  - **Two rows per relationship**, one from each side. Both teams then read their own position with
+    the same query and the same sign convention, and neither has to know which way round the pair was
+    stored.
+  - **`oldest_unsettled_at` is the age of the current NON-ZERO RUN** — set as the balance leaves zero,
+    cleared as it returns. Ageing is the point of the position screen ("Rp 2.4m, oldest unsettled 47
+    days" is actionable in a way a balance alone is not). A per-entry FIFO age would be truer under
+    partial payments and needs an allocation model — which payment settled which entry — that nothing
+    here has; see §5.3 of the brainstorming doc.
+- **`settlement_terms`** — a **creditor's terms toward one debtor** (#186/#189): what it charges them
+  and how far it will let them run. One row rather than three tables because these are one
+  relationship — the warehouse that charges you 12k an order is the warehouse that caps you at 50m.
+  - **`counterparty_id = 0` IS the default row**, applying to every team without one of their own.
+    That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else. The
+    lookup is "this debtor's row, else the default, else nothing".
+  - ⚠ **`credit_limit` NULL is UNLIMITED; `0` is NO CREDIT AT ALL.** They are opposites, and encoding
+    unlimited as 0 is the trap — the day somebody wants to freeze a team they will type 0 and grant
+    infinite credit instead. Removing a limit **deletes the row**, which is why the API has a delete.
+  - **`product_markup_bp` is basis points**, not a float (2000 = 20%). Same reason money is `BIGINT`:
+    a percentage that cannot be represented exactly is a fee that drifts.
+  - **The two fees default differently, deliberately.** No `handling_fee` means charge nothing — it is
+    a *price*, and a warehouse that configured nothing must not be silently billing anybody. No
+    markup still charges **cost**, because the product fee is a *cost transfer*: the goods left the
+    owner's stock and do not come back. See `docs/services/settlement_service/rpc.md`.
+  - Created with #186 rather than #189, because the order fees have to READ it before anything writes
+    it. Until #189 lands, every row is absent — which is exactly the "nothing configured" case.

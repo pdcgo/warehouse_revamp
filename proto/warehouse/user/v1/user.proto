@@ -16,6 +16,11 @@ service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+
+  // The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+  // the account's phone, then reset the password with it.
+  rpc RequestPasswordResetOtp(RequestPasswordResetOtpRequest) returns (RequestPasswordResetOtpResponse);
+  rpc ResetPasswordWithOtp(ResetPasswordWithOtpRequest) returns (ResetPasswordWithOtpResponse);
 }
 
 // UserService owns `users` and `user_team_roles`. It does NOT own teams — team names are
@@ -23,6 +28,11 @@ service AuthService {
 service UserService {
   // TeamAccessList — the session bootstrap: which teams am I in, and as what.
   rpc TeamAccessList(TeamAccessListRequest) returns (TeamAccessListResponse);
+
+  // UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+  // only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+  // go blank if it is unreachable, never failing the call.
+  rpc UserTeams(UserTeamsRequest) returns (UserTeamsResponse);
 
   // TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
   rpc TeamUserUpdate(TeamUserUpdateRequest) returns (TeamUserUpdateResponse);
@@ -73,6 +83,8 @@ message PublicUser {
   uint64 id = 1;
   string username = 2;
   string name = 3;
+  // Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
+  string avatar_url = 4;
 }
 
 message UpdateProfileRequest {
@@ -83,6 +95,9 @@ message UpdateProfileRequest {
   optional string name = 1 [(buf.validate.field).string.max_len = 128];
   optional string email = 2 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 3 [(buf.validate.field).string.max_len = 40];
+  // The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
+  // alone; present-and-empty = clear it.
+  optional string avatar_url = 4 [(buf.validate.field).string.max_len = 1024];
 }
 
 message UpdateProfileResponse {
@@ -215,6 +230,8 @@ message User {
   string email = 4;
   string phone_number = 5;
   bool is_suspended = 6;
+  // A compact avatar URL (the profile picture's thumbnail); empty if none set.
+  string avatar_url = 7;
 }
 
 message CreateUserRequest {
@@ -239,9 +256,12 @@ message CreateUserRequest {
   // Both tables belong to user_service, so this is ONE real transaction, not a saga.
   uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 
+  // Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
+  // enforces the same rule; this is the real gate.
   string username = 2 [(buf.validate.field).string = {
     min_len: 3
     max_len: 100
+    pattern: "^[a-z0-9]+$"
   }];
   string password = 3 [(buf.validate.field).string = {
     min_len: 8
@@ -357,6 +377,38 @@ message CheckAccessResponse {
   warehouse.role_base.v1.Role role = 3;
 }
 
+message RequestPasswordResetOtpRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+// Deliberately EMPTY, and the handler ALWAYS succeeds — revealing whether the username exists
+// (or has a phone) would turn this into an account-enumeration oracle.
+message RequestPasswordResetOtpResponse {}
+
+message ResetPasswordWithOtpRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 12
+  }];
+  string new_password = 3 [(buf.validate.field).string = {
+    min_len: 8
+    max_len: 200
+  }];
+}
+
+message ResetPasswordWithOtpResponse {}
+
 // ---------------------------------------------------------------------------- user
 
 message TeamAccessItem {
@@ -368,6 +420,10 @@ message TeamAccessItem {
   // rather than failing, because a display-name lookup must never take down login.
   string team_name = 4;
   warehouse.team.v1.TeamType team_type = 5;
+
+  // The team's compact picture, resolved from team_service alongside the name. Empty when the team
+  // has no picture (or team_service is unreachable) — the UI falls back to initials.
+  string image_url = 6;
 }
 
 message TeamAccessListRequest {
@@ -376,10 +432,41 @@ message TeamAccessListRequest {
   // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
   // authenticated user could enumerate anyone else's teams and roles.
   uint64 user_id = 1;
+
+  // Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
+  // pages so it can never return an unbounded set. The team switcher asks for a large first page.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
 }
 
 message TeamAccessListResponse {
   repeated TeamAccessItem teams = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message UserTeamsRequest {
+  // Unscoped roles-policy = root/admin only, and it says so. Viewing another user's memberships
+  // is not a team-scoped operation — a user can belong to several teams — so it is not scoped.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // Paginated (HARD RULE 9), same as TeamAccessList.
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message UserTeamsResponse {
+  // The user being viewed, so the detail screen can render them without a second round trip.
+  PublicUser user = 1;
+
+  // Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
+  // correct; team_name/team_type blank if team_service is unreachable.
+  repeated TeamAccessItem teams = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message TeamUserUpdateRequest {

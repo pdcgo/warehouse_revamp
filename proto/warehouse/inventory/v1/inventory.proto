@@ -1,0 +1,1003 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// InventoryService owns `stock_movements` (an append-only ledger) and `stock_levels` (a derived
+// on-hand snapshot maintained from the ledger in the same transaction). It answers one question —
+// how much of a product is at a warehouse, and why did it change.
+//
+// Everything is scoped by `warehouse_id` (a team of type WAREHOUSE): that is the physical place and
+// the thing a worker has a role in. `product_id` is an OPAQUE id owned by product_service — there
+// is no cross-service FK; it is resolved over RPC when a name is needed.
+//
+// See plans/inventory_service/brainstorming.md.
+service InventoryService {
+  rpc StockList(StockListRequest) returns (StockListResponse);
+  rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);
+  rpc StockReceive(StockReceiveRequest) returns (StockReceiveResponse);
+  rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
+  rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
+  // Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
+  rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
+  // Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
+  rpc StockPick(StockPickRequest) returns (StockPickResponse);
+  // Put a pick BACK: a cancelled order (#70), or an order that died after its stock was taken (#149).
+  rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
+  // What products COST this warehouse, for an order to freeze as its COGS (#74).
+  rpc StockCost(StockCostRequest) returns (StockCostResponse);
+
+  // The products THIS WAREHOUSE handles (#142) — a warehouse does not see the whole catalogue.
+  rpc WarehouseProductList(WarehouseProductListRequest) returns (WarehouseProductListResponse);
+
+  // Which shelves already hold a product (#156) — the put-away recommendation.
+  rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse);
+
+  // WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column.
+  rpc StockPickLocations(StockPickLocationsRequest) returns (StockPickLocationsResponse);
+
+  // The batch reads (#209) — deliveries of stock as cost layers. BatchList backs both the product
+  // detail's Batches tab (filtered to one product) and the warehouse-wide batch list.
+  rpc BatchList(BatchListRequest) returns (BatchListResponse);
+
+  // The product detail's PRICES tab (#209): on-hand grouped by frozen cost, one row per cost layer.
+  rpc CostLayerList(CostLayerListRequest) returns (CostLayerListResponse);
+
+  // The product detail's PLACEMENT tab (#209): where a product sits, per shelf, with the last movement
+  // dates that flag a shelf overdue for a count.
+  rpc PlacementList(PlacementListRequest) returns (PlacementListResponse);
+
+  // The product detail's INFO tab tiles (#209) in ONE aggregate read — ready & ongoing stock, when it
+  // was last counted, the last delivery. One call keeps the header cheap.
+  rpc ProductStockSummary(ProductStockSummaryRequest) returns (ProductStockSummaryResponse);
+
+  // One batch in full, and where it sits (#209) — the batch-detail screen. Its history is StockHistory
+  // filtered by batch, so there is no separate event RPC.
+  rpc BatchDetail(BatchDetailRequest) returns (BatchDetailResponse);
+  rpc BatchPlacementList(BatchPlacementListRequest) returns (BatchPlacementListResponse);
+
+  // The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
+  rpc BatchReceipt(BatchReceiptRequest) returns (BatchReceiptResponse);
+}
+
+// MovementKind — why a stock quantity changed. Every ledger row has one.
+enum MovementKind {
+  MOVEMENT_KIND_UNSPECIFIED = 0;
+  MOVEMENT_KIND_RECEIVE = 1;
+  MOVEMENT_KIND_ADJUST = 2;
+  MOVEMENT_KIND_TRANSFER_OUT = 3;
+  MOVEMENT_KIND_TRANSFER_IN = 4;
+  MOVEMENT_KIND_PICK = 5; // reserved for the future order/pick flow
+  // Stock moved from one place to another INSIDE one warehouse (#136) — shelving what arrived, or
+  // re-organising a shelf. The warehouse's total does not change; only where it sits does, which is
+  // what makes it a different fact from a receive.
+  //
+  // ONE kind, not an OUT/IN pair like a transfer. A transfer needs two because its legs are in two
+  // WAREHOUSES, and each side only ever sees its own; both legs of a move are in the same warehouse,
+  // so a reader sees the pair together and the rack plus the sign already tell the story.
+  MOVEMENT_KIND_MOVE = 6;
+  // Stock put BACK after a pick was undone (#70/#149) — a cancelled order, or an order write that
+  // failed after its stock had already been taken.
+  //
+  // A distinct kind rather than a positive PICK, because "we took 10 for an order" and "we gave 10
+  // back because the order died" are different events, and a ledger that could not tell them apart
+  // would make a cancelled order look like a delivery that never happened.
+  MOVEMENT_KIND_RETURN = 7;
+}
+
+// StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
+// StockLevel — how much of a product a WAREHOUSE holds. Always the warehouse's TOTAL, summed across
+// the product's places (#135): a product on three shelves is one StockLevel holding the lot, because
+// "how much of X do we have here?" has never meant "on which shelf". It deliberately carries no rack —
+// "what is on rack A-01-3" is a different question with its own screen (#138). A per-place figure is
+// reported by the movement that produced it (StockMovement.rack_id / .balance).
+message StockLevel {
+  uint64 product_id = 1;
+  uint64 warehouse_id = 2;
+  int64 on_hand = 3;
+}
+
+// StockMovement — one row of the ledger. Append-only; `balance` is the on-hand AFTER this movement,
+// so the history reads as a running total.
+//
+// A movement is a statement about ONE PLACE (#135): "this shelf went from 40 to 49". Both `delta` and
+// `balance` are that place's, never the warehouse's total for the product — a warehouse total is a SUM
+// across places, and reading `balance` as one would under-report every product that sits on more than
+// one shelf.
+message StockMovement {
+  uint64 id = 1;
+  uint64 product_id = 2;
+  uint64 warehouse_id = 3;
+  int64 delta = 4; // signed: + in, - out
+  int64 balance = 5; // THIS PLACE's on-hand after this movement
+  MovementKind kind = 6;
+  string reason = 7;
+  string ref = 8; // opaque external reference (e.g. an order id); optional
+  uint64 actor_user_id = 9;
+  string created_at = 10; // RFC3339
+
+  // The place this movement moved stock onto or off (#135/#139). 0 = the unplaced pile — stock that
+  // arrived before anyone shelved it, and every movement written before racks carried stock at all.
+  uint64 rack_id = 11;
+
+  // Which batch moved (#209). 0 = a batch-less event — a shelf recount reconciles the whole shelf and
+  // shows Batch "—" (#211), even though its delta lands on the oldest batch underneath (FIFO).
+  uint64 batch_id = 12;
+}
+
+// -------------------------------------------------------------------------- reads
+
+message StockListRequest {
+  // Read: warehouse staff and up, plus root/admin.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message StockListResponse {
+  repeated StockLevel levels = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message StockHistoryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+
+  // Narrow to ONE kind of movement, or UNSPECIFIED for all of them (#158).
+  //
+  // Server-side, for the same reason #130 filtered restocks server-side: the ledger is paginated and
+  // grows forever, so a client-side filter narrows the loaded page only. "When was this last counted"
+  // would then read as "never" whenever the last stock-take fell off page one — which is precisely
+  // when the question is worth asking.
+  MovementKind kind = 4;
+
+  // Narrow to ONE batch (#209); 0 = every batch. The Stock History tab's batch filter — and a batch
+  // recount (batch_id 0) drops out of a batch-specific view, as it should. Placement History passes
+  // `kind = MOVE` alongside to become the moves-only, batch-filterable view of the same ledger.
+  uint64 batch_id = 5;
+}
+
+message StockHistoryResponse {
+  repeated StockMovement movements = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// -------------------------------------------------------------------------- writes
+
+message StockReceiveRequest {
+  // Receiving goods is a floor task — staff may do it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 3 [(buf.validate.field).int64.gt = 0];
+  string reason = 4 [(buf.validate.field).string.max_len = 200];
+  string ref = 5 [(buf.validate.field).string.max_len = 100];
+}
+
+message StockReceiveResponse {
+  StockMovement movement = 1;
+}
+
+// Why a shelf's count is being corrected (#211). The reason drives the model: a RECOUNT reconciles the
+// whole shelf (its delta lands on the oldest batch, FIFO), while DAMAGED/LOST/FOUND touch a SPECIFIC
+// batch's units. APPEND ONLY.
+enum StockAdjustReason {
+  // Back-compat: an adjust with no reason is a recount (the original absolute-count behaviour).
+  STOCK_ADJUST_REASON_UNSPECIFIED = 0;
+  // A stock-take: the shelf now holds `on_hand`. Batch-agnostic on screen ("—"); the delta lands on
+  // the oldest batch on the shelf underneath.
+  STOCK_ADJUST_REASON_RECOUNT = 1;
+  // Units of a SPECIFIC batch went bad, went missing, or turned up — a signed `quantity` on that batch.
+  STOCK_ADJUST_REASON_DAMAGED = 2;
+  STOCK_ADJUST_REASON_LOST = 3;
+  STOCK_ADJUST_REASON_FOUND = 4;
+}
+
+message StockAdjustRequest {
+  // Correcting to a counted figure is a manager action.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // For a RECOUNT: the counted on-hand to correct the shelf TO (absolute, not a delta). Ignored for the
+  // batch reasons, which carry a signed `quantity` instead.
+  int64 on_hand = 3 [(buf.validate.field).int64.gte = 0];
+  string reason = 4 [(buf.validate.field).string.max_len = 200];
+
+  // WHY (#211). UNSPECIFIED and RECOUNT both mean "correct the shelf to `on_hand`". DAMAGED/LOST/FOUND
+  // mean "change this batch's units by `quantity`" and REQUIRE `batch_id`.
+  StockAdjustReason reason_type = 7 [(buf.validate.field).enum.defined_only = true];
+  // The batch affected — required for DAMAGED/LOST/FOUND, ignored for a recount (its delta is FIFO'd
+  // onto the oldest batch). 0 for a recount.
+  uint64 batch_id = 8;
+  // The magnitude for DAMAGED/LOST/FOUND (always positive; the reason gives the sign). Ignored for a
+  // recount.
+  int64 quantity = 9 [(buf.validate.field).int64.gte = 0];
+
+  // WHERE the count was taken (#139). A stock-take is physically a count of a SHELF: someone stands
+  // in front of A-01-3 and counts what is on it, and this says which shelf that was.
+  //
+  // It is a REQUIRED oneof rather than a plain `rack_id` where 0 would mean unplaced, because those
+  // two encodings fail differently. With a plain field, a caller that simply FORGOT to say where
+  // would silently correct the unplaced pile while the racks hold the rest — the exact bug this
+  // field exists to prevent, and it would correct the wrong number quietly, which is worse than
+  // failing, because a stock-take is believed. Refuse, do not interpret (cf. the per-line count in
+  // RestockRequestFulfill).
+  oneof place {
+    option (buf.validate.oneof).required = true;
+
+    // The shelf that was counted. Must be a rack of warehouse_id — another warehouse's rack reads as
+    // NotFound, like every other cross-scope id here.
+    uint64 rack_id = 5 [(buf.validate.field).uint64.gt = 0];
+
+    // The not-yet-shelved pile was counted. A real place, not an absence: it is where stock sits
+    // before it is put away — today, everything — and it can be miscounted like any shelf. Only
+    // `true` is meaningful; `unplaced: false` would be a way of saying nothing.
+    bool unplaced = 6 [(buf.validate.field).bool.const = true];
+  }
+}
+
+message StockAdjustResponse {
+  StockMovement movement = 1;
+  StockLevel level = 2;
+}
+
+// One end of a move (#136): a shelf, or the not-yet-shelved pile. Both are real PLACES — "unplaced" is
+// where stock sits before anyone puts it away, not an absence.
+message StockPlace {
+  oneof place {
+    option (buf.validate.oneof).required = true;
+
+    // Must be a rack of the scoped warehouse — another warehouse's rack reads as NotFound.
+    uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
+    // The not-yet-shelved pile. Only `true` is meaningful.
+    bool unplaced = 2 [(buf.validate.field).bool.const = true];
+  }
+}
+
+message StockMoveRequest {
+  // Moving stock around inside a warehouse is warehouse work, staff included — they are the ones
+  // carrying the box. Unlike StockTransfer (which moves stock OUT of a warehouse, and is a manager
+  // action), nothing leaves the building here and the total does not change.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Where it is now, and where it is going. Both required — a move has two ends, and the whole point
+  // of this RPC is that it never guesses either of them.
+  //
+  // The two cases the issue names are both just values here: `from: unplaced, to: rack` is shelving
+  // what arrived, and `from: rack, to: rack` is re-organising. One verb, because they are one act.
+  StockPlace from = 3 [(buf.validate.field).required = true];
+  StockPlace to = 4 [(buf.validate.field).required = true];
+
+  // How much to move. Moving MORE than the source holds is refused — the ledger must never record
+  // goods leaving a place that did not have them.
+  int64 quantity = 5 [(buf.validate.field).int64.gt = 0];
+  string reason = 6 [(buf.validate.field).string.max_len = 200];
+
+  // WHICH BATCH's units are moving (#209/#210). Stock is per (shelf × batch), so a move relocates one
+  // delivery's units and the batch travels with them — refused if the from-shelf does not hold that
+  // many OF THAT BATCH. 0 keeps the pre-batch behaviour (move the shelf total, no batch tracked) for
+  // legacy stock that predates batches; the Move dialog always sends a real batch.
+  uint64 batch_id = 7;
+}
+
+message StockMoveResponse {
+  // Both legs, in order: off the source, onto the destination. Each carries its own place's new
+  // balance — that is what a movement means now (#135).
+  StockMovement from_movement = 1;
+  StockMovement to_movement = 2;
+}
+
+// One line of a pick: how much of a product an order takes.
+message StockPickLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+message StockPickRequest {
+  // Write: the SELLING team's people, because placing the order is what takes the stock — the same
+  // roles that may call OrderCreate.
+  //
+  // ⚠ THE SCOPE IS THE SELLING TEAM, NOT THE WAREHOUSE, and that is the whole design (#149).
+  //
+  // Any team may draw stock from any warehouse (owner, 2026-07-20), so there is no per-warehouse
+  // permission to check — and there could not be one anyway: nobody in a selling team will ever hold a
+  // role inside a warehouse, so scoping this to `warehouse_id` would deny every real caller. The
+  // question worth asking is "are you a legitimate member of the team placing this order?", which is
+  // exactly what scoping to team_id asks.
+  //
+  // It must stay scoped to SOMETHING. A team-level role on a message with no `use_scope` field is
+  // evaluated against the root team and becomes a DEAD LETTER — an unscoped StockPick would quietly
+  // authorize nobody while looking like working code (see CLAUDE.md, authorization).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // The SELLING team whose order this is — the caller must have a role here.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // Whose stock is being drawn. An ordinary parameter, deliberately NOT use_scope — see above.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  repeated StockPickLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // What this draw is for, written onto every movement so the ledger can be traced back to the order.
+  string ref = 4 [(buf.validate.field).string.max_len = 100];
+}
+
+message StockPickResponse {
+  // Every movement the pick produced — one per PLACE drawn, so a line satisfied from two shelves
+  // yields two. This is what makes the drain auditable: it says exactly which shelves were emptied.
+  repeated StockMovement movements = 1;
+}
+
+message StockReturnRequest {
+  // Write: the same selling-team roles that may pick, for the same reason — the team that took the
+  // stock is the team that gives it back. Scoped to the SELLING team, exactly as StockPick is.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // WHICH pick to undo. The caller names the reference it picked under, and every PICK movement
+  // carrying it is reversed — same product, same shelf, same quantity, opposite sign.
+  //
+  // Reversing the RECORDED movements rather than being told quantities is what makes this exact: the
+  // stock goes back precisely where it came from, including the split across shelves that the drain
+  // order produced. A caller passing its own numbers could disagree with what was actually taken, and
+  // the ledger would have no way to notice.
+  string ref = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+message StockReturnResponse {
+  // The RETURN movements written — one per place the stock went back to.
+  repeated StockMovement movements = 1;
+}
+
+// What one product cost a warehouse, per unit.
+message StockCostLine {
+  uint64 product_id = 1;
+  // Whole rupiah. 0 means UNKNOWN — the warehouse has no restock history for this product — not free.
+  int64 unit_cost = 2;
+}
+
+message StockCostRequest {
+  // Read: the selling roles that place orders, since freezing an order's COGS is what this serves.
+  // Scoped to the SELLING team exactly as StockPick is, and for the same reason: nobody in a selling
+  // team holds a role inside a warehouse, so scoping to the warehouse would deny every real caller.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Whose costs. An ordinary parameter, not use_scope — see above.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  repeated uint64 product_ids = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message StockCostResponse {
+  // One line per product that HAS a known cost. A product with no restock history is simply absent —
+  // "we do not know what this cost" and "this cost nothing" are different facts, and a zero row would
+  // conflate them.
+  repeated StockCostLine costs = 1;
+}
+
+message StockTransferRequest {
+  // Moving stock out of a warehouse is a manager action; scope is the SOURCE warehouse.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The source. use_scope: you must have a role in the warehouse you are moving stock OUT of.
+  uint64 from_warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 to_warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 product_id = 3 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 4 [(buf.validate.field).int64.gt = 0];
+  string reason = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+message StockTransferResponse {
+  StockMovement out_movement = 1;
+  StockMovement in_movement = 2;
+}
+
+// StockPickLocations answers the pick screen's only hard question (#151): WHICH SHELF does the picker
+// walk to, when a product can sit on several racks (#135)?
+//
+// It answers from the LEDGER, not from current stock levels — and that distinction is the whole design.
+// The order's stock was already drawn at placement (#149), and StockPick recorded, per rack, exactly how
+// much it took from each. Those movements are what this order HOLDS. Current levels are a different
+// question ("what is on that shelf now") whose answer keeps moving: another order draws from the same
+// rack, a stock-take shifts goods, and a screen built on levels would send the picker to a shelf whose
+// goods are earmarked for somebody else. The ledger cannot drift like that, because it is a record of
+// what happened rather than a snapshot of what is.
+//
+// So the shelf column is not a suggestion the screen computes. It is what the system already committed.
+message StockPickLocationsRequest {
+  // Read: the WAREHOUSE crew — the people who walk to the shelf. Scoped to the warehouse, like the rest
+  // of the crew's work (#150), because the crew holds no role in the selling team that placed the order.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The pick's reference — `order:<id>` for an order (selling_service builds it). Naming the ref rather
+  // than the order id keeps inventory_service ignorant of what a selling order IS: it recorded movements
+  // under a string, and it hands back the movements under that string.
+  string ref = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+// One product, on one rack, in the quantity taken FROM THAT RACK for this pick.
+//
+// A product drawn from two shelves appears TWICE — once per shelf — rather than once with a chosen
+// shelf. #151 asked for "a shelf, or all of them with quantities, rather than silently picking one";
+// this is the second, and it is the only honest answer when the goods genuinely are in two places. The
+// screen groups them under the product.
+message StockPickLocation {
+  uint64 product_id = 1;
+
+  // The shelf. 0 means UNPLACED — stock that was never shelved (#135), which is a real place in this
+  // system and not a missing value. The screen says so in words rather than showing a blank, because a
+  // blank reads as "we do not know" when the truth is "it is not on a shelf yet".
+  uint64 rack_id = 2;
+  string rack_code = 3;
+
+  // How much to take from THIS shelf. Positive.
+  int64 quantity = 4;
+}
+
+message StockPickLocationsResponse {
+  // Ordered product, then the UNPLACED pile, then shelves by label — the same order StockPick drained
+  // in (#149), so the list reads as the walk the system already planned.
+  //
+  // UNPAGINATED, deliberately, and this is the HARD RULE 9 exemption stated out loud: it is bounded by
+  // ONE pick's committed movements — an order's lines, each on a handful of shelves — not by a table
+  // that grows. It is a detail-of-one-entity read, the same category as RestockRequestDetail's items.
+  // The moment it could serve many picks at once it stops being exempt and takes a page filter.
+  repeated StockPickLocation locations = 1;
+}
+
+// WarehouseProductList — the products THIS WAREHOUSE HANDLES (#142).
+//
+// A warehouse must not see the whole catalogue. It holds no products of its own — products belong to
+// selling teams — so the ordinary team-scoped ProductList shows a warehouse team nothing useful. What
+// it should see is what somebody has asked it to hold, which today means the products named on a
+// restock request sent to it (owner, 2026-07-20).
+message WarehouseProductListRequest {
+  // Read: the warehouse's own people. This is their catalogue.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Grows with every product the warehouse is asked to handle, so it pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+}
+
+message WarehouseProductListResponse {
+  // Product IDS, not products — and that is deliberate.
+  //
+  // inventory_service does not own the catalogue and must not mirror it (HARD RULE 3). The names and
+  // SKUs come from product_service via ProductByIds, in one follow-up call. Returning copies here would
+  // put a product's name in two places, and the copy would go stale the first time somebody renamed it.
+  repeated uint64 product_ids = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductPlaces answers "WHICH SHELVES ALREADY HOLD THIS PRODUCT, and how many are on each" (#156).
+//
+// It is the Accept screen's recommendation: a person putting a delivery away should add to the shelf
+// the product already lives on rather than starting a second pile of the same thing in a different
+// aisle. Two piles of one product is how a warehouse ends up walking past stock it has.
+//
+// The inverse of RackStock (#138), which asks "what is on A-01-3". Neither existing read answers this:
+// StockList is per product SUMMED across racks and deliberately carries no rack (#135), and
+// StockPickLocations reads the LEDGER for one pick rather than current levels.
+message ProductPlacesRequest {
+  // Read: the warehouse's own people — they are the ones walking to the shelf.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // The products to look up. A LIST because the Accept screen asks about every line of a delivery at
+  // once, and one call beats one per line.
+  //
+  // Capped rather than paginated: a restock request's lines are the bound, and a page cursor over
+  // "the places of these products" would be a window into an answer the caller needs whole.
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+// One product, on one shelf, and how many sit there right now.
+message ProductPlace {
+  uint64 product_id = 1;
+
+  // 0 means the UNPLACED PILE (#135) — and it belongs in this answer as much as any shelf. "There are
+  // already 12 of these unshelved" is exactly what stops someone starting a second pile.
+  uint64 rack_id = 2;
+  string rack_code = 3;
+
+  int64 on_hand = 4;
+}
+
+message ProductPlacesResponse {
+  // Ordered product, then the unplaced pile, then shelves by label — the same order the pick walk uses
+  // (#151), so a place reads the same wherever it is shown.
+  //
+  // UNPAGINATED, and the HARD RULE 9 exemption stated out loud: it is bounded by the products ASKED
+  // FOR (capped above) times the handful of places each one sits on. A product on a hundred shelves is
+  // not a paging problem, it is a warehouse that needs tidying.
+  repeated ProductPlace places = 1;
+}
+
+// A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
+// The identity/receipt/supplier come from the delivery it was accepted on; sku/name are the line's
+// snapshot; Ready/Used are derived from the shelf_batch rows.
+message StockBatch {
+  uint64 id = 1;
+  // The delivery's display number (the restock request id) and receipt (GRN), searchable together.
+  uint64 delivery_id = 2;
+  string receipt_no = 3;
+
+  uint64 product_id = 4;
+  string sku = 5;
+  string name = 6;
+  // The delivery's supplier — opaque id; 0 when none was recorded. Name resolved client-side.
+  uint64 supplier_id = 7;
+
+  // ⚠ Frozen HPP. `cost_known = false` means UNKNOWN, not free (#74) — `unit_cost` is then 0 and every
+  // value below is 0, which a screen must render as "Unknown" rather than a real Rp 0.
+  int64 unit_cost = 8;
+  bool cost_known = 9;
+
+  // Arrived = damaged + used + ready. Ready = Σ shelf_batch.qty; used = arrived − damaged − ready.
+  int64 arrived = 10;
+  int64 damaged = 11;
+  int64 used = 12;
+  int64 ready = 13;
+
+  // arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
+  int64 line_cost = 14;
+  int64 ready_value = 15;
+
+  // 0 = does not expire (perishables only). The screen flags amber when it is within the soon window.
+  int64 expires_on_unix = 16;
+
+  int64 created_at_unix = 17;
+  int64 accepted_at_unix = 18;
+  uint64 created_by = 19;
+  uint64 accepted_by = 20;
+}
+
+// Narrows a batch list by expiry (#209) — the warehouse list's "Expiring ≤ 30 days / No expiry" filter.
+enum BatchExpiryFilter {
+  BATCH_EXPIRY_FILTER_UNSPECIFIED = 0;
+  BATCH_EXPIRY_FILTER_EXPIRING_SOON = 1;
+  BATCH_EXPIRY_FILTER_NO_EXPIRY = 2;
+}
+
+message BatchListRequest {
+  // Read: anyone who works in the warehouse — the crew reads batches at the shelf.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Deliveries of stock grow with every restock, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // Narrow to ONE product (the detail's Batches tab); 0 = every product (the warehouse-wide list).
+  uint64 product_id = 3;
+  // Match a batch/delivery number or a receipt no; "" = no search.
+  string search = 4;
+  // Narrow to one supplier; 0 = all.
+  uint64 supplier_id = 5;
+  // Narrow by expiry.
+  BatchExpiryFilter expiry = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // A date range on ONE date field (#217) — the management list filters "what arrived / expires in this
+  // window". `date_field` picks which date the range applies to; `from`/`to` are unix seconds, 0 = open
+  // on that end. A batch with no expiry drops out of an EXPIRING range, as it should.
+  BatchDateField date_field = 7 [(buf.validate.field).enum.defined_only = true];
+  int64 from_unix = 8;
+  int64 to_unix = 9;
+}
+
+// Which date a BatchList date range applies to (#217).
+enum BatchDateField {
+  BATCH_DATE_FIELD_UNSPECIFIED = 0; // no date range
+  BATCH_DATE_FIELD_ARRIVED = 1; // when the delivery was accepted
+  BATCH_DATE_FIELD_EXPIRING = 2; // the batch's expiry date
+}
+
+message BatchListResponse {
+  repeated StockBatch batches = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+
+  // Stat tiles over the WHOLE filtered set (not just this page): the ready value of every matching
+  // batch, and how many are expiring soon — the batch list's header numbers.
+  int64 ready_value_total = 3;
+  uint64 expiring_soon_count = 4;
+}
+
+// One row of the PRICES tab (#209) — stock value by cost price. Batches that froze the same unit cost
+// form one cost layer; FIFO draws the oldest batch, but the value view groups by price.
+message CostLayer {
+  // ⚠ cost_known = false is UNKNOWN, not free (#74): unit_cost is then 0 and amount is 0, which the
+  // screen renders "Unknown" — a real Rp 0 layer cannot happen (a batch with no cost has no value).
+  int64 unit_cost = 1;
+  bool cost_known = 2;
+  // Ready units carrying this cost, across every shelf.
+  int64 on_hand = 3;
+  // on_hand × unit_cost, whole rupiah.
+  int64 amount = 4;
+}
+
+message CostLayerListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A product accrues a cost layer per distinct price it ever arrived at, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message CostLayerListResponse {
+  repeated CostLayer layers = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+  // The header total — stock value summed over every layer (known-cost only, #74).
+  int64 total_value = 3;
+}
+
+// One row of the PLACEMENT tab (#209) — a product on one shelf, and when it last moved. The dates flag
+// a shelf overdue for a stock-take: a stale Last opname is amber on screen.
+message ProductPlacement {
+  // 0 = the unplaced/holding pile (#135). The frontend resolves the rack CODE.
+  uint64 rack_id = 1;
+  int64 on_hand = 2;
+
+  // Last time stock LEFT this shelf, arrived ON it, and was COUNTED on it (unix; 0 = never).
+  int64 last_out_unix = 3;
+  int64 last_in_unix = 4;
+  int64 last_opname_unix = 5;
+}
+
+message PlacementListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A product can spread across many shelves as the warehouse fills, so this pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message PlacementListResponse {
+  repeated ProductPlacement placements = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message ProductStockSummaryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// The Info tab's stat tiles (#209). The tiles this service can answer on its own — order and return
+// links belong to other services and are resolved by the page separately.
+message ProductStockSummaryResponse {
+  // READY — on hand now, across every shelf, and its value (known-cost layers only, #74).
+  int64 ready_qty = 1;
+  int64 ready_value = 2;
+
+  // ONGOING — inbound on pending restocks not yet accepted, and the estimated cost of those lines.
+  int64 ongoing_qty = 3;
+  int64 ongoing_value_est = 4;
+
+  // When the product was last counted on any shelf here (last ADJUST); 0 = never counted.
+  int64 last_counted_unix = 5;
+
+  // The most recent delivery of this product (its restock/delivery id); 0 = never delivered here.
+  uint64 last_restock_id = 6;
+}
+
+message BatchDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message BatchDetailResponse {
+  StockBatch batch = 1;
+}
+
+// Where a batch's ready units sit right now (#209) — the batch-detail Placements tab.
+message BatchShelf {
+  uint64 rack_id = 1; // 0 = unplaced
+  int64 qty = 2;
+}
+
+message BatchPlacementListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+}
+
+message BatchPlacementListResponse {
+  repeated BatchShelf shelves = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// The goods-received receipt for one DELIVERY (#219) — the printable document behind a batch. A
+// delivery spans several products, so the receipt lists them all; a batch's "Print receipt" opens this
+// with that product's line highlighted (the frontend does the highlight from `batch_id`).
+//
+// It is assembled from the delivery's batches (stock_batches grouped by delivery_id): the stock service
+// owns the acceptance/cost projection, so it owns the receipt. Bounded by one delivery's product count,
+// so it does NOT paginate.
+message BatchReceiptRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The delivery = the restock request id (the batch's delivery_id).
+  uint64 delivery_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// One product line on the receipt. Accepted = arrived − damaged: only accepted units entered stock and
+// froze their cost; damaged units never became stock. Line cost is what the supplier invoiced.
+message BatchReceiptLine {
+  uint64 batch_id = 1;
+  uint64 product_id = 2;
+  string sku = 3;
+  string name = 4;
+  int64 arrived = 5;
+  int64 damaged = 6;
+  int64 accepted = 7; // arrived − damaged
+  int64 unit_cost = 8;
+  bool cost_known = 9; // false → cost UNKNOWN, render "Unknown" not Rp 0 (#74)
+  int64 line_cost = 10; // arrived × unit_cost
+  // Where this batch's units were put away — 0 = the unplaced pile. A line can span shelves.
+  repeated uint64 rack_ids = 11;
+}
+
+message BatchReceiptResponse {
+  uint64 delivery_id = 1;
+  string receipt_no = 2;
+  uint64 supplier_id = 3; // name resolved client-side
+  uint64 warehouse_id = 4; // the destination warehouse (a team) — name resolved client-side
+  int64 arrived_at_unix = 5; // when the delivery was accepted
+  // The two distinct actors: who RAISED the restock, and who ACCEPTED the delivery. Names client-side.
+  uint64 created_by = 6;
+  uint64 accepted_by = 7;
+  repeated BatchReceiptLine lines = 8;
+  int64 total_accepted = 9; // Σ accepted
+  int64 total_value = 10; // Σ line_cost over known-cost lines only (#74)
+}

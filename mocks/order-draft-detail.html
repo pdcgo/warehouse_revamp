@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Order Draft Detail</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY (#203). Hardcoded data, no build. Styled with TAILWIND    *
+ * via the Play CDN (the documented exception to "self-contained" — see  *
+ * mocks/README.md). A throwaway preview of ONE order draft being        *
+ * finished (#196): mapping each scraped line to a real product, fixing  *
+ * customer/shop/warehouse/address/shipping, then promoting to an order. *
+ * A PAGE, not a dialog. Rule shown: Promote stays disabled while a line *
+ * is unmapped, and the gap badges say WHY. Tailwind's theme maps onto   *
+ * the shared :root tokens; dark mode rides on [data-theme=dark].        *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* File-specific, dark-aware accent tokens with no canonical equivalent (the "scraped"
+     and "gap" greys, and the danger red used on the delete controls). Referenced via
+     arbitrary values, e.g. bg-[var(--scrap-soft)]. */
+  :root {
+    --danger: #b42318; --danger-soft: #fef3f2; --danger-border: #fecdca;
+    --gap-soft: #f2f4f7; --gap-fg: #475467; --gap-border: #e4e7ec;
+    --scrap-soft: #f2f4f7; --scrap-fg: #667085;
+  }
+  :root[data-theme="dark"] {
+    --danger: #f97066; --danger-soft: #2a1614; --danger-border: #5c2620;
+    --gap-soft: #222831; --gap-fg: #98a2b3; --gap-border: #333a44;
+    --scrap-soft: #222831; --scrap-fg: #98a2b3;
+  }
+
+  /* The two things utilities can't express: the striped mock banner and the required-field
+     asterisk (a ::after pseudo-element). Everything else is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .req::after { content: " *"; color: var(--danger); }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Order Draft — detail (#203) · fake data · not the app</div>
+  <main class="max-w-[720px] mx-auto p-5">
+    <div class="flex flex-col gap-4">
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <button class="appearance-none border border-line-strong bg-surface cursor-pointer w-[34px] h-[34px] rounded-sm grid place-items-center text-fg-muted hover:bg-surface-2 hover:text-fg" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        </button>
+        <h1 class="text-[19px] font-[650] m-0">Draft SHP-341</h1>
+        <span class="text-xs font-semibold py-[3px] px-[9px] rounded-full bg-[var(--scrap-soft)] text-[var(--scrap-fg)]">shopee-bot</span>
+        <div class="flex-1"></div>
+        <button class="appearance-none border border-[var(--danger-border)] cursor-pointer bg-surface font-sans text-[13px] font-semibold py-2 px-3.5 rounded-sm inline-flex items-center gap-[7px] text-[var(--danger)]">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+          Delete
+        </button>
+      </div>
+
+      <!-- Card A — Customer & Shop -->
+      <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+        <h2 class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-3.5">Customer &amp; Shop</h2>
+        <div class="grid grid-cols-2 gap-[14px] max-[560px]:grid-cols-1">
+          <div class="flex flex-col gap-1">
+            <span class="req text-xs text-fg-muted font-[550]">Customer</span>
+            <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="Budi Santoso" /></div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="text-xs text-fg-muted font-[550]">Phone</span>
+            <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="081234567890" /></div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="req text-xs text-fg-muted font-[550]">Shop</span>
+            <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><span class="text-[13.5px] font-[550] flex-1">Berkah Jaya Store</span>
+              <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="req text-xs text-fg-muted font-[550]">Warehouse</span>
+            <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><span class="text-[13.5px] font-[550] flex-1">Gudang Jakarta</span>
+              <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+            <span class="text-xs text-fg-subtle">Which warehouse fulfils this order.</span>
+          </div>
+          <div class="flex flex-col gap-1 col-span-full">
+            <span class="text-xs text-fg-muted font-[550]">Shipping</span>
+            <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><span class="text-[13.5px] font-[550] flex-1">JNE REG</span>
+              <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+          </div>
+        </div>
+      </div></div>
+
+      <!-- Card B — Delivery address -->
+      <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+        <h2 class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-3.5">Delivery Address</h2>
+        <div class="grid grid-cols-2 gap-[14px] max-[560px]:grid-cols-1">
+          <div class="flex flex-col gap-1"><span class="text-xs text-fg-muted font-[550]">Provinsi</span><div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="Jawa Barat" /></div></div>
+          <div class="flex flex-col gap-1"><span class="text-xs text-fg-muted font-[550]">Kabupaten / Kota</span><div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="Kota Bandung" /></div></div>
+          <div class="flex flex-col gap-1"><span class="text-xs text-fg-muted font-[550]">Kecamatan</span><div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="Coblong" /></div></div>
+          <div class="flex flex-col gap-1"><span class="text-xs text-fg-muted font-[550]">Kode Pos</span><div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="40132" /></div></div>
+          <div class="flex flex-col gap-1 col-span-full"><span class="text-xs text-fg-muted font-[550]">Alamat</span><div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0"><input class="border-0 bg-transparent text-fg font-sans text-[13.5px] w-full outline-none" value="Jl. Merdeka No. 1" /></div></div>
+        </div>
+      </div></div>
+
+      <!-- Card C — Lines: map each scraped line to a real product -->
+      <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+        <h2 class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-3.5">Map Lines</h2>
+        <p class="text-[12.5px] text-fg-muted m-0 mb-3">Each line was read by the app. Match it to a catalogue product — the scraped text stays above as the thing to check the mapping against, and is never overwritten.</p>
+
+        <div class="border border-line rounded-sm p-3 mb-3 bg-surface-2 last:mb-0">
+          <div class="flex items-center gap-2 mb-2.5"><span class="text-[11px] font-[650] py-0.5 px-[7px] rounded-md bg-[var(--scrap-soft)] text-[var(--scrap-fg)]">Scraped</span><span class="[font-variant-numeric:tabular-nums] text-fg-subtle text-xs">MP-1</span><span class="font-[550]">Kaos Polos Hitam L</span></div>
+          <div class="flex gap-2.5 items-center flex-wrap">
+            <div class="flex-[1_1_240px]">
+              <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>
+                <span class="text-[13.5px] font-[550] flex-1">SKU-042 — Kaos Polos Hitam Lengan Pendek</span>
+                <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="text-xs mt-[5px] text-pos font-semibold">Mapped</div>
+            </div>
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[64px] text-center" value="2" aria-label="Quantity" />
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[120px] text-right" value="Rp 50.000" aria-label="Unit price" />
+            <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-[7px] rounded-md inline-flex hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]" aria-label="Remove line"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="border border-line rounded-sm p-3 mb-3 bg-surface-2 last:mb-0">
+          <div class="flex items-center gap-2 mb-2.5"><span class="text-[11px] font-[650] py-0.5 px-[7px] rounded-md bg-[var(--scrap-soft)] text-[var(--scrap-fg)]">Scraped</span><span class="[font-variant-numeric:tabular-nums] text-fg-subtle text-xs">MP-2</span><span class="font-[550]">Topi Baseball</span></div>
+          <div class="flex gap-2.5 items-center flex-wrap">
+            <div class="flex-[1_1_240px]">
+              <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>
+                <span class="text-[13.5px] font-[550] flex-1">SKU-118 — Topi Baseball Katun</span>
+                <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="text-xs mt-[5px] text-pos font-semibold">Mapped</div>
+            </div>
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[64px] text-center" value="1" aria-label="Quantity" />
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[120px] text-right" value="Rp 35.000" aria-label="Unit price" />
+            <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-[7px] rounded-md inline-flex hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]" aria-label="Remove line"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+
+        <!-- The unmapped line — the thing that keeps this a draft. -->
+        <div class="border border-line rounded-sm p-3 mb-3 bg-surface-2 last:mb-0">
+          <div class="flex items-center gap-2 mb-2.5"><span class="text-[11px] font-[650] py-0.5 px-[7px] rounded-md bg-[var(--scrap-soft)] text-[var(--scrap-fg)]">Scraped</span><span class="[font-variant-numeric:tabular-nums] text-fg-subtle text-xs">MP-9</span><span class="text-fg-subtle italic font-normal">(the app read no name)</span></div>
+          <div class="flex gap-2.5 items-center flex-wrap">
+            <div class="flex-[1_1_240px]">
+              <div class="flex items-center gap-2 border border-line-strong rounded-sm bg-surface px-2.5 py-2 min-w-0 cursor-pointer"><svg class="text-accent shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--fg-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>
+                <span class="text-[13.5px] font-[550] flex-1" style="color:var(--fg-subtle)">Search a product…</span>
+                <svg class="text-fg-subtle shrink-0 ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="text-xs mt-[5px] text-warn font-semibold">Not mapped yet</div>
+            </div>
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[64px] text-center" value="5" aria-label="Quantity" />
+            <input class="block border border-line-strong rounded-sm bg-surface py-2 px-2.5 text-fg outline-none w-[120px] text-right" value="Rp 1.000" aria-label="Unit price" />
+            <button class="appearance-none border-0 bg-transparent cursor-pointer text-fg-subtle p-[7px] rounded-md inline-flex hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]" aria-label="Remove line"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+      </div></div>
+
+      <!-- Card D — Totals -->
+      <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+        <div class="flex justify-between items-center py-[5px]"><span class="text-fg-muted">Subtotal</span><span class="[font-variant-numeric:tabular-nums] font-semibold">Rp 140.000</span></div>
+        <div class="flex justify-between items-center py-[5px]"><span class="text-fg-muted">Shipping</span><span class="[font-variant-numeric:tabular-nums] font-semibold">Rp 15.000</span></div>
+        <div class="flex justify-between items-center py-[5px] border-t border-line mt-1.5 pt-3 font-bold text-base"><span>Total</span><span class="[font-variant-numeric:tabular-nums] font-semibold">Rp 155.000</span></div>
+      </div></div>
+
+      <!-- Footer action row: WHY promote is disabled, then Save / Promote -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[12.5px] text-warn font-semibold">Still needed:</span>
+          <span class="text-xs font-[550] py-0.5 px-2 rounded-md bg-[var(--gap-soft)] text-[var(--gap-fg)] border border-[var(--gap-border)]">Unmapped lines</span>
+        </div>
+        <div class="flex-1"></div>
+        <!-- Save is disabled because nothing is dirty; Promote is disabled because a line is unmapped. -->
+        <button class="appearance-none border border-line-strong cursor-pointer bg-surface font-sans text-[13px] font-semibold py-2 px-3.5 rounded-sm inline-flex items-center gap-[7px] text-fg disabled:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-70" disabled>Save</button>
+        <button class="appearance-none border border-transparent cursor-pointer bg-accent text-white font-sans text-[13px] font-semibold py-2 px-3.5 rounded-sm inline-flex items-center gap-[7px] disabled:bg-line-strong disabled:text-fg-subtle disabled:cursor-not-allowed" disabled>Promote to Order</button>
+      </div>
+
+    </div>
+    <p class="text-fg-subtle text-xs text-center pt-4 pb-1">Static mock · one line is unmapped, so Promote is disabled and the gap says why.</p>
+  </main>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -9,12 +9,34 @@ import (
 	"connectrpc.com/validate"
 	"github.com/rs/cors"
 
-	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
-	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
+	category_service "github.com/pdcgo/warehouse_revamp/backend/services/category_service"
+	category_v1 "github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
+	document_service "github.com/pdcgo/warehouse_revamp/backend/services/document_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
+	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	expense_service "github.com/pdcgo/warehouse_revamp/backend/services/expense_service"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	inventory_service "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service"
+	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
+	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
+	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
+	region_service "github.com/pdcgo/warehouse_revamp/backend/services/region_service"
+	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
+	revenue_service "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service"
+	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
+	selling_service "github.com/pdcgo/warehouse_revamp/backend/services/selling_service"
+	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service"
+	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
+	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
+	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
+	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
+	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
+	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 // NewServeMux mounts every service handler.
@@ -23,9 +45,20 @@ import (
 // interceptor at all, which quietly turned their declared request_policy options into
 // decoration — the policy was written down and never enforced. Mounting is not optional here.
 func NewServeMux(
-	authService *user_service.AuthService,
-	userService *user_service.Service,
-	teamService *team_service.Service,
+	authService *user_v1.AuthService,
+	userService *user_v1.Service,
+	teamService *team_v1.Service,
+	shippingService *shipping_v1.Service,
+	productService *product_v1.Service,
+	sellingService *selling_v1.Service,
+	categoryService *category_v1.Service,
+	documentService *document_v1.Service,
+	inventoryService *inventory_v1.Service,
+	regionService *region_v1.Service,
+	revenueService *revenue_v1.Service,
+	costService *expense_v1.Service,
+	settlementService *settlement_v1.Service,
+	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
 ) (*http.ServeMux, error) {
@@ -55,9 +88,23 @@ func NewServeMux(
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mux.Handle(userv1connect.NewAuthServiceHandler(authService, opts))
-	mux.Handle(userv1connect.NewUserServiceHandler(userService, opts))
-	mux.Handle(teamv1connect.NewTeamServiceHandler(teamService, opts))
+	// Each service reports the handler(s) it mounts and the proto services it exposes; san_grpc
+	// mounts them and advertises exactly those over gRPC reflection. Adding a service is one line
+	// here plus its register.go — reflection can never drift from what is actually served.
+	san_grpc.Register(mux,
+		user_service.NewRegister(mux, authService, userService, opts),
+		team_service.NewRegister(mux, teamService, opts),
+		shipping_service.NewRegister(mux, shippingService, opts),
+		product_service.NewRegister(mux, productService, opts),
+		selling_service.NewRegister(mux, sellingService, opts),
+		category_service.NewRegister(mux, categoryService, opts),
+		document_service.NewRegister(mux, documentService, docCfg, opts),
+		inventory_service.NewRegister(mux, inventoryService, opts),
+		region_service.NewRegister(mux, regionService, opts),
+		revenue_service.NewRegister(mux, revenueService, opts),
+		expense_service.NewRegister(mux, costService, opts),
+		settlement_service.NewRegister(mux, settlementService, opts),
+	)
 
 	return mux, nil
 }
@@ -89,9 +136,13 @@ func withCORS(cfg *Config, handler http.Handler) http.Handler {
 	// From the UI it looks like the API returned nothing.
 	allowedHeaders := append(connectcors.AllowedHeaders(), "Authorization")
 
+	// PUT is not a Connect method; it is added for the local document file endpoint, which clients
+	// upload to directly with a cross-origin PUT.
+	allowedMethods := append(connectcors.AllowedMethods(), http.MethodPut)
+
 	middleware := cors.New(cors.Options{
 		AllowedOrigins: cfg.AllowedOrigins,
-		AllowedMethods: connectcors.AllowedMethods(),
+		AllowedMethods: allowedMethods,
 		AllowedHeaders: allowedHeaders,
 		ExposedHeaders: connectcors.ExposedHeaders(),
 	})

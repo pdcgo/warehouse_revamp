@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package warehouse.revenue.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1;revenuev1";
+
+// RevenueService owns `order_revenues` (#75) — one row per order, holding what we EXPECTED to make on
+// it, frozen when the order was placed.
+//
+// It is a stored record rather than a calculation, and that is the owner's call (2026-07-20) against a
+// genuinely cheaper option: #74 already froze `total`, `cogs` and `shipping_cost` onto the order, so a
+// screen could compute the margin with no service at all. What the record buys is a HOME FOR #76 —
+// settlement compares what we expected against what the payout actually was, and "actual" has nowhere
+// to live without a row beside it.
+//
+// The cost is a second copy of numbers the order already holds. Two things keep it honest: it is
+// written ONCE, at order time, from figures that are themselves frozen — so there is no ongoing sync to
+// get wrong — and when the two disagree, the ORDER is the truth for what was charged while this row is
+// the truth for what was EXPECTED. They answer different questions, which is why both exist rather
+// than one being a cache of the other.
+service RevenueService {
+  // Record what an order is expected to make. Written when the order is placed.
+  rpc RevenueRecord(RevenueRecordRequest) returns (RevenueRecordResponse);
+  // What a team's orders were expected to make, newest first.
+  rpc RevenueList(RevenueListRequest) returns (RevenueListResponse);
+  // Stop an order's row counting — it was cancelled (#164).
+  rpc RevenueVoid(RevenueVoidRequest) returns (RevenueVoidResponse);
+}
+
+// What one order was expected to make.
+message OrderRevenue {
+  uint64 id = 1;
+  // The SELLING team that placed the order, and the order itself. Both opaque — no FK across services.
+  uint64 team_id = 2;
+  uint64 order_id = 3;
+
+  // The frozen figures, copied from the order at placement. Whole rupiah.
+  //
+  // They are COPIED rather than referenced on purpose: this row must still read correctly if the order
+  // is later edited or the rule that produced its cost changes (#74's cost rule is explicitly
+  // replaceable). A revenue record that silently followed the order would stop being a record of what
+  // was expected AT THE TIME, which is the only thing it is for.
+  int64 revenue = 4; // what the buyer paid — the order's `total`
+  int64 cogs = 5; // what the goods cost us
+  int64 shipping_cost = 6;
+
+  // revenue − cogs − shipping_cost, computed once and stored.
+  //
+  // Stored rather than derived on read because #76 will compare it against an ACTUAL, and a number you
+  // are reconciling against has to be the number you actually promised — not one recomputed later from
+  // inputs that may since have been corrected.
+  int64 expected_margin = 7;
+
+  // ⚠ 0 cogs means the goods' cost was UNKNOWN, not free (#74) — a product that was never restocked
+  // has no recorded cost. The margin on such a row therefore reads as pure profit and is NOT to be
+  // trusted. Kept rather than refused, because refusing would mean an order with no revenue row at all,
+  // which is a worse kind of missing.
+  bool cost_known = 8;
+
+  int64 created_at_unix = 9;
+
+  // Whether this row still counts (#164). An order cancelled after it was placed earned nothing, so
+  // its row is VOIDED — kept, but excluded from every total.
+  //
+  // Kept rather than deleted because a deleted row cannot tell you an order was placed and then
+  // cancelled, and that is a thing somebody looking at the money wants to see.
+  bool voided = 10;
+}
+
+message RevenueRecordRequest {
+  // Write: the same selling-team roles that place orders — recording what an order is expected to make
+  // is part of placing it. Scoped to the SELLING team, which is the team the order belongs to.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  int64 revenue = 3 [(buf.validate.field).int64.gte = 0];
+  int64 cogs = 4 [(buf.validate.field).int64.gte = 0];
+  int64 shipping_cost = 5 [(buf.validate.field).int64.gte = 0];
+
+  // Whether `cogs` is a real figure or a stand-in for "we do not know" (#74). The caller knows this and
+  // this service cannot work it out — 0 is a legitimate cost as well as the unknown marker.
+  bool cost_known = 6;
+}
+
+message RevenueRecordResponse {
+  OrderRevenue revenue = 1;
+}
+
+message RevenueListRequest {
+  // Read: money is a manager's view. Customer service places orders but does not need the margin on
+  // them, so it is deliberately absent here even though it may call Record.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Grows with every order, so it pages (HARD RULE 9).
+  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
+  //
+  // Server-side, and that is the point of the field rather than a convenience: this list is
+  // paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
+  // it unfiltered — a headline figure that is right on a page big enough to hold everything and
+  // quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
+  //
+  // WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
+  // order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
+  // (#161).
+  // Those are two different senses of "belongs to July", and they are close enough to subtract only
+  // because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
+  // exactly that, so it is worth knowing before anybody reconciles the result against a bank
+  // statement.
+  string from = 3 [(buf.validate.field).string.max_len = 10];
+  string to = 4 [(buf.validate.field).string.max_len = 10];
+}
+
+message RevenueListResponse {
+  repeated OrderRevenue revenues = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+
+  // The totals across the WHOLE team, not the loaded page (#78).
+  //
+  // Server-side because a page total is a different number wearing the same label: summing the twenty
+  // rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
+  // it silently changes when somebody picks a different page size. A report's headline figure has to
+  // mean the same thing whatever page you are on.
+  RevenueTotals totals = 3;
+}
+
+// The team's expected money, summed over every one of its orders.
+message RevenueTotals {
+  int64 revenue = 1;
+  int64 cogs = 2;
+  int64 shipping_cost = 3;
+  int64 expected_margin = 4;
+
+  // How many of the summed orders had an UNKNOWN cost (#74) — rows whose margin reads as if the goods
+  // were free.
+  //
+  // The count is reported rather than the rows being excluded, because both alternatives lie: dropping
+  // them understates revenue that genuinely happened, and including them silently overstates margin.
+  // Naming the number lets a reader judge how much of the total to trust, which is the only honest
+  // option while some costs are unknown.
+  uint64 unknown_cost_orders = 5;
+}
+
+message RevenueVoidRequest {
+  // Write: the same selling-team roles that place and cancel orders — voiding is part of cancelling.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RevenueVoidResponse {
+  // The voided row. Absent when the order had no revenue row at all — which is not an error: an order
+  // placed before #153, or one whose publish was lost, has nothing to void, and refusing would make a
+  // redelivery fail forever.
+  OrderRevenue revenue = 1;
+}

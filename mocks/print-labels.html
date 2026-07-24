@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Print Labels</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the   *
+ * Play CDN (the documented exception to "self-contained" — see          *
+ * mocks/README.md). The screen that follows accept-rack.html: once a    *
+ * delivery is accepted onto shelves, you print a sticker for each        *
+ * shelved unit so pickers can find and scan it. The label subsystem and  *
+ * the @media print sheet layout stay as custom CSS (the JS emits those   *
+ * class names, and physical label geometry can't be a utility). Tailwind *
+ * maps onto the shared :root tokens; dark mode rides on [data-theme].    *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* file-specific: the monospace stack the QR payload / SKU print in (label geometry uses it) */
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  /* The striped mock banner and the translucent blurred action bar — utilities can't express
+     either. Everything else on the page chrome is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  header.bar { background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(180%) blur(8px); }
+
+  /* The card shell is kept as a class (not utilities) because the print stylesheet strips its
+     border/shadow/radius — keeping it a class avoids a specificity fight with the print rules. */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card-body { padding: 16px 18px; }
+
+  /* Preview sheet — a responsive grid on screen, re-laid as a physical flow of stickers in print. */
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+
+  /* ------------------------------------------------------------------ *
+   * A single label — the sticker that goes on the shelf / the item.     *
+   * Kept as custom CSS: it is generated by the script (class names are  *
+   * load-bearing) AND carries real physical geometry (aspect-ratio,     *
+   * mm sizes) that has no utility equivalent.                           *
+   * ------------------------------------------------------------------ */
+  .label {
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: #fff;              /* labels are always printed on white stock */
+    color: #101828;
+    padding: 10px 12px;
+    display: flex; align-items: stretch; gap: 9px;
+    aspect-ratio: 2 / 1;          /* 30 × 15 mm default */
+    overflow: hidden;
+  }
+  .label.sz-30x15 { aspect-ratio: 2 / 1; }
+  .label.sz-40x25 { aspect-ratio: 8 / 5; }
+  .label.sz-50x30 { aspect-ratio: 5 / 3; }
+  .label.sz-60x40 { aspect-ratio: 3 / 2; }
+  /* 30 × 15 mm is tight — clamp the name to one line so it reads like a real small sticker */
+  .label.sz-30x15 { gap: 8px; }
+  .label.sz-30x15 .label-name { -webkit-line-clamp: 1; font-size: 12px; }
+  .label.sz-30x15 .label-hpp,
+  .label.sz-30x15 .label-meta { font-size: 10px; }
+
+  .label-qr { flex: 0 0 auto; aspect-ratio: 1; height: 100%; }
+  .qr {
+    width: 100%; height: 100%;
+    display: grid;
+    grid-template-columns: repeat(21, 1fr);
+    grid-template-rows: repeat(21, 1fr);
+    background: #fff;
+  }
+  .qr span { display: block; }
+  .qr span.on { background: #101828; }
+
+  .label-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .label-top { display: flex; align-items: flex-start; gap: 8px; }
+  .label-name { font-size: 13px; font-weight: 700; line-height: 1.2; flex: 1 1 auto; min-width: 0;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .label-rack {
+    flex: 0 0 auto; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+    background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe;
+    padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+  }
+  .label-rack.holding { background: #fffaeb; color: #b54708; border-color: #fedf89; }
+  .label-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: auto; }
+  .label-sku { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: #475467; }
+  .label-meta { font-size: 10.5px; color: #667085; font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .label-hpp { font-size: 11px; font-weight: 700; color: #101828; font-variant-numeric: tabular-nums; }
+
+  /* ------------------------------------------------------------------ *
+   * PRINT: drop all the app chrome and lay the labels out as a sheet.   *
+   * Only the labels themselves survive to paper — that is the whole job.*
+   * ------------------------------------------------------------------ */
+  @media print {
+    @page { margin: 8mm; }
+    body { background: #fff; }
+    .mock-banner, header.bar, .no-print, .footer-note, .sample-note { display: none !important; }
+    main { max-width: none; padding: 0; }
+    .card { border: none; box-shadow: none; border-radius: 0; }
+    .card-body { padding: 0; }
+    .sheet-head { display: none; }
+    /* labels print at their TRUE physical size — a flow of real stickers, not a stretched grid */
+    .sheet { display: flex; flex-wrap: wrap; gap: 0; }
+    .label { border: 1px dashed #bbb; border-radius: 0; break-inside: avoid; aspect-ratio: auto; }
+    .label.sz-30x15 { width: 30mm; height: 15mm; padding: 1.5mm 2mm; gap: 1.5mm; }
+    .label.sz-40x25 { width: 40mm; height: 25mm; padding: 2mm 2.5mm; gap: 2mm; }
+    .label.sz-50x30 { width: 50mm; height: 30mm; padding: 2.5mm 3mm; gap: 2.5mm; }
+    .label.sz-60x40 { width: 60mm; height: 40mm; padding: 3mm 3.5mm; gap: 3mm; }
+    /* type sized in points so it fits the physical sticker instead of overflowing it */
+    .label.sz-30x15 .label-name { font-size: 6pt; }
+    .label.sz-30x15 .label-sku, .label.sz-30x15 .label-hpp,
+    .label.sz-30x15 .label-meta, .label.sz-30x15 .label-rack { font-size: 4.5pt; }
+    .label.sz-40x25 .label-name { font-size: 7pt; }
+    .label.sz-40x25 .label-sku, .label.sz-40x25 .label-hpp,
+    .label.sz-40x25 .label-meta, .label.sz-40x25 .label-rack { font-size: 5.5pt; }
+  }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · print labels after accept-restock (#201) · fake data · not the app</div>
+
+  <header class="bar sticky top-0 z-10 border-b border-line">
+    <div class="max-w-[940px] mx-auto p-[12px_20px] flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] py-1 px-2 rounded-sm hover:bg-surface-2 hover:text-fg" href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Restock #412
+      </a>
+      <h1 class="text-lg font-[650] m-0">Print Labels</h1>
+      <span class="inline-flex items-center gap-[5px] text-xs font-[550] py-0.5 px-[9px] rounded-full bg-pos-soft text-pos">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Accepted
+      </span>
+      <div class="flex-[1_1_auto]"></div>
+      <div class="text-[12.5px] text-fg-muted text-right flex flex-col items-end leading-[1.3]">
+        <span><b id="label-count" class="text-fg font-semibold">176</b> labels · <span id="product-count">3</span> products</span>
+        <span id="mode-readout">one per piece</span>
+      </div>
+      <button class="appearance-none border border-line-strong cursor-pointer font-sans text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-[7px] bg-surface text-fg hover:bg-surface-2" id="pdf-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Download PDF
+      </button>
+      <button class="appearance-none border border-transparent cursor-pointer font-sans text-[13px] font-semibold py-2 px-4 rounded-sm inline-flex items-center gap-[7px] bg-accent text-white hover:brightness-105" id="print-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        Print
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-[940px] mx-auto p-5">
+    <div class="flex flex-col gap-4">
+
+      <!-- Controls: how many labels, how big, what goes on them -->
+      <section class="card no-print">
+        <div class="card-body">
+          <div class="text-xs font-[650] text-fg mb-3 tracking-[.01em]">Labels to print</div>
+          <p class="m-[-6px_0_14px] text-[12.5px] text-fg-muted">Each QR encodes <b class="font-[var(--mono)] text-fg">product-code/batch-id</b> — printed under the code as a human-readable fallback.</p>
+          <div class="flex flex-wrap gap-[22px] items-start max-[720px]:gap-4">
+            <div class="flex flex-col gap-[7px]">
+              <span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">One label per</span>
+              <div class="inline-flex border border-line-strong rounded-sm bg-surface-2 p-0.5" id="mode-seg">
+                <button class="appearance-none border-0 bg-transparent cursor-pointer font-sans text-[13px] font-[550] text-fg-muted py-[5px] px-3 rounded-md aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow" data-mode="piece" aria-pressed="true">Piece</button>
+                <button class="appearance-none border-0 bg-transparent cursor-pointer font-sans text-[13px] font-[550] text-fg-muted py-[5px] px-3 rounded-md aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow" data-mode="shelf" aria-pressed="false">Shelf</button>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-[7px]">
+              <span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Label size</span>
+              <label class="inline-flex items-center gap-2 border border-line-strong rounded-sm bg-surface py-1.5 px-2.5">
+                <select class="appearance-none border-0 bg-transparent text-fg font-sans text-[13.5px] font-[550] outline-none cursor-pointer" id="size-select">
+                  <option value="sz-30x15">30 × 15 mm</option>
+                  <option value="sz-40x25">40 × 25 mm</option>
+                  <option value="sz-50x30">50 × 30 mm</option>
+                  <option value="sz-60x40">60 × 40 mm</option>
+                </select>
+                <svg class="text-fg-subtle flex-[0_0_auto]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </label>
+            </div>
+
+            <div class="flex flex-col gap-[7px]">
+              <span class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Show on label</span>
+              <div class="flex flex-col gap-1.5">
+                <label class="inline-flex items-center gap-2 text-[13px] text-fg cursor-pointer"><input class="w-[15px] h-[15px] accent-[var(--accent)] cursor-pointer" type="checkbox" id="opt-rack" checked /> Rack location</label>
+                <label class="inline-flex items-center gap-2 text-[13px] text-fg cursor-pointer"><input class="w-[15px] h-[15px] accent-[var(--accent)] cursor-pointer" type="checkbox" id="opt-date" checked /> Restock ref &amp; date</label>
+                <label class="inline-flex items-center gap-2 text-[13px] text-fg cursor-pointer"><input class="w-[15px] h-[15px] accent-[var(--accent)] cursor-pointer" type="checkbox" id="opt-hpp" /> HPP / cost price</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3.5 pt-3.5 border-t border-dashed border-line text-[12.5px] text-fg-muted flex items-center gap-2">
+            <svg class="text-warn flex-[0_0_auto]" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            <span><b class="text-fg font-semibold">2 pcs excluded</b> — 1 broken, 1 lost on Topi Trucker Merah never entered stock, so they get no label.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Preview sheet -->
+      <section class="card">
+        <div class="card-body">
+          <div class="sheet-head no-print flex items-center gap-2.5 mb-3">
+            <span class="text-[13px] font-[650]">Preview</span>
+            <span class="text-[12.5px] text-fg-muted" id="sheet-sub"></span>
+          </div>
+          <div class="sheet" id="sheet"></div>
+          <div class="sample-note no-print mt-3 text-xs text-fg-subtle text-center flex items-center justify-center gap-1.5" id="sample-note"></div>
+        </div>
+      </section>
+
+    </div>
+
+    <p class="footer-note text-fg-subtle text-xs text-center pt-2 pb-1">Static mock · flip Piece ↔ Shelf, change size, toggle fields — the sheet and the counts react. Hit Print to see the paper layout.</p>
+  </main>
+
+<script>
+  // The put-away from accept-rack.html carried forward: what actually landed on shelves.
+  // Broken/lost pcs are NOT here — they never entered stock, so they never get a label.
+  const rupiah = (n) => "Rp " + Math.round(n).toLocaleString("id-ID");
+  const RESTOCK = "RS-412";
+  const RECEIVED = "23 Jul 2026";
+
+  // Each placement carries the product code (sku) and the BATCH id created by this restock
+  // receipt. The QR encodes exactly "product-code/batch-id" — the same product+batch shares one
+  // code even when split across two shelves (location is separate, printed as the rack chip).
+  const PLACEMENTS = [
+    { name: "Kaos Polos Hitam",   sku: "KPH-001", batch: "B2307-01", hpp: 41102, rack: "A-01-3", aisle: "Aisle A", qty: 60, holding: false },
+    { name: "Kaos Polos Hitam",   sku: "KPH-001", batch: "B2307-01", hpp: 41102, rack: "A-02-1", aisle: "Aisle A", qty: 40, holding: false },
+    { name: "Celana Chino Navy",  sku: "CCN-014", batch: "B2307-02", hpp: 96102, rack: "B-03-2", aisle: "Aisle B", qty: 48, holding: false },
+    { name: "Topi Trucker Merah", sku: "TTM-207", batch: "B2307-03", hpp: 29102, rack: "C-02-4", aisle: "Aisle C", qty: 28, holding: false },
+  ];
+
+  const payloadOf = (p) => p.sku + "/" + p.batch;   // what the QR encodes
+
+  const PREVIEW_CAP = 24; // a full per-piece run can be hundreds — preview a sample, print them all
+
+  const sheetEl = document.getElementById("sheet");
+  const sizeSelect = document.getElementById("size-select");
+  const optRack = document.getElementById("opt-rack");
+  const optDate = document.getElementById("opt-date");
+  const optHpp = document.getElementById("opt-hpp");
+
+  let mode = "piece"; // "piece" | "shelf"
+
+  // A stable, fake-but-plausible QR: a 21×21 module matrix with the three finder squares
+  // in the corners and deterministic data modules derived from the "product-code/batch-id"
+  // payload (no Math.random — same payload always draws the same code). Not a real QR
+  // encoder, just the look — the real screen would encode the payload for real.
+  function qrMatrix(seed) {
+    const N = 21;
+    // three 7×7 finder patterns: top-left, top-right, bottom-left
+    const finders = [[0, 0], [0, N - 7], [N - 7, 0]];
+    const inFinderZone = (r, c) =>
+      finders.some(([r0, c0]) => r >= r0 - 1 && r <= r0 + 7 && c >= c0 - 1 && c <= c0 + 7);
+    const finderDark = (r, c) => {
+      for (const [r0, c0] of finders) {
+        const rr = r - r0, cc = c - c0;
+        if (rr < 0 || rr > 6 || cc < 0 || cc > 6) continue;
+        const ring = rr === 0 || rr === 6 || cc === 0 || cc === 6;
+        const core = rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4;
+        return ring || core;               // dark ring + dark 3×3 core, white gap between
+      }
+      return false;
+    };
+
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    let cells = "";
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        let on;
+        if (inFinderZone(r, c)) {
+          on = finderDark(r, c);
+        } else if (r === 6 || c === 6) {
+          on = (r + c) % 2 === 0;          // timing patterns
+        } else {
+          h = (h * 1103515245 + 12345) >>> 0;
+          on = (h >> 16) & 1;
+        }
+        cells += on ? '<span class="on"></span>' : "<span></span>";
+      }
+    }
+    return cells;
+  }
+
+  function labelHtml(p, opts) {
+    const size = sizeSelect.value;
+    const payload = payloadOf(p);       // "KPH-001/B2307-01" — encoded in the QR, printed as text
+    const rack = optRack.checked
+      ? '<span class="label-rack' + (p.holding ? " holding" : "") + '">' + (p.holding ? "HOLDING" : p.rack) + "</span>"
+      : "";
+    const metaBits = [];
+    if (opts.shelfQty) metaBits.push(opts.shelfQty + " pcs on shelf");
+    if (optDate.checked) metaBits.push(RESTOCK + " · " + RECEIVED);
+    if (opts.copyTotal > 1) metaBits.push(opts.copyIndex + "/" + opts.copyTotal);
+    const meta = metaBits.length ? '<span class="label-meta">' + metaBits.join(" · ") + "</span>" : "";
+    const hpp = optHpp.checked ? '<span class="label-hpp">' + rupiah(p.hpp) + "</span>" : "";
+    return (
+      '<div class="label ' + size + '">' +
+        '<div class="label-qr"><div class="qr">' + qrMatrix(payload) + "</div></div>" +
+        '<div class="label-main">' +
+          '<div class="label-top">' +
+            '<div class="label-name">' + p.name + "</div>" + rack +
+          "</div>" +
+          '<div class="label-foot">' +
+            '<span class="label-sku">' + payload + "</span>" + hpp +
+          "</div>" +
+          meta +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  // The full set of labels the print job would emit.
+  function buildJob() {
+    if (mode === "shelf") {
+      // one label per shelf placement — the qty on that shelf rides in the label copy count
+      return PLACEMENTS.map((p) => ({ p, copyIndex: 1, copyTotal: 1, shelfQty: p.qty }));
+    }
+    // one label per piece — expand every placement into qty identical stickers
+    const job = [];
+    PLACEMENTS.forEach((p) => {
+      for (let i = 1; i <= p.qty; i++) job.push({ p, copyIndex: i, copyTotal: p.qty });
+    });
+    return job;
+  }
+
+  function render() {
+    const job = buildJob();
+    const total = job.length;
+    const products = new Set(PLACEMENTS.map((p) => p.sku)).size;
+
+    document.getElementById("label-count").textContent = total;
+    document.getElementById("product-count").textContent = products;
+    document.getElementById("mode-readout").textContent =
+      mode === "piece" ? "one per piece" : "one per shelf placement";
+
+    // Preview only a sample when the run is large — but PRINT emits the whole job.
+    const shown = job.slice(0, PREVIEW_CAP);
+    sheetEl.innerHTML = shown
+      .map((j) =>
+        mode === "shelf"
+          ? labelHtml(j.p, { shelfQty: j.shelfQty })
+          : labelHtml(j.p, { copyIndex: j.copyIndex, copyTotal: j.copyTotal })
+      )
+      .join("");
+
+    document.getElementById("sheet-sub").textContent =
+      total + " label" + (total === 1 ? "" : "s") + " · " + products + " products";
+
+    const note = document.getElementById("sample-note");
+    if (total > PREVIEW_CAP) {
+      note.innerHTML =
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>' +
+        "Showing first " + PREVIEW_CAP + " of " + total + " — all " + total + " print.";
+    } else {
+      note.textContent = "";
+    }
+  }
+
+  // Mode toggle
+  document.getElementById("mode-seg").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    mode = btn.dataset.mode;
+    document.querySelectorAll("#mode-seg button").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === btn))
+    );
+    render();
+  });
+
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("#size-select, #opt-rack, #opt-date, #opt-hpp")) render();
+  });
+
+  document.getElementById("print-btn").addEventListener("click", () => window.print());
+  document.getElementById("pdf-btn").addEventListener("click", () => window.print());
+
+  render();
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent print:hidden" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

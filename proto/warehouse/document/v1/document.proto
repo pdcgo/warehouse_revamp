@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package warehouse.document.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1";
+
+// DocumentService stores user-uploaded files (images, PDFs) and serves URLs for them. It never
+// handles the bytes itself: upload and download go directly between the client and object storage
+// over short-lived URLs — the service only issues those URLs and tracks metadata.
+//
+// Upload is TWO-PHASE (RequestUpload → client PUTs the bytes → ConfirmUpload) so a half-finished
+// upload can never leave a metadata row claiming a file that isn't there.
+service DocumentService {
+  rpc RequestUpload(RequestUploadRequest) returns (RequestUploadResponse);
+  rpc ConfirmUpload(ConfirmUploadRequest) returns (ConfirmUploadResponse);
+  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse);
+}
+
+// DocumentResourceType drives the public-vs-private split. PUBLIC types are images served at a
+// stable URL (an <img src>); PRIVATE types are viewed on demand via a short-lived signed URL.
+// Kept minimal on purpose — more types get added when real domains (products, payments) need them.
+enum DocumentResourceType {
+  DOCUMENT_RESOURCE_TYPE_UNSPECIFIED = 0;
+  DOCUMENT_RESOURCE_TYPE_GENERAL = 1; // private: any uploaded document (pdf/image)
+  DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE = 2; // public: a user avatar image
+  DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE = 3; // public: a product catalogue image (gets a thumbnail)
+}
+
+message Document {
+  string id = 1;
+  uint64 team_id = 2;
+  DocumentResourceType resource_type = 3;
+  string filename = 4;
+  string mime_type = 5;
+  int64 size_bytes = 6;
+  // Non-empty only for PUBLIC resource types.
+  string public_url = 7;
+  // A stable URL to a small thumbnail, generated on upload for image documents. Non-empty only for
+  // PUBLIC image types (e.g. a profile picture) — lets the UI load a light image fast.
+  string thumbnail_url = 8;
+}
+
+message RequestUploadRequest {
+  // Uploading is a team-scoped write — any member of the team may upload to it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  DocumentResourceType resource_type = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string content_type = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  int64 size_bytes = 4 [(buf.validate.field).int64.gt = 0];
+  string filename = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+}
+
+message RequestUploadResponse {
+  // Where and how to PUT the bytes. The headers MUST be echoed on the PUT.
+  string upload_url = 1;
+  string method = 2;
+  map<string, string> headers = 3;
+
+  // Opaque, server-signed token that ConfirmUpload exchanges for the finished document. It binds
+  // the pending row, so the client never supplies a document id it could forge.
+  string upload_token = 4;
+  int64 expires_at_unix = 5;
+}
+
+message ConfirmUploadRequest {
+  // The upload_token is the capability — any authenticated holder may confirm it.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  string upload_token = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message ConfirmUploadResponse {
+  Document document = 1;
+}
+
+message GetDownloadUrlRequest {
+  // Reading is team-scoped: the caller must belong to the document's team. This is deliberately
+  // NOT authenticated-only — it closes the cross-team read gap where any id-holder could fetch
+  // another team's private file.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string document_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetDownloadUrlResponse {
+  string url = 1;
+  int64 expires_at_unix = 2; // 0 for public (stable) URLs
+  bool public = 3;
+}

@@ -18,6 +18,8 @@ func main() {
 		Commands: []*cli.Command{
 			migrateCommand(),
 			seedCommand(),
+			dbCommand(),
+			regionCommand(),
 		},
 	}
 

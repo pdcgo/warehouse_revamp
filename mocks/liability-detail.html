@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Liability — Selling Beta</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the  *
+ * Play CDN. The LIABILITY COUNTERPARTY DETAIL (settlement §5.1 B, #185) *
+ * — a PAGE, not a dialog. The running history of ONE relationship. Two  *
+ * actions live here (§5.1 C): CONFIRM a payment they recorded (a        *
+ * ConfirmDialog) and MAKE a payment you sent them (a focused form).     *
+ * Tailwind's theme is mapped onto the shared :root design tokens below. *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+  /* --pos-border isn't in the shared token set, but the confirmed-payment badge needs a
+     light-green hairline distinct from the fill; kept as an extra dark-aware var. */
+  :root { --pos-border: #abefc6; }
+  :root[data-theme="dark"] { --pos-border: #1f3d2c; }
+
+  /* The few things utilities can't express inline: the striped mock banner and the
+     JS-toggled dialog overlay (shown by adding `open`). Everything else is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .js-menu { display: none; }
+  .js-menu.open { display: flex; }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Liability — counterparty detail (settlement §5.1 B) · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[900px] mx-auto px-5 py-3 flex items-center gap-3.5">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted text-[13px] font-semibold hover:text-fg" href="liability-list.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Liability
+      </a>
+      <span class="text-fg-subtle text-xs">Selling Alpha <b class="text-fg-muted font-[650]">›</b> Selling Beta</span>
+    </div>
+  </header>
+
+  <main class="max-w-[900px] mx-auto p-5">
+    <div class="bg-surface border border-line rounded shadow p-[18px_20px]">
+      <div class="flex items-start gap-4 flex-wrap">
+        <div class="flex-auto min-w-[200px]">
+          <div class="text-[20px] font-bold">Selling Beta</div>
+          <div class="text-[12.5px] text-fg-subtle mt-0.5">Selling team · you each sell the other's products, so it runs both ways</div>
+          <div class="text-[12.5px] text-fg-subtle mt-2"><span class="text-warn font-[650]">Oldest unsettled 8 days</span>, since 15 Jul 2026</div>
+        </div>
+      </div>
+
+      <!-- The two sides of the balance, spelled out. -->
+      <div class="grid grid-cols-2 max-[620px]:grid-cols-1 gap-3 mt-4">
+        <div class="border border-line rounded-sm p-[12px_14px] bg-surface-2 border-l-[3px] border-l-pos"><div class="text-[11px] uppercase tracking-[.04em] font-bold text-fg-subtle">Receivable · they owe you</div><div class="text-[18px] font-extrabold [font-variant-numeric:tabular-nums] mt-[3px] text-pos">Rp 1.650.000</div></div>
+        <div class="border border-line rounded-sm p-[12px_14px] bg-surface-2 border-l-[3px] border-l-warn"><div class="text-[11px] uppercase tracking-[.04em] font-bold text-fg-subtle">Payable · you owe them</div><div class="text-[18px] font-extrabold [font-variant-numeric:tabular-nums] mt-[3px] text-warn">Rp 400.000</div></div>
+      </div>
+
+      <div class="flex gap-2.5 mt-4 flex-wrap">
+        <!-- MAKE PAYMENT — create a payment you're sending them; it stays pending until they confirm it. -->
+        <button class="appearance-none cursor-pointer text-[13px] font-[650] px-[15px] py-[9px] rounded-sm inline-flex items-center gap-[7px] border border-accent bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] hover:brightness-[1.06]" id="makePayment">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Make Payment
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 flex-wrap mt-6 mb-2">
+      <div class="text-[13px] font-bold m-0">History</div>
+      <!-- Date range is OUTSIDE the tabs — one global filter over whichever tab is open. -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-[11px] font-bold text-fg-subtle uppercase tracking-[.04em]">Date</span>
+        <input type="date" id="fromDate" class="appearance-none text-[12.5px] text-fg bg-surface-2 border border-line-strong rounded-sm px-[9px] py-1.5" aria-label="From date" />
+        <span class="text-fg-subtle">→</span>
+        <input type="date" id="toDate" class="appearance-none text-[12.5px] text-fg bg-surface-2 border border-line-strong rounded-sm px-[9px] py-1.5" aria-label="To date" />
+        <button type="button" id="clearDates" class="appearance-none cursor-pointer bg-transparent border-0 text-accent-fg text-[12.5px] font-[650] px-1.5 py-1 hover:underline">Clear</button>
+      </div>
+    </div>
+    <div class="flex gap-1 border-b border-line mt-[22px] flex-wrap" role="tablist" aria-label="History">
+      <button class="tab appearance-none cursor-pointer bg-transparent border-0 border-b-2 border-b-transparent text-fg-muted text-[13px] font-[650] px-3 py-[9px] inline-flex items-center gap-[7px] -mb-px hover:text-fg data-[active]:text-accent-fg data-[active]:border-b-accent" role="tab" data-tab="rec" data-active>Receivable</button>
+      <button class="tab appearance-none cursor-pointer bg-transparent border-0 border-b-2 border-b-transparent text-fg-muted text-[13px] font-[650] px-3 py-[9px] inline-flex items-center gap-[7px] -mb-px hover:text-fg data-[active]:text-accent-fg data-[active]:border-b-accent" role="tab" data-tab="pay">Payable</button>
+      <button class="tab appearance-none cursor-pointer bg-transparent border-0 border-b-2 border-b-transparent text-fg-muted text-[13px] font-[650] px-3 py-[9px] inline-flex items-center gap-[7px] -mb-px hover:text-fg data-[active]:text-accent-fg data-[active]:border-b-accent" role="tab" data-tab="mine">My payments</button>
+      <button class="tab appearance-none cursor-pointer bg-transparent border-0 border-b-2 border-b-transparent text-fg-muted text-[13px] font-[650] px-3 py-[9px] inline-flex items-center gap-[7px] -mb-px hover:text-fg data-[active]:text-accent-fg data-[active]:border-b-accent" role="tab" data-tab="team">Team payments</button>
+    </div>
+
+    <!-- RECEIVABLE — only what THEY owe YOU (they sold your goods); − is a reversal of one. -->
+    <section class="panel mt-3.5" data-panel="rec">
+      <div class="text-fg-subtle text-[11.5px] m-0 mb-2.5">What <b class="text-fg-muted">Selling Beta owes you</b> — product fees they ran up selling your goods. A <b class="text-fg-muted">−</b> is a reversal (order #418 was cancelled).</div>
+      <div class="bg-surface border border-line rounded shadow overflow-hidden">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead><tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Date</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">What caused it</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">By</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Amount</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Balance after</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">22 Jul 2026<div class="text-fg-subtle text-[11.5px]">1 day ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #425</a></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-semibold text-fg">Rina</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Beta · placed order</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-pos">+Rp 300.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 1.650.000</td>
+            </tr>
+            <tr>
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap bg-[color-mix(in_srgb,var(--warn-soft)_55%,transparent)]">21 Jul 2026<div class="text-fg-subtle text-[11.5px]">2 days ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--warn-soft)_55%,transparent)]"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #418</a><span class="text-[10px] font-bold uppercase tracking-[.04em] px-[7px] py-px rounded-[5px] ml-[7px] whitespace-nowrap text-warn bg-warn-soft border border-warn-border">Reversal · cancelled</span></td>
+              <td class="p-[12px_14px] border-b border-line align-middle bg-[color-mix(in_srgb,var(--warn-soft)_55%,transparent)]"><span class="font-semibold text-fg">Andi</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Beta · cancelled order</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn bg-[color-mix(in_srgb,var(--warn-soft)_55%,transparent)]">−Rp 900.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap bg-[color-mix(in_srgb,var(--warn-soft)_55%,transparent)]">Rp 1.350.000</td>
+            </tr>
+            <tr>
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">20 Jul 2026<div class="text-fg-subtle text-[11.5px]">3 days ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #421</a></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-semibold text-fg">Rina</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Beta · placed order</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-pos">+Rp 650.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 2.250.000</td>
+            </tr>
+            <tr>
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">18 Jul 2026<div class="text-fg-subtle text-[11.5px]">5 days ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #418</a><span class="text-[10px] font-bold uppercase tracking-[.04em] px-[7px] py-px rounded-[5px] ml-[7px] whitespace-nowrap text-fg-subtle bg-surface-2 border border-line">Reversed 21 Jul</span></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-semibold text-fg">Andi</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Beta · placed order</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-pos">+Rp 900.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 1.600.000</td>
+            </tr>
+            <tr>
+              <td class="date p-[12px_14px] align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">15 Jul 2026<div class="text-fg-subtle text-[11.5px]">8 days ago</div></td>
+              <td class="p-[12px_14px] align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #412</a></td>
+              <td class="p-[12px_14px] align-middle"><span class="font-semibold text-fg">Andi</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Beta · placed order</div></td>
+              <td class="p-[12px_14px] align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-pos">+Rp 700.000</td>
+              <td class="p-[12px_14px] align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 700.000</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="subtotal flex justify-between items-center gap-3 p-[12px_14px] bg-surface-2 border-t border-line text-[13px]"><span class="text-fg-muted font-semibold">Receivable subtotal · they owe you</span><span class="font-extrabold [font-variant-numeric:tabular-nums] text-pos">Rp 1.650.000</span></div>
+        <div class="pmt-empty text-fg-subtle text-[13px] p-[18px_14px] text-center" hidden>Nothing in this date range.</div>
+      </div>
+    </section>
+
+    <!-- PAYABLE — only what YOU owe THEM (you sold their goods). -->
+    <section class="panel mt-3.5" data-panel="pay" hidden>
+      <div class="text-fg-subtle text-[11.5px] m-0 mb-2.5">What <b class="text-fg-muted">you owe Selling Beta</b> — product fees you ran up selling their goods.</div>
+      <div class="bg-surface border border-line rounded shadow overflow-hidden">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead><tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Date</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">What caused it</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">By</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Amount</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Balance after</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">19 Jul 2026<div class="text-fg-subtle text-[11.5px]">4 days ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #A-215</a></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="font-semibold text-fg">Dewi</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Alpha · placed order</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn">Rp 180.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 400.000</td>
+            </tr>
+            <tr>
+              <td class="date p-[12px_14px] align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">16 Jul 2026<div class="text-fg-subtle text-[11.5px]">7 days ago</div></td>
+              <td class="p-[12px_14px] align-middle"><span class="font-[650]">Product fee</span> · <a class="text-accent-fg font-semibold hover:underline" href="#">order #A-208</a></td>
+              <td class="p-[12px_14px] align-middle"><span class="font-semibold text-fg">Bagas</span><div class="text-fg-subtle text-[11.5px] mt-px">Selling Alpha · placed order</div></td>
+              <td class="p-[12px_14px] align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap text-warn">Rp 220.000</td>
+              <td class="p-[12px_14px] align-middle text-right [font-variant-numeric:tabular-nums] text-fg-muted whitespace-nowrap">Rp 220.000</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="subtotal flex justify-between items-center gap-3 p-[12px_14px] bg-surface-2 border-t border-line text-[13px]"><span class="text-fg-muted font-semibold">Payable subtotal · you owe them</span><span class="font-extrabold [font-variant-numeric:tabular-nums] text-warn">Rp 400.000</span></div>
+        <div class="pmt-empty text-fg-subtle text-[13px] p-[18px_14px] text-center" hidden>Nothing in this date range.</div>
+      </div>
+    </section>
+
+    <!-- MY PAYMENTS — payments YOU recorded paying Selling Beta (payer = you). You never confirm your own. -->
+    <section class="panel mt-3.5" data-panel="mine" hidden>
+      <div class="text-fg-subtle text-[11.5px] m-0 mb-2.5">Payments <b class="text-fg-muted">you recorded paying Selling Beta</b>. A payment posts to the ledger only when <b class="text-fg-muted">they</b> confirm it arrived — you never confirm your own.</div>
+      <div class="pmt-filter inline-flex gap-0.5 bg-surface-2 border border-line rounded-sm p-[3px] mb-3" role="group" aria-label="Filter by status">
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="all" data-active>All</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="pending" title="Recorded — awaiting confirmation">Pending</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="accepted" title="Confirmed — posted to the ledger">Accepted</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="rejected" title="Reversed">Rejected</button>
+      </div>
+      <div class="bg-surface border border-line rounded shadow overflow-hidden">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead><tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Date</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Reference</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Note</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Amount</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Status</th>
+          </tr></thead>
+          <tbody>
+            <tr data-status="pending">
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">22 Jul 2026<div class="text-fg-subtle text-[11.5px]">1 day ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle">BCA transfer<div class="text-fg-subtle text-[11.5px] mt-[3px]">to Selling Beta · recorded by you</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted text-[12.5px] italic max-w-[220px]">Settling July product fees</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 400.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><div class="text-fg-subtle text-[11.5px] mt-[3px]">awaiting Selling Beta's confirmation</div></td>
+            </tr>
+            <tr data-status="accepted">
+              <td class="date p-[12px_14px] align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">8 Jul 2026<div class="text-fg-subtle text-[11.5px]">15 days ago</div></td>
+              <td class="p-[12px_14px] align-middle">BCA transfer<div class="text-fg-subtle text-[11.5px] mt-[3px]">to Selling Beta · recorded by you</div></td>
+              <td class="p-[12px_14px] align-middle text-fg-muted text-[12.5px] italic max-w-[220px]">Advance on August orders</td>
+              <td class="p-[12px_14px] align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 250.000</td>
+              <td class="p-[12px_14px] align-middle"><span class="inline-flex items-center text-[11.5px] font-bold px-[9px] py-0.5 rounded-full whitespace-nowrap text-pos bg-pos-soft border border-[color:var(--pos-border)]">Confirmed</span><div class="text-fg-subtle text-[11.5px] mt-[3px]">by Selling Beta · 9 Jul 2026</div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="pmt-empty text-fg-subtle text-[13px] p-[18px_14px] text-center" hidden>Nothing matches these filters.</div>
+      </div>
+    </section>
+
+    <!-- TEAM PAYMENTS — payments SELLING BETA recorded paying you (payer = them). Only YOU confirm these. -->
+    <section class="panel mt-3.5" data-panel="team" hidden>
+      <div class="text-fg-subtle text-[11.5px] m-0 mb-2.5">Payments <b class="text-fg-muted">Selling Beta recorded paying you</b>. Only you (the creditor) can confirm one — confirming posts a settling entry to the ledger.</div>
+      <div class="pmt-filter inline-flex gap-0.5 bg-surface-2 border border-line rounded-sm p-[3px] mb-3" role="group" aria-label="Filter by status">
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="all" data-active>All</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="pending" title="Recorded — awaiting your confirmation">Pending</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="accepted" title="Confirmed — posted to the ledger">Accepted</button>
+        <button class="seg appearance-none cursor-pointer bg-transparent border-0 text-fg-muted text-[12.5px] font-semibold px-3 py-[5px] rounded-md hover:text-fg data-[active]:bg-surface data-[active]:text-accent-fg data-[active]:shadow" data-status="rejected" title="Reversed">Rejected</button>
+      </div>
+      <div class="bg-surface border border-line rounded shadow overflow-hidden">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead><tr>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Date</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Reference</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Note</th>
+            <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Amount</th>
+            <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold p-[11px_14px] border-b border-line bg-surface-2">Status</th>
+          </tr></thead>
+          <tbody>
+            <tr data-status="pending">
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">23 Jul 2026<div class="text-fg-subtle text-[11.5px]">today</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle">BCA/xfer/8841<div class="text-fg-subtle text-[11.5px] mt-[3px]">from Selling Beta · recorded by them</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted text-[12.5px] italic max-w-[220px]">Full settlement to date</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 1.250.000</td>
+              <td class="p-[12px_14px] border-b border-line align-middle">
+                <div class="inline-flex items-center gap-2"><button class="appearance-none cursor-pointer text-[11.5px] font-[650] px-2.5 py-1 rounded-md bg-pos text-white [[data-theme=dark]_&]:text-[#0c0e12] border border-pos hover:brightness-[1.05]" onclick="document.getElementById('confirmDialog').classList.add('open')">Confirm</button></div>
+                <div class="text-fg-subtle text-[11.5px] mt-[3px]">awaiting your confirmation</div>
+              </td>
+            </tr>
+            <tr data-status="rejected">
+              <td class="date p-[12px_14px] border-b border-line align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">12 Jul 2026<div class="text-fg-subtle text-[11.5px]">11 days ago</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle">BCA/xfer/8710<div class="text-fg-subtle text-[11.5px] mt-[3px]">from Selling Beta</div></td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-fg-muted text-[12.5px] italic max-w-[220px]">Wrong amount — reversed</td>
+              <td class="p-[12px_14px] border-b border-line align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap"><span class="line-through text-fg-subtle">Rp 300.000</span></td>
+              <td class="p-[12px_14px] border-b border-line align-middle"><span class="inline-flex items-center text-[11.5px] font-bold px-[9px] py-0.5 rounded-full whitespace-nowrap text-fg-subtle bg-surface-2 border border-line">Reversed</span><div class="text-fg-subtle text-[11.5px] mt-[3px]">wrong amount · reversed 13 Jul 2026</div></td>
+            </tr>
+            <tr data-status="accepted">
+              <td class="date p-[12px_14px] align-middle [font-variant-numeric:tabular-nums] whitespace-nowrap">2 Jul 2026<div class="text-fg-subtle text-[11.5px]">21 days ago</div></td>
+              <td class="p-[12px_14px] align-middle">BCA/xfer/8502<div class="text-fg-subtle text-[11.5px] mt-[3px]">from Selling Beta</div></td>
+              <td class="p-[12px_14px] align-middle text-fg-muted text-[12.5px] italic max-w-[220px]">June product fees</td>
+              <td class="p-[12px_14px] align-middle text-right font-bold [font-variant-numeric:tabular-nums] whitespace-nowrap">Rp 600.000</td>
+              <td class="p-[12px_14px] align-middle"><span class="inline-flex items-center text-[11.5px] font-bold px-[9px] py-0.5 rounded-full whitespace-nowrap text-pos bg-pos-soft border border-[color:var(--pos-border)]">Confirmed</span><div class="text-fg-subtle text-[11.5px] mt-[3px]">by you · 2 Jul 2026</div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="pmt-empty text-fg-subtle text-[13px] p-[18px_14px] text-center" hidden>Nothing matches these filters.</div>
+      </div>
+    </section>
+
+    <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+      <span class="text-[12.5px] text-fg-subtle" id="pinfo">5 receivable entries</span>
+      <div class="inline-flex items-center gap-1.5">
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <span class="text-[12.5px] text-fg-muted px-1">Page 1</span>
+        <button class="appearance-none border border-line-strong bg-surface text-fg rounded-sm px-2 py-[5px] cursor-pointer enabled:hover:bg-surface-2 disabled:opacity-[.45] disabled:cursor-not-allowed" disabled aria-label="Next page"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+    </div>
+
+    <p class="text-fg-subtle text-xs mt-3.5">Static mock · four tabs, one relationship. <strong>Receivable / Payable</strong> are the ledger (fees), split by who owes whom — the cancelled order #418 stays as two lines (+Rp 900.000 then −Rp 900.000), netting to zero. <strong>My payments</strong> are payments you recorded paying them; <strong>Team payments</strong> are ones they recorded paying you, which only you can confirm. A payment moves the ledger only on confirmation, so a confirmed one also appears as a <em>Payment</em> line in the ledger tabs on the real screen. Any tab filters by <em>date range</em>; the payment tabs also filter by status (<em>Pending / Accepted / Rejected</em>). <em>Make Payment</em> opens a form; a team payment's <em>Confirm</em> opens a ConfirmDialog.</p>
+  </main>
+
+  <!-- CONFIRM PAYMENT — a ConfirmDialog: it moves money in the books and is not trivially reversible. Title Case. -->
+  <div class="js-menu fixed inset-0 bg-[rgba(16,24,40,.5)] items-center justify-center p-5 z-[100]" id="confirmDialog">
+    <div class="bg-surface border border-line rounded shadow-lg w-full max-w-[420px]" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="p-[18px_20px_0]"><div class="text-[17px] font-bold" id="confirmTitle">Confirm Payment</div></div>
+      <div class="p-[10px_20px_4px] text-fg-muted text-[13.5px]">
+        Confirm that this payment from <strong class="text-fg">Selling Beta</strong> arrived. This posts a settling entry to the ledger and reduces the balance.
+        <div class="flex justify-between gap-3 my-3 p-[12px_14px] bg-surface-2 border border-line rounded-sm"><span class="text-fg-subtle text-xs">Amount<br><span class="[font-variant-numeric:tabular-nums] text-[11px]">ref BCA/xfer/8841</span></span><span class="font-bold [font-variant-numeric:tabular-nums]">Rp 1.250.000</span></div>
+        <div class="flex gap-2 items-start text-xs text-warn bg-warn-soft border border-warn-border rounded-sm p-[9px_11px] mt-3 mb-1">
+          <svg class="flex-none mt-px" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          Only confirm money you have actually received. Undoing a confirmation later needs a written reason and posts a compensating entry.
+        </div>
+      </div>
+      <div class="flex justify-end gap-[9px] p-[14px_20px_18px]">
+        <button class="appearance-none cursor-pointer text-[13px] font-[650] px-[15px] py-[9px] rounded-sm inline-flex items-center gap-[7px] border border-line-strong bg-surface text-fg hover:bg-surface-2" onclick="document.getElementById('confirmDialog').classList.remove('open')">Cancel</button>
+        <button class="appearance-none cursor-pointer text-[13px] font-[650] px-[15px] py-[9px] rounded-sm inline-flex items-center gap-[7px] border border-pos bg-pos text-white [[data-theme=dark]_&]:text-[#0c0e12] hover:brightness-[1.05]" onclick="document.getElementById('confirmDialog').classList.remove('open')">Confirm Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAKE A PAYMENT — a focused form dialog (a payment YOU send them). No ledger effect until they confirm. -->
+  <div class="js-menu fixed inset-0 bg-[rgba(16,24,40,.5)] items-center justify-center p-5 z-[100]" id="recordDialog">
+    <div class="bg-surface border border-line rounded shadow-lg w-full max-w-[420px]" role="dialog" aria-modal="true" aria-labelledby="recordTitle">
+      <div class="p-[18px_20px_0]"><div class="text-[17px] font-bold" id="recordTitle">Make a Payment</div></div>
+      <div class="p-[10px_20px_4px] text-fg-muted text-[13.5px]">
+        Record a payment you're sending to <strong class="text-fg">Selling Beta</strong> — transfer to the account below, then log it here. It stays pending until they confirm it arrived; recording alone does not move the ledger.
+        <div class="mt-3.5 mb-1 border border-line rounded-sm bg-surface-2 p-[12px_14px]">
+          <div class="flex items-center gap-[7px] text-xs font-bold text-fg mb-[9px]">
+            <svg class="text-accent-fg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
+            Transfer to Selling Beta
+          </div>
+          <div class="flex justify-between gap-3 py-[3px] text-[13px]"><span class="text-fg-subtle">Bank</span><span class="font-[650] text-fg text-right">BCA</span></div>
+          <div class="flex justify-between gap-3 py-[3px] text-[13px]"><span class="text-fg-subtle">Account number</span><span class="font-[650] text-fg text-right [font-variant-numeric:tabular-nums]">8420 1177 903</span></div>
+          <div class="flex justify-between gap-3 py-[3px] text-[13px]"><span class="text-fg-subtle">Account name</span><span class="font-[650] text-fg text-right">PT Selling Beta Niaga</span></div>
+        </div>
+        <div class="my-3">
+          <label class="block text-xs font-semibold text-fg-muted mb-[5px]" for="rp-amount">Amount</label>
+          <input id="rp-amount" class="w-full appearance-none text-[14px] text-fg bg-surface-2 border border-line-strong rounded-sm px-[11px] py-2" type="text" inputmode="numeric" placeholder="Rp 0" value="" />
+        </div>
+        <div class="my-3">
+          <label class="block text-xs font-semibold text-fg-muted mb-[5px]" for="rp-note">Note <span class="font-normal text-fg-subtle">(optional)</span></label>
+          <input id="rp-note" class="w-full appearance-none text-[14px] text-fg bg-surface-2 border border-line-strong rounded-sm px-[11px] py-2" type="text" placeholder="Transfer reference, bank, date…" />
+          <div class="text-[11.5px] text-fg-subtle mt-1">A hint for the person confirming — the ledger records the typed cause, never this note.</div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-[9px] p-[14px_20px_18px]">
+        <button class="appearance-none cursor-pointer text-[13px] font-[650] px-[15px] py-[9px] rounded-sm inline-flex items-center gap-[7px] border border-line-strong bg-surface text-fg hover:bg-surface-2" onclick="document.getElementById('recordDialog').classList.remove('open')">Cancel</button>
+        <button class="appearance-none cursor-pointer text-[13px] font-[650] px-[15px] py-[9px] rounded-sm inline-flex items-center gap-[7px] border border-accent bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] hover:brightness-[1.06]" onclick="document.getElementById('recordDialog').classList.remove('open')">Make Payment</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Four tabs — one relationship, a client view over SettlementEntryList (ledger) and
+  // SettlementPaymentList (payment records). Tab, status and date range all filter in place; nothing refetches.
+  const tabs = [...document.querySelectorAll(".tab")];
+  const panels = [...document.querySelectorAll(".panel")];
+  const pinfo = document.getElementById("pinfo");
+  const fromEl = document.getElementById("fromDate");
+  const toEl = document.getElementById("toDate");
+  const clearEl = document.getElementById("clearDates");
+  const noun = { rec: "receivable entries", pay: "payable entries", mine: "payments · you paid them", team: "payments · they paid you" };
+  const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+
+  // Parse the row's own visible date ("22 Jul 2026") into a comparable YYYYMMDD number — no data-* needed.
+  const rowNum = (r) => { const [d, m, y] = r.querySelector(".date").firstChild.nodeValue.trim().split(/\s+/); return (+y) * 10000 + MON[m] * 100 + (+d); };
+  const bound = (v) => (v ? +v.replaceAll("-", "") : null);
+  const activePanel = () => panels.find((p) => !p.hidden);
+
+  function apply() {
+    const panel = activePanel();
+    if (!panel) return;
+    const from = bound(fromEl.value), to = bound(toEl.value);
+    const seg = panel.querySelector(".pmt-filter .seg[data-active]");
+    const status = seg ? seg.dataset.status : "all";
+    let shown = 0;
+    panel.querySelectorAll("tbody tr").forEach((r) => {
+      const n = rowNum(r);
+      const inDate = (from === null || n >= from) && (to === null || n <= to);
+      const inStatus = status === "all" || r.dataset.status === status;
+      const show = inDate && inStatus;
+      r.style.display = show ? "" : "none";
+      if (show) shown++;
+    });
+    const empty = panel.querySelector(".pmt-empty");
+    if (empty) empty.hidden = shown !== 0;
+    // A date range shows a subset, so the all-time subtotal no longer describes what's on screen — hide it then.
+    const subtotal = panel.querySelector(".subtotal");
+    if (subtotal) subtotal.hidden = from !== null || to !== null;
+    pinfo.textContent = shown + " " + noun[panel.dataset.panel];
+  }
+
+  tabs.forEach((t) =>
+    t.addEventListener("click", () => {
+      tabs.forEach((x) => x.toggleAttribute("data-active", x === t));
+      panels.forEach((p) => (p.hidden = p.dataset.panel !== t.dataset.tab));
+      apply();
+    })
+  );
+  document.querySelectorAll(".pmt-filter .seg").forEach((s) =>
+    s.addEventListener("click", () => {
+      [...s.closest(".pmt-filter").querySelectorAll(".seg")].forEach((x) => x.toggleAttribute("data-active", x === s));
+      apply();
+    })
+  );
+  fromEl.addEventListener("change", apply);
+  toEl.addEventListener("change", apply);
+  clearEl.addEventListener("click", () => { fromEl.value = ""; toEl.value = ""; apply(); });
+  apply();
+
+  const open = (id) => document.getElementById(id).classList.add("open");
+  document.getElementById("makePayment").addEventListener("click", () => open("recordDialog"));
+  // Click the backdrop (not the dialog) or press Escape to close.
+  document.querySelectorAll(".js-menu").forEach((o) => {
+    o.addEventListener("click", (e) => { if (e.target === o) o.classList.remove("open"); });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.querySelectorAll(".js-menu.open").forEach((o) => o.classList.remove("open"));
+  });
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

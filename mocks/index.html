@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mocks · Warehouse Revamp</title>
+
+<!-- ------------------------------------------------------------------ *
+ * The front door to ./mocks — a grouped, clickable index of every       *
+ * screen preview, so the mocks can be EXPLORED by flow rather than by    *
+ * filename. Styled with TAILWIND via the Play CDN (the documented        *
+ * exception to "self-contained" — see mocks/README.md). Files stay flat  *
+ * (one per screen, per the README rule); this page just links them and   *
+ * shows how they relate. Tailwind's theme maps onto the shared :root     *
+ * tokens; dark mode rides on [data-theme=dark].                          *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* File-specific, dark-aware tokens with no canonical equivalent: the "built" status
+     border and the card hover lift shadow. Referenced via arbitrary values. */
+  :root {
+    --pos-border: #abefc6;
+    --shadow-hover: 0 8px 24px rgba(16,24,40,.12), 0 2px 6px rgba(16,24,40,.08);
+  }
+  :root[data-theme="dark"] {
+    --pos-border: #1f3d2c;
+    --shadow-hover: 0 10px 28px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.5]">
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1040px] mx-auto p-[34px_24px_30px]">
+      <span class="inline-flex items-center gap-1.5 text-xs font-bold tracking-[.06em] uppercase text-accent-fg bg-accent-soft py-1 px-2.5 rounded-full">Mock-first previews · #201</span>
+      <h1 class="text-[26px] font-bold m-[14px_0_6px] tracking-[-.01em]">Warehouse Revamp — Mocks</h1>
+      <p class="text-fg-muted text-[14.5px] max-w-[66ch] m-0">Standalone HTML previews of each screen — fake data, no build. Open one to react to its shape and flow before a line of React is written. Files stay flat (one per screen); this page groups them by the job they belong to. The real screens are built from Chakra + the shared components — the mock has done its job once its shape is agreed.</p>
+    </div>
+  </header>
+
+  <main class="max-w-[1040px] mx-auto p-[8px_24px_56px]">
+    <!-- THE SHELL -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">The app shell</h2><span class="text-fg-subtle text-[13px]">the layout every screen renders inside</span></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="app-shell.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">App Shell</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The sidebar, nav, <strong>TeamSwitcher</strong>, top bar and content area — the layout that wraps every screen. Its nav links launch the mocks below.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">app-shell.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- RECEIVING FLOW -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Receiving — a delivery arrives</h2><span class="text-fg-subtle text-[13px]">find it, count it in, record it, label it</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">restock-list</code><span class="opacity-60">›</span><code class="text-fg-muted">accept-rack</code><span class="opacity-60">›</span><code class="text-fg-muted">batch-receipt</code><span class="opacity-60">›</span><code class="text-fg-muted">print-labels</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="restock-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Restocks — List</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The warehouse's inbound work queue — restocks in transit / arrived / accepted. Find an arrived one and accept it onto racks.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">restock-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="accept-rack.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Accept Rack</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">Count a delivery onto racks — arrived vs asked, damage, and which shelf each line goes on, in one step.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">accept-rack.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[var(--pos-border)]">built · #206</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="batch-receipt.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Batch Receipt</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The goods-received record for one delivery: arrived / damaged / accepted / cost / rack per product. Printable.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">batch-receipt.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="print-labels.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Print Labels</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">One sticker per shelved unit — QR (<code>product-code/batch-id</code>) + rack — so pickers can find and scan it. Printable.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">print-labels.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[var(--pos-border)]">built · #207</span></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- WAREHOUSE PRODUCT & STOCK -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Warehouse — a product's stock</h2><span class="text-fg-subtle text-[13px]">the detail page is the hub; drill into a batch; Move &amp; Adjust act on stock</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">warehouse-product-detail</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">batch-list</code><span class="opacity-60">›</span><code class="text-fg-muted">batch-detail</code><span class="opacity-60">›</span><code class="text-fg-muted">batch-receipt</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">stock-move</code><span class="text-[11px] font-semibold text-fg-subtle">/</span><code class="text-fg-muted">stock-adjust</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="warehouse-product-detail.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Warehouse Product Detail</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The warehouse's stock view of a product it holds but doesn't own. Six tabs: Info, Prices, Placement, Batches, Stock &amp; Placement History.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">warehouse-product-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-semibold text-fg-subtle">hub</span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color-mix(in_srgb,var(--accent)_30%,transparent)]">accepted · #209</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="batch-detail.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Batch Detail</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The living detail of one batch (a product's units from one delivery): identity, lifecycle (arrived → damaged → used → ready), where it sits now, and its own history.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">batch-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="batch-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Batches — List</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">A warehouse-wide list of every stock batch — search, filter by supplier / expiry, spot expiring or depleted stock, and drill into one.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">batch-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="stock-move.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Move Stock</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">Relocate one delivery's units between shelves — a transfer that nets to zero, with live before/after balances. (Dialog)</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">stock-move.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color-mix(in_srgb,var(--accent)_30%,transparent)]">accepted · #210</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="stock-adjust.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Adjust Stock</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">Correct a shelf's count — reason (damaged / lost / found / recount) drives whether it targets a batch. (Dialog)</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">stock-adjust.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color-mix(in_srgb,var(--accent)_30%,transparent)]">accepted · #211</span></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- SELLING TEAM -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Selling team</h2><span class="text-fg-subtle text-[13px]">the owner's side — catalogue, orders &amp; restocks</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">product-detail-selling</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">order-drafts-list</code><span class="opacity-60">›</span><code class="text-fg-muted">order-draft-detail</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">selling/restock-list</code><span class="opacity-60">›</span><code class="text-fg-muted">selling/restock-detail</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="product-detail-selling.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Product Detail — Selling</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The selling team's view of a product it owns in the catalogue — the counterpart to the warehouse's stock view.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">product-detail-selling.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #204</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="order-drafts-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Order Drafts — List</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The list of order drafts — the queue a seller works through.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">order-drafts-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #203</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="order-draft-detail.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Order Draft — Detail</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">A single order draft, in detail — the lines, the customer, the totals.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">order-draft-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #203</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="selling/restock-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Restocks — List (selling)</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The <strong>owner's</strong> side of a restock — draft it, order it, track it, check it in. Status tabs across the whole lifecycle (Draft → Ordered → In transit → Arrived → Received); a <strong>New restock</strong> starts here, unlike the warehouse's receive-only queue.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">selling/restock-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="selling/restock-detail.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Restock — Detail (selling)</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">One restock, the hard case — <strong>received short with damage</strong>. A lifecycle timeline, a line-level ordered-vs-received reconciliation, shipping, and the cost basis: you're billed on what landed, not what was ordered (#74).</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">selling/restock-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock</span></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- MONEY BETWEEN TEAMS -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Money — between teams</h2><span class="text-fg-subtle text-[13px]">what we owe and are owed (settlement)</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">liability-list</code><span class="opacity-60">›</span><code class="text-fg-muted">liability-detail</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">record / confirm payment</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="liability-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Liability — Payables &amp; Receivables</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">One row per team you have a running balance with — <strong>payable &amp; receivable</strong> in one list, named never signed. Ageing (<em>oldest unsettled</em>) is what a manager chases; a <em>payable limit</em> meter shows headroom before a creditor blocks your next order; a badge surfaces payments awaiting your confirmation.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">liability-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #185</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="liability-detail.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Liability — Counterparty Detail</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">One relationship's running history — every entry <strong>names what caused it</strong> (<code>Product fee · order #412</code>), the balance walks after each, and a cancelled order's fee &amp; its reversal read as one story. <strong>Confirm</strong> a payment they recorded, or <strong>record</strong> one you sent.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">liability-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #185</span></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- COSTS — a team's own spending -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Money — a team's own costs</h2><span class="text-fg-subtle text-[13px]">what a team spent that no order caused (expenses → profit)</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">expense-list</code><span class="opacity-60">›</span><code class="text-fg-muted">record cost</code><span class="text-[11px] font-semibold text-fg-subtle">·</span><code class="text-fg-muted">profit = revenue − cost</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="expense-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Expenses — Cost List</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">Everything a team spent that <strong>no order caused</strong> — ads, payroll, operational — <strong>typed by a person</strong>, totalled by kind over the <strong>date range you pick</strong>. Edit fixes a mistype; Void retracts it (confirmed — it moves profit) yet the row stays, struck through and out of every total.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">expense-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock · #161</span></div>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-[1040px] mx-auto p-[0_24px_40px] text-fg-subtle text-[12.5px]">
+    New mock? Add the file (flat, one per screen), a row in <code class="bg-surface-2 border border-line rounded-[5px] py-px px-[5px]">README.md</code>, and a card here. Status: <span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-pos bg-pos-soft border-[var(--pos-border)]" style="font-size:10px">built</span> shipped to the app · <span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-accent-fg bg-accent-soft border-[color-mix(in_srgb,var(--accent)_30%,transparent)]" style="font-size:10px">accepted</span> agreed, implementation tracked · <span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border" style="font-size:10px">in review</span> awaiting a nod · <span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line" style="font-size:10px">mock</span> preview only.
+  </footer>
+
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

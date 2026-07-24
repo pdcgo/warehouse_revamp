@@ -1,0 +1,127 @@
+package selling_v1
+
+import (
+	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
+)
+
+// OrderStatus as stored in the `status` TEXT column. Keep in sync with the proto enum — this mapper
+// is the only writer/reader, so validity is guarded here (no DB CHECK, cf. #80).
+const (
+	orderStatusPlaced    = "placed"
+	orderStatusConfirmed = "confirmed"
+	orderStatusCancelled = "cancelled"
+
+	// The warehouse's states (#150): CONFIRMED -> PICKING -> PACKED -> SHIPPED.
+	orderStatusPicking = "picking"
+	orderStatusPacked  = "packed"
+	orderStatusShipped = "shipped"
+)
+
+func orderStatusToText(s sellingv1.OrderStatus) string {
+	switch s {
+	case sellingv1.OrderStatus_ORDER_STATUS_PLACED:
+		return orderStatusPlaced
+	case sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED:
+		return orderStatusConfirmed
+	case sellingv1.OrderStatus_ORDER_STATUS_CANCELLED:
+		return orderStatusCancelled
+	case sellingv1.OrderStatus_ORDER_STATUS_PICKING:
+		return orderStatusPicking
+	case sellingv1.OrderStatus_ORDER_STATUS_PACKED:
+		return orderStatusPacked
+	case sellingv1.OrderStatus_ORDER_STATUS_SHIPPED:
+		return orderStatusShipped
+	default:
+		return ""
+	}
+}
+
+func orderStatusFromText(text string) sellingv1.OrderStatus {
+	switch text {
+	case orderStatusPlaced:
+		return sellingv1.OrderStatus_ORDER_STATUS_PLACED
+	case orderStatusConfirmed:
+		return sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED
+	case orderStatusCancelled:
+		return sellingv1.OrderStatus_ORDER_STATUS_CANCELLED
+	case orderStatusPicking:
+		return sellingv1.OrderStatus_ORDER_STATUS_PICKING
+	case orderStatusPacked:
+		return sellingv1.OrderStatus_ORDER_STATUS_PACKED
+	case orderStatusShipped:
+		return sellingv1.OrderStatus_ORDER_STATUS_SHIPPED
+	default:
+		return sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED
+	}
+}
+
+func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
+	items := make([]*sellingv1.OrderItem, 0, len(o.Items))
+	for i := range o.Items {
+		items = append(items, &sellingv1.OrderItem{
+			Id:        o.Items[i].ID,
+			ProductId: o.Items[i].ProductID,
+			Sku:       o.Items[i].SKU,
+			Name:      o.Items[i].Name,
+			Quantity:  o.Items[i].Quantity,
+			UnitPrice: o.Items[i].UnitPrice,
+			UnitCost:  o.Items[i].UnitCost,
+		})
+	}
+
+	return &sellingv1.Order{
+		Id:            o.ID,
+		TeamId:        o.TeamID,
+		ShopId:        o.ShopID,
+		WarehouseId:   o.WarehouseID,
+		Status:        orderStatusFromText(o.Status),
+		CustomerName:  o.CustomerName,
+		CustomerPhone: o.CustomerPhone,
+		Address:       orderAddressToProto(o),
+		ShippingCode:  o.ShippingCode,
+		Subtotal:      o.Subtotal,
+		Cogs:          o.COGS,
+		ShippingCost:  o.ShippingCost,
+		Total:         o.Total,
+		Items:         items,
+		CreatedAtUnix: o.CreatedAt.Unix(),
+	}
+}
+
+// orderAddressToProto reads the frozen address off the order row. Always returns a message (never
+// nil): an order with no address is an EMPTY address, not a missing field — that keeps the client
+// from having to null-check a value it will render either way.
+func orderAddressToProto(o *selling_service_models.Order) *sellingv1.OrderAddress {
+	return &sellingv1.OrderAddress{
+		ProvinsiCode:  o.ProvinsiCode,
+		ProvinsiName:  o.ProvinsiName,
+		KabupatenCode: o.KabupatenCode,
+		KabupatenName: o.KabupatenName,
+		KecamatanCode: o.KecamatanCode,
+		KecamatanName: o.KecamatanName,
+		DesaCode:      o.DesaCode,
+		DesaName:      o.DesaName,
+		KodePos:       o.KodePos,
+		AddressLine:   o.AddressLine,
+	}
+}
+
+// orderItemModels turns request lines into rows; `id` on the input is ignored.
+// It deliberately does NOT read unit_cost from the request (#74): what the goods cost comes from the
+// WAREHOUSE at order time, and a client supplying it would be writing its own margin — the one number
+// nobody placing an order should get to choose. OrderCreate stamps it after building these.
+func orderItemModels(in []*sellingv1.OrderItem) []selling_service_models.OrderItem {
+	out := make([]selling_service_models.OrderItem, 0, len(in))
+	for _, it := range in {
+		out = append(out, selling_service_models.OrderItem{
+			ProductID: it.GetProductId(),
+			SKU:       it.GetSku(),
+			Name:      it.GetName(),
+			Quantity:  it.GetQuantity(),
+			UnitPrice: it.GetUnitPrice(),
+		})
+	}
+
+	return out
+}

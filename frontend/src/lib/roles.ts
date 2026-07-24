@@ -59,6 +59,26 @@ export function canManageUsers(role: Role | undefined): boolean {
   }
 }
 
+// isTeamManager mirrors the backend policy on TeamUpdate (change a team's name/picture): the team
+// and warehouse OWNER/ADMIN roles, plus global root/admin.
+//
+// ⚠ THIS IS UX ONLY. Hiding a control hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function isTeamManager(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMIN:
+    case Role.TEAM_OWNER:
+    case Role.TEAM_ADMIN:
+    case Role.WAREHOUSE_OWNER:
+    case Role.WAREHOUSE_ADMIN:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMIN;

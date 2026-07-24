@@ -92,7 +92,9 @@ jobs:
           --health-retries 10
 
     env:
-      TEST_DATABASE_URL: host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable
+      # Tests use a SEPARATE database from dev. san_testdb creates warehouse_test on demand from
+      # the "postgres" maintenance DB the service container starts with; the e2e resets it itself.
+      TEST_DATABASE_URL: host=localhost port=5433 user=user password=password dbname=warehouse_test sslmode=disable
       REDIS_ADDR: localhost:6380
 
     steps:
@@ -120,6 +122,14 @@ jobs:
       - name: install playwright browser
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      # Every mermaid diagram in docs/ and plans/ must PARSE (#152) — a broken one renders as an
+      # error box, and the markdown looks fine in the diff. It runs in this job rather than the
+      # typecheck job because it parses in a real browser, and this is where chromium is installed.
+      # Before the e2e, since it needs no database and fails in seconds.
+      - name: lint mermaid diagrams
+        working-directory: frontend
+        run: npm run lint:mermaid
 
       # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
       # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.

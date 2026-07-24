@@ -11,6 +11,9 @@ It is at the **design stage** — almost nothing is decided. The running design 
 **[plans/plan.md](plans/plan.md)**. Read it before proposing anything, and keep it current as
 decisions land.
 
+> **This repository is PUBLIC.** Keep credentials, secrets, and the names of unrelated internal
+> systems out of anything committed — code, comments, docs, and commit messages alike.
+
 ---
 
 ## HARD RULES
@@ -36,18 +39,40 @@ The point of building new is to escape an accumulated design, not to re-derive i
 One directory per service. **The folder name always carries the `_service` suffix** —
 `hello_service`, not `hello`; `user_service`, not `user`. The Go package matches the folder.
 
+Inside a service, handlers live in a **versioned handler sub-package** named after the proto
+iface version (`warehouse.team.v1` → `team_v1`). **One file per RPC**, the constructor in
+`service.go`, and a **unit test per RPC** beside it (`<rpc>_test.go`).
+
 ```
 backend/
   cmd/app_development/       the dev server — wires services into the mux
   cmd/tool/                  the development CLI (HARD RULE 3)
   gen/                       generated code (never hand-edited)
-  pkgs/                      shared, non-service packages (e.g. san_config)
+  pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
   services/
-    hello_service/           HelloService implementation  ← package hello_service
-    <service_name>/          ← every new service goes here, one dir each
-      <service_name>_models/ db models — one file per model (HARD RULE 3)
+    team_service/            ← one dir per service (folder ends in _service)
+      team_v1/               handler sub-package (matches warehouse.team.v1)
+        service.go           NewService / NewTeamService + shared helpers
+        team_create.go       one file per RPC …
+        team_create_test.go  … and a unit test beside each (see Testing)
+        mapper.go
+      team_service_models/   db models — one file per model (HARD RULE 3)
       db_migrations/         goose migrations, owned by this service (HARD RULE 3)
 ```
+
+**Testing.** Test in priority order: **unit → integration → e2e**. **Write a unit test for each
+RPC as it's implemented** (`<rpc>_test.go` beside the handler). Unit tests run against a real
+Postgres through [backend/pkgs/san_testdb/](backend/pkgs/san_testdb/) — a per-test transaction
+that rolls back, so tests are isolated and need no cleanup (it *skips* when no DB is reachable).
+This is an **adaptation** of the reference project's scenario/seed harness, not an import of it.
+
+**Tests use a SEPARATE database — never the dev one.** All automated tests run against
+`warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
+instance (`:5433`), a different database, so a test run can never read or corrupt review data.
+`san_testdb` creates `warehouse_test` on demand and rolls back per test; the e2e resets it fresh
+each run and drops it after (`go run ./cmd/tool db reset-test|drop-test`), and runs its own API/UI
+on **dedicated ports (8081 / 5175)** so it cannot reuse — or pollute — the dev servers, and can run
+while they're up. Override the target with `TEST_DATABASE_URL`.
 
 ### 3. Models and migrations are **per service** — services stay independent
 
@@ -64,6 +89,27 @@ backend/services/<service_name>/
 - Applied state is tracked per service in its own `<service_name>_version` table.
 - A model belongs to exactly one service. If two services need the same data, that is a
   contract question (an RPC), not a reason to share a model package.
+- **A mermaid diagram must PARSE — run `npm run lint:mermaid` after writing one.** (owner, #152)
+  Characters that are ordinary in prose are syntax to mermaid, and the worst of them is **`;`**: in a
+  `sequenceDiagram` message or `Note` it ends the statement, and the whole diagram renders as an error
+  box instead of a picture. A broken diagram is invisible in review — the markdown looks fine in the
+  diff — so it is checked, not eyeballed.
+  - **Do not grep for the dangerous characters; parse the diagram.** Whether `;` breaks anything
+    depends on where it sits: inside a QUOTED `erDiagram` comment it is harmless, in a sequence
+    message it is fatal. When this check was introduced, a grep flagged 24 lines of which 5 were real,
+    and it missed a broken `subgraph` title that contained no semicolon at all.
+  - In sequence messages and notes, use **`—`** or **`,`** where you would naturally write `;`.
+  - A `subgraph` title containing punctuation (`—`, `§`, `(`) must be **quoted**:
+    `subgraph "warehouse side — undesigned §1"`.
+- **Document every schema change.** A migration that changes the schema updates
+  [docs/database-schema.md](docs/database-schema.md) **in the same commit** — one section per
+  service, each with a **mermaid** `erDiagram` of the tables and their relations. The migrations
+  are authoritative; the doc mirrors them for humans and must not drift.
+- **Document complex / cross-service RPC flows.** Any RPC with a non-trivial flow (multi-step,
+  saga, compensation) or a dependency on another service goes in
+  `docs/services/<service_name>/rpc.md`, with a **mermaid** sequence/flow diagram. Update it in the
+  same commit as any refactor, flow change, or code change that touches the flow — the doc must not
+  drift. Simple single-table CRUD RPCs do not need an entry.
 
 Migrations are driven by the **development tool** at [backend/cmd/tool/](backend/cmd/tool/)
 (`urfave/cli/v3`), run from `./backend`:
@@ -110,8 +156,12 @@ cd backend && go tool wire ./cmd/app_development
 Wire is registered as a `tool` directive in `go.mod`, so `go tool wire` survives `go mod tidy`
 (a plain `go run github.com/google/wire/cmd/wire` does not — tidy prunes the tool's own deps).
 
-A service exposes a `New<X>Service(deps...)` constructor; add it to the `wire.Build` set and
-mount its handler in `service_api.go`.
+A service exposes a `New<X>Service(deps...)` constructor; add it to the `wire.Build` set. To
+**mount** it, give the service a `register.go` (`func NewRegister(mux, service, opts)
+san_grpc.RegisterHandler`) that mounts its handler(s) and returns the proto service names it
+exposes, then add one line to `service_api.go`'s `san_grpc.Register(mux, …)` call. Mounting and
+gRPC reflection come from the same call ([backend/pkgs/san_grpc/](backend/pkgs/san_grpc/)), so a
+service can't be served without also appearing in reflection, or vice-versa.
 
 CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`).
 
@@ -156,6 +206,30 @@ This is a collaborative design. When a decision is needed, put it in the relevan
 brainstorming doc as an option with its trade-offs and **ask** — do not quietly pick one and
 build on it.
 
+### 9. A list RPC over data that can grow MUST paginate
+
+Any RPC returning a `repeated` result whose size **grows with the data** takes a required
+`warehouse.common.v1.PageFilter page` and returns a `warehouse.common.v1.PageInfo page_info`. An
+unpaginated growing list is a latent slow-query / out-of-memory bug that only bites once the table
+is full — so the default is: **when in doubt, paginate.** Removing a page filter later is a
+breaking change; adding one to a list that already hurts is an incident.
+
+- **Complies today:** `TeamList`, `UserList`, `ProductList`, `TeamAccessList`, `UserTeams`. A
+  capped typeahead like `SearchUser` (a `limit` of 1–20) satisfies the intent without a page
+  cursor — it can never return "everything". `TeamAccessList` / `UserTeams` return one person's
+  memberships (a handful in practice) but page anyway, for consistency — the bar is "returns a
+  list", not "is currently large". A caller that needs the whole set (the team switcher) asks for
+  a large first page.
+- **Exempt — bounded reference data, and the proto says so:** `ShippingList` (the courier
+  catalogue: curated, rarely-changing, dozens of rows). The moment it can grow unbounded, it stops
+  being exempt.
+- **The tree exception:** a picker that needs the WHOLE tree at once — `CategoryList` backing
+  `CategorySelect` — cannot page, because a page is a flat window and a tree needs every node to
+  assemble. A full-tree read is allowed ONLY as a deliberate, documented **picker feed**. A
+  *browse / management* screen over the same growing data must still paginate (load a level's
+  children by `parent_id`, which is naturally small). Never let a "load everything" read quietly
+  become the backing for a growing management list.
+
 ---
 
 ## Layout
@@ -199,6 +273,7 @@ it once a real domain service replaces it.
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
 | E2E (starts both servers) | `cd frontend && npm run e2e` |
+| Check every mermaid diagram parses | `cd frontend && npm run lint:mermaid` |
 
 Both must run for the UI to reach the API. The server allows CORS from
 `http://localhost:5174`; the client base URL is overridable via `VITE_API_URL`.
@@ -323,7 +398,87 @@ everything else → JSON), so they cannot disagree about what a cached value loo
   Connect-ES v2 needs no separate service plugin: `protoc-gen-es` emits the service
   descriptor, and the client is `createClient(HelloService, transport)`.
 
+### Frontend structure — `layouts/`, `pages/`, `features/` (owner, #199)
+
+```
+frontend/src/
+  layouts/            the shell: Layout, the sidebar, nav, TeamSwitcher
+  pages/<page>/
+    index.tsx         THE page component — one directory per SCREEN
+    components/       used by THIS page and nothing else
+  features/<domain>/  queries + anything shared by SEVERAL pages of one domain
+  components/         the design system (see below) — shared app-wide
+  api/ lib/ i18n/ gen/ theme.ts router.tsx
+```
+
+**One directory per PAGE, named for the screen** — `pages/order-create/`, not
+`pages/orders/new/`. Flat and route-descriptive, so every directory has exactly one `index.tsx` and
+the `components/` beside it can only mean that one page. A nested tree mirroring the URLs makes
+`components/` ambiguous the moment a parent and a child both have one.
+
+**The test for where a file goes is HOW MANY PAGES USE IT:**
+
+| Used by | Goes in |
+| --- | --- |
+| one page | `pages/<page>/components/` |
+| several pages of one domain | `features/<domain>/` |
+| the whole app, and it is a UI primitive | `components/` (the design system) |
+
+A `queries.ts` is almost always `features/`, because a domain's reads are shared by its list, its
+detail and its form. Two of the pickers (`CategorySelect`, `ShippingSelect`) had been living in domain
+folders while being curated gallery components — if a component exports a `description`, it belongs in
+`components/`.
+
+> ⚠ **`pages/<page>/components/` means ONLY THIS PAGE.** The moment a second page imports one, it has
+> become a domain component and belongs in `features/`. Leaving it where it was is how a page
+> directory quietly turns into a domain module and the rule stops meaning anything.
+
 ### The design system
+
+**BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
+`frontend/src/components/` holds 29 of them, 26 previewed with their own description at
+[`/components`](frontend/src/pages/components-gallery/index.tsx) — that gallery is the fastest way to see what
+exists, and it is generated from the components themselves so it cannot drift. `graphify query "what
+shared components exist for <the thing>"` works too.
+
+This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
+The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
+"unplaced" *selectable* while its placeholder stays disabled, because a place is not an absence
+(#136/#139); `SupplierSelect` and `ShippingSelect` had that exact bug and were fixed in #131;
+`ProductListItem`'s stock badge means the **warehouse** total, so a per-shelf number does not belong in
+it (#138). A fresh `<select>` gets none of that.
+
+If nothing fits, prefer **extending the shared component over forking it** — and if you do add one,
+it needs an `export const description` and a gallery entry in the same change (see below).
+
+**Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
+request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
+`Select`/`NativeSelect`, `Table`, `Dialog`, `Stack`, …), never a hand-rolled `<button>`, `<input>`,
+`<select>`, or a bare `<div>` styled by hand — Chakra components carry the theme's sizing, spacing,
+colours, and a11y wiring, and skipping them is how an app drifts off its design system. For a rich
+picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
+native element is genuinely needed, get an explicit ask first.
+
+Two more UI rules:
+
+- **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three
+  or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
+  opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
+  menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
+- **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
+  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
+  `Dialog`) before it runs. Never a bare one-click destructive button.
+- **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
+  "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
+- **A detail view is a PAGE, not a dialog.** "See the full record" — user detail, team detail,
+  warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
+  `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
+  confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
+- **Every curated shared component exports a `description`.** A reusable component previewed in
+  the [components gallery](frontend/src/pages/components-gallery/index.tsx) (`/components`) must
+  `export const description = "…"` alongside itself, and the gallery renders it — so the gallery
+  is living documentation generated from the components, not a parallel list that drifts. Adding a
+  new shared component to the gallery means adding its `description` in the same file.
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:
@@ -333,6 +488,16 @@ set. Two things are centralised there on purpose:
   rare (e.g. `size="xs"` on a table row action).
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
+
+**Icons come from [lucide-react](https://lucide.dev), rendered through Chakra's `<Icon>` wrapper.**
+Import the named icon, then wrap it: `import { Pencil } from "lucide-react"` →
+`<Icon as={Pencil} boxSize="4" />`. lucide is the only icon source; `<Icon>` is what makes the
+icon obey Chakra's sizing/colour tokens, so **size is a `boxSize` token, not a raw pixel prop**
+(`"4"` = 16px, the size for an `xs` row action). Do **not** import lucide icons bare
+(`<Pencil size={16} />`), and do **not** use emoji or ad-hoc unicode glyphs (`✎`, `🔑`, `⏸`) as
+icons — they render differently on every platform. Keep the button's `aria-label` — the icon is
+decorative, the label is the name. Chakra's own `CloseButton` is a primitive, not an icon, and
+stays.
 
 The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 
@@ -355,13 +520,90 @@ services grow.
 
 ---
 
+## Git workflow
+
+All work happens on a single long-lived **`dev`** branch. Commit straight to `dev` — do **not**
+create a branch or a PR per issue/task. The owner keeps `dev` checked out to preview the running
+app and review as work lands, so per-issue branch-switching just gets in the way.
+
+- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
+  should pass at each commit.
+- **Decompose big work into SUB-ISSUES, not loose top-level issues.** When a plan is large enough
+  to split into pieces, create the pieces as GitHub **sub-issues under a parent issue** (via the
+  Sub-issues feature), not as unparented standalone issues — so progress rolls up under the parent
+  and stays trackable. (owner, #81)
+- **An issue's real spec lives in its COMMENTS, not just the body.** The owner drives each
+  issue as a thread: the body is the initial ask; refinements, reworks, and NEW requirements
+  arrive as comments, and the **last comment is usually the current spec**. Before starting —
+  and before moving anything to In review — read the full comment thread and satisfy the latest
+  requirements. An issue is not done until its comments are.
+  - `gh issue view N --comments` is **broken here** (it errors on a Projects-classic GraphQL
+    deprecation). Use the REST API instead:
+    `gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'` (all) or
+    `… --jq '.[-1].body'` (last only; the array is oldest→newest).
+- **Read PRIORITY from the ISSUE, not from the project board — and do not invent it.** When
+  asked to work "by priority", the order comes from the owner's **Priority** field. Read it first.
+  - ⚠ **There are TWO fields named "Priority", and only one is real.** The owner sets an
+    **issue-level custom field** (GitHub's issue Fields, shown in the issue sidebar *above* the
+    Projects box). Project #2 *also* has a ProjectV2 field called Priority — it has **no options
+    and no values**, is not used, and reading it returns nothing. Do not "fix" it by adding
+    options; that would create a second, competing Priority.
+  - The issue-level field lives in `issue_field_values`, and **REST is the working path**:
+    ```sh
+    # one issue
+    gh api repos/pdcgo/warehouse_revamp/issues/165 \
+      --jq '[.issue_field_values[]? | "\(.issue_field_name)=\(.single_select_option.name)"]'
+    # every open issue that has one
+    gh api "repos/pdcgo/warehouse_revamp/issues?state=open&per_page=100" --paginate \
+      --jq '.[] | select(.pull_request == null)
+            | select(.issue_field_values | length > 0)
+            | "\(.number)\t\(.issue_field_values[].single_select_option.name)\t\(.title)"'
+    ```
+    The key is **`issue_field_name`**, not `name`. GraphQL exposes `Issue.issueFieldValues`, but
+    `IssueFieldSingleSelectValue` has **no `singleSelectOption`** field — a GraphQL attempt fails
+    with `undefinedField`, so use REST.
+  - `gh project item-list --format json` **does NOT include custom fields** — its items expose
+    only `content, id, status, title`. It is still the right tool for **Status** and item ids.
+  - **Most issues have no Priority set** (4 of 33 open, when this was written). Absence is normal
+    and is not a reason to rank by your own judgement: say the field is unset and **ask the owner**
+    (or propose an order for confirmation). Never present an inferred order as if it were the
+    board's.
+- Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
+  move items **Ready → In progress** when you start, and **In progress → In review** when the
+  work is finished and green on `dev`.
+  - **Move it to In progress FIRST — before writing a single line of code, as the opening step of
+    picking up the item.** Not after the first edit, not at commit time, not "later". The board is
+    how the owner sees what's being worked on right now; code that lands while the item still reads
+    *Ready* means the board lied about the state the whole time. If you catch yourself already
+    editing files with the item still in Ready, you skipped this — fix it immediately.
+  - **Stop at In review** — do **not** move to Done and do **not** `gh issue close` it yourself.
+    The owner previews on `dev`, then flips it to Done and closes the issue. Done means "the owner
+    reviewed it", not "the code landed".
+  - Board IDs for `gh project item-edit` (needs the `project` token scope —
+    `gh auth refresh -s project`):
+    - Project id `PVT_kwDOB8TF184BdVMC` · Status field id `PVTSSF_lADOB8TF184BdVMCzhX3esc`
+    - Status options: Backlog `f75ad846` · Ready `61e4505c` · In progress `47fc9ee4` ·
+      In review `df73e18b` · Done `98236657`
+    - Move: `gh project item-edit --project-id <PID> --id <ITEM> --field-id <SF>
+      --single-select-option-id <OPT>` · Find an item id:
+      `gh project item-list 2 --owner pdcgo --format json`
+- Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
+  never push `main` or merge without an explicit ask.
+
+CI (`.github/workflows/ci.yml`) runs on push-to-`main` and every PR: buf lint + generated-drift
+check, `go build/vet/test`, frontend build, and Playwright e2e against Postgres + Redis service
+containers.
+
 ## graphify
 
 This project uses [graphify](https://pypi.org/project/graphifyy/) to turn the codebase into a
 queryable knowledge graph.
 
-**Status: the graph does not exist yet.** graphify is plumbed in and dormant; it starts
-earning its keep once real modules land.
+**Status: the graph is BUILT and ACTIVE** (`graphify-out/graph.json` exists; the `PreToolUse`
+hook fires the query-before-grep hint). Real modules have landed, so the rules below apply. Keep
+it current: run `graphify update .` after landing code changes (AST-only, no API cost). The
+semantic pass is skipped unless `GEMINI_API_KEY` / `GOOGLE_API_KEY` is set — the AST graph alone
+answers structural queries, which is the no-cost default.
 
 ### Invoking it
 
@@ -372,11 +614,11 @@ graphify is not on PATH. It lives in this repo's venv:
 source .venv/Scripts/activate            # or activate, then bare `graphify`
 ```
 
-### Once code exists
+### Building and keeping it current
 
 ```sh
-graphify .                # first build (semantic pass; costs API tokens)
-graphify update .         # after changing code — AST-only, no API cost
+graphify .                # full rebuild (semantic pass; costs API tokens)
+graphify update .         # after changing code — AST-only, no API cost (the routine one)
 ```
 
 ### Rules (apply once `graphify-out/graph.json` exists)

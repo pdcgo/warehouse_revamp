@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Product Detail (selling team)</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY (#204). Hardcoded data, no build. Styled with TAILWIND     *
+ * via the Play CDN (the documented exception to "self-contained"). A     *
+ * REDESIGN of the selling team's product detail: a selling team OWNS the *
+ * product, so its detail leads with the money (price, cost, margin),     *
+ * then WHERE its stock sits across warehouses, then how it is selling.    *
+ * Tailwind's theme is mapped onto the shared :root design tokens below;   *
+ * dark mode rides on the tokens flipping at [data-theme=dark].            *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Extra status hue this screen needs beyond the shared tokens: "shipped" is info-blue. */
+    --info: #175cd3; --info-soft: #eff8ff; --info-border: #b2ddff;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+    --info: #6bb5ff; --info-soft: #12233a; --info-border: #234968;
+  }
+
+  /* The one thing utilities can't express inline: the striped mock banner. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Product Detail — selling team (#204) · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1000px] mx-auto p-[14px_20px] flex items-center gap-3.5 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] px-2 py-1 rounded-sm hover:bg-surface-2 hover:text-fg" href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Products
+      </a>
+      <div class="w-[46px] h-[46px] rounded-sm shrink-0 border border-line bg-[linear-gradient(135deg,#c4b5fd,#8b5cf6)] grid place-items-center text-white font-bold text-xs">IMG</div>
+      <div class="flex flex-col gap-0.5 min-w-0">
+        <span class="text-[19px] font-[650] leading-[1.2]">Kaos Polos Cotton Combed 30s — Hitam</span>
+        <span class="text-fg-subtle text-[12.5px]"><b class="text-fg-muted font-[550]">Fashion Pria</b> › <b class="text-fg-muted font-[550]">Atasan</b> › Kaos · <span class="text-fg-subtle text-xs [font-variant-numeric:tabular-nums]">KAOS-CC30-HTM-L</span></span>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex gap-2 flex-wrap">
+        <button class="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-sm text-fg cursor-pointer border border-line-strong bg-surface hover:bg-surface-2"><svg class="text-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+        <button class="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3.5 py-2 rounded-sm text-white cursor-pointer border border-transparent bg-accent hover:brightness-105"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M3 21h18"/></svg>Request Restock</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-[1000px] mx-auto p-5">
+    <div class="grid grid-cols-[200px_1fr] gap-5 items-start max-[780px]:grid-cols-1">
+      <nav class="flex flex-col gap-0.5 sticky top-5 max-[780px]:static max-[780px]:flex-row max-[780px]:flex-wrap" id="tabs">
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[780px]:border-l-0 max-[780px]:border-b-2 max-[780px]:border-b-transparent max-[780px]:data-[active]:border-b-accent" data-tab="overview" data-active><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Overview</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[780px]:border-l-0 max-[780px]:border-b-2 max-[780px]:border-b-transparent max-[780px]:data-[active]:border-b-accent" data-tab="pricing"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Pricing</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[780px]:border-l-0 max-[780px]:border-b-2 max-[780px]:border-b-transparent max-[780px]:data-[active]:border-b-accent" data-tab="stock"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>Stock by warehouse</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[780px]:border-l-0 max-[780px]:border-b-2 max-[780px]:border-b-transparent max-[780px]:data-[active]:border-b-accent" data-tab="orders"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Order history</button>
+        <button class="tab text-left cursor-pointer text-[13.5px] font-[550] text-fg-muted px-3 py-[9px] rounded-sm border-l-2 border-l-transparent flex items-center gap-[9px] hover:bg-surface-2 hover:text-fg data-[active]:bg-accent-soft data-[active]:text-accent-fg data-[active]:border-l-accent data-[active]:font-[650] max-[780px]:border-l-0 max-[780px]:border-b-2 max-[780px]:border-b-transparent max-[780px]:data-[active]:border-b-accent" data-tab="images"><svg class="shrink-0 opacity-85" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>Images</button>
+      </nav>
+
+      <section>
+        <!-- OVERVIEW -->
+        <div class="hidden data-[active]:block" data-panel="overview" data-active>
+          <p class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-2.5">Money</p>
+          <div class="grid gap-3.5 grid-cols-3 max-[780px]:grid-cols-2">
+            <div class="bg-accent-soft border border-transparent rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] font-semibold text-accent-fg opacity-80">Selling price</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-accent-fg">Rp 75.000</div>
+              <div class="text-xs text-fg-muted mt-[3px]">What the buyer pays — you set this.</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">HPP / cost</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">Rp 42.000</div>
+              <div class="text-xs text-fg-muted mt-[3px]">What the goods cost you.</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Margin</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-pos">Rp 33.000</div>
+              <div class="text-xs text-fg-muted mt-[3px]">44% over cost.</div>
+            </div>
+          </div>
+
+          <div class="h-4"></div>
+          <p class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-2.5">Stock &amp; sales</p>
+          <div class="grid gap-3.5 grid-cols-3 max-[780px]:grid-cols-2">
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Total stock</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">340</div>
+              <div class="text-xs text-fg-muted mt-[3px]">Across 3 warehouses.</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Incoming</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">70</div>
+              <div class="text-xs text-fg-muted mt-[3px]">Pending restocks inbound.</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Units sold · 30d</div>
+              <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">128</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Revenue · 30d</div>
+              <div class="text-[17px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">Rp 9.600.000</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Margin · 30d</div>
+              <div class="text-[17px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-pos">Rp 4.224.000</div>
+            </div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+              <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Last restock</div>
+              <div class="text-[17px] font-[650] mt-1 [font-variant-numeric:tabular-nums]"><span class="text-accent-fg font-[650]">#212</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRICING -->
+        <div class="hidden data-[active]:block" data-panel="pricing">
+          <div class="grid gap-3.5 grid-cols-2 max-[780px]:grid-cols-2">
+            <div class="bg-accent-soft border border-transparent rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] font-semibold text-accent-fg opacity-80">Selling price</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-accent-fg">Rp 75.000</div><div class="text-xs text-fg-muted mt-[3px]">Buyer-paid, per piece.</div></div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">HPP / cost</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">Rp 42.000</div><div class="text-xs text-fg-muted mt-[3px]">Server-set from the last delivery. "Unknown" if never restocked, never Rp 0 (#74).</div></div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Margin</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-pos">Rp 33.000</div><div class="text-xs text-fg-muted mt-[3px]">price − cost = 44%.</div></div>
+            <div class="bg-surface border border-line rounded shadow p-[14px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Product fee / unit</div><div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">Rp 8.000</div><div class="text-xs text-fg-muted mt-[3px]">Paid to you by the fulfilling warehouse when it sells your product (#186).</div></div>
+          </div>
+        </div>
+
+        <!-- STOCK BY WAREHOUSE -->
+        <div class="hidden data-[active]:block" data-panel="stock">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Where your stock sits</h2>
+            <p class="text-[12.5px] text-fg-muted mt-[-8px] mb-3.5">Your product lives in more than one building. This is the fan-out — which warehouse, how much, and what is on its way.</p>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">Warehouse</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line text-right [font-variant-numeric:tabular-nums]">On hand</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Incoming</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Last counted</th></tr></thead>
+              <tbody class="[&>tr:last-child>td]:border-b-0">
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="inline-flex items-center gap-[7px] font-semibold"><svg class="text-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>Gudang Jakarta</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">180</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums] text-warn font-semibold">+20</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-18</td></tr>
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="inline-flex items-center gap-[7px] font-semibold"><svg class="text-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>Gudang Surabaya</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">120</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">—</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-15</td></tr>
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="inline-flex items-center gap-[7px] font-semibold"><svg class="text-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>Gudang Bandung</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">40</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums] text-warn font-semibold">+50 <span class="text-accent-fg font-[650]">#212</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-10</td></tr>
+              </tbody>
+              <tfoot><tr><td class="font-bold border-t-2 border-line px-3 py-[11px]">Total</td><td class="font-bold border-t-2 border-line px-3 py-[11px] text-right [font-variant-numeric:tabular-nums]">340</td><td class="font-bold border-t-2 border-line px-3 py-[11px] text-right [font-variant-numeric:tabular-nums]">70</td><td class="font-bold border-t-2 border-line px-3 py-[11px] text-right [font-variant-numeric:tabular-nums]"></td></tr></tfoot>
+            </table>
+          </div></div>
+        </div>
+
+        <!-- ORDER HISTORY -->
+        <div class="hidden data-[active]:block" data-panel="orders">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Recent orders</h2>
+            <table class="w-full border-collapse text-[13.5px]">
+              <thead><tr><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">Order</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">Date</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">Customer</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Qty</th><th class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Amount</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">Status</th><th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold px-3 py-[9px] border-b border-line">From</th></tr></thead>
+              <tbody class="[&>tr:last-child>td]:border-b-0">
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="text-accent-fg font-[650]">#1048</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-22</td><td class="px-3 py-[11px] border-b border-line">Rina Wijaya</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">3</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 225.000</td><td class="px-3 py-[11px] border-b border-line"><span class="text-xs font-semibold px-[9px] py-0.5 rounded-full whitespace-nowrap bg-[var(--info-soft)] text-[var(--info)] border border-[var(--info-border)]">Shipped</span></td><td class="px-3 py-[11px] border-b border-line">Jakarta</td></tr>
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="text-accent-fg font-[650]">#1045</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-21</td><td class="px-3 py-[11px] border-b border-line">Budi Santoso</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">1</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 75.000</td><td class="px-3 py-[11px] border-b border-line"><span class="text-xs font-semibold px-[9px] py-0.5 rounded-full whitespace-nowrap bg-warn-soft text-warn border border-warn-border">Packed</span></td><td class="px-3 py-[11px] border-b border-line">Surabaya</td></tr>
+                <tr><td class="px-3 py-[11px] border-b border-line"><span class="text-accent-fg font-[650]">#1039</span></td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">2026-07-20</td><td class="px-3 py-[11px] border-b border-line">Dewi Lestari</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">5</td><td class="px-3 py-[11px] border-b border-line text-right [font-variant-numeric:tabular-nums]">Rp 375.000</td><td class="px-3 py-[11px] border-b border-line"><span class="text-xs font-semibold px-[9px] py-0.5 rounded-full whitespace-nowrap bg-accent-soft text-accent-fg">Picking</span></td><td class="px-3 py-[11px] border-b border-line">Jakarta</td></tr>
+              </tbody>
+            </table>
+          </div></div>
+        </div>
+
+        <!-- IMAGES -->
+        <div class="hidden data-[active]:block" data-panel="images">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+            <h2 class="text-[15px] font-[650] m-0 mb-3.5">Images</h2>
+            <p class="text-[12.5px] text-fg-muted mt-[-8px] mb-3.5">The catalogue gallery — the cover is position 0. You own these; a warehouse never edits them (#142).</p>
+            <div class="grid grid-cols-5 gap-3 max-[780px]:grid-cols-3">
+              <div class="aspect-square rounded-sm border border-line grid place-items-center text-white text-[11px] font-[650] bg-[linear-gradient(135deg,#c4b5fd,#8b5cf6)]">Cover</div>
+              <div class="aspect-square rounded-sm border border-line grid place-items-center text-fg-subtle text-[11px] bg-[linear-gradient(135deg,var(--surface-2),var(--border))]">2</div>
+              <div class="aspect-square rounded-sm border border-line grid place-items-center text-fg-subtle text-[11px] bg-[linear-gradient(135deg,var(--surface-2),var(--border))]">3</div>
+              <div class="aspect-square rounded-sm border border-line grid place-items-center text-fg-subtle text-[11px] bg-[linear-gradient(135deg,var(--surface-2),var(--border))]">4</div>
+              <div class="aspect-square rounded-sm border border-line grid place-items-center text-fg-subtle text-[11px] bg-[linear-gradient(135deg,var(--surface-2),var(--border))]">5</div>
+            </div>
+            <div class="h-4"></div>
+            <p class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-2.5">Description</p>
+            <p class="text-fg-muted text-[13.5px]">Kaos polos bahan cotton combed 30s, adem dan nyaman, ukuran L. Jahitan rapi, tidak mudah melar.</p>
+            <div class="h-4"></div>
+            <p class="text-xs uppercase tracking-[.04em] text-fg-subtle font-[650] m-0 mb-2.5">Sold on</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="inline-flex items-center gap-[5px] text-xs font-semibold px-[9px] py-[3px] rounded-full bg-surface-2 border border-line text-fg-muted">Shopee · Berkah Jaya Store</span>
+              <span class="inline-flex items-center gap-[5px] text-xs font-semibold px-[9px] py-[3px] rounded-full bg-surface-2 border border-line text-fg-muted">TikTok · @berkahjaya</span>
+            </div>
+          </div></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="text-fg-subtle text-xs text-center pt-4 pb-1">Static mock · click the tabs on the left to move between sections.</p>
+  </main>
+
+<script>
+  const tabs = document.getElementById("tabs");
+  const panels = [...document.querySelectorAll("[data-panel]")];
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    tabs.querySelectorAll(".tab").forEach((t) => t.toggleAttribute("data-active", t === btn));
+    panels.forEach((p) => p.toggleAttribute("data-active", p.dataset.panel === btn.dataset.tab));
+  });
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+      });
+    })();
+  </script>
+</body>
+</html>

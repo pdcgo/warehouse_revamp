@@ -24,6 +24,72 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+// valid schedule row.
+type Weekday int32
+
+const (
+	Weekday_WEEKDAY_UNSPECIFIED Weekday = 0
+	Weekday_WEEKDAY_MONDAY      Weekday = 1
+	Weekday_WEEKDAY_TUESDAY     Weekday = 2
+	Weekday_WEEKDAY_WEDNESDAY   Weekday = 3
+	Weekday_WEEKDAY_THURSDAY    Weekday = 4
+	Weekday_WEEKDAY_FRIDAY      Weekday = 5
+	Weekday_WEEKDAY_SATURDAY    Weekday = 6
+	Weekday_WEEKDAY_SUNDAY      Weekday = 7
+)
+
+// Enum value maps for Weekday.
+var (
+	Weekday_name = map[int32]string{
+		0: "WEEKDAY_UNSPECIFIED",
+		1: "WEEKDAY_MONDAY",
+		2: "WEEKDAY_TUESDAY",
+		3: "WEEKDAY_WEDNESDAY",
+		4: "WEEKDAY_THURSDAY",
+		5: "WEEKDAY_FRIDAY",
+		6: "WEEKDAY_SATURDAY",
+		7: "WEEKDAY_SUNDAY",
+	}
+	Weekday_value = map[string]int32{
+		"WEEKDAY_UNSPECIFIED": 0,
+		"WEEKDAY_MONDAY":      1,
+		"WEEKDAY_TUESDAY":     2,
+		"WEEKDAY_WEDNESDAY":   3,
+		"WEEKDAY_THURSDAY":    4,
+		"WEEKDAY_FRIDAY":      5,
+		"WEEKDAY_SATURDAY":    6,
+		"WEEKDAY_SUNDAY":      7,
+	}
+)
+
+func (x Weekday) Enum() *Weekday {
+	p := new(Weekday)
+	*p = x
+	return p
+}
+
+func (x Weekday) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Weekday) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_team_v1_team_proto_enumTypes[0].Descriptor()
+}
+
+func (Weekday) Type() protoreflect.EnumType {
+	return &file_warehouse_team_v1_team_proto_enumTypes[0]
+}
+
+func (x Weekday) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Weekday.Descriptor instead.
+func (Weekday) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{0}
+}
+
 // THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
 // Never redeclare it in another package.
 //
@@ -69,11 +135,11 @@ func (x TeamType) String() string {
 }
 
 func (TeamType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_team_v1_team_proto_enumTypes[0].Descriptor()
+	return file_warehouse_team_v1_team_proto_enumTypes[1].Descriptor()
 }
 
 func (TeamType) Type() protoreflect.EnumType {
-	return &file_warehouse_team_v1_team_proto_enumTypes[0]
+	return &file_warehouse_team_v1_team_proto_enumTypes[1]
 }
 
 func (x TeamType) Number() protoreflect.EnumNumber {
@@ -82,7 +148,352 @@ func (x TeamType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TeamType.Descriptor instead.
 func (TeamType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
+}
+
+// DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+// Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+type DayHours struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Weekday       Weekday                `protobuf:"varint,1,opt,name=weekday,proto3,enum=warehouse.team.v1.Weekday" json:"weekday,omitempty"`
+	Open          bool                   `protobuf:"varint,2,opt,name=open,proto3" json:"open,omitempty"`
+	OpenTime      string                 `protobuf:"bytes,3,opt,name=open_time,json=openTime,proto3" json:"open_time,omitempty"`
+	CloseTime     string                 `protobuf:"bytes,4,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DayHours) Reset() {
+	*x = DayHours{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DayHours) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DayHours) ProtoMessage() {}
+
+func (x *DayHours) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DayHours.ProtoReflect.Descriptor instead.
+func (*DayHours) Descriptor() ([]byte, []int) {
 	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *DayHours) GetWeekday() Weekday {
+	if x != nil {
+		return x.Weekday
+	}
+	return Weekday_WEEKDAY_UNSPECIFIED
+}
+
+func (x *DayHours) GetOpen() bool {
+	if x != nil {
+		return x.Open
+	}
+	return false
+}
+
+func (x *DayHours) GetOpenTime() string {
+	if x != nil {
+		return x.OpenTime
+	}
+	return ""
+}
+
+func (x *DayHours) GetCloseTime() string {
+	if x != nil {
+		return x.CloseTime
+	}
+	return ""
+}
+
+// WarehouseInfo is a warehouse team's operational data: its two weekly schedules and its location.
+type WarehouseInfo struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// When the warehouse is generally open.
+	OperatingHours []*DayHours `protobuf:"bytes,2,rep,name=operating_hours,json=operatingHours,proto3" json:"operating_hours,omitempty"`
+	// When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+	ReceivingHours []*DayHours `protobuf:"bytes,3,rep,name=receiving_hours,json=receivingHours,proto3" json:"receiving_hours,omitempty"`
+	// The warehouse's physical location / address (free text).
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseInfo) Reset() {
+	*x = WarehouseInfo{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseInfo) ProtoMessage() {}
+
+func (x *WarehouseInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseInfo.ProtoReflect.Descriptor instead.
+func (*WarehouseInfo) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *WarehouseInfo) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *WarehouseInfo) GetOperatingHours() []*DayHours {
+	if x != nil {
+		return x.OperatingHours
+	}
+	return nil
+}
+
+func (x *WarehouseInfo) GetReceivingHours() []*DayHours {
+	if x != nil {
+		return x.ReceivingHours
+	}
+	return nil
+}
+
+func (x *WarehouseInfo) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+type WarehouseInfoDetailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseInfoDetailRequest) Reset() {
+	*x = WarehouseInfoDetailRequest{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseInfoDetailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseInfoDetailRequest) ProtoMessage() {}
+
+func (x *WarehouseInfoDetailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseInfoDetailRequest.ProtoReflect.Descriptor instead.
+func (*WarehouseInfoDetailRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *WarehouseInfoDetailRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+type WarehouseInfoDetailResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Info          *WarehouseInfo         `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseInfoDetailResponse) Reset() {
+	*x = WarehouseInfoDetailResponse{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseInfoDetailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseInfoDetailResponse) ProtoMessage() {}
+
+func (x *WarehouseInfoDetailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseInfoDetailResponse.ProtoReflect.Descriptor instead.
+func (*WarehouseInfoDetailResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *WarehouseInfoDetailResponse) GetInfo() *WarehouseInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+type WarehouseInfoUpdateRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+	// row per weekday per schedule; the handler rejects duplicates and bad times.
+	OperatingHours []*DayHours `protobuf:"bytes,2,rep,name=operating_hours,json=operatingHours,proto3" json:"operating_hours,omitempty"`
+	ReceivingHours []*DayHours `protobuf:"bytes,3,rep,name=receiving_hours,json=receivingHours,proto3" json:"receiving_hours,omitempty"`
+	// The warehouse address — a full replacement, sent by the editor alongside the schedules.
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseInfoUpdateRequest) Reset() {
+	*x = WarehouseInfoUpdateRequest{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseInfoUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseInfoUpdateRequest) ProtoMessage() {}
+
+func (x *WarehouseInfoUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseInfoUpdateRequest.ProtoReflect.Descriptor instead.
+func (*WarehouseInfoUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WarehouseInfoUpdateRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *WarehouseInfoUpdateRequest) GetOperatingHours() []*DayHours {
+	if x != nil {
+		return x.OperatingHours
+	}
+	return nil
+}
+
+func (x *WarehouseInfoUpdateRequest) GetReceivingHours() []*DayHours {
+	if x != nil {
+		return x.ReceivingHours
+	}
+	return nil
+}
+
+func (x *WarehouseInfoUpdateRequest) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+type WarehouseInfoUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Info          *WarehouseInfo         `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WarehouseInfoUpdateResponse) Reset() {
+	*x = WarehouseInfoUpdateResponse{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WarehouseInfoUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WarehouseInfoUpdateResponse) ProtoMessage() {}
+
+func (x *WarehouseInfoUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WarehouseInfoUpdateResponse.ProtoReflect.Descriptor instead.
+func (*WarehouseInfoUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *WarehouseInfoUpdateResponse) GetInfo() *WarehouseInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
 }
 
 type TeamInfo struct {
@@ -96,13 +507,20 @@ type TeamInfo struct {
 	// service boundary. 0 = unset.
 	ReturnWarehouseId uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3" json:"return_warehouse_id,omitempty"`
 	ReturnUserId      uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3" json:"return_user_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+	//
+	// A convenience, not a rule: the order form pre-selects it and the person may still choose another,
+	// and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
+	// fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
+	// database at all.
+	DefaultWarehouseId uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3" json:"default_warehouse_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TeamInfo) Reset() {
 	*x = TeamInfo{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[0]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -114,7 +532,7 @@ func (x *TeamInfo) String() string {
 func (*TeamInfo) ProtoMessage() {}
 
 func (x *TeamInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[0]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -127,7 +545,7 @@ func (x *TeamInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfo.ProtoReflect.Descriptor instead.
 func (*TeamInfo) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{0}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TeamInfo) GetTeamId() uint64 {
@@ -179,6 +597,13 @@ func (x *TeamInfo) GetReturnUserId() uint64 {
 	return 0
 }
 
+func (x *TeamInfo) GetDefaultWarehouseId() uint64 {
+	if x != nil {
+		return x.DefaultWarehouseId
+	}
+	return 0
+}
+
 type Team struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -188,14 +613,17 @@ type Team struct {
 	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	Deleted     bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	// Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
-	Info          *TeamInfo `protobuf:"bytes,7,opt,name=info,proto3" json:"info,omitempty"`
+	Info *TeamInfo `protobuf:"bytes,7,opt,name=info,proto3" json:"info,omitempty"`
+	// A compact team picture (like a user avatar). Empty when the team has no picture. Set via
+	// TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
+	ImageUrl      string `protobuf:"bytes,8,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Team) Reset() {
 	*x = Team{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[1]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +635,7 @@ func (x *Team) String() string {
 func (*Team) ProtoMessage() {}
 
 func (x *Team) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[1]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,7 +648,7 @@ func (x *Team) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Team.ProtoReflect.Descriptor instead.
 func (*Team) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Team) GetId() uint64 {
@@ -272,6 +700,13 @@ func (x *Team) GetInfo() *TeamInfo {
 	return nil
 }
 
+func (x *Team) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
+}
+
 type TeamCreateRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Type          TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
@@ -284,7 +719,7 @@ type TeamCreateRequest struct {
 
 func (x *TeamCreateRequest) Reset() {
 	*x = TeamCreateRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[2]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -296,7 +731,7 @@ func (x *TeamCreateRequest) String() string {
 func (*TeamCreateRequest) ProtoMessage() {}
 
 func (x *TeamCreateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[2]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,7 +744,7 @@ func (x *TeamCreateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamCreateRequest.ProtoReflect.Descriptor instead.
 func (*TeamCreateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TeamCreateRequest) GetType() TeamType {
@@ -349,7 +784,7 @@ type TeamCreateResponse struct {
 
 func (x *TeamCreateResponse) Reset() {
 	*x = TeamCreateResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[3]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +796,7 @@ func (x *TeamCreateResponse) String() string {
 func (*TeamCreateResponse) ProtoMessage() {}
 
 func (x *TeamCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[3]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +809,7 @@ func (x *TeamCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamCreateResponse.ProtoReflect.Descriptor instead.
 func (*TeamCreateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TeamCreateResponse) GetTeam() *Team {
@@ -387,19 +822,21 @@ func (x *TeamCreateResponse) GetTeam() *Team {
 type TeamUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
-	// the two OWNER entries become dead letters — the policy would claim an owner may rename
-	// their team while the system silently required root/admin.
+	// the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
+	// team manager may edit their team while the system silently required root/admin.
 	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Absent = leave alone. `type` and `team_code` are immutable after create.
-	Name          *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description   *string `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Name        *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description *string `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// The compact team picture URL (see Team.image_url). Present & empty = clear it.
+	ImageUrl      *string `protobuf:"bytes,4,opt,name=image_url,json=imageUrl,proto3,oneof" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamUpdateRequest) Reset() {
 	*x = TeamUpdateRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[4]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +848,7 @@ func (x *TeamUpdateRequest) String() string {
 func (*TeamUpdateRequest) ProtoMessage() {}
 
 func (x *TeamUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[4]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +861,7 @@ func (x *TeamUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamUpdateRequest.ProtoReflect.Descriptor instead.
 func (*TeamUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TeamUpdateRequest) GetTeamId() uint64 {
@@ -448,6 +885,13 @@ func (x *TeamUpdateRequest) GetDescription() string {
 	return ""
 }
 
+func (x *TeamUpdateRequest) GetImageUrl() string {
+	if x != nil && x.ImageUrl != nil {
+		return *x.ImageUrl
+	}
+	return ""
+}
+
 type TeamUpdateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Team          *Team                  `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
@@ -457,7 +901,7 @@ type TeamUpdateResponse struct {
 
 func (x *TeamUpdateResponse) Reset() {
 	*x = TeamUpdateResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[5]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +913,7 @@ func (x *TeamUpdateResponse) String() string {
 func (*TeamUpdateResponse) ProtoMessage() {}
 
 func (x *TeamUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[5]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +926,7 @@ func (x *TeamUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamUpdateResponse.ProtoReflect.Descriptor instead.
 func (*TeamUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TeamUpdateResponse) GetTeam() *Team {
@@ -501,7 +945,7 @@ type TeamDeleteRequest struct {
 
 func (x *TeamDeleteRequest) Reset() {
 	*x = TeamDeleteRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +957,7 @@ func (x *TeamDeleteRequest) String() string {
 func (*TeamDeleteRequest) ProtoMessage() {}
 
 func (x *TeamDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -526,7 +970,7 @@ func (x *TeamDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDeleteRequest.ProtoReflect.Descriptor instead.
 func (*TeamDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TeamDeleteRequest) GetTeamId() uint64 {
@@ -544,7 +988,7 @@ type TeamDeleteResponse struct {
 
 func (x *TeamDeleteResponse) Reset() {
 	*x = TeamDeleteResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -556,7 +1000,7 @@ func (x *TeamDeleteResponse) String() string {
 func (*TeamDeleteResponse) ProtoMessage() {}
 
 func (x *TeamDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -569,7 +1013,7 @@ func (x *TeamDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDeleteResponse.ProtoReflect.Descriptor instead.
 func (*TeamDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{13}
 }
 
 type TeamListRequest struct {
@@ -583,7 +1027,7 @@ type TeamListRequest struct {
 
 func (x *TeamListRequest) Reset() {
 	*x = TeamListRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +1039,7 @@ func (x *TeamListRequest) String() string {
 func (*TeamListRequest) ProtoMessage() {}
 
 func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +1052,7 @@ func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListRequest.ProtoReflect.Descriptor instead.
 func (*TeamListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TeamListRequest) GetQ() string {
@@ -642,7 +1086,7 @@ type TeamListResponse struct {
 
 func (x *TeamListResponse) Reset() {
 	*x = TeamListResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -654,7 +1098,7 @@ func (x *TeamListResponse) String() string {
 func (*TeamListResponse) ProtoMessage() {}
 
 func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -667,7 +1111,7 @@ func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListResponse.ProtoReflect.Descriptor instead.
 func (*TeamListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TeamListResponse) GetTeams() []*Team {
@@ -693,7 +1137,7 @@ type TeamDetailRequest struct {
 
 func (x *TeamDetailRequest) Reset() {
 	*x = TeamDetailRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -705,7 +1149,7 @@ func (x *TeamDetailRequest) String() string {
 func (*TeamDetailRequest) ProtoMessage() {}
 
 func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -718,7 +1162,7 @@ func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailRequest.ProtoReflect.Descriptor instead.
 func (*TeamDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *TeamDetailRequest) GetTeamId() uint64 {
@@ -737,7 +1181,7 @@ type TeamDetailResponse struct {
 
 func (x *TeamDetailResponse) Reset() {
 	*x = TeamDetailResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +1193,7 @@ func (x *TeamDetailResponse) String() string {
 func (*TeamDetailResponse) ProtoMessage() {}
 
 func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +1206,7 @@ func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailResponse.ProtoReflect.Descriptor instead.
 func (*TeamDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TeamDetailResponse) GetTeam() *Team {
@@ -781,7 +1225,7 @@ type TeamByIdsRequest struct {
 
 func (x *TeamByIdsRequest) Reset() {
 	*x = TeamByIdsRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +1237,7 @@ func (x *TeamByIdsRequest) String() string {
 func (*TeamByIdsRequest) ProtoMessage() {}
 
 func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +1250,7 @@ func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsRequest.ProtoReflect.Descriptor instead.
 func (*TeamByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TeamByIdsRequest) GetIds() []uint64 {
@@ -827,7 +1271,7 @@ type TeamByIdsResponse struct {
 
 func (x *TeamByIdsResponse) Reset() {
 	*x = TeamByIdsResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +1283,7 @@ func (x *TeamByIdsResponse) String() string {
 func (*TeamByIdsResponse) ProtoMessage() {}
 
 func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +1296,7 @@ func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsResponse.ProtoReflect.Descriptor instead.
 func (*TeamByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TeamByIdsResponse) GetData() map[uint64]*Team {
@@ -868,19 +1312,20 @@ type TeamInfoUpdateRequest struct {
 	// ALL optional — explicit presence. Absent = leave alone. Present = write it, including
 	// present-and-zero = clear. Without presence there is no way to say "don't touch this", and
 	// a contact-number-only update silently blanks the bank details.
-	ContactNumber     *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	BankType          *string `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3,oneof" json:"bank_type,omitempty"`
-	BankOwnerName     *string `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3,oneof" json:"bank_owner_name,omitempty"`
-	BankAccountNumber *string `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3,oneof" json:"bank_account_number,omitempty"`
-	ReturnWarehouseId *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"` // present & 0 = clear to NULL
-	ReturnUserId      *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                // present & 0 = clear to NULL
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	ContactNumber      *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
+	BankType           *string `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3,oneof" json:"bank_type,omitempty"`
+	BankOwnerName      *string `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3,oneof" json:"bank_owner_name,omitempty"`
+	BankAccountNumber  *string `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3,oneof" json:"bank_account_number,omitempty"`
+	ReturnWarehouseId  *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"`    // present & 0 = clear to NULL
+	ReturnUserId       *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                   // present & 0 = clear to NULL
+	DefaultWarehouseId *uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3,oneof" json:"default_warehouse_id,omitempty"` // present & 0 = clear to NULL (#145)
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TeamInfoUpdateRequest) Reset() {
 	*x = TeamInfoUpdateRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -892,7 +1337,7 @@ func (x *TeamInfoUpdateRequest) String() string {
 func (*TeamInfoUpdateRequest) ProtoMessage() {}
 
 func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -905,7 +1350,7 @@ func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateRequest.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TeamInfoUpdateRequest) GetTeamId() uint64 {
@@ -957,6 +1402,13 @@ func (x *TeamInfoUpdateRequest) GetReturnUserId() uint64 {
 	return 0
 }
 
+func (x *TeamInfoUpdateRequest) GetDefaultWarehouseId() uint64 {
+	if x != nil && x.DefaultWarehouseId != nil {
+		return *x.DefaultWarehouseId
+	}
+	return 0
+}
+
 type TeamInfoUpdateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Info          *TeamInfo              `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
@@ -966,7 +1418,7 @@ type TeamInfoUpdateResponse struct {
 
 func (x *TeamInfoUpdateResponse) Reset() {
 	*x = TeamInfoUpdateResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1430,7 @@ func (x *TeamInfoUpdateResponse) String() string {
 func (*TeamInfoUpdateResponse) ProtoMessage() {}
 
 func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1443,7 @@ func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateResponse.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TeamInfoUpdateResponse) GetInfo() *TeamInfo {
@@ -1005,7 +1457,32 @@ var File_warehouse_team_v1_team_proto protoreflect.FileDescriptor
 
 const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwarehouse/team/v1/team.proto\x12\x11warehouse.team.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x95\x02\n" +
+	"\x1cwarehouse/team/v1/team.proto\x12\x11warehouse.team.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xae\x01\n" +
+	"\bDayHours\x12@\n" +
+	"\aweekday\x18\x01 \x01(\x0e2\x1a.warehouse.team.v1.WeekdayB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\aweekday\x12\x12\n" +
+	"\x04open\x18\x02 \x01(\bR\x04open\x12$\n" +
+	"\topen_time\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\x05R\bopenTime\x12&\n" +
+	"\n" +
+	"close_time\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18\x05R\tcloseTime\"\xd0\x01\n" +
+	"\rWarehouseInfo\x12\x17\n" +
+	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12D\n" +
+	"\x0foperating_hours\x18\x02 \x03(\v2\x1b.warehouse.team.v1.DayHoursR\x0eoperatingHours\x12D\n" +
+	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursR\x0ereceivingHours\x12\x1a\n" +
+	"\blocation\x18\x04 \x01(\tR\blocation\"F\n" +
+	"\x1aWarehouseInfoDetailRequest\x12 \n" +
+	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\x06\x92\xb5\x18\x02 \x01\"S\n" +
+	"\x1bWarehouseInfoDetailResponse\x124\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\x94\x02\n" +
+	"\x1aWarehouseInfoUpdateRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
+	"\x0foperating_hours\x18\x02 \x03(\v2\x1b.warehouse.team.v1.DayHoursB\b\xbaH\x05\x92\x01\x02\x10\aR\x0eoperatingHours\x12N\n" +
+	"\x0freceiving_hours\x18\x03 \x03(\v2\x1b.warehouse.team.v1.DayHoursB\b\xbaH\x05\x92\x01\x02\x10\aR\x0ereceivingHours\x12$\n" +
+	"\blocation\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\blocation:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x06\t\"S\n" +
+	"\x1bWarehouseInfoUpdateResponse\x124\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\xc7\x02\n" +
 	"\bTeamInfo\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12%\n" +
 	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x12\x1b\n" +
@@ -1013,7 +1490,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0fbank_owner_name\x18\x04 \x01(\tR\rbankOwnerName\x12.\n" +
 	"\x13bank_account_number\x18\x05 \x01(\tR\x11bankAccountNumber\x12.\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\"\xe5\x01\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\x120\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseId\"\x82\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -1021,7 +1499,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\tteam_code\x18\x04 \x01(\tR\bteamCode\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x18\n" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12/\n" +
-	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\"\xd0\x01\n" +
+	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\x12\x1b\n" +
+	"\timage_url\x18\b \x01(\tR\bimageUrl\"\xd0\x01\n" +
 	"\x11TeamCreateRequest\x12=\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\x04type\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
@@ -1031,16 +1510,18 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"A\n" +
 	"\x12TeamCreateResponse\x12+\n" +
-	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xb4\x01\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xf0\x01\n" +
 	"\x11TeamUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12#\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x04\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12/\n" +
-	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02H\x01R\vdescription\x88\x01\x01:\n" +
-	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x06B\a\n" +
+	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02H\x01R\vdescription\x88\x01\x01\x12*\n" +
+	"\timage_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x02R\bimageUrl\x88\x01\x01:\f\x92\xb5\x18\b\n" +
+	"\x06\x01\x02\x03\x04\x06\tB\a\n" +
 	"\x05_nameB\x0e\n" +
-	"\f_description\"A\n" +
+	"\f_descriptionB\f\n" +
+	"\n" +
+	"_image_url\"A\n" +
 	"\x12TeamUpdateResponse\x12+\n" +
 	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"?\n" +
 	"\x11TeamDeleteRequest\x12 \n" +
@@ -1064,7 +1545,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2..warehouse.team.v1.TeamByIdsResponse.DataEntryR\x04data\x1aP\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.warehouse.team.v1.TeamR\x05value:\x028\x01\"\xf8\x03\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.warehouse.team.v1.TeamR\x05value:\x028\x01\"\xc8\x04\n" +
 	"\x15TeamInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
 	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x12)\n" +
@@ -1072,7 +1553,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0fbank_owner_name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x02R\rbankOwnerName\x88\x01\x01\x12<\n" +
 	"\x13bank_account_number\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18<H\x03R\x11bankAccountNumber\x88\x01\x01\x123\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04H\x04R\x11returnWarehouseId\x88\x01\x01\x12)\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04H\x05R\freturnUserId\x88\x01\x01:\f\x92\xb5\x18\b\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04H\x05R\freturnUserId\x88\x01\x01\x125\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04H\x06R\x12defaultWarehouseId\x88\x01\x01:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\tB\x11\n" +
 	"\x0f_contact_numberB\f\n" +
 	"\n" +
@@ -1080,15 +1562,25 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x10_bank_owner_nameB\x16\n" +
 	"\x14_bank_account_numberB\x16\n" +
 	"\x14_return_warehouse_idB\x11\n" +
-	"\x0f_return_user_id\"I\n" +
+	"\x0f_return_user_idB\x17\n" +
+	"\x15_default_warehouse_id\"I\n" +
 	"\x16TeamInfoUpdateResponse\x12/\n" +
-	"\x04info\x18\x01 \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info*~\n" +
+	"\x04info\x18\x01 \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info*\xb6\x01\n" +
+	"\aWeekday\x12\x17\n" +
+	"\x13WEEKDAY_UNSPECIFIED\x10\x00\x12\x12\n" +
+	"\x0eWEEKDAY_MONDAY\x10\x01\x12\x13\n" +
+	"\x0fWEEKDAY_TUESDAY\x10\x02\x12\x15\n" +
+	"\x11WEEKDAY_WEDNESDAY\x10\x03\x12\x14\n" +
+	"\x10WEEKDAY_THURSDAY\x10\x04\x12\x12\n" +
+	"\x0eWEEKDAY_FRIDAY\x10\x05\x12\x14\n" +
+	"\x10WEEKDAY_SATURDAY\x10\x06\x12\x12\n" +
+	"\x0eWEEKDAY_SUNDAY\x10\a*~\n" +
 	"\bTeamType\x12\x19\n" +
 	"\x15TEAM_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eTEAM_TYPE_ROOT\x10\x01\x12\x13\n" +
 	"\x0fTEAM_TYPE_ADMIN\x10\x02\x12\x17\n" +
 	"\x13TEAM_TYPE_WAREHOUSE\x10\x03\x12\x15\n" +
-	"\x11TEAM_TYPE_SELLING\x10\x042\x8d\x05\n" +
+	"\x11TEAM_TYPE_SELLING\x10\x042\xf9\x06\n" +
 	"\vTeamService\x12Y\n" +
 	"\n" +
 	"TeamCreate\x12$.warehouse.team.v1.TeamCreateRequest\x1a%.warehouse.team.v1.TeamCreateResponse\x12Y\n" +
@@ -1100,7 +1592,9 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"TeamDetail\x12$.warehouse.team.v1.TeamDetailRequest\x1a%.warehouse.team.v1.TeamDetailResponse\x12V\n" +
 	"\tTeamByIds\x12#.warehouse.team.v1.TeamByIdsRequest\x1a$.warehouse.team.v1.TeamByIdsResponse\x12e\n" +
-	"\x0eTeamInfoUpdate\x12(.warehouse.team.v1.TeamInfoUpdateRequest\x1a).warehouse.team.v1.TeamInfoUpdateResponseBHZFgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1;teamv1b\x06proto3"
+	"\x0eTeamInfoUpdate\x12(.warehouse.team.v1.TeamInfoUpdateRequest\x1a).warehouse.team.v1.TeamInfoUpdateResponse\x12t\n" +
+	"\x13WarehouseInfoDetail\x12-.warehouse.team.v1.WarehouseInfoDetailRequest\x1a..warehouse.team.v1.WarehouseInfoDetailResponse\x12t\n" +
+	"\x13WarehouseInfoUpdate\x12-.warehouse.team.v1.WarehouseInfoUpdateRequest\x1a..warehouse.team.v1.WarehouseInfoUpdateResponseBHZFgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1;teamv1b\x06proto3"
 
 var (
 	file_warehouse_team_v1_team_proto_rawDescOnce sync.Once
@@ -1114,63 +1608,81 @@ func file_warehouse_team_v1_team_proto_rawDescGZIP() []byte {
 	return file_warehouse_team_v1_team_proto_rawDescData
 }
 
-var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_warehouse_team_v1_team_proto_goTypes = []any{
-	(TeamType)(0),                  // 0: warehouse.team.v1.TeamType
-	(*TeamInfo)(nil),               // 1: warehouse.team.v1.TeamInfo
-	(*Team)(nil),                   // 2: warehouse.team.v1.Team
-	(*TeamCreateRequest)(nil),      // 3: warehouse.team.v1.TeamCreateRequest
-	(*TeamCreateResponse)(nil),     // 4: warehouse.team.v1.TeamCreateResponse
-	(*TeamUpdateRequest)(nil),      // 5: warehouse.team.v1.TeamUpdateRequest
-	(*TeamUpdateResponse)(nil),     // 6: warehouse.team.v1.TeamUpdateResponse
-	(*TeamDeleteRequest)(nil),      // 7: warehouse.team.v1.TeamDeleteRequest
-	(*TeamDeleteResponse)(nil),     // 8: warehouse.team.v1.TeamDeleteResponse
-	(*TeamListRequest)(nil),        // 9: warehouse.team.v1.TeamListRequest
-	(*TeamListResponse)(nil),       // 10: warehouse.team.v1.TeamListResponse
-	(*TeamDetailRequest)(nil),      // 11: warehouse.team.v1.TeamDetailRequest
-	(*TeamDetailResponse)(nil),     // 12: warehouse.team.v1.TeamDetailResponse
-	(*TeamByIdsRequest)(nil),       // 13: warehouse.team.v1.TeamByIdsRequest
-	(*TeamByIdsResponse)(nil),      // 14: warehouse.team.v1.TeamByIdsResponse
-	(*TeamInfoUpdateRequest)(nil),  // 15: warehouse.team.v1.TeamInfoUpdateRequest
-	(*TeamInfoUpdateResponse)(nil), // 16: warehouse.team.v1.TeamInfoUpdateResponse
-	nil,                            // 17: warehouse.team.v1.TeamByIdsResponse.DataEntry
-	(*v1.PageFilter)(nil),          // 18: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),            // 19: warehouse.common.v1.PageInfo
+	(Weekday)(0),                        // 0: warehouse.team.v1.Weekday
+	(TeamType)(0),                       // 1: warehouse.team.v1.TeamType
+	(*DayHours)(nil),                    // 2: warehouse.team.v1.DayHours
+	(*WarehouseInfo)(nil),               // 3: warehouse.team.v1.WarehouseInfo
+	(*WarehouseInfoDetailRequest)(nil),  // 4: warehouse.team.v1.WarehouseInfoDetailRequest
+	(*WarehouseInfoDetailResponse)(nil), // 5: warehouse.team.v1.WarehouseInfoDetailResponse
+	(*WarehouseInfoUpdateRequest)(nil),  // 6: warehouse.team.v1.WarehouseInfoUpdateRequest
+	(*WarehouseInfoUpdateResponse)(nil), // 7: warehouse.team.v1.WarehouseInfoUpdateResponse
+	(*TeamInfo)(nil),                    // 8: warehouse.team.v1.TeamInfo
+	(*Team)(nil),                        // 9: warehouse.team.v1.Team
+	(*TeamCreateRequest)(nil),           // 10: warehouse.team.v1.TeamCreateRequest
+	(*TeamCreateResponse)(nil),          // 11: warehouse.team.v1.TeamCreateResponse
+	(*TeamUpdateRequest)(nil),           // 12: warehouse.team.v1.TeamUpdateRequest
+	(*TeamUpdateResponse)(nil),          // 13: warehouse.team.v1.TeamUpdateResponse
+	(*TeamDeleteRequest)(nil),           // 14: warehouse.team.v1.TeamDeleteRequest
+	(*TeamDeleteResponse)(nil),          // 15: warehouse.team.v1.TeamDeleteResponse
+	(*TeamListRequest)(nil),             // 16: warehouse.team.v1.TeamListRequest
+	(*TeamListResponse)(nil),            // 17: warehouse.team.v1.TeamListResponse
+	(*TeamDetailRequest)(nil),           // 18: warehouse.team.v1.TeamDetailRequest
+	(*TeamDetailResponse)(nil),          // 19: warehouse.team.v1.TeamDetailResponse
+	(*TeamByIdsRequest)(nil),            // 20: warehouse.team.v1.TeamByIdsRequest
+	(*TeamByIdsResponse)(nil),           // 21: warehouse.team.v1.TeamByIdsResponse
+	(*TeamInfoUpdateRequest)(nil),       // 22: warehouse.team.v1.TeamInfoUpdateRequest
+	(*TeamInfoUpdateResponse)(nil),      // 23: warehouse.team.v1.TeamInfoUpdateResponse
+	nil,                                 // 24: warehouse.team.v1.TeamByIdsResponse.DataEntry
+	(*v1.PageFilter)(nil),               // 25: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                 // 26: warehouse.common.v1.PageInfo
 }
 var file_warehouse_team_v1_team_proto_depIdxs = []int32{
-	0,  // 0: warehouse.team.v1.Team.type:type_name -> warehouse.team.v1.TeamType
-	1,  // 1: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
-	0,  // 2: warehouse.team.v1.TeamCreateRequest.type:type_name -> warehouse.team.v1.TeamType
-	2,  // 3: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
-	2,  // 4: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
-	0,  // 5: warehouse.team.v1.TeamListRequest.team_type:type_name -> warehouse.team.v1.TeamType
-	18, // 6: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	2,  // 7: warehouse.team.v1.TeamListResponse.teams:type_name -> warehouse.team.v1.Team
-	19, // 8: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	2,  // 9: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
-	17, // 10: warehouse.team.v1.TeamByIdsResponse.data:type_name -> warehouse.team.v1.TeamByIdsResponse.DataEntry
-	1,  // 11: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
-	2,  // 12: warehouse.team.v1.TeamByIdsResponse.DataEntry.value:type_name -> warehouse.team.v1.Team
-	3,  // 13: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
-	5,  // 14: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
-	7,  // 15: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
-	9,  // 16: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
-	11, // 17: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
-	13, // 18: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
-	15, // 19: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
-	4,  // 20: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
-	6,  // 21: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
-	8,  // 22: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
-	10, // 23: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
-	12, // 24: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
-	14, // 25: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
-	16, // 26: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
-	20, // [20:27] is the sub-list for method output_type
-	13, // [13:20] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	0,  // 0: warehouse.team.v1.DayHours.weekday:type_name -> warehouse.team.v1.Weekday
+	2,  // 1: warehouse.team.v1.WarehouseInfo.operating_hours:type_name -> warehouse.team.v1.DayHours
+	2,  // 2: warehouse.team.v1.WarehouseInfo.receiving_hours:type_name -> warehouse.team.v1.DayHours
+	3,  // 3: warehouse.team.v1.WarehouseInfoDetailResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
+	2,  // 4: warehouse.team.v1.WarehouseInfoUpdateRequest.operating_hours:type_name -> warehouse.team.v1.DayHours
+	2,  // 5: warehouse.team.v1.WarehouseInfoUpdateRequest.receiving_hours:type_name -> warehouse.team.v1.DayHours
+	3,  // 6: warehouse.team.v1.WarehouseInfoUpdateResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
+	1,  // 7: warehouse.team.v1.Team.type:type_name -> warehouse.team.v1.TeamType
+	8,  // 8: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
+	1,  // 9: warehouse.team.v1.TeamCreateRequest.type:type_name -> warehouse.team.v1.TeamType
+	9,  // 10: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
+	9,  // 11: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
+	1,  // 12: warehouse.team.v1.TeamListRequest.team_type:type_name -> warehouse.team.v1.TeamType
+	25, // 13: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	9,  // 14: warehouse.team.v1.TeamListResponse.teams:type_name -> warehouse.team.v1.Team
+	26, // 15: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	9,  // 16: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
+	24, // 17: warehouse.team.v1.TeamByIdsResponse.data:type_name -> warehouse.team.v1.TeamByIdsResponse.DataEntry
+	8,  // 18: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
+	9,  // 19: warehouse.team.v1.TeamByIdsResponse.DataEntry.value:type_name -> warehouse.team.v1.Team
+	10, // 20: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
+	12, // 21: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
+	14, // 22: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
+	16, // 23: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
+	18, // 24: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
+	20, // 25: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
+	22, // 26: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
+	4,  // 27: warehouse.team.v1.TeamService.WarehouseInfoDetail:input_type -> warehouse.team.v1.WarehouseInfoDetailRequest
+	6,  // 28: warehouse.team.v1.TeamService.WarehouseInfoUpdate:input_type -> warehouse.team.v1.WarehouseInfoUpdateRequest
+	11, // 29: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
+	13, // 30: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
+	15, // 31: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
+	17, // 32: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
+	19, // 33: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
+	21, // 34: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
+	23, // 35: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
+	5,  // 36: warehouse.team.v1.TeamService.WarehouseInfoDetail:output_type -> warehouse.team.v1.WarehouseInfoDetailResponse
+	7,  // 37: warehouse.team.v1.TeamService.WarehouseInfoUpdate:output_type -> warehouse.team.v1.WarehouseInfoUpdateResponse
+	29, // [29:38] is the sub-list for method output_type
+	20, // [20:29] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_team_v1_team_proto_init() }
@@ -1178,15 +1690,15 @@ func file_warehouse_team_v1_team_proto_init() {
 	if File_warehouse_team_v1_team_proto != nil {
 		return
 	}
-	file_warehouse_team_v1_team_proto_msgTypes[4].OneofWrappers = []any{}
-	file_warehouse_team_v1_team_proto_msgTypes[14].OneofWrappers = []any{}
+	file_warehouse_team_v1_team_proto_msgTypes[10].OneofWrappers = []any{}
+	file_warehouse_team_v1_team_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_team_v1_team_proto_rawDesc), len(file_warehouse_team_v1_team_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   17,
+			NumEnums:      2,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

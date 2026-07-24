@@ -3,16 +3,20 @@ import type { ReactNode } from "react";
 import { Button, CloseButton, Dialog, Portal, Text } from "@chakra-ui/react";
 
 interface ConfirmDialogProps {
-  trigger: ReactNode;
+  // Optional: when this dialog is opened from a menu item, the page controls `open` and there is
+  // no inline trigger. Left absent, the dialog triggers itself (products/categories still do).
+  trigger?: ReactNode;
   title: string;
   message: string;
   confirmLabel?: string;
   destructive?: boolean;
   onConfirm: () => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Every destructive action goes through this. It is not decoration: delete and suspend are the
-// two things in this app that cannot be undone with a click, and both are one row-icon away.
+// two things in this app that cannot be undone with a click, and both are one menu-item away.
 export function ConfirmDialog({
   trigger,
   title,
@@ -20,9 +24,22 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   destructive = true,
   onConfirm,
+  open: openProp,
+  onOpenChange,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+  // Controlled when `open` is supplied; otherwise the dialog owns its own open state.
+  const isControlled = openProp !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = isControlled ? openProp : uncontrolledOpen;
   const [busy, setBusy] = useState(false);
+
+  function setOpen(next: boolean) {
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setUncontrolledOpen(next);
+    }
+  }
 
   async function confirm() {
     setBusy(true);
@@ -37,7 +54,7 @@ export function ConfirmDialog({
 
   return (
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)} role="alertdialog">
-      <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
+      {trigger && <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>}
 
       <Portal>
         <Dialog.Backdrop />

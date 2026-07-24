@@ -7,8 +7,18 @@
 package main
 
 import (
-	"github.com/pdcgo/warehouse_revamp/backend/services/team_service"
-	"github.com/pdcgo/warehouse_revamp/backend/services/user_service"
+	"github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 // Injectors from wire.go:
@@ -28,13 +38,30 @@ func InitializeApp() (*App, error) {
 	signer := NewSigner(config)
 	cacheManager := NewCache(config)
 	roleResolver := NewRoleResolver(db, cacheManager)
-	authService := user_service.NewAuthService(db, signer, roleResolver)
+	otpVerification := NewOtp(config)
+	authService := user_v1.NewAuthService(db, signer, roleResolver, otpVerification)
 	mainInternalHTTPClient := NewInternalHTTPClient()
 	teamServiceClient := NewTeamClient(config, mainInternalHTTPClient)
-	service := user_service.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
+	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
-	team_serviceService := team_service.NewService(db, userServiceClient)
-	serveMux, err := NewServeMux(authService, service, team_serviceService, roleResolver, signer)
+	team_v1Service := team_v1.NewService(db, userServiceClient)
+	shipping_v1Service := shipping_v1.NewService(db)
+	product_v1Service := product_v1.NewService(db)
+	settlement_v1Service := settlement_v1.NewService(db)
+	inventory_v1SettlementPoster := NewSettlementPoster(settlement_v1Service)
+	expense_v1Service := expense_v1.NewService(db)
+	inventory_v1ExpensePoster := NewExpensePoster(expense_v1Service)
+	inventory_v1Service := inventory_v1.NewService(db, inventory_v1SettlementPoster, inventory_v1ExpensePoster)
+	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
+	revenue_v1Service := revenue_v1.NewService(db)
+	eventSender := NewEventSender(revenue_v1Service, settlement_v1Service)
+	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
+	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog)
+	category_v1Service := category_v1.NewService(db)
+	docstoreConfig := NewDocumentConfig(config)
+	document_v1Service := document_v1.NewService(db, docstoreConfig)
+	region_v1Service := region_v1.NewService(db)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, revenue_v1Service, expense_v1Service, settlement_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

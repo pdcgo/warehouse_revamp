@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package warehouse.category.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/category/v1;categoryv1";
+
+// CategoryService owns `categories` — a GLOBAL, nested product-category taxonomy. It is not
+// team-scoped: root/admin curate one shared tree, and everyone reads it. A category may have a
+// parent (parent_id = 0 means top-level), so the list forms a tree.
+service CategoryService {
+  rpc CategoryList(CategoryListRequest) returns (CategoryListResponse);
+  rpc CategoryCreate(CategoryCreateRequest) returns (CategoryCreateResponse);
+  rpc CategoryUpdate(CategoryUpdateRequest) returns (CategoryUpdateResponse);
+  rpc CategoryDelete(CategoryDeleteRequest) returns (CategoryDeleteResponse);
+}
+
+message Category {
+  uint64 id = 1;
+  string name = 2;
+  uint64 parent_id = 3; // 0 = top-level
+}
+
+message CategoryListRequest {
+  // The taxonomy is reference data — any authenticated user may read it (the category picker needs
+  // it). Curation (below) is root/admin only.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+}
+
+message CategoryListResponse {
+  // Flat list (each with its parent_id); the client assembles the tree.
+  repeated Category categories = 1;
+}
+
+message CategoryCreateRequest {
+  // Curating the shared taxonomy is a SYSTEM-level action — root/admin only, and deliberately
+  // UNSCOPED (there is no team). Never add a team-level role here without a use_scope field.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  uint64 parent_id = 2; // 0 = top-level
+}
+
+message CategoryCreateResponse {
+  Category category = 1;
+}
+
+message CategoryUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 category_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone.
+  optional string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  optional uint64 parent_id = 3; // present = reparent (0 = make top-level)
+}
+
+message CategoryUpdateResponse {
+  Category category = 1;
+}
+
+message CategoryDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 category_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message CategoryDeleteResponse {}

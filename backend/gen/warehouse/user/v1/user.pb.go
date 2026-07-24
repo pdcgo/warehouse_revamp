@@ -31,10 +31,12 @@ const (
 // allow_only_authenticated policy, so any logged-in user could harvest every colleague's email
 // and phone number. A name and an id are all a picker needs.
 type PublicUser struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Name     string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
+	AvatarUrl     string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,13 +92,23 @@ func (x *PublicUser) GetName() string {
 	return ""
 }
 
+func (x *PublicUser) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
 type UpdateProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// NO user_id. The subject is the token holder — same rule as ResetPassword.
 	// Absent = leave alone.
-	Name          *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email         *string `protobuf:"bytes,2,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	PhoneNumber   *string `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
+	Name        *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Email       *string `protobuf:"bytes,2,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	PhoneNumber *string `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
+	// The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
+	// alone; present-and-empty = clear it.
+	AvatarUrl     *string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3,oneof" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -148,6 +160,13 @@ func (x *UpdateProfileRequest) GetEmail() string {
 func (x *UpdateProfileRequest) GetPhoneNumber() string {
 	if x != nil && x.PhoneNumber != nil {
 		return *x.PhoneNumber
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetAvatarUrl() string {
+	if x != nil && x.AvatarUrl != nil {
+		return *x.AvatarUrl
 	}
 	return ""
 }
@@ -786,13 +805,15 @@ func (x *SearchUserResponse) GetUsers() []*PublicUser {
 }
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
-	PhoneNumber   string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
-	IsSuspended   bool                   `protobuf:"varint,6,opt,name=is_suspended,json=isSuspended,proto3" json:"is_suspended,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username    string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Email       string                 `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	PhoneNumber string                 `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	IsSuspended bool                   `protobuf:"varint,6,opt,name=is_suspended,json=isSuspended,proto3" json:"is_suspended,omitempty"`
+	// A compact avatar URL (the profile picture's thumbnail); empty if none set.
+	AvatarUrl     string `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -869,6 +890,13 @@ func (x *User) GetIsSuspended() bool {
 	return false
 }
 
+func (x *User) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
 type CreateUserRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// SCOPED, and the scope does double duty:
@@ -879,7 +907,9 @@ type CreateUserRequest struct {
 	//	                is automatically root/admin-only — no extra check needed.
 	//
 	// Both tables belong to user_service, so this is ONE real transaction, not a saga.
-	TeamId      uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
+	// enforces the same rule; this is the real gate.
 	Username    string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	Password    string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
@@ -1523,6 +1553,184 @@ func (x *CheckAccessResponse) GetRole() v11.Role {
 	return v11.Role(0)
 }
 
+type RequestPasswordResetOtpRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestPasswordResetOtpRequest) Reset() {
+	*x = RequestPasswordResetOtpRequest{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestPasswordResetOtpRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestPasswordResetOtpRequest) ProtoMessage() {}
+
+func (x *RequestPasswordResetOtpRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestPasswordResetOtpRequest.ProtoReflect.Descriptor instead.
+func (*RequestPasswordResetOtpRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RequestPasswordResetOtpRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+// Deliberately EMPTY, and the handler ALWAYS succeeds — revealing whether the username exists
+// (or has a phone) would turn this into an account-enumeration oracle.
+type RequestPasswordResetOtpResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestPasswordResetOtpResponse) Reset() {
+	*x = RequestPasswordResetOtpResponse{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestPasswordResetOtpResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestPasswordResetOtpResponse) ProtoMessage() {}
+
+func (x *RequestPasswordResetOtpResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestPasswordResetOtpResponse.ProtoReflect.Descriptor instead.
+func (*RequestPasswordResetOtpResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{29}
+}
+
+type ResetPasswordWithOtpRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	NewPassword   string                 `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetPasswordWithOtpRequest) Reset() {
+	*x = ResetPasswordWithOtpRequest{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetPasswordWithOtpRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetPasswordWithOtpRequest) ProtoMessage() {}
+
+func (x *ResetPasswordWithOtpRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetPasswordWithOtpRequest.ProtoReflect.Descriptor instead.
+func (*ResetPasswordWithOtpRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ResetPasswordWithOtpRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *ResetPasswordWithOtpRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ResetPasswordWithOtpRequest) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+type ResetPasswordWithOtpResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetPasswordWithOtpResponse) Reset() {
+	*x = ResetPasswordWithOtpResponse{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetPasswordWithOtpResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetPasswordWithOtpResponse) ProtoMessage() {}
+
+func (x *ResetPasswordWithOtpResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetPasswordWithOtpResponse.ProtoReflect.Descriptor instead.
+func (*ResetPasswordWithOtpResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{31}
+}
+
 type TeamAccessItem struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1530,15 +1738,18 @@ type TeamAccessItem struct {
 	Alias  string                 `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
 	// Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
 	// rather than failing, because a display-name lookup must never take down login.
-	TeamName      string       `protobuf:"bytes,4,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
-	TeamType      v12.TeamType `protobuf:"varint,5,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
+	TeamName string       `protobuf:"bytes,4,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
+	TeamType v12.TeamType `protobuf:"varint,5,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
+	// The team's compact picture, resolved from team_service alongside the name. Empty when the team
+	// has no picture (or team_service is unreachable) — the UI falls back to initials.
+	ImageUrl      string `protobuf:"bytes,6,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamAccessItem) Reset() {
 	*x = TeamAccessItem{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[28]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1550,7 +1761,7 @@ func (x *TeamAccessItem) String() string {
 func (*TeamAccessItem) ProtoMessage() {}
 
 func (x *TeamAccessItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[28]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1563,7 +1774,7 @@ func (x *TeamAccessItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamAccessItem.ProtoReflect.Descriptor instead.
 func (*TeamAccessItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{28}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TeamAccessItem) GetTeamId() uint64 {
@@ -1601,18 +1812,28 @@ func (x *TeamAccessItem) GetTeamType() v12.TeamType {
 	return v12.TeamType(0)
 }
 
+func (x *TeamAccessItem) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
+}
+
 type TeamAccessListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
 	// authenticated user could enumerate anyone else's teams and roles.
-	UserId        uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
+	// pages so it can never return an unbounded set. The team switcher asks for a large first page.
+	Page          *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamAccessListRequest) Reset() {
 	*x = TeamAccessListRequest{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[29]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1624,7 +1845,7 @@ func (x *TeamAccessListRequest) String() string {
 func (*TeamAccessListRequest) ProtoMessage() {}
 
 func (x *TeamAccessListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[29]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1637,7 +1858,7 @@ func (x *TeamAccessListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamAccessListRequest.ProtoReflect.Descriptor instead.
 func (*TeamAccessListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{29}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *TeamAccessListRequest) GetUserId() uint64 {
@@ -1647,16 +1868,24 @@ func (x *TeamAccessListRequest) GetUserId() uint64 {
 	return 0
 }
 
+func (x *TeamAccessListRequest) GetPage() *v1.PageFilter {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
 type TeamAccessListResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Teams         []*TeamAccessItem      `protobuf:"bytes,1,rep,name=teams,proto3" json:"teams,omitempty"`
+	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamAccessListResponse) Reset() {
 	*x = TeamAccessListResponse{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[30]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1668,7 +1897,7 @@ func (x *TeamAccessListResponse) String() string {
 func (*TeamAccessListResponse) ProtoMessage() {}
 
 func (x *TeamAccessListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[30]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1681,12 +1910,135 @@ func (x *TeamAccessListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamAccessListResponse.ProtoReflect.Descriptor instead.
 func (*TeamAccessListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{30}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *TeamAccessListResponse) GetTeams() []*TeamAccessItem {
 	if x != nil {
 		return x.Teams
+	}
+	return nil
+}
+
+func (x *TeamAccessListResponse) GetPageInfo() *v1.PageInfo {
+	if x != nil {
+		return x.PageInfo
+	}
+	return nil
+}
+
+type UserTeamsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Paginated (HARD RULE 9), same as TeamAccessList.
+	Page          *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserTeamsRequest) Reset() {
+	*x = UserTeamsRequest{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserTeamsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserTeamsRequest) ProtoMessage() {}
+
+func (x *UserTeamsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserTeamsRequest.ProtoReflect.Descriptor instead.
+func (*UserTeamsRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *UserTeamsRequest) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UserTeamsRequest) GetPage() *v1.PageFilter {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+type UserTeamsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The user being viewed, so the detail screen can render them without a second round trip.
+	User *PublicUser `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
+	// correct; team_name/team_type blank if team_service is unreachable.
+	Teams         []*TeamAccessItem `protobuf:"bytes,2,rep,name=teams,proto3" json:"teams,omitempty"`
+	PageInfo      *v1.PageInfo      `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserTeamsResponse) Reset() {
+	*x = UserTeamsResponse{}
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserTeamsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserTeamsResponse) ProtoMessage() {}
+
+func (x *UserTeamsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserTeamsResponse.ProtoReflect.Descriptor instead.
+func (*UserTeamsResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *UserTeamsResponse) GetUser() *PublicUser {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *UserTeamsResponse) GetTeams() []*TeamAccessItem {
+	if x != nil {
+		return x.Teams
+	}
+	return nil
+}
+
+func (x *UserTeamsResponse) GetPageInfo() *v1.PageInfo {
+	if x != nil {
+		return x.PageInfo
 	}
 	return nil
 }
@@ -1705,7 +2057,7 @@ type TeamUserUpdateRequest struct {
 
 func (x *TeamUserUpdateRequest) Reset() {
 	*x = TeamUserUpdateRequest{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[31]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1717,7 +2069,7 @@ func (x *TeamUserUpdateRequest) String() string {
 func (*TeamUserUpdateRequest) ProtoMessage() {}
 
 func (x *TeamUserUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[31]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1730,7 +2082,7 @@ func (x *TeamUserUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamUserUpdateRequest.ProtoReflect.Descriptor instead.
 func (*TeamUserUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{31}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *TeamUserUpdateRequest) GetTeamId() uint64 {
@@ -1792,7 +2144,7 @@ type AddTeamUser struct {
 
 func (x *AddTeamUser) Reset() {
 	*x = AddTeamUser{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[32]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1804,7 +2156,7 @@ func (x *AddTeamUser) String() string {
 func (*AddTeamUser) ProtoMessage() {}
 
 func (x *AddTeamUser) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[32]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1817,7 +2169,7 @@ func (x *AddTeamUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddTeamUser.ProtoReflect.Descriptor instead.
 func (*AddTeamUser) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{32}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *AddTeamUser) GetUserId() uint64 {
@@ -1850,7 +2202,7 @@ type RemoveTeamUser struct {
 
 func (x *RemoveTeamUser) Reset() {
 	*x = RemoveTeamUser{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[33]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1862,7 +2214,7 @@ func (x *RemoveTeamUser) String() string {
 func (*RemoveTeamUser) ProtoMessage() {}
 
 func (x *RemoveTeamUser) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[33]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1875,7 +2227,7 @@ func (x *RemoveTeamUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveTeamUser.ProtoReflect.Descriptor instead.
 func (*RemoveTeamUser) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{33}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RemoveTeamUser) GetUserId() uint64 {
@@ -1893,7 +2245,7 @@ type TeamUserUpdateResponse struct {
 
 func (x *TeamUserUpdateResponse) Reset() {
 	*x = TeamUserUpdateResponse{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[34]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1905,7 +2257,7 @@ func (x *TeamUserUpdateResponse) String() string {
 func (*TeamUserUpdateResponse) ProtoMessage() {}
 
 func (x *TeamUserUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[34]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1918,7 +2270,7 @@ func (x *TeamUserUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamUserUpdateResponse.ProtoReflect.Descriptor instead.
 func (*TeamUserUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{34}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{40}
 }
 
 type RoleResolveRequest struct {
@@ -1932,7 +2284,7 @@ type RoleResolveRequest struct {
 
 func (x *RoleResolveRequest) Reset() {
 	*x = RoleResolveRequest{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[35]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1944,7 +2296,7 @@ func (x *RoleResolveRequest) String() string {
 func (*RoleResolveRequest) ProtoMessage() {}
 
 func (x *RoleResolveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[35]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1957,7 +2309,7 @@ func (x *RoleResolveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoleResolveRequest.ProtoReflect.Descriptor instead.
 func (*RoleResolveRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{35}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RoleResolveRequest) GetTeamId() uint64 {
@@ -1987,7 +2339,7 @@ type RoleResolveResponse struct {
 
 func (x *RoleResolveResponse) Reset() {
 	*x = RoleResolveResponse{}
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[36]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1999,7 +2351,7 @@ func (x *RoleResolveResponse) String() string {
 func (*RoleResolveResponse) ProtoMessage() {}
 
 func (x *RoleResolveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_user_v1_user_proto_msgTypes[36]
+	mi := &file_warehouse_user_v1_user_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2012,7 +2364,7 @@ func (x *RoleResolveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoleResolveResponse.ProtoReflect.Descriptor instead.
 func (*RoleResolveResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{36}
+	return file_warehouse_user_v1_user_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *RoleResolveResponse) GetRole() v11.Role {
@@ -2040,19 +2392,24 @@ var File_warehouse_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwarehouse/user/v1/user.proto\x12\x11warehouse.user.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"L\n" +
+	"\x1cwarehouse/user/v1/user.proto\x12\x11warehouse.user.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"k\n" +
 	"\n" +
 	"PublicUser\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xbb\x01\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\"\xf8\x01\n" +
 	"\x14UpdateProfileRequest\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12#\n" +
 	"\x05email\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x01R\x05email\x88\x01\x01\x12/\n" +
-	"\fphone_number\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01:\x06\x92\xb5\x18\x02 \x01B\a\n" +
+	"\fphone_number\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01\x12,\n" +
+	"\n" +
+	"avatar_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x03R\tavatarUrl\x88\x01\x01:\x06\x92\xb5\x18\x02 \x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_emailB\x0f\n" +
-	"\r_phone_number\"D\n" +
+	"\r_phone_numberB\r\n" +
+	"\v_avatar_url\"D\n" +
 	"\x15UpdateProfileResponse\x12+\n" +
 	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"\xdc\x01\n" +
 	"\x11UpdateUserRequest\x12 \n" +
@@ -2094,17 +2451,19 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x01q\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x02\x18dR\x01q\x12\x1f\n" +
 	"\x05limit\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit:\x06\x92\xb5\x18\x02 \x01\"I\n" +
 	"\x12SearchUserResponse\x123\n" +
-	"\x05users\x18\x01 \x03(\v2\x1d.warehouse.user.v1.PublicUserR\x05users\"\xa2\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x1d.warehouse.user.v1.PublicUserR\x05users\"\xc1\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x04 \x01(\tR\x05email\x12!\n" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12!\n" +
-	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\"\xca\x02\n" +
+	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xd7\x02\n" +
 	"\x11CreateUserRequest\x12\x1d\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x12%\n" +
-	"\busername\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x03\x18dR\busername\x12&\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x122\n" +
+	"\busername\x18\x02 \x01(\tB\x16\xbaH\x13r\x11\x10\x03\x18d2\v^[a-z0-9]+$R\busername\x12&\n" +
 	"\bpassword\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\bpassword\x12\x1c\n" +
 	"\x04name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x04name\x12\x1e\n" +
@@ -2145,17 +2504,37 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x13CheckAccessResponse\x12<\n" +
 	"\bidentity\x18\x01 \x01(\v2 .warehouse.role_base.v1.IdentityR\bidentity\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x120\n" +
-	"\x04role\x18\x03 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\"\xc8\x01\n" +
+	"\x04role\x18\x03 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\"O\n" +
+	"\x1eRequestPasswordResetOtpRequest\x12%\n" +
+	"\busername\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\busername:\x06\x92\xb5\x18\x02\x18\x01\"!\n" +
+	"\x1fRequestPasswordResetOtpResponse\"\x9a\x01\n" +
+	"\x1bResetPasswordWithOtpRequest\x12%\n" +
+	"\busername\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\busername\x12\x1d\n" +
+	"\x04code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\fR\x04code\x12-\n" +
+	"\fnew_password\x18\x03 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\vnewPassword:\x06\x92\xb5\x18\x02\x18\x01\"\x1e\n" +
+	"\x1cResetPasswordWithOtpResponse\"\xe5\x01\n" +
 	"\x0eTeamAccessItem\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x120\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x14\n" +
 	"\x05alias\x18\x03 \x01(\tR\x05alias\x12\x1b\n" +
 	"\tteam_name\x18\x04 \x01(\tR\bteamName\x128\n" +
-	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"8\n" +
+	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\x12\x1b\n" +
+	"\timage_url\x18\x06 \x01(\tR\bimageUrl\"u\n" +
 	"\x15TeamAccessListRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x04R\x06userId:\x06\x92\xb5\x18\x02 \x01\"Q\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12;\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\x8d\x01\n" +
 	"\x16TeamAccessListResponse\x127\n" +
-	"\x05teams\x18\x01 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\"\xcd\x01\n" +
+	"\x05teams\x18\x01 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\x12:\n" +
+	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"{\n" +
+	"\x10UserTeamsRequest\x12 \n" +
+	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12;\n" +
+	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\"\xbb\x01\n" +
+	"\x11UserTeamsResponse\x121\n" +
+	"\x04user\x18\x01 \x01(\v2\x1d.warehouse.user.v1.PublicUserR\x04user\x127\n" +
+	"\x05teams\x18\x02 \x03(\v2!.warehouse.user.v1.TeamAccessItemR\x05teams\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xcd\x01\n" +
 	"\x15TeamUserUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x122\n" +
 	"\x03add\x18\x02 \x01(\v2\x1e.warehouse.user.v1.AddTeamUserH\x00R\x03add\x12;\n" +
@@ -2175,13 +2554,17 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x13RoleResolveResponse\x120\n" +
 	"\x04role\x18\x01 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x129\n" +
 	"\troot_role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\brootRole\x12\x1c\n" +
-	"\tsuspended\x18\x03 \x01(\bR\tsuspended2\x86\x02\n" +
+	"\tsuspended\x18\x03 \x01(\bR\tsuspended2\x82\x04\n" +
 	"\vAuthService\x12J\n" +
 	"\x05Login\x12\x1f.warehouse.user.v1.LoginRequest\x1a .warehouse.user.v1.LoginResponse\x12M\n" +
 	"\x06Logout\x12 .warehouse.user.v1.LogoutRequest\x1a!.warehouse.user.v1.LogoutResponse\x12\\\n" +
-	"\vCheckAccess\x12%.warehouse.user.v1.CheckAccessRequest\x1a&.warehouse.user.v1.CheckAccessResponse2\xeb\t\n" +
+	"\vCheckAccess\x12%.warehouse.user.v1.CheckAccessRequest\x1a&.warehouse.user.v1.CheckAccessResponse\x12\x80\x01\n" +
+	"\x17RequestPasswordResetOtp\x121.warehouse.user.v1.RequestPasswordResetOtpRequest\x1a2.warehouse.user.v1.RequestPasswordResetOtpResponse\x12w\n" +
+	"\x14ResetPasswordWithOtp\x12..warehouse.user.v1.ResetPasswordWithOtpRequest\x1a/.warehouse.user.v1.ResetPasswordWithOtpResponse2\xc3\n" +
+	"\n" +
 	"\vUserService\x12e\n" +
-	"\x0eTeamAccessList\x12(.warehouse.user.v1.TeamAccessListRequest\x1a).warehouse.user.v1.TeamAccessListResponse\x12e\n" +
+	"\x0eTeamAccessList\x12(.warehouse.user.v1.TeamAccessListRequest\x1a).warehouse.user.v1.TeamAccessListResponse\x12V\n" +
+	"\tUserTeams\x12#.warehouse.user.v1.UserTeamsRequest\x1a$.warehouse.user.v1.UserTeamsResponse\x12e\n" +
 	"\x0eTeamUserUpdate\x12(.warehouse.user.v1.TeamUserUpdateRequest\x1a).warehouse.user.v1.TeamUserUpdateResponse\x12\\\n" +
 	"\vRoleResolve\x12%.warehouse.user.v1.RoleResolveRequest\x1a&.warehouse.user.v1.RoleResolveResponse\x12Y\n" +
 	"\n" +
@@ -2211,111 +2594,129 @@ func file_warehouse_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_warehouse_user_v1_user_proto_rawDescData
 }
 
-var file_warehouse_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_warehouse_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
 var file_warehouse_user_v1_user_proto_goTypes = []any{
-	(*PublicUser)(nil),                 // 0: warehouse.user.v1.PublicUser
-	(*UpdateProfileRequest)(nil),       // 1: warehouse.user.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),      // 2: warehouse.user.v1.UpdateProfileResponse
-	(*UpdateUserRequest)(nil),          // 3: warehouse.user.v1.UpdateUserRequest
-	(*UpdateUserResponse)(nil),         // 4: warehouse.user.v1.UpdateUserResponse
-	(*SuspendUserRequest)(nil),         // 5: warehouse.user.v1.SuspendUserRequest
-	(*SuspendUserResponse)(nil),        // 6: warehouse.user.v1.SuspendUserResponse
-	(*DeleteUserRequest)(nil),          // 7: warehouse.user.v1.DeleteUserRequest
-	(*DeleteUserResponse)(nil),         // 8: warehouse.user.v1.DeleteUserResponse
-	(*UserListRequest)(nil),            // 9: warehouse.user.v1.UserListRequest
-	(*UserListResponse)(nil),           // 10: warehouse.user.v1.UserListResponse
-	(*UserByIDsRequest)(nil),           // 11: warehouse.user.v1.UserByIDsRequest
-	(*UserByIDsResponse)(nil),          // 12: warehouse.user.v1.UserByIDsResponse
-	(*SearchUserRequest)(nil),          // 13: warehouse.user.v1.SearchUserRequest
-	(*SearchUserResponse)(nil),         // 14: warehouse.user.v1.SearchUserResponse
-	(*User)(nil),                       // 15: warehouse.user.v1.User
-	(*CreateUserRequest)(nil),          // 16: warehouse.user.v1.CreateUserRequest
-	(*CreateUserResponse)(nil),         // 17: warehouse.user.v1.CreateUserResponse
-	(*ResetPasswordRequest)(nil),       // 18: warehouse.user.v1.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),      // 19: warehouse.user.v1.ResetPasswordResponse
-	(*AdminResetPasswordRequest)(nil),  // 20: warehouse.user.v1.AdminResetPasswordRequest
-	(*AdminResetPasswordResponse)(nil), // 21: warehouse.user.v1.AdminResetPasswordResponse
-	(*LoginRequest)(nil),               // 22: warehouse.user.v1.LoginRequest
-	(*LoginResponse)(nil),              // 23: warehouse.user.v1.LoginResponse
-	(*LogoutRequest)(nil),              // 24: warehouse.user.v1.LogoutRequest
-	(*LogoutResponse)(nil),             // 25: warehouse.user.v1.LogoutResponse
-	(*CheckAccessRequest)(nil),         // 26: warehouse.user.v1.CheckAccessRequest
-	(*CheckAccessResponse)(nil),        // 27: warehouse.user.v1.CheckAccessResponse
-	(*TeamAccessItem)(nil),             // 28: warehouse.user.v1.TeamAccessItem
-	(*TeamAccessListRequest)(nil),      // 29: warehouse.user.v1.TeamAccessListRequest
-	(*TeamAccessListResponse)(nil),     // 30: warehouse.user.v1.TeamAccessListResponse
-	(*TeamUserUpdateRequest)(nil),      // 31: warehouse.user.v1.TeamUserUpdateRequest
-	(*AddTeamUser)(nil),                // 32: warehouse.user.v1.AddTeamUser
-	(*RemoveTeamUser)(nil),             // 33: warehouse.user.v1.RemoveTeamUser
-	(*TeamUserUpdateResponse)(nil),     // 34: warehouse.user.v1.TeamUserUpdateResponse
-	(*RoleResolveRequest)(nil),         // 35: warehouse.user.v1.RoleResolveRequest
-	(*RoleResolveResponse)(nil),        // 36: warehouse.user.v1.RoleResolveResponse
-	nil,                                // 37: warehouse.user.v1.UserByIDsResponse.DataEntry
-	(*v1.PageFilter)(nil),              // 38: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),                // 39: warehouse.common.v1.PageInfo
-	(v11.Role)(0),                      // 40: warehouse.role_base.v1.Role
-	(*v11.Identity)(nil),               // 41: warehouse.role_base.v1.Identity
-	(v12.TeamType)(0),                  // 42: warehouse.team.v1.TeamType
+	(*PublicUser)(nil),                      // 0: warehouse.user.v1.PublicUser
+	(*UpdateProfileRequest)(nil),            // 1: warehouse.user.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),           // 2: warehouse.user.v1.UpdateProfileResponse
+	(*UpdateUserRequest)(nil),               // 3: warehouse.user.v1.UpdateUserRequest
+	(*UpdateUserResponse)(nil),              // 4: warehouse.user.v1.UpdateUserResponse
+	(*SuspendUserRequest)(nil),              // 5: warehouse.user.v1.SuspendUserRequest
+	(*SuspendUserResponse)(nil),             // 6: warehouse.user.v1.SuspendUserResponse
+	(*DeleteUserRequest)(nil),               // 7: warehouse.user.v1.DeleteUserRequest
+	(*DeleteUserResponse)(nil),              // 8: warehouse.user.v1.DeleteUserResponse
+	(*UserListRequest)(nil),                 // 9: warehouse.user.v1.UserListRequest
+	(*UserListResponse)(nil),                // 10: warehouse.user.v1.UserListResponse
+	(*UserByIDsRequest)(nil),                // 11: warehouse.user.v1.UserByIDsRequest
+	(*UserByIDsResponse)(nil),               // 12: warehouse.user.v1.UserByIDsResponse
+	(*SearchUserRequest)(nil),               // 13: warehouse.user.v1.SearchUserRequest
+	(*SearchUserResponse)(nil),              // 14: warehouse.user.v1.SearchUserResponse
+	(*User)(nil),                            // 15: warehouse.user.v1.User
+	(*CreateUserRequest)(nil),               // 16: warehouse.user.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),              // 17: warehouse.user.v1.CreateUserResponse
+	(*ResetPasswordRequest)(nil),            // 18: warehouse.user.v1.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),           // 19: warehouse.user.v1.ResetPasswordResponse
+	(*AdminResetPasswordRequest)(nil),       // 20: warehouse.user.v1.AdminResetPasswordRequest
+	(*AdminResetPasswordResponse)(nil),      // 21: warehouse.user.v1.AdminResetPasswordResponse
+	(*LoginRequest)(nil),                    // 22: warehouse.user.v1.LoginRequest
+	(*LoginResponse)(nil),                   // 23: warehouse.user.v1.LoginResponse
+	(*LogoutRequest)(nil),                   // 24: warehouse.user.v1.LogoutRequest
+	(*LogoutResponse)(nil),                  // 25: warehouse.user.v1.LogoutResponse
+	(*CheckAccessRequest)(nil),              // 26: warehouse.user.v1.CheckAccessRequest
+	(*CheckAccessResponse)(nil),             // 27: warehouse.user.v1.CheckAccessResponse
+	(*RequestPasswordResetOtpRequest)(nil),  // 28: warehouse.user.v1.RequestPasswordResetOtpRequest
+	(*RequestPasswordResetOtpResponse)(nil), // 29: warehouse.user.v1.RequestPasswordResetOtpResponse
+	(*ResetPasswordWithOtpRequest)(nil),     // 30: warehouse.user.v1.ResetPasswordWithOtpRequest
+	(*ResetPasswordWithOtpResponse)(nil),    // 31: warehouse.user.v1.ResetPasswordWithOtpResponse
+	(*TeamAccessItem)(nil),                  // 32: warehouse.user.v1.TeamAccessItem
+	(*TeamAccessListRequest)(nil),           // 33: warehouse.user.v1.TeamAccessListRequest
+	(*TeamAccessListResponse)(nil),          // 34: warehouse.user.v1.TeamAccessListResponse
+	(*UserTeamsRequest)(nil),                // 35: warehouse.user.v1.UserTeamsRequest
+	(*UserTeamsResponse)(nil),               // 36: warehouse.user.v1.UserTeamsResponse
+	(*TeamUserUpdateRequest)(nil),           // 37: warehouse.user.v1.TeamUserUpdateRequest
+	(*AddTeamUser)(nil),                     // 38: warehouse.user.v1.AddTeamUser
+	(*RemoveTeamUser)(nil),                  // 39: warehouse.user.v1.RemoveTeamUser
+	(*TeamUserUpdateResponse)(nil),          // 40: warehouse.user.v1.TeamUserUpdateResponse
+	(*RoleResolveRequest)(nil),              // 41: warehouse.user.v1.RoleResolveRequest
+	(*RoleResolveResponse)(nil),             // 42: warehouse.user.v1.RoleResolveResponse
+	nil,                                     // 43: warehouse.user.v1.UserByIDsResponse.DataEntry
+	(*v1.PageFilter)(nil),                   // 44: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                     // 45: warehouse.common.v1.PageInfo
+	(v11.Role)(0),                           // 46: warehouse.role_base.v1.Role
+	(*v11.Identity)(nil),                    // 47: warehouse.role_base.v1.Identity
+	(v12.TeamType)(0),                       // 48: warehouse.team.v1.TeamType
 }
 var file_warehouse_user_v1_user_proto_depIdxs = []int32{
 	15, // 0: warehouse.user.v1.UpdateProfileResponse.user:type_name -> warehouse.user.v1.User
 	15, // 1: warehouse.user.v1.UpdateUserResponse.user:type_name -> warehouse.user.v1.User
-	38, // 2: warehouse.user.v1.UserListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	44, // 2: warehouse.user.v1.UserListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	15, // 3: warehouse.user.v1.UserListResponse.users:type_name -> warehouse.user.v1.User
-	39, // 4: warehouse.user.v1.UserListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	37, // 5: warehouse.user.v1.UserByIDsResponse.data:type_name -> warehouse.user.v1.UserByIDsResponse.DataEntry
+	45, // 4: warehouse.user.v1.UserListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	43, // 5: warehouse.user.v1.UserByIDsResponse.data:type_name -> warehouse.user.v1.UserByIDsResponse.DataEntry
 	0,  // 6: warehouse.user.v1.SearchUserResponse.users:type_name -> warehouse.user.v1.PublicUser
-	40, // 7: warehouse.user.v1.CreateUserRequest.role:type_name -> warehouse.role_base.v1.Role
+	46, // 7: warehouse.user.v1.CreateUserRequest.role:type_name -> warehouse.role_base.v1.Role
 	15, // 8: warehouse.user.v1.CreateUserResponse.user:type_name -> warehouse.user.v1.User
-	41, // 9: warehouse.user.v1.LoginResponse.identity:type_name -> warehouse.role_base.v1.Identity
-	41, // 10: warehouse.user.v1.CheckAccessResponse.identity:type_name -> warehouse.role_base.v1.Identity
-	40, // 11: warehouse.user.v1.CheckAccessResponse.role:type_name -> warehouse.role_base.v1.Role
-	40, // 12: warehouse.user.v1.TeamAccessItem.role:type_name -> warehouse.role_base.v1.Role
-	42, // 13: warehouse.user.v1.TeamAccessItem.team_type:type_name -> warehouse.team.v1.TeamType
-	28, // 14: warehouse.user.v1.TeamAccessListResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
-	32, // 15: warehouse.user.v1.TeamUserUpdateRequest.add:type_name -> warehouse.user.v1.AddTeamUser
-	33, // 16: warehouse.user.v1.TeamUserUpdateRequest.remove:type_name -> warehouse.user.v1.RemoveTeamUser
-	40, // 17: warehouse.user.v1.AddTeamUser.role:type_name -> warehouse.role_base.v1.Role
-	40, // 18: warehouse.user.v1.RoleResolveResponse.role:type_name -> warehouse.role_base.v1.Role
-	40, // 19: warehouse.user.v1.RoleResolveResponse.root_role:type_name -> warehouse.role_base.v1.Role
-	0,  // 20: warehouse.user.v1.UserByIDsResponse.DataEntry.value:type_name -> warehouse.user.v1.PublicUser
-	22, // 21: warehouse.user.v1.AuthService.Login:input_type -> warehouse.user.v1.LoginRequest
-	24, // 22: warehouse.user.v1.AuthService.Logout:input_type -> warehouse.user.v1.LogoutRequest
-	26, // 23: warehouse.user.v1.AuthService.CheckAccess:input_type -> warehouse.user.v1.CheckAccessRequest
-	29, // 24: warehouse.user.v1.UserService.TeamAccessList:input_type -> warehouse.user.v1.TeamAccessListRequest
-	31, // 25: warehouse.user.v1.UserService.TeamUserUpdate:input_type -> warehouse.user.v1.TeamUserUpdateRequest
-	35, // 26: warehouse.user.v1.UserService.RoleResolve:input_type -> warehouse.user.v1.RoleResolveRequest
-	16, // 27: warehouse.user.v1.UserService.CreateUser:input_type -> warehouse.user.v1.CreateUserRequest
-	18, // 28: warehouse.user.v1.UserService.ResetPassword:input_type -> warehouse.user.v1.ResetPasswordRequest
-	20, // 29: warehouse.user.v1.UserService.AdminResetPassword:input_type -> warehouse.user.v1.AdminResetPasswordRequest
-	1,  // 30: warehouse.user.v1.UserService.UpdateProfile:input_type -> warehouse.user.v1.UpdateProfileRequest
-	3,  // 31: warehouse.user.v1.UserService.UpdateUser:input_type -> warehouse.user.v1.UpdateUserRequest
-	5,  // 32: warehouse.user.v1.UserService.SuspendUser:input_type -> warehouse.user.v1.SuspendUserRequest
-	7,  // 33: warehouse.user.v1.UserService.DeleteUser:input_type -> warehouse.user.v1.DeleteUserRequest
-	9,  // 34: warehouse.user.v1.UserService.UserList:input_type -> warehouse.user.v1.UserListRequest
-	11, // 35: warehouse.user.v1.UserService.UserByIDs:input_type -> warehouse.user.v1.UserByIDsRequest
-	13, // 36: warehouse.user.v1.UserService.SearchUser:input_type -> warehouse.user.v1.SearchUserRequest
-	23, // 37: warehouse.user.v1.AuthService.Login:output_type -> warehouse.user.v1.LoginResponse
-	25, // 38: warehouse.user.v1.AuthService.Logout:output_type -> warehouse.user.v1.LogoutResponse
-	27, // 39: warehouse.user.v1.AuthService.CheckAccess:output_type -> warehouse.user.v1.CheckAccessResponse
-	30, // 40: warehouse.user.v1.UserService.TeamAccessList:output_type -> warehouse.user.v1.TeamAccessListResponse
-	34, // 41: warehouse.user.v1.UserService.TeamUserUpdate:output_type -> warehouse.user.v1.TeamUserUpdateResponse
-	36, // 42: warehouse.user.v1.UserService.RoleResolve:output_type -> warehouse.user.v1.RoleResolveResponse
-	17, // 43: warehouse.user.v1.UserService.CreateUser:output_type -> warehouse.user.v1.CreateUserResponse
-	19, // 44: warehouse.user.v1.UserService.ResetPassword:output_type -> warehouse.user.v1.ResetPasswordResponse
-	21, // 45: warehouse.user.v1.UserService.AdminResetPassword:output_type -> warehouse.user.v1.AdminResetPasswordResponse
-	2,  // 46: warehouse.user.v1.UserService.UpdateProfile:output_type -> warehouse.user.v1.UpdateProfileResponse
-	4,  // 47: warehouse.user.v1.UserService.UpdateUser:output_type -> warehouse.user.v1.UpdateUserResponse
-	6,  // 48: warehouse.user.v1.UserService.SuspendUser:output_type -> warehouse.user.v1.SuspendUserResponse
-	8,  // 49: warehouse.user.v1.UserService.DeleteUser:output_type -> warehouse.user.v1.DeleteUserResponse
-	10, // 50: warehouse.user.v1.UserService.UserList:output_type -> warehouse.user.v1.UserListResponse
-	12, // 51: warehouse.user.v1.UserService.UserByIDs:output_type -> warehouse.user.v1.UserByIDsResponse
-	14, // 52: warehouse.user.v1.UserService.SearchUser:output_type -> warehouse.user.v1.SearchUserResponse
-	37, // [37:53] is the sub-list for method output_type
-	21, // [21:37] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	47, // 9: warehouse.user.v1.LoginResponse.identity:type_name -> warehouse.role_base.v1.Identity
+	47, // 10: warehouse.user.v1.CheckAccessResponse.identity:type_name -> warehouse.role_base.v1.Identity
+	46, // 11: warehouse.user.v1.CheckAccessResponse.role:type_name -> warehouse.role_base.v1.Role
+	46, // 12: warehouse.user.v1.TeamAccessItem.role:type_name -> warehouse.role_base.v1.Role
+	48, // 13: warehouse.user.v1.TeamAccessItem.team_type:type_name -> warehouse.team.v1.TeamType
+	44, // 14: warehouse.user.v1.TeamAccessListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	32, // 15: warehouse.user.v1.TeamAccessListResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
+	45, // 16: warehouse.user.v1.TeamAccessListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	44, // 17: warehouse.user.v1.UserTeamsRequest.page:type_name -> warehouse.common.v1.PageFilter
+	0,  // 18: warehouse.user.v1.UserTeamsResponse.user:type_name -> warehouse.user.v1.PublicUser
+	32, // 19: warehouse.user.v1.UserTeamsResponse.teams:type_name -> warehouse.user.v1.TeamAccessItem
+	45, // 20: warehouse.user.v1.UserTeamsResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	38, // 21: warehouse.user.v1.TeamUserUpdateRequest.add:type_name -> warehouse.user.v1.AddTeamUser
+	39, // 22: warehouse.user.v1.TeamUserUpdateRequest.remove:type_name -> warehouse.user.v1.RemoveTeamUser
+	46, // 23: warehouse.user.v1.AddTeamUser.role:type_name -> warehouse.role_base.v1.Role
+	46, // 24: warehouse.user.v1.RoleResolveResponse.role:type_name -> warehouse.role_base.v1.Role
+	46, // 25: warehouse.user.v1.RoleResolveResponse.root_role:type_name -> warehouse.role_base.v1.Role
+	0,  // 26: warehouse.user.v1.UserByIDsResponse.DataEntry.value:type_name -> warehouse.user.v1.PublicUser
+	22, // 27: warehouse.user.v1.AuthService.Login:input_type -> warehouse.user.v1.LoginRequest
+	24, // 28: warehouse.user.v1.AuthService.Logout:input_type -> warehouse.user.v1.LogoutRequest
+	26, // 29: warehouse.user.v1.AuthService.CheckAccess:input_type -> warehouse.user.v1.CheckAccessRequest
+	28, // 30: warehouse.user.v1.AuthService.RequestPasswordResetOtp:input_type -> warehouse.user.v1.RequestPasswordResetOtpRequest
+	30, // 31: warehouse.user.v1.AuthService.ResetPasswordWithOtp:input_type -> warehouse.user.v1.ResetPasswordWithOtpRequest
+	33, // 32: warehouse.user.v1.UserService.TeamAccessList:input_type -> warehouse.user.v1.TeamAccessListRequest
+	35, // 33: warehouse.user.v1.UserService.UserTeams:input_type -> warehouse.user.v1.UserTeamsRequest
+	37, // 34: warehouse.user.v1.UserService.TeamUserUpdate:input_type -> warehouse.user.v1.TeamUserUpdateRequest
+	41, // 35: warehouse.user.v1.UserService.RoleResolve:input_type -> warehouse.user.v1.RoleResolveRequest
+	16, // 36: warehouse.user.v1.UserService.CreateUser:input_type -> warehouse.user.v1.CreateUserRequest
+	18, // 37: warehouse.user.v1.UserService.ResetPassword:input_type -> warehouse.user.v1.ResetPasswordRequest
+	20, // 38: warehouse.user.v1.UserService.AdminResetPassword:input_type -> warehouse.user.v1.AdminResetPasswordRequest
+	1,  // 39: warehouse.user.v1.UserService.UpdateProfile:input_type -> warehouse.user.v1.UpdateProfileRequest
+	3,  // 40: warehouse.user.v1.UserService.UpdateUser:input_type -> warehouse.user.v1.UpdateUserRequest
+	5,  // 41: warehouse.user.v1.UserService.SuspendUser:input_type -> warehouse.user.v1.SuspendUserRequest
+	7,  // 42: warehouse.user.v1.UserService.DeleteUser:input_type -> warehouse.user.v1.DeleteUserRequest
+	9,  // 43: warehouse.user.v1.UserService.UserList:input_type -> warehouse.user.v1.UserListRequest
+	11, // 44: warehouse.user.v1.UserService.UserByIDs:input_type -> warehouse.user.v1.UserByIDsRequest
+	13, // 45: warehouse.user.v1.UserService.SearchUser:input_type -> warehouse.user.v1.SearchUserRequest
+	23, // 46: warehouse.user.v1.AuthService.Login:output_type -> warehouse.user.v1.LoginResponse
+	25, // 47: warehouse.user.v1.AuthService.Logout:output_type -> warehouse.user.v1.LogoutResponse
+	27, // 48: warehouse.user.v1.AuthService.CheckAccess:output_type -> warehouse.user.v1.CheckAccessResponse
+	29, // 49: warehouse.user.v1.AuthService.RequestPasswordResetOtp:output_type -> warehouse.user.v1.RequestPasswordResetOtpResponse
+	31, // 50: warehouse.user.v1.AuthService.ResetPasswordWithOtp:output_type -> warehouse.user.v1.ResetPasswordWithOtpResponse
+	34, // 51: warehouse.user.v1.UserService.TeamAccessList:output_type -> warehouse.user.v1.TeamAccessListResponse
+	36, // 52: warehouse.user.v1.UserService.UserTeams:output_type -> warehouse.user.v1.UserTeamsResponse
+	40, // 53: warehouse.user.v1.UserService.TeamUserUpdate:output_type -> warehouse.user.v1.TeamUserUpdateResponse
+	42, // 54: warehouse.user.v1.UserService.RoleResolve:output_type -> warehouse.user.v1.RoleResolveResponse
+	17, // 55: warehouse.user.v1.UserService.CreateUser:output_type -> warehouse.user.v1.CreateUserResponse
+	19, // 56: warehouse.user.v1.UserService.ResetPassword:output_type -> warehouse.user.v1.ResetPasswordResponse
+	21, // 57: warehouse.user.v1.UserService.AdminResetPassword:output_type -> warehouse.user.v1.AdminResetPasswordResponse
+	2,  // 58: warehouse.user.v1.UserService.UpdateProfile:output_type -> warehouse.user.v1.UpdateProfileResponse
+	4,  // 59: warehouse.user.v1.UserService.UpdateUser:output_type -> warehouse.user.v1.UpdateUserResponse
+	6,  // 60: warehouse.user.v1.UserService.SuspendUser:output_type -> warehouse.user.v1.SuspendUserResponse
+	8,  // 61: warehouse.user.v1.UserService.DeleteUser:output_type -> warehouse.user.v1.DeleteUserResponse
+	10, // 62: warehouse.user.v1.UserService.UserList:output_type -> warehouse.user.v1.UserListResponse
+	12, // 63: warehouse.user.v1.UserService.UserByIDs:output_type -> warehouse.user.v1.UserByIDsResponse
+	14, // 64: warehouse.user.v1.UserService.SearchUser:output_type -> warehouse.user.v1.SearchUserResponse
+	46, // [46:65] is the sub-list for method output_type
+	27, // [27:46] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_user_v1_user_proto_init() }
@@ -2325,7 +2726,7 @@ func file_warehouse_user_v1_user_proto_init() {
 	}
 	file_warehouse_user_v1_user_proto_msgTypes[1].OneofWrappers = []any{}
 	file_warehouse_user_v1_user_proto_msgTypes[3].OneofWrappers = []any{}
-	file_warehouse_user_v1_user_proto_msgTypes[31].OneofWrappers = []any{
+	file_warehouse_user_v1_user_proto_msgTypes[37].OneofWrappers = []any{
 		(*TeamUserUpdateRequest_Add)(nil),
 		(*TeamUserUpdateRequest_Remove)(nil),
 	}
@@ -2335,7 +2736,7 @@ func file_warehouse_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_user_v1_user_proto_rawDesc), len(file_warehouse_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   38,
+			NumMessages:   44,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

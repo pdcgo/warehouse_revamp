@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/user/v1/user.proto.
  */
 export const file_warehouse_user_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("Chx3YXJlaG91c2UvdXNlci92MS91c2VyLnByb3RvEhF3YXJlaG91c2UudXNlci52MSI4CgpQdWJsaWNVc2VyEgoKAmlkGAEgASgEEhAKCHVzZXJuYW1lGAIgASgJEgwKBG5hbWUYAyABKAkioQEKFFVwZGF0ZVByb2ZpbGVSZXF1ZXN0EhsKBG5hbWUYASABKAlCCLpIBXIDGIABSACIAQESHAoFZW1haWwYAiABKAlCCLpIBXIDGMgBSAGIAQESIgoMcGhvbmVfbnVtYmVyGAMgASgJQge6SARyAhgoSAKIAQE6BpK1GAIgAUIHCgVfbmFtZUIICgZfZW1haWxCDwoNX3Bob25lX251bWJlciI+ChVVcGRhdGVQcm9maWxlUmVzcG9uc2USJQoEdXNlchgBIAEoCzIXLndhcmVob3VzZS51c2VyLnYxLlVzZXIiugEKEVVwZGF0ZVVzZXJSZXF1ZXN0EhgKB3VzZXJfaWQYASABKARCB7pIBDICIAASGwoEbmFtZRgCIAEoCUIIukgFcgMYgAFIAIgBARIcCgVlbWFpbBgDIAEoCUIIukgFcgMYyAFIAYgBARIiCgxwaG9uZV9udW1iZXIYBCABKAlCB7pIBHICGChIAogBAToIkrUYBAoCAQJCBwoFX25hbWVCCAoGX2VtYWlsQg8KDV9waG9uZV9udW1iZXIiOwoSVXBkYXRlVXNlclJlc3BvbnNlEiUKBHVzZXIYASABKAsyFy53YXJlaG91c2UudXNlci52MS5Vc2VyIksKElN1c3BlbmRVc2VyUmVxdWVzdBIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEhEKCXN1c3BlbmRlZBgCIAEoCDoIkrUYBAoCAQIiFQoTU3VzcGVuZFVzZXJSZXNwb25zZSI3ChFEZWxldGVVc2VyUmVxdWVzdBIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAOgiStRgECgIBAiIUChJEZWxldGVVc2VyUmVzcG9uc2UigQEKD1VzZXJMaXN0UmVxdWVzdBIVCgd0ZWFtX2lkGAEgASgEQgSQtRgBEhIKAXEYAiABKAlCB7pIBHICGGQSNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkibAoQVXNlckxpc3RSZXNwb25zZRImCgV1c2VycxgBIAMoCzIXLndhcmVob3VzZS51c2VyLnYxLlVzZXISMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyI8ChBVc2VyQnlJRHNSZXF1ZXN0EiAKA2lkcxgBIAMoBEITukgQkgENCAEQyAEYASIEMgIgADoGkrUYAiABIp0BChFVc2VyQnlJRHNSZXNwb25zZRI8CgRkYXRhGAEgAygLMi4ud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVzcG9uc2UuRGF0YUVudHJ5GkoKCURhdGFFbnRyeRILCgNrZXkYASABKAQSLAoFdmFsdWUYAiABKAsyHS53YXJlaG91c2UudXNlci52MS5QdWJsaWNVc2VyOgI4ASJLChFTZWFyY2hVc2VyUmVxdWVzdBIUCgFxGAEgASgJQgm6SAZyBBACGGQSGAoFbGltaXQYAiABKA1CCbpIBioEGBQoAToGkrUYAiABIkIKElNlYXJjaFVzZXJSZXNwb25zZRIsCgV1c2VycxgBIAMoCzIdLndhcmVob3VzZS51c2VyLnYxLlB1YmxpY1VzZXIibQoEVXNlchIKCgJpZBgBIAEoBBIQCgh1c2VybmFtZRgCIAEoCRIMCgRuYW1lGAMgASgJEg0KBWVtYWlsGAQgASgJEhQKDHBob25lX251bWJlchgFIAEoCRIUCgxpc19zdXNwZW5kZWQYBiABKAgihwIKEUNyZWF0ZVVzZXJSZXF1ZXN0EhUKB3RlYW1faWQYASABKARCBJC1GAESGwoIdXNlcm5hbWUYAiABKAlCCbpIBnIEEAMYZBIcCghwYXNzd29yZBgDIAEoCUIKukgHcgUQCBjIARIWCgRuYW1lGAQgASgJQgi6SAVyAxiAARIXCgVlbWFpbBgFIAEoCUIIukgFcgMYyAESHQoMcGhvbmVfbnVtYmVyGAYgASgJQge6SARyAhgoEioKBHJvbGUYByABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSFgoFYWxpYXMYCCABKAlCB7pIBHICGDw6DJK1GAgKBgECAwQGCSI7ChJDcmVhdGVVc2VyUmVzcG9uc2USJQoEdXNlchgBIAEoCzIXLndhcmVob3VzZS51c2VyLnYxLlVzZXIiXwoUUmVzZXRQYXNzd29yZFJlcXVlc3QSHQoMb2xkX3Bhc3N3b3JkGAEgASgJQge6SARyAhABEiAKDG5ld19wYXNzd29yZBgCIAEoCUIKukgHcgUQCBjIAToGkrUYAiABIiYKFVJlc2V0UGFzc3dvcmRSZXNwb25zZRINCgV0b2tlbhgBIAEoCSJhChlBZG1pblJlc2V0UGFzc3dvcmRSZXF1ZXN0EhgKB3VzZXJfaWQYASABKARCB7pIBDICIAASIAoMbmV3X3Bhc3N3b3JkGAIgASgJQgq6SAdyBRAIGMgBOgiStRgECgIBAiIcChpBZG1pblJlc2V0UGFzc3dvcmRSZXNwb25zZSKJAQoMTG9naW5SZXF1ZXN0EhsKCHVzZXJuYW1lGAEgASgJQgm6SAZyBBABGGQSHAoIcGFzc3dvcmQYAiABKAlCCrpIB3IFEAEYyAESFgoFYWdlbnQYAyABKAlCB7pIBHICGGQSHgoNYWdlbnRfdmVyc2lvbhgEIAEoCUIHukgEcgIYMjoGkrUYAhgBIlIKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSMgoIaWRlbnRpdHkYAiABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5IhcKDUxvZ291dFJlcXVlc3Q6BpK1GAIYASIQCg5Mb2dvdXRSZXNwb25zZSJIChJDaGVja0FjY2Vzc1JlcXVlc3QSGQoFdG9rZW4YASABKAlCCrpIB3IFEAEYuBcSDwoHdGVhbV9pZBgCIAEoBDoGkrUYAhgBIoQBChNDaGVja0FjY2Vzc1Jlc3BvbnNlEjIKCGlkZW50aXR5GAEgASgLMiAud2FyZWhvdXNlLnJvbGVfYmFzZS52MS5JZGVudGl0eRINCgV0b2tlbhgCIAEoCRIqCgRyb2xlGAMgASgOMhwud2FyZWhvdXNlLnJvbGVfYmFzZS52MS5Sb2xlIp8BCg5UZWFtQWNjZXNzSXRlbRIPCgd0ZWFtX2lkGAEgASgEEioKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSDQoFYWxpYXMYAyABKAkSEQoJdGVhbV9uYW1lGAQgASgJEi4KCXRlYW1fdHlwZRgFIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlIjAKFVRlYW1BY2Nlc3NMaXN0UmVxdWVzdBIPCgd1c2VyX2lkGAEgASgEOgaStRgCIAEiSgoWVGVhbUFjY2Vzc0xpc3RSZXNwb25zZRIwCgV0ZWFtcxgBIAMoCzIhLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NJdGVtIrgBChVUZWFtVXNlclVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESLQoDYWRkGAIgASgLMh4ud2FyZWhvdXNlLnVzZXIudjEuQWRkVGVhbVVzZXJIABIzCgZyZW1vdmUYAyABKAsyIS53YXJlaG91c2UudXNlci52MS5SZW1vdmVUZWFtVXNlckgAOgyStRgICgYBAgMEBglCDwoGYWN0aW9uEgW6SAIIASJ3CgtBZGRUZWFtVXNlchIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEjYKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGVCCrpIB4IBBBABIAASFgoFYWxpYXMYAyABKAlCB7pIBHICGDwiKgoOUmVtb3ZlVGVhbVVzZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACIYChZUZWFtVXNlclVwZGF0ZVJlc3BvbnNlIi0KElJvbGVSZXNvbHZlUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgEOgaStRgCIAEihQEKE1JvbGVSZXNvbHZlUmVzcG9uc2USKgoEcm9sZRgBIAEoDjIcLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuUm9sZRIvCglyb290X3JvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJc3VzcGVuZGVkGAMgASgIMoYCCgtBdXRoU2VydmljZRJKCgVMb2dpbhIfLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVxdWVzdBogLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVzcG9uc2USTQoGTG9nb3V0EiAud2FyZWhvdXNlLnVzZXIudjEuTG9nb3V0UmVxdWVzdBohLndhcmVob3VzZS51c2VyLnYxLkxvZ291dFJlc3BvbnNlElwKC0NoZWNrQWNjZXNzEiUud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXF1ZXN0GiYud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXNwb25zZTLrCQoLVXNlclNlcnZpY2USZQoOVGVhbUFjY2Vzc0xpc3QSKC53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlcXVlc3QaKS53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlc3BvbnNlEmUKDlRlYW1Vc2VyVXBkYXRlEigud2FyZWhvdXNlLnVzZXIudjEuVGVhbVVzZXJVcGRhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnVzZXIudjEuVGVhbVVzZXJVcGRhdGVSZXNwb25zZRJcCgtSb2xlUmVzb2x2ZRIlLndhcmVob3VzZS51c2VyLnYxLlJvbGVSZXNvbHZlUmVxdWVzdBomLndhcmVob3VzZS51c2VyLnYxLlJvbGVSZXNvbHZlUmVzcG9uc2USWQoKQ3JlYXRlVXNlchIkLndhcmVob3VzZS51c2VyLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuQ3JlYXRlVXNlclJlc3BvbnNlEmIKDVJlc2V0UGFzc3dvcmQSJy53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkUmVxdWVzdBooLndhcmVob3VzZS51c2VyLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJxChJBZG1pblJlc2V0UGFzc3dvcmQSLC53YXJlaG91c2UudXNlci52MS5BZG1pblJlc2V0UGFzc3dvcmRSZXF1ZXN0Gi0ud2FyZWhvdXNlLnVzZXIudjEuQWRtaW5SZXNldFBhc3N3b3JkUmVzcG9uc2USYgoNVXBkYXRlUHJvZmlsZRInLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0Gigud2FyZWhvdXNlLnVzZXIudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlElkKClVwZGF0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5VcGRhdGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVVzZXJSZXNwb25zZRJcCgtTdXNwZW5kVXNlchIlLndhcmVob3VzZS51c2VyLnYxLlN1c3BlbmRVc2VyUmVxdWVzdBomLndhcmVob3VzZS51c2VyLnYxLlN1c3BlbmRVc2VyUmVzcG9uc2USWQoKRGVsZXRlVXNlchIkLndhcmVob3VzZS51c2VyLnYxLkRlbGV0ZVVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuRGVsZXRlVXNlclJlc3BvbnNlElMKCFVzZXJMaXN0EiIud2FyZWhvdXNlLnVzZXIudjEuVXNlckxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnVzZXIudjEuVXNlckxpc3RSZXNwb25zZRJWCglVc2VyQnlJRHMSIy53YXJlaG91c2UudXNlci52MS5Vc2VyQnlJRHNSZXF1ZXN0GiQud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVzcG9uc2USWQoKU2VhcmNoVXNlchIkLndhcmVob3VzZS51c2VyLnYxLlNlYXJjaFVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuU2VhcmNoVXNlclJlc3BvbnNlQkhaRmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvdXNlci92MTt1c2VydjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_team_v1_team]);
+  fileDesc("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b2xlX2Jhc2UudjEuUm9sZRIWCgVhbGlhcxgIIAEoCUIHukgEcgIYPDoMkrUYCAoGAQIDBAYJIjsKEkNyZWF0ZVVzZXJSZXNwb25zZRIlCgR1c2VyGAEgASgLMhcud2FyZWhvdXNlLnVzZXIudjEuVXNlciJfChRSZXNldFBhc3N3b3JkUmVxdWVzdBIdCgxvbGRfcGFzc3dvcmQYASABKAlCB7pIBHICEAESIAoMbmV3X3Bhc3N3b3JkGAIgASgJQgq6SAdyBRAIGMgBOgaStRgCIAEiJgoVUmVzZXRQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJImEKGUFkbWluUmVzZXRQYXNzd29yZFJlcXVlc3QSGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgABIgCgxuZXdfcGFzc3dvcmQYAiABKAlCCrpIB3IFEAgYyAE6CJK1GAQKAgECIhwKGkFkbWluUmVzZXRQYXNzd29yZFJlc3BvbnNlIokBCgxMb2dpblJlcXVlc3QSGwoIdXNlcm5hbWUYASABKAlCCbpIBnIEEAEYZBIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQARjIARIWCgVhZ2VudBgDIAEoCUIHukgEcgIYZBIeCg1hZ2VudF92ZXJzaW9uGAQgASgJQge6SARyAhgyOgaStRgCGAEiUgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCRIyCghpZGVudGl0eRgCIAEoCzIgLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuSWRlbnRpdHkiFwoNTG9nb3V0UmVxdWVzdDoGkrUYAhgBIhAKDkxvZ291dFJlc3BvbnNlIkgKEkNoZWNrQWNjZXNzUmVxdWVzdBIZCgV0b2tlbhgBIAEoCUIKukgHcgUQARi4FxIPCgd0ZWFtX2lkGAIgASgEOgaStRgCGAEihAEKE0NoZWNrQWNjZXNzUmVzcG9uc2USMgoIaWRlbnRpdHkYASABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5Eg0KBXRva2VuGAIgASgJEioKBHJvbGUYAyABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUiRQoeUmVxdWVzdFBhc3N3b3JkUmVzZXRPdHBSZXF1ZXN0EhsKCHVzZXJuYW1lGAEgASgJQgm6SAZyBBABGGQ6BpK1GAIYASIhCh9SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlc3BvbnNlIn0KG1Jlc2V0UGFzc3dvcmRXaXRoT3RwUmVxdWVzdBIbCgh1c2VybmFtZRgBIAEoCUIJukgGcgQQARhkEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYDBIgCgxuZXdfcGFzc3dvcmQYAyABKAlCCrpIB3IFEAgYyAE6BpK1GAIYASIeChxSZXNldFBhc3N3b3JkV2l0aE90cFJlc3BvbnNlIrIBCg5UZWFtQWNjZXNzSXRlbRIPCgd0ZWFtX2lkGAEgASgEEioKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSDQoFYWxpYXMYAyABKAkSEQoJdGVhbV9uYW1lGAQgASgJEi4KCXRlYW1fdHlwZRgFIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlEhEKCWltYWdlX3VybBgGIAEoCSJnChVUZWFtQWNjZXNzTGlzdFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoBBI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6BpK1GAIgASJ8ChZUZWFtQWNjZXNzTGlzdFJlc3BvbnNlEjAKBXRlYW1zGAEgAygLMiEud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0l0ZW0SMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJtChBVc2VyVGVhbXNSZXF1ZXN0EhgKB3VzZXJfaWQYASABKARCB7pIBDICIAASNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgiStRgECgIBAiKkAQoRVXNlclRlYW1zUmVzcG9uc2USKwoEdXNlchgBIAEoCzIdLndhcmVob3VzZS51c2VyLnYxLlB1YmxpY1VzZXISMAoFdGVhbXMYAiADKAsyIS53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzSXRlbRIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrgBChVUZWFtVXNlclVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESLQoDYWRkGAIgASgLMh4ud2FyZWhvdXNlLnVzZXIudjEuQWRkVGVhbVVzZXJIABIzCgZyZW1vdmUYAyABKAsyIS53YXJlaG91c2UudXNlci52MS5SZW1vdmVUZWFtVXNlckgAOgyStRgICgYBAgMEBglCDwoGYWN0aW9uEgW6SAIIASJ3CgtBZGRUZWFtVXNlchIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEjYKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGVCCrpIB4IBBBABIAASFgoFYWxpYXMYAyABKAlCB7pIBHICGDwiKgoOUmVtb3ZlVGVhbVVzZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACIYChZUZWFtVXNlclVwZGF0ZVJlc3BvbnNlIi0KElJvbGVSZXNvbHZlUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgEOgaStRgCIAEihQEKE1JvbGVSZXNvbHZlUmVzcG9uc2USKgoEcm9sZRgBIAEoDjIcLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuUm9sZRIvCglyb290X3JvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJc3VzcGVuZGVkGAMgASgIMoIECgtBdXRoU2VydmljZRJKCgVMb2dpbhIfLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVxdWVzdBogLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVzcG9uc2USTQoGTG9nb3V0EiAud2FyZWhvdXNlLnVzZXIudjEuTG9nb3V0UmVxdWVzdBohLndhcmVob3VzZS51c2VyLnYxLkxvZ291dFJlc3BvbnNlElwKC0NoZWNrQWNjZXNzEiUud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXF1ZXN0GiYud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXNwb25zZRKAAQoXUmVxdWVzdFBhc3N3b3JkUmVzZXRPdHASMS53YXJlaG91c2UudXNlci52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlcXVlc3QaMi53YXJlaG91c2UudXNlci52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlc3BvbnNlEncKFFJlc2V0UGFzc3dvcmRXaXRoT3RwEi4ud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFdpdGhPdHBSZXF1ZXN0Gi8ud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFdpdGhPdHBSZXNwb25zZTLDCgoLVXNlclNlcnZpY2USZQoOVGVhbUFjY2Vzc0xpc3QSKC53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlcXVlc3QaKS53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlc3BvbnNlElYKCVVzZXJUZWFtcxIjLndhcmVob3VzZS51c2VyLnYxLlVzZXJUZWFtc1JlcXVlc3QaJC53YXJlaG91c2UudXNlci52MS5Vc2VyVGVhbXNSZXNwb25zZRJlCg5UZWFtVXNlclVwZGF0ZRIoLndhcmVob3VzZS51c2VyLnYxLlRlYW1Vc2VyVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS51c2VyLnYxLlRlYW1Vc2VyVXBkYXRlUmVzcG9uc2USXAoLUm9sZVJlc29sdmUSJS53YXJlaG91c2UudXNlci52MS5Sb2xlUmVzb2x2ZVJlcXVlc3QaJi53YXJlaG91c2UudXNlci52MS5Sb2xlUmVzb2x2ZVJlc3BvbnNlElkKCkNyZWF0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5DcmVhdGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLkNyZWF0ZVVzZXJSZXNwb25zZRJiCg1SZXNldFBhc3N3b3JkEicud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaKC53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkUmVzcG9uc2UScQoSQWRtaW5SZXNldFBhc3N3b3JkEiwud2FyZWhvdXNlLnVzZXIudjEuQWRtaW5SZXNldFBhc3N3b3JkUmVxdWVzdBotLndhcmVob3VzZS51c2VyLnYxLkFkbWluUmVzZXRQYXNzd29yZFJlc3BvbnNlEmIKDVVwZGF0ZVByb2ZpbGUSJy53YXJlaG91c2UudXNlci52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBooLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZRJZCgpVcGRhdGVVc2VyEiQud2FyZWhvdXNlLnVzZXIudjEuVXBkYXRlVXNlclJlcXVlc3QaJS53YXJlaG91c2UudXNlci52MS5VcGRhdGVVc2VyUmVzcG9uc2USXAoLU3VzcGVuZFVzZXISJS53YXJlaG91c2UudXNlci52MS5TdXNwZW5kVXNlclJlcXVlc3QaJi53YXJlaG91c2UudXNlci52MS5TdXNwZW5kVXNlclJlc3BvbnNlElkKCkRlbGV0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5EZWxldGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLkRlbGV0ZVVzZXJSZXNwb25zZRJTCghVc2VyTGlzdBIiLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0UmVxdWVzdBojLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0UmVzcG9uc2USVgoJVXNlckJ5SURzEiMud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVxdWVzdBokLndhcmVob3VzZS51c2VyLnYxLlVzZXJCeUlEc1Jlc3BvbnNlElkKClNlYXJjaFVzZXISJC53YXJlaG91c2UudXNlci52MS5TZWFyY2hVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLlNlYXJjaFVzZXJSZXNwb25zZUJIWkZnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3VzZXIvdjE7dXNlcnYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_team_v1_team]);
 
 /**
  * PublicUser is the shape shown to any authenticated caller: NO email, NO phone.
@@ -43,6 +43,13 @@ export type PublicUser = Message<"warehouse.user.v1.PublicUser"> & {
    * @generated from field: string name = 3;
    */
   name: string;
+
+  /**
+   * Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
+   *
+   * @generated from field: string avatar_url = 4;
+   */
+  avatarUrl: string;
 };
 
 /**
@@ -73,6 +80,14 @@ export type UpdateProfileRequest = Message<"warehouse.user.v1.UpdateProfileReque
    * @generated from field: optional string phone_number = 3;
    */
   phoneNumber?: string;
+
+  /**
+   * The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
+   * alone; present-and-empty = clear it.
+   *
+   * @generated from field: optional string avatar_url = 4;
+   */
+  avatarUrl?: string;
 };
 
 /**
@@ -384,6 +399,13 @@ export type User = Message<"warehouse.user.v1.User"> & {
    * @generated from field: bool is_suspended = 6;
    */
   isSuspended: boolean;
+
+  /**
+   * A compact avatar URL (the profile picture's thumbnail); empty if none set.
+   *
+   * @generated from field: string avatar_url = 7;
+   */
+  avatarUrl: string;
 };
 
 /**
@@ -412,6 +434,9 @@ export type CreateUserRequest = Message<"warehouse.user.v1.CreateUserRequest"> &
   teamId: bigint;
 
   /**
+   * Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
+   * enforces the same rule; this is the real gate.
+   *
    * @generated from field: string username = 2;
    */
   username: string;
@@ -696,6 +721,79 @@ export const CheckAccessResponseSchema: GenMessage<CheckAccessResponse> = /*@__P
   messageDesc(file_warehouse_user_v1_user, 27);
 
 /**
+ * @generated from message warehouse.user.v1.RequestPasswordResetOtpRequest
+ */
+export type RequestPasswordResetOtpRequest = Message<"warehouse.user.v1.RequestPasswordResetOtpRequest"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+};
+
+/**
+ * Describes the message warehouse.user.v1.RequestPasswordResetOtpRequest.
+ * Use `create(RequestPasswordResetOtpRequestSchema)` to create a new message.
+ */
+export const RequestPasswordResetOtpRequestSchema: GenMessage<RequestPasswordResetOtpRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 28);
+
+/**
+ * Deliberately EMPTY, and the handler ALWAYS succeeds — revealing whether the username exists
+ * (or has a phone) would turn this into an account-enumeration oracle.
+ *
+ * @generated from message warehouse.user.v1.RequestPasswordResetOtpResponse
+ */
+export type RequestPasswordResetOtpResponse = Message<"warehouse.user.v1.RequestPasswordResetOtpResponse"> & {
+};
+
+/**
+ * Describes the message warehouse.user.v1.RequestPasswordResetOtpResponse.
+ * Use `create(RequestPasswordResetOtpResponseSchema)` to create a new message.
+ */
+export const RequestPasswordResetOtpResponseSchema: GenMessage<RequestPasswordResetOtpResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 29);
+
+/**
+ * @generated from message warehouse.user.v1.ResetPasswordWithOtpRequest
+ */
+export type ResetPasswordWithOtpRequest = Message<"warehouse.user.v1.ResetPasswordWithOtpRequest"> & {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string new_password = 3;
+   */
+  newPassword: string;
+};
+
+/**
+ * Describes the message warehouse.user.v1.ResetPasswordWithOtpRequest.
+ * Use `create(ResetPasswordWithOtpRequestSchema)` to create a new message.
+ */
+export const ResetPasswordWithOtpRequestSchema: GenMessage<ResetPasswordWithOtpRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 30);
+
+/**
+ * @generated from message warehouse.user.v1.ResetPasswordWithOtpResponse
+ */
+export type ResetPasswordWithOtpResponse = Message<"warehouse.user.v1.ResetPasswordWithOtpResponse"> & {
+};
+
+/**
+ * Describes the message warehouse.user.v1.ResetPasswordWithOtpResponse.
+ * Use `create(ResetPasswordWithOtpResponseSchema)` to create a new message.
+ */
+export const ResetPasswordWithOtpResponseSchema: GenMessage<ResetPasswordWithOtpResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 31);
+
+/**
  * @generated from message warehouse.user.v1.TeamAccessItem
  */
 export type TeamAccessItem = Message<"warehouse.user.v1.TeamAccessItem"> & {
@@ -726,6 +824,14 @@ export type TeamAccessItem = Message<"warehouse.user.v1.TeamAccessItem"> & {
    * @generated from field: warehouse.team.v1.TeamType team_type = 5;
    */
   teamType: TeamType;
+
+  /**
+   * The team's compact picture, resolved from team_service alongside the name. Empty when the team
+   * has no picture (or team_service is unreachable) — the UI falls back to initials.
+   *
+   * @generated from field: string image_url = 6;
+   */
+  imageUrl: string;
 };
 
 /**
@@ -733,7 +839,7 @@ export type TeamAccessItem = Message<"warehouse.user.v1.TeamAccessItem"> & {
  * Use `create(TeamAccessItemSchema)` to create a new message.
  */
 export const TeamAccessItemSchema: GenMessage<TeamAccessItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 28);
+  messageDesc(file_warehouse_user_v1_user, 32);
 
 /**
  * @generated from message warehouse.user.v1.TeamAccessListRequest
@@ -746,6 +852,14 @@ export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListReq
    * @generated from field: uint64 user_id = 1;
    */
   userId: bigint;
+
+  /**
+   * Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
+   * pages so it can never return an unbounded set. The team switcher asks for a large first page.
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   */
+  page?: PageFilter;
 };
 
 /**
@@ -753,7 +867,7 @@ export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListReq
  * Use `create(TeamAccessListRequestSchema)` to create a new message.
  */
 export const TeamAccessListRequestSchema: GenMessage<TeamAccessListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 29);
+  messageDesc(file_warehouse_user_v1_user, 33);
 
 /**
  * @generated from message warehouse.user.v1.TeamAccessListResponse
@@ -763,6 +877,11 @@ export type TeamAccessListResponse = Message<"warehouse.user.v1.TeamAccessListRe
    * @generated from field: repeated warehouse.user.v1.TeamAccessItem teams = 1;
    */
   teams: TeamAccessItem[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo;
 };
 
 /**
@@ -770,7 +889,63 @@ export type TeamAccessListResponse = Message<"warehouse.user.v1.TeamAccessListRe
  * Use `create(TeamAccessListResponseSchema)` to create a new message.
  */
 export const TeamAccessListResponseSchema: GenMessage<TeamAccessListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 30);
+  messageDesc(file_warehouse_user_v1_user, 34);
+
+/**
+ * @generated from message warehouse.user.v1.UserTeamsRequest
+ */
+export type UserTeamsRequest = Message<"warehouse.user.v1.UserTeamsRequest"> & {
+  /**
+   * @generated from field: uint64 user_id = 1;
+   */
+  userId: bigint;
+
+  /**
+   * Paginated (HARD RULE 9), same as TeamAccessList.
+   *
+   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   */
+  page?: PageFilter;
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserTeamsRequest.
+ * Use `create(UserTeamsRequestSchema)` to create a new message.
+ */
+export const UserTeamsRequestSchema: GenMessage<UserTeamsRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 35);
+
+/**
+ * @generated from message warehouse.user.v1.UserTeamsResponse
+ */
+export type UserTeamsResponse = Message<"warehouse.user.v1.UserTeamsResponse"> & {
+  /**
+   * The user being viewed, so the detail screen can render them without a second round trip.
+   *
+   * @generated from field: warehouse.user.v1.PublicUser user = 1;
+   */
+  user?: PublicUser;
+
+  /**
+   * Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
+   * correct; team_name/team_type blank if team_service is unreachable.
+   *
+   * @generated from field: repeated warehouse.user.v1.TeamAccessItem teams = 2;
+   */
+  teams: TeamAccessItem[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
+   */
+  pageInfo?: PageInfo;
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserTeamsResponse.
+ * Use `create(UserTeamsResponseSchema)` to create a new message.
+ */
+export const UserTeamsResponseSchema: GenMessage<UserTeamsResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 36);
 
 /**
  * @generated from message warehouse.user.v1.TeamUserUpdateRequest
@@ -804,7 +979,7 @@ export type TeamUserUpdateRequest = Message<"warehouse.user.v1.TeamUserUpdateReq
  * Use `create(TeamUserUpdateRequestSchema)` to create a new message.
  */
 export const TeamUserUpdateRequestSchema: GenMessage<TeamUserUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 31);
+  messageDesc(file_warehouse_user_v1_user, 37);
 
 /**
  * @generated from message warehouse.user.v1.AddTeamUser
@@ -831,7 +1006,7 @@ export type AddTeamUser = Message<"warehouse.user.v1.AddTeamUser"> & {
  * Use `create(AddTeamUserSchema)` to create a new message.
  */
 export const AddTeamUserSchema: GenMessage<AddTeamUser> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 32);
+  messageDesc(file_warehouse_user_v1_user, 38);
 
 /**
  * @generated from message warehouse.user.v1.RemoveTeamUser
@@ -848,7 +1023,7 @@ export type RemoveTeamUser = Message<"warehouse.user.v1.RemoveTeamUser"> & {
  * Use `create(RemoveTeamUserSchema)` to create a new message.
  */
 export const RemoveTeamUserSchema: GenMessage<RemoveTeamUser> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 33);
+  messageDesc(file_warehouse_user_v1_user, 39);
 
 /**
  * @generated from message warehouse.user.v1.TeamUserUpdateResponse
@@ -861,7 +1036,7 @@ export type TeamUserUpdateResponse = Message<"warehouse.user.v1.TeamUserUpdateRe
  * Use `create(TeamUserUpdateResponseSchema)` to create a new message.
  */
 export const TeamUserUpdateResponseSchema: GenMessage<TeamUserUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 34);
+  messageDesc(file_warehouse_user_v1_user, 40);
 
 /**
  * @generated from message warehouse.user.v1.RoleResolveRequest
@@ -881,7 +1056,7 @@ export type RoleResolveRequest = Message<"warehouse.user.v1.RoleResolveRequest">
  * Use `create(RoleResolveRequestSchema)` to create a new message.
  */
 export const RoleResolveRequestSchema: GenMessage<RoleResolveRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 35);
+  messageDesc(file_warehouse_user_v1_user, 41);
 
 /**
  * @generated from message warehouse.user.v1.RoleResolveResponse
@@ -920,7 +1095,7 @@ export type RoleResolveResponse = Message<"warehouse.user.v1.RoleResolveResponse
  * Use `create(RoleResolveResponseSchema)` to create a new message.
  */
 export const RoleResolveResponseSchema: GenMessage<RoleResolveResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 36);
+  messageDesc(file_warehouse_user_v1_user, 42);
 
 /**
  * AuthService is entirely public (allow_all) — it is what you call when you have no token yet.
@@ -954,6 +1129,25 @@ export const AuthService: GenService<{
     input: typeof CheckAccessRequestSchema;
     output: typeof CheckAccessResponseSchema;
   },
+  /**
+   * The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+   * the account's phone, then reset the password with it.
+   *
+   * @generated from rpc warehouse.user.v1.AuthService.RequestPasswordResetOtp
+   */
+  requestPasswordResetOtp: {
+    methodKind: "unary";
+    input: typeof RequestPasswordResetOtpRequestSchema;
+    output: typeof RequestPasswordResetOtpResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.user.v1.AuthService.ResetPasswordWithOtp
+   */
+  resetPasswordWithOtp: {
+    methodKind: "unary";
+    input: typeof ResetPasswordWithOtpRequestSchema;
+    output: typeof ResetPasswordWithOtpResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_user_v1_user, 0);
 
@@ -973,6 +1167,18 @@ export const UserService: GenService<{
     methodKind: "unary";
     input: typeof TeamAccessListRequestSchema;
     output: typeof TeamAccessListResponseSchema;
+  },
+  /**
+   * UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+   * only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+   * go blank if it is unreachable, never failing the call.
+   *
+   * @generated from rpc warehouse.user.v1.UserService.UserTeams
+   */
+  userTeams: {
+    methodKind: "unary";
+    input: typeof UserTeamsRequestSchema;
+    output: typeof UserTeamsResponseSchema;
   },
   /**
    * TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.

@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>warehouse_revamp</title>
+    <link rel="icon" type="image/svg+xml" href="/warehouse.svg" />
+    <title>PDC Warehouse</title>
+    <script>
+      /* Apply the saved or system color mode before first paint, so there is no light-then-dark
+         flash (#213). Chakra v3 reads dark mode off the `.dark` class on <html>. Kept in sync at
+         runtime by src/lib/colorMode.ts. */
+      (function () {
+        try {
+          var v = localStorage.getItem("wh-color-mode");
+          var dark =
+            v === "dark" ||
+            (v !== "light" &&
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", dark);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

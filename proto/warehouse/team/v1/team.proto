@@ -25,6 +25,91 @@ service TeamService {
   rpc TeamByIds(TeamByIdsRequest) returns (TeamByIdsResponse);
 
   rpc TeamInfoUpdate(TeamInfoUpdateRequest) returns (TeamInfoUpdateResponse);
+
+  // WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+  // Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+  // receive its orders. Days with no stored row default to closed.
+  rpc WarehouseInfoDetail(WarehouseInfoDetailRequest) returns (WarehouseInfoDetailResponse);
+
+  // WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+  rpc WarehouseInfoUpdate(WarehouseInfoUpdateRequest) returns (WarehouseInfoUpdateResponse);
+}
+
+// Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+// valid schedule row.
+enum Weekday {
+  WEEKDAY_UNSPECIFIED = 0;
+  WEEKDAY_MONDAY = 1;
+  WEEKDAY_TUESDAY = 2;
+  WEEKDAY_WEDNESDAY = 3;
+  WEEKDAY_THURSDAY = 4;
+  WEEKDAY_FRIDAY = 5;
+  WEEKDAY_SATURDAY = 6;
+  WEEKDAY_SUNDAY = 7;
+}
+
+// DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+// Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+message DayHours {
+  Weekday weekday = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  bool open = 2;
+  string open_time = 3 [(buf.validate.field).string.max_len = 5];
+  string close_time = 4 [(buf.validate.field).string.max_len = 5];
+}
+
+// WarehouseInfo is a warehouse team's operational data: its two weekly schedules and its location.
+message WarehouseInfo {
+  uint64 team_id = 1;
+
+  // When the warehouse is generally open.
+  repeated DayHours operating_hours = 2;
+
+  // When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+  repeated DayHours receiving_hours = 3;
+
+  // The warehouse's physical location / address (free text).
+  string location = 4;
+}
+
+message WarehouseInfoDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseInfoDetailResponse {
+  WarehouseInfo info = 1;
+}
+
+message WarehouseInfoUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+  // row per weekday per schedule; the handler rejects duplicates and bad times.
+  repeated DayHours operating_hours = 2 [(buf.validate.field).repeated.max_items = 7];
+  repeated DayHours receiving_hours = 3 [(buf.validate.field).repeated.max_items = 7];
+
+  // The warehouse address — a full replacement, sent by the editor alongside the schedules.
+  string location = 4 [(buf.validate.field).string.max_len = 500];
+}
+
+message WarehouseInfoUpdateResponse {
+  WarehouseInfo info = 1;
 }
 
 // THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
@@ -52,6 +137,14 @@ message TeamInfo {
   // service boundary. 0 = unset.
   uint64 return_warehouse_id = 6;
   uint64 return_user_id = 7;
+
+  // The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+  //
+  // A convenience, not a rule: the order form pre-selects it and the person may still choose another,
+  // and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
+  // fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
+  // database at all.
+  uint64 default_warehouse_id = 8;
 }
 
 message Team {
@@ -64,6 +157,10 @@ message Team {
 
   // Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
   TeamInfo info = 7;
+
+  // A compact team picture (like a user avatar). Empty when the team has no picture. Set via
+  // TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
+  string image_url = 8;
 }
 
 message TeamCreateRequest {
@@ -103,13 +200,15 @@ message TeamUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_WAREHOUSE_OWNER
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
     ]
   };
 
   // use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
-  // the two OWNER entries become dead letters — the policy would claim an owner may rename
-  // their team while the system silently required root/admin.
+  // the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
+  // team manager may edit their team while the system silently required root/admin.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
@@ -121,6 +220,9 @@ message TeamUpdateRequest {
     max_len: 128
   }];
   optional string description = 3 [(buf.validate.field).string = {max_len: 300}];
+
+  // The compact team picture URL (see Team.image_url). Present & empty = clear it.
+  optional string image_url = 4 [(buf.validate.field).string.max_len = 1024];
 }
 
 message TeamUpdateResponse {
@@ -209,6 +311,7 @@ message TeamInfoUpdateRequest {
   optional string bank_account_number = 5 [(buf.validate.field).string.max_len = 60];
   optional uint64 return_warehouse_id = 6; // present & 0 = clear to NULL
   optional uint64 return_user_id = 7; // present & 0 = clear to NULL
+  optional uint64 default_warehouse_id = 8; // present & 0 = clear to NULL (#145)
 }
 
 message TeamInfoUpdateResponse {

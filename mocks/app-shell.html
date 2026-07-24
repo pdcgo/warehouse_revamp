@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · App Shell</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. Styled with TAILWIND via the  *
+ * Play CDN (the one documented exception to "self-contained" — needs   *
+ * the network to render — see mocks/README.md). Tailwind's theme is    *
+ * mapped onto the shared :root design tokens below, so the mocks still  *
+ * match the Chakra app and stay in step with plans/design-tokens.md;    *
+ * dark mode rides entirely on the tokens flipping at [data-theme=dark]. *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind reads the shared tokens as its palette — `bg-surface`, `text-fg-muted`,
+  // `border-line`, `shadow`, `rounded` all resolve to the CSS vars, which are already
+  // dark-aware. The hairline colour is named `line` (not `border`) to avoid the
+  // `border-border` class collision.
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* The few things utilities can't express inline: the striped mock banner, the
+     JS-toggled dropdown/drawer state, the translucent blurred top bar, and the mobile
+     off-canvas sidebar transform. Everything else is Tailwind. */
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .js-menu { display: none; }
+  .js-menu.open { display: block; }
+  .topbar-blur { background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(8px); }
+  @media (max-width: 760px) {
+    .sidebar { position: fixed; top: 29px; bottom: 0; left: 0; height: auto; transform: translateX(-100%); transition: transform .2s ease; z-index: 26; }
+    .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+    .hamburger { display: inline-flex; }
+  }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · App Shell — layout, sidebar &amp; TeamSwitcher · fake data · not the app</div>
+
+  <div class="grid min-h-[calc(100vh-29px)] grid-cols-1 md:grid-cols-[258px_1fr]">
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar flex flex-col bg-sidebar border-r border-line sticky top-0 h-[calc(100vh-29px)]" id="sidebar">
+      <a class="flex items-center gap-2.5 px-[18px] pt-4 pb-3.5" href="index.html">
+        <span class="w-[30px] h-[30px] rounded-sm bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] flex items-center justify-center font-extrabold text-[15px]">W</span>
+        <span class="font-bold text-[15px]">Warehouse<span class="text-fg-subtle font-medium"> revamp</span></span>
+      </a>
+
+      <!-- TEAM SWITCHER -->
+      <div class="relative px-3 pb-2.5">
+        <button class="w-full flex items-center gap-2.5 bg-surface-2 border border-line rounded-sm px-2.5 py-2 cursor-pointer text-left text-fg hover:border-line-strong" id="switch-btn" aria-haspopup="true" aria-expanded="false">
+          <span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-[#3b82f6]">GP</span>
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold text-[13.5px] whitespace-nowrap overflow-hidden text-ellipsis">Gudang Pusat</span>
+            <span class="block text-[11.5px] text-fg-subtle">Warehouse team</span>
+          </span>
+          <svg class="text-fg-subtle shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+        </button>
+        <div class="js-menu absolute left-3 right-3 top-[calc(100%-6px)] bg-surface border border-line rounded shadow-lg p-1.5 z-30" id="switch-menu">
+          <input class="w-full text-[13px] text-fg bg-surface-2 border border-line rounded-sm px-2.5 py-[7px] mb-1.5" type="search" placeholder="Switch team…" aria-label="Switch team" />
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2 pt-2 pb-1">Warehouse</div>
+          <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-sm cursor-pointer hover:bg-surface-2"><span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-[#3b82f6]">GP</span><span class="font-semibold text-[13px]">Gudang Pusat</span><svg class="ml-auto text-accent" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-sm cursor-pointer hover:bg-surface-2"><span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-[#3b82f6]">GT</span><span class="font-semibold text-[13px]">Gudang Timur</span></div>
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2 pt-2 pb-1">Selling</div>
+          <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-sm cursor-pointer hover:bg-surface-2"><span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-[#16a34a]">SA</span><span class="font-semibold text-[13px]">Selling Alpha</span></div>
+          <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-sm cursor-pointer hover:bg-surface-2"><span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-[#16a34a]">SB</span><span class="font-semibold text-[13px]">Selling Beta</span></div>
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2 pt-2 pb-1">Root</div>
+          <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-sm cursor-pointer hover:bg-surface-2"><span class="w-7 h-7 rounded-[7px] shrink-0 flex items-center justify-center font-bold text-xs text-white [[data-theme=dark]_&]:text-[#0c0e12] bg-accent">HQ</span><span class="font-semibold text-[13px]">Headquarters</span></div>
+        </div>
+      </div>
+
+      <!-- NAV (warehouse-team context) -->
+      <nav class="flex-1 overflow-y-auto px-3 py-2">
+        <div class="mt-2.5">
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2.5 py-1.5" data-i18n="nav.warehouse">Warehouse</div>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-white bg-accent font-semibold text-[13.5px] cursor-pointer" href="#" data-i18n="nav.overview"><svg class="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Overview</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="warehouse-product-detail.html" data-i18n="nav.products"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>Products</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="batch-list.html" data-i18n="nav.batches"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>Batches</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="restock-list.html" data-i18n="nav.restocks"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Restocks<span class="ml-auto text-[11px] font-bold text-fg-subtle bg-surface-2 border border-line rounded-full px-[7px]">3</span></a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="#" data-i18n="nav.racks"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Racks</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="order-drafts-list.html" data-i18n="nav.orders"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>Orders<span class="ml-auto text-[11px] font-bold text-fg-subtle bg-surface-2 border border-line rounded-full px-[7px]">12</span></a>
+        </div>
+        <div class="mt-2.5">
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2.5 py-1.5" data-i18n="nav.admin">Admin</div>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="#" data-i18n="nav.users"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Users</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="#" data-i18n="nav.teams"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/></svg>Teams</a>
+          <a class="group flex items-center gap-[11px] px-2.5 py-2.5 rounded-sm text-fg-muted font-medium text-[13.5px] cursor-pointer hover:bg-accent-soft hover:text-accent-fg" href="#" data-i18n="nav.couriers"><svg class="shrink-0 opacity-80" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.54 21.69a.5.5 0 0 0 .94-.02l6.5-19a.5.5 0 0 0-.64-.64l-19 6.5a.5.5 0 0 0-.02.94l7.93 3.18a2 2 0 0 1 1.11 1.11z"/><path d="m21.85 2.15-10.94 10.94"/></svg>Couriers</a>
+        </div>
+      </nav>
+
+      <!-- USER (auth not wired — #shell) -->
+      <div class="relative border-t border-line">
+        <button class="w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 cursor-pointer text-fg hover:bg-surface-2" id="userBtn" aria-haspopup="true" aria-expanded="false">
+          <span class="w-8 h-8 rounded-full bg-accent-soft text-accent-fg flex items-center justify-center font-bold text-[12.5px] shrink-0">AP</span>
+          <span class="flex-1 min-w-0">
+            <span class="block font-semibold text-[13px] whitespace-nowrap overflow-hidden text-ellipsis">Andi Pratama</span>
+            <span class="block text-[11.5px] text-fg-subtle" data-i18n="user.role">Warehouse admin</span>
+          </span>
+          <svg class="text-fg-subtle shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+        </button>
+        <div class="js-menu absolute left-3 right-3 bottom-[calc(100%-2px)] bg-surface border border-line rounded shadow-lg p-1.5 z-40" id="userMenu">
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2 pt-2 pb-[3px]" data-i18n="menu.theme">Theme</div>
+          <button class="um-item w-full text-left flex items-center gap-2.5 p-2 rounded-sm cursor-pointer text-[13px] text-fg hover:bg-surface-2 data-[active]:text-accent-fg data-[active]:font-semibold" data-theme-opt="light">
+            <svg class="ico shrink-0 text-fg-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            <span data-i18n="menu.light">Light</span>
+            <svg class="check ml-auto shrink-0 text-accent invisible" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button class="um-item w-full text-left flex items-center gap-2.5 p-2 rounded-sm cursor-pointer text-[13px] text-fg hover:bg-surface-2 data-[active]:text-accent-fg data-[active]:font-semibold" data-theme-opt="dark">
+            <svg class="ico shrink-0 text-fg-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <span data-i18n="menu.dark">Dark</span>
+            <svg class="check ml-auto shrink-0 text-accent invisible" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <div class="h-px bg-line my-1.5 mx-1"></div>
+          <div class="text-[10.5px] uppercase tracking-[.05em] text-fg-subtle font-bold px-2 pt-2 pb-[3px]" data-i18n="menu.language">Language</div>
+          <button class="um-item w-full text-left flex items-center gap-2.5 p-2 rounded-sm cursor-pointer text-[13px] text-fg hover:bg-surface-2 data-[active]:text-accent-fg data-[active]:font-semibold" data-lang-opt="en">
+            <svg class="ico shrink-0 text-fg-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+            <span>English</span>
+            <svg class="check ml-auto shrink-0 text-accent invisible" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button class="um-item w-full text-left flex items-center gap-2.5 p-2 rounded-sm cursor-pointer text-[13px] text-fg hover:bg-surface-2 data-[active]:text-accent-fg data-[active]:font-semibold" data-lang-opt="id">
+            <svg class="ico shrink-0 text-fg-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+            <span>Bahasa Indonesia</span>
+            <svg class="check ml-auto shrink-0 text-accent invisible" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <div class="h-px bg-line my-1.5 mx-1"></div>
+          <button class="w-full text-left flex items-center gap-2.5 p-2 rounded-sm cursor-pointer text-[13px] text-neg hover:bg-surface-2">
+            <svg class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            <span data-i18n="menu.signout">Sign out</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================== MAIN ===================== -->
+    <div class="flex flex-col min-w-0">
+      <header class="topbar-blur sticky top-0 z-20 border-b border-line flex items-center gap-3 px-[22px] py-3">
+        <button class="hamburger hidden border border-line-strong rounded-sm p-1.5 text-fg cursor-pointer" id="hamburger" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button>
+        <span class="text-[13px] text-fg-subtle">Gudang Pusat / <b class="text-fg font-semibold" data-i18n="crumb.overview">Overview</b></span>
+        <span class="flex-1"></span>
+        <span class="relative">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="text-[13px] text-fg bg-surface border border-line-strong rounded-full py-[7px] pr-3 pl-8 w-[220px] max-[760px]:w-[150px] focus:outline focus:outline-2 focus:outline-accent focus:-outline-offset-1 focus:border-accent" type="search" placeholder="Search…" aria-label="Search" />
+        </span>
+        <button class="relative bg-surface border border-line-strong rounded-sm p-[7px] text-fg-muted cursor-pointer hover:bg-surface-2 hover:text-fg" aria-label="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/></svg><span class="absolute top-[5px] right-1.5 w-[7px] h-[7px] rounded-full bg-warn border-[1.5px] border-surface"></span></button>
+      </header>
+
+      <div class="p-[24px_22px_40px] max-w-[1120px] w-full">
+        <div class="mb-5">
+          <h1 class="text-[22px] font-bold m-0" data-i18n="page.overview">Overview</h1>
+          <p class="text-fg-muted mt-[3px] text-[13.5px]" data-i18n="page.subtitle">Gudang Pusat · Warehouse team</p>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          <div class="bg-surface border border-line rounded shadow p-[15px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold" data-i18n="stat.readyvalue">Ready stock value</div><div class="text-[21px] font-semibold mt-[5px] [font-variant-numeric:tabular-nums]">Rp 138.500.000</div><div class="text-xs text-fg-muted mt-0.5">across 40 batches</div></div>
+          <div class="bg-surface border border-line rounded shadow p-[15px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold" data-i18n="stat.expiring">Expiring ≤ 30 days</div><div class="text-[21px] font-semibold mt-[5px] [font-variant-numeric:tabular-nums] text-warn">5</div><div class="text-xs text-fg-muted mt-0.5">batches to clear</div></div>
+          <div class="bg-surface border border-line rounded shadow p-[15px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold" data-i18n="stat.restocks">Pending restocks</div><div class="text-[21px] font-semibold mt-[5px] [font-variant-numeric:tabular-nums]">3</div><div class="text-xs text-fg-muted mt-0.5">on their way in</div></div>
+          <div class="bg-surface border border-line rounded shadow p-[15px_16px]"><div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold" data-i18n="stat.orders">Open orders</div><div class="text-[21px] font-semibold mt-[5px] [font-variant-numeric:tabular-nums]">12</div><div class="text-xs text-fg-muted mt-0.5">to fulfil</div></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-4 mt-4">
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+            <div class="flex items-center justify-between mb-2.5"><span class="text-[14.5px] font-semibold" data-i18n="card.recent">Recent activity</span><a class="text-[12.5px] text-accent-fg font-semibold" href="warehouse-product-detail.html">View stock →</a></div>
+            <table class="w-full border-collapse text-[13px]"><tbody>
+              <tr><td class="py-2.5 px-1 border-b border-line"><span class="inline-flex text-[11.5px] font-semibold py-px px-[7px] rounded-md bg-surface-2 text-fg-muted border border-line">Received</span></td><td class="py-2.5 px-1 border-b border-line">Budi received <b>#3007</b> · +197 → A-01-3</td><td class="py-2.5 px-1 border-b border-line [font-variant-numeric:tabular-nums] text-fg-subtle text-xs">10 min ago</td></tr>
+              <tr><td class="py-2.5 px-1 border-b border-line"><span class="inline-flex text-[11.5px] font-semibold py-px px-[7px] rounded-md bg-surface-2 text-fg-muted border border-line">Moved</span></td><td class="py-2.5 px-1 border-b border-line">Andi moved 45 · A-01-3 → B-04-2</td><td class="py-2.5 px-1 border-b border-line [font-variant-numeric:tabular-nums] text-fg-subtle text-xs">1 h ago</td></tr>
+              <tr><td class="py-2.5 px-1 border-b border-line"><span class="inline-flex text-[11.5px] font-semibold py-px px-[7px] rounded-md bg-surface-2 text-fg-muted border border-line">Picked</span></td><td class="py-2.5 px-1 border-b border-line">Rina picked 9 · #2988</td><td class="py-2.5 px-1 border-b border-line [font-variant-numeric:tabular-nums] text-fg-subtle text-xs">2 h ago</td></tr>
+              <tr><td class="py-2.5 px-1 border-b border-line"><span class="inline-flex text-[11.5px] font-semibold py-px px-[7px] rounded-md bg-surface-2 text-fg-muted border border-line">Adjusted</span></td><td class="py-2.5 px-1 border-b border-line">Budi recounted A-01-3 · −1</td><td class="py-2.5 px-1 border-b border-line [font-variant-numeric:tabular-nums] text-fg-subtle text-xs">3 h ago</td></tr>
+              <tr><td class="py-2.5 px-1"><span class="inline-flex text-[11.5px] font-semibold py-px px-[7px] rounded-md bg-surface-2 text-fg-muted border border-line">Restock</span></td><td class="py-2.5 px-1">Siti created restock <b>#3110</b></td><td class="py-2.5 px-1 [font-variant-numeric:tabular-nums] text-fg-subtle text-xs">yesterday</td></tr>
+            </tbody></table>
+          </div></div>
+
+          <div class="bg-surface border border-line rounded shadow"><div class="p-[16px_18px]">
+            <div class="flex items-center justify-between mb-2.5"><span class="text-[14.5px] font-semibold" data-i18n="card.expiring">Expiring soon</span><a class="text-[12.5px] text-accent-fg font-semibold" href="batch-list.html">All batches →</a></div>
+            <div class="flex items-center gap-2.5 py-2.5 border-b border-line"><span class="flex-1 min-w-0"><b class="font-semibold text-[13px]">Kaos Polos Hitam L</b><span class="block text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums]">#3007 · 197 pcs</span></span><span class="text-xs font-bold text-warn bg-warn-soft border border-warn-border rounded-full px-2.5 py-0.5 whitespace-nowrap [font-variant-numeric:tabular-nums]">7 days</span></div>
+            <div class="flex items-center gap-2.5 py-2.5 border-b border-line"><span class="flex-1 min-w-0"><b class="font-semibold text-[13px]">Masker Kain 3ply</b><span class="block text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums]">#3050 · 320 pcs</span></span><span class="text-xs font-bold text-warn bg-warn-soft border border-warn-border rounded-full px-2.5 py-0.5 whitespace-nowrap [font-variant-numeric:tabular-nums]">10 days</span></div>
+            <div class="flex items-center gap-2.5 py-2.5"><span class="flex-1 min-w-0"><b class="font-semibold text-[13px]">Roti Tawar Gandum</b><span class="block text-fg-subtle text-[11.5px] [font-variant-numeric:tabular-nums]">#3121 · 48 pcs</span></span><span class="text-xs font-bold text-warn bg-warn-soft border border-warn-border rounded-full px-2.5 py-0.5 whitespace-nowrap [font-variant-numeric:tabular-nums]">2 days</span></div>
+          </div></div>
+        </div>
+
+        <p class="text-fg-subtle text-xs mt-[18px]">The sidebar, TeamSwitcher and this Overview are the app shell — every screen renders in this content area. The nav is a <strong>proposal</strong>, and it is <strong>team/role-scoped</strong>: a warehouse team sees warehouse nav; a selling team's would differ; Admin shows only for root/admin. Nav links here open the standalone mocks (which will render inside this shell once built).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="js-menu fixed inset-[29px_0_0] bg-black/45 z-[25]" id="overlay"></div>
+
+<script>
+  // Team switcher dropdown
+  const sb = document.getElementById("switch-btn");
+  const sm = document.getElementById("switch-menu");
+  sb.addEventListener("click", (e) => { e.stopPropagation(); const open = sm.classList.toggle("open"); sb.setAttribute("aria-expanded", open); });
+  document.addEventListener("click", (e) => { if (!sm.contains(e.target) && !sb.contains(e.target)) { sm.classList.remove("open"); sb.setAttribute("aria-expanded", "false"); } });
+
+  // Mobile sidebar
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+  const ham = document.getElementById("hamburger");
+  const toggle = (open) => { sidebar.classList.toggle("open", open); overlay.classList.toggle("open", open); };
+  ham.addEventListener("click", () => toggle(!sidebar.classList.contains("open")));
+  overlay.addEventListener("click", () => toggle(false));
+
+  // User menu (theme + language options)
+  const userBtn = document.getElementById("userBtn");
+  const userMenu = document.getElementById("userMenu");
+  userBtn.addEventListener("click", (e) => { e.stopPropagation(); const open = userMenu.classList.toggle("open"); userBtn.setAttribute("aria-expanded", open); syncTheme(); });
+  document.addEventListener("click", (e) => { if (!userMenu.contains(e.target) && !userBtn.contains(e.target)) { userMenu.classList.remove("open"); userBtn.setAttribute("aria-expanded", "false"); } });
+
+  // Theme — shares data-theme (and localStorage) with the floating toggle. Marks the active
+  // option with data-active (styled by the data-[active] utilities) and reveals its check.
+  function syncTheme() {
+    const t = document.documentElement.getAttribute("data-theme") || "light";
+    document.querySelectorAll("[data-theme-opt]").forEach((el) => {
+      const on = el.dataset.themeOpt === t;
+      el.toggleAttribute("data-active", on);
+      const chk = el.querySelector(".check"); if (chk) chk.classList.toggle("invisible", !on);
+    });
+  }
+  document.querySelectorAll("[data-theme-opt]").forEach((el) => el.addEventListener("click", () => {
+    document.documentElement.setAttribute("data-theme", el.dataset.themeOpt);
+    try { localStorage.setItem("mock-theme", el.dataset.themeOpt); } catch (e) {}
+    syncTheme();
+  }));
+
+  // Language (internationalization) — a focused demo dictionary. Replaces each marked
+  // element's own text node, so nested <svg>/count badges survive the swap.
+  const I18N_ID = {
+    "nav.warehouse":"Gudang","nav.admin":"Admin","nav.overview":"Ringkasan","nav.products":"Produk",
+    "nav.batches":"Batch","nav.restocks":"Restok","nav.racks":"Rak","nav.orders":"Pesanan",
+    "nav.users":"Pengguna","nav.teams":"Tim","nav.couriers":"Kurir",
+    "crumb.overview":"Ringkasan","page.overview":"Ringkasan","page.subtitle":"Gudang Pusat · Tim gudang",
+    "stat.readyvalue":"Nilai stok siap","stat.expiring":"Kedaluwarsa ≤ 30 hari","stat.restocks":"Restok tertunda","stat.orders":"Pesanan terbuka",
+    "card.recent":"Aktivitas terbaru","card.expiring":"Segera kedaluwarsa","user.role":"Admin gudang",
+    "menu.theme":"Tema","menu.language":"Bahasa","menu.light":"Terang","menu.dark":"Gelap","menu.signout":"Keluar"
+  };
+  const firstText = (el) => { for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) return n; return null; };
+  const EN = {};
+  document.querySelectorAll("[data-i18n]").forEach((el) => { const n = firstText(el); if (n) EN[el.dataset.i18n] = n.textContent; });
+  function setLang(l) {
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const n = firstText(el); if (!n) return;
+      const key = el.dataset.i18n;
+      n.textContent = (l === "id" && I18N_ID[key]) ? I18N_ID[key] : (EN[key] != null ? EN[key] : n.textContent);
+    });
+    document.documentElement.lang = l;
+    try { localStorage.setItem("mock-lang", l); } catch (e) {}
+    document.querySelectorAll("[data-lang-opt]").forEach((el) => {
+      const on = el.dataset.langOpt === l;
+      el.toggleAttribute("data-active", on);
+      const chk = el.querySelector(".check"); if (chk) chk.classList.toggle("invisible", !on);
+    });
+  }
+  document.querySelectorAll("[data-lang-opt]").forEach((el) => el.addEventListener("click", () => setLang(el.dataset.langOpt)));
+
+  syncTheme();
+  setLang(localStorage.getItem("mock-lang") || "en");
+</script>
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+  <script>
+    (function(){
+      var tt = document.getElementById('themeToggle');
+      if (!tt) return;
+      tt.addEventListener('click', function(){
+        var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', d);
+        try { localStorage.setItem('mock-theme', d); } catch(e){}
+        if (window.syncTheme) window.syncTheme();
+      });
+    })();
+  </script>
+</body>
+</html>
