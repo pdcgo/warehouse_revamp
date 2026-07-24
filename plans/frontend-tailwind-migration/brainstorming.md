@@ -37,9 +37,30 @@
   dropped (e2e assertions → `[data-theme]`), vite chunk retargeted to `ark`, both deps uninstalled.
 
 **Verified:** `tsc` + `vite build` green throughout; the login→walk smoke, a dark-mode render, and the
-auth e2e (9/9) all pass at runtime. One regression the smoke caught and fixed: closed Ark overlays
-stayed mounted (Chakra unmounted them) → `ui/Dialog`/`Menu`/`Popover` default to
-`lazyMount + unmountOnExit`.
+Playwright e2e suite pass at runtime — **95/97**, every spec green **in isolation**. The one full-suite
+miss is `settlement.spec:153`: it asserts the global "total payable" tile equals *its own* 25.000 seed,
+but the tile correctly sums ALL of Root's payables, which other specs (sharing the Root team) inflate
+to 33.000. It passes in isolation, the migrated UI shows the correct total, and a frontend migration
+can't change backend data — so it's a pre-existing cross-spec test-isolation issue, not a regression
+here. (The follow-on `:174` then "did not run" — serial.)
+
+**Behavioural regressions the smoke + e2e caught (all fixed) — the parts a screenshot can't show:**
+1. **Closed overlays stayed mounted.** Ark keeps closed dialog/menu content in the DOM; Chakra
+   unmounted it — a hidden 2nd "Username" field broke login. → `ui/Dialog`/`Menu`/`Popover` default to
+   `lazyMount + unmountOnExit`.
+2. **Composable Selects flattened to native.** `PaymentType/Marketplace/ExpenseKind/TeamType` were
+   Chakra composable `Select`s (the owner's choice over `NativeSelect`); the fan-out made them native
+   `<select>`, breaking their click-to-open e2e. → added a `ui/SelectMenu` (Ark Select) primitive and
+   reverted the four.
+3. **Pickers inert inside modals.** A portalled combobox/select popup lands outside an open dialog,
+   which Ark makes `inert` → options unclickable. → `ui/Combobox`/`ui/SelectMenu` render **inline**
+   (like CategorySelect always did).
+4. **Buttons submitted their form.** A native `<button>` in a `<form>` is `type="submit"`; Chakra
+   defaulted to `button`. Clicking a picker/Cancel submitted the form (product-create's Save vanished).
+   → `ui/Button`/`IconButton` default `type="button"`.
+
+These four are the load-bearing behaviours the audit predicted would be invisible in a screenshot —
+each surfaced by the e2e, not the eye.
 
 > **D3 rationale (owner):** Ark UI — Chakra v3 is built on it, so composable call-sites port ~1:1;
 > and it has a Combobox (Radix doesn't), which the 7 pickers require. A headless lib is *unstyled*,
