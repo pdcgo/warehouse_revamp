@@ -21,7 +21,7 @@ export GRAPHIFY_CLAUDE_CLI_MODEL
 # past that — so the viz silently stops regenerating. Raise the ceiling to keep
 # it rendering, with headroom as the repo grows. Note a graph this size is heavy
 # in a browser; drop the value (or pass --no-viz) if graph.html gets sluggish.
-GRAPHIFY_VIZ_NODE_LIMIT   ?= 8000
+GRAPHIFY_VIZ_NODE_LIMIT   ?= 9000
 export GRAPHIFY_VIZ_NODE_LIMIT
 
 .PHONY: help graphify-full graphify-update graphify-label
