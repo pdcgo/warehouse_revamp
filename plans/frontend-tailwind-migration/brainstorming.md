@@ -19,8 +19,19 @@
 `@tailwindcss/vite` + Ark UI + sonner installed; `src/index.css` holds the dark-aware token block +
 `@theme` mapping (Preflight omitted during coexistence); dark mode moved to `[data-theme]` (both
 signals set until Chakra is gone); all governing docs flipped. `tsc` + `vite build` green.
-**Next: Phase 1** — build the shared Ark UI primitives (Dialog/ConfirmDialog, Menu, Combobox, Select,
-Tabs, Field, Toaster, Button, Badge, Table, Card, StatTile, Pagination) once, then fan out.
+**Phase 1 — IN PROGRESS.** Vertical proof landed: **`ConfirmDialog`** rebuilt on Ark UI's `Dialog`
+(focus-trap, scroll-lock, Escape/backdrop, Portal, `role="alertdialog"`) + Tailwind, SAME public API
+and `confirm-action` testid, verified open in light/dark. Established for the rest:
+- **Ark UI import + part-mapping** — `Dialog.Root/Backdrop/Positioner/Content/Title/Description/
+  CloseTrigger` (no Chakra `Header/Body/Footer/ActionTrigger` — plain divs; Cancel = `CloseTrigger`).
+- **Coexistence button reset** (index.css `@layer base`) — Preflight-off means a bare `<button>`
+  shows native UA chrome; a base-specificity reset fixes our Tailwind buttons without touching Chakra.
+- **Verification method** — a throwaway `probe.html` + Vite dev + Playwright screenshot (no backend).
+
+**Remaining Phase 1 primitives** (build once, then fan out): a `Dialog` wrapper (extract from
+ConfirmDialog) · `Menu` (row-actions kebab) · `Combobox` (the 7 pickers) · `Select` · `Tabs` ·
+`Field` · `Toaster` (sonner) · `Button` · `Badge`/status badges · `Table` · `Card` · `StatTile` ·
+`Pagination`. Next up per the audit: `Button` + a form `Dialog` + the `UsersTable` row `Menu`.
 
 > **D3 rationale (owner):** Ark UI — Chakra v3 is built on it, so composable call-sites port ~1:1;
 > and it has a Combobox (Radix doesn't), which the 7 pickers require. A headless lib is *unstyled*,
