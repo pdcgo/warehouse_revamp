@@ -1,9 +1,10 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge } from "./ui/Badge";
+import type { BadgePalette } from "./ui/Badge";
 import { OrderStatus } from "../gen/warehouse/selling/v1/order_pb";
 
 // The standard label + colour for each order status, in one place, so a status looks the same
 // everywhere it is shown (#68).
-function statusMeta(s: OrderStatus): { label: string; color: string } {
+function statusMeta(s: OrderStatus): { label: string; color: BadgePalette } {
   switch (s) {
     case OrderStatus.PLACED:
       return { label: "Placed", color: "blue" };
@@ -26,8 +27,9 @@ function statusMeta(s: OrderStatus): { label: string; color: string } {
   }
 }
 
-// OrderStatusBadge renders an order's status as a Chakra Badge in its standard colour (#68).
-export const description = "An order's status as a standard-coloured Chakra Badge (placed=blue, confirmed=green, cancelled=red; the warehouse's picking/packed steps share orange, shipped=purple).";
+// OrderStatusBadge renders an order's status as a Badge in its standard colour (#68).
+export const description =
+  "An order's status as a standard-coloured Badge (placed=blue, confirmed=green, cancelled=red; the warehouse's picking/packed steps share orange, shipped=purple).";
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const { label, color } = statusMeta(status);

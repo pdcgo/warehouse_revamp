@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
+import { Spinner } from "./ui/Spinner";
 import { rpcError, supplierClient } from "../api/clients";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
 
@@ -28,7 +29,7 @@ export interface SupplierSelectProps {
 // searchable, matching on NAME or CODE — people type either, and two suppliers with similar names
 // stay distinguishable by the code beside them.
 export const description =
-  'Searchable supplier picker for a team (Chakra Combobox over SupplierList) — matches on name or code. Emits a supplier id, and clears to 0 because "no supplier" is a real value.';
+  'Searchable supplier picker for a team (Combobox over SupplierList) — matches on name or code. Emits a supplier id, and clears to 0 because "no supplier" is a real value.';
 
 export function SupplierSelect({
   teamId,
@@ -138,7 +139,7 @@ export function SupplierSelect({
           <Combobox.Content>
             {loading ? (
               <Combobox.Empty>
-                <Spinner size="sm" colorPalette="brand" />
+                <Spinner className="size-4" />
               </Combobox.Empty>
             ) : (
               <>

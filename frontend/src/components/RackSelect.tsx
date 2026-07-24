@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NativeSelect } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+import { Select } from "./ui/Select";
 import { rackClient, rpcError } from "../api/clients";
 import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
 
@@ -24,7 +24,7 @@ export interface RackSelectProps {
 
 // RackSelect is the shared place picker for a warehouse (#139) — the racks plus the unplaced pile.
 // Like SupplierSelect over a team's suppliers, a warehouse has a handful of racks, so it loads them
-// all once into a NativeSelect rather than paging or searching. It emits a plain string, so a caller
+// all once into a native Select rather than paging or searching. It emits a plain string, so a caller
 // converts to whatever its own contract wants (StockAdjust wants a oneof) without this component
 // knowing about any one RPC.
 //
@@ -33,7 +33,7 @@ export interface RackSelectProps {
 //   - the placeholder is DISABLED — "not answered yet" is not a value, and submitting it is the
 //     precise bug this picker exists to prevent.
 export const description =
-  "Place picker for a warehouse (Chakra NativeSelect over RackList): the racks plus a selectable \"Unplaced\" pile. Emits \"\" (unanswered) | \"unplaced\" | a rack id string; the unanswered placeholder is disabled on purpose.";
+  'Place picker for a warehouse (native Select over RackList): the racks plus a selectable "Unplaced" pile. Emits "" (unanswered) | "unplaced" | a rack id string; the unanswered placeholder is disabled on purpose.';
 
 export function RackSelect({ warehouseId, value, onChange, placeholder, disabled }: RackSelectProps) {
   const { t } = useTranslation();
@@ -67,33 +67,31 @@ export function RackSelect({ warehouseId, value, onChange, placeholder, disabled
   }, [warehouseId]);
 
   return (
-    <NativeSelect.Root disabled={disabled}>
-      <NativeSelect.Field
-        data-testid="rack-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {/* Disabled, unlike the selectable empty option on SupplierSelect / PaymentTypeSelect — and
-            for the same underlying reason, applied to a different question. There, "" meant "no
-            supplier" / "no payment type recorded": a VALUE, so it had to stay reachable or the field
-            became write-once (#131). Here "" means the count has no place yet, which is not a place —
-            "unplaced" is the option for that. A stock-take that silently corrected the wrong shelf
-            would be believed, so the answer is refused rather than guessed. This is the one
-            legitimate use of a disabled placeholder. */}
-        <option value="" disabled>
-          {error ? t("racks.select.unavailable") : resolvedPlaceholder}
+    <Select
+      data-testid="rack-select"
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {/* Disabled, unlike the selectable empty option on SupplierSelect / PaymentTypeSelect — and
+          for the same underlying reason, applied to a different question. There, "" meant "no
+          supplier" / "no payment type recorded": a VALUE, so it had to stay reachable or the field
+          became write-once (#131). Here "" means the count has no place yet, which is not a place —
+          "unplaced" is the option for that. A stock-take that silently corrected the wrong shelf
+          would be believed, so the answer is refused rather than guessed. This is the one
+          legitimate use of a disabled placeholder. */}
+      <option value="" disabled>
+        {error ? t("racks.select.unavailable") : resolvedPlaceholder}
+      </option>
+
+      {/* Rendered even when the rack list failed to load: "unplaced" is answerable without it. */}
+      <option value={UNPLACED}>{t("racks.select.unplaced")}</option>
+
+      {racks.map((rack) => (
+        <option key={rack.id.toString()} value={rack.id.toString()}>
+          {rack.name ? `${rack.code} — ${rack.name}` : rack.code}
         </option>
-
-        {/* Rendered even when the rack list failed to load: "unplaced" is answerable without it. */}
-        <option value={UNPLACED}>{t("racks.select.unplaced")}</option>
-
-        {racks.map((rack) => (
-          <option key={rack.id.toString()} value={rack.id.toString()}>
-            {rack.name ? `${rack.code} — ${rack.name}` : rack.code}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+      ))}
+    </Select>
   );
 }
