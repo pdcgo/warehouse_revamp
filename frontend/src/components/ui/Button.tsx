@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
@@ -84,18 +85,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
 }
 
-export function Button({
-  variant = "solid",
-  colorPalette = "brand",
-  size = "sm",
-  loading = false,
-  disabled,
-  className,
-  children,
-  ...rest
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "solid", colorPalette = "brand", size = "sm", loading = false, disabled, className, children, ...rest },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       className={cn(BASE, SIZE[size], variantClasses(variant, colorPalette), className)}
       disabled={disabled || loading}
       {...rest}
@@ -104,7 +100,7 @@ export function Button({
       {children}
     </button>
   );
-}
+});
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -115,16 +111,13 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 // A square button for a single icon. Defaults to the ghost look most row/toolbar actions use.
-export function IconButton({
-  variant = "ghost",
-  colorPalette = "gray",
-  size = "sm",
-  className,
-  children,
-  ...rest
-}: IconButtonProps) {
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  { variant = "ghost", colorPalette = "gray", size = "sm", className, children, ...rest },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       className={cn(
         "inline-flex items-center justify-center rounded-control transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60",
         ICON_SIZE[size],
@@ -136,4 +129,4 @@ export function IconButton({
       {children}
     </button>
   );
-}
+});

@@ -1,20 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Combobox,
-  Field,
-  Input,
-  Portal,
-  Span,
-  Spinner,
-  Stack,
-  Textarea,
-  useListCollection,
-} from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { regionClient, rpcError } from "../api/clients";
 import { useRegionSearch } from "../features/region/queries";
 import { useDebounced } from "../lib/useDebounced";
 import type { Region, RegionAncestry } from "../gen/warehouse/region/v1/region_pb";
+import { Combobox, Portal, useListCollection } from "./ui/Combobox";
+import { Field } from "./ui/Field";
+import { Spinner } from "./ui/Spinner";
 
 // What the picker emits — codes AND names, so a consumer can SNAPSHOT the address onto its own
 // record without a second round-trip (plans/region_service/brainstorming.md §5: a saved address is
@@ -214,7 +206,7 @@ function LevelSelect({
         <Combobox.Control>
           <Combobox.Input placeholder={placeholder} />
           <Combobox.IndicatorGroup>
-            {loading ? <Spinner size="xs" colorPalette="brand" /> : <Combobox.ClearTrigger />}
+            {loading ? <Spinner className="size-4" /> : <Combobox.ClearTrigger />}
             <Combobox.Trigger />
           </Combobox.IndicatorGroup>
         </Combobox.Control>
@@ -273,7 +265,6 @@ function AddressSearch({
     set(q.length >= SEARCH_MIN_CHARS ? (results.data ?? []) : []);
   }, [q, results.data, set]);
 
-
   return (
     <Field.Root disabled={disabled}>
       <Field.Label>{t("address.search.label")}</Field.Label>
@@ -299,7 +290,7 @@ function AddressSearch({
               pinned to [] on purpose — so it would be permanently dead chrome. */}
           {loading && (
             <Combobox.IndicatorGroup>
-              <Spinner size="xs" colorPalette="brand" />
+              <Spinner className="size-4" />
             </Combobox.IndicatorGroup>
           )}
         </Combobox.Control>
@@ -319,12 +310,10 @@ function AddressSearch({
 
                 return (
                   <Combobox.Item item={a} key={value} data-testid={`address-search-option-${value}`}>
-                    <Stack gap="0">
-                      <Span fontWeight="medium">{hitName(a)}</Span>
-                      <Span fontSize="xs" color="fg.muted">
-                        {hitPath(a)}
-                      </Span>
-                    </Stack>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{hitName(a)}</span>
+                      <span className="text-xs text-fg-muted">{hitPath(a)}</span>
+                    </div>
                   </Combobox.Item>
                 );
               })}
@@ -468,7 +457,7 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
   }
 
   return (
-    <Stack gap="field">
+    <div className="flex flex-col gap-field">
       <AddressSearch onPick={applyHit} disabled={disabled} />
 
       <LevelSelect
@@ -521,7 +510,7 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
 
       <Field.Root disabled={disabled}>
         <Field.Label>{t("address.kodePos")}</Field.Label>
-        <Input
+        <Field.Input
           value={value.kodePos}
           data-testid="address-kodepos"
           inputMode="numeric"
@@ -533,7 +522,7 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
 
       <Field.Root disabled={disabled}>
         <Field.Label>{t("address.addressLine")}</Field.Label>
-        <Textarea
+        <Field.Textarea
           value={value.addressLine}
           data-testid="address-line"
           rows={2}
@@ -542,6 +531,6 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
         />
         <Field.HelperText>{t("address.addressLineHelp")}</Field.HelperText>
       </Field.Root>
-    </Stack>
+    </div>
   );
 }

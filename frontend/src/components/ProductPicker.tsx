@@ -1,18 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  Button,
-  Checkbox,
-  CloseButton,
-  Dialog,
-  Flex,
-  Input,
-  Portal,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button, IconButton } from "./ui/Button";
+import { Checkbox } from "./ui/Checkbox";
+import { Dialog, Portal } from "./ui/Dialog";
+import { Input } from "./ui/Input";
+import { Spinner } from "./ui/Spinner";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { useTeam } from "../features/team/TeamContext";
@@ -437,26 +431,25 @@ export function ProductPicker({
   const count = ticked.size;
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(e) => handleOpenChange(e.open)}
-      size="md"
-      scrollBehavior="inside"
-    >
+    <Dialog.Root open={open} onOpenChange={(e) => handleOpenChange(e.open)}>
       <Dialog.Trigger asChild data-testid="product-picker-trigger">
-        {trigger ?? <Button variant="outline" disabled={disabled}>{t("productPicker.trigger")}</Button>}
+        {trigger ?? (
+          <Button variant="outline" colorPalette="gray" disabled={disabled}>
+            {t("productPicker.trigger")}
+          </Button>
+        )}
       </Dialog.Trigger>
 
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content data-testid="product-picker-dialog">
+          <Dialog.Content className="max-w-lg" data-testid="product-picker-dialog">
             <Dialog.Header>
               <Dialog.Title>{t("productPicker.title")}</Dialog.Title>
             </Dialog.Header>
 
             <Dialog.Body>
-              <Stack gap="card">
+              <div className="flex flex-col gap-card">
                 <Input
                   placeholder={t("products.searchPlaceholder")}
                   value={input}
@@ -465,15 +458,16 @@ export function ProductPicker({
                   onChange={(e) => setInput(e.target.value)}
                 />
 
-                <Flex align="center" justify="space-between" gap="2">
-                  <Text fontSize="sm" color="fg.muted" data-testid="product-picker-count">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-fg-muted" data-testid="product-picker-count">
                     {t("productPicker.selected", { n: count })}
-                  </Text>
+                  </span>
 
                   {/* The only way to untick a selection that isn't on the loaded page — including a
                       seeded id this scope cannot show at all. Without it those ticks are unreachable. */}
                   <Button
                     variant="ghost"
+                    colorPalette="gray"
                     size="xs"
                     disabled={count === 0}
                     data-testid="product-picker-clear"
@@ -481,63 +475,54 @@ export function ProductPicker({
                   >
                     {t("productPicker.clear")}
                   </Button>
-                </Flex>
+                </div>
 
                 {noTeam ? (
-                  <Text color="fg.muted" data-testid="product-picker-no-team">
+                  <p className="text-fg-muted" data-testid="product-picker-no-team">
                     {browseAll ? t("productPicker.noTeamAll") : t("productPicker.noTeam")}
-                  </Text>
+                  </p>
                 ) : (
                   <>
                     {error && (
-                      <Text color="red.fg" data-testid="product-picker-error">
+                      <p className="text-red-600 dark:text-red-400" data-testid="product-picker-error">
                         {error}
-                      </Text>
+                      </p>
                     )}
 
-                    {loading && <Spinner colorPalette="brand" />}
+                    {loading && <Spinner />}
 
                     {!loading && !error && products.length === 0 && (
-                      <Text color="fg.muted" data-testid="product-picker-empty">
+                      <p className="text-fg-muted" data-testid="product-picker-empty">
                         {t("products.empty")}
-                      </Text>
+                      </p>
                     )}
 
                     {!loading && !error && products.length > 0 && (
-                      <Stack gap="1" data-testid="product-picker-list">
+                      <div className="flex flex-col gap-1" data-testid="product-picker-list">
                         {products.map((p) => {
                           const key = p.id.toString();
 
                           return (
-                            <Checkbox.Root
+                            // The Checkbox is the row's <label>, so the WHOLE row toggles; its Control
+                            // LEADS the row (#110 review): ticking down a list is a vertical scan of the
+                            // boxes, and a box parked after each product's name lands somewhere different
+                            // on every row.
+                            <Checkbox
                               key={key}
                               checked={ticked.has(key)}
-                              onCheckedChange={(e) => toggle(p.id, !!e.checked)}
+                              onCheckedChange={(checked) => toggle(p.id, checked)}
                               data-testid={`product-picker-option-${p.id}`}
-                              w="full"
-                              px="2"
-                              py="1"
-                              borderRadius="md"
-                              cursor="pointer"
-                              _hover={{ bg: "bg.subtle" }}
+                              className="w-full items-center gap-card rounded-control px-2 py-1 hover:bg-surface-2"
                             >
-                              {/* Checkbox.Root is the row's <label>, so the WHOLE row toggles; the
-                                  Control LEADS the row rather than trailing it (#110 review): ticking
-                                  down a list is a vertical scan of the boxes, and a box parked after
-                                  each product's name lands somewhere different on every row. */}
-                              <Checkbox.HiddenInput />
-                              <Flex align="center" gap="card" w="full">
-                                <Checkbox.Control flexShrink={0} />
-                                <ProductListItem
-                                  product={p}
-                                  stock={onHand.has(key) ? onHand.get(key) : undefined}
-                                  teamName={teamNames.get(p.teamId.toString())}
-                                />
-                              </Flex>
-                            </Checkbox.Root>
+                              <ProductListItem
+                                product={p}
+                                stock={onHand.has(key) ? onHand.get(key) : undefined}
+                                teamName={teamNames.get(p.teamId.toString())}
+                              />
+                            </Checkbox>
                           );
                         })}
-                      </Stack>
+                      </div>
                     )}
 
                     <Pagination
@@ -548,15 +533,15 @@ export function ProductPicker({
                     />
                   </>
                 )}
-              </Stack>
+              </div>
             </Dialog.Body>
 
             <Dialog.Footer>
-              <Dialog.ActionTrigger asChild>
-                <Button variant="outline" data-testid="product-picker-cancel">
+              <Dialog.CloseTrigger asChild>
+                <Button variant="outline" colorPalette="gray" data-testid="product-picker-cancel">
                   {t("common.cancel")}
                 </Button>
-              </Dialog.ActionTrigger>
+              </Dialog.CloseTrigger>
 
               {/* Never disabled by `count` — confirming zero ticks is how a selection gets cleared.
                   `confirming` only shows a spinner while the on-open resolve lands: that always
@@ -573,7 +558,9 @@ export function ProductPicker({
             </Dialog.Footer>
 
             <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
+              <IconButton size="sm" aria-label={t("common.cancel")} className="absolute right-3 top-3">
+                <X className="size-4" />
+              </IconButton>
             </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>

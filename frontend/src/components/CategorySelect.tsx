@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, Flex, HStack, Icon, IconButton, Input, Popover, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { categoryClient, rpcError } from "../api/clients";
 import type { Category } from "../gen/warehouse/category/v1/category_pb";
 import { childrenByParent } from "../features/categories/categoryTree";
+import { Button, IconButton } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Spinner } from "./ui/Spinner";
+import { Popover } from "./ui/Popover";
+import { cn } from "./ui/cn";
 
 export interface CategorySelectProps {
   /** Selected category id. 0n (the default) means top-level / none. */
@@ -64,14 +68,13 @@ function collectAll(forest: CatNode[], trail: CatNode[], out: { node: CatNode; p
 }
 
 // CategorySelect is the shared nested-category picker (#34), reworked for #63 to match the pattern
-// the owner uses (warehouse_infra CategoryPicker): a Popover whose trigger shows the selected path
-// as a breadcrumb ("Parent › Child › Grandchild"), and whose body is MULTISTAGE — cascading Miller
-// columns where each category with children drills into a new column. A search box jumps to any
-// matching node. Any node (not only leaves) is selectable — clicking a name selects it; a chevron
-// drills without selecting.
+// the owner uses: a Popover whose trigger shows the selected path as a breadcrumb ("Parent › Child ›
+// Grandchild"), and whose body is MULTISTAGE — cascading Miller columns where each category with
+// children drills into a new column. A search box jumps to any matching node. Any node (not only
+// leaves) is selectable — clicking a name selects it; a chevron drills without selecting.
 //
-// Rendered inline (portalled={false}) so it works inside modal dialogs (create/edit category), where
-// a portalled popover renders outside the dialog and the modal makes it inert.
+// Rendered inline (NOT portalled) so it works inside modal dialogs (create/edit category), where a
+// portalled popover renders outside the dialog and the modal makes it inert.
 export const description =
   "Nested-category picker (#63): a Popover with a breadcrumb trigger and cascading Miller columns over the global taxonomy. Emits a category id (0 = none). Pass `leafOnly` to allow selecting only end (leaf) categories — parents then drill instead of select.";
 
@@ -158,144 +161,143 @@ export function CategorySelect({
   }
 
   return (
-    <Popover.Root open={open} onOpenChange={(e) => setOpen(e.open)} positioning={{ placement: "bottom-start" }}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(e) => setOpen(e.open)}
+      positioning={{ placement: "bottom-start" }}
+    >
       <Popover.Trigger asChild>
         <Button
           variant="outline"
-          justifyContent="space-between"
-          fontWeight="normal"
+          colorPalette="gray"
           disabled={disabled}
           data-testid="category-select"
-          w="full"
+          className="w-full justify-between font-normal"
         >
-          <Text as="span" truncate color={pathLabel ? undefined : "fg.muted"}>
+          <span className={cn("min-w-0 flex-1 truncate text-left", !pathLabel && "text-fg-muted")}>
             {pathLabel || resolvedPlaceholder}
-          </Text>
-          <Icon as={ChevronDown} boxSize="4" />
+          </span>
+          <ChevronDown className="size-4 shrink-0" />
         </Button>
       </Popover.Trigger>
 
       {/* No Portal on purpose — see the component comment (works inside modal dialogs). */}
       <Popover.Positioner>
-        <Popover.Content width="auto" maxW="90vw">
-          <Popover.Body p="2">
-            <Stack gap="2">
-              <Input
-                size="sm"
-                placeholder={t("catalog.categorySelect.searchPlaceholder")}
-                value={query}
-                data-testid="category-search"
-                onChange={(e) => setQuery(e.target.value)}
-              />
+        <Popover.Content className="w-auto max-w-[90vw]">
+          <div className="flex flex-col gap-2">
+            <Input
+              placeholder={t("catalog.categorySelect.searchPlaceholder")}
+              value={query}
+              data-testid="category-search"
+              onChange={(e) => setQuery(e.target.value)}
+            />
 
-              {loading ? (
-                <Flex justify="center" py="4">
-                  <Spinner size="sm" colorPalette="brand" />
-                </Flex>
-              ) : error ? (
-                <Text p="2" fontSize="sm" color="red.fg">
-                  {error}
-                </Text>
-              ) : query.trim() ? (
-                <Box maxH="280px" overflowY="auto" minW="240px" data-testid="category-search-results">
-                  {matches.length === 0 ? (
-                    <Text p="2" fontSize="sm" color="fg.muted">
-                      {t("catalog.categorySelect.noResults")}
-                    </Text>
-                  ) : (
-                    <Stack gap="0">
-                      {matches.map(({ node, path: p }) => (
-                        <Button
-                          key={node.cat.id.toString()}
-                          variant="ghost"
-                          size="sm"
-                          justifyContent="flex-start"
-                          colorPalette={node.cat.id === value ? "brand" : undefined}
-                          data-testid={`category-node-${node.cat.name}`}
-                          onClick={() => select(node.cat.id)}
-                        >
-                          <Text as="span" truncate>
-                            {p.map((n) => n.cat.name).join(" › ")}
-                          </Text>
-                        </Button>
-                      ))}
-                    </Stack>
-                  )}
-                </Box>
-              ) : (
-                <HStack align="stretch" gap="0" overflowX="auto">
-                  {columns.map((col, i) => (
-                    <Box
-                      key={i}
-                      minW="180px"
-                      maxH="280px"
-                      overflowY="auto"
-                      borderRightWidth={i < columns.length - 1 ? "1px" : "0"}
-                      borderColor="border"
-                    >
-                      <Stack gap="0" p="1">
-                        {col.length === 0 ? (
-                          <Text p="2" fontSize="sm" color="fg.muted">
-                            {t("catalog.categorySelect.emptyColumn")}
-                          </Text>
-                        ) : (
-                          col.map((node) => {
-                            const hasChildren = node.children.length > 0;
-                            const drilled = path[i]?.cat.id === node.cat.id;
-                            const selected = node.cat.id === value;
+            {loading ? (
+              <div className="flex justify-center py-4">
+                <Spinner className="size-4" />
+              </div>
+            ) : error ? (
+              <p className="p-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+            ) : query.trim() ? (
+              <div
+                className="max-h-[280px] min-w-[240px] overflow-y-auto"
+                data-testid="category-search-results"
+              >
+                {matches.length === 0 ? (
+                  <p className="p-2 text-sm text-fg-muted">{t("catalog.categorySelect.noResults")}</p>
+                ) : (
+                  <div className="flex flex-col">
+                    {matches.map(({ node, path: p }) => (
+                      <Button
+                        key={node.cat.id.toString()}
+                        variant="ghost"
+                        size="sm"
+                        colorPalette={node.cat.id === value ? "brand" : "gray"}
+                        className="justify-start"
+                        data-testid={`category-node-${node.cat.name}`}
+                        onClick={() => select(node.cat.id)}
+                      >
+                        <span className="truncate">{p.map((n) => n.cat.name).join(" › ")}</span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-stretch overflow-x-auto">
+                {columns.map((col, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "max-h-[280px] min-w-[180px] overflow-y-auto",
+                      i < columns.length - 1 && "border-r border-line",
+                    )}
+                  >
+                    <div className="flex flex-col p-1">
+                      {col.length === 0 ? (
+                        <p className="p-2 text-sm text-fg-muted">
+                          {t("catalog.categorySelect.emptyColumn")}
+                        </p>
+                      ) : (
+                        col.map((node) => {
+                          const hasChildren = node.children.length > 0;
+                          const drilled = path[i]?.cat.id === node.cat.id;
+                          const selected = node.cat.id === value;
 
-                            return (
-                              <Flex key={node.cat.id.toString()} align="center" gap="0">
-                                <Button
-                                  flex="1"
+                          return (
+                            <div key={node.cat.id.toString()} className="flex items-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                colorPalette={selected || drilled ? "brand" : "gray"}
+                                className="flex-1 justify-start"
+                                data-testid={`category-node-${node.cat.name}`}
+                                onClick={() =>
+                                  leafOnly && hasChildren ? drill(i, node) : select(node.cat.id)
+                                }
+                              >
+                                <span className="truncate">{node.cat.name}</span>
+                              </Button>
+
+                              {hasChildren && (
+                                <IconButton
+                                  size="xs"
                                   variant="ghost"
-                                  size="sm"
-                                  justifyContent="flex-start"
-                                  colorPalette={selected || drilled ? "brand" : undefined}
-                                  data-testid={`category-node-${node.cat.name}`}
-                                  onClick={() =>
-                                    leafOnly && hasChildren ? drill(i, node) : select(node.cat.id)
-                                  }
+                                  aria-label={`Open ${node.cat.name}`}
+                                  data-testid={`category-drill-${node.cat.name}`}
+                                  onClick={() => drill(i, node)}
                                 >
-                                  <Text as="span" truncate>
-                                    {node.cat.name}
-                                  </Text>
-                                </Button>
+                                  <ChevronRight className="size-4" />
+                                </IconButton>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                                {hasChildren && (
-                                  <IconButton
-                                    size="xs"
-                                    variant="ghost"
-                                    aria-label={`Open ${node.cat.name}`}
-                                    data-testid={`category-drill-${node.cat.name}`}
-                                    onClick={() => drill(i, node)}
-                                  >
-                                    <Icon as={ChevronRight} boxSize="4" />
-                                  </IconButton>
-                                )}
-                              </Flex>
-                            );
-                          })
-                        )}
-                      </Stack>
-                    </Box>
-                  ))}
-                </HStack>
-              )}
-
-              {value > 0n && (
-                <>
-                  <Box borderTopWidth="1px" borderColor="border" />
-                  <HStack justify="flex-end">
-                    <Button size="xs" variant="ghost" data-testid="category-clear" onClick={() => select(0n)}>
-                      <Icon as={X} boxSize="3" />
-                      {t("catalog.clear")}
-                    </Button>
-                  </HStack>
-                </>
-              )}
-            </Stack>
-          </Popover.Body>
+            {value > 0n && (
+              <>
+                <div className="border-t border-line" />
+                <div className="flex justify-end">
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    colorPalette="gray"
+                    data-testid="category-clear"
+                    onClick={() => select(0n)}
+                  >
+                    <X className="size-3" />
+                    {t("catalog.clear")}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </Popover.Content>
       </Popover.Positioner>
     </Popover.Root>
