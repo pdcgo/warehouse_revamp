@@ -10,10 +10,17 @@
 | D1 | The **mocks are the SOURCE OF TRUTH** for UI design (they are Tailwind now). | owner | ✅ set |
 | D2 | The **app's styling layer becomes Tailwind CSS, not Chakra UI v3**. | owner | ✅ set |
 | D3 | Headless/behavior library to replace Chakra's composites | owner | ✅ **Ark UI** (2026-07-24) |
-| D4 | Transition strategy (coexistence vs big-bang) | owner | 🟡 proposed: coexistence |
-| D5 | Keep the shared-component **API** stable vs redesign the component layer | owner | 🟡 proposed: preserve API |
-| D6 | Dark-mode signal: `.dark` class vs `[data-theme]` attribute | owner | 🟡 proposed: `[data-theme]` |
-| D7 | Tailwind **v4** (`@theme`, `@tailwindcss/vite`) vs **v3** (JS config) | owner | 🟡 proposed: v4 |
+| D4 | Transition strategy (coexistence vs big-bang) | owner | ✅ **coexistence, incremental** (2026-07-24) |
+| D5 | Keep the shared-component **API** stable vs redesign the component layer | owner | ✅ **preserve API** (2026-07-24) |
+| D6 | Dark-mode signal: `.dark` class vs `[data-theme]` attribute | owner | ✅ **`[data-theme]`** (2026-07-24) |
+| D7 | Tailwind **v4** (`@theme`, `@tailwindcss/vite`) vs **v3** (JS config) | owner | ✅ **v4** (2026-07-24) |
+
+**Phase 0 — DONE (2026-07-24, coexistence foundation landed on `dev`):** Tailwind v4 +
+`@tailwindcss/vite` + Ark UI + sonner installed; `src/index.css` holds the dark-aware token block +
+`@theme` mapping (Preflight omitted during coexistence); dark mode moved to `[data-theme]` (both
+signals set until Chakra is gone); all governing docs flipped. `tsc` + `vite build` green.
+**Next: Phase 1** — build the shared Ark UI primitives (Dialog/ConfirmDialog, Menu, Combobox, Select,
+Tabs, Field, Toaster, Button, Badge, Table, Card, StatTile, Pagination) once, then fan out.
 
 > **D3 rationale (owner):** Ark UI — Chakra v3 is built on it, so composable call-sites port ~1:1;
 > and it has a Combobox (Radix doesn't), which the 7 pickers require. A headless lib is *unstyled*,
