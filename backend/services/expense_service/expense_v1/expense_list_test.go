@@ -44,18 +44,18 @@ func TestCostList_FiltersByPeriodAndTotalsTheWholeOfIt(t *testing.T) {
 
 	got := list(t, svc, &expensev1.ExpenseListRequest{
 		TeamId: teamA,
-		From:   "2026-07-01",
-		To:     "2026-07-31",
+		Filter: &expensev1.ExpenseListFilter{From: "2026-07-01", To: "2026-07-31"},
 		// ONE row per page — so a page-derived total could only ever be a fraction of the truth.
-		Page: &commonv1.PageFilter{Page: 1, Limit: 1},
+		Page: &commonv1.CommonPagination{Page: 1, Limit: 1},
 	})
 
-	if n := len(got.GetExpenses()); n != 1 {
+	rows := expenseRows(got)
+	if n := len(rows); n != 1 {
 		t.Fatalf("the page holds %d rows, want 1 — the rest of this test assumes a partial page", n)
 	}
 
 	// Newest first, by the date the cost BELONGS TO.
-	if on := got.GetExpenses()[0].GetOccurredAt(); on != "2026-07-10" {
+	if on := rows[0].GetOccurredAt(); on != "2026-07-10" {
 		t.Fatalf("first row is dated %s, want the newest in the period (2026-07-10)", on)
 	}
 
@@ -95,7 +95,10 @@ func TestCostList_ThePeriodIncludesBothEnds(t *testing.T) {
 	record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_ADS, 100, "2026-07-01")
 	record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_ADS, 200, "2026-07-31")
 
-	got := list(t, svc, &expensev1.ExpenseListRequest{TeamId: teamA, From: "2026-07-01", To: "2026-07-31"})
+	got := list(t, svc, &expensev1.ExpenseListRequest{
+		TeamId: teamA,
+		Filter: &expensev1.ExpenseListFilter{From: "2026-07-01", To: "2026-07-31"},
+	})
 
 	if total := got.GetTotals().GetTotal(); total != 300 {
 		t.Fatalf("total = %d, want 300 — both the first and last day of the period must count", total)
@@ -126,8 +129,8 @@ func TestCostList_ScopedToItsTeam(t *testing.T) {
 
 	got := list(t, svc, &expensev1.ExpenseListRequest{TeamId: 3})
 
-	if n := len(got.GetExpenses()); n != 0 {
-		t.Fatalf("another team's costs leaked: %v", got.GetExpenses())
+	if n := len(expenseRows(got)); n != 0 {
+		t.Fatalf("another team's costs leaked: %v", expenseRows(got))
 	}
 	if total := got.GetTotals().GetTotal(); total != 0 {
 		t.Fatalf("another team's total leaked: %d", total)
@@ -143,10 +146,11 @@ func TestCostList_FiltersByKind(t *testing.T) {
 	record(t, svc, expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, 12_000_000, "2026-07-05")
 
 	got := list(t, svc, &expensev1.ExpenseListRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS,
+		TeamId: teamA,
+		Filter: &expensev1.ExpenseListFilter{Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS},
 	})
 
-	if n := len(got.GetExpenses()); n != 1 {
+	if n := len(expenseRows(got)); n != 1 {
 		t.Fatalf("filtered list holds %d rows, want 1", n)
 	}
 	if total := got.GetTotals().GetTotal(); total != 2_000_000 {

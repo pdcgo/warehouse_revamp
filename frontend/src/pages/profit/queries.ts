@@ -37,12 +37,11 @@ export function useProfit(args: {
 
       const [rev, cost] = await Promise.all([
         revenueClient.revenueList({ teamId: teamId!, from, to, page: totalsOnly }),
-        // Every kind — UNSPECIFIED is the "any kind" filter (#170), not a kind of its own.
+        // Every kind — UNSPECIFIED is the "any kind" filter (#170), not a kind of its own. Only the
+        // totals are read here, so no data_request slices are needed.
         expenseClient.expenseList({
           teamId: teamId!,
-          from,
-          to,
-          kind: ExpenseKind.UNSPECIFIED,
+          filter: { from, to, kind: ExpenseKind.UNSPECIFIED },
           page: totalsOnly,
         }),
       ]);

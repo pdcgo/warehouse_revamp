@@ -53,12 +53,13 @@ func TestCostVoid_StopsCountingButStaysVisible(t *testing.T) {
 	// That split is the whole point of voiding rather than deleting: the totals ignore it, the list
 	// shows it. Hiding it here would make it exactly as invisible as a delete. This assertion first
 	// said the list held ONE row — encoding the bug rather than the design — and the e2e caught it.
-	if n := len(after.GetExpenses()); n != 2 {
+	rows := expenseRows(after)
+	if n := len(rows); n != 2 {
 		t.Fatalf("the list holds %d rows, want 2 — a voided cost stays visible", n)
 	}
 
 	byID := map[uint64]bool{}
-	for _, c := range after.GetExpenses() {
+	for _, c := range rows {
 		byID[c.GetId()] = c.GetVoided()
 	}
 

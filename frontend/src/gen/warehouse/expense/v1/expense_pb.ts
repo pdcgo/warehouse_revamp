@@ -5,7 +5,9 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSLeAQoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSDgoGdm9pZGVkGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyL5AQoURXhwZW5zZUNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOwoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQi7QEKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQESFQoEZnJvbRgDIAEoCUIHukgEcgIYChITCgJ0bxgEIAEoCUIHukgEcgIYChI5CgRraW5kGAUgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmRCCLpIBYIBAhABEg8KB3Nob3BfaWQYBiABKAQ6CpK1GAYKBAECAwQijwEKDUV4cGVuc2VUb3RhbHMSDQoFdG90YWwYASABKAMSQAoHYnlfa2luZBgCIAMoCzIvLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMuQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgDOgI4ASKzAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI1CghleHBlbnNlcxgBIAMoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYAyABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIpYCChRFeHBlbnNlVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAEjsKBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZEIKukgHggEEEAEgABIXCgZhbW91bnQYBCABKANCB7pIBCICIAASOAoLb2NjdXJyZWRfYXQYBSABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEg8KB3Nob3BfaWQYBiABKAQSFgoEbm90ZRgHIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQiTQoVRXhwZW5zZVVwZGF0ZVJlc3BvbnNlEjQKB2V4cGVuc2UYASABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUmVjb3JkIlsKEkV4cGVuc2VWb2lkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgMEIksKE0V4cGVuc2VWb2lkUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQqkQEKC0V4cGVuc2VLaW5kEhwKGEVYUEVOU0VfS0lORF9VTlNQRUNJRklFRBAAEhQKEEVYUEVOU0VfS0lORF9BRFMQARIYChRFWFBFTlNFX0tJTkRfUEFZUk9MTBACEhwKGEVYUEVOU0VfS0lORF9PUEVSQVRJT05BTBADEhYKEkVYUEVOU0VfS0lORF9PVEhFUhAEMqwDCg5FeHBlbnNlU2VydmljZRJoCg1FeHBlbnNlQ3JlYXRlEioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQ3JlYXRlUmVzcG9uc2USYgoLRXhwZW5zZUxpc3QSKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlEmgKDUV4cGVuc2VVcGRhdGUSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VVcGRhdGVSZXNwb25zZRJiCgtFeHBlbnNlVm9pZBIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVxdWVzdBopLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9leHBlbnNlL3YxO2V4cGVuc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSLeAQoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSDgoGdm9pZGVkGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyL5AQoURXhwZW5zZUNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOwoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgDEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEi3wEKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgDEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIOCgZ2b2lkZWQYCSABKAgSFwoPY3JlYXRlZF9hdF91bml4GAogASgDIrEBChFFeHBlbnNlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd0l0ZW06AjgBIpIBChdFeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB2V4cGVuc2UYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93TWFwSXRlbUgAQgMKAWQixwEKE0V4cGVuc2VMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIpYCChRFeHBlbnNlVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAEjsKBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZEIKukgHggEEEAEgABIXCgZhbW91bnQYBCABKANCB7pIBCICIAASOAoLb2NjdXJyZWRfYXQYBSABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEg8KB3Nob3BfaWQYBiABKAQSFgoEbm90ZRgHIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQiTQoVRXhwZW5zZVVwZGF0ZVJlc3BvbnNlEjQKB2V4cGVuc2UYASABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUmVjb3JkIlsKEkV4cGVuc2VWb2lkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgMEIksKE0V4cGVuc2VWb2lkUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQqkQEKC0V4cGVuc2VLaW5kEhwKGEVYUEVOU0VfS0lORF9VTlNQRUNJRklFRBAAEhQKEEVYUEVOU0VfS0lORF9BRFMQARIYChRFWFBFTlNFX0tJTkRfUEFZUk9MTBACEhwKGEVYUEVOU0VfS0lORF9PUEVSQVRJT05BTBADEhYKEkVYUEVOU0VfS0lORF9PVEhFUhAEKoUBChNFeHBlbnNlTGlzdERhdGFUeXBlEiYKIkVYUEVOU0VfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIiCh5FWFBFTlNFX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIiCh5FWFBFTlNFX0xJU1RfREFUQV9UWVBFX0VYUEVOU0UQAiqSAQoORXhwZW5zZVJvd1NvcnQSIAocRVhQRU5TRV9ST1dfU09SVF9VTlNQRUNJRklFRBAAEiAKHEVYUEVOU0VfUk9XX1NPUlRfT0NDVVJSRURfQVQQARIbChdFWFBFTlNFX1JPV19TT1JUX0FNT1VOVBACEh8KG0VYUEVOU0VfUk9XX1NPUlRfQ1JFQVRFRF9BVBADMqwDCg5FeHBlbnNlU2VydmljZRJoCg1FeHBlbnNlQ3JlYXRlEioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQ3JlYXRlUmVzcG9uc2USYgoLRXhwZW5zZUxpc3QSKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlEmgKDUV4cGVuc2VVcGRhdGUSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VVcGRhdGVSZXNwb25zZRJiCgtFeHBlbnNlVm9pZBIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVxdWVzdBopLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9leHBlbnNlL3YxO2V4cGVuc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One expense. Money is whole rupiah as int64, like every other money field in this system.
@@ -175,6 +177,82 @@ export const ExpenseCreateResponseSchema: GenMessage<ExpenseCreateResponse> = /*
   messageDesc(file_warehouse_expense_v1_expense, 2);
 
 /**
+ * ExpenseListFilter carries the NON-scope filters (the scoped team_id stays top-level on the request).
+ *
+ * @generated from message warehouse.expense.v1.ExpenseListFilter
+ */
+export type ExpenseListFilter = Message<"warehouse.expense.v1.ExpenseListFilter"> & {
+  /**
+   * THE PERIOD, inclusive, as YYYY-MM-DD. Both empty = every expense ever. Server-side: the list is
+   * paginated, so a client-side date filter would narrow the loaded page only and leave the totals
+   * beside it unfiltered — a confidently-wrong headline figure.
+   *
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+
+  /**
+   * One kind, or UNSPECIFIED for all of them.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseKind kind = 3;
+   */
+  kind: ExpenseKind;
+
+  /**
+   * One shop, or 0 for all of them.
+   *
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseListFilter.
+ * Use `create(ExpenseListFilterSchema)` to create a new message.
+ */
+export const ExpenseListFilterSchema: GenMessage<ExpenseListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 3);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpenseListFilterSort
+ */
+export type ExpenseListFilterSort = Message<"warehouse.expense.v1.ExpenseListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.expense.v1.ExpenseListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.expense.v1.ExpenseRowSort expense = 3;
+     */
+    value: ExpenseRowSort;
+    case: "expense";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseListFilterSort.
+ * Use `create(ExpenseListFilterSortSchema)` to create a new message.
+ */
+export const ExpenseListFilterSortSchema: GenMessage<ExpenseListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 4);
+
+/**
  * @generated from message warehouse.expense.v1.ExpenseListRequest
  */
 export type ExpenseListRequest = Message<"warehouse.expense.v1.ExpenseListRequest"> & {
@@ -184,44 +262,26 @@ export type ExpenseListRequest = Message<"warehouse.expense.v1.ExpenseListReques
   teamId: bigint;
 
   /**
+   * @generated from field: warehouse.expense.v1.ExpenseListFilter filter = 2;
+   */
+  filter?: ExpenseListFilter;
+
+  /**
+   * @generated from field: warehouse.expense.v1.ExpenseListFilterSort sort = 3;
+   */
+  sort?: ExpenseListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.expense.v1.ExpenseListDataType data_request = 4;
+   */
+  dataRequest: ExpenseListDataType[];
+
+  /**
    * Grows with every expense ever recorded, so it pages (HARD RULE 9).
    *
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
    */
-  page?: PageFilter;
-
-  /**
-   * THE PERIOD, inclusive, as YYYY-MM-DD. Both empty = every expense ever.
-   *
-   * Server-side, and that is the whole point of the field: the list is paginated, so a client-side
-   * date filter would narrow the loaded page only and leave the totals beside it unfiltered — a
-   * confidently-wrong headline figure, which is what #130/#151 settled for status filters.
-   *
-   * It is also what the profit screen stands on, and half of what it needs: RevenueList has no period
-   * filter at all yet (#171).
-   *
-   * @generated from field: string from = 3;
-   */
-  from: string;
-
-  /**
-   * @generated from field: string to = 4;
-   */
-  to: string;
-
-  /**
-   * One kind, or UNSPECIFIED for all of them.
-   *
-   * @generated from field: warehouse.expense.v1.ExpenseKind kind = 5;
-   */
-  kind: ExpenseKind;
-
-  /**
-   * One shop, or 0 for all of them.
-   *
-   * @generated from field: uint64 shop_id = 6;
-   */
-  shopId: bigint;
+  page?: CommonPagination;
 };
 
 /**
@@ -229,7 +289,7 @@ export type ExpenseListRequest = Message<"warehouse.expense.v1.ExpenseListReques
  * Use `create(ExpenseListRequestSchema)` to create a new message.
  */
 export const ExpenseListRequestSchema: GenMessage<ExpenseListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 3);
+  messageDesc(file_warehouse_expense_v1_expense, 5);
 
 /**
  * What the filtered period cost, by kind and in total.
@@ -260,24 +320,143 @@ export type ExpenseTotals = Message<"warehouse.expense.v1.ExpenseTotals"> & {
  * Use `create(ExpenseTotalsSchema)` to create a new message.
  */
 export const ExpenseTotalsSchema: GenMessage<ExpenseTotals> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 4);
+  messageDesc(file_warehouse_expense_v1_expense, 6);
+
+/**
+ * ExpenseRowItem is the EXPENSE slice — the fields the expense list renders (mirrors ExpenseRecord).
+ *
+ * @generated from message warehouse.expense.v1.ExpenseRowItem
+ */
+export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 3;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: warehouse.expense.v1.ExpenseKind kind = 4;
+   */
+  kind: ExpenseKind;
+
+  /**
+   * @generated from field: int64 amount = 5;
+   */
+  amount: bigint;
+
+  /**
+   * @generated from field: string occurred_at = 6;
+   */
+  occurredAt: string;
+
+  /**
+   * @generated from field: string note = 7;
+   */
+  note: string;
+
+  /**
+   * @generated from field: uint64 created_by = 8;
+   */
+  createdBy: bigint;
+
+  /**
+   * @generated from field: bool voided = 9;
+   */
+  voided: boolean;
+
+  /**
+   * @generated from field: int64 created_at_unix = 10;
+   */
+  createdAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseRowItem.
+ * Use `create(ExpenseRowItemSchema)` to create a new message.
+ */
+export const ExpenseRowItemSchema: GenMessage<ExpenseRowItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 7);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpenseRowMapItem
+ */
+export type ExpenseRowMapItem = Message<"warehouse.expense.v1.ExpenseRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.expense.v1.ExpenseRowItem> map_data = 1;
+   */
+  mapData: { [key: string]: ExpenseRowItem };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseRowMapItem.
+ * Use `create(ExpenseRowMapItemSchema)` to create a new message.
+ */
+export const ExpenseRowMapItemSchema: GenMessage<ExpenseRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 8);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpenseListResponseItem
+ */
+export type ExpenseListResponseItem = Message<"warehouse.expense.v1.ExpenseListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.expense.v1.ExpenseListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.expense.v1.ExpenseRowMapItem expense = 2;
+     */
+    value: ExpenseRowMapItem;
+    case: "expense";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseListResponseItem.
+ * Use `create(ExpenseListResponseItemSchema)` to create a new message.
+ */
+export const ExpenseListResponseItemSchema: GenMessage<ExpenseListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 9);
 
 /**
  * @generated from message warehouse.expense.v1.ExpenseListResponse
  */
 export type ExpenseListResponse = Message<"warehouse.expense.v1.ExpenseListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.expense.v1.ExpenseRecord expenses = 1;
+   * @generated from field: repeated warehouse.expense.v1.ExpenseListResponseItem items = 1;
    */
-  expenses: ExpenseRecord[];
+  items: ExpenseListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * The expense ids in sorted (page) order.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 
   /**
-   * @generated from field: warehouse.expense.v1.ExpenseTotals totals = 3;
+   * The period's totals (whole filtered set, not the page) — an additive aggregate the UI needs.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseTotals totals = 4;
    */
   totals?: ExpenseTotals;
 };
@@ -287,7 +466,7 @@ export type ExpenseListResponse = Message<"warehouse.expense.v1.ExpenseListRespo
  * Use `create(ExpenseListResponseSchema)` to create a new message.
  */
 export const ExpenseListResponseSchema: GenMessage<ExpenseListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 5);
+  messageDesc(file_warehouse_expense_v1_expense, 10);
 
 /**
  * ExpenseUpdate corrects an expense (#169).
@@ -345,7 +524,7 @@ export type ExpenseUpdateRequest = Message<"warehouse.expense.v1.ExpenseUpdateRe
  * Use `create(ExpenseUpdateRequestSchema)` to create a new message.
  */
 export const ExpenseUpdateRequestSchema: GenMessage<ExpenseUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 6);
+  messageDesc(file_warehouse_expense_v1_expense, 11);
 
 /**
  * @generated from message warehouse.expense.v1.ExpenseUpdateResponse
@@ -362,7 +541,7 @@ export type ExpenseUpdateResponse = Message<"warehouse.expense.v1.ExpenseUpdateR
  * Use `create(ExpenseUpdateResponseSchema)` to create a new message.
  */
 export const ExpenseUpdateResponseSchema: GenMessage<ExpenseUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 7);
+  messageDesc(file_warehouse_expense_v1_expense, 12);
 
 /**
  * ExpenseVoid stops an expense counting (#169) — it was entered by mistake.
@@ -395,7 +574,7 @@ export type ExpenseVoidRequest = Message<"warehouse.expense.v1.ExpenseVoidReques
  * Use `create(ExpenseVoidRequestSchema)` to create a new message.
  */
 export const ExpenseVoidRequestSchema: GenMessage<ExpenseVoidRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 8);
+  messageDesc(file_warehouse_expense_v1_expense, 13);
 
 /**
  * @generated from message warehouse.expense.v1.ExpenseVoidResponse
@@ -412,7 +591,7 @@ export type ExpenseVoidResponse = Message<"warehouse.expense.v1.ExpenseVoidRespo
  * Use `create(ExpenseVoidResponseSchema)` to create a new message.
  */
 export const ExpenseVoidResponseSchema: GenMessage<ExpenseVoidResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 9);
+  messageDesc(file_warehouse_expense_v1_expense, 14);
 
 /**
  * What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
@@ -470,6 +649,73 @@ export enum ExpenseKind {
  */
 export const ExpenseKindSchema: GenEnum<ExpenseKind> = /*@__PURE__*/
   enumDesc(file_warehouse_expense_v1_expense, 0);
+
+/**
+ * ExpenseListDataType selects which slices the response carries per expense.
+ *
+ * @generated from enum warehouse.expense.v1.ExpenseListDataType
+ */
+export enum ExpenseListDataType {
+  /**
+   * @generated from enum value: EXPENSE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * GENERAL: the shared id+name slice (name = the row's note).
+   *
+   * @generated from enum value: EXPENSE_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * EXPENSE: the full expense row the list renders.
+   *
+   * @generated from enum value: EXPENSE_LIST_DATA_TYPE_EXPENSE = 2;
+   */
+  EXPENSE = 2,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpenseListDataType.
+ */
+export const ExpenseListDataTypeSchema: GenEnum<ExpenseListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense, 1);
+
+/**
+ * ExpenseRowSort is the sort selection paired with the EXPENSE (row) slice.
+ *
+ * @generated from enum warehouse.expense.v1.ExpenseRowSort
+ */
+export enum ExpenseRowSort {
+  /**
+   * @generated from enum value: EXPENSE_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * By the date the cost BELONGS TO (the legacy default, DESC).
+   *
+   * @generated from enum value: EXPENSE_ROW_SORT_OCCURRED_AT = 1;
+   */
+  OCCURRED_AT = 1,
+
+  /**
+   * @generated from enum value: EXPENSE_ROW_SORT_AMOUNT = 2;
+   */
+  AMOUNT = 2,
+
+  /**
+   * @generated from enum value: EXPENSE_ROW_SORT_CREATED_AT = 3;
+   */
+  CREATED_AT = 3,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpenseRowSort.
+ */
+export const ExpenseRowSortSchema: GenEnum<ExpenseRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense, 2);
 
 /**
  * ExpenseService owns `expense_records` (#161) — the money the business spent that NO ORDER caused.

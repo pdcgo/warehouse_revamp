@@ -1,8 +1,51 @@
+import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { expenseClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
-import type { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
+import {
+  ExpenseListDataType,
+  type ExpenseListResponseItem,
+  type ExpenseKind,
+  type ExpenseRecord,
+  ExpenseRecordSchema,
+  type ExpenseRowItem,
+} from "../../gen/warehouse/expense/v1/expense_pb";
 import { monthRange } from "../../lib/period";
+
+// The guideline list response carries per-id slices + a sorted `ids` list; the expenses screen wants
+// ExpenseRecord[], so this rebuilds them from the EXPENSE (row) slice in id order, at the query
+// boundary, leaving the screen unchanged.
+function expensesFromList(items: ExpenseListResponseItem[], ids: bigint[]): ExpenseRecord[] {
+  let rowMap: { [key: string]: ExpenseRowItem } = {};
+  for (const it of items) {
+    if (it.d.case === "expense") {
+      rowMap = it.d.value.mapData;
+    }
+  }
+
+  const out: ExpenseRecord[] = [];
+  for (const id of ids) {
+    const r = rowMap[id.toString()];
+    if (r) {
+      out.push(
+        create(ExpenseRecordSchema, {
+          id: r.id,
+          teamId: r.teamId,
+          shopId: r.shopId,
+          kind: r.kind,
+          amount: r.amount,
+          occurredAt: r.occurredAt,
+          note: r.note,
+          createdBy: r.createdBy,
+          voided: r.voided,
+          createdAtUnix: r.createdAtUnix,
+        }),
+      );
+    }
+  }
+
+  return out;
+}
 
 // The expense screen's reads (#175). Query hooks live beside the screen that uses them, per the
 // convention in api/queryClient.ts.
@@ -31,14 +74,13 @@ export function useExpenses({ teamId, month, kind, page, pageSize }: ExpenseList
 
       const res = await expenseClient.expenseList({
         teamId: teamId!,
-        from,
-        to,
-        kind,
+        filter: { from, to, kind },
+        dataRequest: [ExpenseListDataType.EXPENSE],
         page: { page, limit: pageSize },
       });
 
       return {
-        expenses: res.expenses,
+        expenses: expensesFromList(res.items, res.ids),
         totals: res.totals,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };

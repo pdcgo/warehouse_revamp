@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
 )
@@ -35,10 +36,7 @@ func (s *Service) ExpenseList(
 	var rows []expense_service_models.ExpenseRecord
 
 	err = filtered.
-		// By the date the cost BELONGS TO, not when it was typed. Somebody entering last month's
-		// payroll today expects it to sort with last month, and id breaks the tie so two costs on one
-		// day have a stable order.
-		Order("occurred_at DESC, id DESC").
+		Order(expenseOrderClause(req.Msg.GetSort())).
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
 		Find(&rows).
@@ -47,10 +45,7 @@ func (s *Service) ExpenseList(
 		return nil, costErr(err)
 	}
 
-	out := make([]*expensev1.ExpenseRecord, 0, len(rows))
-	for i := range rows {
-		out = append(out, costToProto(&rows[i]))
-	}
+	items, ids := expenseListItems(rows, req.Msg.GetDataRequest())
 
 	totals, err := s.totals(ctx, req.Msg)
 	if err != nil {
@@ -58,10 +53,99 @@ func (s *Service) ExpenseList(
 	}
 
 	return connect.NewResponse(&expensev1.ExpenseListResponse{
-		Expenses:    out,
+		Items:    items,
+		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 		Totals:   totals,
 	}), nil
+}
+
+// expenseOrderClause maps a ListFilterSort to a safe "column DIR, id DESC" ORDER BY (columns are a
+// fixed whitelist). Default is by the date the cost BELONGS TO, newest first — somebody entering last
+// month's payroll today expects it to sort with last month, and id breaks the tie for a stable order.
+func expenseOrderClause(sort *expensev1.ExpenseListFilterSort) string {
+	col := "occurred_at"
+	dir := "DESC"
+
+	if sort != nil {
+		if sort.GetSortType() == commonv1.CommonSortType_COMMON_SORT_TYPE_ASC {
+			dir = "ASC"
+		}
+
+		switch s := sort.GetS().(type) {
+		case *expensev1.ExpenseListFilterSort_General:
+			if s.General == commonv1.GeneralSort_GENERAL_SORT_NAME {
+				col = "note"
+			}
+		case *expensev1.ExpenseListFilterSort_Expense:
+			switch s.Expense {
+			case expensev1.ExpenseRowSort_EXPENSE_ROW_SORT_OCCURRED_AT:
+				col = "occurred_at"
+			case expensev1.ExpenseRowSort_EXPENSE_ROW_SORT_AMOUNT:
+				col = "amount"
+			case expensev1.ExpenseRowSort_EXPENSE_ROW_SORT_CREATED_AT:
+				col = "created_at"
+			}
+		}
+	}
+
+	return col + " " + dir + ", id DESC"
+}
+
+// expenseRowItem is the EXPENSE (row) slice for one record.
+func expenseRowItem(c *expense_service_models.ExpenseRecord) *expensev1.ExpenseRowItem {
+	return &expensev1.ExpenseRowItem{
+		Id:            c.ID,
+		TeamId:        c.TeamID,
+		ShopId:        c.ShopID,
+		Kind:          expensev1.ExpenseKind(c.Kind),
+		Amount:        c.Amount,
+		OccurredAt:    c.OccurredAt.Format(dateLayout),
+		Note:          c.Note,
+		CreatedBy:     c.CreatedBy,
+		Voided:        c.VoidedAt != nil,
+		CreatedAtUnix: c.CreatedAt.Unix(),
+	}
+}
+
+// expenseListItems builds the response slices for the requested data types (defaulting to the EXPENSE
+// row slice) plus the sorted id list, from rows already in display order.
+func expenseListItems(
+	rows []expense_service_models.ExpenseRecord,
+	types []expensev1.ExpenseListDataType,
+) ([]*expensev1.ExpenseListResponseItem, []uint64) {
+	if len(types) == 0 {
+		types = []expensev1.ExpenseListDataType{expensev1.ExpenseListDataType_EXPENSE_LIST_DATA_TYPE_EXPENSE}
+	}
+
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+
+	items := make([]*expensev1.ExpenseListResponseItem, 0, len(types))
+	for _, t := range types {
+		switch t {
+		case expensev1.ExpenseListDataType_EXPENSE_LIST_DATA_TYPE_GENERAL:
+			m := make(map[uint64]*commonv1.GeneralItem, len(rows))
+			for i := range rows {
+				m[rows[i].ID] = &commonv1.GeneralItem{Id: rows[i].ID, Name: rows[i].Note}
+			}
+			items = append(items, &expensev1.ExpenseListResponseItem{
+				D: &expensev1.ExpenseListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
+			})
+		case expensev1.ExpenseListDataType_EXPENSE_LIST_DATA_TYPE_EXPENSE:
+			m := make(map[uint64]*expensev1.ExpenseRowItem, len(rows))
+			for i := range rows {
+				m[rows[i].ID] = expenseRowItem(&rows[i])
+			}
+			items = append(items, &expensev1.ExpenseListResponseItem{
+				D: &expensev1.ExpenseListResponseItem_Expense{Expense: &expensev1.ExpenseRowMapItem{MapData: m}},
+			})
+		}
+	}
+
+	return items, ids
 }
 
 // filtered builds the WHERE every read here shares.
@@ -82,9 +166,11 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 		// option the owner did not choose.
 		Where("team_id = ?", msg.GetTeamId())
 
+	filter := msg.GetFilter()
+
 	// THE PERIOD, inclusive at both ends. Server-side, because the list is paginated: a client-side
 	// date filter narrows the loaded page only and leaves the totals beside it unfiltered.
-	if raw := msg.GetFrom(); raw != "" {
+	if raw := filter.GetFrom(); raw != "" {
 		from, err := parseDate(raw)
 		if err != nil {
 			return nil, costErr(err)
@@ -93,7 +179,7 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 		query = query.Where("occurred_at >= ?", from)
 	}
 
-	if raw := msg.GetTo(); raw != "" {
+	if raw := filter.GetTo(); raw != "" {
 		to, err := parseDate(raw)
 		if err != nil {
 			return nil, costErr(err)
@@ -104,11 +190,11 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 		query = query.Where("occurred_at <= ?", to)
 	}
 
-	if kind := msg.GetKind(); kind != expensev1.ExpenseKind_EXPENSE_KIND_UNSPECIFIED {
+	if kind := filter.GetKind(); kind != expensev1.ExpenseKind_EXPENSE_KIND_UNSPECIFIED {
 		query = query.Where("kind = ?", int32(kind))
 	}
 
-	if shop := msg.GetShopId(); shop != 0 {
+	if shop := filter.GetShopId(); shop != 0 {
 		query = query.Where("shop_id = ?", shop)
 	}
 

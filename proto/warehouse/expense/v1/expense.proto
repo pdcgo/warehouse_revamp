@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.expense.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -150,6 +151,47 @@ message ExpenseCreateResponse {
   ExpenseRecord expense = 1;
 }
 
+// ── The guideline list shape for expenses (guidelines/service-guideline.md) ───────────────────────
+
+// ExpenseListDataType selects which slices the response carries per expense.
+enum ExpenseListDataType {
+  EXPENSE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // GENERAL: the shared id+name slice (name = the row's note).
+  EXPENSE_LIST_DATA_TYPE_GENERAL = 1;
+  // EXPENSE: the full expense row the list renders.
+  EXPENSE_LIST_DATA_TYPE_EXPENSE = 2;
+}
+
+// ExpenseRowSort is the sort selection paired with the EXPENSE (row) slice.
+enum ExpenseRowSort {
+  EXPENSE_ROW_SORT_UNSPECIFIED = 0;
+  // By the date the cost BELONGS TO (the legacy default, DESC).
+  EXPENSE_ROW_SORT_OCCURRED_AT = 1;
+  EXPENSE_ROW_SORT_AMOUNT = 2;
+  EXPENSE_ROW_SORT_CREATED_AT = 3;
+}
+
+// ExpenseListFilter carries the NON-scope filters (the scoped team_id stays top-level on the request).
+message ExpenseListFilter {
+  // THE PERIOD, inclusive, as YYYY-MM-DD. Both empty = every expense ever. Server-side: the list is
+  // paginated, so a client-side date filter would narrow the loaded page only and leave the totals
+  // beside it unfiltered — a confidently-wrong headline figure.
+  string from = 1 [(buf.validate.field).string.max_len = 10];
+  string to = 2 [(buf.validate.field).string.max_len = 10];
+  // One kind, or UNSPECIFIED for all of them.
+  ExpenseKind kind = 3 [(buf.validate.field).enum.defined_only = true];
+  // One shop, or 0 for all of them.
+  uint64 shop_id = 4;
+}
+
+message ExpenseListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    ExpenseRowSort expense = 3;
+  }
+}
+
 message ExpenseListRequest {
   // Read: the same managers. Money out is not customer service's business.
   option (warehouse.role_base.v1.request_policy) = {
@@ -166,24 +208,12 @@ message ExpenseListRequest {
     (buf.validate.field).uint64.gt = 0
   ];
 
+  ExpenseListFilter filter = 2;
+  ExpenseListFilterSort sort = 3;
+  repeated ExpenseListDataType data_request = 4;
+
   // Grows with every expense ever recorded, so it pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
-
-  // THE PERIOD, inclusive, as YYYY-MM-DD. Both empty = every expense ever.
-  //
-  // Server-side, and that is the whole point of the field: the list is paginated, so a client-side
-  // date filter would narrow the loaded page only and leave the totals beside it unfiltered — a
-  // confidently-wrong headline figure, which is what #130/#151 settled for status filters.
-  //
-  // It is also what the profit screen stands on, and half of what it needs: RevenueList has no period
-  // filter at all yet (#171).
-  string from = 3 [(buf.validate.field).string.max_len = 10];
-  string to = 4 [(buf.validate.field).string.max_len = 10];
-
-  // One kind, or UNSPECIFIED for all of them.
-  ExpenseKind kind = 5 [(buf.validate.field).enum.defined_only = true];
-  // One shop, or 0 for all of them.
-  uint64 shop_id = 6;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
 // What the filtered period cost, by kind and in total.
@@ -198,10 +228,38 @@ message ExpenseTotals {
   map<int32, int64> by_kind = 2;
 }
 
+// ExpenseRowItem is the EXPENSE slice — the fields the expense list renders (mirrors ExpenseRecord).
+message ExpenseRowItem {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  uint64 shop_id = 3;
+  ExpenseKind kind = 4;
+  int64 amount = 5;
+  string occurred_at = 6;
+  string note = 7;
+  uint64 created_by = 8;
+  bool voided = 9;
+  int64 created_at_unix = 10;
+}
+
+message ExpenseRowMapItem {
+  map<uint64, ExpenseRowItem> map_data = 1;
+}
+
+message ExpenseListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ExpenseRowMapItem expense = 2;
+  }
+}
+
 message ExpenseListResponse {
-  repeated ExpenseRecord expenses = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-  ExpenseTotals totals = 3;
+  repeated ExpenseListResponseItem items = 1;
+  // The expense ids in sorted (page) order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  // The period's totals (whole filtered set, not the page) — an additive aggregate the UI needs.
+  ExpenseTotals totals = 4;
 }
 
 // ExpenseUpdate corrects an expense (#169).

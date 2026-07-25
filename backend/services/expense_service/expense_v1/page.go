@@ -3,12 +3,12 @@ package expense_v1
 import commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 
 // pageOffset is the SQL OFFSET for a 1-based page.
-func pageOffset(page *commonv1.PageFilter) int {
+func pageOffset(page *commonv1.CommonPagination) int {
 	return int((page.GetPage() - 1) * page.GetLimit())
 }
 
 // pageInfo builds the response PageInfo from the filter and the total row count.
-func pageInfo(page *commonv1.PageFilter, total int64) *commonv1.PageInfo {
+func pageInfo(page *commonv1.CommonPagination, total int64) *commonv1.PageInfo {
 	var totalPage uint32
 
 	limit := page.GetLimit()
