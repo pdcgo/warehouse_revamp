@@ -73,7 +73,8 @@ async function placeOrderViaForm(page: Page, customer: string) {
   await page.goto("/orders/new");
   await expect(page.getByTestId("order-create-page")).toBeVisible();
   await page.getByTestId("order-create-customer-name").fill(customer);
-  await page.getByTestId("shop-select").selectOption({ label: `${SHOP_NAME} · Shopee` });
+  await page.getByTestId("shop-select").click();
+  await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
   await page.getByTestId("product-select").locator("input").fill(SKU);
   await page.getByTestId(`product-select-option-${SKU}`).click();
   await page.getByTestId("order-line-qty-0").fill("1");
@@ -226,8 +227,9 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Picking the desa is what carries the kode pos — it arrives without being typed.
   await expect(page.getByTestId("address-kodepos")).toHaveValue(KODE_POS);
 
-  // Shop is a native select; pick ours by its "name · marketplace" label.
-  await page.getByTestId("shop-select").selectOption({ label: `${SHOP_NAME} · Shopee` });
+  // Shop is a Chakra Select whose options show the name + marketplace badge; open it and pick ours.
+  await page.getByTestId("shop-select").click();
+  await page.getByRole("option").filter({ hasText: SHOP_NAME }).click();
 
   // The first line exists by default: search the catalogue and pick the product.
   await page.getByTestId("product-select").locator("input").fill(SKU);

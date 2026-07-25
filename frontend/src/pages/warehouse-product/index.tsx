@@ -538,7 +538,8 @@ export function WarehouseProductPage() {
                       )}
                     </Table.Cell>
                     <Table.Cell textAlign="end">{b.arrived.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end">{b.damaged.toString()}</Table.Cell>
+                    {/* Damaged = broken + lost (#218 split the bucket; this column keeps the total). */}
+                    <Table.Cell textAlign="end">{(b.broken + b.lost).toString()}</Table.Cell>
                     <Table.Cell textAlign="end">{b.used.toString()}</Table.Cell>
                     <Table.Cell textAlign="end">{b.ready.toString()}</Table.Cell>
                     <Table.Cell textAlign="end">

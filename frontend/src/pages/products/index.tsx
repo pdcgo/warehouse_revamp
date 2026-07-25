@@ -15,6 +15,7 @@ import {
   Spacer,
   Spinner,
   Stack,
+  Stat,
   Table,
   Text,
 } from "@chakra-ui/react";
@@ -99,6 +100,15 @@ export function ProductsPage() {
           </Button>
         )}
       </Flex>
+
+      {/* Total products in the selling team's catalogue. `totalItems` is the count the query returns,
+          so with a search active it reads the number of MATCHES — the count the list is showing. */}
+      {!isWarehouse && (
+        <Stat.Root maxW="3xs">
+          <Stat.Label>{t("products.totalStat")}</Stat.Label>
+          <Stat.ValueText data-testid="products-total">{totalItems}</Stat.ValueText>
+        </Stat.Root>
+      )}
 
       {/* No search for a warehouse (#142): WarehouseProductList takes no query, so the box would look
           like a working control and do nothing. A dead input is worse than an absent one. */}

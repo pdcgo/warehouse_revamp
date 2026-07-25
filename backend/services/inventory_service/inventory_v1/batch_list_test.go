@@ -102,12 +102,12 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	if !shirt.GetCostKnown() || shirt.GetUnitCost() != 41015 {
 		t.Fatalf("shirt cost = %d known=%v, want 41015/true", shirt.GetUnitCost(), shirt.GetCostKnown())
 	}
-	if shirt.GetArrived() != 100 || shirt.GetDamaged() != 0 || shirt.GetReady() != 100 || shirt.GetUsed() != 0 {
-		t.Fatalf("shirt lifecycle = a%d d%d r%d u%d, want 100/0/100/0",
-			shirt.GetArrived(), shirt.GetDamaged(), shirt.GetReady(), shirt.GetUsed())
+	if shirt.GetArrived() != 100 || shirt.GetBroken() != 0 || shirt.GetReady() != 100 || shirt.GetUsed() != 0 {
+		t.Fatalf("shirt lifecycle = a%d b%d r%d u%d, want 100/0/100/0",
+			shirt.GetArrived(), shirt.GetBroken(), shirt.GetReady(), shirt.GetUsed())
 	}
-	if hat.GetArrived() != 30 || hat.GetDamaged() != 2 || hat.GetReady() != 28 {
-		t.Fatalf("hat lifecycle = a%d d%d r%d, want 30/2/28", hat.GetArrived(), hat.GetDamaged(), hat.GetReady())
+	if hat.GetArrived() != 30 || hat.GetBroken() != 2 || hat.GetReady() != 28 {
+		t.Fatalf("hat lifecycle = a%d b%d r%d, want 30/2/28", hat.GetArrived(), hat.GetBroken(), hat.GetReady())
 	}
 
 	// line_cost = arrived × cost; ready_value = ready × cost.

@@ -106,6 +106,7 @@ func (s *Service) BatchList(
 		UnitCost   *int64
 		Arrived    int64
 		Damaged    int64
+		Lost       int64
 		Ready      int64
 		ExpiresOn  *time.Time
 		CreatedAt  time.Time
@@ -123,6 +124,7 @@ func (s *Service) BatchList(
 			b.id, b.delivery_id, r.receipt AS receipt_no,
 			b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
 			b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
+			` + lostExpr + ` AS lost,
 			` + readyExpr + ` AS ready,
 			b.expires_on, b.created_at, b.accepted_at, b.created_by, b.accepted_by`).
 		Order("b.id DESC").
@@ -174,10 +176,13 @@ func (s *Service) BatchList(
 			SupplierId: r.SupplierID,
 			UnitCost:   unitCost,
 			CostKnown:  costKnown,
-			Arrived:    r.Arrived,
-			Damaged:    r.Damaged,
-			Ready:      r.Ready,
-			// Used = arrived − damaged − ready. What is neither broken nor still on a shelf has left.
+			Arrived: r.Arrived,
+			// Damaged split into broken vs lost (#227): lost from the typed damage records, broken the
+			// remainder — so broken + lost = damaged and the arrived identity holds.
+			Broken: r.Damaged - r.Lost,
+			Lost:   r.Lost,
+			Ready:  r.Ready,
+			// Used = arrived − damaged − ready. What is neither damaged nor still on a shelf has left.
 			Used:           r.Arrived - r.Damaged - r.Ready,
 			LineCost:       r.Arrived * unitCost,
 			ReadyValue:     r.Ready * unitCost,
@@ -185,6 +190,8 @@ func (s *Service) BatchList(
 			AcceptedAtUnix: r.AcceptedAt.Unix(),
 			CreatedBy:      r.CreatedBy,
 			AcceptedBy:     r.AcceptedBy,
+			// Every batch today is minted from a restock delivery (#230).
+			Origin: inventoryv1.BatchOrigin_BATCH_ORIGIN_RESTOCK,
 		}
 
 		if r.ExpiresOn != nil {

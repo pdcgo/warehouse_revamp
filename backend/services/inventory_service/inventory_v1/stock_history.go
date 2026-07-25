@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -34,6 +35,16 @@ func (s *Service) StockHistory(
 	// of the filter.
 	if batchID := req.Msg.GetBatchId(); batchID != 0 {
 		query = query.Where("batch_id = ?", batchID)
+	}
+
+	// A date range over the movement's OWN created_at (#218/#225). Server-side for the same reason as
+	// kind: the ledger is paginated and grows forever, so a client-side date filter would narrow only
+	// the loaded page. 0 = open on that end; the frontend pushes the upper bound to end-of-day.
+	if from := req.Msg.GetFromUnix(); from > 0 {
+		query = query.Where("created_at >= ?", time.Unix(from, 0))
+	}
+	if to := req.Msg.GetToUnix(); to > 0 {
+		query = query.Where("created_at <= ?", time.Unix(to, 0))
 	}
 
 	var total int64

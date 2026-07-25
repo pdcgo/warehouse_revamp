@@ -186,6 +186,14 @@ message StockHistoryRequest {
   // recount (batch_id 0) drops out of a batch-specific view, as it should. Placement History passes
   // `kind = MOVE` alongside to become the moves-only, batch-filterable view of the same ledger.
   uint64 batch_id = 5;
+
+  // A date range over the movement's OWN timestamp (created_at); unix seconds, 0 = open on that end.
+  // Server-side, for the reason spelled out on `kind` above: the ledger is paginated and grows
+  // forever, so a client-side date filter would narrow only the loaded page — "what moved last week"
+  // would silently miss everything that fell off page one. Only one date to filter on (a movement
+  // happens at one instant), so unlike BatchList this needs no date_field selector.
+  int64 from_unix = 6;
+  int64 to_unix = 7;
 }
 
 message StockHistoryResponse {
@@ -700,11 +708,13 @@ message StockBatch {
   int64 unit_cost = 8;
   bool cost_known = 9;
 
-  // Arrived = damaged + used + ready. Ready = Σ shelf_batch.qty; used = arrived − damaged − ready.
+  // Arrived = broken + lost + used + ready. Ready = Σ shelf_batch.qty; used = the remainder. Damaged
+  // stock is split into two reasons (#218): broken (physically damaged) and lost (missing/shrinkage).
   int64 arrived = 10;
-  int64 damaged = 11;
+  int64 broken = 11;
   int64 used = 12;
   int64 ready = 13;
+  int64 lost = 21;
 
   // arrived × unit_cost (the supplier invoice) and ready × unit_cost (what is still on the shelf).
   int64 line_cost = 14;
@@ -717,6 +727,17 @@ message StockBatch {
   int64 accepted_at_unix = 18;
   uint64 created_by = 19;
   uint64 accepted_by = 20;
+
+  // How this batch came to exist (#218): a normal restock delivery, or stock coming BACK as a return.
+  // UNSPECIFIED reads as a restock (the default origin) until the projection sets it.
+  BatchOrigin origin = 22;
+}
+
+// Where a batch's units originated (#218) — a restock delivery, or a return.
+enum BatchOrigin {
+  BATCH_ORIGIN_UNSPECIFIED = 0; // treated as RESTOCK by the UI
+  BATCH_ORIGIN_RESTOCK = 1;
+  BATCH_ORIGIN_RETURN = 2;
 }
 
 // Narrows a batch list by expiry (#209) — the warehouse list's "Expiring ≤ 30 days / No expiry" filter.
@@ -913,12 +934,22 @@ message BatchDetailRequest {
 
 message BatchDetailResponse {
   StockBatch batch = 1;
+
+  // Return summary for this batch (#218) — how many of its units came BACK (RETURN movements) and when
+  // the last one did. `returned_qty` 0 / `last_return_unix` 0 = nothing has been returned. Aggregated
+  // server-side over the batch's RETURN movements (the ledger is paginated, so the client cannot total
+  // it itself).
+  int64 returned_qty = 2;
+  int64 last_return_unix = 3;
 }
 
 // Where a batch's ready units sit right now (#209) — the batch-detail Placements tab.
 message BatchShelf {
   uint64 rack_id = 1; // 0 = unplaced
   int64 qty = 2;
+  // When this shelf was last COUNTED (last ADJUST on it); unix, 0 = never. A stale value flags a shelf
+  // overdue for a stock-take (opname) — amber on screen, the same rule as the product placement tab.
+  int64 last_opname_unix = 3;
 }
 
 message BatchPlacementListRequest {

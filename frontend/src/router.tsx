@@ -70,6 +70,15 @@ const InventoryPage = lazy(() =>
 const PlacementsPage = lazy(() =>
   import("./pages/placements").then((m) => ({ default: m.PlacementsPage })),
 );
+const ReturnsPage = lazy(() =>
+  import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
+);
+const ReturnDetailPage = lazy(() =>
+  import("./pages/return-detail").then((m) => ({ default: m.ReturnDetailPage })),
+);
+const OpnamePage = lazy(() =>
+  import("./pages/opname").then((m) => ({ default: m.OpnamePage })),
+);
 const SuppliersPage = lazy(() =>
   import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
 );
@@ -232,6 +241,11 @@ export const router = createBrowserRouter([
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
       { path: "inventories/placements", element: <PlacementsPage /> },
+      { path: "inventories/returns", element: <ReturnsPage /> },
+      // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
+      // dialog (CLAUDE.md).
+      { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
+      { path: "inventories/opname", element: <OpnamePage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams

@@ -13,7 +13,6 @@ import {
   Heading,
   Icon,
   IconButton,
-  Input,
   Portal,
   SimpleGrid,
   Spacer,
@@ -35,6 +34,12 @@ import {
 } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import type { SettlementPayment } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah } from "../../lib/money";
+import {
+  ALL_DATES,
+  DateRangePicker,
+  resolveRange,
+  type DateRange,
+} from "../../components/DateRangePicker";
 import { useTeam } from "../../features/team/TeamContext";
 import { directionCopy, directionPalette } from "../../features/settlement/direction";
 import {
@@ -107,14 +112,6 @@ function statusPalette(status: SettlementPaymentStatus): string {
   }
 }
 
-// A "YYYY-MM-DD" date field into a unix-second bound in the READER'S timezone (start or end of day).
-function dateToUnix(value: string, endOfDay: boolean): number | null {
-  if (!value) return null;
-  const ms = new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}`).getTime();
-  if (Number.isNaN(ms)) return null;
-  return Math.floor(ms / 1000);
-}
-
 function fmtDate(unix: bigint): string {
   if (unix === 0n) return "—";
   return new Date(Number(unix) * 1000).toLocaleDateString();
@@ -135,8 +132,7 @@ export function LiabilityDetailPage() {
 
   const [entryPage, setEntryPage] = useState(1);
   const [paymentPage, setPaymentPage] = useState(1);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>(ALL_DATES);
 
   const [recordOpen, setRecordOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<SettlementPayment | null>(null);
@@ -186,8 +182,11 @@ export function LiabilityDetailPage() {
   const payments = paymentsQuery.data?.payments ?? [];
   const paymentsTotal = paymentsQuery.data?.totalItems ?? 0;
 
-  const fromUnix = dateToUnix(fromDate, false);
-  const toUnix = dateToUnix(toDate, true);
+  // resolveRange yields unix SECONDS with 0 = open end; the client filter below wants number|null, so
+  // an open bound (0) maps to null (no constraint).
+  const { fromUnix: fromBound, toUnix: toBound } = resolveRange(dateRange);
+  const fromUnix = fromBound === 0n ? null : Number(fromBound);
+  const toUnix = toBound === 0n ? null : Number(toBound);
 
   function inRange(unix: bigint): boolean {
     const n = Number(unix);
@@ -195,8 +194,6 @@ export function LiabilityDetailPage() {
     if (toUnix !== null && n > toUnix) return false;
     return true;
   }
-
-  const inDate = fromDate !== "" || toDate !== "";
 
   // The gross tiles are the two sides of the single signed balance: a pair carries one net figure, so
   // "they owe you" and "you owe them" are the positive and negative reading of it — mirroring the
@@ -383,37 +380,7 @@ export function LiabilityDetailPage() {
           {t("liabilityDetail.history")}
         </Text>
         <Spacer />
-        <Input
-          type="date"
-          size="sm"
-          maxW="40"
-          aria-label={t("liabilityDetail.dateFrom")}
-          value={fromDate}
-          data-testid="liability-detail-from"
-          onChange={(e) => setFromDate(e.target.value)}
-        />
-        <Text color="fg.subtle">→</Text>
-        <Input
-          type="date"
-          size="sm"
-          maxW="40"
-          aria-label={t("liabilityDetail.dateTo")}
-          value={toDate}
-          data-testid="liability-detail-to"
-          onChange={(e) => setToDate(e.target.value)}
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!inDate}
-          data-testid="liability-detail-clear-dates"
-          onClick={() => {
-            setFromDate("");
-            setToDate("");
-          }}
-        >
-          {t("liabilityDetail.clearDates")}
-        </Button>
+        <DateRangePicker value={dateRange} onChange={setDateRange} testId="liability-detail-range" />
       </Flex>
 
       {error && (

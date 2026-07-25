@@ -1,4 +1,4 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge, type BadgeProps } from "@chakra-ui/react";
 import { Marketplace } from "../gen/warehouse/marketplace/v1/marketplace_pb";
 import { marketplaceLabel } from "./MarketplaceSelect";
 
@@ -27,9 +27,19 @@ function marketplaceColor(m: Marketplace): string {
 // This is THE way to show a marketplace type — never render the label as bare text.
 export const description = "A shop's marketplace as a standard-coloured Chakra Badge (Shopee=orange, Tokopedia=green, …).";
 
-export function MarketplaceBadge({ marketplace }: { marketplace: Marketplace }) {
+export interface MarketplaceBadgeProps {
+  marketplace: Marketplace;
+  // Chakra Badge size — defaults to the theme default; pass "sm" for a compact table cell.
+  size?: BadgeProps["size"];
+}
+
+export function MarketplaceBadge({ marketplace, size }: MarketplaceBadgeProps) {
   return (
-    <Badge colorPalette={marketplaceColor(marketplace)} data-testid={`marketplace-badge-${marketplace}`}>
+    <Badge
+      colorPalette={marketplaceColor(marketplace)}
+      size={size}
+      data-testid={`marketplace-badge-${marketplace}`}
+    >
       {marketplaceLabel(marketplace)}
     </Badge>
   );

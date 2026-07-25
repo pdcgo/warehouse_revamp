@@ -5,6 +5,7 @@ import {
   productClient,
   rackClient,
   restockClient,
+  supplierClient,
   teamClient,
   userClient,
 } from "../../api/clients";
@@ -377,7 +378,15 @@ export interface BatchDetail {
   product: Product | null;
   ownerName: string;
   rackCodes: Map<string, string>;
-  shelves: { rackId: bigint; qty: bigint }[];
+  // NB: the placements themselves are their OWN paged read (useBatchPlacements, #218), so they can page
+  // independently of this aggregate — rackCodes still lives here to resolve their labels.
+
+  // Restock/return info (#218). Supplier + actor NAMES resolved best-effort (an unknown id leaves ""),
+  // the return summary comes from the server aggregate on the response.
+  supplierName: string;
+  acceptedByName: string;
+  returnedQty: bigint;
+  lastReturnUnix: bigint;
 }
 
 export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }) {
@@ -390,17 +399,22 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       const detail = await inventoryClient.batchDetail({ teamId: warehouseId!, batchId });
       const batch = detail.batch ?? null;
       if (!batch) {
-        return { batch: null, product: null, ownerName: "", rackCodes: new Map(), shelves: [] };
+        return {
+          batch: null,
+          product: null,
+          ownerName: "",
+          rackCodes: new Map(),
+          supplierName: "",
+          acceptedByName: "",
+          returnedQty: 0n,
+          lastReturnUnix: 0n,
+        };
       }
 
-      const [placesRes, placementRes] = await Promise.all([
-        inventoryClient.productPlaces({ warehouseId: warehouseId!, productIds: [batch.productId] }),
-        inventoryClient.batchPlacementList({
-          teamId: warehouseId!,
-          batchId,
-          page: { page: 1, limit: 100 },
-        }),
-      ]);
+      const placesRes = await inventoryClient.productPlaces({
+        warehouseId: warehouseId!,
+        productIds: [batch.productId],
+      });
 
       const rackCodes = new Map<string, string>();
       for (const p of placesRes.places) {
@@ -428,13 +442,73 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         ownerName = "";
       }
 
+      // Restock info (#218): the supplier who delivered it, and who accepted it — names resolved
+      // best-effort, an unknown id just leaves "".
+      let supplierName = "";
+      if (batch.supplierId > 0n) {
+        try {
+          const s = await supplierClient.supplierDetail({
+            teamId: warehouseId!,
+            supplierId: batch.supplierId,
+          });
+          supplierName = s.supplier?.name ?? "";
+        } catch {
+          supplierName = "";
+        }
+      }
+
+      let acceptedByName = "";
+      const actorId = batch.acceptedBy > 0n ? batch.acceptedBy : batch.createdBy;
+      if (actorId > 0n) {
+        try {
+          const users = await userClient.userByIDs({ ids: [actorId] });
+          const u = users.data[actorId.toString()];
+          // "Name (username)"; fall back to the username alone when no display name is set.
+          acceptedByName = u ? (u.name ? `${u.name} (${u.username})` : u.username) : "";
+        } catch {
+          acceptedByName = "";
+        }
+      }
+
       return {
         batch,
         product,
         ownerName,
         rackCodes,
-        shelves: placementRes.shelves.map((s) => ({ rackId: s.rackId, qty: s.qty })),
+        supplierName,
+        acceptedByName,
+        returnedQty: detail.returnedQty,
+        lastReturnUnix: detail.lastReturnUnix,
       };
+    },
+  });
+}
+
+// One batch's placements, PAGINATED (#218) — the Placements tab's own read, so it pages independently
+// of the detail aggregate above (which keeps rackCodes to resolve the labels). `last_opname_unix` per
+// shelf flags one overdue for a stock-take.
+export function useBatchPlacements(args: {
+  warehouseId: bigint | undefined;
+  batchId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { warehouseId, batchId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.inventory(warehouseId, {
+      batchPlacements: batchId.toString(),
+      page,
+      pageSize,
+    }),
+    enabled: warehouseId !== undefined && batchId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.batchPlacementList({
+        teamId: warehouseId!,
+        batchId,
+        page: { page, limit: pageSize },
+      });
+      return res;
     },
   });
 }
@@ -447,14 +521,19 @@ export function useBatchHistory(args: {
   batchId: bigint;
   page: number;
   pageSize: number;
+  // Date range over the movement timestamp; 0n = open on that end (#218 history date filter).
+  fromUnix: bigint;
+  toUnix: bigint;
 }) {
-  const { warehouseId, productId, batchId, page, pageSize } = args;
+  const { warehouseId, productId, batchId, page, pageSize, fromUnix, toUnix } = args;
 
   return useQuery({
     queryKey: key.inventory(warehouseId, {
       batchHistory: batchId.toString(),
       page,
       pageSize,
+      from: fromUnix.toString(),
+      to: toUnix.toString(),
     }),
     enabled: warehouseId !== undefined && productId > 0n && batchId > 0n,
     queryFn: async () => {
@@ -463,6 +542,8 @@ export function useBatchHistory(args: {
         productId,
         batchId,
         page: { page, limit: pageSize },
+        fromUnix,
+        toUnix,
       });
       return res;
     },

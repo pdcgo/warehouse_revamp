@@ -51,6 +51,23 @@ import {
 } from "../../components/ProductSelect";
 import { ProductPicker, description as productPickerDescription } from "../../components/ProductPicker";
 import {
+  DateRangePicker,
+  ALL_DATES,
+  resolveRange,
+  type DateRange,
+  description as dateRangePickerDescription,
+} from "../../components/DateRangePicker";
+import { RangeCalendar, description as rangeCalendarDescription } from "../../components/RangeCalendar";
+import { DatePicker, description as datePickerDescription } from "../../components/DatePicker";
+import { DateTimePicker, description as dateTimePickerDescription } from "../../components/DateTimePicker";
+import {
+  DateTimeRangePicker,
+  ALL_TIMES,
+  resolveRange as resolveDateTimeRange,
+  type DateTimeRange,
+  description as dateTimeRangePickerDescription,
+} from "../../components/DateTimeRangePicker";
+import {
   AddressPicker,
   emptyAddress,
   description as addressPickerDescription,
@@ -351,6 +368,105 @@ function RackSelectDemo() {
         {place === UNPLACED ? "The unplaced pile (a real place)" : null}
         {place !== "" && place !== UNPLACED ? `Rack id: ${place}` : null}
         {current ? "" : " — select a warehouse team to load racks"}
+      </Text>
+    </>
+  );
+}
+
+// The demo reads the range back as the resolved unix window, because that is what a caller actually
+// sends to an RPC — and it shows the point of the relative shortcuts: "Last 7 days" resolves fresh
+// every render, so the window is always live.
+function DateRangeDemo() {
+  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [field, setField] = useState("created");
+  const { fromUnix, toUnix } = resolveRange(range);
+
+  return (
+    <>
+      {/* Plain: date-only. */}
+      <DateRangePicker value={range} onChange={setRange} testId="gallery-date-range" />
+      {/* With a time-type segment (#225): the trigger grows a leading field menu. */}
+      <DateRangePicker
+        value={range}
+        onChange={setRange}
+        fields={[
+          { value: "created", label: "Created" },
+          { value: "arrived", label: "Arrived" },
+        ]}
+        field={field}
+        onFieldChange={setField}
+        testId="gallery-date-range-fields"
+      />
+      <Text fontSize="xs" color="fg.muted">
+        Field: {field} · Resolved: fromUnix {fromUnix.toString()} · toUnix {toUnix.toString()}
+        {fromUnix === 0n && toUnix === 0n ? " (all dates — no bound)" : ""}
+      </Text>
+    </>
+  );
+}
+
+// The raw calendar that backs DateRangePicker's absolute pane, shown on its own: pick two days (either
+// order) and the readout follows. `""` on a side is an open end.
+function RangeCalendarDemo() {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  return (
+    <Stack maxW="72">
+      <RangeCalendar
+        from={from}
+        to={to}
+        onChange={(f, t) => {
+          setFrom(f);
+          setTo(t);
+        }}
+        testId="gallery-range-calendar"
+      />
+      <Text fontSize="xs" color="fg.muted">
+        from {from || "(open)"} · to {to || "(open)"}
+      </Text>
+    </Stack>
+  );
+}
+
+function DatePickerDemo() {
+  const [date, setDate] = useState("");
+
+  return (
+    <Stack maxW="60">
+      <DatePicker value={date} onChange={setDate} clearable testId="gallery-date" />
+      <Text fontSize="xs" color="fg.muted">
+        Value: {date || "(none)"}
+      </Text>
+    </Stack>
+  );
+}
+
+function DateTimePickerDemo() {
+  const [value, setValue] = useState("");
+
+  return (
+    <Stack maxW="64">
+      <DateTimePicker value={value} onChange={setValue} clearable testId="gallery-datetime" />
+      <Text fontSize="xs" color="fg.muted">
+        Value: {value || "(none)"}
+      </Text>
+    </Stack>
+  );
+}
+
+// Like the date-range demo, this reads the window back as the resolved unix seconds — what a caller
+// sends to an RPC — so the live/rolling relative shortcuts (down to minutes) are visible in the number.
+function DateTimeRangeDemo() {
+  const [range, setRange] = useState<DateTimeRange>(ALL_TIMES);
+  const { fromUnix, toUnix } = resolveDateTimeRange(range);
+
+  return (
+    <>
+      <DateTimeRangePicker value={range} onChange={setRange} testId="gallery-datetime-range" />
+      <Text fontSize="xs" color="fg.muted">
+        Resolved: fromUnix {fromUnix.toString()} · toUnix {toUnix.toString()}
+        {fromUnix === 0n && toUnix === 0n ? " (all times — no bound)" : ""}
       </Text>
     </>
   );
@@ -717,6 +833,36 @@ const ENTRIES: Entry[] = [
     title: "ProductPicker",
     description: productPickerDescription,
     render: () => <ProductPickerDemo />,
+  },
+  {
+    id: "date-picker",
+    title: "DatePicker",
+    description: datePickerDescription,
+    render: () => <DatePickerDemo />,
+  },
+  {
+    id: "date-time-picker",
+    title: "DateTimePicker",
+    description: dateTimePickerDescription,
+    render: () => <DateTimePickerDemo />,
+  },
+  {
+    id: "date-range-picker",
+    title: "DateRangePicker",
+    description: dateRangePickerDescription,
+    render: () => <DateRangeDemo />,
+  },
+  {
+    id: "range-calendar",
+    title: "RangeCalendar",
+    description: rangeCalendarDescription,
+    render: () => <RangeCalendarDemo />,
+  },
+  {
+    id: "date-time-range-picker",
+    title: "DateTimeRangePicker",
+    description: dateTimeRangePickerDescription,
+    render: () => <DateTimeRangeDemo />,
   },
   {
     id: "address-picker",

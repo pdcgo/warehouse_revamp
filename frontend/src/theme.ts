@@ -102,7 +102,7 @@ const customConfig = defineConfig({
         },
         // Surfaces — page → card → inset. `--bg` / `--surface` / `--surface-2`.
         bg: {
-          DEFAULT: { value: { _light: "#f6f7f9", _dark: "#0c0e12" } },
+          DEFAULT: { value: { _light: "#ffffff", _dark: "#0c0e12" } },
           subtle: { value: { _light: "#ffffff", _dark: "#161a20" } },
           muted: { value: { _light: "#f9fafb", _dark: "#1b2027" } },
         },

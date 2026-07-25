@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CloseButton, Dialog, Field, Icon, Input, Portal, Stack, Textarea } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Field, Icon, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { Plus } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
@@ -10,6 +10,7 @@ import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKindSelect } from "../../../components/ExpenseKindSelect";
 import { CurrencyInput } from "../../../components/CurrencyInput";
+import { DatePicker } from "../../../components/DatePicker";
 import { ShopSelect } from "../../../components/ShopSelect";
 import { toaster } from "../../../components/Toaster";
 
@@ -170,12 +171,11 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
 
                   <Field.Root required>
                     <Field.Label>{t("expenses.table.date")}</Field.Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={occurredAt}
+                      onChange={setOccurredAt}
                       disabled={busy}
-                      data-testid="expense-date"
-                      onChange={(e) => setOccurredAt(e.target.value)}
+                      testId="expense-date"
                     />
                     {/* The date the cost BELONGS TO — payroll paid on the 5th is last month's cost. */}
                     <Field.HelperText>{t("expenses.dateHelp")}</Field.HelperText>

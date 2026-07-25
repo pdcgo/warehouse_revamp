@@ -22,6 +22,9 @@ export interface ProductListItemProps {
   teamName?: string;
   // Optional trailing content: actions, a check, etc.
   action?: ReactNode;
+  /** Presentation size. "md" (default) is the compact list row; "lg" enlarges the image and title for
+   * use as a detail-page header, where the product is the subject rather than one row among many. */
+  size?: "md" | "lg";
 }
 
 // ProductListItem is the shared way to show a product (#128): its cover image, name + SKU, the owning
@@ -31,8 +34,9 @@ export interface ProductListItemProps {
 export const description =
   "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and an optional ready-stock badge.";
 
-export function ProductListItem({ product, stock, teamName, action }: ProductListItemProps) {
+export function ProductListItem({ product, stock, teamName, action, size = "md" }: ProductListItemProps) {
   const { t } = useTranslation();
+  const large = size === "lg";
 
   // The thumbnail is the list-sized render; the full image is the fallback. A product may have
   // NEITHER — Avatar.Fallback then shows the package icon, which also covers a URL that 404s.
@@ -58,15 +62,15 @@ export function ProductListItem({ product, stock, teamName, action }: ProductLis
 
   return (
     <HStack gap="card" w="full" data-testid={`product-list-item-${product.id ?? ""}`}>
-      <Avatar.Root shape="rounded" size="md" colorPalette="gray" flexShrink={0}>
+      <Avatar.Root shape="rounded" size={large ? "2xl" : "md"} colorPalette="gray" flexShrink={0}>
         <Avatar.Fallback>
-          <Icon as={Package} boxSize="4" />
+          <Icon as={Package} boxSize={large ? "6" : "4"} />
         </Avatar.Fallback>
         <Avatar.Image src={cover || undefined} alt={title} />
       </Avatar.Root>
 
       <Stack gap="0.5" flex="1" minW="0">
-        <Text fontWeight="medium" lineClamp={1} textAlign="start">
+        <Text fontWeight="medium" fontSize={large ? "lg" : undefined} lineClamp={1} textAlign="start">
           {title}
         </Text>
         <HStack gap="2" minW="0">

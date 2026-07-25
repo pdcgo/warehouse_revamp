@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CircleUser, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Users } from "lucide-react";
+  Boxes, Building2, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileClock, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -78,6 +78,12 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
   ];
 
+  // Returns sit directly UNDER Restock — a return is a restock's mirror image (#163), goods arriving
+  // to be counted, placed, and partly written off. A warehouse's own concern, so warehouse teams only.
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/returns", label: "nav.returns", icon: Undo2 });
+  }
+
   // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
   // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
   // stock-locating side. They stay for a selling team.
@@ -94,6 +100,11 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   // Batches — the deliveries of stock as cost layers (#209), a warehouse's own view of its inventory.
   if (teamType === TeamType.WAREHOUSE) {
     children.push({ to: "/inventories/batches", label: "nav.batches", icon: Layers });
+  }
+
+  // Opname — a physical stock count reconciled against the system (stock-take). A warehouse's own job.
+  if (teamType === TeamType.WAREHOUSE) {
+    children.push({ to: "/inventories/opname", label: "nav.opname", icon: ClipboardCheck });
   }
 
   return { label: "nav.inventories", icon: Boxes, children };

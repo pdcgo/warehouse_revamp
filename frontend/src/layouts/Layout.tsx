@@ -61,6 +61,11 @@ export function Layout() {
 
   const menu = menuFor(current?.teamType, current?.role);
 
+  // Pages that opt into the grey page canvas (rather than the default white content area). Matched by
+  // route so the shell owns the surface and the page stays about its content. Batch detail is the
+  // only one so far — its detail route is /inventories/batches/:batchId.
+  const greyCanvas = location.pathname.startsWith("/inventories/batches/");
+
   // Flatten groups to their child links so both the active state and the breadcrumb can match a
   // sub-menu route.
   const flatItems: MenuItem[] = menu.flatMap((entry) => (isMenuGroup(entry) ? entry.children : [entry]));
@@ -425,7 +430,15 @@ export function Layout() {
           </Box>
         </Flex>
 
-        <Box as="main" flex="1" overflow="auto" p="page">
+        {/* The content area stays WHITE by default (so a freshly-built component isn't tinted grey);
+            a page opts INTO the grey canvas by route — batch detail is the only one so far. */}
+        <Box
+          as="main"
+          flex="1"
+          overflow="auto"
+          p="page"
+          bg={greyCanvas ? { _light: "#f6f7f9", _dark: "#0c0e12" } : undefined}
+        >
           {/* Each route's page is code-split (React.lazy in router.tsx); this boundary shows a
               spinner for the brief moment its chunk is fetched. */}
           <Suspense fallback={<Spinner colorPalette="brand" />}>

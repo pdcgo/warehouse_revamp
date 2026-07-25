@@ -138,6 +138,24 @@
       </div>
     </section>
 
+    <!-- RETURNS -->
+    <section class="mt-[34px]">
+      <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Returns — goods come back from a buyer</h2><span class="text-fg-subtle text-[13px]">the mirror image of a restock (#163) — receive &amp; inspect</span></div>
+      <div class="flex items-center gap-2 flex-wrap text-fg-subtle text-[12.5px] font-semibold m-[6px_0_14px] [font-variant-numeric:tabular-nums]"><code class="text-fg-muted">return-list</code><span class="opacity-60">›</span><code class="text-fg-muted">return-receipt</code></div>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="return-list.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Returns — List</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The warehouse's queue of goods coming back from a customer — ongoing (in flight) / received / cancelled / lost. Find an ongoing one that arrived and receive it: count, place the sellable, write off the broken. Order optional. Design has open forks (§7).</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">return-list.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="return-receipt.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Return Receipt</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The goods-returned record behind a received return — the mirror of batch-receipt: each line split into sellable (back to a rack) vs written off, with the refund owed the buyer. Printable.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">return-receipt.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
+        </a>
+      </div>
+    </section>
+
     <!-- WAREHOUSE PRODUCT & STOCK -->
     <section class="mt-[34px]">
       <div class="flex items-baseline gap-3 flex-wrap mb-1"><h2 class="text-base font-bold m-0">Warehouse — a product's stock</h2><span class="text-fg-subtle text-[13px]">the detail page is the hub; drill into a batch; Move &amp; Adjust act on stock</span></div>
@@ -200,6 +218,11 @@
           <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Restock — Detail (selling)</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
           <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">One restock, the hard case — <strong>received short with damage</strong>. A lifecycle timeline, a line-level ordered-vs-received reconciliation, shipping, and the cost basis: you're billed on what landed, not what was ordered (#74).</p>
           <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">selling/restock-detail.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border whitespace-nowrap text-fg-muted bg-surface-2 border-line">mock</span></div>
+        </a>
+        <a class="flex flex-col bg-surface border border-line rounded-[14px] shadow p-[16px_18px] text-inherit no-underline transition duration-150 group hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5 hover:border-line-strong" href="order-receipt.html">
+          <div class="flex items-center gap-2.5"><span class="text-[15px] font-[650] flex-[1_1_auto]">Order Receipt</span><svg class="text-fg-subtle flex-[0_0_auto] transition duration-150 group-hover:text-accent group-hover:translate-x-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+          <p class="text-fg-muted text-[13px] m-[8px_0_14px] flex-[1_1_auto]">The sale document for one order — items, prices, shipping, total, ship-to. The counterpart to the return receipt (this order #4055 is the one RTN-0137 came back against). Printable.</p>
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-fg-subtle text-[11.5px] font-mono">order-receipt.html</span><span class="flex-[1_1_auto]"></span><span class="text-[11px] font-bold py-0.5 px-2 rounded-full border border-transparent whitespace-nowrap text-warn bg-warn-soft border-warn-border">in review</span></div>
         </a>
       </div>
     </section>
