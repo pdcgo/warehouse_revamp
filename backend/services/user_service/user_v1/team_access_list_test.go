@@ -34,12 +34,12 @@ func TestTeamAccessList_ReturnsMembershipsWithNames(t *testing.T) {
 		t.Fatalf("TeamAccessList: %v", err)
 	}
 
-	if len(res.Msg.GetTeams()) != 2 {
-		t.Fatalf("teams = %d, want 2", len(res.Msg.GetTeams()))
+	if len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())) != 2 {
+		t.Fatalf("teams = %d, want 2", len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())))
 	}
 
 	names := map[uint64]string{}
-	for _, item := range res.Msg.GetTeams() {
+	for _, item := range teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds()) {
 		names[item.GetTeamId()] = item.GetTeamName()
 	}
 
@@ -64,11 +64,11 @@ func TestTeamAccessList_DegradesWhenTeamsMissing(t *testing.T) {
 		t.Fatalf("TeamAccessList must not fail when names are unavailable: %v", err)
 	}
 
-	if len(res.Msg.GetTeams()) != 1 {
-		t.Fatalf("teams = %d, want 1 (membership still returned)", len(res.Msg.GetTeams()))
+	if len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())) != 1 {
+		t.Fatalf("teams = %d, want 1 (membership still returned)", len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())))
 	}
 
-	if res.Msg.GetTeams()[0].GetTeamName() != "" {
-		t.Errorf("team_name = %q, want empty (degraded)", res.Msg.GetTeams()[0].GetTeamName())
+	if teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())[0].GetTeamName() != "" {
+		t.Errorf("team_name = %q, want empty (degraded)", teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())[0].GetTeamName())
 	}
 }

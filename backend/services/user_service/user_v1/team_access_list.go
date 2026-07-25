@@ -41,7 +41,7 @@ func (s *Service) TeamAccessList(
 	// The source honoured any user_id from any authenticated caller, so any logged-in user could
 	// enumerate anyone else's teams and roles. The subject of an identity operation is the token
 	// holder, never a request field.
-	target := req.Msg.GetUserId()
+	target := req.Msg.GetFilter().GetUserId()
 	if target == 0 {
 		target = caller
 	}
@@ -77,7 +77,7 @@ func (s *Service) TeamAccessList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("team_id ASC").
+		Order(teamAccessOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&memberships).
@@ -86,15 +86,15 @@ func (s *Service) TeamAccessList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	ids := make([]uint64, 0, len(memberships))
+	teamIDs := make([]uint64, 0, len(memberships))
 	for i := range memberships {
-		ids = append(ids, memberships[i].TeamID)
+		teamIDs = append(teamIDs, memberships[i].TeamID)
 	}
 
 	// Never errors — degrades to an empty map if team_service is unreachable.
-	teams := s.teams.resolve(ctx, san_auth.GetBearer(ctx), ids)
+	teams := s.teams.resolve(ctx, san_auth.GetBearer(ctx), teamIDs)
 
-	items := make([]*userv1.TeamAccessItem, 0, len(memberships))
+	memberItems := make([]*userv1.TeamAccessItem, 0, len(memberships))
 
 	for i := range memberships {
 		membership := memberships[i]
@@ -112,11 +112,14 @@ func (s *Service) TeamAccessList(
 			item.ImageUrl = team.ImageURL
 		}
 
-		items = append(items, item)
+		memberItems = append(memberItems, item)
 	}
 
+	items, ids := teamAccessListItems(memberItems, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&userv1.TeamAccessListResponse{
-		Teams: items,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

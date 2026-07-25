@@ -38,7 +38,7 @@ func (s *Service) UserList(
 			Where("user_team_roles.team_id = ?", teamID)
 	}
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("users.username ILIKE ? OR users.name ILIKE ? OR users.email ILIKE ?",
 			pattern, pattern, pattern)
@@ -56,7 +56,7 @@ func (s *Service) UserList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("users.id ASC").
+		Order(userOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&users).
@@ -65,13 +65,11 @@ func (s *Service) UserList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	out := make([]*userv1.User, 0, len(users))
-	for i := range users {
-		out = append(out, userToProto(&users[i]))
-	}
+	items, ids := userListItems(users, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&userv1.UserListResponse{
-		Users: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

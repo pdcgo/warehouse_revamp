@@ -27,8 +27,9 @@ func TestUserList_ScopedToTeam(t *testing.T) {
 		t.Fatalf("UserList: %v", err)
 	}
 
-	if len(res.Msg.GetUsers()) != 1 || res.Msg.GetUsers()[0].GetUsername() != "in_team" {
-		t.Fatalf("team-scoped list = %v, want exactly [in_team]", usernames(res.Msg.GetUsers()))
+	rows := userRows(res.Msg)
+	if len(rows) != 1 || rows[0].GetUsername() != "in_team" {
+		t.Fatalf("team-scoped list = %v, want exactly [in_team]", usernames(rows))
 	}
 }
 
@@ -40,14 +41,14 @@ func TestUserList_Search(t *testing.T) {
 	insertUser(t, db, "bob", "pw12345678")
 
 	res, err := svc.UserList(context.Background(), connect.NewRequest(&userv1.UserListRequest{
-		Q:    "alic",
-		Page: &commonPage,
+		Filter: &userv1.UserListFilter{Q: "alic"},
+		Page:   &commonPage,
 	}))
 	if err != nil {
 		t.Fatalf("UserList: %v", err)
 	}
 
-	found := usernames(res.Msg.GetUsers())
+	found := usernames(userRows(res.Msg))
 	if !contains(found, "alice") || contains(found, "bob") {
 		t.Fatalf("search 'alic' = %v, want alice only", found)
 	}

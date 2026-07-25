@@ -27,7 +27,7 @@ func TestUserTeams_ReturnsUserAndTeams(t *testing.T) {
 	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_TEAM_OWNER)
 
 	// The interceptor gates this by policy; the handler itself takes the user id from the request.
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{Filter: &userv1.UserTeamsFilter{UserId: uid}, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams: %v", err)
 	}
@@ -40,13 +40,13 @@ func TestUserTeams_ReturnsUserAndTeams(t *testing.T) {
 		t.Errorf("username = %q, want viewed", res.Msg.GetUser().GetUsername())
 	}
 
-	if len(res.Msg.GetTeams()) != 2 {
-		t.Fatalf("teams = %d, want 2", len(res.Msg.GetTeams()))
+	if len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())) != 2 {
+		t.Fatalf("teams = %d, want 2", len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())))
 	}
 
 	roles := map[uint64]role_basev1.Role{}
 	names := map[uint64]string{}
-	for _, item := range res.Msg.GetTeams() {
+	for _, item := range teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds()) {
 		roles[item.GetTeamId()] = item.GetRole()
 		names[item.GetTeamId()] = item.GetTeamName()
 	}
@@ -69,16 +69,16 @@ func TestUserTeams_DegradesWhenTeamsMissing(t *testing.T) {
 	uid := insertUser(t, db, "viewed2", "pw12345678")
 	grantRole(t, db, 3, uid, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
 
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{Filter: &userv1.UserTeamsFilter{UserId: uid}, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams must not fail when names are unavailable: %v", err)
 	}
 
-	if len(res.Msg.GetTeams()) != 1 {
-		t.Fatalf("teams = %d, want 1 (membership still returned)", len(res.Msg.GetTeams()))
+	if len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())) != 1 {
+		t.Fatalf("teams = %d, want 1 (membership still returned)", len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())))
 	}
 
-	item := res.Msg.GetTeams()[0]
+	item := teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())[0]
 
 	if item.GetTeamId() != 3 || item.GetRole() != role_basev1.Role_ROLE_WAREHOUSE_STAFF {
 		t.Errorf("membership = (team %d, role %v), want (3, WAREHOUSE_STAFF)", item.GetTeamId(), item.GetRole())
@@ -96,13 +96,13 @@ func TestUserTeams_NoMemberships(t *testing.T) {
 	svc := newServiceWithTeams(t, db, &fakeTeamClient{})
 	uid := insertUser(t, db, "loner", "pw12345678")
 
-	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: uid, Page: pageAll()}))
+	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{Filter: &userv1.UserTeamsFilter{UserId: uid}, Page: pageAll()}))
 	if err != nil {
 		t.Fatalf("UserTeams: %v", err)
 	}
 
-	if len(res.Msg.GetTeams()) != 0 {
-		t.Fatalf("teams = %d, want 0", len(res.Msg.GetTeams()))
+	if len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())) != 0 {
+		t.Fatalf("teams = %d, want 0", len(teamAccessRows(res.Msg.GetItems(), res.Msg.GetIds())))
 	}
 }
 
@@ -112,7 +112,7 @@ func TestUserTeams_UnknownUserIsNotFound(t *testing.T) {
 
 	svc := newServiceWithTeams(t, db, &fakeTeamClient{})
 
-	_, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{UserId: 999999, Page: pageAll()}))
+	_, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{Filter: &userv1.UserTeamsFilter{UserId: 999999}, Page: pageAll()}))
 	if err == nil {
 		t.Fatal("UserTeams(unknown id) = nil error, want NotFound")
 	}

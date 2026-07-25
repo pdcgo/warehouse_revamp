@@ -17,6 +17,7 @@ import {
   productsFromList,
 } from "../products/adapt";
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
+import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -177,8 +178,8 @@ export function useWarehouseProduct(args: {
       const actorIds = [...new Set(events.map((m) => m.actorUserId).filter((id) => id > 0n))];
       if (actorIds.length > 0) {
         try {
-          const users = await userClient.userByIDs({ ids: actorIds });
-          for (const [id, u] of Object.entries(users.data)) {
+          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
+          for (const [id, u] of Object.entries(users)) {
             actorNames.set(id, u.name || u.username);
           }
         } catch {
@@ -487,8 +488,8 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       const actorId = batch.acceptedBy > 0n ? batch.acceptedBy : batch.createdBy;
       if (actorId > 0n) {
         try {
-          const users = await userClient.userByIDs({ ids: [actorId] });
-          const u = users.data[actorId.toString()];
+          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: [actorId] }, dataRequest: userByIdsRowData() }));
+          const u = users[actorId.toString()];
           // "Name (username)"; fall back to the username alone when no display name is set.
           acceptedByName = u ? (u.name ? `${u.name} (${u.username})` : u.username) : "";
         } catch {
@@ -626,8 +627,8 @@ export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliver
       const actorIds = [...new Set([res.createdBy, res.acceptedBy].filter((id) => id > 0n))];
       if (actorIds.length > 0) {
         try {
-          const users = await userClient.userByIDs({ ids: actorIds });
-          for (const [id, u] of Object.entries(users.data)) {
+          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
+          for (const [id, u] of Object.entries(users)) {
             actorNames.set(id, u.name || u.username);
           }
         } catch {

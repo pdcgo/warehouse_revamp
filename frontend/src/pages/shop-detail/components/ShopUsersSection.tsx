@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { UserMinus } from "lucide-react";
 import { rpcError, shopClient, userClient } from "../../../api/clients";
+import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { UserItem } from "../../../components/UserItem";
@@ -31,8 +32,13 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
       setUserIds(res.userIds);
 
       if (res.userIds.length > 0) {
-        const resolved = await userClient.userByIDs({ ids: res.userIds });
-        setUsers(resolved.data);
+        const resolved = publicUsersByIds(
+          await userClient.userByIDs({
+            filter: { ids: res.userIds },
+            dataRequest: userByIdsRowData(),
+          }),
+        );
+        setUsers(resolved);
       } else {
         setUsers({});
       }

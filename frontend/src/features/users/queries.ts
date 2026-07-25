@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import {
+  teamAccessFromList,
+  teamAccessRowData,
+  userListRowData,
+  usersFromList,
+} from "./adapt";
 
 // The user screens' reads (#176) and writes (#177). Query hooks live beside the screens that use
 // them, per the convention in api/queryClient.ts.
@@ -32,10 +38,15 @@ export function useUsers({ teamId, q, page, pageSize }: UserListArgs) {
     // and a request sent in that window would be scoped to nothing and rejected.
     enabled: teamId !== undefined,
     queryFn: async () => {
-      const res = await userClient.userList({ teamId: teamId!, q, page: { page, limit: pageSize } });
+      const res = await userClient.userList({
+        teamId: teamId!,
+        filter: { q },
+        dataRequest: userListRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
-        users: res.users,
+        users: usersFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -57,11 +68,15 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
     queryKey: key.users(undefined, { userId: userId.toString(), page, pageSize }),
     enabled: userId > 0n,
     queryFn: async () => {
-      const res = await userClient.userTeams({ userId, page: { page, limit: pageSize } });
+      const res = await userClient.userTeams({
+        filter: { userId },
+        dataRequest: teamAccessRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
         user: res.user ?? null,
-        teams: res.teams,
+        teams: teamAccessFromList(res.items, res.ids),
         pageInfo: res.pageInfo,
       };
     },
@@ -95,9 +110,14 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
     enabled: q.length >= 2,
     queryFn: async () => {
       if (teamId !== undefined && teamId > 0n) {
-        const res = await userClient.userList({ teamId, q, page: { page: 1, limit: 10 } });
+        const res = await userClient.userList({
+          teamId,
+          filter: { q },
+          dataRequest: userListRowData(),
+          page: { page: 1, limit: 10 },
+        });
 
-        return res.users;
+        return usersFromList(res.items, res.ids);
       }
 
       const res = await userClient.searchUser({ q, limit: 10 });

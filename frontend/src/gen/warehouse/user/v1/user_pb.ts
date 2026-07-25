@@ -2,10 +2,12 @@
 // @generated from file warehouse/user/v1/user.proto (package warehouse.user.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import type { Identity, Role } from "../../role_base/v1/role_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
@@ -17,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/user/v1/user.proto.
  */
 export const file_warehouse_user_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("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b2xlX2Jhc2UudjEuUm9sZRIWCgVhbGlhcxgIIAEoCUIHukgEcgIYPDoMkrUYCAoGAQIDBAYJIjsKEkNyZWF0ZVVzZXJSZXNwb25zZRIlCgR1c2VyGAEgASgLMhcud2FyZWhvdXNlLnVzZXIudjEuVXNlciJfChRSZXNldFBhc3N3b3JkUmVxdWVzdBIdCgxvbGRfcGFzc3dvcmQYASABKAlCB7pIBHICEAESIAoMbmV3X3Bhc3N3b3JkGAIgASgJQgq6SAdyBRAIGMgBOgaStRgCIAEiJgoVUmVzZXRQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJImEKGUFkbWluUmVzZXRQYXNzd29yZFJlcXVlc3QSGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgABIgCgxuZXdfcGFzc3dvcmQYAiABKAlCCrpIB3IFEAgYyAE6CJK1GAQKAgECIhwKGkFkbWluUmVzZXRQYXNzd29yZFJlc3BvbnNlIokBCgxMb2dpblJlcXVlc3QSGwoIdXNlcm5hbWUYASABKAlCCbpIBnIEEAEYZBIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQARjIARIWCgVhZ2VudBgDIAEoCUIHukgEcgIYZBIeCg1hZ2VudF92ZXJzaW9uGAQgASgJQge6SARyAhgyOgaStRgCGAEiUgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCRIyCghpZGVudGl0eRgCIAEoCzIgLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuSWRlbnRpdHkiFwoNTG9nb3V0UmVxdWVzdDoGkrUYAhgBIhAKDkxvZ291dFJlc3BvbnNlIkgKEkNoZWNrQWNjZXNzUmVxdWVzdBIZCgV0b2tlbhgBIAEoCUIKukgHcgUQARi4FxIPCgd0ZWFtX2lkGAIgASgEOgaStRgCGAEihAEKE0NoZWNrQWNjZXNzUmVzcG9uc2USMgoIaWRlbnRpdHkYASABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5Eg0KBXRva2VuGAIgASgJEioKBHJvbGUYAyABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUiRQoeUmVxdWVzdFBhc3N3b3JkUmVzZXRPdHBSZXF1ZXN0EhsKCHVzZXJuYW1lGAEgASgJQgm6SAZyBBABGGQ6BpK1GAIYASIhCh9SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlc3BvbnNlIn0KG1Jlc2V0UGFzc3dvcmRXaXRoT3RwUmVxdWVzdBIbCgh1c2VybmFtZRgBIAEoCUIJukgGcgQQARhkEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYDBIgCgxuZXdfcGFzc3dvcmQYAyABKAlCCrpIB3IFEAgYyAE6BpK1GAIYASIeChxSZXNldFBhc3N3b3JkV2l0aE90cFJlc3BvbnNlIrIBCg5UZWFtQWNjZXNzSXRlbRIPCgd0ZWFtX2lkGAEgASgEEioKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSDQoFYWxpYXMYAyABKAkSEQoJdGVhbV9uYW1lGAQgASgJEi4KCXRlYW1fdHlwZRgFIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlEhEKCWltYWdlX3VybBgGIAEoCSJnChVUZWFtQWNjZXNzTGlzdFJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoBBI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6BpK1GAIgASJ8ChZUZWFtQWNjZXNzTGlzdFJlc3BvbnNlEjAKBXRlYW1zGAEgAygLMiEud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0l0ZW0SMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJtChBVc2VyVGVhbXNSZXF1ZXN0EhgKB3VzZXJfaWQYASABKARCB7pIBDICIAASNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgiStRgECgIBAiKkAQoRVXNlclRlYW1zUmVzcG9uc2USKwoEdXNlchgBIAEoCzIdLndhcmVob3VzZS51c2VyLnYxLlB1YmxpY1VzZXISMAoFdGVhbXMYAiADKAsyIS53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzSXRlbRIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrgBChVUZWFtVXNlclVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESLQoDYWRkGAIgASgLMh4ud2FyZWhvdXNlLnVzZXIudjEuQWRkVGVhbVVzZXJIABIzCgZyZW1vdmUYAyABKAsyIS53YXJlaG91c2UudXNlci52MS5SZW1vdmVUZWFtVXNlckgAOgyStRgICgYBAgMEBglCDwoGYWN0aW9uEgW6SAIIASJ3CgtBZGRUZWFtVXNlchIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEjYKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGVCCrpIB4IBBBABIAASFgoFYWxpYXMYAyABKAlCB7pIBHICGDwiKgoOUmVtb3ZlVGVhbVVzZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACIYChZUZWFtVXNlclVwZGF0ZVJlc3BvbnNlIi0KElJvbGVSZXNvbHZlUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgEOgaStRgCIAEihQEKE1JvbGVSZXNvbHZlUmVzcG9uc2USKgoEcm9sZRgBIAEoDjIcLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuUm9sZRIvCglyb290X3JvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJc3VzcGVuZGVkGAMgASgIMoIECgtBdXRoU2VydmljZRJKCgVMb2dpbhIfLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVxdWVzdBogLndhcmVob3VzZS51c2VyLnYxLkxvZ2luUmVzcG9uc2USTQoGTG9nb3V0EiAud2FyZWhvdXNlLnVzZXIudjEuTG9nb3V0UmVxdWVzdBohLndhcmVob3VzZS51c2VyLnYxLkxvZ291dFJlc3BvbnNlElwKC0NoZWNrQWNjZXNzEiUud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXF1ZXN0GiYud2FyZWhvdXNlLnVzZXIudjEuQ2hlY2tBY2Nlc3NSZXNwb25zZRKAAQoXUmVxdWVzdFBhc3N3b3JkUmVzZXRPdHASMS53YXJlaG91c2UudXNlci52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlcXVlc3QaMi53YXJlaG91c2UudXNlci52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlc3BvbnNlEncKFFJlc2V0UGFzc3dvcmRXaXRoT3RwEi4ud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFdpdGhPdHBSZXF1ZXN0Gi8ud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFdpdGhPdHBSZXNwb25zZTLDCgoLVXNlclNlcnZpY2USZQoOVGVhbUFjY2Vzc0xpc3QSKC53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlcXVlc3QaKS53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdFJlc3BvbnNlElYKCVVzZXJUZWFtcxIjLndhcmVob3VzZS51c2VyLnYxLlVzZXJUZWFtc1JlcXVlc3QaJC53YXJlaG91c2UudXNlci52MS5Vc2VyVGVhbXNSZXNwb25zZRJlCg5UZWFtVXNlclVwZGF0ZRIoLndhcmVob3VzZS51c2VyLnYxLlRlYW1Vc2VyVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS51c2VyLnYxLlRlYW1Vc2VyVXBkYXRlUmVzcG9uc2USXAoLUm9sZVJlc29sdmUSJS53YXJlaG91c2UudXNlci52MS5Sb2xlUmVzb2x2ZVJlcXVlc3QaJi53YXJlaG91c2UudXNlci52MS5Sb2xlUmVzb2x2ZVJlc3BvbnNlElkKCkNyZWF0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5DcmVhdGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLkNyZWF0ZVVzZXJSZXNwb25zZRJiCg1SZXNldFBhc3N3b3JkEicud2FyZWhvdXNlLnVzZXIudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaKC53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkUmVzcG9uc2UScQoSQWRtaW5SZXNldFBhc3N3b3JkEiwud2FyZWhvdXNlLnVzZXIudjEuQWRtaW5SZXNldFBhc3N3b3JkUmVxdWVzdBotLndhcmVob3VzZS51c2VyLnYxLkFkbWluUmVzZXRQYXNzd29yZFJlc3BvbnNlEmIKDVVwZGF0ZVByb2ZpbGUSJy53YXJlaG91c2UudXNlci52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBooLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZRJZCgpVcGRhdGVVc2VyEiQud2FyZWhvdXNlLnVzZXIudjEuVXBkYXRlVXNlclJlcXVlc3QaJS53YXJlaG91c2UudXNlci52MS5VcGRhdGVVc2VyUmVzcG9uc2USXAoLU3VzcGVuZFVzZXISJS53YXJlaG91c2UudXNlci52MS5TdXNwZW5kVXNlclJlcXVlc3QaJi53YXJlaG91c2UudXNlci52MS5TdXNwZW5kVXNlclJlc3BvbnNlElkKCkRlbGV0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5EZWxldGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLkRlbGV0ZVVzZXJSZXNwb25zZRJTCghVc2VyTGlzdBIiLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0UmVxdWVzdBojLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0UmVzcG9uc2USVgoJVXNlckJ5SURzEiMud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVxdWVzdBokLndhcmVob3VzZS51c2VyLnYxLlVzZXJCeUlEc1Jlc3BvbnNlElkKClNlYXJjaFVzZXISJC53YXJlaG91c2UudXNlci52MS5TZWFyY2hVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLlNlYXJjaFVzZXJSZXNwb25zZUJIWkZnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3VzZXIvdjE7dXNlcnYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_team_v1_team]);
+  fileDesc("Chx3YXJlaG91c2UvdXNlci92MS91c2VyLnByb3RvEhF3YXJlaG91c2UudXNlci52MSJMCgpQdWJsaWNVc2VyEgoKAmlkGAEgASgEEhAKCHVzZXJuYW1lGAIgASgJEgwKBG5hbWUYAyABKAkSEgoKYXZhdGFyX3VybBgEIAEoCSLTAQoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSGwoEbmFtZRgBIAEoCUIIukgFcgMYgAFIAIgBARIcCgVlbWFpbBgCIAEoCUIIukgFcgMYyAFIAYgBARIiCgxwaG9uZV9udW1iZXIYAyABKAlCB7pIBHICGChIAogBARIhCgphdmF0YXJfdXJsGAQgASgJQgi6SAVyAxiACEgDiAEBOgaStRgCIAFCBwoFX25hbWVCCAoGX2VtYWlsQg8KDV9waG9uZV9udW1iZXJCDQoLX2F2YXRhcl91cmwiPgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiUKBHVzZXIYASABKAsyFy53YXJlaG91c2UudXNlci52MS5Vc2VyIroBChFVcGRhdGVVc2VyUmVxdWVzdBIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEhsKBG5hbWUYAiABKAlCCLpIBXIDGIABSACIAQESHAoFZW1haWwYAyABKAlCCLpIBXIDGMgBSAGIAQESIgoMcGhvbmVfbnVtYmVyGAQgASgJQge6SARyAhgoSAKIAQE6CJK1GAQKAgECQgcKBV9uYW1lQggKBl9lbWFpbEIPCg1fcGhvbmVfbnVtYmVyIjsKElVwZGF0ZVVzZXJSZXNwb25zZRIlCgR1c2VyGAEgASgLMhcud2FyZWhvdXNlLnVzZXIudjEuVXNlciJLChJTdXNwZW5kVXNlclJlcXVlc3QSGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgABIRCglzdXNwZW5kZWQYAiABKAg6CJK1GAQKAgECIhUKE1N1c3BlbmRVc2VyUmVzcG9uc2UiNwoRRGVsZXRlVXNlclJlcXVlc3QSGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgADoIkrUYBAoCAQIiFAoSRGVsZXRlVXNlclJlc3BvbnNlIiQKDlVzZXJMaXN0RmlsdGVyEhIKAXEYASABKAlCB7pIBHICGGQitgEKElVzZXJMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASLgoEdXNlchgDIAEoDjIeLndhcmVob3VzZS51c2VyLnYxLlVzZXJSb3dTb3J0SABCAwoBcyKWAgoPVXNlckxpc3RSZXF1ZXN0EhUKB3RlYW1faWQYASABKARCBJC1GAESMQoGZmlsdGVyGAIgASgLMiEud2FyZWhvdXNlLnVzZXIudjEuVXNlckxpc3RGaWx0ZXISMwoEc29ydBgDIAEoCzIlLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0RmlsdGVyU29ydBI5CgxkYXRhX3JlcXVlc3QYBCADKA4yIy53YXJlaG91c2UudXNlci52MS5Vc2VyTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToMkrUYCAoGAQIDBAYJIpsBCg5Vc2VyUm93TWFwSXRlbRJACghtYXBfZGF0YRgBIAMoCzIuLndhcmVob3VzZS51c2VyLnYxLlVzZXJSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpHCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEiYKBXZhbHVlGAIgASgLMhcud2FyZWhvdXNlLnVzZXIudjEuVXNlcjoCOAEihgEKFFVzZXJMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASMQoEdXNlchgCIAEoCzIhLndhcmVob3VzZS51c2VyLnYxLlVzZXJSb3dNYXBJdGVtSABCAwoBZCKJAQoQVXNlckxpc3RSZXNwb25zZRI2CgVpdGVtcxgBIAMoCzInLndhcmVob3VzZS51c2VyLnYxLlVzZXJMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIjMKD1VzZXJCeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAikgEKEFVzZXJCeUlEc1JlcXVlc3QSOgoGZmlsdGVyGAEgASgLMiIud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SWRzRmlsdGVyQga6SAPIAQESOgoMZGF0YV9yZXF1ZXN0GAIgAygOMiQud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SWRzRGF0YVR5cGU6BpK1GAIgASKnAQoRUHVibGljVXNlck1hcEl0ZW0SQwoIbWFwX2RhdGEYASADKAsyMS53YXJlaG91c2UudXNlci52MS5QdWJsaWNVc2VyTWFwSXRlbS5NYXBEYXRhRW50cnkaTQoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIsCgV2YWx1ZRgCIAEoCzIdLndhcmVob3VzZS51c2VyLnYxLlB1YmxpY1VzZXI6AjgBIpEBChVVc2VyQnlJRHNSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI7CgtwdWJsaWNfdXNlchgCIAEoCzIkLndhcmVob3VzZS51c2VyLnYxLlB1YmxpY1VzZXJNYXBJdGVtSABCAwoBZCJQChVVc2VyQnlJRHNSZXNwb25zZUxpc3QSNwoFaXRlbXMYASADKAsyKC53YXJlaG91c2UudXNlci52MS5Vc2VyQnlJRHNSZXNwb25zZUl0ZW0iqwEKEVVzZXJCeUlEc1Jlc3BvbnNlEj4KBWl0ZW1zGAEgAygLMi8ud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVzcG9uc2UuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS51c2VyLnYxLlVzZXJCeUlEc1Jlc3BvbnNlTGlzdDoCOAEiSwoRU2VhcmNoVXNlclJlcXVlc3QSFAoBcRgBIAEoCUIJukgGcgQQAhhkEhgKBWxpbWl0GAIgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJCChJTZWFyY2hVc2VyUmVzcG9uc2USLAoFdXNlcnMYASADKAsyHS53YXJlaG91c2UudXNlci52MS5QdWJsaWNVc2VyIoEBCgRVc2VyEgoKAmlkGAEgASgEEhAKCHVzZXJuYW1lGAIgASgJEgwKBG5hbWUYAyABKAkSDQoFZW1haWwYBCABKAkSFAoMcGhvbmVfbnVtYmVyGAUgASgJEhQKDGlzX3N1c3BlbmRlZBgGIAEoCBISCgphdmF0YXJfdXJsGAcgASgJIpQCChFDcmVhdGVVc2VyUmVxdWVzdBIVCgd0ZWFtX2lkGAEgASgEQgSQtRgBEigKCHVzZXJuYW1lGAIgASgJQha6SBNyERADGGQyC15bYS16MC05XSskEhwKCHBhc3N3b3JkGAMgASgJQgq6SAdyBRAIGMgBEhYKBG5hbWUYBCABKAlCCLpIBXIDGIABEhcKBWVtYWlsGAUgASgJQgi6SAVyAxjIARIdCgxwaG9uZV9udW1iZXIYBiABKAlCB7pIBHICGCgSKgoEcm9sZRgHIAEoDjIcLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuUm9sZRIWCgVhbGlhcxgIIAEoCUIHukgEcgIYPDoMkrUYCAoGAQIDBAYJIjsKEkNyZWF0ZVVzZXJSZXNwb25zZRIlCgR1c2VyGAEgASgLMhcud2FyZWhvdXNlLnVzZXIudjEuVXNlciJfChRSZXNldFBhc3N3b3JkUmVxdWVzdBIdCgxvbGRfcGFzc3dvcmQYASABKAlCB7pIBHICEAESIAoMbmV3X3Bhc3N3b3JkGAIgASgJQgq6SAdyBRAIGMgBOgaStRgCIAEiJgoVUmVzZXRQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJImEKGUFkbWluUmVzZXRQYXNzd29yZFJlcXVlc3QSGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgABIgCgxuZXdfcGFzc3dvcmQYAiABKAlCCrpIB3IFEAgYyAE6CJK1GAQKAgECIhwKGkFkbWluUmVzZXRQYXNzd29yZFJlc3BvbnNlIokBCgxMb2dpblJlcXVlc3QSGwoIdXNlcm5hbWUYASABKAlCCbpIBnIEEAEYZBIcCghwYXNzd29yZBgCIAEoCUIKukgHcgUQARjIARIWCgVhZ2VudBgDIAEoCUIHukgEcgIYZBIeCg1hZ2VudF92ZXJzaW9uGAQgASgJQge6SARyAhgyOgaStRgCGAEiUgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCRIyCghpZGVudGl0eRgCIAEoCzIgLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuSWRlbnRpdHkiFwoNTG9nb3V0UmVxdWVzdDoGkrUYAhgBIhAKDkxvZ291dFJlc3BvbnNlIkgKEkNoZWNrQWNjZXNzUmVxdWVzdBIZCgV0b2tlbhgBIAEoCUIKukgHcgUQARi4FxIPCgd0ZWFtX2lkGAIgASgEOgaStRgCGAEihAEKE0NoZWNrQWNjZXNzUmVzcG9uc2USMgoIaWRlbnRpdHkYASABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5Eg0KBXRva2VuGAIgASgJEioKBHJvbGUYAyABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUiRQoeUmVxdWVzdFBhc3N3b3JkUmVzZXRPdHBSZXF1ZXN0EhsKCHVzZXJuYW1lGAEgASgJQgm6SAZyBBABGGQ6BpK1GAIYASIhCh9SZXF1ZXN0UGFzc3dvcmRSZXNldE90cFJlc3BvbnNlIn0KG1Jlc2V0UGFzc3dvcmRXaXRoT3RwUmVxdWVzdBIbCgh1c2VybmFtZRgBIAEoCUIJukgGcgQQARhkEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYDBIgCgxuZXdfcGFzc3dvcmQYAyABKAlCCrpIB3IFEAgYyAE6BpK1GAIYASIeChxSZXNldFBhc3N3b3JkV2l0aE90cFJlc3BvbnNlIrIBCg5UZWFtQWNjZXNzSXRlbRIPCgd0ZWFtX2lkGAEgASgEEioKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSDQoFYWxpYXMYAyABKAkSEQoJdGVhbV9uYW1lGAQgASgJEi4KCXRlYW1fdHlwZRgFIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlEhEKCWltYWdlX3VybBgGIAEoCSLCAQoUVGVhbUFjY2Vzc0ZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjgKC3RlYW1fYWNjZXNzGAMgASgOMiEud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc1NvcnRIAEIDCgFzIqsBChFUZWFtQWNjZXNzTWFwSXRlbRJDCghtYXBfZGF0YRgBIAMoCzIxLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NNYXBJdGVtLk1hcERhdGFFbnRyeRpRCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjAKBXZhbHVlGAIgASgLMiEud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0l0ZW06AjgBIpYBChpUZWFtQWNjZXNzTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjsKC3RlYW1fYWNjZXNzGAIgASgLMiQud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc01hcEl0ZW1IAEIDCgFkIicKFFRlYW1BY2Nlc3NMaXN0RmlsdGVyEg8KB3VzZXJfaWQYASABKAQiiQIKFVRlYW1BY2Nlc3NMaXN0UmVxdWVzdBI3CgZmaWx0ZXIYASABKAsyJy53YXJlaG91c2UudXNlci52MS5UZWFtQWNjZXNzTGlzdEZpbHRlchI1CgRzb3J0GAIgASgLMicud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0ZpbHRlclNvcnQSOwoMZGF0YV9yZXF1ZXN0GAMgAygOMiUud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0RhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToGkrUYAiABIpUBChZUZWFtQWNjZXNzTGlzdFJlc3BvbnNlEjwKBWl0ZW1zGAEgAygLMi0ud2FyZWhvdXNlLnVzZXIudjEuVGVhbUFjY2Vzc0xpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iKwoPVXNlclRlYW1zRmlsdGVyEhgKB3VzZXJfaWQYASABKARCB7pIBDICIAAiiQIKEFVzZXJUZWFtc1JlcXVlc3QSOgoGZmlsdGVyGAEgASgLMiIud2FyZWhvdXNlLnVzZXIudjEuVXNlclRlYW1zRmlsdGVyQga6SAPIAQESNQoEc29ydBgCIAEoCzInLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NGaWx0ZXJTb3J0EjsKDGRhdGFfcmVxdWVzdBgDIAMoDjIlLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NEYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6CJK1GAQKAgECIr0BChFVc2VyVGVhbXNSZXNwb25zZRIrCgR1c2VyGAEgASgLMh0ud2FyZWhvdXNlLnVzZXIudjEuUHVibGljVXNlchI8CgVpdGVtcxgCIAMoCzItLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgDIAMoBBIwCglwYWdlX2luZm8YBCABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrgBChVUZWFtVXNlclVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESLQoDYWRkGAIgASgLMh4ud2FyZWhvdXNlLnVzZXIudjEuQWRkVGVhbVVzZXJIABIzCgZyZW1vdmUYAyABKAsyIS53YXJlaG91c2UudXNlci52MS5SZW1vdmVUZWFtVXNlckgAOgyStRgICgYBAgMEBglCDwoGYWN0aW9uEgW6SAIIASJ3CgtBZGRUZWFtVXNlchIYCgd1c2VyX2lkGAEgASgEQge6SAQyAiAAEjYKBHJvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGVCCrpIB4IBBBABIAASFgoFYWxpYXMYAyABKAlCB7pIBHICGDwiKgoOUmVtb3ZlVGVhbVVzZXISGAoHdXNlcl9pZBgBIAEoBEIHukgEMgIgACIYChZUZWFtVXNlclVwZGF0ZVJlc3BvbnNlIi0KElJvbGVSZXNvbHZlUmVxdWVzdBIPCgd0ZWFtX2lkGAEgASgEOgaStRgCIAEihQEKE1JvbGVSZXNvbHZlUmVzcG9uc2USKgoEcm9sZRgBIAEoDjIcLndhcmVob3VzZS5yb2xlX2Jhc2UudjEuUm9sZRIvCglyb290X3JvbGUYAiABKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJc3VzcGVuZGVkGAMgASgIKnYKEFVzZXJMaXN0RGF0YVR5cGUSIwofVVNFUl9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1VTRVJfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEhwKGFVTRVJfTElTVF9EQVRBX1RZUEVfVVNFUhACKnYKC1VzZXJSb3dTb3J0Eh0KGVVTRVJfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIUChBVU0VSX1JPV19TT1JUX0lEEAESFgoSVVNFUl9ST1dfU09SVF9OQU1FEAISGgoWVVNFUl9ST1dfU09SVF9VU0VSTkFNRRADKoQBChFVc2VyQnlJZHNEYXRhVHlwZRIlCiFVU0VSX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1VU0VSX0JZX0lEU19EQVRBX1RZUEVfR0VORVJBTBABEiUKIVVTRVJfQllfSURTX0RBVEFfVFlQRV9QVUJMSUNfVVNFUhACKoUBChJUZWFtQWNjZXNzRGF0YVR5cGUSJQohVEVBTV9BQ0NFU1NfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIQodVEVBTV9BQ0NFU1NfREFUQV9UWVBFX0dFTkVSQUwQARIlCiFURUFNX0FDQ0VTU19EQVRBX1RZUEVfVEVBTV9BQ0NFU1MQAiprCg5UZWFtQWNjZXNzU29ydBIgChxURUFNX0FDQ0VTU19TT1JUX1VOU1BFQ0lGSUVEEAASHAoYVEVBTV9BQ0NFU1NfU09SVF9URUFNX0lEEAESGQoVVEVBTV9BQ0NFU1NfU09SVF9ST0xFEAIyggQKC0F1dGhTZXJ2aWNlEkoKBUxvZ2luEh8ud2FyZWhvdXNlLnVzZXIudjEuTG9naW5SZXF1ZXN0GiAud2FyZWhvdXNlLnVzZXIudjEuTG9naW5SZXNwb25zZRJNCgZMb2dvdXQSIC53YXJlaG91c2UudXNlci52MS5Mb2dvdXRSZXF1ZXN0GiEud2FyZWhvdXNlLnVzZXIudjEuTG9nb3V0UmVzcG9uc2USXAoLQ2hlY2tBY2Nlc3MSJS53YXJlaG91c2UudXNlci52MS5DaGVja0FjY2Vzc1JlcXVlc3QaJi53YXJlaG91c2UudXNlci52MS5DaGVja0FjY2Vzc1Jlc3BvbnNlEoABChdSZXF1ZXN0UGFzc3dvcmRSZXNldE90cBIxLndhcmVob3VzZS51c2VyLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0T3RwUmVxdWVzdBoyLndhcmVob3VzZS51c2VyLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0T3RwUmVzcG9uc2USdwoUUmVzZXRQYXNzd29yZFdpdGhPdHASLi53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkV2l0aE90cFJlcXVlc3QaLy53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkV2l0aE90cFJlc3BvbnNlMsMKCgtVc2VyU2VydmljZRJlCg5UZWFtQWNjZXNzTGlzdBIoLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NMaXN0UmVxdWVzdBopLndhcmVob3VzZS51c2VyLnYxLlRlYW1BY2Nlc3NMaXN0UmVzcG9uc2USVgoJVXNlclRlYW1zEiMud2FyZWhvdXNlLnVzZXIudjEuVXNlclRlYW1zUmVxdWVzdBokLndhcmVob3VzZS51c2VyLnYxLlVzZXJUZWFtc1Jlc3BvbnNlEmUKDlRlYW1Vc2VyVXBkYXRlEigud2FyZWhvdXNlLnVzZXIudjEuVGVhbVVzZXJVcGRhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnVzZXIudjEuVGVhbVVzZXJVcGRhdGVSZXNwb25zZRJcCgtSb2xlUmVzb2x2ZRIlLndhcmVob3VzZS51c2VyLnYxLlJvbGVSZXNvbHZlUmVxdWVzdBomLndhcmVob3VzZS51c2VyLnYxLlJvbGVSZXNvbHZlUmVzcG9uc2USWQoKQ3JlYXRlVXNlchIkLndhcmVob3VzZS51c2VyLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuQ3JlYXRlVXNlclJlc3BvbnNlEmIKDVJlc2V0UGFzc3dvcmQSJy53YXJlaG91c2UudXNlci52MS5SZXNldFBhc3N3b3JkUmVxdWVzdBooLndhcmVob3VzZS51c2VyLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJxChJBZG1pblJlc2V0UGFzc3dvcmQSLC53YXJlaG91c2UudXNlci52MS5BZG1pblJlc2V0UGFzc3dvcmRSZXF1ZXN0Gi0ud2FyZWhvdXNlLnVzZXIudjEuQWRtaW5SZXNldFBhc3N3b3JkUmVzcG9uc2USYgoNVXBkYXRlUHJvZmlsZRInLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0Gigud2FyZWhvdXNlLnVzZXIudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlElkKClVwZGF0ZVVzZXISJC53YXJlaG91c2UudXNlci52MS5VcGRhdGVVc2VyUmVxdWVzdBolLndhcmVob3VzZS51c2VyLnYxLlVwZGF0ZVVzZXJSZXNwb25zZRJcCgtTdXNwZW5kVXNlchIlLndhcmVob3VzZS51c2VyLnYxLlN1c3BlbmRVc2VyUmVxdWVzdBomLndhcmVob3VzZS51c2VyLnYxLlN1c3BlbmRVc2VyUmVzcG9uc2USWQoKRGVsZXRlVXNlchIkLndhcmVob3VzZS51c2VyLnYxLkRlbGV0ZVVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuRGVsZXRlVXNlclJlc3BvbnNlElMKCFVzZXJMaXN0EiIud2FyZWhvdXNlLnVzZXIudjEuVXNlckxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnVzZXIudjEuVXNlckxpc3RSZXNwb25zZRJWCglVc2VyQnlJRHMSIy53YXJlaG91c2UudXNlci52MS5Vc2VyQnlJRHNSZXF1ZXN0GiQud2FyZWhvdXNlLnVzZXIudjEuVXNlckJ5SURzUmVzcG9uc2USWQoKU2VhcmNoVXNlchIkLndhcmVob3VzZS51c2VyLnYxLlNlYXJjaFVzZXJSZXF1ZXN0GiUud2FyZWhvdXNlLnVzZXIudjEuU2VhcmNoVXNlclJlc3BvbnNlQkhaRmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvdXNlci92MTt1c2VydjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_team_v1_team]);
 
 /**
  * PublicUser is the shape shown to any authenticated caller: NO email, NO phone.
@@ -232,6 +234,57 @@ export const DeleteUserResponseSchema: GenMessage<DeleteUserResponse> = /*@__PUR
   messageDesc(file_warehouse_user_v1_user, 8);
 
 /**
+ * @generated from message warehouse.user.v1.UserListFilter
+ */
+export type UserListFilter = Message<"warehouse.user.v1.UserListFilter"> & {
+  /**
+   * @generated from field: string q = 1;
+   */
+  q: string;
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserListFilter.
+ * Use `create(UserListFilterSchema)` to create a new message.
+ */
+export const UserListFilterSchema: GenMessage<UserListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 9);
+
+/**
+ * @generated from message warehouse.user.v1.UserListFilterSort
+ */
+export type UserListFilterSort = Message<"warehouse.user.v1.UserListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.user.v1.UserListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.user.v1.UserRowSort user = 3;
+     */
+    value: UserRowSort;
+    case: "user";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserListFilterSort.
+ * Use `create(UserListFilterSortSchema)` to create a new message.
+ */
+export const UserListFilterSortSchema: GenMessage<UserListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 10);
+
+/**
  * @generated from message warehouse.user.v1.UserListRequest
  */
 export type UserListRequest = Message<"warehouse.user.v1.UserListRequest"> & {
@@ -245,14 +298,24 @@ export type UserListRequest = Message<"warehouse.user.v1.UserListRequest"> & {
   teamId: bigint;
 
   /**
-   * @generated from field: string q = 2;
+   * @generated from field: warehouse.user.v1.UserListFilter filter = 2;
    */
-  q: string;
+  filter?: UserListFilter;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from field: warehouse.user.v1.UserListFilterSort sort = 3;
    */
-  page?: PageFilter;
+  sort?: UserListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.user.v1.UserListDataType data_request = 4;
+   */
+  dataRequest: UserListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -260,19 +323,72 @@ export type UserListRequest = Message<"warehouse.user.v1.UserListRequest"> & {
  * Use `create(UserListRequestSchema)` to create a new message.
  */
 export const UserListRequestSchema: GenMessage<UserListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 9);
+  messageDesc(file_warehouse_user_v1_user, 11);
+
+/**
+ * The USER slice reuses the User message directly (it already IS the list shape).
+ *
+ * @generated from message warehouse.user.v1.UserRowMapItem
+ */
+export type UserRowMapItem = Message<"warehouse.user.v1.UserRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.user.v1.User> map_data = 1;
+   */
+  mapData: { [key: string]: User };
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserRowMapItem.
+ * Use `create(UserRowMapItemSchema)` to create a new message.
+ */
+export const UserRowMapItemSchema: GenMessage<UserRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 12);
+
+/**
+ * @generated from message warehouse.user.v1.UserListResponseItem
+ */
+export type UserListResponseItem = Message<"warehouse.user.v1.UserListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.user.v1.UserListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.user.v1.UserRowMapItem user = 2;
+     */
+    value: UserRowMapItem;
+    case: "user";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserListResponseItem.
+ * Use `create(UserListResponseItemSchema)` to create a new message.
+ */
+export const UserListResponseItemSchema: GenMessage<UserListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 13);
 
 /**
  * @generated from message warehouse.user.v1.UserListResponse
  */
 export type UserListResponse = Message<"warehouse.user.v1.UserListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.user.v1.User users = 1;
+   * @generated from field: repeated warehouse.user.v1.UserListResponseItem items = 1;
    */
-  users: User[];
+  items: UserListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -282,12 +398,12 @@ export type UserListResponse = Message<"warehouse.user.v1.UserListResponse"> & {
  * Use `create(UserListResponseSchema)` to create a new message.
  */
 export const UserListResponseSchema: GenMessage<UserListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 10);
+  messageDesc(file_warehouse_user_v1_user, 14);
 
 /**
- * @generated from message warehouse.user.v1.UserByIDsRequest
+ * @generated from message warehouse.user.v1.UserByIdsFilter
  */
-export type UserByIDsRequest = Message<"warehouse.user.v1.UserByIDsRequest"> & {
+export type UserByIdsFilter = Message<"warehouse.user.v1.UserByIdsFilter"> & {
   /**
    * @generated from field: repeated uint64 ids = 1;
    */
@@ -295,22 +411,111 @@ export type UserByIDsRequest = Message<"warehouse.user.v1.UserByIDsRequest"> & {
 };
 
 /**
+ * Describes the message warehouse.user.v1.UserByIdsFilter.
+ * Use `create(UserByIdsFilterSchema)` to create a new message.
+ */
+export const UserByIdsFilterSchema: GenMessage<UserByIdsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 15);
+
+/**
+ * @generated from message warehouse.user.v1.UserByIDsRequest
+ */
+export type UserByIDsRequest = Message<"warehouse.user.v1.UserByIDsRequest"> & {
+  /**
+   * @generated from field: warehouse.user.v1.UserByIdsFilter filter = 1;
+   */
+  filter?: UserByIdsFilter;
+
+  /**
+   * Which slices to load per user. Empty defaults to the PUBLIC_USER slice.
+   *
+   * @generated from field: repeated warehouse.user.v1.UserByIdsDataType data_request = 2;
+   */
+  dataRequest: UserByIdsDataType[];
+};
+
+/**
  * Describes the message warehouse.user.v1.UserByIDsRequest.
  * Use `create(UserByIDsRequestSchema)` to create a new message.
  */
 export const UserByIDsRequestSchema: GenMessage<UserByIDsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 11);
+  messageDesc(file_warehouse_user_v1_user, 16);
+
+/**
+ * The PUBLIC_USER slice reuses the PublicUser message directly — no email, no phone.
+ *
+ * @generated from message warehouse.user.v1.PublicUserMapItem
+ */
+export type PublicUserMapItem = Message<"warehouse.user.v1.PublicUserMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.user.v1.PublicUser> map_data = 1;
+   */
+  mapData: { [key: string]: PublicUser };
+};
+
+/**
+ * Describes the message warehouse.user.v1.PublicUserMapItem.
+ * Use `create(PublicUserMapItemSchema)` to create a new message.
+ */
+export const PublicUserMapItemSchema: GenMessage<PublicUserMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 17);
+
+/**
+ * @generated from message warehouse.user.v1.UserByIDsResponseItem
+ */
+export type UserByIDsResponseItem = Message<"warehouse.user.v1.UserByIDsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.user.v1.UserByIDsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.user.v1.PublicUserMapItem public_user = 2;
+     */
+    value: PublicUserMapItem;
+    case: "publicUser";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserByIDsResponseItem.
+ * Use `create(UserByIDsResponseItemSchema)` to create a new message.
+ */
+export const UserByIDsResponseItemSchema: GenMessage<UserByIDsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 18);
+
+/**
+ * @generated from message warehouse.user.v1.UserByIDsResponseList
+ */
+export type UserByIDsResponseList = Message<"warehouse.user.v1.UserByIDsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.user.v1.UserByIDsResponseItem items = 1;
+   */
+  items: UserByIDsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserByIDsResponseList.
+ * Use `create(UserByIDsResponseListSchema)` to create a new message.
+ */
+export const UserByIDsResponseListSchema: GenMessage<UserByIDsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 19);
 
 /**
  * @generated from message warehouse.user.v1.UserByIDsResponse
  */
 export type UserByIDsResponse = Message<"warehouse.user.v1.UserByIDsResponse"> & {
   /**
-   * Keyed by id; unknown ids are omitted. PublicUser, not User — no email, no phone.
+   * Keyed by user id; unknown ids are omitted. Each value carries the PUBLIC_USER slice.
    *
-   * @generated from field: map<uint64, warehouse.user.v1.PublicUser> data = 1;
+   * @generated from field: map<uint64, warehouse.user.v1.UserByIDsResponseList> items = 1;
    */
-  data: { [key: string]: PublicUser };
+  items: { [key: string]: UserByIDsResponseList };
 };
 
 /**
@@ -318,7 +523,7 @@ export type UserByIDsResponse = Message<"warehouse.user.v1.UserByIDsResponse"> &
  * Use `create(UserByIDsResponseSchema)` to create a new message.
  */
 export const UserByIDsResponseSchema: GenMessage<UserByIDsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 12);
+  messageDesc(file_warehouse_user_v1_user, 20);
 
 /**
  * @generated from message warehouse.user.v1.SearchUserRequest
@@ -347,7 +552,7 @@ export type SearchUserRequest = Message<"warehouse.user.v1.SearchUserRequest"> &
  * Use `create(SearchUserRequestSchema)` to create a new message.
  */
 export const SearchUserRequestSchema: GenMessage<SearchUserRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 13);
+  messageDesc(file_warehouse_user_v1_user, 21);
 
 /**
  * @generated from message warehouse.user.v1.SearchUserResponse
@@ -364,7 +569,7 @@ export type SearchUserResponse = Message<"warehouse.user.v1.SearchUserResponse">
  * Use `create(SearchUserResponseSchema)` to create a new message.
  */
 export const SearchUserResponseSchema: GenMessage<SearchUserResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 14);
+  messageDesc(file_warehouse_user_v1_user, 22);
 
 /**
  * @generated from message warehouse.user.v1.User
@@ -413,7 +618,7 @@ export type User = Message<"warehouse.user.v1.User"> & {
  * Use `create(UserSchema)` to create a new message.
  */
 export const UserSchema: GenMessage<User> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 15);
+  messageDesc(file_warehouse_user_v1_user, 23);
 
 /**
  * @generated from message warehouse.user.v1.CreateUserRequest
@@ -479,7 +684,7 @@ export type CreateUserRequest = Message<"warehouse.user.v1.CreateUserRequest"> &
  * Use `create(CreateUserRequestSchema)` to create a new message.
  */
 export const CreateUserRequestSchema: GenMessage<CreateUserRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 16);
+  messageDesc(file_warehouse_user_v1_user, 24);
 
 /**
  * @generated from message warehouse.user.v1.CreateUserResponse
@@ -496,7 +701,7 @@ export type CreateUserResponse = Message<"warehouse.user.v1.CreateUserResponse">
  * Use `create(CreateUserResponseSchema)` to create a new message.
  */
 export const CreateUserResponseSchema: GenMessage<CreateUserResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 17);
+  messageDesc(file_warehouse_user_v1_user, 25);
 
 /**
  * @generated from message warehouse.user.v1.ResetPasswordRequest
@@ -524,7 +729,7 @@ export type ResetPasswordRequest = Message<"warehouse.user.v1.ResetPasswordReque
  * Use `create(ResetPasswordRequestSchema)` to create a new message.
  */
 export const ResetPasswordRequestSchema: GenMessage<ResetPasswordRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 18);
+  messageDesc(file_warehouse_user_v1_user, 26);
 
 /**
  * @generated from message warehouse.user.v1.ResetPasswordResponse
@@ -544,7 +749,7 @@ export type ResetPasswordResponse = Message<"warehouse.user.v1.ResetPasswordResp
  * Use `create(ResetPasswordResponseSchema)` to create a new message.
  */
 export const ResetPasswordResponseSchema: GenMessage<ResetPasswordResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 19);
+  messageDesc(file_warehouse_user_v1_user, 27);
 
 /**
  * @generated from message warehouse.user.v1.AdminResetPasswordRequest
@@ -570,7 +775,7 @@ export type AdminResetPasswordRequest = Message<"warehouse.user.v1.AdminResetPas
  * Use `create(AdminResetPasswordRequestSchema)` to create a new message.
  */
 export const AdminResetPasswordRequestSchema: GenMessage<AdminResetPasswordRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 20);
+  messageDesc(file_warehouse_user_v1_user, 28);
 
 /**
  * @generated from message warehouse.user.v1.AdminResetPasswordResponse
@@ -583,7 +788,7 @@ export type AdminResetPasswordResponse = Message<"warehouse.user.v1.AdminResetPa
  * Use `create(AdminResetPasswordResponseSchema)` to create a new message.
  */
 export const AdminResetPasswordResponseSchema: GenMessage<AdminResetPasswordResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 21);
+  messageDesc(file_warehouse_user_v1_user, 29);
 
 /**
  * @generated from message warehouse.user.v1.LoginRequest
@@ -615,7 +820,7 @@ export type LoginRequest = Message<"warehouse.user.v1.LoginRequest"> & {
  * Use `create(LoginRequestSchema)` to create a new message.
  */
 export const LoginRequestSchema: GenMessage<LoginRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 22);
+  messageDesc(file_warehouse_user_v1_user, 30);
 
 /**
  * @generated from message warehouse.user.v1.LoginResponse
@@ -637,7 +842,7 @@ export type LoginResponse = Message<"warehouse.user.v1.LoginResponse"> & {
  * Use `create(LoginResponseSchema)` to create a new message.
  */
 export const LoginResponseSchema: GenMessage<LoginResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 23);
+  messageDesc(file_warehouse_user_v1_user, 31);
 
 /**
  * @generated from message warehouse.user.v1.LogoutRequest
@@ -650,7 +855,7 @@ export type LogoutRequest = Message<"warehouse.user.v1.LogoutRequest"> & {
  * Use `create(LogoutRequestSchema)` to create a new message.
  */
 export const LogoutRequestSchema: GenMessage<LogoutRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 24);
+  messageDesc(file_warehouse_user_v1_user, 32);
 
 /**
  * @generated from message warehouse.user.v1.LogoutResponse
@@ -663,7 +868,7 @@ export type LogoutResponse = Message<"warehouse.user.v1.LogoutResponse"> & {
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
 export const LogoutResponseSchema: GenMessage<LogoutResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 25);
+  messageDesc(file_warehouse_user_v1_user, 33);
 
 /**
  * @generated from message warehouse.user.v1.CheckAccessRequest
@@ -687,7 +892,7 @@ export type CheckAccessRequest = Message<"warehouse.user.v1.CheckAccessRequest">
  * Use `create(CheckAccessRequestSchema)` to create a new message.
  */
 export const CheckAccessRequestSchema: GenMessage<CheckAccessRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 26);
+  messageDesc(file_warehouse_user_v1_user, 34);
 
 /**
  * @generated from message warehouse.user.v1.CheckAccessResponse
@@ -718,7 +923,7 @@ export type CheckAccessResponse = Message<"warehouse.user.v1.CheckAccessResponse
  * Use `create(CheckAccessResponseSchema)` to create a new message.
  */
 export const CheckAccessResponseSchema: GenMessage<CheckAccessResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 27);
+  messageDesc(file_warehouse_user_v1_user, 35);
 
 /**
  * @generated from message warehouse.user.v1.RequestPasswordResetOtpRequest
@@ -735,7 +940,7 @@ export type RequestPasswordResetOtpRequest = Message<"warehouse.user.v1.RequestP
  * Use `create(RequestPasswordResetOtpRequestSchema)` to create a new message.
  */
 export const RequestPasswordResetOtpRequestSchema: GenMessage<RequestPasswordResetOtpRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 28);
+  messageDesc(file_warehouse_user_v1_user, 36);
 
 /**
  * Deliberately EMPTY, and the handler ALWAYS succeeds — revealing whether the username exists
@@ -751,7 +956,7 @@ export type RequestPasswordResetOtpResponse = Message<"warehouse.user.v1.Request
  * Use `create(RequestPasswordResetOtpResponseSchema)` to create a new message.
  */
 export const RequestPasswordResetOtpResponseSchema: GenMessage<RequestPasswordResetOtpResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 29);
+  messageDesc(file_warehouse_user_v1_user, 37);
 
 /**
  * @generated from message warehouse.user.v1.ResetPasswordWithOtpRequest
@@ -778,7 +983,7 @@ export type ResetPasswordWithOtpRequest = Message<"warehouse.user.v1.ResetPasswo
  * Use `create(ResetPasswordWithOtpRequestSchema)` to create a new message.
  */
 export const ResetPasswordWithOtpRequestSchema: GenMessage<ResetPasswordWithOtpRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 30);
+  messageDesc(file_warehouse_user_v1_user, 38);
 
 /**
  * @generated from message warehouse.user.v1.ResetPasswordWithOtpResponse
@@ -791,7 +996,7 @@ export type ResetPasswordWithOtpResponse = Message<"warehouse.user.v1.ResetPassw
  * Use `create(ResetPasswordWithOtpResponseSchema)` to create a new message.
  */
 export const ResetPasswordWithOtpResponseSchema: GenMessage<ResetPasswordWithOtpResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 31);
+  messageDesc(file_warehouse_user_v1_user, 39);
 
 /**
  * @generated from message warehouse.user.v1.TeamAccessItem
@@ -839,12 +1044,94 @@ export type TeamAccessItem = Message<"warehouse.user.v1.TeamAccessItem"> & {
  * Use `create(TeamAccessItemSchema)` to create a new message.
  */
 export const TeamAccessItemSchema: GenMessage<TeamAccessItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 32);
+  messageDesc(file_warehouse_user_v1_user, 40);
 
 /**
- * @generated from message warehouse.user.v1.TeamAccessListRequest
+ * @generated from message warehouse.user.v1.TeamAccessFilterSort
  */
-export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListRequest"> & {
+export type TeamAccessFilterSort = Message<"warehouse.user.v1.TeamAccessFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.user.v1.TeamAccessFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.user.v1.TeamAccessSort team_access = 3;
+     */
+    value: TeamAccessSort;
+    case: "teamAccess";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.user.v1.TeamAccessFilterSort.
+ * Use `create(TeamAccessFilterSortSchema)` to create a new message.
+ */
+export const TeamAccessFilterSortSchema: GenMessage<TeamAccessFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 41);
+
+/**
+ * The TEAM_ACCESS slice reuses the TeamAccessItem message directly, keyed by team_id.
+ *
+ * @generated from message warehouse.user.v1.TeamAccessMapItem
+ */
+export type TeamAccessMapItem = Message<"warehouse.user.v1.TeamAccessMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.user.v1.TeamAccessItem> map_data = 1;
+   */
+  mapData: { [key: string]: TeamAccessItem };
+};
+
+/**
+ * Describes the message warehouse.user.v1.TeamAccessMapItem.
+ * Use `create(TeamAccessMapItemSchema)` to create a new message.
+ */
+export const TeamAccessMapItemSchema: GenMessage<TeamAccessMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 42);
+
+/**
+ * @generated from message warehouse.user.v1.TeamAccessListResponseItem
+ */
+export type TeamAccessListResponseItem = Message<"warehouse.user.v1.TeamAccessListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.user.v1.TeamAccessListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.user.v1.TeamAccessMapItem team_access = 2;
+     */
+    value: TeamAccessMapItem;
+    case: "teamAccess";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.user.v1.TeamAccessListResponseItem.
+ * Use `create(TeamAccessListResponseItemSchema)` to create a new message.
+ */
+export const TeamAccessListResponseItemSchema: GenMessage<TeamAccessListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 43);
+
+/**
+ * @generated from message warehouse.user.v1.TeamAccessListFilter
+ */
+export type TeamAccessListFilter = Message<"warehouse.user.v1.TeamAccessListFilter"> & {
   /**
    * 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
    * authenticated user could enumerate anyone else's teams and roles.
@@ -852,14 +1139,41 @@ export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListReq
    * @generated from field: uint64 user_id = 1;
    */
   userId: bigint;
+};
+
+/**
+ * Describes the message warehouse.user.v1.TeamAccessListFilter.
+ * Use `create(TeamAccessListFilterSchema)` to create a new message.
+ */
+export const TeamAccessListFilterSchema: GenMessage<TeamAccessListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 44);
+
+/**
+ * @generated from message warehouse.user.v1.TeamAccessListRequest
+ */
+export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListRequest"> & {
+  /**
+   * @generated from field: warehouse.user.v1.TeamAccessListFilter filter = 1;
+   */
+  filter?: TeamAccessListFilter;
+
+  /**
+   * @generated from field: warehouse.user.v1.TeamAccessFilterSort sort = 2;
+   */
+  sort?: TeamAccessFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.user.v1.TeamAccessDataType data_request = 3;
+   */
+  dataRequest: TeamAccessDataType[];
 
   /**
    * Paginated (HARD RULE 9): a user's membership count is small in practice, but the list still
    * pages so it can never return an unbounded set. The team switcher asks for a large first page.
    *
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
    */
-  page?: PageFilter;
+  page?: CommonPagination;
 };
 
 /**
@@ -867,19 +1181,26 @@ export type TeamAccessListRequest = Message<"warehouse.user.v1.TeamAccessListReq
  * Use `create(TeamAccessListRequestSchema)` to create a new message.
  */
 export const TeamAccessListRequestSchema: GenMessage<TeamAccessListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 33);
+  messageDesc(file_warehouse_user_v1_user, 45);
 
 /**
  * @generated from message warehouse.user.v1.TeamAccessListResponse
  */
 export type TeamAccessListResponse = Message<"warehouse.user.v1.TeamAccessListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.user.v1.TeamAccessItem teams = 1;
+   * @generated from field: repeated warehouse.user.v1.TeamAccessListResponseItem items = 1;
    */
-  teams: TeamAccessItem[];
+  items: TeamAccessListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * The team ids in sorted (page) order — the key of each membership.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -889,23 +1210,50 @@ export type TeamAccessListResponse = Message<"warehouse.user.v1.TeamAccessListRe
  * Use `create(TeamAccessListResponseSchema)` to create a new message.
  */
 export const TeamAccessListResponseSchema: GenMessage<TeamAccessListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 34);
+  messageDesc(file_warehouse_user_v1_user, 46);
+
+/**
+ * @generated from message warehouse.user.v1.UserTeamsFilter
+ */
+export type UserTeamsFilter = Message<"warehouse.user.v1.UserTeamsFilter"> & {
+  /**
+   * @generated from field: uint64 user_id = 1;
+   */
+  userId: bigint;
+};
+
+/**
+ * Describes the message warehouse.user.v1.UserTeamsFilter.
+ * Use `create(UserTeamsFilterSchema)` to create a new message.
+ */
+export const UserTeamsFilterSchema: GenMessage<UserTeamsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_user_v1_user, 47);
 
 /**
  * @generated from message warehouse.user.v1.UserTeamsRequest
  */
 export type UserTeamsRequest = Message<"warehouse.user.v1.UserTeamsRequest"> & {
   /**
-   * @generated from field: uint64 user_id = 1;
+   * @generated from field: warehouse.user.v1.UserTeamsFilter filter = 1;
    */
-  userId: bigint;
+  filter?: UserTeamsFilter;
+
+  /**
+   * @generated from field: warehouse.user.v1.TeamAccessFilterSort sort = 2;
+   */
+  sort?: TeamAccessFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.user.v1.TeamAccessDataType data_request = 3;
+   */
+  dataRequest: TeamAccessDataType[];
 
   /**
    * Paginated (HARD RULE 9), same as TeamAccessList.
    *
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
    */
-  page?: PageFilter;
+  page?: CommonPagination;
 };
 
 /**
@@ -913,7 +1261,7 @@ export type UserTeamsRequest = Message<"warehouse.user.v1.UserTeamsRequest"> & {
  * Use `create(UserTeamsRequestSchema)` to create a new message.
  */
 export const UserTeamsRequestSchema: GenMessage<UserTeamsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 35);
+  messageDesc(file_warehouse_user_v1_user, 48);
 
 /**
  * @generated from message warehouse.user.v1.UserTeamsResponse
@@ -927,15 +1275,20 @@ export type UserTeamsResponse = Message<"warehouse.user.v1.UserTeamsResponse"> &
   user?: PublicUser;
 
   /**
-   * Their memberships. Same shape (and same degrade) as TeamAccessList: team_id + role always
-   * correct; team_name/team_type blank if team_service is unreachable.
+   * Their memberships (same TEAM_ACCESS slice as TeamAccessList; same degrade when team_service is
+   * unreachable — team_id + role always correct, name/type blank).
    *
-   * @generated from field: repeated warehouse.user.v1.TeamAccessItem teams = 2;
+   * @generated from field: repeated warehouse.user.v1.TeamAccessListResponseItem items = 2;
    */
-  teams: TeamAccessItem[];
+  items: TeamAccessListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
+   * @generated from field: repeated uint64 ids = 3;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 4;
    */
   pageInfo?: PageInfo;
 };
@@ -945,7 +1298,7 @@ export type UserTeamsResponse = Message<"warehouse.user.v1.UserTeamsResponse"> &
  * Use `create(UserTeamsResponseSchema)` to create a new message.
  */
 export const UserTeamsResponseSchema: GenMessage<UserTeamsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 36);
+  messageDesc(file_warehouse_user_v1_user, 49);
 
 /**
  * @generated from message warehouse.user.v1.TeamUserUpdateRequest
@@ -979,7 +1332,7 @@ export type TeamUserUpdateRequest = Message<"warehouse.user.v1.TeamUserUpdateReq
  * Use `create(TeamUserUpdateRequestSchema)` to create a new message.
  */
 export const TeamUserUpdateRequestSchema: GenMessage<TeamUserUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 37);
+  messageDesc(file_warehouse_user_v1_user, 50);
 
 /**
  * @generated from message warehouse.user.v1.AddTeamUser
@@ -1006,7 +1359,7 @@ export type AddTeamUser = Message<"warehouse.user.v1.AddTeamUser"> & {
  * Use `create(AddTeamUserSchema)` to create a new message.
  */
 export const AddTeamUserSchema: GenMessage<AddTeamUser> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 38);
+  messageDesc(file_warehouse_user_v1_user, 51);
 
 /**
  * @generated from message warehouse.user.v1.RemoveTeamUser
@@ -1023,7 +1376,7 @@ export type RemoveTeamUser = Message<"warehouse.user.v1.RemoveTeamUser"> & {
  * Use `create(RemoveTeamUserSchema)` to create a new message.
  */
 export const RemoveTeamUserSchema: GenMessage<RemoveTeamUser> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 39);
+  messageDesc(file_warehouse_user_v1_user, 52);
 
 /**
  * @generated from message warehouse.user.v1.TeamUserUpdateResponse
@@ -1036,7 +1389,7 @@ export type TeamUserUpdateResponse = Message<"warehouse.user.v1.TeamUserUpdateRe
  * Use `create(TeamUserUpdateResponseSchema)` to create a new message.
  */
 export const TeamUserUpdateResponseSchema: GenMessage<TeamUserUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 40);
+  messageDesc(file_warehouse_user_v1_user, 53);
 
 /**
  * @generated from message warehouse.user.v1.RoleResolveRequest
@@ -1056,7 +1409,7 @@ export type RoleResolveRequest = Message<"warehouse.user.v1.RoleResolveRequest">
  * Use `create(RoleResolveRequestSchema)` to create a new message.
  */
 export const RoleResolveRequestSchema: GenMessage<RoleResolveRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 41);
+  messageDesc(file_warehouse_user_v1_user, 54);
 
 /**
  * @generated from message warehouse.user.v1.RoleResolveResponse
@@ -1095,7 +1448,156 @@ export type RoleResolveResponse = Message<"warehouse.user.v1.RoleResolveResponse
  * Use `create(RoleResolveResponseSchema)` to create a new message.
  */
 export const RoleResolveResponseSchema: GenMessage<RoleResolveResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_user_v1_user, 42);
+  messageDesc(file_warehouse_user_v1_user, 55);
+
+/**
+ * UserListDataType selects which slices the response carries per user.
+ *
+ * @generated from enum warehouse.user.v1.UserListDataType
+ */
+export enum UserListDataType {
+  /**
+   * @generated from enum value: USER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: USER_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * USER: the full user row (email, phone) — which is why UserList is role-gated.
+   *
+   * @generated from enum value: USER_LIST_DATA_TYPE_USER = 2;
+   */
+  USER = 2,
+}
+
+/**
+ * Describes the enum warehouse.user.v1.UserListDataType.
+ */
+export const UserListDataTypeSchema: GenEnum<UserListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_user_v1_user, 0);
+
+/**
+ * UserRowSort is the sort selection paired with the USER (row) slice.
+ *
+ * @generated from enum warehouse.user.v1.UserRowSort
+ */
+export enum UserRowSort {
+  /**
+   * @generated from enum value: USER_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: USER_ROW_SORT_ID = 1;
+   */
+  ID = 1,
+
+  /**
+   * @generated from enum value: USER_ROW_SORT_NAME = 2;
+   */
+  NAME = 2,
+
+  /**
+   * @generated from enum value: USER_ROW_SORT_USERNAME = 3;
+   */
+  USERNAME = 3,
+}
+
+/**
+ * Describes the enum warehouse.user.v1.UserRowSort.
+ */
+export const UserRowSortSchema: GenEnum<UserRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_user_v1_user, 1);
+
+/**
+ * UserByIdsDataType selects which slices the by-ids response carries per user.
+ *
+ * @generated from enum warehouse.user.v1.UserByIdsDataType
+ */
+export enum UserByIdsDataType {
+  /**
+   * @generated from enum value: USER_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: USER_BY_IDS_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: USER_BY_IDS_DATA_TYPE_PUBLIC_USER = 2;
+   */
+  PUBLIC_USER = 2,
+}
+
+/**
+ * Describes the enum warehouse.user.v1.UserByIdsDataType.
+ */
+export const UserByIdsDataTypeSchema: GenEnum<UserByIdsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_user_v1_user, 2);
+
+/**
+ * TeamAccessDataType selects which slices a membership-list response carries per membership.
+ *
+ * @generated from enum warehouse.user.v1.TeamAccessDataType
+ */
+export enum TeamAccessDataType {
+  /**
+   * @generated from enum value: TEAM_ACCESS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_ACCESS_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * TEAM_ACCESS: the full membership row (team + role + resolved name/type).
+   *
+   * @generated from enum value: TEAM_ACCESS_DATA_TYPE_TEAM_ACCESS = 2;
+   */
+  TEAM_ACCESS = 2,
+}
+
+/**
+ * Describes the enum warehouse.user.v1.TeamAccessDataType.
+ */
+export const TeamAccessDataTypeSchema: GenEnum<TeamAccessDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_user_v1_user, 3);
+
+/**
+ * TeamAccessSort is the sort selection paired with the TEAM_ACCESS slice.
+ *
+ * @generated from enum warehouse.user.v1.TeamAccessSort
+ */
+export enum TeamAccessSort {
+  /**
+   * @generated from enum value: TEAM_ACCESS_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_ACCESS_SORT_TEAM_ID = 1;
+   */
+  TEAM_ID = 1,
+
+  /**
+   * @generated from enum value: TEAM_ACCESS_SORT_ROLE = 2;
+   */
+  ROLE = 2,
+}
+
+/**
+ * Describes the enum warehouse.user.v1.TeamAccessSort.
+ */
+export const TeamAccessSortSchema: GenEnum<TeamAccessSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_user_v1_user, 4);
 
 /**
  * AuthService is entirely public (allow_all) — it is what you call when you have no token yet.

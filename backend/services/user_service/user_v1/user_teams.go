@@ -29,7 +29,7 @@ func (s *Service) UserTeams(
 	ctx context.Context,
 	req *connect.Request[userv1.UserTeamsRequest],
 ) (*connect.Response[userv1.UserTeamsResponse], error) {
-	target := req.Msg.GetUserId()
+	target := req.Msg.GetFilter().GetUserId()
 
 	var user user_service_models.User
 
@@ -65,7 +65,7 @@ func (s *Service) UserTeams(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("team_id ASC").
+		Order(teamAccessOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&memberships).
@@ -74,16 +74,16 @@ func (s *Service) UserTeams(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	ids := make([]uint64, 0, len(memberships))
+	teamIDs := make([]uint64, 0, len(memberships))
 	for i := range memberships {
-		ids = append(ids, memberships[i].TeamID)
+		teamIDs = append(teamIDs, memberships[i].TeamID)
 	}
 
 	// Never errors — degrades to an empty map if team_service is unreachable, exactly as
 	// TeamAccessList does. A display-name lookup must not fail viewing a user's memberships.
-	teams := s.teams.resolve(ctx, san_auth.GetBearer(ctx), ids)
+	teams := s.teams.resolve(ctx, san_auth.GetBearer(ctx), teamIDs)
 
-	items := make([]*userv1.TeamAccessItem, 0, len(memberships))
+	memberItems := make([]*userv1.TeamAccessItem, 0, len(memberships))
 
 	for i := range memberships {
 		membership := memberships[i]
@@ -101,12 +101,15 @@ func (s *Service) UserTeams(
 			item.ImageUrl = team.ImageURL
 		}
 
-		items = append(items, item)
+		memberItems = append(memberItems, item)
 	}
 
+	items, ids := teamAccessListItems(memberItems, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&userv1.UserTeamsResponse{
-		User:  publicUserToProto(&user),
-		Teams: items,
+		User:     publicUserToProto(&user),
+		Items:    items,
+		Ids:      ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

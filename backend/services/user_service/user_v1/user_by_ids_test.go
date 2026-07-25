@@ -12,7 +12,7 @@ import (
 )
 
 // commonPage is a default page filter for list tests.
-var commonPage = commonv1.PageFilter{Page: 1, Limit: 50}
+var commonPage = commonv1.CommonPagination{Page: 1, Limit: 50}
 
 func TestUserByIDs_ReturnsPublicUserAndOmitsUnknown(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -21,13 +21,13 @@ func TestUserByIDs_ReturnsPublicUserAndOmitsUnknown(t *testing.T) {
 	uid := insertUser(t, db, "known", "pw12345678")
 
 	res, err := svc.UserByIDs(context.Background(), connect.NewRequest(&userv1.UserByIDsRequest{
-		Ids: []uint64{uid, 9_999_999},
+		Filter: &userv1.UserByIdsFilter{Ids: []uint64{uid, 9_999_999}},
 	}))
 	if err != nil {
 		t.Fatalf("UserByIDs: %v", err)
 	}
 
-	data := res.Msg.GetData()
+	data := publicUsersByIds(res.Msg)
 
 	got, ok := data[uid]
 	if !ok {

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { userClient } from "../../api/clients";
+import { teamAccessFromList, teamAccessRowData } from "../users/adapt";
 import type { TeamAccessItem } from "../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
 
@@ -39,15 +40,19 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     async (preferredId?: bigint) => {
       // Ask for a large first page: this backs the team switcher, which needs all of the caller's
       // teams. A person is realistically in far fewer than the 200 max.
-      const res = await userClient.teamAccessList({ page: { page: 1, limit: 200 } });
+      const res = await userClient.teamAccessList({
+        dataRequest: teamAccessRowData(),
+        page: { page: 1, limit: 200 },
+      });
+      const teams = teamAccessFromList(res.items, res.ids);
 
-      setTeams(res.teams);
+      setTeams(teams);
 
       const wanted =
         (preferredId ?? "").toString() || window.sessionStorage.getItem(CURRENT_TEAM_KEY);
-      const restored = res.teams.find((t) => t.teamId.toString() === wanted);
+      const restored = teams.find((t) => t.teamId.toString() === wanted);
 
-      setCurrent(restored ?? res.teams[0] ?? null);
+      setCurrent(restored ?? teams[0] ?? null);
     },
     [],
   );

@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../api/clients";
+import { publicUsersByIds, userByIdsRowData } from "../../features/users/adapt";
 import { useAuth } from "../../features/auth/AuthContext";
 import { toaster } from "../../components/Toaster";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
@@ -43,8 +44,13 @@ export function ProfilePage() {
 
     void (async () => {
       try {
-        const res = await userClient.userByIDs({ ids: [identity.identityId] });
-        const me = res.data[identity.identityId.toString()];
+        const users = publicUsersByIds(
+          await userClient.userByIDs({
+            filter: { ids: [identity.identityId] },
+            dataRequest: userByIdsRowData(),
+          }),
+        );
+        const me = users[identity.identityId.toString()];
 
         setName(me?.name ?? "");
         setAvatarUrl(me?.avatarUrl ?? "");
