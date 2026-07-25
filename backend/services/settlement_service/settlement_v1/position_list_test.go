@@ -22,9 +22,9 @@ func positions(
 
 	res, err := svc.SettlementPositionList(context.Background(),
 		connect.NewRequest(&settlementv1.SettlementPositionListRequest{
-			TeamId:        teamID,
-			Page:          &commonv1.PageFilter{Page: 1, Limit: 50},
-			UnsettledOnly: unsettledOnly,
+			TeamId: teamID,
+			Filter: &settlementv1.SettlementPositionListFilter{UnsettledOnly: unsettledOnly},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {
 		t.Fatalf("SettlementPositionList(team=%d): %v", teamID, err)
@@ -59,13 +59,13 @@ func TestPositionList_ShowsBothDirectionsWithTheSignIntact(t *testing.T) {
 
 	msg := positions(t, svc, selling, false)
 
-	if len(msg.GetPositions()) != 2 {
+	if len(positionRows(msg)) != 2 {
 		t.Fatalf("%d positions, want 2 — one relationship in each direction",
-			len(msg.GetPositions()))
+			len(positionRows(msg)))
 	}
 
 	byCounterparty := map[uint64]int64{}
-	for _, p := range msg.GetPositions() {
+	for _, p := range positionRows(msg) {
 		byCounterparty[p.GetCounterpartyId()] = p.GetBalance()
 	}
 
@@ -109,7 +109,7 @@ func TestPositionList_OrdersTheOldestDebtFirst(t *testing.T) {
 		t.Fatalf("new debt: %v", err)
 	}
 
-	got := positions(t, svc, selling, false).GetPositions()
+	got := positionRows(positions(t, svc, selling, false))
 
 	if got[0].GetCounterpartyId() != warehouse {
 		t.Fatalf("first row is counterparty %d, want the 47-day-old debt (%d)",
@@ -142,14 +142,14 @@ func TestPositionList_CanHideSettledPairs(t *testing.T) {
 		t.Fatalf("payment: %v", err)
 	}
 
-	if got := positions(t, svc, selling, false); len(got.GetPositions()) != 1 {
+	if got := positions(t, svc, selling, false); len(positionRows(got)) != 1 {
 		t.Fatalf("%d positions unfiltered, want the settled row still present",
-			len(got.GetPositions()))
+			len(positionRows(got)))
 	}
 
 	got := positions(t, svc, selling, true)
-	if len(got.GetPositions()) != 0 {
-		t.Fatalf("%d positions with unsettled_only, want 0", len(got.GetPositions()))
+	if len(positionRows(got)) != 0 {
+		t.Fatalf("%d positions with unsettled_only, want 0", len(positionRows(got)))
 	}
 
 	// The count must follow the filter too, or the pager reports rows the screen will not show.
@@ -178,16 +178,16 @@ func TestPositionList_ACounterpartyFilterIsNotAScope(t *testing.T) {
 
 	res, err := svc.SettlementPositionList(context.Background(),
 		connect.NewRequest(&settlementv1.SettlementPositionListRequest{
-			TeamId:         selling,
-			Page:           &commonv1.PageFilter{Page: 1, Limit: 50},
-			CounterpartyId: warehouse,
+			TeamId: selling,
+			Filter: &settlementv1.SettlementPositionListFilter{CounterpartyId: warehouse},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(res.Msg.GetPositions()) != 0 {
+	if len(positionRows(res.Msg)) != 0 {
 		t.Fatalf("%d positions — a filter reached a pair the caller is not part of",
-			len(res.Msg.GetPositions()))
+			len(positionRows(res.Msg)))
 	}
 }

@@ -4,6 +4,7 @@ package warehouse.settlement.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
@@ -168,11 +169,34 @@ message SettlementPosition {
   uint32 awaiting_confirmation = 4;
 }
 
+message SettlementPositionListFilter {
+  // Narrow to ONE counterparty. 0 = every counterparty. A filter only, it grants nothing.
+  uint64 counterparty_id = 1;
+  // Only pairs that are not square (the default "who owes what" view).
+  bool unsettled_only = 2;
+}
+
+enum SettlementPositionListDataType {
+  SETTLEMENT_POSITION_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_POSITION_LIST_DATA_TYPE_GENERAL = 1;
+  SETTLEMENT_POSITION_LIST_DATA_TYPE_POSITION = 2;
+}
+
+enum SettlementPositionSort {
+  SETTLEMENT_POSITION_SORT_UNSPECIFIED = 0;
+  SETTLEMENT_POSITION_SORT_OLDEST_UNSETTLED = 1;
+  SETTLEMENT_POSITION_SORT_BALANCE = 2;
+}
+
+message SettlementPositionListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    SettlementPositionSort position = 3;
+  }
+}
+
 message SettlementPositionListRequest {
-  // BACK OFFICE ONLY. Nobody on the warehouse floor sees this: WAREHOUSE_STAFF picks and counts,
-  // TEAM_CUSTOMER_SERVICE places orders, and neither chases debt. The same set may read a position and
-  // confirm a payment — the answers converged rather than being merged, and narrowing confirmation
-  // later (owners only) is a one-line change.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -184,34 +208,49 @@ message SettlementPositionListRequest {
     ]
   };
 
-  // The team whose position this is — and the SCOPE. See the service comment: the counterparty side
-  // of a balance can never be the scope, so a filter below is a filter, not an authorization.
+  // The team whose position this is, and the SCOPE. The counterparty side of a balance can never be
+  // the scope, so the filter is a filter, not an authorization.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  SettlementPositionListFilter filter = 2;
+  SettlementPositionListFilterSort sort = 3;
+  repeated SettlementPositionListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
 
-  // Narrow to ONE counterparty. 0 = every counterparty. A filter only — it grants nothing.
-  uint64 counterparty_id = 3;
+// The POSITION slice reuses the SettlementPosition message directly, keyed by counterparty_id.
+message SettlementPositionMapItem {
+  map<uint64, SettlementPosition> map_data = 1;
+}
 
-  // Only pairs that are not square. The screen's default view is "who owes what", and a list padded
-  // with settled zeros buries the rows a manager is looking for.
-  bool unsettled_only = 4;
+message SettlementPositionListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SettlementPositionMapItem position = 2;
+  }
 }
 
 message SettlementPositionListResponse {
-  // BOTH DIRECTIONS in one list. A counterparty is ONE relationship: splitting "what they owe me" and
-  // "what I owe them" across two screens would make a manager visit two places to answer one
-  // question.
-  repeated SettlementPosition positions = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated SettlementPositionListResponseItem items = 1;
+  // The counterparty ids in sorted (page) order, the key of each position.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  // Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
+  uint32 awaiting_confirmation = 4;
+}
 
-  // Every payment awaiting this team's confirmation, across all counterparties — the nav badge.
-  // Returned here rather than as its own RPC because the screen that shows the badge already asks
-  // this question, and a second call would be a second chance to disagree with the first.
-  uint32 awaiting_confirmation = 3;
+message SettlementEntryListFilter {
+  // WHOSE history. Required here (the counterparty detail page). Still NOT the scope.
+  uint64 counterparty_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum SettlementEntryListDataType {
+  SETTLEMENT_ENTRY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_ENTRY_LIST_DATA_TYPE_GENERAL = 1;
+  SETTLEMENT_ENTRY_LIST_DATA_TYPE_ENTRY = 2;
 }
 
 message SettlementEntryListRequest {
@@ -231,24 +270,28 @@ message SettlementEntryListRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // WHOSE history. Required here, unlike the position list: this is the counterparty detail page, and
-  // a history of everything at once is not a screen anybody asked for.
-  //
-  // ⚠ Still NOT the scope. The handler proves the caller belongs to `team_id` and then reads the pair
-  // — it must never authorize against this field.
-  uint64 counterparty_id = 2 [(buf.validate.field).uint64.gt = 0];
+  SettlementEntryListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated SettlementEntryListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+message SettlementEntryMapItem {
+  map<uint64, SettlementEntry> map_data = 1;
+}
+
+message SettlementEntryListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SettlementEntryMapItem entry = 2;
+  }
 }
 
 message SettlementEntryListResponse {
-  // Newest first. An order's fee and its cancellation reversal both appear — netting to zero and
-  // still visible, which is the whole point of compensating entries.
-  repeated SettlementEntry entries = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-
-  // The pair's current balance, so the header does not need a second call.
-  int64 balance = 3;
+  repeated SettlementEntryListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  // The pair's current balance, so the header needs no second call.
+  int64 balance = 4;
 }
 
 // A claim that money moved, and whether the creditor has agreed it arrived (#188).
@@ -382,6 +425,19 @@ message SettlementPaymentReverseResponse {
   SettlementPayment payment = 1;
 }
 
+message SettlementPaymentListFilter {
+  // 0 = every counterparty.
+  uint64 counterparty_id = 1;
+  // Only payments this team must act on: recorded by somebody else, awaiting this team's confirmation.
+  bool awaiting_my_confirmation = 2;
+}
+
+enum SettlementPaymentListDataType {
+  SETTLEMENT_PAYMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_PAYMENT_LIST_DATA_TYPE_GENERAL = 1;
+  SETTLEMENT_PAYMENT_LIST_DATA_TYPE_PAYMENT = 2;
+}
+
 message SettlementPaymentListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -394,27 +450,31 @@ message SettlementPaymentListRequest {
     ]
   };
 
-  // The scope. Returns payments where this team is EITHER side — one relationship, one list, the same
-  // reasoning as the position list showing both directions.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  SettlementPaymentListFilter filter = 2;
+  repeated SettlementPaymentListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  // 0 = every counterparty.
-  uint64 counterparty_id = 3;
+message SettlementPaymentMapItem {
+  map<uint64, SettlementPayment> map_data = 1;
+}
 
-  // Only payments this team must act on: recorded by somebody else, awaiting this team's
-  // confirmation. Server-side, because the list is paginated — a client-side filter would narrow one
-  // page and report the unfiltered total beside it.
-  bool awaiting_my_confirmation = 4;
+message SettlementPaymentListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SettlementPaymentMapItem payment = 2;
+  }
 }
 
 message SettlementPaymentListResponse {
-  repeated SettlementPayment payments = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated SettlementPaymentListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
@@ -463,6 +523,12 @@ message SettlementTerms {
   optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
 }
 
+enum SettlementTermsListDataType {
+  SETTLEMENT_TERMS_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_TERMS_LIST_DATA_TYPE_GENERAL = 1;
+  SETTLEMENT_TERMS_LIST_DATA_TYPE_TERMS = 2;
+}
+
 message SettlementTermsListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
@@ -475,21 +541,32 @@ message SettlementTermsListRequest {
     ]
   };
 
-  // The CREDITOR whose terms these are — and the scope. A team configures what it charges; it can
-  // never read or write what somebody else charges it.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  repeated SettlementTermsListDataType data_request = 2;
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+// The TERMS slice reuses the SettlementTerms message directly, keyed by counterparty_id
+// (0 = the default row).
+message SettlementTermsMapItem {
+  map<uint64, SettlementTerms> map_data = 1;
+}
+
+message SettlementTermsListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SettlementTermsMapItem terms = 2;
+  }
 }
 
 message SettlementTermsListResponse {
-  // Including the `counterparty_id = 0` default row when one exists, so the screen can show "everyone
-  // else" beside the overrides rather than hiding the rule most teams actually fall under.
-  repeated SettlementTerms terms = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated SettlementTermsListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message SettlementTermsSetRequest {

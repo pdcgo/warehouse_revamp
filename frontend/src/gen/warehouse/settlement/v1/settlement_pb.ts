@@ -5,8 +5,10 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/settlement/v1/settlement.proto.
  */
 export const file_warehouse_settlement_v1_settlement: GenFile = /*@__PURE__*/
-  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSKCAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFwoPY291bnRlcnBhcnR5X2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxJCCgtzb3VyY2VfdHlwZRgFIAEoDjItLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRTb3VyY2VUeXBlEhEKCXNvdXJjZV9pZBgGIAEoBBIQCghyZXZlcnNhbBgHIAEoCBIQCghncm91cF9pZBgIIAEoBBIVCg1iYWxhbmNlX2FmdGVyGAkgASgDEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyJ/ChJTZXR0bGVtZW50UG9zaXRpb24SFwoPY291bnRlcnBhcnR5X2lkGAEgASgEEg8KB2JhbGFuY2UYAiABKAMSIAoYb2xkZXN0X3Vuc2V0dGxlZF9hdF91bml4GAMgASgDEh0KFWF3YWl0aW5nX2NvbmZpcm1hdGlvbhgEIAEoDSKzAQodU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBEhcKD2NvdW50ZXJwYXJ0eV9pZBgDIAEoBBIWCg51bnNldHRsZWRfb25seRgEIAEoCDoMkrUYCAoGAQIDBAYJIrEBCh5TZXR0bGVtZW50UG9zaXRpb25MaXN0UmVzcG9uc2USPgoJcG9zaXRpb25zGAEgAygLMisud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SHQoVYXdhaXRpbmdfY29uZmlybWF0aW9uGAMgASgNIqEBChpTZXR0bGVtZW50RW50cnlMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIgCg9jb3VudGVycGFydHlfaWQYAiABKARCB7pIBDICIAASNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgyStRgICgYBAgMEBgkimwEKG1NldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZRI5CgdlbnRyaWVzGAEgAygLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SDwoHYmFsYW5jZRgDIAEoAyKPAgoRU2V0dGxlbWVudFBheW1lbnQSCgoCaWQYASABKAQSFQoNcGF5ZXJfdGVhbV9pZBgCIAEoBBIYChBjcmVkaXRvcl90ZWFtX2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxJACgZzdGF0dXMYBSABKA4yMC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFN0YXR1cxIMCgRub3RlGAYgASgJEhMKC3JlY29yZGVkX2J5GAcgASgEEhQKDGNvbmZpcm1lZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCSABKAMSGQoRY29uZmlybWVkX2F0X3VuaXgYCiABKAMioAEKHlNldHRsZW1lbnRQYXltZW50UmVjb3JkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIhChBjcmVkaXRvcl90ZWFtX2lkGAIgASgEQge6SAQyAiAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABIWCgRub3RlGAQgASgJQgi6SAVyAxj0AzoMkrUYCAoGAQIDBAYJIl4KH1NldHRsZW1lbnRQYXltZW50UmVjb3JkUmVzcG9uc2USOwoHcGF5bWVudBgBIAEoCzIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50ImoKH1NldHRsZW1lbnRQYXltZW50Q29uZmlybVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcGF5bWVudF9pZBgCIAEoBEIHukgEMgIgADoMkrUYCAoGAQIDBAYJIl8KIFNldHRsZW1lbnRQYXltZW50Q29uZmlybVJlc3BvbnNlEjsKB3BheW1lbnQYASABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudCKGAQofU2V0dGxlbWVudFBheW1lbnRSZXZlcnNlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwYXltZW50X2lkGAIgASgEQge6SAQyAiAAEhoKBnJlYXNvbhgDIAEoCUIKukgHcgUQARj0AzoMkrUYCAoGAQIDBAYJIl8KIFNldHRsZW1lbnRQYXltZW50UmV2ZXJzZVJlc3BvbnNlEjsKB3BheW1lbnQYASABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudCK8AQocU2V0dGxlbWVudFBheW1lbnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQESFwoPY291bnRlcnBhcnR5X2lkGAMgASgEEiAKGGF3YWl0aW5nX215X2NvbmZpcm1hdGlvbhgEIAEoCDoMkrUYCAoGAQIDBAYJIo8BCh1TZXR0bGVtZW50UGF5bWVudExpc3RSZXNwb25zZRI8CghwYXltZW50cxgBIAMoCzIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iswEKD1NldHRsZW1lbnRUZXJtcxIPCgd0ZWFtX2lkGAEgASgEEhcKD2NvdW50ZXJwYXJ0eV9pZBgCIAEoBBIdCgxoYW5kbGluZ19mZWUYAyABKANCB7pIBCICKAASIgoRcHJvZHVjdF9tYXJrdXBfYnAYBCABKANCB7pIBCICKAASIgoMY3JlZGl0X2xpbWl0GAUgASgDQge6SAQiAigASACIAQFCDwoNX2NyZWRpdF9saW1pdCJ/ChpTZXR0bGVtZW50VGVybXNMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DJK1GAgKBgECAwQGCSKIAQobU2V0dGxlbWVudFRlcm1zTGlzdFJlc3BvbnNlEjcKBXRlcm1zGAEgAygLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zEjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8i2AEKGVNldHRsZW1lbnRUZXJtc1NldFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoPY291bnRlcnBhcnR5X2lkGAIgASgEEh0KDGhhbmRsaW5nX2ZlZRgDIAEoA0IHukgEIgIoABIiChFwcm9kdWN0X21hcmt1cF9icBgEIAEoA0IHukgEIgIoABIiCgxjcmVkaXRfbGltaXQYBSABKANCB7pIBCICKABIAIgBAToMkrUYCAoGAQIDBAYJQg8KDV9jcmVkaXRfbGltaXQiVQoaU2V0dGxlbWVudFRlcm1zU2V0UmVzcG9uc2USNwoFdGVybXMYASABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXMiYwocU2V0dGxlbWVudFRlcm1zRGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIXCg9jb3VudGVycGFydHlfaWQYAiABKAQ6DJK1GAgKBgECAwQGCSIfCh1TZXR0bGVtZW50VGVybXNEZWxldGVSZXNwb25zZSrXAQoUU2V0dGxlbWVudFNvdXJjZVR5cGUSJgoiU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlNFVFRMRU1FTlRfU09VUkNFX1RZUEVfQ09EX0ZFRRABEicKI1NFVFRMRU1FTlRfU09VUkNFX1RZUEVfSEFORExJTkdfRkVFEAISJgoiU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9QUk9EVUNUX0ZFRRADEiIKHlNFVFRMRU1FTlRfU09VUkNFX1RZUEVfUEFZTUVOVBAEKr0BChdTZXR0bGVtZW50UGF5bWVudFN0YXR1cxIpCiVTRVRUTEVNRU5UX1BBWU1FTlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASJgoiU0VUVExFTUVOVF9QQVlNRU5UX1NUQVRVU19SRUNPUkRFRBABEicKI1NFVFRMRU1FTlRfUEFZTUVOVF9TVEFUVVNfQ09ORklSTUVEEAISJgoiU0VUVExFTUVOVF9QQVlNRU5UX1NUQVRVU19SRVZFUlNFRBADMqICChFTZXR0bGVtZW50U2VydmljZRKJAQoWU2V0dGxlbWVudFBvc2l0aW9uTGlzdBI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RSZXF1ZXN0Gjcud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlEoABChNTZXR0bGVtZW50RW50cnlMaXN0EjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5TGlzdFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlMaXN0UmVzcG9uc2Uy1gQKGFNldHRsZW1lbnRQYXltZW50U2VydmljZRKMAQoXU2V0dGxlbWVudFBheW1lbnRSZWNvcmQSNy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFJlY29yZFJlcXVlc3QaOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFJlY29yZFJlc3BvbnNlEo8BChhTZXR0bGVtZW50UGF5bWVudENvbmZpcm0SOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudENvbmZpcm1SZXF1ZXN0Gjkud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRDb25maXJtUmVzcG9uc2USjwEKGFNldHRsZW1lbnRQYXltZW50UmV2ZXJzZRI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50UmV2ZXJzZVJlcXVlc3QaOS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFJldmVyc2VSZXNwb25zZRKGAQoVU2V0dGxlbWVudFBheW1lbnRMaXN0EjUud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRMaXN0UmVxdWVzdBo2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TGlzdFJlc3BvbnNlMqMDChZTZXR0bGVtZW50VGVybXNTZXJ2aWNlEoABChNTZXR0bGVtZW50VGVybXNMaXN0EjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zTGlzdFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNMaXN0UmVzcG9uc2USfQoSU2V0dGxlbWVudFRlcm1zU2V0EjIud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zU2V0UmVxdWVzdBozLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc1NldFJlc3BvbnNlEoYBChVTZXR0bGVtZW50VGVybXNEZWxldGUSNS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNEZWxldGVSZXF1ZXN0GjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zRGVsZXRlUmVzcG9uc2VCVFpSZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZXR0bGVtZW50L3YxO3NldHRsZW1lbnR2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSKCAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFwoPY291bnRlcnBhcnR5X2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxJCCgtzb3VyY2VfdHlwZRgFIAEoDjItLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRTb3VyY2VUeXBlEhEKCXNvdXJjZV9pZBgGIAEoBBIQCghyZXZlcnNhbBgHIAEoCBIQCghncm91cF9pZBgIIAEoBBIVCg1iYWxhbmNlX2FmdGVyGAkgASgDEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyJ/ChJTZXR0bGVtZW50UG9zaXRpb24SFwoPY291bnRlcnBhcnR5X2lkGAEgASgEEg8KB2JhbGFuY2UYAiABKAMSIAoYb2xkZXN0X3Vuc2V0dGxlZF9hdF91bml4GAMgASgDEh0KFWF3YWl0aW5nX2NvbmZpcm1hdGlvbhgEIAEoDSJPChxTZXR0bGVtZW50UG9zaXRpb25MaXN0RmlsdGVyEhcKD2NvdW50ZXJwYXJ0eV9pZBgBIAEoBBIWCg51bnNldHRsZWRfb25seRgCIAEoCCLZAQogU2V0dGxlbWVudFBvc2l0aW9uTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEkMKCHBvc2l0aW9uGAMgASgOMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uU29ydEgAQgMKAXMi5wIKHVNldHRsZW1lbnRQb3NpdGlvbkxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkUKBmZpbHRlchgCIAEoCzI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RGaWx0ZXISRwoEc29ydBgDIAEoCzI5LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RGaWx0ZXJTb3J0Ek0KDGRhdGFfcmVxdWVzdBgEIAMoDjI3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DJK1GAgKBgECAwQGCSLLAQoZU2V0dGxlbWVudFBvc2l0aW9uTWFwSXRlbRJRCghtYXBfZGF0YRgBIAMoCzI/LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbk1hcEl0ZW0uTWFwRGF0YUVudHJ5GlsKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSOgoFdmFsdWUYAiABKAsyKy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UG9zaXRpb246AjgBIqkBCiJTZXR0bGVtZW50UG9zaXRpb25MaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRgoIcG9zaXRpb24YAiABKAsyMi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UG9zaXRpb25NYXBJdGVtSABCAwoBZCLKAQoeU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlEkoKBWl0ZW1zGAEgAygLMjsud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIdChVhd2FpdGluZ19jb25maXJtYXRpb24YBCABKA0iPQoZU2V0dGxlbWVudEVudHJ5TGlzdEZpbHRlchIgCg9jb3VudGVycGFydHlfaWQYASABKARCB7pIBDICIAAinQIKGlNldHRsZW1lbnRFbnRyeUxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkoKBmZpbHRlchgCIAEoCzIyLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeUxpc3RGaWx0ZXJCBrpIA8gBARJKCgxkYXRhX3JlcXVlc3QYAyADKA4yNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlMaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgyStRgICgYBAgMEBgkiwgEKFlNldHRsZW1lbnRFbnRyeU1hcEl0ZW0STgoIbWFwX2RhdGEYASADKAsyPC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlNYXBJdGVtLk1hcERhdGFFbnRyeRpYCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjcKBXZhbHVlGAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5OgI4ASKgAQofU2V0dGxlbWVudEVudHJ5TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkAKBWVudHJ5GAIgASgLMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5TWFwSXRlbUgAQgMKAWQitgEKG1NldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZRJHCgVpdGVtcxgBIAMoCzI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SDwoHYmFsYW5jZRgEIAEoAyKPAgoRU2V0dGxlbWVudFBheW1lbnQSCgoCaWQYASABKAQSFQoNcGF5ZXJfdGVhbV9pZBgCIAEoBBIYChBjcmVkaXRvcl90ZWFtX2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxJACgZzdGF0dXMYBSABKA4yMC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFN0YXR1cxIMCgRub3RlGAYgASgJEhMKC3JlY29yZGVkX2J5GAcgASgEEhQKDGNvbmZpcm1lZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCSABKAMSGQoRY29uZmlybWVkX2F0X3VuaXgYCiABKAMioAEKHlNldHRsZW1lbnRQYXltZW50UmVjb3JkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIhChBjcmVkaXRvcl90ZWFtX2lkGAIgASgEQge6SAQyAiAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABIWCgRub3RlGAQgASgJQgi6SAVyAxj0AzoMkrUYCAoGAQIDBAYJIl4KH1NldHRsZW1lbnRQYXltZW50UmVjb3JkUmVzcG9uc2USOwoHcGF5bWVudBgBIAEoCzIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50ImoKH1NldHRsZW1lbnRQYXltZW50Q29uZmlybVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcGF5bWVudF9pZBgCIAEoBEIHukgEMgIgADoMkrUYCAoGAQIDBAYJIl8KIFNldHRsZW1lbnRQYXltZW50Q29uZmlybVJlc3BvbnNlEjsKB3BheW1lbnQYASABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudCKGAQofU2V0dGxlbWVudFBheW1lbnRSZXZlcnNlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwYXltZW50X2lkGAIgASgEQge6SAQyAiAAEhoKBnJlYXNvbhgDIAEoCUIKukgHcgUQARj0AzoMkrUYCAoGAQIDBAYJIl8KIFNldHRsZW1lbnRQYXltZW50UmV2ZXJzZVJlc3BvbnNlEjsKB3BheW1lbnQYASABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudCJYChtTZXR0bGVtZW50UGF5bWVudExpc3RGaWx0ZXISFwoPY291bnRlcnBhcnR5X2lkGAEgASgEEiAKGGF3YWl0aW5nX215X2NvbmZpcm1hdGlvbhgCIAEoCCKbAgocU2V0dGxlbWVudFBheW1lbnRMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJECgZmaWx0ZXIYAiABKAsyNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudExpc3RGaWx0ZXISTAoMZGF0YV9yZXF1ZXN0GAMgAygOMjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRMaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgyStRgICgYBAgMEBgkiyAEKGFNldHRsZW1lbnRQYXltZW50TWFwSXRlbRJQCghtYXBfZGF0YRgBIAMoCzI+LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TWFwSXRlbS5NYXBEYXRhRW50cnkaWgoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI5CgV2YWx1ZRgCIAEoCzIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50OgI4ASKmAQohU2V0dGxlbWVudFBheW1lbnRMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRAoHcGF5bWVudBgCIAEoCzIxLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TWFwSXRlbUgAQgMKAWQiqQEKHVNldHRsZW1lbnRQYXltZW50TGlzdFJlc3BvbnNlEkkKBWl0ZW1zGAEgAygLMjoud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrMBCg9TZXR0bGVtZW50VGVybXMSDwoHdGVhbV9pZBgBIAEoBBIXCg9jb3VudGVycGFydHlfaWQYAiABKAQSHQoMaGFuZGxpbmdfZmVlGAMgASgDQge6SAQiAigAEiIKEXByb2R1Y3RfbWFya3VwX2JwGAQgASgDQge6SAQiAigAEiIKDGNyZWRpdF9saW1pdBgFIAEoA0IHukgEIgIoAEgAiAEBQg8KDV9jcmVkaXRfbGltaXQi0QEKGlNldHRsZW1lbnRUZXJtc0xpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkoKDGRhdGFfcmVxdWVzdBgCIAMoDjI0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0xpc3REYXRhVHlwZRI7CgRwYWdlGAMgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DJK1GAgKBgECAwQGCSLCAQoWU2V0dGxlbWVudFRlcm1zTWFwSXRlbRJOCghtYXBfZGF0YRgBIAMoCzI8LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc01hcEl0ZW0uTWFwRGF0YUVudHJ5GlgKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXM6AjgBIqABCh9TZXR0bGVtZW50VGVybXNMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASQAoFdGVybXMYAiABKAsyLy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNNYXBJdGVtSABCAwoBZCKlAQobU2V0dGxlbWVudFRlcm1zTGlzdFJlc3BvbnNlEkcKBWl0ZW1zGAEgAygLMjgud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLYAQoZU2V0dGxlbWVudFRlcm1zU2V0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIXCg9jb3VudGVycGFydHlfaWQYAiABKAQSHQoMaGFuZGxpbmdfZmVlGAMgASgDQge6SAQiAigAEiIKEXByb2R1Y3RfbWFya3VwX2JwGAQgASgDQge6SAQiAigAEiIKDGNyZWRpdF9saW1pdBgFIAEoA0IHukgEIgIoAEgAiAEBOgyStRgICgYBAgMEBglCDwoNX2NyZWRpdF9saW1pdCJVChpTZXR0bGVtZW50VGVybXNTZXRSZXNwb25zZRI3CgV0ZXJtcxgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtcyJjChxTZXR0bGVtZW50VGVybXNEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKD2NvdW50ZXJwYXJ0eV9pZBgCIAEoBDoMkrUYCAoGAQIDBAYJIh8KHVNldHRsZW1lbnRUZXJtc0RlbGV0ZVJlc3BvbnNlKtcBChRTZXR0bGVtZW50U291cmNlVHlwZRImCiJTRVRUTEVNRU5UX1NPVVJDRV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9DT0RfRkVFEAESJwojU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9IQU5ETElOR19GRUUQAhImCiJTRVRUTEVNRU5UX1NPVVJDRV9UWVBFX1BST0RVQ1RfRkVFEAMSIgoeU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9QQVlNRU5UEAQqtQEKHlNldHRsZW1lbnRQb3NpdGlvbkxpc3REYXRhVHlwZRIyCi5TRVRUTEVNRU5UX1BPU0lUSU9OX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASLgoqU0VUVExFTUVOVF9QT1NJVElPTl9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESLworU0VUVExFTUVOVF9QT1NJVElPTl9MSVNUX0RBVEFfVFlQRV9QT1NJVElPThACKpcBChZTZXR0bGVtZW50UG9zaXRpb25Tb3J0EigKJFNFVFRMRU1FTlRfUE9TSVRJT05fU09SVF9VTlNQRUNJRklFRBAAEi0KKVNFVFRMRU1FTlRfUE9TSVRJT05fU09SVF9PTERFU1RfVU5TRVRUTEVEEAESJAogU0VUVExFTUVOVF9QT1NJVElPTl9TT1JUX0JBTEFOQ0UQAiqmAQobU2V0dGxlbWVudEVudHJ5TGlzdERhdGFUeXBlEi8KK1NFVFRMRU1FTlRfRU5UUllfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIrCidTRVRUTEVNRU5UX0VOVFJZX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIpCiVTRVRUTEVNRU5UX0VOVFJZX0xJU1RfREFUQV9UWVBFX0VOVFJZEAIqvQEKF1NldHRsZW1lbnRQYXltZW50U3RhdHVzEikKJVNFVFRMRU1FTlRfUEFZTUVOVF9TVEFUVVNfVU5TUEVDSUZJRUQQABImCiJTRVRUTEVNRU5UX1BBWU1FTlRfU1RBVFVTX1JFQ09SREVEEAESJwojU0VUVExFTUVOVF9QQVlNRU5UX1NUQVRVU19DT05GSVJNRUQQAhImCiJTRVRUTEVNRU5UX1BBWU1FTlRfU1RBVFVTX1JFVkVSU0VEEAMqsAEKHVNldHRsZW1lbnRQYXltZW50TGlzdERhdGFUeXBlEjEKLVNFVFRMRU1FTlRfUEFZTUVOVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEi0KKVNFVFRMRU1FTlRfUEFZTUVOVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESLQopU0VUVExFTUVOVF9QQVlNRU5UX0xJU1RfREFUQV9UWVBFX1BBWU1FTlQQAiqmAQobU2V0dGxlbWVudFRlcm1zTGlzdERhdGFUeXBlEi8KK1NFVFRMRU1FTlRfVEVSTVNfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIrCidTRVRUTEVNRU5UX1RFUk1TX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIpCiVTRVRUTEVNRU5UX1RFUk1TX0xJU1RfREFUQV9UWVBFX1RFUk1TEAIyogIKEVNldHRsZW1lbnRTZXJ2aWNlEokBChZTZXR0bGVtZW50UG9zaXRpb25MaXN0EjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlcXVlc3QaNy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UG9zaXRpb25MaXN0UmVzcG9uc2USgAEKE1NldHRsZW1lbnRFbnRyeUxpc3QSMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZTLWBAoYU2V0dGxlbWVudFBheW1lbnRTZXJ2aWNlEowBChdTZXR0bGVtZW50UGF5bWVudFJlY29yZBI3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50UmVjb3JkUmVxdWVzdBo4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50UmVjb3JkUmVzcG9uc2USjwEKGFNldHRsZW1lbnRQYXltZW50Q29uZmlybRI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50Q29uZmlybVJlcXVlc3QaOS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudENvbmZpcm1SZXNwb25zZRKPAQoYU2V0dGxlbWVudFBheW1lbnRSZXZlcnNlEjgud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRSZXZlcnNlUmVxdWVzdBo5LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50UmV2ZXJzZVJlc3BvbnNlEoYBChVTZXR0bGVtZW50UGF5bWVudExpc3QSNS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudExpc3RSZXF1ZXN0GjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRMaXN0UmVzcG9uc2UyowMKFlNldHRsZW1lbnRUZXJtc1NlcnZpY2USgAEKE1NldHRsZW1lbnRUZXJtc0xpc3QSMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0xpc3RSZXNwb25zZRJ9ChJTZXR0bGVtZW50VGVybXNTZXQSMi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNTZXRSZXF1ZXN0GjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zU2V0UmVzcG9uc2UShgEKFVNldHRsZW1lbnRUZXJtc0RlbGV0ZRI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0RlbGV0ZVJlcXVlc3QaNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNEZWxldGVSZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
 
 /**
  * One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating
@@ -164,36 +166,96 @@ export const SettlementPositionSchema: GenMessage<SettlementPosition> = /*@__PUR
   messageDesc(file_warehouse_settlement_v1_settlement, 1);
 
 /**
+ * @generated from message warehouse.settlement.v1.SettlementPositionListFilter
+ */
+export type SettlementPositionListFilter = Message<"warehouse.settlement.v1.SettlementPositionListFilter"> & {
+  /**
+   * Narrow to ONE counterparty. 0 = every counterparty. A filter only, it grants nothing.
+   *
+   * @generated from field: uint64 counterparty_id = 1;
+   */
+  counterpartyId: bigint;
+
+  /**
+   * Only pairs that are not square (the default "who owes what" view).
+   *
+   * @generated from field: bool unsettled_only = 2;
+   */
+  unsettledOnly: boolean;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPositionListFilter.
+ * Use `create(SettlementPositionListFilterSchema)` to create a new message.
+ */
+export const SettlementPositionListFilterSchema: GenMessage<SettlementPositionListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 2);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementPositionListFilterSort
+ */
+export type SettlementPositionListFilterSort = Message<"warehouse.settlement.v1.SettlementPositionListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.settlement.v1.SettlementPositionListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.settlement.v1.SettlementPositionSort position = 3;
+     */
+    value: SettlementPositionSort;
+    case: "position";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPositionListFilterSort.
+ * Use `create(SettlementPositionListFilterSortSchema)` to create a new message.
+ */
+export const SettlementPositionListFilterSortSchema: GenMessage<SettlementPositionListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 3);
+
+/**
  * @generated from message warehouse.settlement.v1.SettlementPositionListRequest
  */
 export type SettlementPositionListRequest = Message<"warehouse.settlement.v1.SettlementPositionListRequest"> & {
   /**
-   * The team whose position this is — and the SCOPE. See the service comment: the counterparty side
-   * of a balance can never be the scope, so a filter below is a filter, not an authorization.
+   * The team whose position this is, and the SCOPE. The counterparty side of a balance can never be
+   * the scope, so the filter is a filter, not an authorization.
    *
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.settlement.v1.SettlementPositionListFilter filter = 2;
    */
-  page?: PageFilter;
+  filter?: SettlementPositionListFilter;
 
   /**
-   * Narrow to ONE counterparty. 0 = every counterparty. A filter only — it grants nothing.
-   *
-   * @generated from field: uint64 counterparty_id = 3;
+   * @generated from field: warehouse.settlement.v1.SettlementPositionListFilterSort sort = 3;
    */
-  counterpartyId: bigint;
+  sort?: SettlementPositionListFilterSort;
 
   /**
-   * Only pairs that are not square. The screen's default view is "who owes what", and a list padded
-   * with settled zeros buries the rows a manager is looking for.
-   *
-   * @generated from field: bool unsettled_only = 4;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementPositionListDataType data_request = 4;
    */
-  unsettledOnly: boolean;
+  dataRequest: SettlementPositionListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -201,32 +263,81 @@ export type SettlementPositionListRequest = Message<"warehouse.settlement.v1.Set
  * Use `create(SettlementPositionListRequestSchema)` to create a new message.
  */
 export const SettlementPositionListRequestSchema: GenMessage<SettlementPositionListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 2);
+  messageDesc(file_warehouse_settlement_v1_settlement, 4);
+
+/**
+ * The POSITION slice reuses the SettlementPosition message directly, keyed by counterparty_id.
+ *
+ * @generated from message warehouse.settlement.v1.SettlementPositionMapItem
+ */
+export type SettlementPositionMapItem = Message<"warehouse.settlement.v1.SettlementPositionMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementPosition> map_data = 1;
+   */
+  mapData: { [key: string]: SettlementPosition };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPositionMapItem.
+ * Use `create(SettlementPositionMapItemSchema)` to create a new message.
+ */
+export const SettlementPositionMapItemSchema: GenMessage<SettlementPositionMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 5);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementPositionListResponseItem
+ */
+export type SettlementPositionListResponseItem = Message<"warehouse.settlement.v1.SettlementPositionListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.SettlementPositionListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.settlement.v1.SettlementPositionMapItem position = 2;
+     */
+    value: SettlementPositionMapItem;
+    case: "position";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPositionListResponseItem.
+ * Use `create(SettlementPositionListResponseItemSchema)` to create a new message.
+ */
+export const SettlementPositionListResponseItemSchema: GenMessage<SettlementPositionListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 6);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPositionListResponse
  */
 export type SettlementPositionListResponse = Message<"warehouse.settlement.v1.SettlementPositionListResponse"> & {
   /**
-   * BOTH DIRECTIONS in one list. A counterparty is ONE relationship: splitting "what they owe me" and
-   * "what I owe them" across two screens would make a manager visit two places to answer one
-   * question.
-   *
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPosition positions = 1;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementPositionListResponseItem items = 1;
    */
-  positions: SettlementPosition[];
+  items: SettlementPositionListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * The counterparty ids in sorted (page) order, the key of each position.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 
   /**
-   * Every payment awaiting this team's confirmation, across all counterparties — the nav badge.
-   * Returned here rather than as its own RPC because the screen that shows the badge already asks
-   * this question, and a second call would be a second chance to disagree with the first.
+   * Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
    *
-   * @generated from field: uint32 awaiting_confirmation = 3;
+   * @generated from field: uint32 awaiting_confirmation = 4;
    */
   awaitingConfirmation: number;
 };
@@ -236,7 +347,26 @@ export type SettlementPositionListResponse = Message<"warehouse.settlement.v1.Se
  * Use `create(SettlementPositionListResponseSchema)` to create a new message.
  */
 export const SettlementPositionListResponseSchema: GenMessage<SettlementPositionListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 3);
+  messageDesc(file_warehouse_settlement_v1_settlement, 7);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementEntryListFilter
+ */
+export type SettlementEntryListFilter = Message<"warehouse.settlement.v1.SettlementEntryListFilter"> & {
+  /**
+   * WHOSE history. Required here (the counterparty detail page). Still NOT the scope.
+   *
+   * @generated from field: uint64 counterparty_id = 1;
+   */
+  counterpartyId: bigint;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementEntryListFilter.
+ * Use `create(SettlementEntryListFilterSchema)` to create a new message.
+ */
+export const SettlementEntryListFilterSchema: GenMessage<SettlementEntryListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 8);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementEntryListRequest
@@ -248,20 +378,19 @@ export type SettlementEntryListRequest = Message<"warehouse.settlement.v1.Settle
   teamId: bigint;
 
   /**
-   * WHOSE history. Required here, unlike the position list: this is the counterparty detail page, and
-   * a history of everything at once is not a screen anybody asked for.
-   *
-   * ⚠ Still NOT the scope. The handler proves the caller belongs to `team_id` and then reads the pair
-   * — it must never authorize against this field.
-   *
-   * @generated from field: uint64 counterparty_id = 2;
+   * @generated from field: warehouse.settlement.v1.SettlementEntryListFilter filter = 2;
    */
-  counterpartyId: bigint;
+  filter?: SettlementEntryListFilter;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementEntryListDataType data_request = 3;
    */
-  page?: PageFilter;
+  dataRequest: SettlementEntryListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -269,29 +398,77 @@ export type SettlementEntryListRequest = Message<"warehouse.settlement.v1.Settle
  * Use `create(SettlementEntryListRequestSchema)` to create a new message.
  */
 export const SettlementEntryListRequestSchema: GenMessage<SettlementEntryListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 4);
+  messageDesc(file_warehouse_settlement_v1_settlement, 9);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementEntryMapItem
+ */
+export type SettlementEntryMapItem = Message<"warehouse.settlement.v1.SettlementEntryMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementEntry> map_data = 1;
+   */
+  mapData: { [key: string]: SettlementEntry };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementEntryMapItem.
+ * Use `create(SettlementEntryMapItemSchema)` to create a new message.
+ */
+export const SettlementEntryMapItemSchema: GenMessage<SettlementEntryMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 10);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementEntryListResponseItem
+ */
+export type SettlementEntryListResponseItem = Message<"warehouse.settlement.v1.SettlementEntryListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.SettlementEntryListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.settlement.v1.SettlementEntryMapItem entry = 2;
+     */
+    value: SettlementEntryMapItem;
+    case: "entry";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementEntryListResponseItem.
+ * Use `create(SettlementEntryListResponseItemSchema)` to create a new message.
+ */
+export const SettlementEntryListResponseItemSchema: GenMessage<SettlementEntryListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 11);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementEntryListResponse
  */
 export type SettlementEntryListResponse = Message<"warehouse.settlement.v1.SettlementEntryListResponse"> & {
   /**
-   * Newest first. An order's fee and its cancellation reversal both appear — netting to zero and
-   * still visible, which is the whole point of compensating entries.
-   *
-   * @generated from field: repeated warehouse.settlement.v1.SettlementEntry entries = 1;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementEntryListResponseItem items = 1;
    */
-  entries: SettlementEntry[];
+  items: SettlementEntryListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 
   /**
-   * The pair's current balance, so the header does not need a second call.
+   * The pair's current balance, so the header needs no second call.
    *
-   * @generated from field: int64 balance = 3;
+   * @generated from field: int64 balance = 4;
    */
   balance: bigint;
 };
@@ -301,7 +478,7 @@ export type SettlementEntryListResponse = Message<"warehouse.settlement.v1.Settl
  * Use `create(SettlementEntryListResponseSchema)` to create a new message.
  */
 export const SettlementEntryListResponseSchema: GenMessage<SettlementEntryListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 5);
+  messageDesc(file_warehouse_settlement_v1_settlement, 12);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPayment
@@ -376,7 +553,7 @@ export type SettlementPayment = Message<"warehouse.settlement.v1.SettlementPayme
  * Use `create(SettlementPaymentSchema)` to create a new message.
  */
 export const SettlementPaymentSchema: GenMessage<SettlementPayment> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 6);
+  messageDesc(file_warehouse_settlement_v1_settlement, 13);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentRecordRequest
@@ -411,7 +588,7 @@ export type SettlementPaymentRecordRequest = Message<"warehouse.settlement.v1.Se
  * Use `create(SettlementPaymentRecordRequestSchema)` to create a new message.
  */
 export const SettlementPaymentRecordRequestSchema: GenMessage<SettlementPaymentRecordRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 7);
+  messageDesc(file_warehouse_settlement_v1_settlement, 14);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentRecordResponse
@@ -428,7 +605,7 @@ export type SettlementPaymentRecordResponse = Message<"warehouse.settlement.v1.S
  * Use `create(SettlementPaymentRecordResponseSchema)` to create a new message.
  */
 export const SettlementPaymentRecordResponseSchema: GenMessage<SettlementPaymentRecordResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 8);
+  messageDesc(file_warehouse_settlement_v1_settlement, 15);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentConfirmRequest
@@ -453,7 +630,7 @@ export type SettlementPaymentConfirmRequest = Message<"warehouse.settlement.v1.S
  * Use `create(SettlementPaymentConfirmRequestSchema)` to create a new message.
  */
 export const SettlementPaymentConfirmRequestSchema: GenMessage<SettlementPaymentConfirmRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 9);
+  messageDesc(file_warehouse_settlement_v1_settlement, 16);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentConfirmResponse
@@ -470,7 +647,7 @@ export type SettlementPaymentConfirmResponse = Message<"warehouse.settlement.v1.
  * Use `create(SettlementPaymentConfirmResponseSchema)` to create a new message.
  */
 export const SettlementPaymentConfirmResponseSchema: GenMessage<SettlementPaymentConfirmResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 10);
+  messageDesc(file_warehouse_settlement_v1_settlement, 17);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentReverseRequest
@@ -503,7 +680,7 @@ export type SettlementPaymentReverseRequest = Message<"warehouse.settlement.v1.S
  * Use `create(SettlementPaymentReverseRequestSchema)` to create a new message.
  */
 export const SettlementPaymentReverseRequestSchema: GenMessage<SettlementPaymentReverseRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 11);
+  messageDesc(file_warehouse_settlement_v1_settlement, 18);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentReverseResponse
@@ -520,40 +697,57 @@ export type SettlementPaymentReverseResponse = Message<"warehouse.settlement.v1.
  * Use `create(SettlementPaymentReverseResponseSchema)` to create a new message.
  */
 export const SettlementPaymentReverseResponseSchema: GenMessage<SettlementPaymentReverseResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 12);
+  messageDesc(file_warehouse_settlement_v1_settlement, 19);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementPaymentListFilter
+ */
+export type SettlementPaymentListFilter = Message<"warehouse.settlement.v1.SettlementPaymentListFilter"> & {
+  /**
+   * 0 = every counterparty.
+   *
+   * @generated from field: uint64 counterparty_id = 1;
+   */
+  counterpartyId: bigint;
+
+  /**
+   * Only payments this team must act on: recorded by somebody else, awaiting this team's confirmation.
+   *
+   * @generated from field: bool awaiting_my_confirmation = 2;
+   */
+  awaitingMyConfirmation: boolean;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPaymentListFilter.
+ * Use `create(SettlementPaymentListFilterSchema)` to create a new message.
+ */
+export const SettlementPaymentListFilterSchema: GenMessage<SettlementPaymentListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 20);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentListRequest
  */
 export type SettlementPaymentListRequest = Message<"warehouse.settlement.v1.SettlementPaymentListRequest"> & {
   /**
-   * The scope. Returns payments where this team is EITHER side — one relationship, one list, the same
-   * reasoning as the position list showing both directions.
-   *
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.settlement.v1.SettlementPaymentListFilter filter = 2;
    */
-  page?: PageFilter;
+  filter?: SettlementPaymentListFilter;
 
   /**
-   * 0 = every counterparty.
-   *
-   * @generated from field: uint64 counterparty_id = 3;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementPaymentListDataType data_request = 3;
    */
-  counterpartyId: bigint;
+  dataRequest: SettlementPaymentListDataType[];
 
   /**
-   * Only payments this team must act on: recorded by somebody else, awaiting this team's
-   * confirmation. Server-side, because the list is paginated — a client-side filter would narrow one
-   * page and report the unfiltered total beside it.
-   *
-   * @generated from field: bool awaiting_my_confirmation = 4;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
    */
-  awaitingMyConfirmation: boolean;
+  page?: CommonPagination;
 };
 
 /**
@@ -561,19 +755,70 @@ export type SettlementPaymentListRequest = Message<"warehouse.settlement.v1.Sett
  * Use `create(SettlementPaymentListRequestSchema)` to create a new message.
  */
 export const SettlementPaymentListRequestSchema: GenMessage<SettlementPaymentListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 13);
+  messageDesc(file_warehouse_settlement_v1_settlement, 21);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementPaymentMapItem
+ */
+export type SettlementPaymentMapItem = Message<"warehouse.settlement.v1.SettlementPaymentMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementPayment> map_data = 1;
+   */
+  mapData: { [key: string]: SettlementPayment };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPaymentMapItem.
+ * Use `create(SettlementPaymentMapItemSchema)` to create a new message.
+ */
+export const SettlementPaymentMapItemSchema: GenMessage<SettlementPaymentMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 22);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementPaymentListResponseItem
+ */
+export type SettlementPaymentListResponseItem = Message<"warehouse.settlement.v1.SettlementPaymentListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.SettlementPaymentListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.settlement.v1.SettlementPaymentMapItem payment = 2;
+     */
+    value: SettlementPaymentMapItem;
+    case: "payment";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementPaymentListResponseItem.
+ * Use `create(SettlementPaymentListResponseItemSchema)` to create a new message.
+ */
+export const SettlementPaymentListResponseItemSchema: GenMessage<SettlementPaymentListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 23);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementPaymentListResponse
  */
 export type SettlementPaymentListResponse = Message<"warehouse.settlement.v1.SettlementPaymentListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPayment payments = 1;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementPaymentListResponseItem items = 1;
    */
-  payments: SettlementPayment[];
+  items: SettlementPaymentListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -583,7 +828,7 @@ export type SettlementPaymentListResponse = Message<"warehouse.settlement.v1.Set
  * Use `create(SettlementPaymentListResponseSchema)` to create a new message.
  */
 export const SettlementPaymentListResponseSchema: GenMessage<SettlementPaymentListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 14);
+  messageDesc(file_warehouse_settlement_v1_settlement, 24);
 
 /**
  * A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
@@ -660,24 +905,26 @@ export type SettlementTerms = Message<"warehouse.settlement.v1.SettlementTerms">
  * Use `create(SettlementTermsSchema)` to create a new message.
  */
 export const SettlementTermsSchema: GenMessage<SettlementTerms> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 15);
+  messageDesc(file_warehouse_settlement_v1_settlement, 25);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementTermsListRequest
  */
 export type SettlementTermsListRequest = Message<"warehouse.settlement.v1.SettlementTermsListRequest"> & {
   /**
-   * The CREDITOR whose terms these are — and the scope. A team configures what it charges; it can
-   * never read or write what somebody else charges it.
-   *
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementTermsListDataType data_request = 2;
    */
-  page?: PageFilter;
+  dataRequest: SettlementTermsListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 3;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -685,22 +932,73 @@ export type SettlementTermsListRequest = Message<"warehouse.settlement.v1.Settle
  * Use `create(SettlementTermsListRequestSchema)` to create a new message.
  */
 export const SettlementTermsListRequestSchema: GenMessage<SettlementTermsListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 16);
+  messageDesc(file_warehouse_settlement_v1_settlement, 26);
+
+/**
+ * The TERMS slice reuses the SettlementTerms message directly, keyed by counterparty_id
+ * (0 = the default row).
+ *
+ * @generated from message warehouse.settlement.v1.SettlementTermsMapItem
+ */
+export type SettlementTermsMapItem = Message<"warehouse.settlement.v1.SettlementTermsMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementTerms> map_data = 1;
+   */
+  mapData: { [key: string]: SettlementTerms };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementTermsMapItem.
+ * Use `create(SettlementTermsMapItemSchema)` to create a new message.
+ */
+export const SettlementTermsMapItemSchema: GenMessage<SettlementTermsMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 27);
+
+/**
+ * @generated from message warehouse.settlement.v1.SettlementTermsListResponseItem
+ */
+export type SettlementTermsListResponseItem = Message<"warehouse.settlement.v1.SettlementTermsListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.SettlementTermsListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.settlement.v1.SettlementTermsMapItem terms = 2;
+     */
+    value: SettlementTermsMapItem;
+    case: "terms";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementTermsListResponseItem.
+ * Use `create(SettlementTermsListResponseItemSchema)` to create a new message.
+ */
+export const SettlementTermsListResponseItemSchema: GenMessage<SettlementTermsListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 28);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementTermsListResponse
  */
 export type SettlementTermsListResponse = Message<"warehouse.settlement.v1.SettlementTermsListResponse"> & {
   /**
-   * Including the `counterparty_id = 0` default row when one exists, so the screen can show "everyone
-   * else" beside the overrides rather than hiding the rule most teams actually fall under.
-   *
-   * @generated from field: repeated warehouse.settlement.v1.SettlementTerms terms = 1;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementTermsListResponseItem items = 1;
    */
-  terms: SettlementTerms[];
+  items: SettlementTermsListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -710,7 +1008,7 @@ export type SettlementTermsListResponse = Message<"warehouse.settlement.v1.Settl
  * Use `create(SettlementTermsListResponseSchema)` to create a new message.
  */
 export const SettlementTermsListResponseSchema: GenMessage<SettlementTermsListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 17);
+  messageDesc(file_warehouse_settlement_v1_settlement, 29);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementTermsSetRequest
@@ -751,7 +1049,7 @@ export type SettlementTermsSetRequest = Message<"warehouse.settlement.v1.Settlem
  * Use `create(SettlementTermsSetRequestSchema)` to create a new message.
  */
 export const SettlementTermsSetRequestSchema: GenMessage<SettlementTermsSetRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 18);
+  messageDesc(file_warehouse_settlement_v1_settlement, 30);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementTermsSetResponse
@@ -768,7 +1066,7 @@ export type SettlementTermsSetResponse = Message<"warehouse.settlement.v1.Settle
  * Use `create(SettlementTermsSetResponseSchema)` to create a new message.
  */
 export const SettlementTermsSetResponseSchema: GenMessage<SettlementTermsSetResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 19);
+  messageDesc(file_warehouse_settlement_v1_settlement, 31);
 
 /**
  * Removing terms is a DELETE, and that is the point: it is the only way to express "unlimited"
@@ -793,7 +1091,7 @@ export type SettlementTermsDeleteRequest = Message<"warehouse.settlement.v1.Sett
  * Use `create(SettlementTermsDeleteRequestSchema)` to create a new message.
  */
 export const SettlementTermsDeleteRequestSchema: GenMessage<SettlementTermsDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 20);
+  messageDesc(file_warehouse_settlement_v1_settlement, 32);
 
 /**
  * @generated from message warehouse.settlement.v1.SettlementTermsDeleteResponse
@@ -806,7 +1104,7 @@ export type SettlementTermsDeleteResponse = Message<"warehouse.settlement.v1.Set
  * Use `create(SettlementTermsDeleteResponseSchema)` to create a new message.
  */
 export const SettlementTermsDeleteResponseSchema: GenMessage<SettlementTermsDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 21);
+  messageDesc(file_warehouse_settlement_v1_settlement, 33);
 
 /**
  * WHAT CAUSED an entry (§4.4). A typed pair `(source_type, source_id)`, never a free-text note:
@@ -863,6 +1161,84 @@ export const SettlementSourceTypeSchema: GenEnum<SettlementSourceType> = /*@__PU
   enumDesc(file_warehouse_settlement_v1_settlement, 0);
 
 /**
+ * @generated from enum warehouse.settlement.v1.SettlementPositionListDataType
+ */
+export enum SettlementPositionListDataType {
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_POSITION = 2;
+   */
+  POSITION = 2,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.SettlementPositionListDataType.
+ */
+export const SettlementPositionListDataTypeSchema: GenEnum<SettlementPositionListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 1);
+
+/**
+ * @generated from enum warehouse.settlement.v1.SettlementPositionSort
+ */
+export enum SettlementPositionSort {
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_SORT_OLDEST_UNSETTLED = 1;
+   */
+  OLDEST_UNSETTLED = 1,
+
+  /**
+   * @generated from enum value: SETTLEMENT_POSITION_SORT_BALANCE = 2;
+   */
+  BALANCE = 2,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.SettlementPositionSort.
+ */
+export const SettlementPositionSortSchema: GenEnum<SettlementPositionSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 2);
+
+/**
+ * @generated from enum warehouse.settlement.v1.SettlementEntryListDataType
+ */
+export enum SettlementEntryListDataType {
+  /**
+   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_ENTRY = 2;
+   */
+  ENTRY = 2,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.SettlementEntryListDataType.
+ */
+export const SettlementEntryListDataTypeSchema: GenEnum<SettlementEntryListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 3);
+
+/**
  * A claim that money moved, and whether the creditor has agreed it arrived (#188).
  *
  * @generated from enum warehouse.settlement.v1.SettlementPaymentStatus
@@ -901,7 +1277,59 @@ export enum SettlementPaymentStatus {
  * Describes the enum warehouse.settlement.v1.SettlementPaymentStatus.
  */
 export const SettlementPaymentStatusSchema: GenEnum<SettlementPaymentStatus> = /*@__PURE__*/
-  enumDesc(file_warehouse_settlement_v1_settlement, 1);
+  enumDesc(file_warehouse_settlement_v1_settlement, 4);
+
+/**
+ * @generated from enum warehouse.settlement.v1.SettlementPaymentListDataType
+ */
+export enum SettlementPaymentListDataType {
+  /**
+   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_PAYMENT = 2;
+   */
+  PAYMENT = 2,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.SettlementPaymentListDataType.
+ */
+export const SettlementPaymentListDataTypeSchema: GenEnum<SettlementPaymentListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 5);
+
+/**
+ * @generated from enum warehouse.settlement.v1.SettlementTermsListDataType
+ */
+export enum SettlementTermsListDataType {
+  /**
+   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_TERMS = 2;
+   */
+  TERMS = 2,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.SettlementTermsListDataType.
+ */
+export const SettlementTermsListDataTypeSchema: GenEnum<SettlementTermsListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 6);
 
 /**
  * SettlementService is the ledger of WHAT TEAMS OWE EACH OTHER (#180,

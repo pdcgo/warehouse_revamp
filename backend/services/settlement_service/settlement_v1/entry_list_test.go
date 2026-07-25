@@ -21,9 +21,9 @@ func history(
 
 	res, err := svc.SettlementEntryList(context.Background(),
 		connect.NewRequest(&settlementv1.SettlementEntryListRequest{
-			TeamId:         teamID,
-			CounterpartyId: counterpartyID,
-			Page:           &commonv1.PageFilter{Page: 1, Limit: 50},
+			TeamId: teamID,
+			Filter: &settlementv1.SettlementEntryListFilter{CounterpartyId: counterpartyID},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {
 		t.Fatalf("SettlementEntryList(%d -> %d): %v", teamID, counterpartyID, err)
@@ -46,11 +46,11 @@ func TestEntryList_EachLineSaysWhatCausedIt(t *testing.T) {
 
 	msg := history(t, svc, warehouse, selling)
 
-	if len(msg.GetEntries()) != 1 {
-		t.Fatalf("%d entries, want 1", len(msg.GetEntries()))
+	if len(entryRows(msg)) != 1 {
+		t.Fatalf("%d entries, want 1", len(entryRows(msg)))
 	}
 
-	entry := msg.GetEntries()[0]
+	entry := entryRows(msg)[0]
 	if entry.GetSourceType() != settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_COD_FEE {
 		t.Fatalf("source_type = %v, want COD_FEE", entry.GetSourceType())
 	}
@@ -86,12 +86,12 @@ func TestEntryList_AFeeAndItsReversalBothStay(t *testing.T) {
 
 	msg := history(t, svc, warehouse, selling)
 
-	if len(msg.GetEntries()) != 2 {
-		t.Fatalf("%d entries, want both the fee and its reversal", len(msg.GetEntries()))
+	if len(entryRows(msg)) != 2 {
+		t.Fatalf("%d entries, want both the fee and its reversal", len(entryRows(msg)))
 	}
 
 	// Newest first, so the reversal is what somebody sees at the top.
-	if !msg.GetEntries()[0].GetReversal() {
+	if !entryRows(msg)[0].GetReversal() {
 		t.Fatal("the newest entry is not the reversal — the history is not newest-first")
 	}
 
@@ -108,9 +108,9 @@ func TestEntryList_AnUntradedPairIsSquareRatherThanMissing(t *testing.T) {
 
 	msg := history(t, svc, selling, 12345)
 
-	if len(msg.GetEntries()) != 0 || msg.GetBalance() != 0 {
+	if len(entryRows(msg)) != 0 || msg.GetBalance() != 0 {
 		t.Fatalf("entries=%d balance=%d, want an empty, square history",
-			len(msg.GetEntries()), msg.GetBalance())
+			len(entryRows(msg)), msg.GetBalance())
 	}
 }
 
@@ -133,15 +133,15 @@ func TestEntryList_CannotReadTwoOtherTeamsPair(t *testing.T) {
 	// The caller is `selling`, which has nothing to do with (outsider, warehouse).
 	res, err := svc.SettlementEntryList(context.Background(),
 		connect.NewRequest(&settlementv1.SettlementEntryListRequest{
-			TeamId:         selling,
-			CounterpartyId: outsider,
-			Page:           &commonv1.PageFilter{Page: 1, Limit: 50},
+			TeamId: selling,
+			Filter: &settlementv1.SettlementEntryListFilter{CounterpartyId: outsider},
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(res.Msg.GetEntries()) != 0 || res.Msg.GetBalance() != 0 {
-		t.Fatalf("read %d entries of somebody else's pair", len(res.Msg.GetEntries()))
+	if len(entryRows(res.Msg)) != 0 || res.Msg.GetBalance() != 0 {
+		t.Fatalf("read %d entries of somebody else's pair", len(entryRows(res.Msg)))
 	}
 }

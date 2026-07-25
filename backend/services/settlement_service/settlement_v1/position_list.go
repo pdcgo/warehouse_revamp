@@ -30,13 +30,13 @@ func (s *Service) SettlementPositionList(
 		Model(&settlement_service_models.SettlementBalance{}).
 		Where("team_id = ?", teamID)
 
-	if counterparty := req.Msg.GetCounterpartyId(); counterparty != 0 {
+	if counterparty := req.Msg.GetFilter().GetCounterpartyId(); counterparty != 0 {
 		query = query.Where("counterparty_id = ?", counterparty)
 	}
 
 	// A settled pair keeps its row forever — the ledger never deletes anything — so the default view
 	// would otherwise fill with zeros and bury the rows a manager opened the screen for.
-	if req.Msg.GetUnsettledOnly() {
+	if req.Msg.GetFilter().GetUnsettledOnly() {
 		query = query.Where("balance <> 0")
 	}
 
@@ -55,7 +55,7 @@ func (s *Service) SettlementPositionList(
 	// making them scroll for that would be answering a different question. NULLS LAST puts settled
 	// pairs after every outstanding one; `id` breaks ties so paging is stable.
 	err = query.
-		Order("oldest_unsettled_at ASC NULLS LAST, id ASC").
+		Order(positionOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&balances).
@@ -93,8 +93,11 @@ func (s *Service) SettlementPositionList(
 		totalWaiting += count
 	}
 
+	items, ids := positionListItems(positions, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&settlementv1.SettlementPositionListResponse{
-		Positions: positions,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

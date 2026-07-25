@@ -28,7 +28,7 @@ func (s *Service) SettlementEntryList(
 	req *connect.Request[settlementv1.SettlementEntryListRequest],
 ) (*connect.Response[settlementv1.SettlementEntryListResponse], error) {
 	teamID := req.Msg.GetTeamId()
-	counterpartyID := req.Msg.GetCounterpartyId()
+	counterpartyID := req.Msg.GetFilter().GetCounterpartyId()
 	page := req.Msg.GetPage()
 
 	query := s.db.
@@ -76,8 +76,11 @@ func (s *Service) SettlementEntryList(
 		out = append(out, entryToProto(&entries[i]))
 	}
 
+	items, ids := entryListItems(out, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&settlementv1.SettlementEntryListResponse{
-		Entries: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

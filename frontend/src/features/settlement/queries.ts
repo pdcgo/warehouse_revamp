@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { settlementClient, settlementPaymentClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import {
+  entriesFromList,
+  entryRowData,
+  paymentsFromList,
+  paymentRowData,
+  positionRowData,
+  positionsFromList,
+} from "./adapt";
 
 // The Liability screens' reads (#185).
 //
@@ -22,12 +30,13 @@ export function useSettlementPositions(args: {
     queryFn: async () => {
       const res = await settlementClient.settlementPositionList({
         teamId: teamId!,
+        filter: { unsettledOnly },
+        dataRequest: positionRowData(),
         page: { page, limit: pageSize },
-        unsettledOnly,
       });
 
       return {
-        positions: res.positions,
+        positions: positionsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
         awaitingConfirmation: res.awaitingConfirmation,
       };
@@ -53,12 +62,13 @@ export function useSettlementEntries(args: {
     queryFn: async () => {
       const res = await settlementClient.settlementEntryList({
         teamId: teamId!,
-        counterpartyId,
+        filter: { counterpartyId },
+        dataRequest: entryRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        entries: res.entries,
+        entries: entriesFromList(res.items, res.ids),
         balance: res.balance,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
@@ -91,13 +101,13 @@ export function useSettlementPayments(args: {
     queryFn: async () => {
       const res = await settlementPaymentClient.settlementPaymentList({
         teamId: teamId!,
-        counterpartyId,
-        awaitingMyConfirmation,
+        filter: { counterpartyId, awaitingMyConfirmation },
+        dataRequest: paymentRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        payments: res.payments,
+        payments: paymentsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
