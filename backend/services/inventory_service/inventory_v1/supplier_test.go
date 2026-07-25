@@ -100,24 +100,24 @@ func TestSupplierList_ScopedAndSearchable(t *testing.T) {
 
 	// Team 2 sees only its own two suppliers.
 	resp, err := svc.SupplierList(context.Background(), connect.NewRequest(&inventoryv1.SupplierListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("SupplierList: %v", err)
 	}
-	if len(resp.Msg.GetSuppliers()) != 2 {
-		t.Fatalf("team 2 suppliers = %d, want 2", len(resp.Msg.GetSuppliers()))
+	if len(supplierRows(resp.Msg)) != 2 {
+		t.Fatalf("team 2 suppliers = %d, want 2", len(supplierRows(resp.Msg)))
 	}
 
 	// `q` filters by name or code.
 	resp, err = svc.SupplierList(context.Background(), connect.NewRequest(&inventoryv1.SupplierListRequest{
-		TeamId: 2, Q: "alpha", Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Filter: &inventoryv1.SupplierListFilter{Q: "alpha"}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("SupplierList (q): %v", err)
 	}
-	if len(resp.Msg.GetSuppliers()) != 1 || resp.Msg.GetSuppliers()[0].GetName() != "Alpha Trading" {
-		t.Fatalf("search result = %+v", resp.Msg.GetSuppliers())
+	if len(supplierRows(resp.Msg)) != 1 || supplierRows(resp.Msg)[0].GetName() != "Alpha Trading" {
+		t.Fatalf("search result = %+v", supplierRows(resp.Msg))
 	}
 }
 
@@ -131,13 +131,13 @@ func TestSupplierList_Paginates(t *testing.T) {
 
 	// Page 1 of 2 returns two rows; the page info reports the full total.
 	resp, err := svc.SupplierList(context.Background(), connect.NewRequest(&inventoryv1.SupplierListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 2},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 2},
 	}))
 	if err != nil {
 		t.Fatalf("SupplierList page 1: %v", err)
 	}
-	if len(resp.Msg.GetSuppliers()) != 2 {
-		t.Fatalf("page 1 rows = %d, want 2", len(resp.Msg.GetSuppliers()))
+	if len(supplierRows(resp.Msg)) != 2 {
+		t.Fatalf("page 1 rows = %d, want 2", len(supplierRows(resp.Msg)))
 	}
 	if resp.Msg.GetPageInfo().GetTotalItems() != 3 || resp.Msg.GetPageInfo().GetTotalPage() != 2 {
 		t.Fatalf("page info = %+v, want total 3 / 2 pages", resp.Msg.GetPageInfo())
@@ -145,13 +145,13 @@ func TestSupplierList_Paginates(t *testing.T) {
 
 	// Page 2 returns the last row.
 	resp, err = svc.SupplierList(context.Background(), connect.NewRequest(&inventoryv1.SupplierListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 2, Limit: 2},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 2, Limit: 2},
 	}))
 	if err != nil {
 		t.Fatalf("SupplierList page 2: %v", err)
 	}
-	if len(resp.Msg.GetSuppliers()) != 1 {
-		t.Fatalf("page 2 rows = %d, want 1", len(resp.Msg.GetSuppliers()))
+	if len(supplierRows(resp.Msg)) != 1 {
+		t.Fatalf("page 2 rows = %d, want 1", len(supplierRows(resp.Msg)))
 	}
 }
 
@@ -250,13 +250,13 @@ func TestSupplierDelete_SoftDeletesAndDropsFromList(t *testing.T) {
 
 	// Gone from the list (SupplierList excludes deleted = true).
 	resp, err := svc.SupplierList(context.Background(), connect.NewRequest(&inventoryv1.SupplierListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("SupplierList: %v", err)
 	}
-	if len(resp.Msg.GetSuppliers()) != 0 {
-		t.Fatalf("deleted supplier still listed: %+v", resp.Msg.GetSuppliers())
+	if len(supplierRows(resp.Msg)) != 0 {
+		t.Fatalf("deleted supplier still listed: %+v", supplierRows(resp.Msg))
 	}
 }
 

@@ -3,6 +3,12 @@ import { supplierChannelClient, supplierClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { SupplierChannelType } from "../../gen/warehouse/inventory/v1/supplier_channel_pb";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import {
+  channelsFromList,
+  suppliersFromList,
+  supplierChannelRowData,
+  supplierListRowData,
+} from "./adapt";
 
 // The supplier screens' reads (#176).
 
@@ -20,12 +26,13 @@ export function useSuppliers(args: {
     queryFn: async () => {
       const res = await supplierClient.supplierList({
         teamId: teamId!,
-        q,
+        filter: { q },
+        dataRequest: supplierListRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        suppliers: res.suppliers,
+        suppliers: suppliersFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -60,11 +67,12 @@ export function useSupplierChannels(args: { teamId: bigint | undefined; supplier
     queryFn: async () => {
       const res = await supplierChannelClient.supplierChannelList({
         teamId: teamId!,
-        supplierId,
+        filter: { supplierId },
+        dataRequest: supplierChannelRowData(),
         page: { page: 1, limit: 100 },
       });
 
-      return res.channels;
+      return channelsFromList(res.items, res.ids);
     },
   });
 }

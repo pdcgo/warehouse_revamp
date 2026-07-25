@@ -24,6 +24,107 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SupplierListDataType int32
+
+const (
+	SupplierListDataType_SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED SupplierListDataType = 0
+	SupplierListDataType_SUPPLIER_LIST_DATA_TYPE_GENERAL     SupplierListDataType = 1
+	SupplierListDataType_SUPPLIER_LIST_DATA_TYPE_SUPPLIER    SupplierListDataType = 2
+)
+
+// Enum value maps for SupplierListDataType.
+var (
+	SupplierListDataType_name = map[int32]string{
+		0: "SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "SUPPLIER_LIST_DATA_TYPE_GENERAL",
+		2: "SUPPLIER_LIST_DATA_TYPE_SUPPLIER",
+	}
+	SupplierListDataType_value = map[string]int32{
+		"SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"SUPPLIER_LIST_DATA_TYPE_GENERAL":     1,
+		"SUPPLIER_LIST_DATA_TYPE_SUPPLIER":    2,
+	}
+)
+
+func (x SupplierListDataType) Enum() *SupplierListDataType {
+	p := new(SupplierListDataType)
+	*p = x
+	return p
+}
+
+func (x SupplierListDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SupplierListDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_supplier_proto_enumTypes[0].Descriptor()
+}
+
+func (SupplierListDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_supplier_proto_enumTypes[0]
+}
+
+func (x SupplierListDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SupplierListDataType.Descriptor instead.
+func (SupplierListDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{0}
+}
+
+type SupplierRowSort int32
+
+const (
+	SupplierRowSort_SUPPLIER_ROW_SORT_UNSPECIFIED SupplierRowSort = 0
+	SupplierRowSort_SUPPLIER_ROW_SORT_ID          SupplierRowSort = 1
+	SupplierRowSort_SUPPLIER_ROW_SORT_NAME        SupplierRowSort = 2
+	SupplierRowSort_SUPPLIER_ROW_SORT_CODE        SupplierRowSort = 3
+)
+
+// Enum value maps for SupplierRowSort.
+var (
+	SupplierRowSort_name = map[int32]string{
+		0: "SUPPLIER_ROW_SORT_UNSPECIFIED",
+		1: "SUPPLIER_ROW_SORT_ID",
+		2: "SUPPLIER_ROW_SORT_NAME",
+		3: "SUPPLIER_ROW_SORT_CODE",
+	}
+	SupplierRowSort_value = map[string]int32{
+		"SUPPLIER_ROW_SORT_UNSPECIFIED": 0,
+		"SUPPLIER_ROW_SORT_ID":          1,
+		"SUPPLIER_ROW_SORT_NAME":        2,
+		"SUPPLIER_ROW_SORT_CODE":        3,
+	}
+)
+
+func (x SupplierRowSort) Enum() *SupplierRowSort {
+	p := new(SupplierRowSort)
+	*p = x
+	return p
+}
+
+func (x SupplierRowSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SupplierRowSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_supplier_proto_enumTypes[1].Descriptor()
+}
+
+func (SupplierRowSort) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_supplier_proto_enumTypes[1]
+}
+
+func (x SupplierRowSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SupplierRowSort.Descriptor instead.
+func (SupplierRowSort) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{1}
+}
+
 type Supplier struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Id     uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -286,10 +387,12 @@ func (x *SupplierCreateResponse) GetSupplier() *Supplier {
 }
 
 type SupplierListRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Q             string                 `protobuf:"bytes,2,opt,name=q,proto3" json:"q,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	TeamId        uint64                  `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *SupplierListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort          *SupplierListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest   []SupplierListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.inventory.v1.SupplierListDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination    `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -331,31 +434,306 @@ func (x *SupplierListRequest) GetTeamId() uint64 {
 	return 0
 }
 
-func (x *SupplierListRequest) GetQ() string {
+func (x *SupplierListRequest) GetFilter() *SupplierListFilter {
 	if x != nil {
-		return x.Q
+		return x.Filter
 	}
-	return ""
+	return nil
 }
 
-func (x *SupplierListRequest) GetPage() *v1.PageFilter {
+func (x *SupplierListRequest) GetSort() *SupplierListFilterSort {
+	if x != nil {
+		return x.Sort
+	}
+	return nil
+}
+
+func (x *SupplierListRequest) GetDataRequest() []SupplierListDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *SupplierListRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type SupplierListResponse struct {
+type SupplierListFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Suppliers     []*Supplier            `protobuf:"bytes,1,rep,name=suppliers,proto3" json:"suppliers,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierListFilter) Reset() {
+	*x = SupplierListFilter{}
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierListFilter) ProtoMessage() {}
+
+func (x *SupplierListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierListFilter.ProtoReflect.Descriptor instead.
+func (*SupplierListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SupplierListFilter) GetQ() string {
+	if x != nil {
+		return x.Q
+	}
+	return ""
+}
+
+type SupplierListFilterSort struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SortType v1.CommonSortType      `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
+	// Types that are valid to be assigned to S:
+	//
+	//	*SupplierListFilterSort_General
+	//	*SupplierListFilterSort_Supplier
+	S             isSupplierListFilterSort_S `protobuf_oneof:"s"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierListFilterSort) Reset() {
+	*x = SupplierListFilterSort{}
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierListFilterSort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierListFilterSort) ProtoMessage() {}
+
+func (x *SupplierListFilterSort) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierListFilterSort.ProtoReflect.Descriptor instead.
+func (*SupplierListFilterSort) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SupplierListFilterSort) GetSortType() v1.CommonSortType {
+	if x != nil {
+		return x.SortType
+	}
+	return v1.CommonSortType(0)
+}
+
+func (x *SupplierListFilterSort) GetS() isSupplierListFilterSort_S {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *SupplierListFilterSort) GetGeneral() v1.GeneralSort {
+	if x != nil {
+		if x, ok := x.S.(*SupplierListFilterSort_General); ok {
+			return x.General
+		}
+	}
+	return v1.GeneralSort(0)
+}
+
+func (x *SupplierListFilterSort) GetSupplier() SupplierRowSort {
+	if x != nil {
+		if x, ok := x.S.(*SupplierListFilterSort_Supplier); ok {
+			return x.Supplier
+		}
+	}
+	return SupplierRowSort_SUPPLIER_ROW_SORT_UNSPECIFIED
+}
+
+type isSupplierListFilterSort_S interface {
+	isSupplierListFilterSort_S()
+}
+
+type SupplierListFilterSort_General struct {
+	General v1.GeneralSort `protobuf:"varint,2,opt,name=general,proto3,enum=warehouse.common.v1.GeneralSort,oneof"`
+}
+
+type SupplierListFilterSort_Supplier struct {
+	Supplier SupplierRowSort `protobuf:"varint,3,opt,name=supplier,proto3,enum=warehouse.inventory.v1.SupplierRowSort,oneof"`
+}
+
+func (*SupplierListFilterSort_General) isSupplierListFilterSort_S() {}
+
+func (*SupplierListFilterSort_Supplier) isSupplierListFilterSort_S() {}
+
+type SupplierRowMapItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MapData       map[uint64]*Supplier   `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierRowMapItem) Reset() {
+	*x = SupplierRowMapItem{}
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierRowMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierRowMapItem) ProtoMessage() {}
+
+func (x *SupplierRowMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierRowMapItem.ProtoReflect.Descriptor instead.
+func (*SupplierRowMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SupplierRowMapItem) GetMapData() map[uint64]*Supplier {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type SupplierListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*SupplierListResponseItem_General
+	//	*SupplierListResponseItem_Supplier
+	D             isSupplierListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupplierListResponseItem) Reset() {
+	*x = SupplierListResponseItem{}
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupplierListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupplierListResponseItem) ProtoMessage() {}
+
+func (x *SupplierListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupplierListResponseItem.ProtoReflect.Descriptor instead.
+func (*SupplierListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SupplierListResponseItem) GetD() isSupplierListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *SupplierListResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*SupplierListResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *SupplierListResponseItem) GetSupplier() *SupplierRowMapItem {
+	if x != nil {
+		if x, ok := x.D.(*SupplierListResponseItem_Supplier); ok {
+			return x.Supplier
+		}
+	}
+	return nil
+}
+
+type isSupplierListResponseItem_D interface {
+	isSupplierListResponseItem_D()
+}
+
+type SupplierListResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type SupplierListResponseItem_Supplier struct {
+	Supplier *SupplierRowMapItem `protobuf:"bytes,2,opt,name=supplier,proto3,oneof"`
+}
+
+func (*SupplierListResponseItem_General) isSupplierListResponseItem_D() {}
+
+func (*SupplierListResponseItem_Supplier) isSupplierListResponseItem_D() {}
+
+type SupplierListResponse struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Items         []*SupplierListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids           []uint64                    `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v1.PageInfo                `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SupplierListResponse) Reset() {
 	*x = SupplierListResponse{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +745,7 @@ func (x *SupplierListResponse) String() string {
 func (*SupplierListResponse) ProtoMessage() {}
 
 func (x *SupplierListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,12 +758,19 @@ func (x *SupplierListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierListResponse.ProtoReflect.Descriptor instead.
 func (*SupplierListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *SupplierListResponse) GetSuppliers() []*Supplier {
+func (x *SupplierListResponse) GetItems() []*SupplierListResponseItem {
 	if x != nil {
-		return x.Suppliers
+		return x.Items
+	}
+	return nil
+}
+
+func (x *SupplierListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -407,7 +792,7 @@ type SupplierDetailRequest struct {
 
 func (x *SupplierDetailRequest) Reset() {
 	*x = SupplierDetailRequest{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -419,7 +804,7 @@ func (x *SupplierDetailRequest) String() string {
 func (*SupplierDetailRequest) ProtoMessage() {}
 
 func (x *SupplierDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -432,7 +817,7 @@ func (x *SupplierDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDetailRequest.ProtoReflect.Descriptor instead.
 func (*SupplierDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SupplierDetailRequest) GetTeamId() uint64 {
@@ -458,7 +843,7 @@ type SupplierDetailResponse struct {
 
 func (x *SupplierDetailResponse) Reset() {
 	*x = SupplierDetailResponse{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +855,7 @@ func (x *SupplierDetailResponse) String() string {
 func (*SupplierDetailResponse) ProtoMessage() {}
 
 func (x *SupplierDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +868,7 @@ func (x *SupplierDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDetailResponse.ProtoReflect.Descriptor instead.
 func (*SupplierDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SupplierDetailResponse) GetSupplier() *Supplier {
@@ -511,7 +896,7 @@ type SupplierUpdateRequest struct {
 
 func (x *SupplierUpdateRequest) Reset() {
 	*x = SupplierUpdateRequest{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -523,7 +908,7 @@ func (x *SupplierUpdateRequest) String() string {
 func (*SupplierUpdateRequest) ProtoMessage() {}
 
 func (x *SupplierUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -536,7 +921,7 @@ func (x *SupplierUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierUpdateRequest.ProtoReflect.Descriptor instead.
 func (*SupplierUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SupplierUpdateRequest) GetTeamId() uint64 {
@@ -611,7 +996,7 @@ type SupplierUpdateResponse struct {
 
 func (x *SupplierUpdateResponse) Reset() {
 	*x = SupplierUpdateResponse{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -623,7 +1008,7 @@ func (x *SupplierUpdateResponse) String() string {
 func (*SupplierUpdateResponse) ProtoMessage() {}
 
 func (x *SupplierUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -636,7 +1021,7 @@ func (x *SupplierUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierUpdateResponse.ProtoReflect.Descriptor instead.
 func (*SupplierUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SupplierUpdateResponse) GetSupplier() *Supplier {
@@ -656,7 +1041,7 @@ type SupplierDeleteRequest struct {
 
 func (x *SupplierDeleteRequest) Reset() {
 	*x = SupplierDeleteRequest{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -668,7 +1053,7 @@ func (x *SupplierDeleteRequest) String() string {
 func (*SupplierDeleteRequest) ProtoMessage() {}
 
 func (x *SupplierDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -681,7 +1066,7 @@ func (x *SupplierDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDeleteRequest.ProtoReflect.Descriptor instead.
 func (*SupplierDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SupplierDeleteRequest) GetTeamId() uint64 {
@@ -706,7 +1091,7 @@ type SupplierDeleteResponse struct {
 
 func (x *SupplierDeleteResponse) Reset() {
 	*x = SupplierDeleteResponse{}
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -718,7 +1103,7 @@ func (x *SupplierDeleteResponse) String() string {
 func (*SupplierDeleteResponse) ProtoMessage() {}
 
 func (x *SupplierDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_supplier_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -731,14 +1116,14 @@ func (x *SupplierDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupplierDeleteResponse.ProtoReflect.Descriptor instead.
 func (*SupplierDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_inventory_v1_supplier_proto_rawDescGZIP(), []int{14}
 }
 
 var File_warehouse_inventory_v1_supplier_proto protoreflect.FileDescriptor
 
 const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\n" +
-	"%warehouse/inventory/v1/supplier.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xfb\x01\n" +
+	"%warehouse/inventory/v1/supplier.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\"\xfb\x01\n" +
 	"\bSupplier\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x12\n" +
@@ -764,16 +1149,35 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"V\n" +
 	"\x16SupplierCreateResponse\x12<\n" +
-	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"\x9f\x01\n" +
+	"\bsupplier\x18\x01 \x01(\v2 .warehouse.inventory.v1.SupplierR\bsupplier\"\xe7\x02\n" +
 	"\x13SupplierListRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x15\n" +
-	"\x01q\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12;\n" +
-	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
+	"\x06filter\x18\x02 \x01(\v2*.warehouse.inventory.v1.SupplierListFilterR\x06filter\x12B\n" +
+	"\x04sort\x18\x03 \x01(\v2..warehouse.inventory.v1.SupplierListFilterSortR\x04sort\x12O\n" +
+	"\fdata_request\x18\x04 \x03(\x0e2,.warehouse.inventory.v1.SupplierListDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x92\x01\n" +
-	"\x14SupplierListResponse\x12>\n" +
-	"\tsuppliers\x18\x01 \x03(\v2 .warehouse.inventory.v1.SupplierR\tsuppliers\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"w\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"+\n" +
+	"\x12SupplierListFilter\x12\x15\n" +
+	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\"\xe4\x01\n" +
+	"\x16SupplierListFilterSort\x12@\n" +
+	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
+	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12E\n" +
+	"\bsupplier\x18\x03 \x01(\x0e2'.warehouse.inventory.v1.SupplierRowSortH\x00R\bsupplierB\x03\n" +
+	"\x01s\"\xc6\x01\n" +
+	"\x12SupplierRowMapItem\x12R\n" +
+	"\bmap_data\x18\x01 \x03(\v27.warehouse.inventory.v1.SupplierRowMapItem.MapDataEntryR\amapData\x1a\\\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x126\n" +
+	"\x05value\x18\x02 \x01(\v2 .warehouse.inventory.v1.SupplierR\x05value:\x028\x01\"\xaa\x01\n" +
+	"\x18SupplierListResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12H\n" +
+	"\bsupplier\x18\x02 \x01(\v2*.warehouse.inventory.v1.SupplierRowMapItemH\x00R\bsupplierB\x03\n" +
+	"\x01d\"\xac\x01\n" +
+	"\x14SupplierListResponse\x12F\n" +
+	"\x05items\x18\x01 \x03(\v20.warehouse.inventory.v1.SupplierListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"w\n" +
 	"\x15SupplierDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
 	"\vsupplier_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
@@ -813,7 +1217,16 @@ const file_warehouse_inventory_v1_supplier_proto_rawDesc = "" +
 	"supplierId:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\x18\n" +
-	"\x16SupplierDeleteResponse2\xc0\x04\n" +
+	"\x16SupplierDeleteResponse*\x8a\x01\n" +
+	"\x14SupplierListDataType\x12'\n" +
+	"#SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fSUPPLIER_LIST_DATA_TYPE_GENERAL\x10\x01\x12$\n" +
+	" SUPPLIER_LIST_DATA_TYPE_SUPPLIER\x10\x02*\x86\x01\n" +
+	"\x0fSupplierRowSort\x12!\n" +
+	"\x1dSUPPLIER_ROW_SORT_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14SUPPLIER_ROW_SORT_ID\x10\x01\x12\x1a\n" +
+	"\x16SUPPLIER_ROW_SORT_NAME\x10\x02\x12\x1a\n" +
+	"\x16SUPPLIER_ROW_SORT_CODE\x10\x032\xc0\x04\n" +
 	"\x0fSupplierService\x12o\n" +
 	"\x0eSupplierCreate\x12-.warehouse.inventory.v1.SupplierCreateRequest\x1a..warehouse.inventory.v1.SupplierCreateResponse\x12i\n" +
 	"\fSupplierList\x12+.warehouse.inventory.v1.SupplierListRequest\x1a,.warehouse.inventory.v1.SupplierListResponse\x12o\n" +
@@ -833,44 +1246,65 @@ func file_warehouse_inventory_v1_supplier_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_supplier_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_warehouse_inventory_v1_supplier_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_inventory_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_warehouse_inventory_v1_supplier_proto_goTypes = []any{
-	(*Supplier)(nil),               // 0: warehouse.inventory.v1.Supplier
-	(*SupplierCreateRequest)(nil),  // 1: warehouse.inventory.v1.SupplierCreateRequest
-	(*SupplierCreateResponse)(nil), // 2: warehouse.inventory.v1.SupplierCreateResponse
-	(*SupplierListRequest)(nil),    // 3: warehouse.inventory.v1.SupplierListRequest
-	(*SupplierListResponse)(nil),   // 4: warehouse.inventory.v1.SupplierListResponse
-	(*SupplierDetailRequest)(nil),  // 5: warehouse.inventory.v1.SupplierDetailRequest
-	(*SupplierDetailResponse)(nil), // 6: warehouse.inventory.v1.SupplierDetailResponse
-	(*SupplierUpdateRequest)(nil),  // 7: warehouse.inventory.v1.SupplierUpdateRequest
-	(*SupplierUpdateResponse)(nil), // 8: warehouse.inventory.v1.SupplierUpdateResponse
-	(*SupplierDeleteRequest)(nil),  // 9: warehouse.inventory.v1.SupplierDeleteRequest
-	(*SupplierDeleteResponse)(nil), // 10: warehouse.inventory.v1.SupplierDeleteResponse
-	(*v1.PageFilter)(nil),          // 11: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),            // 12: warehouse.common.v1.PageInfo
+	(SupplierListDataType)(0),        // 0: warehouse.inventory.v1.SupplierListDataType
+	(SupplierRowSort)(0),             // 1: warehouse.inventory.v1.SupplierRowSort
+	(*Supplier)(nil),                 // 2: warehouse.inventory.v1.Supplier
+	(*SupplierCreateRequest)(nil),    // 3: warehouse.inventory.v1.SupplierCreateRequest
+	(*SupplierCreateResponse)(nil),   // 4: warehouse.inventory.v1.SupplierCreateResponse
+	(*SupplierListRequest)(nil),      // 5: warehouse.inventory.v1.SupplierListRequest
+	(*SupplierListFilter)(nil),       // 6: warehouse.inventory.v1.SupplierListFilter
+	(*SupplierListFilterSort)(nil),   // 7: warehouse.inventory.v1.SupplierListFilterSort
+	(*SupplierRowMapItem)(nil),       // 8: warehouse.inventory.v1.SupplierRowMapItem
+	(*SupplierListResponseItem)(nil), // 9: warehouse.inventory.v1.SupplierListResponseItem
+	(*SupplierListResponse)(nil),     // 10: warehouse.inventory.v1.SupplierListResponse
+	(*SupplierDetailRequest)(nil),    // 11: warehouse.inventory.v1.SupplierDetailRequest
+	(*SupplierDetailResponse)(nil),   // 12: warehouse.inventory.v1.SupplierDetailResponse
+	(*SupplierUpdateRequest)(nil),    // 13: warehouse.inventory.v1.SupplierUpdateRequest
+	(*SupplierUpdateResponse)(nil),   // 14: warehouse.inventory.v1.SupplierUpdateResponse
+	(*SupplierDeleteRequest)(nil),    // 15: warehouse.inventory.v1.SupplierDeleteRequest
+	(*SupplierDeleteResponse)(nil),   // 16: warehouse.inventory.v1.SupplierDeleteResponse
+	nil,                              // 17: warehouse.inventory.v1.SupplierRowMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),      // 18: warehouse.common.v1.CommonPagination
+	(v1.CommonSortType)(0),           // 19: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),              // 20: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),        // 21: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),              // 22: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_supplier_proto_depIdxs = []int32{
-	0,  // 0: warehouse.inventory.v1.SupplierCreateResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
-	11, // 1: warehouse.inventory.v1.SupplierListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	0,  // 2: warehouse.inventory.v1.SupplierListResponse.suppliers:type_name -> warehouse.inventory.v1.Supplier
-	12, // 3: warehouse.inventory.v1.SupplierListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	0,  // 4: warehouse.inventory.v1.SupplierDetailResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
-	0,  // 5: warehouse.inventory.v1.SupplierUpdateResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
-	1,  // 6: warehouse.inventory.v1.SupplierService.SupplierCreate:input_type -> warehouse.inventory.v1.SupplierCreateRequest
-	3,  // 7: warehouse.inventory.v1.SupplierService.SupplierList:input_type -> warehouse.inventory.v1.SupplierListRequest
-	5,  // 8: warehouse.inventory.v1.SupplierService.SupplierDetail:input_type -> warehouse.inventory.v1.SupplierDetailRequest
-	7,  // 9: warehouse.inventory.v1.SupplierService.SupplierUpdate:input_type -> warehouse.inventory.v1.SupplierUpdateRequest
-	9,  // 10: warehouse.inventory.v1.SupplierService.SupplierDelete:input_type -> warehouse.inventory.v1.SupplierDeleteRequest
-	2,  // 11: warehouse.inventory.v1.SupplierService.SupplierCreate:output_type -> warehouse.inventory.v1.SupplierCreateResponse
-	4,  // 12: warehouse.inventory.v1.SupplierService.SupplierList:output_type -> warehouse.inventory.v1.SupplierListResponse
-	6,  // 13: warehouse.inventory.v1.SupplierService.SupplierDetail:output_type -> warehouse.inventory.v1.SupplierDetailResponse
-	8,  // 14: warehouse.inventory.v1.SupplierService.SupplierUpdate:output_type -> warehouse.inventory.v1.SupplierUpdateResponse
-	10, // 15: warehouse.inventory.v1.SupplierService.SupplierDelete:output_type -> warehouse.inventory.v1.SupplierDeleteResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	2,  // 0: warehouse.inventory.v1.SupplierCreateResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
+	6,  // 1: warehouse.inventory.v1.SupplierListRequest.filter:type_name -> warehouse.inventory.v1.SupplierListFilter
+	7,  // 2: warehouse.inventory.v1.SupplierListRequest.sort:type_name -> warehouse.inventory.v1.SupplierListFilterSort
+	0,  // 3: warehouse.inventory.v1.SupplierListRequest.data_request:type_name -> warehouse.inventory.v1.SupplierListDataType
+	18, // 4: warehouse.inventory.v1.SupplierListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	19, // 5: warehouse.inventory.v1.SupplierListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	20, // 6: warehouse.inventory.v1.SupplierListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 7: warehouse.inventory.v1.SupplierListFilterSort.supplier:type_name -> warehouse.inventory.v1.SupplierRowSort
+	17, // 8: warehouse.inventory.v1.SupplierRowMapItem.map_data:type_name -> warehouse.inventory.v1.SupplierRowMapItem.MapDataEntry
+	21, // 9: warehouse.inventory.v1.SupplierListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	8,  // 10: warehouse.inventory.v1.SupplierListResponseItem.supplier:type_name -> warehouse.inventory.v1.SupplierRowMapItem
+	9,  // 11: warehouse.inventory.v1.SupplierListResponse.items:type_name -> warehouse.inventory.v1.SupplierListResponseItem
+	22, // 12: warehouse.inventory.v1.SupplierListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	2,  // 13: warehouse.inventory.v1.SupplierDetailResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
+	2,  // 14: warehouse.inventory.v1.SupplierUpdateResponse.supplier:type_name -> warehouse.inventory.v1.Supplier
+	2,  // 15: warehouse.inventory.v1.SupplierRowMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.Supplier
+	3,  // 16: warehouse.inventory.v1.SupplierService.SupplierCreate:input_type -> warehouse.inventory.v1.SupplierCreateRequest
+	5,  // 17: warehouse.inventory.v1.SupplierService.SupplierList:input_type -> warehouse.inventory.v1.SupplierListRequest
+	11, // 18: warehouse.inventory.v1.SupplierService.SupplierDetail:input_type -> warehouse.inventory.v1.SupplierDetailRequest
+	13, // 19: warehouse.inventory.v1.SupplierService.SupplierUpdate:input_type -> warehouse.inventory.v1.SupplierUpdateRequest
+	15, // 20: warehouse.inventory.v1.SupplierService.SupplierDelete:input_type -> warehouse.inventory.v1.SupplierDeleteRequest
+	4,  // 21: warehouse.inventory.v1.SupplierService.SupplierCreate:output_type -> warehouse.inventory.v1.SupplierCreateResponse
+	10, // 22: warehouse.inventory.v1.SupplierService.SupplierList:output_type -> warehouse.inventory.v1.SupplierListResponse
+	12, // 23: warehouse.inventory.v1.SupplierService.SupplierDetail:output_type -> warehouse.inventory.v1.SupplierDetailResponse
+	14, // 24: warehouse.inventory.v1.SupplierService.SupplierUpdate:output_type -> warehouse.inventory.v1.SupplierUpdateResponse
+	16, // 25: warehouse.inventory.v1.SupplierService.SupplierDelete:output_type -> warehouse.inventory.v1.SupplierDeleteResponse
+	21, // [21:26] is the sub-list for method output_type
+	16, // [16:21] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_supplier_proto_init() }
@@ -878,19 +1312,28 @@ func file_warehouse_inventory_v1_supplier_proto_init() {
 	if File_warehouse_inventory_v1_supplier_proto != nil {
 		return
 	}
-	file_warehouse_inventory_v1_supplier_proto_msgTypes[7].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_supplier_proto_msgTypes[5].OneofWrappers = []any{
+		(*SupplierListFilterSort_General)(nil),
+		(*SupplierListFilterSort_Supplier)(nil),
+	}
+	file_warehouse_inventory_v1_supplier_proto_msgTypes[7].OneofWrappers = []any{
+		(*SupplierListResponseItem_General)(nil),
+		(*SupplierListResponseItem_Supplier)(nil),
+	}
+	file_warehouse_inventory_v1_supplier_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_supplier_proto_rawDesc), len(file_warehouse_inventory_v1_supplier_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   11,
+			NumEnums:      2,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_inventory_v1_supplier_proto_goTypes,
 		DependencyIndexes: file_warehouse_inventory_v1_supplier_proto_depIdxs,
+		EnumInfos:         file_warehouse_inventory_v1_supplier_proto_enumTypes,
 		MessageInfos:      file_warehouse_inventory_v1_supplier_proto_msgTypes,
 	}.Build()
 	File_warehouse_inventory_v1_supplier_proto = out.File

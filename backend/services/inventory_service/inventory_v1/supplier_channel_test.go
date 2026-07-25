@@ -84,18 +84,18 @@ func TestSupplierChannel_TeamScoped(t *testing.T) {
 	mustCreate(t, svc, 2, otherSupplier, chOnline, mpTokped, "C")
 
 	list, err := svc.SupplierChannelList(context.Background(), connect.NewRequest(&inventoryv1.SupplierChannelListRequest{
-		TeamId: 2, SupplierId: supplierID, Page: page1(),
+		TeamId: 2, Filter: &inventoryv1.SupplierChannelListFilter{SupplierId: supplierID}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(list.Msg.GetChannels()) != 2 {
-		t.Fatalf("supplier channels = %d, want 2", len(list.Msg.GetChannels()))
+	if len(channelRows(list.Msg)) != 2 {
+		t.Fatalf("supplier channels = %d, want 2", len(channelRows(list.Msg)))
 	}
 
 	// A team that does not own the supplier reads it as NotFound (create and list alike).
 	_, err = svc.SupplierChannelList(context.Background(), connect.NewRequest(&inventoryv1.SupplierChannelListRequest{
-		TeamId: 3, SupplierId: supplierID, Page: page1(),
+		TeamId: 3, Filter: &inventoryv1.SupplierChannelListFilter{SupplierId: supplierID}, Page: page1C(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team list code = %v, want NotFound", connect.CodeOf(err))
@@ -182,13 +182,13 @@ func TestSupplierChannel_Delete(t *testing.T) {
 	}
 
 	list, err := svc.SupplierChannelList(context.Background(), connect.NewRequest(&inventoryv1.SupplierChannelListRequest{
-		TeamId: 2, SupplierId: supplierID, Page: page1(),
+		TeamId: 2, Filter: &inventoryv1.SupplierChannelListFilter{SupplierId: supplierID}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("list after delete: %v", err)
 	}
-	if len(list.Msg.GetChannels()) != 0 {
-		t.Fatalf("deleted channel still listed: %+v", list.Msg.GetChannels())
+	if len(channelRows(list.Msg)) != 0 {
+		t.Fatalf("deleted channel still listed: %+v", channelRows(list.Msg))
 	}
 }
 

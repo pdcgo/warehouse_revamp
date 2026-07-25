@@ -23,7 +23,7 @@ func (s *Service) SupplierList(
 		Model(&inventory_service_models.Supplier{}).
 		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR code ILIKE ?", pattern, pattern)
 	}
@@ -38,7 +38,7 @@ func (s *Service) SupplierList(
 	var suppliers []inventory_service_models.Supplier
 
 	err = query.
-		Order("id DESC").
+		Order(supplierOrderClause(req.Msg.GetSort())).
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
 		Find(&suppliers).
@@ -47,13 +47,11 @@ func (s *Service) SupplierList(
 		return nil, supplierDBError(err)
 	}
 
-	out := make([]*inventoryv1.Supplier, 0, len(suppliers))
-	for i := range suppliers {
-		out = append(out, supplierToProto(&suppliers[i]))
-	}
+	items, ids := supplierListItems(suppliers, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.SupplierListResponse{
-		Suppliers: out,
-		PageInfo:  pageInfo(page, total),
+		Items:    items,
+		Ids:      ids,
+		PageInfo: pageInfo(page, total),
 	}), nil
 }

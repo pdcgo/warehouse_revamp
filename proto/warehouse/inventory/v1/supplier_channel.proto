@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -63,13 +64,36 @@ message SupplierChannelListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  SupplierChannelListFilter filter = 2;
+  repeated SupplierChannelListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message SupplierChannelListFilter {
+  uint64 supplier_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum SupplierChannelListDataType {
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_GENERAL = 1;
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_SUPPLIER_CHANNEL = 2;
+}
+
+message SupplierChannelMapItem {
+  map<uint64, SupplierChannel> map_data = 1;
+}
+
+message SupplierChannelListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SupplierChannelMapItem supplier_channel = 2;
+  }
 }
 
 message SupplierChannelListResponse {
-  repeated SupplierChannel channels = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated SupplierChannelListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message SupplierChannelCreateRequest {

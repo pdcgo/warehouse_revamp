@@ -2,11 +2,13 @@
 // @generated from file warehouse/inventory/v1/supplier.proto (package warehouse.inventory.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/supplier.proto.
  */
 export const file_warehouse_inventory_v1_supplier: GenFile = /*@__PURE__*/
-  fileDesc("CiV3YXJlaG91c2UvaW52ZW50b3J5L3YxL3N1cHBsaWVyLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIqsBCghTdXBwbGllchIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBGNvZGUYAyABKAkSDAoEbmFtZRgEIAEoCRIPCgdjb250YWN0GAUgASgJEhAKCHByb3ZpbmNlGAYgASgJEgwKBGNpdHkYByABKAkSDwoHYWRkcmVzcxgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIPCgdkZWxldGVkGAogASgIIvoBChVTdXBwbGllckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoEY29kZRgCIAEoCUIJukgGcgQQARggEhgKBG5hbWUYAyABKAlCCrpIB3IFEAEYyAESGAoHY29udGFjdBgEIAEoCUIHukgEcgIYMhIZCghwcm92aW5jZRgFIAEoCUIHukgEcgIYZBIVCgRjaXR5GAYgASgJQge6SARyAhhkEhkKB2FkZHJlc3MYByABKAlCCLpIBXIDGPQDEh0KC2Rlc2NyaXB0aW9uGAggASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJMChZTdXBwbGllckNyZWF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciKOAQoTU3VwcGxpZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARISCgFxGAIgASgJQge6SARyAhhkEjUKBHBhZ2UYAyABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgifQoUU3VwcGxpZXJMaXN0UmVzcG9uc2USMwoJc3VwcGxpZXJzGAEgAygLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllchIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvImMKFVN1cHBsaWVyRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiTAoWU3VwcGxpZXJEZXRhaWxSZXNwb25zZRIyCghzdXBwbGllchgBIAEoCzIgLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXIiiwMKFVN1cHBsaWVyVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgABIcCgRjb2RlGAMgASgJQgm6SAZyBBABGCBIAIgBARIdCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBSAGIAQESHQoHY29udGFjdBgFIAEoCUIHukgEcgIYMkgCiAEBEh4KCHByb3ZpbmNlGAYgASgJQge6SARyAhhkSAOIAQESGgoEY2l0eRgHIAEoCUIHukgEcgIYZEgEiAEBEh4KB2FkZHJlc3MYCCABKAlCCLpIBXIDGPQDSAWIAQESIgoLZGVzY3JpcHRpb24YCSABKAlCCLpIBXIDGPQDSAaIAQE6CpK1GAYKBAECAwRCBwoFX2NvZGVCBwoFX25hbWVCCgoIX2NvbnRhY3RCCwoJX3Byb3ZpbmNlQgcKBV9jaXR5QgoKCF9hZGRyZXNzQg4KDF9kZXNjcmlwdGlvbiJMChZTdXBwbGllclVwZGF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciJfChVTdXBwbGllckRlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU3VwcGxpZXJEZWxldGVSZXNwb25zZTLABAoPU3VwcGxpZXJTZXJ2aWNlEm8KDlN1cHBsaWVyQ3JlYXRlEi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckNyZWF0ZVJlcXVlc3QaLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQ3JlYXRlUmVzcG9uc2USaQoMU3VwcGxpZXJMaXN0Eisud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckxpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckxpc3RSZXNwb25zZRJvCg5TdXBwbGllckRldGFpbBItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZXRhaWxSZXF1ZXN0Gi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRldGFpbFJlc3BvbnNlEm8KDlN1cHBsaWVyVXBkYXRlEi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllclVwZGF0ZVJlcXVlc3QaLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyVXBkYXRlUmVzcG9uc2USbwoOU3VwcGxpZXJEZWxldGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyRGVsZXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiV3YXJlaG91c2UvaW52ZW50b3J5L3YxL3N1cHBsaWVyLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIqsBCghTdXBwbGllchIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBGNvZGUYAyABKAkSDAoEbmFtZRgEIAEoCRIPCgdjb250YWN0GAUgASgJEhAKCHByb3ZpbmNlGAYgASgJEgwKBGNpdHkYByABKAkSDwoHYWRkcmVzcxgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIPCgdkZWxldGVkGAogASgIIvoBChVTdXBwbGllckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoEY29kZRgCIAEoCUIJukgGcgQQARggEhgKBG5hbWUYAyABKAlCCrpIB3IFEAEYyAESGAoHY29udGFjdBgEIAEoCUIHukgEcgIYMhIZCghwcm92aW5jZRgFIAEoCUIHukgEcgIYZBIVCgRjaXR5GAYgASgJQge6SARyAhhkEhkKB2FkZHJlc3MYByABKAlCCLpIBXIDGPQDEh0KC2Rlc2NyaXB0aW9uGAggASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJMChZTdXBwbGllckNyZWF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciK+AgoTU3VwcGxpZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI6CgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdEZpbHRlchI8CgRzb3J0GAMgASgLMi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckxpc3RGaWx0ZXJTb3J0EkIKDGRhdGFfcmVxdWVzdBgEIAMoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOg6StRgKCggBAgMEBQYJCCIoChJTdXBwbGllckxpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZCLHAQoWU3VwcGxpZXJMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASOwoIc3VwcGxpZXIYAyABKA4yJy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyUm93U29ydEgAQgMKAXMisQEKElN1cHBsaWVyUm93TWFwSXRlbRJJCghtYXBfZGF0YRgBIAMoCzI3LndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpQCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEi8KBXZhbHVlGAIgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllcjoCOAEilwEKGFN1cHBsaWVyTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEj4KCHN1cHBsaWVyGAIgASgLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllclJvd01hcEl0ZW1IAEIDCgFkIpYBChRTdXBwbGllckxpc3RSZXNwb25zZRI/CgVpdGVtcxgBIAMoCzIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvImMKFVN1cHBsaWVyRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiTAoWU3VwcGxpZXJEZXRhaWxSZXNwb25zZRIyCghzdXBwbGllchgBIAEoCzIgLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXIiiwMKFVN1cHBsaWVyVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgABIcCgRjb2RlGAMgASgJQgm6SAZyBBABGCBIAIgBARIdCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBSAGIAQESHQoHY29udGFjdBgFIAEoCUIHukgEcgIYMkgCiAEBEh4KCHByb3ZpbmNlGAYgASgJQge6SARyAhhkSAOIAQESGgoEY2l0eRgHIAEoCUIHukgEcgIYZEgEiAEBEh4KB2FkZHJlc3MYCCABKAlCCLpIBXIDGPQDSAWIAQESIgoLZGVzY3JpcHRpb24YCSABKAlCCLpIBXIDGPQDSAaIAQE6CpK1GAYKBAECAwRCBwoFX2NvZGVCBwoFX25hbWVCCgoIX2NvbnRhY3RCCwoJX3Byb3ZpbmNlQgcKBV9jaXR5QgoKCF9hZGRyZXNzQg4KDF9kZXNjcmlwdGlvbiJMChZTdXBwbGllclVwZGF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciJfChVTdXBwbGllckRlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU3VwcGxpZXJEZWxldGVSZXNwb25zZSqKAQoUU3VwcGxpZXJMaXN0RGF0YVR5cGUSJwojU1VQUExJRVJfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9TVVBQTElFUl9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESJAogU1VQUExJRVJfTElTVF9EQVRBX1RZUEVfU1VQUExJRVIQAiqGAQoPU3VwcGxpZXJSb3dTb3J0EiEKHVNVUFBMSUVSX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASGAoUU1VQUExJRVJfUk9XX1NPUlRfSUQQARIaChZTVVBQTElFUl9ST1dfU09SVF9OQU1FEAISGgoWU1VQUExJRVJfUk9XX1NPUlRfQ09ERRADMsAECg9TdXBwbGllclNlcnZpY2USbwoOU3VwcGxpZXJDcmVhdGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQ3JlYXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJDcmVhdGVSZXNwb25zZRJpCgxTdXBwbGllckxpc3QSKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdFJlcXVlc3QaLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdFJlc3BvbnNlEm8KDlN1cHBsaWVyRGV0YWlsEi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRldGFpbFJlcXVlc3QaLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyRGV0YWlsUmVzcG9uc2USbwoOU3VwcGxpZXJVcGRhdGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyVXBkYXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJVcGRhdGVSZXNwb25zZRJvCg5TdXBwbGllckRlbGV0ZRItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZWxldGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRlbGV0ZVJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.inventory.v1.Supplier
@@ -159,14 +161,24 @@ export type SupplierListRequest = Message<"warehouse.inventory.v1.SupplierListRe
   teamId: bigint;
 
   /**
-   * @generated from field: string q = 2;
+   * @generated from field: warehouse.inventory.v1.SupplierListFilter filter = 2;
    */
-  q: string;
+  filter?: SupplierListFilter;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from field: warehouse.inventory.v1.SupplierListFilterSort sort = 3;
    */
-  page?: PageFilter;
+  sort?: SupplierListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.inventory.v1.SupplierListDataType data_request = 4;
+   */
+  dataRequest: SupplierListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -177,16 +189,118 @@ export const SupplierListRequestSchema: GenMessage<SupplierListRequest> = /*@__P
   messageDesc(file_warehouse_inventory_v1_supplier, 3);
 
 /**
+ * @generated from message warehouse.inventory.v1.SupplierListFilter
+ */
+export type SupplierListFilter = Message<"warehouse.inventory.v1.SupplierListFilter"> & {
+  /**
+   * @generated from field: string q = 1;
+   */
+  q: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierListFilter.
+ * Use `create(SupplierListFilterSchema)` to create a new message.
+ */
+export const SupplierListFilterSchema: GenMessage<SupplierListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 4);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierListFilterSort
+ */
+export type SupplierListFilterSort = Message<"warehouse.inventory.v1.SupplierListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.inventory.v1.SupplierListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.SupplierRowSort supplier = 3;
+     */
+    value: SupplierRowSort;
+    case: "supplier";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierListFilterSort.
+ * Use `create(SupplierListFilterSortSchema)` to create a new message.
+ */
+export const SupplierListFilterSortSchema: GenMessage<SupplierListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 5);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierRowMapItem
+ */
+export type SupplierRowMapItem = Message<"warehouse.inventory.v1.SupplierRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.Supplier> map_data = 1;
+   */
+  mapData: { [key: string]: Supplier };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierRowMapItem.
+ * Use `create(SupplierRowMapItemSchema)` to create a new message.
+ */
+export const SupplierRowMapItemSchema: GenMessage<SupplierRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 6);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierListResponseItem
+ */
+export type SupplierListResponseItem = Message<"warehouse.inventory.v1.SupplierListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.inventory.v1.SupplierListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.SupplierRowMapItem supplier = 2;
+     */
+    value: SupplierRowMapItem;
+    case: "supplier";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierListResponseItem.
+ * Use `create(SupplierListResponseItemSchema)` to create a new message.
+ */
+export const SupplierListResponseItemSchema: GenMessage<SupplierListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 7);
+
+/**
  * @generated from message warehouse.inventory.v1.SupplierListResponse
  */
 export type SupplierListResponse = Message<"warehouse.inventory.v1.SupplierListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.inventory.v1.Supplier suppliers = 1;
+   * @generated from field: repeated warehouse.inventory.v1.SupplierListResponseItem items = 1;
    */
-  suppliers: Supplier[];
+  items: SupplierListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -196,7 +310,7 @@ export type SupplierListResponse = Message<"warehouse.inventory.v1.SupplierListR
  * Use `create(SupplierListResponseSchema)` to create a new message.
  */
 export const SupplierListResponseSchema: GenMessage<SupplierListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 4);
+  messageDesc(file_warehouse_inventory_v1_supplier, 8);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDetailRequest
@@ -218,7 +332,7 @@ export type SupplierDetailRequest = Message<"warehouse.inventory.v1.SupplierDeta
  * Use `create(SupplierDetailRequestSchema)` to create a new message.
  */
 export const SupplierDetailRequestSchema: GenMessage<SupplierDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 5);
+  messageDesc(file_warehouse_inventory_v1_supplier, 9);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDetailResponse
@@ -235,7 +349,7 @@ export type SupplierDetailResponse = Message<"warehouse.inventory.v1.SupplierDet
  * Use `create(SupplierDetailResponseSchema)` to create a new message.
  */
 export const SupplierDetailResponseSchema: GenMessage<SupplierDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 6);
+  messageDesc(file_warehouse_inventory_v1_supplier, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierUpdateRequest
@@ -294,7 +408,7 @@ export type SupplierUpdateRequest = Message<"warehouse.inventory.v1.SupplierUpda
  * Use `create(SupplierUpdateRequestSchema)` to create a new message.
  */
 export const SupplierUpdateRequestSchema: GenMessage<SupplierUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 7);
+  messageDesc(file_warehouse_inventory_v1_supplier, 11);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierUpdateResponse
@@ -311,7 +425,7 @@ export type SupplierUpdateResponse = Message<"warehouse.inventory.v1.SupplierUpd
  * Use `create(SupplierUpdateResponseSchema)` to create a new message.
  */
 export const SupplierUpdateResponseSchema: GenMessage<SupplierUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 8);
+  messageDesc(file_warehouse_inventory_v1_supplier, 12);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDeleteRequest
@@ -333,7 +447,7 @@ export type SupplierDeleteRequest = Message<"warehouse.inventory.v1.SupplierDele
  * Use `create(SupplierDeleteRequestSchema)` to create a new message.
  */
 export const SupplierDeleteRequestSchema: GenMessage<SupplierDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 9);
+  messageDesc(file_warehouse_inventory_v1_supplier, 13);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDeleteResponse
@@ -346,7 +460,64 @@ export type SupplierDeleteResponse = Message<"warehouse.inventory.v1.SupplierDel
  * Use `create(SupplierDeleteResponseSchema)` to create a new message.
  */
 export const SupplierDeleteResponseSchema: GenMessage<SupplierDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 10);
+  messageDesc(file_warehouse_inventory_v1_supplier, 14);
+
+/**
+ * @generated from enum warehouse.inventory.v1.SupplierListDataType
+ */
+export enum SupplierListDataType {
+  /**
+   * @generated from enum value: SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPPLIER_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SUPPLIER_LIST_DATA_TYPE_SUPPLIER = 2;
+   */
+  SUPPLIER = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.SupplierListDataType.
+ */
+export const SupplierListDataTypeSchema: GenEnum<SupplierListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_supplier, 0);
+
+/**
+ * @generated from enum warehouse.inventory.v1.SupplierRowSort
+ */
+export enum SupplierRowSort {
+  /**
+   * @generated from enum value: SUPPLIER_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPPLIER_ROW_SORT_ID = 1;
+   */
+  ID = 1,
+
+  /**
+   * @generated from enum value: SUPPLIER_ROW_SORT_NAME = 2;
+   */
+  NAME = 2,
+
+  /**
+   * @generated from enum value: SUPPLIER_ROW_SORT_CODE = 3;
+   */
+  CODE = 3,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.SupplierRowSort.
+ */
+export const SupplierRowSortSchema: GenEnum<SupplierRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_supplier, 1);
 
 /**
  * SupplierService owns `suppliers` — the vendors a team buys stock from (#103), managed under the

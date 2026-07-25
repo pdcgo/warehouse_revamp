@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -87,13 +88,52 @@ message SupplierListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string q = 2 [(buf.validate.field).string.max_len = 100];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  SupplierListFilter filter = 2;
+  SupplierListFilterSort sort = 3;
+  repeated SupplierListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message SupplierListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+enum SupplierListDataType {
+  SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_LIST_DATA_TYPE_GENERAL = 1;
+  SUPPLIER_LIST_DATA_TYPE_SUPPLIER = 2;
+}
+
+enum SupplierRowSort {
+  SUPPLIER_ROW_SORT_UNSPECIFIED = 0;
+  SUPPLIER_ROW_SORT_ID = 1;
+  SUPPLIER_ROW_SORT_NAME = 2;
+  SUPPLIER_ROW_SORT_CODE = 3;
+}
+
+message SupplierListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    SupplierRowSort supplier = 3;
+  }
+}
+
+message SupplierRowMapItem {
+  map<uint64, Supplier> map_data = 1;
+}
+
+message SupplierListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SupplierRowMapItem supplier = 2;
+  }
 }
 
 message SupplierListResponse {
-  repeated Supplier suppliers = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated SupplierListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message SupplierDetailRequest {

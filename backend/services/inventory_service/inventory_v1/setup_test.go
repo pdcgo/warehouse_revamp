@@ -94,6 +94,12 @@ func page1() *commonv1.PageFilter {
 	return &commonv1.PageFilter{Page: 1, Limit: 50}
 }
 
+// page1C is page1 for the guideline list RPCs, which take CommonPagination. Both live here during the
+// inventory migration; page1 goes away once every inventory list is on the new shape.
+func page1C() *commonv1.CommonPagination {
+	return &commonv1.CommonPagination{Page: 1, Limit: 50}
+}
+
 // ctxUser puts an acting identity in ctx, as the access interceptor would, so the ledger records an
 // actor. Handlers are called directly in these tests (no interceptor), so authorization is not
 // exercised here — only the stock logic.

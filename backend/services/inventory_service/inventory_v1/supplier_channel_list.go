@@ -17,7 +17,7 @@ func (s *Service) SupplierChannelList(
 	req *connect.Request[inventoryv1.SupplierChannelListRequest],
 ) (*connect.Response[inventoryv1.SupplierChannelListResponse], error) {
 	teamID := req.Msg.GetTeamId()
-	supplierID := req.Msg.GetSupplierId()
+	supplierID := req.Msg.GetFilter().GetSupplierId()
 	page := req.Msg.GetPage()
 
 	exists, err := supplierExists(s.db.WithContext(ctx), teamID, supplierID)
@@ -52,13 +52,11 @@ func (s *Service) SupplierChannelList(
 		return nil, channelErr(err)
 	}
 
-	out := make([]*inventoryv1.SupplierChannel, 0, len(channels))
-	for i := range channels {
-		out = append(out, supplierChannelToProto(&channels[i]))
-	}
+	items, ids := supplierChannelListItems(channels, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.SupplierChannelListResponse{
-		Channels: out,
+		Items:    items,
+		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
 }

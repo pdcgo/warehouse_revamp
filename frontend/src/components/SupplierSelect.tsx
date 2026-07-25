@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, supplierClient } from "../api/clients";
+import { suppliersFromList, supplierListRowData } from "../features/suppliers/adapt";
 import type { Supplier } from "../gen/warehouse/inventory/v1/supplier_pb";
 
 // How many suppliers are loaded. A team buys from a handful — dozens at most — so the whole list is
@@ -70,9 +71,13 @@ export function SupplierSelect({
     setLoading(true);
 
     supplierClient
-      .supplierList({ teamId, q: "", page: { page: 1, limit: SUPPLIER_LIMIT } })
+      .supplierList({
+        teamId,
+        dataRequest: supplierListRowData(),
+        page: { page: 1, limit: SUPPLIER_LIMIT },
+      })
       .then((res) => {
-        if (alive) set(res.suppliers);
+        if (alive) set(suppliersFromList(res.items, res.ids));
       })
       .catch((err) => {
         if (alive) {
