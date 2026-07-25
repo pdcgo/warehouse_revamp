@@ -28,13 +28,18 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
     setError("");
 
     try {
-      const res = await shopClient.shopUserList({ teamId, shopId, page: { page: 1, limit: 100 } });
-      setUserIds(res.userIds);
+      const res = await shopClient.shopUserList({
+        teamId,
+        filter: { shopId },
+        page: { page: 1, limit: 100 },
+      });
+      // The user ids now live in the guideline `ids` channel.
+      setUserIds(res.ids);
 
-      if (res.userIds.length > 0) {
+      if (res.ids.length > 0) {
         const resolved = publicUsersByIds(
           await userClient.userByIDs({
-            filter: { ids: res.userIds },
+            filter: { ids: res.ids },
             dataRequest: userByIdsRowData(),
           }),
         );

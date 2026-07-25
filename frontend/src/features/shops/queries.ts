@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { shopClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { shopListRowData, shopsFromList } from "./adapt";
 
 // The shop screens' reads (#176).
 
@@ -17,10 +18,15 @@ export function useShops(args: {
     queryKey: key.shops(teamId, { q, page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
-      const res = await shopClient.shopList({ teamId: teamId!, q, page: { page, limit: pageSize } });
+      const res = await shopClient.shopList({
+        teamId: teamId!,
+        filter: { q },
+        dataRequest: shopListRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
-        shops: res.shops,
+        shops: shopsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -52,9 +58,13 @@ export function useShopOptions(args: { teamId: bigint }) {
     queryKey: key.shops(teamId, { options: true }),
     enabled: teamId > 0n,
     queryFn: async () => {
-      const res = await shopClient.shopList({ teamId, q: "", page: { page: 1, limit: 100 } });
+      const res = await shopClient.shopList({
+        teamId,
+        dataRequest: shopListRowData(),
+        page: { page: 1, limit: 100 },
+      });
 
-      return res.shops;
+      return shopsFromList(res.items, res.ids);
     },
   });
 }

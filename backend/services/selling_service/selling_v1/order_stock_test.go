@@ -63,14 +63,14 @@ func TestOrderCreate_NoStockMeansNoOrder(t *testing.T) {
 
 	// And no order row survived — read it back rather than trusting the error.
 	lst, err := svc.OrderList(context.Background(), connect.NewRequest(&sellingv1.OrderListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetOrders()) != 0 {
-		t.Fatalf("a failed pick left %d orders behind", len(lst.Msg.GetOrders()))
+	if len(orderRows(lst.Msg)) != 0 {
+		t.Fatalf("a failed pick left %d orders behind", len(orderRows(lst.Msg)))
 	}
 }
 

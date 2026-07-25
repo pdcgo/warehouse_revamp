@@ -21,23 +21,23 @@ func TestShopList_ScopedAndSearchable(t *testing.T) {
 
 	// Team 2 sees only its own two shops.
 	resp, err := svc.ShopList(context.Background(), connect.NewRequest(&sellingv1.ShopListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("ShopList: %v", err)
 	}
-	if len(resp.Msg.GetShops()) != 2 {
-		t.Fatalf("team 2 shops = %d, want 2", len(resp.Msg.GetShops()))
+	if len(shopRows(resp.Msg)) != 2 {
+		t.Fatalf("team 2 shops = %d, want 2", len(shopRows(resp.Msg)))
 	}
 
 	// `q` filters by name or code.
 	resp, err = svc.ShopList(context.Background(), connect.NewRequest(&sellingv1.ShopListRequest{
-		TeamId: 2, Q: "alpha", Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Filter: &sellingv1.ShopListFilter{Q: "alpha"}, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("ShopList (q): %v", err)
 	}
-	if len(resp.Msg.GetShops()) != 1 || resp.Msg.GetShops()[0].GetName() != "Alpha Store" {
-		t.Fatalf("search result = %+v", resp.Msg.GetShops())
+	if len(shopRows(resp.Msg)) != 1 || shopRows(resp.Msg)[0].GetName() != "Alpha Store" {
+		t.Fatalf("search result = %+v", shopRows(resp.Msg))
 	}
 }

@@ -42,7 +42,7 @@ func TestOrderDraftDelete_RemovesSeveralAtOnce(t *testing.T) {
 		t.Fatalf("deleted = %d, want 2", got)
 	}
 
-	remaining := listDrafts(t, svc, 7, 2, "").GetDrafts()
+	remaining := draftRows(listDrafts(t, svc, 7, 2, ""))
 	if len(remaining) != 1 || remaining[0].GetId() != keep {
 		t.Fatalf("%d drafts left, want only %d", len(remaining), keep)
 	}

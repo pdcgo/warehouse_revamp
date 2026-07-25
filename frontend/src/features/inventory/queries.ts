@@ -18,6 +18,7 @@ import {
 } from "../products/adapt";
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
+import { orderListRowData, ordersFromList } from "../orders/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -218,7 +219,12 @@ export function useWarehouseProductActivity(args: {
     enabled: warehouseId !== undefined && productId > 0n,
     queryFn: async () => {
       const [orderRes, restockRes, incomingRes] = await Promise.all([
-        orderClient.orderList({ teamId: warehouseId!, productId, page: { page: 1, limit: 5 } }),
+        orderClient.orderList({
+          teamId: warehouseId!,
+          filter: { productId },
+          dataRequest: orderListRowData(),
+          page: { page: 1, limit: 5 },
+        }),
         // Fulfilled deliveries — the BATCHES (owner, 2026-07-21: a batch is a delivery).
         restockClient.restockRequestList({
           teamId: warehouseId!,
@@ -236,7 +242,7 @@ export function useWarehouseProductActivity(args: {
       ]);
 
       return {
-        lastOrders: orderRes.orders,
+        lastOrders: ordersFromList(orderRes.items, orderRes.ids),
         restocks: restockRes.requests,
         incoming: incomingRes.requests,
       };

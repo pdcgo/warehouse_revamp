@@ -138,15 +138,15 @@ func TestOrder_ListScopedAndCrossTeamDetail(t *testing.T) {
 
 	// Team 2 sees both; the list is a summary (no items).
 	lst, err := svc.OrderList(ctx, connect.NewRequest(&sellingv1.OrderListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("OrderList: %v", err)
 	}
-	if len(lst.Msg.GetOrders()) != 2 {
-		t.Fatalf("orders = %d, want 2", len(lst.Msg.GetOrders()))
+	if len(orderRows(lst.Msg)) != 2 {
+		t.Fatalf("orders = %d, want 2", len(orderRows(lst.Msg)))
 	}
-	if len(lst.Msg.GetOrders()[0].GetItems()) != 0 {
+	if len(orderRows(lst.Msg)[0].GetItems()) != 0 {
 		t.Fatalf("list should not carry items")
 	}
 

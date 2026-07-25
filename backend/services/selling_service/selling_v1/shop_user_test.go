@@ -17,13 +17,16 @@ func listUsers(t *testing.T, svc interface {
 	t.Helper()
 
 	resp, err := svc.ShopUserList(context.Background(), connect.NewRequest(&sellingv1.ShopUserListRequest{
-		TeamId: teamID, ShopId: shopID, Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: teamID,
+		Filter: &sellingv1.ShopUserListFilter{ShopId: shopID},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ShopUserList: %v", err)
 	}
 
-	return resp.Msg.GetUserIds()
+	// The user ids now live in the guideline `ids` channel.
+	return resp.Msg.GetIds()
 }
 
 func TestShopUser_AddListRemove(t *testing.T) {
@@ -78,7 +81,9 @@ func TestShopUser_CrossTeamIsolation(t *testing.T) {
 	}
 
 	_, err = svc.ShopUserList(ctx, connect.NewRequest(&sellingv1.ShopUserListRequest{
-		TeamId: 3, ShopId: shopID, Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: 3,
+		Filter: &sellingv1.ShopUserListFilter{ShopId: shopID},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("cross-team list code = %v, want NotFound", connect.CodeOf(err))

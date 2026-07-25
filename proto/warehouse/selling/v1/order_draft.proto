@@ -4,6 +4,7 @@ package warehouse.selling.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 import "warehouse/selling/v1/order.proto";
 
@@ -145,18 +146,53 @@ message OrderDraftListRequest {
 
   // REQUIRED (HARD RULE 9), and not a formality here: drafts never expire, and an app pushing
   // continuously fills this list far faster than a human ever would. It is a list that only grows.
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  OrderDraftListFilter filter = 2;
+  OrderDraftListFilterSort sort = 3;
+  repeated OrderDraftListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
 
-  // Only drafts pushed by THIS app. Empty means all of them. Server-side, because the list is
-  // paginated — a client-side filter would narrow the loaded page only and report the unfiltered
-  // total beside it.
-  string source = 3 [(buf.validate.field).string.max_len = 64];
+message OrderDraftListFilter {
+  // Only drafts pushed by THIS app. Empty means all of them. Server-side (the list is paginated).
+  string source = 1 [(buf.validate.field).string.max_len = 64];
+}
+
+enum OrderDraftListDataType {
+  ORDER_DRAFT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_DRAFT_LIST_DATA_TYPE_GENERAL = 1;
+  ORDER_DRAFT_LIST_DATA_TYPE_ORDER_DRAFT = 2;
+}
+
+enum OrderDraftRowSort {
+  ORDER_DRAFT_ROW_SORT_UNSPECIFIED = 0;
+  ORDER_DRAFT_ROW_SORT_ID = 1;
+}
+
+message OrderDraftListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    OrderDraftRowSort order_draft = 3;
+  }
+}
+
+// The ORDER_DRAFT slice reuses the OrderDraft message directly (a list summary leaves items empty,
+// but carries item_count / unmapped_item_count).
+message OrderDraftRowMapItem {
+  map<uint64, OrderDraft> map_data = 1;
+}
+
+message OrderDraftListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OrderDraftRowMapItem order_draft = 2;
+  }
 }
 
 message OrderDraftListResponse {
-  // Draft summaries — no line items, but `item_count` / `unmapped_item_count` on each.
-  repeated OrderDraft drafts = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated OrderDraftListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message OrderDraftDetailRequest {

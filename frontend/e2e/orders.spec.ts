@@ -178,19 +178,22 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       return res.json();
     };
 
-    const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-    const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+    // The guideline list shape: response has `items` (a per-slice oneof keyed by id) + sorted `ids`.
+    // Pull the row slice's map and match within it.
+    const rowMap = (res: { items?: Record<string, { mapData?: Record<string, unknown> }>[] }, slice: string) =>
+      Object.values(res.items?.find((it) => it[slice])?.[slice]?.mapData ?? {}) as Record<string, string>[];
 
-    // No `q`: Connect's JSON omits empty arrays, so a search that matches nothing comes back with no
-    // `products` key at all — indistinguishable from a broken call. Listing and matching here fails
-    // loudly and obviously instead.
+    const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
+    const warehouse = rowMap(teams, "team").find((t) => t.teamCode === whCode);
+
     const products = await call("product.v1.ProductService/ProductDiscover", {
       teamId: "1",
       page: { page: 1, limit: 200 },
     });
-    const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+    const discovered = rowMap(products, "product");
+    const product = discovered.find((p) => p.sku === sku);
     if (!product) {
-      throw new Error(`product ${sku} not found among ${(products.products ?? []).length} discovered`);
+      throw new Error(`product ${sku} not found among ${discovered.length} discovered`);
     }
 
     await call("inventory.v1.InventoryService/StockReceive", {
@@ -395,19 +398,19 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
       };
 
       const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find((t: any) => t.teamCode === whCode);
 
       // Searched by SKU rather than scanned out of a page: this test runs late in a serial suite, and
       // relying on the wanted product being inside an arbitrary first page is a fuse waiting to blow.
       const products = await call("product.v1.ProductService/ProductDiscover", {
         teamId: "1",
-        q: sku,
+        filter: { q: sku },
         page: { page: 1, limit: 50 },
       });
-      const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
       if (!product) {
         throw new Error(
-          `product ${sku} not found among ${(products.products ?? []).length} results for q=${sku}`,
+          `product ${sku} not found among ${(Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).length} results for q=${sku}`,
         );
       }
 
@@ -493,14 +496,14 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
       };
 
       const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find((t: any) => t.teamCode === whCode);
 
       const products = await call("product.v1.ProductService/ProductDiscover", {
         teamId: "1",
-        q: sku,
+        filter: { q: sku },
         page: { page: 1, limit: 50 },
       });
-      const product = (products.products ?? []).find((p: { sku: string }) => p.sku === sku);
+      const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
       if (!product) throw new Error(`product ${sku} not found`);
 
       for (const code of ["ACC-01", "ACC-02"]) {
@@ -626,7 +629,7 @@ test("Settings: a default warehouse pre-fills the order form (#145)", async ({ p
       };
 
       const teams = await call("team.v1.TeamService/TeamList", { page: { page: 1, limit: 200 } });
-      const warehouse = teams.teams.find((t: { teamCode: string }) => t.teamCode === whCode);
+      const warehouse = (Object.values(teams.items?.find((it: any) => it.team)?.team?.mapData ?? {}) as any[]).find((t: any) => t.teamCode === whCode);
 
       await call("team.v1.TeamService/TeamInfoUpdate", {
         teamId: "1",

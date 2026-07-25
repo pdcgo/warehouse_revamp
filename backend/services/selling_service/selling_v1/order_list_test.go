@@ -23,8 +23,8 @@ func listOrders(
 
 	res, err := svc.OrderList(context.Background(), connect.NewRequest(&sellingv1.OrderListRequest{
 		TeamId: teamID,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
-		Status: status,
+		Filter: &sellingv1.OrderListFilter{Status: status},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("OrderList(team=%d, status=%v): %v", teamID, status, err)
@@ -47,17 +47,17 @@ func TestOrderList_TheWarehouseSeesOrdersShippingFromIt(t *testing.T) {
 
 	got := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
 
-	if len(got.GetOrders()) != 1 {
-		t.Fatalf("the warehouse sees %d orders, want 1", len(got.GetOrders()))
+	if len(orderRows(got)) != 1 {
+		t.Fatalf("the warehouse sees %d orders, want 1", len(orderRows(got)))
 	}
-	if got.GetOrders()[0].GetId() != id {
-		t.Fatalf("the warehouse sees order %d, want %d", got.GetOrders()[0].GetId(), id)
+	if orderRows(got)[0].GetId() != id {
+		t.Fatalf("the warehouse sees order %d, want %d", orderRows(got)[0].GetId(), id)
 	}
 
 	// The selling team still sees its own — extending the read must not have taken the original away.
 	mine := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
-	if len(mine.GetOrders()) != 1 {
-		t.Fatalf("the selling team sees %d orders, want 1", len(mine.GetOrders()))
+	if len(orderRows(mine)) != 1 {
+		t.Fatalf("the selling team sees %d orders, want 1", len(orderRows(mine)))
 	}
 }
 
@@ -73,8 +73,8 @@ func TestOrderList_AnUnrelatedTeamSeesNothing(t *testing.T) {
 	const strangerTeam uint64 = 902
 
 	got := listOrders(t, svc, strangerTeam, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
-	if len(got.GetOrders()) != 0 {
-		t.Fatalf("an unrelated team sees %d orders, want 0", len(got.GetOrders()))
+	if len(orderRows(got)) != 0 {
+		t.Fatalf("an unrelated team sees %d orders, want 0", len(orderRows(got)))
 	}
 	if got.GetPageInfo().GetTotalItems() != 0 {
 		t.Fatalf("an unrelated team's total = %d, want 0", got.GetPageInfo().GetTotalItems())
@@ -102,11 +102,11 @@ func TestOrderList_FiltersByStatus(t *testing.T) {
 
 	queue := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
 
-	if len(queue.GetOrders()) != 1 {
-		t.Fatalf("the pick queue holds %d orders, want 1", len(queue.GetOrders()))
+	if len(orderRows(queue)) != 1 {
+		t.Fatalf("the pick queue holds %d orders, want 1", len(orderRows(queue)))
 	}
-	if queue.GetOrders()[0].GetId() != waiting {
-		t.Fatalf("the queue holds order %d, want the un-picked %d", queue.GetOrders()[0].GetId(), waiting)
+	if orderRows(queue)[0].GetId() != waiting {
+		t.Fatalf("the queue holds order %d, want the un-picked %d", orderRows(queue)[0].GetId(), waiting)
 	}
 
 	// The count must respect the filter too. It drives the pager: an unfiltered total would page a
@@ -117,8 +117,8 @@ func TestOrderList_FiltersByStatus(t *testing.T) {
 
 	// And UNSPECIFIED still means all of them.
 	all := listOrders(t, svc, testWarehouse, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
-	if len(all.GetOrders()) != 2 {
-		t.Fatalf("unfiltered = %d orders, want 2", len(all.GetOrders()))
+	if len(orderRows(all)) != 2 {
+		t.Fatalf("unfiltered = %d orders, want 2", len(orderRows(all)))
 	}
 }
 
@@ -148,13 +148,13 @@ func TestOrderList_TheStatusFilterAppliesToTheSellingSideToo(t *testing.T) {
 
 	got := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_CONFIRMED)
 
-	if len(got.GetOrders()) != 1 {
+	if len(orderRows(got)) != 1 {
 		t.Fatalf("the selling team's CONFIRMED list holds %d orders, want 1 — if this is 2, the status "+
-			"filter is not reaching the selling leg of the OR", len(got.GetOrders()))
+			"filter is not reaching the selling leg of the OR", len(orderRows(got)))
 	}
-	if got.GetOrders()[0].GetId() != confirmed {
+	if orderRows(got)[0].GetId() != confirmed {
 		t.Fatalf("filtered list holds order %d, want the confirmed %d (the placed one is %d)",
-			got.GetOrders()[0].GetId(), confirmed, placed.Msg.GetOrder().GetId())
+			orderRows(got)[0].GetId(), confirmed, placed.Msg.GetOrder().GetId())
 	}
 }
 
@@ -229,15 +229,15 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 
 	res, err := svc.OrderList(ctx, connect.NewRequest(&sellingv1.OrderListRequest{
 		TeamId: 2,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
 		// #159 — this product only.
-		ProductId: wanted,
+		Filter: &sellingv1.OrderListFilter{ProductId: wanted},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("OrderList: %v", err)
 	}
 
-	got := res.Msg.GetOrders()
+	got := orderRows(res.Msg)
 	if len(got) != 1 {
 		t.Fatalf("filtered list holds %d orders, want exactly 1 — a JOIN would return the "+
 			"two-line order twice", len(got))
@@ -253,7 +253,7 @@ func TestOrderList_FiltersByProduct(t *testing.T) {
 
 	// 0 means no filter — the filter must not become a requirement.
 	all := listOrders(t, svc, 2, sellingv1.OrderStatus_ORDER_STATUS_UNSPECIFIED)
-	if len(all.GetOrders()) != 2 {
-		t.Fatalf("unfiltered list holds %d orders, want 2", len(all.GetOrders()))
+	if len(orderRows(all)) != 2 {
+		t.Fatalf("unfiltered list holds %d orders, want 2", len(orderRows(all)))
 	}
 }

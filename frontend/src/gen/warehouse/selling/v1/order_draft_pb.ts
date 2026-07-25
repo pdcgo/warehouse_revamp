@@ -2,11 +2,13 @@
 // @generated from file warehouse/selling/v1/order_draft.proto (package warehouse.selling.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Order, OrderAddress } from "./order_pb";
 import { file_warehouse_selling_v1_order } from "./order_pb";
@@ -16,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order_draft.proto.
  */
 export const file_warehouse_selling_v1_order_draft: GenFile = /*@__PURE__*/
-  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIs8DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SGwoTdW5tYXBwZWRfaXRlbV9jb3VudBgSIAEoDSKSAQoVT3JkZXJEcmFmdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBHBhZ2UYAiABKAsyHy53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VGaWx0ZXJCBrpIA8gBARIXCgZzb3VyY2UYAyABKAlCB7pIBHICGEA6C5K1GAcKBQECAwQFInwKFk9yZGVyRHJhZnRMaXN0UmVzcG9uc2USMAoGZHJhZnRzGAEgAygLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIl8KF09yZGVyRHJhZnREZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJLChhPcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImMKEk9yZGVyRHJhZnRMaW5lRWRpdBIKCgJpZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhsKCnVuaXRfcHJpY2UYBCABKANCB7pIBCICKAAiSgoPT3JkZXJEcmFmdExpbmVzEjcKBWxpbmVzGAEgAygLMigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVFZGl0IvcDChdPcmRlckRyYWZ0VXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghkcmFmdF9pZBgCIAEoBEIHukgEMgIgABIUCgdzaG9wX2lkGAMgASgESACIAQESGQoMd2FyZWhvdXNlX2lkGAQgASgESAGIAQESJAoNY3VzdG9tZXJfbmFtZRgFIAEoCUIIukgFcgMYyAFIAogBARIkCg5jdXN0b21lcl9waG9uZRgGIAEoCUIHukgEcgIYKEgDiAEBEjMKB2FkZHJlc3MYByABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3MSIwoNc2hpcHBpbmdfY29kZRgIIAEoCUIHukgEcgIYKEgEiAEBEiMKDXNoaXBwaW5nX2Nvc3QYCSABKANCB7pIBCICKABIBYgBARI0CgVpdGVtcxgKIAEoCzIlLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaW5lczoLkrUYBwoFAQIDBAVCCgoIX3Nob3BfaWRCDwoNX3dhcmVob3VzZV9pZEIQCg5fY3VzdG9tZXJfbmFtZUIRCg9fY3VzdG9tZXJfcGhvbmVCEAoOX3NoaXBwaW5nX2NvZGVCEAoOX3NoaXBwaW5nX2Nvc3QiSwoYT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEi8KBWRyYWZ0GAEgASgLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdCJjChdPcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCglkcmFmdF9pZHMYAiADKARCCrpIB5IBBAgBEGQ6C5K1GAcKBQECAwQFIisKGE9yZGVyRHJhZnREZWxldGVSZXNwb25zZRIPCgdkZWxldGVkGAEgASgNIpEDChVPcmRlckRyYWZ0UHVzaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoGc291cmNlGAIgASgJQgm6SAZyBBABGEASHwoLZXh0ZXJuYWxfaWQYAyABKAlCCrpIB3IFEAEYgAESDwoHc2hvcF9pZBgEIAEoBBIUCgx3YXJlaG91c2VfaWQYBSABKAQSHwoNY3VzdG9tZXJfbmFtZRgGIAEoCUIIukgFcgMYyAESHwoOY3VzdG9tZXJfcGhvbmUYByABKAlCB7pIBHICGCgSMwoHYWRkcmVzcxgIIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIeCg1zaGlwcGluZ19jb2RlGAkgASgJQge6SARyAhgoEh4KDXNoaXBwaW5nX2Nvc3QYCiABKANCB7pIBCICKAASMwoFaXRlbXMYCyADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbToLkrUYBwoFAQIDBAUiWgoWT3JkZXJEcmFmdFB1c2hSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQSDwoHY3JlYXRlZBgCIAEoCCJgChhPcmRlckRyYWZ0UHJvbW90ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIZHJhZnRfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkcKGU9yZGVyRHJhZnRQcm9tb3RlUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlcjK8BQoRT3JkZXJEcmFmdFNlcnZpY2USawoOT3JkZXJEcmFmdFB1c2gSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0UHVzaFJlc3BvbnNlEmsKDk9yZGVyRHJhZnRMaXN0Eisud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXF1ZXN0Giwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZRJxChBPcmRlckRyYWZ0RGV0YWlsEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERldGFpbFJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVzcG9uc2UScQoQT3JkZXJEcmFmdFVwZGF0ZRItLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRVcGRhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFVwZGF0ZVJlc3BvbnNlEnEKEE9yZGVyRHJhZnREZWxldGUSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGVsZXRlUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZWxldGVSZXNwb25zZRJ0ChFPcmRlckRyYWZ0UHJvbW90ZRIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRQcm9tb3RlUmVxdWVzdBovLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRQcm9tb3RlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
+  fileDesc("CiZ3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlcl9kcmFmdC5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEilwEKDk9yZGVyRHJhZnRJdGVtEgoKAmlkGAEgASgEEh4KDGV4dGVybmFsX3NrdRgCIAEoCUIIukgFcgMYgAESHwoNZXh0ZXJuYWxfbmFtZRgDIAEoCUIIukgFcgMY9AMSEgoKcHJvZHVjdF9pZBgEIAEoBBIQCghxdWFudGl0eRgFIAEoDRISCgp1bml0X3ByaWNlGAYgASgDIs8DCgpPcmRlckRyYWZ0EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFgoOYXV0aG9yX3VzZXJfaWQYAyABKAQSDgoGc291cmNlGAQgASgJEhMKC2V4dGVybmFsX2lkGAUgASgJEhYKDnRvdWNoZWRfZmllbGRzGAYgAygJEg8KB3Nob3BfaWQYByABKAQSFAoMd2FyZWhvdXNlX2lkGAggASgEEhUKDWN1c3RvbWVyX25hbWUYCSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYCiABKAkSMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIVCg1zaGlwcGluZ19jb2RlGAwgASgJEhUKDXNoaXBwaW5nX2Nvc3QYDSABKAMSMwoFaXRlbXMYDiADKAsyJC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0SXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDyABKAMSFwoPdXBkYXRlZF9hdF91bml4GBAgASgDEhIKCml0ZW1fY291bnQYESABKA0SGwoTdW5tYXBwZWRfaXRlbV9jb3VudBgSIAEoDSK9AgoVT3JkZXJEcmFmdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjoKBmZpbHRlchgCIAEoCzIqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRMaXN0RmlsdGVyEjwKBHNvcnQYAyABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGlzdEZpbHRlclNvcnQSQgoMZGF0YV9yZXF1ZXN0GAQgAygOMiwud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6C5K1GAcKBQECAwQFIi8KFE9yZGVyRHJhZnRMaXN0RmlsdGVyEhcKBnNvdXJjZRgBIAEoCUIHukgEcgIYQCLMAQoYT3JkZXJEcmFmdExpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI+CgtvcmRlcl9kcmFmdBgDIAEoDjInLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRSb3dTb3J0SABCAwoBcyKzAQoUT3JkZXJEcmFmdFJvd01hcEl0ZW0SSQoIbWFwX2RhdGEYASADKAsyNy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0Um93TWFwSXRlbS5NYXBEYXRhRW50cnkaUAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIvCgV2YWx1ZRgCIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQ6AjgBIpwBChpPcmRlckRyYWZ0TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkEKC29yZGVyX2RyYWZ0GAIgASgLMioud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFJvd01hcEl0ZW1IAEIDCgFkIpgBChZPcmRlckRyYWZ0TGlzdFJlc3BvbnNlEj8KBWl0ZW1zGAEgAygLMjAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iXwoXT3JkZXJEcmFmdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIZHJhZnRfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIksKGE9yZGVyRHJhZnREZXRhaWxSZXNwb25zZRIvCgVkcmFmdBgBIAEoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnQiYwoST3JkZXJEcmFmdExpbmVFZGl0EgoKAmlkGAEgASgEEhIKCnByb2R1Y3RfaWQYAiABKAQSEAoIcXVhbnRpdHkYAyABKA0SGwoKdW5pdF9wcmljZRgEIAEoA0IHukgEIgIoACJKCg9PcmRlckRyYWZ0TGluZXMSNwoFbGluZXMYASADKAsyKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGluZUVkaXQi9wMKF09yZGVyRHJhZnRVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCGRyYWZ0X2lkGAIgASgEQge6SAQyAiAAEhQKB3Nob3BfaWQYAyABKARIAIgBARIZCgx3YXJlaG91c2VfaWQYBCABKARIAYgBARIkCg1jdXN0b21lcl9uYW1lGAUgASgJQgi6SAVyAxjIAUgCiAEBEiQKDmN1c3RvbWVyX3Bob25lGAYgASgJQge6SARyAhgoSAOIAQESMwoHYWRkcmVzcxgHIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIjCg1zaGlwcGluZ19jb2RlGAggASgJQge6SARyAhgoSASIAQESIwoNc2hpcHBpbmdfY29zdBgJIAEoA0IHukgEIgIoAEgFiAEBEjQKBWl0ZW1zGAogASgLMiUud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdExpbmVzOguStRgHCgUBAgMEBUIKCghfc2hvcF9pZEIPCg1fd2FyZWhvdXNlX2lkQhAKDl9jdXN0b21lcl9uYW1lQhEKD19jdXN0b21lcl9waG9uZUIQCg5fc2hpcHBpbmdfY29kZUIQCg5fc2hpcHBpbmdfY29zdCJLChhPcmRlckRyYWZ0VXBkYXRlUmVzcG9uc2USLwoFZHJhZnQYASABKAsyIC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0ImMKF09yZGVyRHJhZnREZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KCWRyYWZ0X2lkcxgCIAMoBEIKukgHkgEECAEQZDoLkrUYBwoFAQIDBAUiKwoYT3JkZXJEcmFmdERlbGV0ZVJlc3BvbnNlEg8KB2RlbGV0ZWQYASABKA0ikQMKFU9yZGVyRHJhZnRQdXNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCgZzb3VyY2UYAiABKAlCCbpIBnIEEAEYQBIfCgtleHRlcm5hbF9pZBgDIAEoCUIKukgHcgUQARiAARIPCgdzaG9wX2lkGAQgASgEEhQKDHdhcmVob3VzZV9pZBgFIAEoBBIfCg1jdXN0b21lcl9uYW1lGAYgASgJQgi6SAVyAxjIARIfCg5jdXN0b21lcl9waG9uZRgHIAEoCUIHukgEcgIYKBIzCgdhZGRyZXNzGAggASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzEh4KDXNoaXBwaW5nX2NvZGUYCSABKAlCB7pIBHICGCgSHgoNc2hpcHBpbmdfY29zdBgKIAEoA0IHukgEIgIoABIzCgVpdGVtcxgLIAMoCzIkLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRJdGVtOguStRgHCgUBAgMEBSJaChZPcmRlckRyYWZ0UHVzaFJlc3BvbnNlEi8KBWRyYWZ0GAEgASgLMiAud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdBIPCgdjcmVhdGVkGAIgASgIImAKGE9yZGVyRHJhZnRQcm9tb3RlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghkcmFmdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiRwoZT3JkZXJEcmFmdFByb21vdGVSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyKpgBChZPcmRlckRyYWZ0TGlzdERhdGFUeXBlEioKJk9SREVSX0RSQUZUX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASJgoiT1JERVJfRFJBRlRfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEioKJk9SREVSX0RSQUZUX0xJU1RfREFUQV9UWVBFX09SREVSX0RSQUZUEAIqVgoRT3JkZXJEcmFmdFJvd1NvcnQSJAogT1JERVJfRFJBRlRfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIbChdPUkRFUl9EUkFGVF9ST1dfU09SVF9JRBABMrwFChFPcmRlckRyYWZ0U2VydmljZRJrCg5PcmRlckRyYWZ0UHVzaBIrLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRQdXNoUmVxdWVzdBosLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnRQdXNoUmVzcG9uc2USawoOT3JkZXJEcmFmdExpc3QSKy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGlzdFJlcXVlc3QaLC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0TGlzdFJlc3BvbnNlEnEKEE9yZGVyRHJhZnREZXRhaWwSLS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0RGV0YWlsUmVxdWVzdBouLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZXRhaWxSZXNwb25zZRJxChBPcmRlckRyYWZ0VXBkYXRlEi0ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFVwZGF0ZVJlcXVlc3QaLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRyYWZ0VXBkYXRlUmVzcG9uc2UScQoQT3JkZXJEcmFmdERlbGV0ZRItLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRHJhZnREZWxldGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdERlbGV0ZVJlc3BvbnNlEnQKEU9yZGVyRHJhZnRQcm9tb3RlEi4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFByb21vdGVSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJEcmFmdFByb21vdGVSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role, file_warehouse_selling_v1_order]);
 
 /**
  * One scraped line of a draft.
@@ -232,18 +234,24 @@ export type OrderDraftListRequest = Message<"warehouse.selling.v1.OrderDraftList
    * REQUIRED (HARD RULE 9), and not a formality here: drafts never expire, and an app pushing
    * continuously fills this list far faster than a human ever would. It is a list that only grows.
    *
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.selling.v1.OrderDraftListFilter filter = 2;
    */
-  page?: PageFilter;
+  filter?: OrderDraftListFilter;
 
   /**
-   * Only drafts pushed by THIS app. Empty means all of them. Server-side, because the list is
-   * paginated — a client-side filter would narrow the loaded page only and report the unfiltered
-   * total beside it.
-   *
-   * @generated from field: string source = 3;
+   * @generated from field: warehouse.selling.v1.OrderDraftListFilterSort sort = 3;
    */
-  source: string;
+  sort?: OrderDraftListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.selling.v1.OrderDraftListDataType data_request = 4;
+   */
+  dataRequest: OrderDraftListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -254,18 +262,123 @@ export const OrderDraftListRequestSchema: GenMessage<OrderDraftListRequest> = /*
   messageDesc(file_warehouse_selling_v1_order_draft, 2);
 
 /**
+ * @generated from message warehouse.selling.v1.OrderDraftListFilter
+ */
+export type OrderDraftListFilter = Message<"warehouse.selling.v1.OrderDraftListFilter"> & {
+  /**
+   * Only drafts pushed by THIS app. Empty means all of them. Server-side (the list is paginated).
+   *
+   * @generated from field: string source = 1;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftListFilter.
+ * Use `create(OrderDraftListFilterSchema)` to create a new message.
+ */
+export const OrderDraftListFilterSchema: GenMessage<OrderDraftListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 3);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftListFilterSort
+ */
+export type OrderDraftListFilterSort = Message<"warehouse.selling.v1.OrderDraftListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.selling.v1.OrderDraftListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.selling.v1.OrderDraftRowSort order_draft = 3;
+     */
+    value: OrderDraftRowSort;
+    case: "orderDraft";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftListFilterSort.
+ * Use `create(OrderDraftListFilterSortSchema)` to create a new message.
+ */
+export const OrderDraftListFilterSortSchema: GenMessage<OrderDraftListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 4);
+
+/**
+ * The ORDER_DRAFT slice reuses the OrderDraft message directly (a list summary leaves items empty,
+ * but carries item_count / unmapped_item_count).
+ *
+ * @generated from message warehouse.selling.v1.OrderDraftRowMapItem
+ */
+export type OrderDraftRowMapItem = Message<"warehouse.selling.v1.OrderDraftRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.selling.v1.OrderDraft> map_data = 1;
+   */
+  mapData: { [key: string]: OrderDraft };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftRowMapItem.
+ * Use `create(OrderDraftRowMapItemSchema)` to create a new message.
+ */
+export const OrderDraftRowMapItemSchema: GenMessage<OrderDraftRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 5);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderDraftListResponseItem
+ */
+export type OrderDraftListResponseItem = Message<"warehouse.selling.v1.OrderDraftListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.selling.v1.OrderDraftListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.selling.v1.OrderDraftRowMapItem order_draft = 2;
+     */
+    value: OrderDraftRowMapItem;
+    case: "orderDraft";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderDraftListResponseItem.
+ * Use `create(OrderDraftListResponseItemSchema)` to create a new message.
+ */
+export const OrderDraftListResponseItemSchema: GenMessage<OrderDraftListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order_draft, 6);
+
+/**
  * @generated from message warehouse.selling.v1.OrderDraftListResponse
  */
 export type OrderDraftListResponse = Message<"warehouse.selling.v1.OrderDraftListResponse"> & {
   /**
-   * Draft summaries — no line items, but `item_count` / `unmapped_item_count` on each.
-   *
-   * @generated from field: repeated warehouse.selling.v1.OrderDraft drafts = 1;
+   * @generated from field: repeated warehouse.selling.v1.OrderDraftListResponseItem items = 1;
    */
-  drafts: OrderDraft[];
+  items: OrderDraftListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -275,7 +388,7 @@ export type OrderDraftListResponse = Message<"warehouse.selling.v1.OrderDraftLis
  * Use `create(OrderDraftListResponseSchema)` to create a new message.
  */
 export const OrderDraftListResponseSchema: GenMessage<OrderDraftListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 3);
+  messageDesc(file_warehouse_selling_v1_order_draft, 7);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftDetailRequest
@@ -297,7 +410,7 @@ export type OrderDraftDetailRequest = Message<"warehouse.selling.v1.OrderDraftDe
  * Use `create(OrderDraftDetailRequestSchema)` to create a new message.
  */
 export const OrderDraftDetailRequestSchema: GenMessage<OrderDraftDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 4);
+  messageDesc(file_warehouse_selling_v1_order_draft, 8);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftDetailResponse
@@ -317,7 +430,7 @@ export type OrderDraftDetailResponse = Message<"warehouse.selling.v1.OrderDraftD
  * Use `create(OrderDraftDetailResponseSchema)` to create a new message.
  */
 export const OrderDraftDetailResponseSchema: GenMessage<OrderDraftDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 5);
+  messageDesc(file_warehouse_selling_v1_order_draft, 9);
 
 /**
  * One line as a PERSON edits it (#193) — the mapping act, and the small corrections around it.
@@ -361,7 +474,7 @@ export type OrderDraftLineEdit = Message<"warehouse.selling.v1.OrderDraftLineEdi
  * Use `create(OrderDraftLineEditSchema)` to create a new message.
  */
 export const OrderDraftLineEditSchema: GenMessage<OrderDraftLineEdit> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 6);
+  messageDesc(file_warehouse_selling_v1_order_draft, 10);
 
 /**
  * The complete desired set of lines. Its own message so it has PRESENCE: an absent `lines` means
@@ -385,7 +498,7 @@ export type OrderDraftLines = Message<"warehouse.selling.v1.OrderDraftLines"> & 
  * Use `create(OrderDraftLinesSchema)` to create a new message.
  */
 export const OrderDraftLinesSchema: GenMessage<OrderDraftLines> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 7);
+  messageDesc(file_warehouse_selling_v1_order_draft, 11);
 
 /**
  * OrderDraftUpdate is the person's edit, made in our UI (#193) — mapping a scraped line to a real
@@ -462,7 +575,7 @@ export type OrderDraftUpdateRequest = Message<"warehouse.selling.v1.OrderDraftUp
  * Use `create(OrderDraftUpdateRequestSchema)` to create a new message.
  */
 export const OrderDraftUpdateRequestSchema: GenMessage<OrderDraftUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 8);
+  messageDesc(file_warehouse_selling_v1_order_draft, 12);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftUpdateResponse
@@ -482,7 +595,7 @@ export type OrderDraftUpdateResponse = Message<"warehouse.selling.v1.OrderDraftU
  * Use `create(OrderDraftUpdateResponseSchema)` to create a new message.
  */
 export const OrderDraftUpdateResponseSchema: GenMessage<OrderDraftUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 9);
+  messageDesc(file_warehouse_selling_v1_order_draft, 13);
 
 /**
  * OrderDraftDelete prunes drafts. Nothing expires (§6.7), so this is the only thing standing between
@@ -515,7 +628,7 @@ export type OrderDraftDeleteRequest = Message<"warehouse.selling.v1.OrderDraftDe
  * Use `create(OrderDraftDeleteRequestSchema)` to create a new message.
  */
 export const OrderDraftDeleteRequestSchema: GenMessage<OrderDraftDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 10);
+  messageDesc(file_warehouse_selling_v1_order_draft, 14);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftDeleteResponse
@@ -537,7 +650,7 @@ export type OrderDraftDeleteResponse = Message<"warehouse.selling.v1.OrderDraftD
  * Use `create(OrderDraftDeleteResponseSchema)` to create a new message.
  */
 export const OrderDraftDeleteResponseSchema: GenMessage<OrderDraftDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 11);
+  messageDesc(file_warehouse_selling_v1_order_draft, 15);
 
 /**
  * OrderDraftPush is the third-party app's intake (#191). CREATE-OR-UPDATE, keyed on
@@ -630,7 +743,7 @@ export type OrderDraftPushRequest = Message<"warehouse.selling.v1.OrderDraftPush
  * Use `create(OrderDraftPushRequestSchema)` to create a new message.
  */
 export const OrderDraftPushRequestSchema: GenMessage<OrderDraftPushRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 12);
+  messageDesc(file_warehouse_selling_v1_order_draft, 16);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftPushResponse
@@ -656,7 +769,7 @@ export type OrderDraftPushResponse = Message<"warehouse.selling.v1.OrderDraftPus
  * Use `create(OrderDraftPushResponseSchema)` to create a new message.
  */
 export const OrderDraftPushResponseSchema: GenMessage<OrderDraftPushResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 13);
+  messageDesc(file_warehouse_selling_v1_order_draft, 17);
 
 /**
  * OrderDraftPromote turns a finished draft into a real order (#194).
@@ -692,7 +805,7 @@ export type OrderDraftPromoteRequest = Message<"warehouse.selling.v1.OrderDraftP
  * Use `create(OrderDraftPromoteRequestSchema)` to create a new message.
  */
 export const OrderDraftPromoteRequestSchema: GenMessage<OrderDraftPromoteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 14);
+  messageDesc(file_warehouse_selling_v1_order_draft, 18);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDraftPromoteResponse
@@ -712,7 +825,54 @@ export type OrderDraftPromoteResponse = Message<"warehouse.selling.v1.OrderDraft
  * Use `create(OrderDraftPromoteResponseSchema)` to create a new message.
  */
 export const OrderDraftPromoteResponseSchema: GenMessage<OrderDraftPromoteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order_draft, 15);
+  messageDesc(file_warehouse_selling_v1_order_draft, 19);
+
+/**
+ * @generated from enum warehouse.selling.v1.OrderDraftListDataType
+ */
+export enum OrderDraftListDataType {
+  /**
+   * @generated from enum value: ORDER_DRAFT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ORDER_DRAFT_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: ORDER_DRAFT_LIST_DATA_TYPE_ORDER_DRAFT = 2;
+   */
+  ORDER_DRAFT = 2,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.OrderDraftListDataType.
+ */
+export const OrderDraftListDataTypeSchema: GenEnum<OrderDraftListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_order_draft, 0);
+
+/**
+ * @generated from enum warehouse.selling.v1.OrderDraftRowSort
+ */
+export enum OrderDraftRowSort {
+  /**
+   * @generated from enum value: ORDER_DRAFT_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ORDER_DRAFT_ROW_SORT_ID = 1;
+   */
+  ID = 1,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.OrderDraftRowSort.
+ */
+export const OrderDraftRowSortSchema: GenEnum<OrderDraftRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_order_draft, 1);
 
 /**
  * OrderDraftService owns `order_drafts` + `order_draft_items` (#190,

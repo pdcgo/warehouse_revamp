@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { inventoryClient, orderClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { useInvalidateOrders } from "../orders/queries";
 import { useInvalidateStock } from "../inventory/queries";
 
@@ -36,12 +37,13 @@ export function usePickQueue(args: {
     queryFn: async () => {
       const res = await orderClient.orderList({
         teamId: warehouseId!,
+        filter: { status },
+        dataRequest: orderListRowData(),
         page: { page, limit: pageSize },
-        status,
       });
 
       return {
-        orders: res.orders,
+        orders: ordersFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

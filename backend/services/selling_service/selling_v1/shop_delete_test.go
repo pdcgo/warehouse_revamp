@@ -26,13 +26,13 @@ func TestShopDelete_SoftDeletesAndDropsFromList(t *testing.T) {
 
 	// Gone from the list (ShopList excludes deleted = true).
 	resp, err := svc.ShopList(context.Background(), connect.NewRequest(&sellingv1.ShopListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 20},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 20},
 	}))
 	if err != nil {
 		t.Fatalf("ShopList: %v", err)
 	}
-	if len(resp.Msg.GetShops()) != 0 {
-		t.Fatalf("deleted shop still listed: %+v", resp.Msg.GetShops())
+	if len(shopRows(resp.Msg)) != 0 {
+		t.Fatalf("deleted shop still listed: %+v", shopRows(resp.Msg))
 	}
 }
 

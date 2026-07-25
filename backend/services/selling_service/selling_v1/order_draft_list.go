@@ -37,7 +37,7 @@ func (s *Service) OrderDraftList(
 
 	// One app's drafts, or all of them. Server-side because the list is paginated — filtering the
 	// loaded page in the client would narrow one page and report the unfiltered total beside it.
-	if source := req.Msg.GetSource(); source != "" {
+	if source := req.Msg.GetFilter().GetSource(); source != "" {
 		query = query.Where("source = ?", source)
 	}
 
@@ -53,7 +53,7 @@ func (s *Service) OrderDraftList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(draftOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&drafts).
@@ -67,18 +67,21 @@ func (s *Service) OrderDraftList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*sellingv1.OrderDraft, 0, len(drafts))
+	protoDrafts := make([]*sellingv1.OrderDraft, 0, len(drafts))
 
 	for i := range drafts {
 		draft := draftToProto(&drafts[i])
 		draft.ItemCount = counts[drafts[i].ID].total
 		draft.UnmappedItemCount = counts[drafts[i].ID].unmapped
 
-		out = append(out, draft)
+		protoDrafts = append(protoDrafts, draft)
 	}
 
+	items, ids := draftListItems(protoDrafts, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&sellingv1.OrderDraftListResponse{
-		Drafts: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

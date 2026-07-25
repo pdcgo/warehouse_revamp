@@ -17,7 +17,7 @@ func (s *Service) ShopUserList(
 	req *connect.Request[sellingv1.ShopUserListRequest],
 ) (*connect.Response[sellingv1.ShopUserListResponse], error) {
 	teamID := req.Msg.GetTeamId()
-	shopID := req.Msg.GetShopId()
+	shopID := req.Msg.GetFilter().GetShopId()
 	page := req.Msg.GetPage()
 
 	// The team_id clause is the scope check — a shop in another team reads as NotFound.
@@ -61,8 +61,11 @@ func (s *Service) ShopUserList(
 		userIDs = append(userIDs, rows[i].UserID)
 	}
 
+	items, ids := shopUserListItems(userIDs, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&sellingv1.ShopUserListResponse{
-		UserIds: userIDs,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

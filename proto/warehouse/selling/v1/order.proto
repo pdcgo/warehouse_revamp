@@ -4,6 +4,7 @@ package warehouse.selling.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
@@ -236,27 +237,58 @@ message OrderListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  OrderListFilter filter = 2;
+  OrderListFilterSort sort = 3;
+  repeated OrderListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
 
+// OrderListFilter carries the NON-scope filters (both server-side because the list is paginated).
+message OrderListFilter {
   // Filter to ONE status; UNSPECIFIED (the default) means ALL of them (#151).
-  //
-  // Server-side because the list is PAGINATED: filtering the loaded page in the client would show only
-  // the confirmed orders that happened to land in this page, and count them wrong. It is what makes a
-  // pick queue possible — "the CONFIRMED orders shipping from my warehouse".
-  OrderStatus status = 3 [(buf.validate.field).enum.defined_only = true];
-
+  OrderStatus status = 1 [(buf.validate.field).enum.defined_only = true];
   // Only orders carrying THIS product on one of their lines (#159). 0 = no filter.
-  //
-  // Server-side, like the status above: the list is paginated, so a client-side filter would narrow
-  // the loaded page only and report the unfiltered total beside it. "When did this product last go
-  // out" is exactly the question whose answer is off page one.
-  uint64 product_id = 4;
+  uint64 product_id = 2;
+}
+
+// OrderListDataType selects which slices the response carries per order.
+enum OrderListDataType {
+  ORDER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_LIST_DATA_TYPE_GENERAL = 1;
+  ORDER_LIST_DATA_TYPE_ORDER = 2;
+}
+
+// OrderRowSort is the sort selection paired with the ORDER slice.
+enum OrderRowSort {
+  ORDER_ROW_SORT_UNSPECIFIED = 0;
+  ORDER_ROW_SORT_ID = 1;
+  ORDER_ROW_SORT_TOTAL = 2;
+}
+
+message OrderListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    OrderRowSort order = 3;
+  }
+}
+
+// The ORDER slice reuses the Order message directly (a list summary leaves items empty).
+message OrderRowMapItem {
+  map<uint64, Order> map_data = 1;
+}
+
+message OrderListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OrderRowMapItem order = 2;
+  }
 }
 
 message OrderListResponse {
-  // Order summaries (no line items).
-  repeated Order orders = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated OrderListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message OrderDetailRequest {

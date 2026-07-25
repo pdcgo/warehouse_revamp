@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderDraftClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { draftsFromList, orderDraftListRowData } from "./adapt";
 
 // The draft screens' reads and writes (#195/#196).
 //
@@ -21,12 +22,13 @@ export function useOrderDrafts(args: {
     queryFn: async () => {
       const res = await orderDraftClient.orderDraftList({
         teamId: teamId!,
+        filter: { source },
+        dataRequest: orderDraftListRowData(),
         page: { page, limit: pageSize },
-        source,
       });
 
       return {
-        drafts: res.drafts,
+        drafts: draftsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

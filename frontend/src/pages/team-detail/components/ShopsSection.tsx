@@ -5,6 +5,7 @@ import { Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shopClient } from "../../../api/clients";
 import type { Shop } from "../../../gen/warehouse/selling/v1/selling_pb";
+import { shopListRowData, shopsFromList } from "../../../features/shops/adapt";
 import { useTeam } from "../../../features/team/TeamContext";
 import { MarketplaceBadge } from "../../../components/MarketplaceBadge";
 
@@ -22,9 +23,9 @@ export function ShopsSection({ teamId }: { teamId: bigint }) {
     let alive = true;
 
     shopClient
-      .shopList({ teamId, page: { page: 1, limit: 50 } })
+      .shopList({ teamId, dataRequest: shopListRowData(), page: { page: 1, limit: 50 } })
       .then((res) => {
-        if (alive) setShops(res.shops);
+        if (alive) setShops(shopsFromList(res.items, res.ids));
       })
       .catch(() => {
         if (alive) setShops([]);

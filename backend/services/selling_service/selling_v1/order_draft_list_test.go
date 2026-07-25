@@ -23,8 +23,8 @@ func listDrafts(
 
 	res, err := svc.OrderDraftList(asUser(userID), connect.NewRequest(&sellingv1.OrderDraftListRequest{
 		TeamId: teamID,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
-		Source: source,
+		Filter: &sellingv1.OrderDraftListFilter{Source: source},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("OrderDraftList(user=%d, team=%d): %v", userID, teamID, err)
@@ -69,13 +69,13 @@ func TestOrderDraftList_ShowsOnlyTheCallersOwnDrafts(t *testing.T) {
 
 	msg := listDrafts(t, svc, 7, 2, "")
 
-	if len(msg.GetDrafts()) != 1 {
+	if len(draftRows(msg)) != 1 {
 		t.Fatalf("got %d drafts, want 1 — a colleague's draft leaked into the list",
-			len(msg.GetDrafts()))
+			len(draftRows(msg)))
 	}
 
-	if msg.GetDrafts()[0].GetId() != mine {
-		t.Fatalf("listed draft %d, want %d", msg.GetDrafts()[0].GetId(), mine)
+	if draftRows(msg)[0].GetId() != mine {
+		t.Fatalf("listed draft %d, want %d", draftRows(msg)[0].GetId(), mine)
 	}
 
 	if msg.GetPageInfo().GetTotalItems() != 1 {
@@ -93,7 +93,7 @@ func TestOrderDraftList_CountsTheUnmappedLines(t *testing.T) {
 	draftID := pushRef(t, svc, 7, "SHP-100")
 	mapLine(t, db, draftID, "MP-1", 42)
 
-	got := listDrafts(t, svc, 7, 2, "").GetDrafts()[0]
+	got := draftRows(listDrafts(t, svc, 7, 2, ""))[0]
 
 	if got.GetItemCount() != 2 {
 		t.Fatalf("item_count = %d, want 2", got.GetItemCount())
@@ -122,7 +122,7 @@ func TestOrderDraftList_ADraftWithNoLinesCountsZero(t *testing.T) {
 
 	push(t, svc, 7, empty)
 
-	got := listDrafts(t, svc, 7, 2, "").GetDrafts()[0]
+	got := draftRows(listDrafts(t, svc, 7, 2, ""))[0]
 
 	if got.GetItemCount() != 0 || got.GetUnmappedItemCount() != 0 {
 		t.Fatalf("counts = %d/%d on a draft with no lines, want 0/0",
@@ -145,8 +145,8 @@ func TestOrderDraftList_FiltersBySource(t *testing.T) {
 
 	msg := listDrafts(t, svc, 7, 2, "other-app")
 
-	if len(msg.GetDrafts()) != 1 || msg.GetDrafts()[0].GetSource() != "other-app" {
-		t.Fatalf("source filter returned %d drafts, want 1 from other-app", len(msg.GetDrafts()))
+	if len(draftRows(msg)) != 1 || draftRows(msg)[0].GetSource() != "other-app" {
+		t.Fatalf("source filter returned %d drafts, want 1 from other-app", len(draftRows(msg)))
 	}
 
 	if msg.GetPageInfo().GetTotalItems() != 1 {
@@ -164,7 +164,7 @@ func TestOrderDraftList_IsScopedToTheTeam(t *testing.T) {
 
 	msg := listDrafts(t, svc, 7, 3, "")
 
-	if len(msg.GetDrafts()) != 0 {
-		t.Fatalf("got %d drafts in a team that has none", len(msg.GetDrafts()))
+	if len(draftRows(msg)) != 0 {
+		t.Fatalf("got %d drafts in a team that has none", len(draftRows(msg)))
 	}
 }

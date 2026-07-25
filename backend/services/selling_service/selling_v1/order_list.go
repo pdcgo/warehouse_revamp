@@ -36,14 +36,14 @@ func (s *Service) OrderList(
 
 	// One status, or all of them. Server-side because the list is PAGINATED: a client-side filter would
 	// narrow the loaded page only, and the count would still be the unfiltered total.
-	if status := orderStatusToText(req.Msg.GetStatus()); status != "" {
+	if status := orderStatusToText(req.Msg.GetFilter().GetStatus()); status != "" {
 		query = query.Where("status = ?", status)
 	}
 
 	// Only orders carrying THIS product on a line (#159). An EXISTS subquery rather than a JOIN: a join
 	// against a one-to-many would return the order once PER MATCHING LINE, so an order listing the same
 	// product twice would appear twice and the paginated count would be wrong.
-	if productID := req.Msg.GetProductId(); productID != 0 {
+	if productID := req.Msg.GetFilter().GetProductId(); productID != 0 {
 		query = query.Where(
 			"EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = orders.id AND oi.product_id = ?)",
 			productID,
@@ -62,7 +62,7 @@ func (s *Service) OrderList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(orderOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&orders).
@@ -71,13 +71,11 @@ func (s *Service) OrderList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*sellingv1.Order, 0, len(orders))
-	for i := range orders {
-		out = append(out, orderToProto(&orders[i]))
-	}
+	items, ids := orderListItems(orders, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&sellingv1.OrderListResponse{
-		Orders: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

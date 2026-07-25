@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { orderListRowData, ordersFromList } from "./adapt";
 
 // The order screens' reads (#176).
 
@@ -11,10 +12,14 @@ export function useOrders(args: { teamId: bigint | undefined; page: number; page
     queryKey: key.orders(teamId, { page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
-      const res = await orderClient.orderList({ teamId: teamId!, page: { page, limit: pageSize } });
+      const res = await orderClient.orderList({
+        teamId: teamId!,
+        dataRequest: orderListRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
-        orders: res.orders,
+        orders: ordersFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

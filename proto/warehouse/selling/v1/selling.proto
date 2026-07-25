@@ -4,6 +4,7 @@ package warehouse.selling.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -87,13 +88,53 @@ message ShopListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string q = 2 [(buf.validate.field).string.max_len = 100];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  ShopListFilter filter = 2;
+  ShopListFilterSort sort = 3;
+  repeated ShopListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message ShopListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+enum ShopListDataType {
+  SHOP_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SHOP_LIST_DATA_TYPE_GENERAL = 1;
+  SHOP_LIST_DATA_TYPE_SHOP = 2;
+}
+
+enum ShopRowSort {
+  SHOP_ROW_SORT_UNSPECIFIED = 0;
+  SHOP_ROW_SORT_ID = 1;
+  SHOP_ROW_SORT_NAME = 2;
+  SHOP_ROW_SORT_SHOP_CODE = 3;
+}
+
+message ShopListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    ShopRowSort shop = 3;
+  }
+}
+
+// The SHOP slice reuses the Shop message directly.
+message ShopRowMapItem {
+  map<uint64, Shop> map_data = 1;
+}
+
+message ShopListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ShopRowMapItem shop = 2;
+  }
 }
 
 message ShopListResponse {
-  repeated Shop shops = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated ShopListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message ShopDetailRequest {
@@ -191,14 +232,41 @@ message ShopUserListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  ShopUserListFilter filter = 2;
+  ShopUserListFilterSort sort = 3;
+  repeated ShopUserListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message ShopUserListFilter {
+  uint64 shop_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+// ShopUserList returns opaque user ids; there is no user entity here, so the only slice is GENERAL
+// (id only). Callers resolve names via UserByIDs.
+enum ShopUserListDataType {
+  SHOP_USER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SHOP_USER_LIST_DATA_TYPE_GENERAL = 1;
+}
+
+message ShopUserListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+  }
+}
+
+message ShopUserListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+  }
 }
 
 message ShopUserListResponse {
-  // Opaque user_service ids; the caller resolves them (UserByIDs) to display names.
-  repeated uint64 user_ids = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  // The user ids (opaque; resolve via UserByIDs) in sorted order live in ids.
+  repeated ShopUserListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message ShopUserAddRequest {

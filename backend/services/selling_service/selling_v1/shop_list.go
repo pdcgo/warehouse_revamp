@@ -24,7 +24,7 @@ func (s *Service) ShopList(
 		Model(&selling_service_models.Shop{}).
 		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR shop_code ILIKE ?", pattern, pattern)
 	}
@@ -41,7 +41,7 @@ func (s *Service) ShopList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(shopOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&shops).
@@ -50,13 +50,11 @@ func (s *Service) ShopList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*sellingv1.Shop, 0, len(shops))
-	for i := range shops {
-		out = append(out, toProto(&shops[i]))
-	}
+	items, ids := shopListItems(shops, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&sellingv1.ShopListResponse{
-		Shops: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),
