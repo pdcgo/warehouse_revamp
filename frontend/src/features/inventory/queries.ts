@@ -19,6 +19,7 @@ import {
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
+import { restocksFromList, restockListRowData } from "../restock/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -228,23 +229,23 @@ export function useWarehouseProductActivity(args: {
         // Fulfilled deliveries — the BATCHES (owner, 2026-07-21: a batch is a delivery).
         restockClient.restockRequestList({
           teamId: warehouseId!,
-          productId,
-          status: fulfilledStatus,
+          filter: { productId, status: fulfilledStatus },
+          dataRequest: restockListRowData(),
           page: { page: 1, limit: 20 },
         }),
         // Still on its way — D's "ongoing restock".
         restockClient.restockRequestList({
           teamId: warehouseId!,
-          productId,
-          status: pendingStatus,
+          filter: { productId, status: pendingStatus },
+          dataRequest: restockListRowData(),
           page: { page: 1, limit: 20 },
         }),
       ]);
 
       return {
         lastOrders: ordersFromList(orderRes.items, orderRes.ids),
-        restocks: restockRes.requests,
-        incoming: incomingRes.requests,
+        restocks: restocksFromList(restockRes.items, restockRes.ids),
+        incoming: restocksFromList(incomingRes.items, incomingRes.ids),
       };
     },
   });

@@ -78,6 +78,47 @@ func supplierListItems(
 	return items, ids
 }
 
+// ── Restock requests ──────────────────────────────────────────────────────────────────────────────
+
+// restockRequestListItems wraps the proto requests (already built with their preloaded items).
+func restockRequestListItems(
+	rrs []*inventoryv1.RestockRequest,
+	types []inventoryv1.RestockRequestListDataType,
+) ([]*inventoryv1.RestockRequestListResponseItem, []uint64) {
+	if len(types) == 0 {
+		types = []inventoryv1.RestockRequestListDataType{inventoryv1.RestockRequestListDataType_RESTOCK_REQUEST_LIST_DATA_TYPE_RESTOCK_REQUEST}
+	}
+
+	ids := make([]uint64, 0, len(rrs))
+	for _, r := range rrs {
+		ids = append(ids, r.GetId())
+	}
+
+	items := make([]*inventoryv1.RestockRequestListResponseItem, 0, len(types))
+	for _, t := range types {
+		switch t {
+		case inventoryv1.RestockRequestListDataType_RESTOCK_REQUEST_LIST_DATA_TYPE_GENERAL:
+			m := make(map[uint64]*commonv1.GeneralItem, len(rrs))
+			for _, r := range rrs {
+				m[r.GetId()] = &commonv1.GeneralItem{Id: r.GetId()}
+			}
+			items = append(items, &inventoryv1.RestockRequestListResponseItem{
+				D: &inventoryv1.RestockRequestListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
+			})
+		case inventoryv1.RestockRequestListDataType_RESTOCK_REQUEST_LIST_DATA_TYPE_RESTOCK_REQUEST:
+			m := make(map[uint64]*inventoryv1.RestockRequest, len(rrs))
+			for _, r := range rrs {
+				m[r.GetId()] = r
+			}
+			items = append(items, &inventoryv1.RestockRequestListResponseItem{
+				D: &inventoryv1.RestockRequestListResponseItem_RestockRequest{RestockRequest: &inventoryv1.RestockRequestMapItem{MapData: m}},
+			})
+		}
+	}
+
+	return items, ids
+}
+
 // ── Supplier channels ─────────────────────────────────────────────────────────────────────────────
 
 func supplierChannelListItems(

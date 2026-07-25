@@ -27,6 +27,26 @@ func supplierRows(res *inventoryv1.SupplierListResponse) []*inventoryv1.Supplier
 	return out
 }
 
+func requestRows(res *inventoryv1.RestockRequestListResponse) []*inventoryv1.RestockRequest {
+	var m map[uint64]*inventoryv1.RestockRequest
+	for _, it := range res.GetItems() {
+		r := it.GetRestockRequest()
+		if r != nil {
+			m = r.GetMapData()
+		}
+	}
+
+	out := make([]*inventoryv1.RestockRequest, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		r, ok := m[id]
+		if ok {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}
+
 func channelRows(res *inventoryv1.SupplierChannelListResponse) []*inventoryv1.SupplierChannel {
 	var m map[uint64]*inventoryv1.SupplierChannel
 	for _, it := range res.GetItems() {

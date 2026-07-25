@@ -5,8 +5,10 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
+import type { CommonPagination, GeneralMapItem } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/restock_request.proto.
  */
 export const file_warehouse_inventory_v1_restock_request: GenFile = /*@__PURE__*/
-  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLgAgoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAkgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYCiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgIEAlSEHJlY2VpdmVkX3JhY2tfaWQi+gMKDlJlc3RvY2tSZXF1ZXN0EgoKAmlkGAEgASgEEhoKEnJlcXVlc3RpbmdfdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRI8CgZzdGF0dXMYCSABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0U3RhdHVzEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAxI5CgVpdGVtcxgLIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtEg8KB3JlY2VpcHQYDSABKAkSEwoLc3VwcGxpZXJfaWQYDiABKAQSEQoJb3JkZXJfcmVmGA8gASgJEhUKDXNoaXBwaW5nX2Nvc3QYECABKAMSGAoQY29kX3NoaXBwaW5nX2ZlZRgTIAEoAxJACgxwYXltZW50X3R5cGUYESABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZRIMCgRub3RlGBIgASgJSgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQIDBANUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5UghvcmRlcl9pZCLkAwobUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIeCg1zaGlwcGluZ19jb2RlGAcgASgJQge6SARyAhgoEkMKBWl0ZW1zGAggAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW1CCLpIBZIBAggBEhgKB3JlY2VpcHQYCiABKAlCB7pIBHICGGQSEwoLc3VwcGxpZXJfaWQYCyABKAQSGgoJb3JkZXJfcmVmGAwgASgJQge6SARyAhhkEh4KDXNoaXBwaW5nX2Nvc3QYDSABKANCB7pIBCICKAASSgoMcGF5bWVudF90eXBlGA4gASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGVCCLpIBYIBAhABEhYKBG5vdGUYDyABKAlCCLpIBXIDGOgHOguStRgHCgUBAgMEBUoECAMQBEoECAQQBUoECAUQBkoECAYQB0oECAkQClIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eVIIb3JkZXJfaWQiVwocUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCLcAQoZUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQESRgoGc3RhdHVzGAMgASgOMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFN0YXR1c0IIukgFggECEAESEgoKcHJvZHVjdF9pZBgEIAEoBDoOkrUYCgoIAQIDBAUGCQgiaAobUmVzdG9ja1JlcXVlc3REZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIlcKHFJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QiiAEKGlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlEjgKCHJlcXVlc3RzGAEgAygLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIrgDChtSZXN0b2NrUmVxdWVzdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgABIdCgx3YXJlaG91c2VfaWQYAyABKARCB7pIBDICIAASHgoNc2hpcHBpbmdfY29kZRgEIAEoCUIHukgEcgIYKBJDCgVpdGVtcxgFIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtQgi6SAWSAQIIARIYCgdyZWNlaXB0GAYgASgJQge6SARyAhhkEhMKC3N1cHBsaWVyX2lkGAcgASgEEhoKCW9yZGVyX3JlZhgIIAEoCUIHukgEcgIYZBIeCg1zaGlwcGluZ19jb3N0GAkgASgDQge6SAQiAigAEkoKDHBheW1lbnRfdHlwZRgKIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1BheW1lbnRUeXBlQgi6SAWCAQIQARIWCgRub3RlGAsgASgJQgi6SAVyAxjoBzoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCLWAQocUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAEksKBWxpbmVzGAMgAygLMjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFJlY2VpdmVkTGluZUIIukgFkgECCAESIQoQY29kX3NoaXBwaW5nX2ZlZRgEIAEoA0IHukgEIgIoADoLkrUYBwoFAQIGCQgibwoQUmVzdG9ja1BsYWNlbWVudBIaCgdyYWNrX2lkGAEgASgEQge6SAQyAiAASAASGwoIdW5wbGFjZWQYAiABKAhCB7pIBGoCCAFIABIZCghxdWFudGl0eRgDIAEoA0IHukgEIgIgAEIHCgVwbGFjZSKeAQoTUmVzdG9ja0RhbWFnZWRVbml0cxIZCghxdWFudGl0eRgBIAEoA0IHukgEIgIgABIaCgZyZWFzb24YAiABKAlCCrpIB3IFEAEYyAESQwoEdHlwZRgEIAEoDjIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0RhbWFnZVR5cGVCCrpIB4IBBBABIABKBAgDEARSBXZhbHVlIvwBChpSZXN0b2NrUmVxdWVzdFJlY2VpdmVkTGluZRIYCgdpdGVtX2lkGAEgASgEQge6SAQyAiAAEiIKEXJlY2VpdmVkX3F1YW50aXR5GAIgASgDQge6SAQiAigAEjwKCnBsYWNlbWVudHMYBSADKAsyKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQbGFjZW1lbnQSPAoHZGFtYWdlZBgGIAMoCzIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0RhbWFnZWRVbml0c0oECAMQBEoECAQQBVIHcmFja19pZFIIdW5wbGFjZWRSBXBsYWNlIlgKHVJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0ImUKG1Jlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJXChxSZXN0b2NrUmVxdWVzdENhbmNlbFJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0ImUKG1Jlc3RvY2tSZXF1ZXN0TGFiZWxzUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpyZXF1ZXN0X2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCKTAQoMUmVzdG9ja0xhYmVsEhIKCnByb2R1Y3RfaWQYASABKAQSCwoDc2t1GAIgASgJEgwKBG5hbWUYAyABKAkSEAoIYmF0Y2hfaWQYBCABKAQSEAoIcXVhbnRpdHkYBSABKAMSEQoJcmFja19jb2RlGAYgASgJEhAKCHVucGxhY2VkGAcgASgIEgsKA2hwcBgIIAEoAyKaAQocUmVzdG9ja1JlcXVlc3RMYWJlbHNSZXNwb25zZRISCgpyZXN0b2NrX2lkGAEgASgEEhgKEHJlY2VpdmVkX2F0X3VuaXgYAiABKAMSNAoGbGFiZWxzGAMgAygLMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrTGFiZWwSFgoOZXhjbHVkZWRfY291bnQYBCABKAMqrgEKFFJlc3RvY2tSZXF1ZXN0U3RhdHVzEiYKIlJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIiCh5SRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1BFTkRJTkcQARIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0ZVTEZJTExFRBACEiQKIFJFU1RPQ0tfUkVRVUVTVF9TVEFUVVNfQ0FOQ0VMTEVEEAMqhgEKElJlc3RvY2tQYXltZW50VHlwZRIkCiBSRVNUT0NLX1BBWU1FTlRfVFlQRV9VTlNQRUNJRklFRBAAEiMKH1JFU1RPQ0tfUEFZTUVOVF9UWVBFX1NIT1BFRV9QQVkQARIlCiFSRVNUT0NLX1BBWU1FTlRfVFlQRV9CQU5LX0FDQ09VTlQQAip2ChFSZXN0b2NrRGFtYWdlVHlwZRIjCh9SRVNUT0NLX0RBTUFHRV9UWVBFX1VOU1BFQ0lGSUVEEAASHgoaUkVTVE9DS19EQU1BR0VfVFlQRV9CUk9LRU4QARIcChhSRVNUT0NLX0RBTUFHRV9UWVBFX0xPU1QQAjKvBwoVUmVzdG9ja1JlcXVlc3RTZXJ2aWNlEoEBChRSZXN0b2NrUmVxdWVzdENyZWF0ZRIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlc3BvbnNlEnsKElJlc3RvY2tSZXF1ZXN0TGlzdBIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0RGV0YWlsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0VXBkYXRlEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFVwZGF0ZVJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVzcG9uc2UShAEKFVJlc3RvY2tSZXF1ZXN0RnVsZmlsbBI0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBo1LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0Q2FuY2VsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0TGFiZWxzEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExhYmVsc1JlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLgAgoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAkgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYCiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgIEAlSEHJlY2VpdmVkX3JhY2tfaWQi+gMKDlJlc3RvY2tSZXF1ZXN0EgoKAmlkGAEgASgEEhoKEnJlcXVlc3RpbmdfdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRI8CgZzdGF0dXMYCSABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0U3RhdHVzEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAxI5CgVpdGVtcxgLIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtEg8KB3JlY2VpcHQYDSABKAkSEwoLc3VwcGxpZXJfaWQYDiABKAQSEQoJb3JkZXJfcmVmGA8gASgJEhUKDXNoaXBwaW5nX2Nvc3QYECABKAMSGAoQY29kX3NoaXBwaW5nX2ZlZRgTIAEoAxJACgxwYXltZW50X3R5cGUYESABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZRIMCgRub3RlGBIgASgJSgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAISgQIDBANUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5UghvcmRlcl9pZCLkAwobUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEh0KDHdhcmVob3VzZV9pZBgCIAEoBEIHukgEMgIgABIeCg1zaGlwcGluZ19jb2RlGAcgASgJQge6SARyAhgoEkMKBWl0ZW1zGAggAygLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEl0ZW1CCLpIBZIBAggBEhgKB3JlY2VpcHQYCiABKAlCB7pIBHICGGQSEwoLc3VwcGxpZXJfaWQYCyABKAQSGgoJb3JkZXJfcmVmGAwgASgJQge6SARyAhhkEh4KDXNoaXBwaW5nX2Nvc3QYDSABKANCB7pIBCICKAASSgoMcGF5bWVudF90eXBlGA4gASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGVCCLpIBYIBAhABEhYKBG5vdGUYDyABKAlCCLpIBXIDGOgHOguStRgHCgUBAgMEBUoECAMQBEoECAQQBUoECAUQBkoECAYQB0oECAkQClIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eVIIb3JkZXJfaWQiVwocUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKSAgoZUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJACgZmaWx0ZXIYAiABKAsyMC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdEZpbHRlchJICgxkYXRhX3JlcXVlc3QYAyADKA4yMi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgidgoYUmVzdG9ja1JlcXVlc3RMaXN0RmlsdGVyEkYKBnN0YXR1cxgBIAEoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RTdGF0dXNCCLpIBYIBAhABEhIKCnByb2R1Y3RfaWQYAiABKAQivQEKFVJlc3RvY2tSZXF1ZXN0TWFwSXRlbRJMCghtYXBfZGF0YRgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtLk1hcERhdGFFbnRyeRpWCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdDoCOAEipwEKHlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkgKD3Jlc3RvY2tfcmVxdWVzdBgCIAEoCzItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtSABCAwoBZCJoChtSZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiVwocUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKiAQoaUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USRQoFaXRlbXMYASADKAsyNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyK4AwobUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAMgASgEQge6SAQyAiAAEh4KDXNoaXBwaW5nX2NvZGUYBCABKAlCB7pIBHICGCgSQwoFaXRlbXMYBSADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbUIIukgFkgECCAESGAoHcmVjZWlwdBgGIAEoCUIHukgEcgIYZBITCgtzdXBwbGllcl9pZBgHIAEoBBIaCglvcmRlcl9yZWYYCCABKAlCB7pIBHICGGQSHgoNc2hpcHBpbmdfY29zdBgJIAEoA0IHukgEIgIoABJKCgxwYXltZW50X3R5cGUYCiABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZUIIukgFggECEAESFgoEbm90ZRgLIAEoCUIIukgFcgMY6Ac6C5K1GAcKBQECAwQFIlcKHFJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3Qi1gEKHFJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgABJLCgVsaW5lcxgDIAMoCzIyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmVCCLpIBZIBAggBEiEKEGNvZF9zaGlwcGluZ19mZWUYBCABKANCB7pIBCICKAA6C5K1GAcKBQECBgkIIm8KEFJlc3RvY2tQbGFjZW1lbnQSGgoHcmFja19pZBgBIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAIgASgIQge6SARqAggBSAASGQoIcXVhbnRpdHkYAyABKANCB7pIBCICIABCBwoFcGxhY2UingEKE1Jlc3RvY2tEYW1hZ2VkVW5pdHMSGQoIcXVhbnRpdHkYASABKANCB7pIBCICIAASGgoGcmVhc29uGAIgASgJQgq6SAdyBRABGMgBEkMKBHR5cGUYBCABKA4yKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VUeXBlQgq6SAeCAQQQASAASgQIAxAEUgV2YWx1ZSL8AQoaUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmUSGAoHaXRlbV9pZBgBIAEoBEIHukgEMgIgABIiChFyZWNlaXZlZF9xdWFudGl0eRgCIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAUgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYBiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgDEARKBAgEEAVSB3JhY2tfaWRSCHVucGxhY2VkUgVwbGFjZSJYCh1SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdExhYmVsc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgikwEKDFJlc3RvY2tMYWJlbBISCgpwcm9kdWN0X2lkGAEgASgEEgsKA3NrdRgCIAEoCRIMCgRuYW1lGAMgASgJEhAKCGJhdGNoX2lkGAQgASgEEhAKCHF1YW50aXR5GAUgASgDEhEKCXJhY2tfY29kZRgGIAEoCRIQCgh1bnBsYWNlZBgHIAEoCBILCgNocHAYCCABKAMimgEKHFJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVzcG9uc2USEgoKcmVzdG9ja19pZBgBIAEoBBIYChByZWNlaXZlZF9hdF91bml4GAIgASgDEjQKBmxhYmVscxgDIAMoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0xhYmVsEhYKDmV4Y2x1ZGVkX2NvdW50GAQgASgDKq4BChRSZXN0b2NrUmVxdWVzdFN0YXR1cxImCiJSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIgoeUkVTVE9DS19SRVFVRVNUX1NUQVRVU19QRU5ESU5HEAESJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19GVUxGSUxMRUQQAhIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0NBTkNFTExFRBADKoYBChJSZXN0b2NrUGF5bWVudFR5cGUSJAogUkVTVE9DS19QQVlNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9SRVNUT0NLX1BBWU1FTlRfVFlQRV9TSE9QRUVfUEFZEAESJQohUkVTVE9DS19QQVlNRU5UX1RZUEVfQkFOS19BQ0NPVU5UEAIqrAEKGlJlc3RvY2tSZXF1ZXN0TGlzdERhdGFUeXBlEi4KKlJFU1RPQ0tfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEioKJlJFU1RPQ0tfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESMgouUkVTVE9DS19SRVFVRVNUX0xJU1RfREFUQV9UWVBFX1JFU1RPQ0tfUkVRVUVTVBACKnYKEVJlc3RvY2tEYW1hZ2VUeXBlEiMKH1JFU1RPQ0tfREFNQUdFX1RZUEVfVU5TUEVDSUZJRUQQABIeChpSRVNUT0NLX0RBTUFHRV9UWVBFX0JST0tFThABEhwKGFJFU1RPQ0tfREFNQUdFX1RZUEVfTE9TVBACMq8HChVSZXN0b2NrUmVxdWVzdFNlcnZpY2USgQEKFFJlc3RvY2tSZXF1ZXN0Q3JlYXRlEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USewoSUmVzdG9ja1JlcXVlc3RMaXN0EjEud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXF1ZXN0GjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3REZXRhaWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RVcGRhdGUSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXNwb25zZRKEAQoVUmVzdG9ja1JlcXVlc3RGdWxmaWxsEjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXF1ZXN0GjUud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RDYW5jZWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RMYWJlbHMSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMYWJlbHNSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
 
 /**
  * One line of a restock request: a product, how much of it, and what it costs.
@@ -306,31 +308,19 @@ export type RestockRequestListRequest = Message<"warehouse.inventory.v1.RestockR
   teamId: bigint;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.inventory.v1.RestockRequestListFilter filter = 2;
    */
-  page?: PageFilter;
+  filter?: RestockRequestListFilter;
 
   /**
-   * Filter to ONE status; UNSPECIFIED (the default) means ALL statuses — the list's tabs (#130).
-   *
-   * Server-side on purpose: the list is PAGINATED, so filtering the loaded page in the client would
-   * show only the pending rows that happened to land in this page, and count them wrong.
-   *
-   * @generated from field: warehouse.inventory.v1.RestockRequestStatus status = 3;
+   * @generated from field: repeated warehouse.inventory.v1.RestockRequestListDataType data_request = 3;
    */
-  status: RestockRequestStatus;
+  dataRequest: RestockRequestListDataType[];
 
   /**
-   * Only requests carrying THIS product on one of their lines (#159). 0 = no filter.
-   *
-   * Server-side, like the status above and for the same reason: the list is paginated, so filtering
-   * in the browser would narrow the loaded page only and report the unfiltered total beside it. The
-   * question it answers — "when did this warehouse last restock this product" — is precisely the one
-   * whose answer is off page one.
-   *
-   * @generated from field: uint64 product_id = 4;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
    */
-  productId: bigint;
+  page?: CommonPagination;
 };
 
 /**
@@ -339,6 +329,80 @@ export type RestockRequestListRequest = Message<"warehouse.inventory.v1.RestockR
  */
 export const RestockRequestListRequestSchema: GenMessage<RestockRequestListRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_inventory_v1_restock_request, 4);
+
+/**
+ * @generated from message warehouse.inventory.v1.RestockRequestListFilter
+ */
+export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRequestListFilter"> & {
+  /**
+   * Filter to ONE status; UNSPECIFIED means ALL statuses (the list's tabs, #130). Server-side.
+   *
+   * @generated from field: warehouse.inventory.v1.RestockRequestStatus status = 1;
+   */
+  status: RestockRequestStatus;
+
+  /**
+   * Only requests carrying THIS product on one of their lines (#159). 0 = no filter. Server-side.
+   *
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockRequestListFilter.
+ * Use `create(RestockRequestListFilterSchema)` to create a new message.
+ */
+export const RestockRequestListFilterSchema: GenMessage<RestockRequestListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 5);
+
+/**
+ * The RESTOCK_REQUEST slice reuses the RestockRequest message directly.
+ *
+ * @generated from message warehouse.inventory.v1.RestockRequestMapItem
+ */
+export type RestockRequestMapItem = Message<"warehouse.inventory.v1.RestockRequestMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.RestockRequest> map_data = 1;
+   */
+  mapData: { [key: string]: RestockRequest };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockRequestMapItem.
+ * Use `create(RestockRequestMapItemSchema)` to create a new message.
+ */
+export const RestockRequestMapItemSchema: GenMessage<RestockRequestMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 6);
+
+/**
+ * @generated from message warehouse.inventory.v1.RestockRequestListResponseItem
+ */
+export type RestockRequestListResponseItem = Message<"warehouse.inventory.v1.RestockRequestListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.inventory.v1.RestockRequestListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.RestockRequestMapItem restock_request = 2;
+     */
+    value: RestockRequestMapItem;
+    case: "restockRequest";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockRequestListResponseItem.
+ * Use `create(RestockRequestListResponseItemSchema)` to create a new message.
+ */
+export const RestockRequestListResponseItemSchema: GenMessage<RestockRequestListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 7);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestDetailRequest
@@ -360,7 +424,7 @@ export type RestockRequestDetailRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestDetailRequestSchema)` to create a new message.
  */
 export const RestockRequestDetailRequestSchema: GenMessage<RestockRequestDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 5);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 8);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestDetailResponse
@@ -377,19 +441,24 @@ export type RestockRequestDetailResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestDetailResponseSchema)` to create a new message.
  */
 export const RestockRequestDetailResponseSchema: GenMessage<RestockRequestDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 6);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 9);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestListResponse
  */
 export type RestockRequestListResponse = Message<"warehouse.inventory.v1.RestockRequestListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.inventory.v1.RestockRequest requests = 1;
+   * @generated from field: repeated warehouse.inventory.v1.RestockRequestListResponseItem items = 1;
    */
-  requests: RestockRequest[];
+  items: RestockRequestListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -399,7 +468,7 @@ export type RestockRequestListResponse = Message<"warehouse.inventory.v1.Restock
  * Use `create(RestockRequestListResponseSchema)` to create a new message.
  */
 export const RestockRequestListResponseSchema: GenMessage<RestockRequestListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 7);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestUpdateRequest
@@ -481,7 +550,7 @@ export type RestockRequestUpdateRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestUpdateRequestSchema)` to create a new message.
  */
 export const RestockRequestUpdateRequestSchema: GenMessage<RestockRequestUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 8);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestUpdateResponse
@@ -498,7 +567,7 @@ export type RestockRequestUpdateResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestUpdateResponseSchema)` to create a new message.
  */
 export const RestockRequestUpdateResponseSchema: GenMessage<RestockRequestUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 9);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestFulfillRequest
@@ -545,7 +614,7 @@ export type RestockRequestFulfillRequest = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestFulfillRequestSchema)` to create a new message.
  */
 export const RestockRequestFulfillRequestSchema: GenMessage<RestockRequestFulfillRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 10);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
 
 /**
  * RestockPlacement — how many of a received line's units went to ONE place (#154).
@@ -596,7 +665,7 @@ export type RestockPlacement = Message<"warehouse.inventory.v1.RestockPlacement"
  * Use `create(RestockPlacementSchema)` to create a new message.
  */
 export const RestockPlacementSchema: GenMessage<RestockPlacement> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
 
 /**
  * RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
@@ -635,7 +704,7 @@ export type RestockDamagedUnits = Message<"warehouse.inventory.v1.RestockDamaged
  * Use `create(RestockDamagedUnitsSchema)` to create a new message.
  */
 export const RestockDamagedUnitsSchema: GenMessage<RestockDamagedUnits> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 15);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestReceivedLine
@@ -696,7 +765,7 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
  * Use `create(RestockRequestReceivedLineSchema)` to create a new message.
  */
 export const RestockRequestReceivedLineSchema: GenMessage<RestockRequestReceivedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 16);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestFulfillResponse
@@ -713,7 +782,7 @@ export type RestockRequestFulfillResponse = Message<"warehouse.inventory.v1.Rest
  * Use `create(RestockRequestFulfillResponseSchema)` to create a new message.
  */
 export const RestockRequestFulfillResponseSchema: GenMessage<RestockRequestFulfillResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 17);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelRequest
@@ -735,7 +804,7 @@ export type RestockRequestCancelRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestCancelRequestSchema)` to create a new message.
  */
 export const RestockRequestCancelRequestSchema: GenMessage<RestockRequestCancelRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 15);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 18);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelResponse
@@ -752,7 +821,7 @@ export type RestockRequestCancelResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestCancelResponseSchema)` to create a new message.
  */
 export const RestockRequestCancelResponseSchema: GenMessage<RestockRequestCancelResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 16);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 19);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestLabelsRequest
@@ -774,7 +843,7 @@ export type RestockRequestLabelsRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestLabelsRequestSchema)` to create a new message.
  */
 export const RestockRequestLabelsRequestSchema: GenMessage<RestockRequestLabelsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 17);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 20);
 
 /**
  * One printable label = one PLACEMENT of stock that entered the warehouse (#207).
@@ -849,7 +918,7 @@ export type RestockLabel = Message<"warehouse.inventory.v1.RestockLabel"> & {
  * Use `create(RestockLabelSchema)` to create a new message.
  */
 export const RestockLabelSchema: GenMessage<RestockLabel> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 18);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 21);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestLabelsResponse
@@ -889,7 +958,7 @@ export type RestockRequestLabelsResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestLabelsResponseSchema)` to create a new message.
  */
 export const RestockRequestLabelsResponseSchema: GenMessage<RestockRequestLabelsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 19);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 22);
 
 /**
  * @generated from enum warehouse.inventory.v1.RestockRequestStatus
@@ -951,6 +1020,32 @@ export const RestockPaymentTypeSchema: GenEnum<RestockPaymentType> = /*@__PURE__
   enumDesc(file_warehouse_inventory_v1_restock_request, 1);
 
 /**
+ * @generated from enum warehouse.inventory.v1.RestockRequestListDataType
+ */
+export enum RestockRequestListDataType {
+  /**
+   * @generated from enum value: RESTOCK_REQUEST_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RESTOCK_REQUEST_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: RESTOCK_REQUEST_LIST_DATA_TYPE_RESTOCK_REQUEST = 2;
+   */
+  RESTOCK_REQUEST = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.RestockRequestListDataType.
+ */
+export const RestockRequestListDataTypeSchema: GenEnum<RestockRequestListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_restock_request, 2);
+
+/**
  * How a received unit failed to become stock (#154) — the two are DIFFERENT questions a supplier
  * report separates: "how much did they send us broken" is not "how much did they short us". APPEND
  * ONLY, like every enum here.
@@ -982,7 +1077,7 @@ export enum RestockDamageType {
  * Describes the enum warehouse.inventory.v1.RestockDamageType.
  */
 export const RestockDamageTypeSchema: GenEnum<RestockDamageType> = /*@__PURE__*/
-  enumDesc(file_warehouse_inventory_v1_restock_request, 2);
+  enumDesc(file_warehouse_inventory_v1_restock_request, 3);
 
 /**
  * RestockRequestService (#105): a SELLING team asks a WAREHOUSE to restock a product (with shipment

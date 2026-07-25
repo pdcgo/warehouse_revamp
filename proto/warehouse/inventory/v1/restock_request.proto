@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -205,21 +206,34 @@ message RestockRequestListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  RestockRequestListFilter filter = 2;
+  repeated RestockRequestListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  // Filter to ONE status; UNSPECIFIED (the default) means ALL statuses — the list's tabs (#130).
-  //
-  // Server-side on purpose: the list is PAGINATED, so filtering the loaded page in the client would
-  // show only the pending rows that happened to land in this page, and count them wrong.
-  RestockRequestStatus status = 3 [(buf.validate.field).enum.defined_only = true];
+message RestockRequestListFilter {
+  // Filter to ONE status; UNSPECIFIED means ALL statuses (the list's tabs, #130). Server-side.
+  RestockRequestStatus status = 1 [(buf.validate.field).enum.defined_only = true];
+  // Only requests carrying THIS product on one of their lines (#159). 0 = no filter. Server-side.
+  uint64 product_id = 2;
+}
 
-  // Only requests carrying THIS product on one of their lines (#159). 0 = no filter.
-  //
-  // Server-side, like the status above and for the same reason: the list is paginated, so filtering
-  // in the browser would narrow the loaded page only and report the unfiltered total beside it. The
-  // question it answers — "when did this warehouse last restock this product" — is precisely the one
-  // whose answer is off page one.
-  uint64 product_id = 4;
+enum RestockRequestListDataType {
+  RESTOCK_REQUEST_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  RESTOCK_REQUEST_LIST_DATA_TYPE_GENERAL = 1;
+  RESTOCK_REQUEST_LIST_DATA_TYPE_RESTOCK_REQUEST = 2;
+}
+
+// The RESTOCK_REQUEST slice reuses the RestockRequest message directly.
+message RestockRequestMapItem {
+  map<uint64, RestockRequest> map_data = 1;
+}
+
+message RestockRequestListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    RestockRequestMapItem restock_request = 2;
+  }
 }
 
 message RestockRequestDetailRequest {
@@ -250,8 +264,9 @@ message RestockRequestDetailResponse {
 }
 
 message RestockRequestListResponse {
-  repeated RestockRequest requests = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated RestockRequestListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message RestockRequestUpdateRequest {

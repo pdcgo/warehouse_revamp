@@ -94,23 +94,23 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	// Both the requesting team and the target warehouse see the request.
 	for _, team := range []uint64{sellingTeam, warehouse} {
 		lst, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Page: page1(),
+			TeamId: team, Page: page1C(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list team %d: %v", team, listErr)
 		}
-		if len(lst.Msg.GetRequests()) != 1 {
-			t.Fatalf("team %d list = %d, want 1", team, len(lst.Msg.GetRequests()))
+		if len(requestRows(lst.Msg)) != 1 {
+			t.Fatalf("team %d list = %d, want 1", team, len(requestRows(lst.Msg)))
 		}
 	}
 
 	// An unrelated team sees nothing.
-	other, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{TeamId: 9, Page: page1()}))
+	other, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{TeamId: 9, Page: page1C()}))
 	if err != nil {
 		t.Fatalf("list other: %v", err)
 	}
-	if len(other.Msg.GetRequests()) != 0 {
-		t.Fatalf("unrelated team should see 0 requests, got %d", len(other.Msg.GetRequests()))
+	if len(requestRows(other.Msg)) != 0 {
+		t.Fatalf("unrelated team should see 0 requests, got %d", len(requestRows(other.Msg)))
 	}
 
 	// A non-target warehouse cannot fulfil it (reads as NotFound). The count is valid, so this proves
@@ -199,13 +199,13 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 		t.Helper()
 
 		resp, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Page: page1(), Status: status,
+			TeamId: team, Filter: &inventoryv1.RestockRequestListFilter{Status: status}, Page: page1C(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list: %v", listErr)
 		}
 
-		return resp.Msg.GetRequests()
+		return requestRows(resp.Msg)
 	}
 
 	// UNSPECIFIED is the "All Status" tab.
@@ -237,7 +237,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	// And the counts must be the FILTERED totals, or the pager lies.
 	resp, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-		TeamId: sellingTeam, Page: page1(), Status: pending,
+		TeamId: sellingTeam, Filter: &inventoryv1.RestockRequestListFilter{Status: pending}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -1055,13 +1055,13 @@ func TestRestockRequest_Update(t *testing.T) {
 	// The warehouse it MOVED TO can see it; the one it moved off can no longer.
 	for team, want := range map[uint64]int{otherWarehouse: 1, warehouse: 0} {
 		lst, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Page: page1(),
+			TeamId: team, Page: page1C(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list team %d: %v", team, listErr)
 		}
-		if len(lst.Msg.GetRequests()) != want {
-			t.Fatalf("team %d sees %d requests, want %d", team, len(lst.Msg.GetRequests()), want)
+		if len(requestRows(lst.Msg)) != want {
+			t.Fatalf("team %d sees %d requests, want %d", team, len(requestRows(lst.Msg)), want)
 		}
 	}
 }
@@ -1613,15 +1613,15 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	}
 
 	res, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-		TeamId:    warehouse,
-		Page:      &commonv1.PageFilter{Page: 1, Limit: 50},
-		ProductId: wanted,
+		TeamId: warehouse,
+		Filter: &inventoryv1.RestockRequestListFilter{ProductId: wanted},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("RestockRequestList: %v", err)
 	}
 
-	got := res.Msg.GetRequests()
+	got := requestRows(res.Msg)
 	if len(got) != 1 {
 		t.Fatalf("filtered list holds %d requests, want exactly 1 — a JOIN would return the "+
 			"two-line request twice", len(got))
@@ -1635,12 +1635,12 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 
 	// 0 means no filter.
 	unfiltered, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-		TeamId: warehouse, Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: warehouse, Page: &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("unfiltered list: %v", err)
 	}
-	if len(unfiltered.Msg.GetRequests()) != 2 {
-		t.Fatalf("unfiltered list holds %d requests, want 2", len(unfiltered.Msg.GetRequests()))
+	if len(requestRows(unfiltered.Msg)) != 2 {
+		t.Fatalf("unfiltered list holds %d requests, want 2", len(requestRows(unfiltered.Msg)))
 	}
 }

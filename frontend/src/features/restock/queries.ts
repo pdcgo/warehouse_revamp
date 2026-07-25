@@ -3,6 +3,7 @@ import { restockClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import type { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
 
@@ -23,12 +24,13 @@ export function useRestockRequests(args: {
     queryFn: async () => {
       const res = await restockClient.restockRequestList({
         teamId: teamId!,
+        filter: { status },
+        dataRequest: restockListRowData(),
         page: { page, limit: pageSize },
-        status,
       });
 
       return {
-        requests: res.requests,
+        requests: restocksFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
