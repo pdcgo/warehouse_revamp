@@ -44,11 +44,11 @@ func TestRevenueRecord_FreezesTheExpectedMargin(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 1 {
-		t.Fatalf("list = %d rows, want 1", len(lst.Msg.GetRevenues()))
+	if len(revenueRows(lst.Msg)) != 1 {
+		t.Fatalf("list = %d rows, want 1", len(revenueRows(lst.Msg)))
 	}
 
-	got := lst.Msg.GetRevenues()[0]
+	got := revenueRows(lst.Msg)[0]
 	if got.GetExpectedMargin() != 12000 || got.GetOrderId() != order || !got.GetCostKnown() {
 		t.Fatalf("stored row wrong: %+v", got)
 	}
@@ -81,8 +81,8 @@ func TestRevenueRecord_RefusesToRecordAnOrderTwice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(lst.Msg.GetRevenues()) != 1 {
-		t.Fatalf("list = %d rows, want 1 before the duplicate", len(lst.Msg.GetRevenues()))
+	if len(revenueRows(lst.Msg)) != 1 {
+		t.Fatalf("list = %d rows, want 1 before the duplicate", len(revenueRows(lst.Msg)))
 	}
 
 	_, err = svc.RevenueRecord(ctx, connect.NewRequest(req))
@@ -137,8 +137,8 @@ func TestRevenueList_ScopedToItsTeam(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 0 {
-		t.Fatalf("another team's margins leaked: %+v", lst.Msg.GetRevenues())
+	if len(revenueRows(lst.Msg)) != 0 {
+		t.Fatalf("another team's margins leaked: %+v", revenueRows(lst.Msg))
 	}
 }
 
@@ -182,15 +182,15 @@ func TestRevenueList_TotalsCoverEveryOrderNotThePage(t *testing.T) {
 	// ONE row per page — so a page-derived total could only ever be a third of the truth.
 	lst, err := svc.RevenueList(ctx, connect.NewRequest(&revenuev1.RevenueListRequest{
 		TeamId: team,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 1},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 1},
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 1 {
+	if len(revenueRows(lst.Msg)) != 1 {
 		t.Fatalf("the page holds %d rows, want 1 — the rest of this test assumes a partial page",
-			len(lst.Msg.GetRevenues()))
+			len(revenueRows(lst.Msg)))
 	}
 
 	totals := lst.Msg.GetTotals()
@@ -274,16 +274,15 @@ func TestRevenueList_FiltersByPeriodAndTotalsTheWholeOfIt(t *testing.T) {
 
 	res, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
 		TeamId: 2,
-		From:   "2026-07-01",
-		To:     "2026-07-31",
+		Filter: &revenuev1.RevenueListFilter{From: "2026-07-01", To: "2026-07-31"},
 		// ONE row per page.
-		Page: &commonv1.PageFilter{Page: 1, Limit: 1},
+		Page: &commonv1.CommonPagination{Page: 1, Limit: 1},
 	}))
 	if err != nil {
 		t.Fatalf("RevenueList: %v", err)
 	}
 
-	if n := len(res.Msg.GetRevenues()); n != 1 {
+	if n := len(revenueRows(res.Msg)); n != 1 {
 		t.Fatalf("the page holds %d rows, want 1 — the rest of this test assumes a partial page", n)
 	}
 	if n := res.Msg.GetPageInfo().GetTotalItems(); n != 2 {
@@ -312,7 +311,9 @@ func TestRevenueList_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
 	seedOn(t, db, svc, 2, 7_000, time.Date(2026, 8, 1, 0, 5, 0, 0, time.UTC))
 
 	res, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
-		TeamId: 2, From: "2026-07-01", To: "2026-07-31", Page: page1(),
+		TeamId: 2,
+		Filter: &revenuev1.RevenueListFilter{From: "2026-07-01", To: "2026-07-31"},
+		Page:   page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RevenueList: %v", err)

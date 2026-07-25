@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	revenuev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_service_models"
 )
@@ -35,7 +36,7 @@ func (s *Service) RevenueList(
 
 	// THE PERIOD (#171). Applied to the list AND, below, to the totals — they must agree about what
 	// the period contains, or the headline figure describes a different set of rows than the table.
-	query, err := withPeriod(query, req.Msg.GetFrom(), req.Msg.GetTo())
+	query, err := withPeriod(query, req.Msg.GetFilter().GetFrom(), req.Msg.GetFilter().GetTo())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (s *Service) RevenueList(
 	var rows []revenue_service_models.OrderRevenue
 
 	err = query.
-		Order("id DESC").
+		Order(revenueOrderClause(req.Msg.GetSort())).
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
 		Find(&rows).
@@ -59,10 +60,7 @@ func (s *Service) RevenueList(
 		return nil, revenueErr(err)
 	}
 
-	out := make([]*revenuev1.OrderRevenue, 0, len(rows))
-	for i := range rows {
-		out = append(out, orderRevenueToProto(&rows[i]))
-	}
+	items, ids := revenueListItems(rows, req.Msg.GetDataRequest())
 
 	// The totals are over the WHOLE team, computed in the database — never by summing `rows`, which
 	// holds one page. A page total is a different number wearing the same label: it would change with
@@ -73,10 +71,97 @@ func (s *Service) RevenueList(
 	}
 
 	return connect.NewResponse(&revenuev1.RevenueListResponse{
-		Revenues: out,
+		Items:    items,
+		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 		Totals:   totals,
 	}), nil
+}
+
+// revenueOrderClause maps a ListFilterSort to a safe "column DIR, id DESC" ORDER BY (fixed whitelist).
+// Default is newest-first (id DESC), the legacy behaviour.
+func revenueOrderClause(sort *revenuev1.RevenueListFilterSort) string {
+	col := "id"
+	dir := "DESC"
+
+	if sort != nil {
+		if sort.GetSortType() == commonv1.CommonSortType_COMMON_SORT_TYPE_ASC {
+			dir = "ASC"
+		}
+
+		if s, ok := sort.GetS().(*revenuev1.RevenueListFilterSort_Revenue); ok {
+			switch s.Revenue {
+			case revenuev1.RevenueRowSort_REVENUE_ROW_SORT_CREATED_AT:
+				col = "created_at"
+			case revenuev1.RevenueRowSort_REVENUE_ROW_SORT_EXPECTED_MARGIN:
+				col = "expected_margin"
+			case revenuev1.RevenueRowSort_REVENUE_ROW_SORT_REVENUE:
+				col = "revenue"
+			}
+		}
+	}
+
+	if col == "id" {
+		return col + " " + dir
+	}
+
+	return col + " " + dir + ", id DESC"
+}
+
+// revenueRowItem is the REVENUE (row) slice for one record.
+func revenueRowItem(r *revenue_service_models.OrderRevenue) *revenuev1.RevenueRowItem {
+	return &revenuev1.RevenueRowItem{
+		Id:             r.ID,
+		TeamId:         r.TeamID,
+		OrderId:        r.OrderID,
+		Revenue:        r.Revenue,
+		Cogs:           r.COGS,
+		ShippingCost:   r.ShippingCost,
+		ExpectedMargin: r.ExpectedMargin,
+		CostKnown:      r.CostKnown,
+		CreatedAtUnix:  r.CreatedAt.Unix(),
+		Voided:         r.VoidedAt != nil,
+	}
+}
+
+// revenueListItems builds the response slices for the requested data types (defaulting to the REVENUE
+// row slice) plus the sorted id list, from rows already in display order.
+func revenueListItems(
+	rows []revenue_service_models.OrderRevenue,
+	types []revenuev1.RevenueListDataType,
+) ([]*revenuev1.RevenueListResponseItem, []uint64) {
+	if len(types) == 0 {
+		types = []revenuev1.RevenueListDataType{revenuev1.RevenueListDataType_REVENUE_LIST_DATA_TYPE_REVENUE}
+	}
+
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+
+	items := make([]*revenuev1.RevenueListResponseItem, 0, len(types))
+	for _, t := range types {
+		switch t {
+		case revenuev1.RevenueListDataType_REVENUE_LIST_DATA_TYPE_GENERAL:
+			m := make(map[uint64]*commonv1.GeneralItem, len(rows))
+			for i := range rows {
+				m[rows[i].ID] = &commonv1.GeneralItem{Id: rows[i].ID}
+			}
+			items = append(items, &revenuev1.RevenueListResponseItem{
+				D: &revenuev1.RevenueListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
+			})
+		case revenuev1.RevenueListDataType_REVENUE_LIST_DATA_TYPE_REVENUE:
+			m := make(map[uint64]*revenuev1.RevenueRowItem, len(rows))
+			for i := range rows {
+				m[rows[i].ID] = revenueRowItem(&rows[i])
+			}
+			items = append(items, &revenuev1.RevenueListResponseItem{
+				D: &revenuev1.RevenueListResponseItem_Revenue{Revenue: &revenuev1.RevenueRowMapItem{MapData: m}},
+			})
+		}
+	}
+
+	return items, ids
 }
 
 // totalsRow is the aggregate query's shape. COALESCE because SUM over no rows is NULL, and a team with
@@ -103,7 +188,7 @@ func teamTotals(
 	// The SAME period the list used (#171). If these two ever disagree, the headline figure describes a
 	// different set of rows than the table beneath it — which is the failure this filter exists to
 	// prevent, so it must not be reintroduced by computing the two separately.
-	query, err := withPeriod(query, msg.GetFrom(), msg.GetTo())
+	query, err := withPeriod(query, msg.GetFilter().GetFrom(), msg.GetFilter().GetTo())
 	if err != nil {
 		return nil, err
 	}

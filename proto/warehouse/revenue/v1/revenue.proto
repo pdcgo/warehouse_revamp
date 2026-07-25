@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.revenue.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -103,6 +104,41 @@ message RevenueRecordResponse {
   OrderRevenue revenue = 1;
 }
 
+// ── The guideline list shape for revenue (guidelines/service-guideline.md) ────────────────────────
+
+// RevenueListDataType selects which slices the response carries per revenue row.
+enum RevenueListDataType {
+  REVENUE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  REVENUE_LIST_DATA_TYPE_GENERAL = 1;
+  // REVENUE: the full expected-money row the list renders.
+  REVENUE_LIST_DATA_TYPE_REVENUE = 2;
+}
+
+// RevenueRowSort is the sort selection paired with the REVENUE (row) slice.
+enum RevenueRowSort {
+  REVENUE_ROW_SORT_UNSPECIFIED = 0;
+  REVENUE_ROW_SORT_CREATED_AT = 1;
+  REVENUE_ROW_SORT_EXPECTED_MARGIN = 2;
+  REVENUE_ROW_SORT_REVENUE = 3;
+}
+
+// RevenueListFilter carries the NON-scope filters (the scoped team_id stays top-level on the request).
+message RevenueListFilter {
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever. Server-
+  // side: this list is paginated, so a client-side date filter narrows the loaded page only and leaves
+  // the TOTALS beside it unfiltered. A revenue row is dated by its `created_at` (order placement, #153).
+  string from = 1 [(buf.validate.field).string.max_len = 10];
+  string to = 2 [(buf.validate.field).string.max_len = 10];
+}
+
+message RevenueListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    RevenueRowSort revenue = 3;
+  }
+}
+
 message RevenueListRequest {
   // Read: money is a manager's view. Customer service places orders but does not need the margin on
   // them, so it is deliberately absent here even though it may call Record.
@@ -119,38 +155,49 @@ message RevenueListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // Grows with every order, so it pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
 
-  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
-  //
-  // Server-side, and that is the point of the field rather than a convenience: this list is
-  // paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
-  // it unfiltered — a headline figure that is right on a page big enough to hold everything and
-  // quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
-  //
-  // WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
-  // order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
-  // (#161).
-  // Those are two different senses of "belongs to July", and they are close enough to subtract only
-  // because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
-  // exactly that, so it is worth knowing before anybody reconciles the result against a bank
-  // statement.
-  string from = 3 [(buf.validate.field).string.max_len = 10];
-  string to = 4 [(buf.validate.field).string.max_len = 10];
+  RevenueListFilter filter = 2;
+  RevenueListFilterSort sort = 3;
+  repeated RevenueListDataType data_request = 4;
+
+  // Grows with every order, so it pages (HARD RULE 9).
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// RevenueRowItem is the REVENUE slice — the fields the revenue list renders (mirrors OrderRevenue).
+message RevenueRowItem {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  uint64 order_id = 3;
+  int64 revenue = 4;
+  int64 cogs = 5;
+  int64 shipping_cost = 6;
+  int64 expected_margin = 7;
+  bool cost_known = 8;
+  int64 created_at_unix = 9;
+  bool voided = 10;
+}
+
+message RevenueRowMapItem {
+  map<uint64, RevenueRowItem> map_data = 1;
+}
+
+message RevenueListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    RevenueRowMapItem revenue = 2;
+  }
 }
 
 message RevenueListResponse {
-  repeated OrderRevenue revenues = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated RevenueListResponseItem items = 1;
+  // The revenue-row ids in sorted (page) order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 
-  // The totals across the WHOLE team, not the loaded page (#78).
-  //
-  // Server-side because a page total is a different number wearing the same label: summing the twenty
-  // rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
-  // it silently changes when somebody picks a different page size. A report's headline figure has to
-  // mean the same thing whatever page you are on.
-  RevenueTotals totals = 3;
+  // The totals across the WHOLE team, not the loaded page (#78) — an additive aggregate the summary
+  // cards need. A page total would be a different number wearing the same label.
+  RevenueTotals totals = 4;
 }
 
 // The team's expected money, summed over every one of its orders.

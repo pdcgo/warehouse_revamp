@@ -16,6 +16,28 @@ import (
 	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
 )
 
+// revenueRows pulls the REVENUE (row) slice out of a list response, in the response's sorted id order.
+func revenueRows(res *revenuev1.RevenueListResponse) []*revenuev1.RevenueRowItem {
+	var rowMap map[uint64]*revenuev1.RevenueRowItem
+
+	for _, it := range res.GetItems() {
+		r := it.GetRevenue()
+		if r != nil {
+			rowMap = r.GetMapData()
+		}
+	}
+
+	out := make([]*revenuev1.RevenueRowItem, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		row, ok := rowMap[id]
+		if ok {
+			out = append(out, row)
+		}
+	}
+
+	return out
+}
+
 // deliver pushes an event at the handler exactly as a subscription would: marshalled to protojson and
 // wrapped in a PushRequest. It goes through DecodeEvent on the other side, so a field that does not
 // survive serialisation fails here rather than in production.
@@ -52,17 +74,17 @@ func TestRevenuePush_RecordsTheOrdersExpectedMargin(t *testing.T) {
 	}
 
 	lst, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 10},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 10},
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 1 {
-		t.Fatalf("recorded %d rows, want 1", len(lst.Msg.GetRevenues()))
+	if len(revenueRows(lst.Msg)) != 1 {
+		t.Fatalf("recorded %d rows, want 1", len(revenueRows(lst.Msg)))
 	}
 
-	got := lst.Msg.GetRevenues()[0]
+	got := revenueRows(lst.Msg)[0]
 
 	if got.GetOrderId() != 4242 {
 		t.Fatalf("recorded order %d, want 4242", got.GetOrderId())
@@ -97,14 +119,14 @@ func TestRevenuePush_ARedeliveryIsAcked(t *testing.T) {
 	// Postgres: every later statement then fails with 25P02 regardless of what the handler did. So a
 	// query after the violation would be testing the harness, not the code.
 	lst, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 10},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 10},
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 1 {
-		t.Fatalf("recorded %d rows after one delivery, want 1", len(lst.Msg.GetRevenues()))
+	if len(revenueRows(lst.Msg)) != 1 {
+		t.Fatalf("recorded %d rows after one delivery, want 1", len(revenueRows(lst.Msg)))
 	}
 
 	// The SAME order again. Must ACK — nil — rather than surface the duplicate.
@@ -134,14 +156,14 @@ func TestRevenuePush_IgnoresAnUnknownSubscription(t *testing.T) {
 	}
 
 	lst, err := svc.RevenueList(context.Background(), connect.NewRequest(&revenuev1.RevenueListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 10},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 10},
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 
-	if len(lst.Msg.GetRevenues()) != 0 {
-		t.Fatalf("an event from another subscription was recorded anyway: %v", lst.Msg.GetRevenues())
+	if len(revenueRows(lst.Msg)) != 0 {
+		t.Fatalf("an event from another subscription was recorded anyway: %v", revenueRows(lst.Msg))
 	}
 }
 
@@ -182,7 +204,7 @@ func TestRevenuePush_ACancelledOrderIsVoidedAndStopsCounting(t *testing.T) {
 		t.Helper()
 
 		res, lErr := svc.RevenueList(ctx, connect.NewRequest(&revenuev1.RevenueListRequest{
-			TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 10},
+			TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 10},
 		}))
 		if lErr != nil {
 			t.Fatalf("list: %v", lErr)
@@ -222,10 +244,10 @@ func TestRevenuePush_ACancelledOrderIsVoidedAndStopsCounting(t *testing.T) {
 	// The row is STILL LISTED, and flagged. That is the difference between voiding and deleting: the
 	// order was placed and then cancelled, and that is exactly what somebody looking at the money wants
 	// to see. Hiding it here would make it as invisible as deleting it.
-	if n := len(after.GetRevenues()); n != 1 {
+	if n := len(revenueRows(after)); n != 1 {
 		t.Fatalf("the voided row is no longer listed (%d rows) — voiding should keep it visible", n)
 	}
-	if !after.GetRevenues()[0].GetVoided() {
+	if !revenueRows(after)[0].GetVoided() {
 		t.Fatal("the listed row is not flagged as voided, so it reads as live money")
 	}
 

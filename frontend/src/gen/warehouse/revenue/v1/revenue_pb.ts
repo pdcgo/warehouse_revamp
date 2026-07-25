@@ -2,10 +2,12 @@
 // @generated from file warehouse/revenue/v1/revenue.proto (package warehouse.revenue.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/revenue/v1/revenue.proto.
  */
 export const file_warehouse_revenue_v1_revenue: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSLJAQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEg4KBnZvaWRlZBgKIAEoCCLBAQoUUmV2ZW51ZVJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAASGAoHcmV2ZW51ZRgDIAEoA0IHukgEIgIoABIVCgRjb2dzGAQgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYBSABKANCB7pIBCICKAASEgoKY29zdF9rbm93bhgGIAEoCDoLkrUYBwoFAQIDBAUiTAoVUmV2ZW51ZVJlY29yZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUioQEKElJldmVudWVMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgRwYWdlGAIgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQESFQoEZnJvbRgDIAEoCUIHukgEcgIYChITCgJ0bxgEIAEoCUIHukgEcgIYCjoKkrUYBgoEAQIDBCKyAQoTUmV2ZW51ZUxpc3RSZXNwb25zZRI0CghyZXZlbnVlcxgBIAMoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZRIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgDIAEoCzIjLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVUb3RhbHMiewoNUmV2ZW51ZVRvdGFscxIPCgdyZXZlbnVlGAEgASgDEgwKBGNvZ3MYAiABKAMSFQoNc2hpcHBpbmdfY29zdBgDIAEoAxIXCg9leHBlY3RlZF9tYXJnaW4YBCABKAMSGwoTdW5rbm93bl9jb3N0X29yZGVycxgFIAEoBCJaChJSZXZlbnVlVm9pZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIkoKE1JldmVudWVWb2lkUmVzcG9uc2USMwoHcmV2ZW51ZRgBIAEoCzIiLndhcmVob3VzZS5yZXZlbnVlLnYxLk9yZGVyUmV2ZW51ZTLCAgoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZRJiCgtSZXZlbnVlVm9pZBIoLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVxdWVzdBopLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZXZlbnVlL3YxO3JldmVudWV2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSLJAQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEg4KBnZvaWRlZBgKIAEoCCLBAQoUUmV2ZW51ZVJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAASGAoHcmV2ZW51ZRgDIAEoA0IHukgEIgIoABIVCgRjb2dzGAQgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYBSABKANCB7pIBCICKAASEgoKY29zdF9rbm93bhgGIAEoCDoLkrUYBwoFAQIDBAUiTAoVUmV2ZW51ZVJlY29yZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUiPwoRUmV2ZW51ZUxpc3RGaWx0ZXISFQoEZnJvbRgBIAEoCUIHukgEcgIYChITCgJ0bxgCIAEoCUIHukgEcgIYCiLCAQoVUmV2ZW51ZUxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3CgdyZXZlbnVlGAMgASgOMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd1NvcnRIAEIDCgFzIrACChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToKkrUYBgoEAQIDBCLLAQoOUmV2ZW51ZVJvd0l0ZW0SCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIQCghvcmRlcl9pZBgDIAEoBBIPCgdyZXZlbnVlGAQgASgDEgwKBGNvZ3MYBSABKAMSFQoNc2hpcHBpbmdfY29zdBgGIAEoAxIXCg9leHBlY3RlZF9tYXJnaW4YByABKAMSEgoKY29zdF9rbm93bhgIIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCSABKAMSDgoGdm9pZGVkGAogASgIIrEBChFSZXZlbnVlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd0l0ZW06AjgBIpIBChdSZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB3JldmVudWUYAiABKAsyJy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlUm93TWFwSXRlbUgAQgMKAWQixwEKE1JldmVudWVMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlVG90YWxzInsKDVJldmVudWVUb3RhbHMSDwoHcmV2ZW51ZRgBIAEoAxIMCgRjb2dzGAIgASgDEhUKDXNoaXBwaW5nX2Nvc3QYAyABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAQgASgDEhsKE3Vua25vd25fY29zdF9vcmRlcnMYBSABKAQiWgoSUmV2ZW51ZVZvaWRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJKChNSZXZlbnVlVm9pZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUqhQEKE1JldmVudWVMaXN0RGF0YVR5cGUSJgoiUkVWRU5VRV9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfUkVWRU5VRRACKpcBCg5SZXZlbnVlUm93U29ydBIgChxSRVZFTlVFX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASHwobUkVWRU5VRV9ST1dfU09SVF9DUkVBVEVEX0FUEAESJAogUkVWRU5VRV9ST1dfU09SVF9FWFBFQ1RFRF9NQVJHSU4QAhIcChhSRVZFTlVFX1JPV19TT1JUX1JFVkVOVUUQAzLCAgoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZRJiCgtSZXZlbnVlVm9pZBIoLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVxdWVzdBopLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZXZlbnVlL3YxO3JldmVudWV2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * What one order was expected to make.
@@ -173,6 +175,68 @@ export const RevenueRecordResponseSchema: GenMessage<RevenueRecordResponse> = /*
   messageDesc(file_warehouse_revenue_v1_revenue, 2);
 
 /**
+ * RevenueListFilter carries the NON-scope filters (the scoped team_id stays top-level on the request).
+ *
+ * @generated from message warehouse.revenue.v1.RevenueListFilter
+ */
+export type RevenueListFilter = Message<"warehouse.revenue.v1.RevenueListFilter"> & {
+  /**
+   * THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever. Server-
+   * side: this list is paginated, so a client-side date filter narrows the loaded page only and leaves
+   * the TOTALS beside it unfiltered. A revenue row is dated by its `created_at` (order placement, #153).
+   *
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueListFilter.
+ * Use `create(RevenueListFilterSchema)` to create a new message.
+ */
+export const RevenueListFilterSchema: GenMessage<RevenueListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 3);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueListFilterSort
+ */
+export type RevenueListFilterSort = Message<"warehouse.revenue.v1.RevenueListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.revenue.v1.RevenueListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.revenue.v1.RevenueRowSort revenue = 3;
+     */
+    value: RevenueRowSort;
+    case: "revenue";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueListFilterSort.
+ * Use `create(RevenueListFilterSortSchema)` to create a new message.
+ */
+export const RevenueListFilterSortSchema: GenMessage<RevenueListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 4);
+
+/**
  * @generated from message warehouse.revenue.v1.RevenueListRequest
  */
 export type RevenueListRequest = Message<"warehouse.revenue.v1.RevenueListRequest"> & {
@@ -182,36 +246,26 @@ export type RevenueListRequest = Message<"warehouse.revenue.v1.RevenueListReques
   teamId: bigint;
 
   /**
+   * @generated from field: warehouse.revenue.v1.RevenueListFilter filter = 2;
+   */
+  filter?: RevenueListFilter;
+
+  /**
+   * @generated from field: warehouse.revenue.v1.RevenueListFilterSort sort = 3;
+   */
+  sort?: RevenueListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.revenue.v1.RevenueListDataType data_request = 4;
+   */
+  dataRequest: RevenueListDataType[];
+
+  /**
    * Grows with every order, so it pages (HARD RULE 9).
    *
-   * @generated from field: warehouse.common.v1.PageFilter page = 2;
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
    */
-  page?: PageFilter;
-
-  /**
-   * THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
-   *
-   * Server-side, and that is the point of the field rather than a convenience: this list is
-   * paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
-   * it unfiltered — a headline figure that is right on a page big enough to hold everything and
-   * quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
-   *
-   * WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
-   * order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
-   * (#161).
-   * Those are two different senses of "belongs to July", and they are close enough to subtract only
-   * because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
-   * exactly that, so it is worth knowing before anybody reconciles the result against a bank
-   * statement.
-   *
-   * @generated from field: string from = 3;
-   */
-  from: string;
-
-  /**
-   * @generated from field: string to = 4;
-   */
-  to: string;
+  page?: CommonPagination;
 };
 
 /**
@@ -219,31 +273,144 @@ export type RevenueListRequest = Message<"warehouse.revenue.v1.RevenueListReques
  * Use `create(RevenueListRequestSchema)` to create a new message.
  */
 export const RevenueListRequestSchema: GenMessage<RevenueListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 3);
+  messageDesc(file_warehouse_revenue_v1_revenue, 5);
+
+/**
+ * RevenueRowItem is the REVENUE slice — the fields the revenue list renders (mirrors OrderRevenue).
+ *
+ * @generated from message warehouse.revenue.v1.RevenueRowItem
+ */
+export type RevenueRowItem = Message<"warehouse.revenue.v1.RevenueRowItem"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 order_id = 3;
+   */
+  orderId: bigint;
+
+  /**
+   * @generated from field: int64 revenue = 4;
+   */
+  revenue: bigint;
+
+  /**
+   * @generated from field: int64 cogs = 5;
+   */
+  cogs: bigint;
+
+  /**
+   * @generated from field: int64 shipping_cost = 6;
+   */
+  shippingCost: bigint;
+
+  /**
+   * @generated from field: int64 expected_margin = 7;
+   */
+  expectedMargin: bigint;
+
+  /**
+   * @generated from field: bool cost_known = 8;
+   */
+  costKnown: boolean;
+
+  /**
+   * @generated from field: int64 created_at_unix = 9;
+   */
+  createdAtUnix: bigint;
+
+  /**
+   * @generated from field: bool voided = 10;
+   */
+  voided: boolean;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueRowItem.
+ * Use `create(RevenueRowItemSchema)` to create a new message.
+ */
+export const RevenueRowItemSchema: GenMessage<RevenueRowItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 6);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueRowMapItem
+ */
+export type RevenueRowMapItem = Message<"warehouse.revenue.v1.RevenueRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.revenue.v1.RevenueRowItem> map_data = 1;
+   */
+  mapData: { [key: string]: RevenueRowItem };
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueRowMapItem.
+ * Use `create(RevenueRowMapItemSchema)` to create a new message.
+ */
+export const RevenueRowMapItemSchema: GenMessage<RevenueRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 7);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueListResponseItem
+ */
+export type RevenueListResponseItem = Message<"warehouse.revenue.v1.RevenueListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.revenue.v1.RevenueListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.revenue.v1.RevenueRowMapItem revenue = 2;
+     */
+    value: RevenueRowMapItem;
+    case: "revenue";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueListResponseItem.
+ * Use `create(RevenueListResponseItemSchema)` to create a new message.
+ */
+export const RevenueListResponseItemSchema: GenMessage<RevenueListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 8);
 
 /**
  * @generated from message warehouse.revenue.v1.RevenueListResponse
  */
 export type RevenueListResponse = Message<"warehouse.revenue.v1.RevenueListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.revenue.v1.OrderRevenue revenues = 1;
+   * @generated from field: repeated warehouse.revenue.v1.RevenueListResponseItem items = 1;
    */
-  revenues: OrderRevenue[];
+  items: RevenueListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * The revenue-row ids in sorted (page) order.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 
   /**
-   * The totals across the WHOLE team, not the loaded page (#78).
+   * The totals across the WHOLE team, not the loaded page (#78) — an additive aggregate the summary
+   * cards need. A page total would be a different number wearing the same label.
    *
-   * Server-side because a page total is a different number wearing the same label: summing the twenty
-   * rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
-   * it silently changes when somebody picks a different page size. A report's headline figure has to
-   * mean the same thing whatever page you are on.
-   *
-   * @generated from field: warehouse.revenue.v1.RevenueTotals totals = 3;
+   * @generated from field: warehouse.revenue.v1.RevenueTotals totals = 4;
    */
   totals?: RevenueTotals;
 };
@@ -253,7 +420,7 @@ export type RevenueListResponse = Message<"warehouse.revenue.v1.RevenueListRespo
  * Use `create(RevenueListResponseSchema)` to create a new message.
  */
 export const RevenueListResponseSchema: GenMessage<RevenueListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 4);
+  messageDesc(file_warehouse_revenue_v1_revenue, 9);
 
 /**
  * The team's expected money, summed over every one of its orders.
@@ -300,7 +467,7 @@ export type RevenueTotals = Message<"warehouse.revenue.v1.RevenueTotals"> & {
  * Use `create(RevenueTotalsSchema)` to create a new message.
  */
 export const RevenueTotalsSchema: GenMessage<RevenueTotals> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 5);
+  messageDesc(file_warehouse_revenue_v1_revenue, 10);
 
 /**
  * @generated from message warehouse.revenue.v1.RevenueVoidRequest
@@ -322,7 +489,7 @@ export type RevenueVoidRequest = Message<"warehouse.revenue.v1.RevenueVoidReques
  * Use `create(RevenueVoidRequestSchema)` to create a new message.
  */
 export const RevenueVoidRequestSchema: GenMessage<RevenueVoidRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 6);
+  messageDesc(file_warehouse_revenue_v1_revenue, 11);
 
 /**
  * @generated from message warehouse.revenue.v1.RevenueVoidResponse
@@ -343,7 +510,70 @@ export type RevenueVoidResponse = Message<"warehouse.revenue.v1.RevenueVoidRespo
  * Use `create(RevenueVoidResponseSchema)` to create a new message.
  */
 export const RevenueVoidResponseSchema: GenMessage<RevenueVoidResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 7);
+  messageDesc(file_warehouse_revenue_v1_revenue, 12);
+
+/**
+ * RevenueListDataType selects which slices the response carries per revenue row.
+ *
+ * @generated from enum warehouse.revenue.v1.RevenueListDataType
+ */
+export enum RevenueListDataType {
+  /**
+   * @generated from enum value: REVENUE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: REVENUE_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * REVENUE: the full expected-money row the list renders.
+   *
+   * @generated from enum value: REVENUE_LIST_DATA_TYPE_REVENUE = 2;
+   */
+  REVENUE = 2,
+}
+
+/**
+ * Describes the enum warehouse.revenue.v1.RevenueListDataType.
+ */
+export const RevenueListDataTypeSchema: GenEnum<RevenueListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_revenue_v1_revenue, 0);
+
+/**
+ * RevenueRowSort is the sort selection paired with the REVENUE (row) slice.
+ *
+ * @generated from enum warehouse.revenue.v1.RevenueRowSort
+ */
+export enum RevenueRowSort {
+  /**
+   * @generated from enum value: REVENUE_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: REVENUE_ROW_SORT_CREATED_AT = 1;
+   */
+  CREATED_AT = 1,
+
+  /**
+   * @generated from enum value: REVENUE_ROW_SORT_EXPECTED_MARGIN = 2;
+   */
+  EXPECTED_MARGIN = 2,
+
+  /**
+   * @generated from enum value: REVENUE_ROW_SORT_REVENUE = 3;
+   */
+  REVENUE = 3,
+}
+
+/**
+ * Describes the enum warehouse.revenue.v1.RevenueRowSort.
+ */
+export const RevenueRowSortSchema: GenEnum<RevenueRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_revenue_v1_revenue, 1);
 
 /**
  * RevenueService owns `order_revenues` (#75) — one row per order, holding what we EXPECTED to make on

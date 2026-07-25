@@ -24,6 +24,110 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RevenueListDataType selects which slices the response carries per revenue row.
+type RevenueListDataType int32
+
+const (
+	RevenueListDataType_REVENUE_LIST_DATA_TYPE_UNSPECIFIED RevenueListDataType = 0
+	RevenueListDataType_REVENUE_LIST_DATA_TYPE_GENERAL     RevenueListDataType = 1
+	// REVENUE: the full expected-money row the list renders.
+	RevenueListDataType_REVENUE_LIST_DATA_TYPE_REVENUE RevenueListDataType = 2
+)
+
+// Enum value maps for RevenueListDataType.
+var (
+	RevenueListDataType_name = map[int32]string{
+		0: "REVENUE_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "REVENUE_LIST_DATA_TYPE_GENERAL",
+		2: "REVENUE_LIST_DATA_TYPE_REVENUE",
+	}
+	RevenueListDataType_value = map[string]int32{
+		"REVENUE_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"REVENUE_LIST_DATA_TYPE_GENERAL":     1,
+		"REVENUE_LIST_DATA_TYPE_REVENUE":     2,
+	}
+)
+
+func (x RevenueListDataType) Enum() *RevenueListDataType {
+	p := new(RevenueListDataType)
+	*p = x
+	return p
+}
+
+func (x RevenueListDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RevenueListDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_revenue_v1_revenue_proto_enumTypes[0].Descriptor()
+}
+
+func (RevenueListDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_revenue_v1_revenue_proto_enumTypes[0]
+}
+
+func (x RevenueListDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RevenueListDataType.Descriptor instead.
+func (RevenueListDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{0}
+}
+
+// RevenueRowSort is the sort selection paired with the REVENUE (row) slice.
+type RevenueRowSort int32
+
+const (
+	RevenueRowSort_REVENUE_ROW_SORT_UNSPECIFIED     RevenueRowSort = 0
+	RevenueRowSort_REVENUE_ROW_SORT_CREATED_AT      RevenueRowSort = 1
+	RevenueRowSort_REVENUE_ROW_SORT_EXPECTED_MARGIN RevenueRowSort = 2
+	RevenueRowSort_REVENUE_ROW_SORT_REVENUE         RevenueRowSort = 3
+)
+
+// Enum value maps for RevenueRowSort.
+var (
+	RevenueRowSort_name = map[int32]string{
+		0: "REVENUE_ROW_SORT_UNSPECIFIED",
+		1: "REVENUE_ROW_SORT_CREATED_AT",
+		2: "REVENUE_ROW_SORT_EXPECTED_MARGIN",
+		3: "REVENUE_ROW_SORT_REVENUE",
+	}
+	RevenueRowSort_value = map[string]int32{
+		"REVENUE_ROW_SORT_UNSPECIFIED":     0,
+		"REVENUE_ROW_SORT_CREATED_AT":      1,
+		"REVENUE_ROW_SORT_EXPECTED_MARGIN": 2,
+		"REVENUE_ROW_SORT_REVENUE":         3,
+	}
+)
+
+func (x RevenueRowSort) Enum() *RevenueRowSort {
+	p := new(RevenueRowSort)
+	*p = x
+	return p
+}
+
+func (x RevenueRowSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RevenueRowSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_revenue_v1_revenue_proto_enumTypes[1].Descriptor()
+}
+
+func (RevenueRowSort) Type() protoreflect.EnumType {
+	return &file_warehouse_revenue_v1_revenue_proto_enumTypes[1]
+}
+
+func (x RevenueRowSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RevenueRowSort.Descriptor instead.
+func (RevenueRowSort) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{1}
+}
+
 // What one order was expected to make.
 type OrderRevenue struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -292,34 +396,167 @@ func (x *RevenueRecordResponse) GetRevenue() *OrderRevenue {
 	return nil
 }
 
+// RevenueListFilter carries the NON-scope filters (the scoped team_id stays top-level on the request).
+type RevenueListFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever. Server-
+	// side: this list is paginated, so a client-side date filter narrows the loaded page only and leaves
+	// the TOTALS beside it unfiltered. A revenue row is dated by its `created_at` (order placement, #153).
+	From          string `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueListFilter) Reset() {
+	*x = RevenueListFilter{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueListFilter) ProtoMessage() {}
+
+func (x *RevenueListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueListFilter.ProtoReflect.Descriptor instead.
+func (*RevenueListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RevenueListFilter) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *RevenueListFilter) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type RevenueListFilterSort struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SortType v1.CommonSortType      `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
+	// Types that are valid to be assigned to S:
+	//
+	//	*RevenueListFilterSort_General
+	//	*RevenueListFilterSort_Revenue
+	S             isRevenueListFilterSort_S `protobuf_oneof:"s"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueListFilterSort) Reset() {
+	*x = RevenueListFilterSort{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueListFilterSort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueListFilterSort) ProtoMessage() {}
+
+func (x *RevenueListFilterSort) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueListFilterSort.ProtoReflect.Descriptor instead.
+func (*RevenueListFilterSort) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RevenueListFilterSort) GetSortType() v1.CommonSortType {
+	if x != nil {
+		return x.SortType
+	}
+	return v1.CommonSortType(0)
+}
+
+func (x *RevenueListFilterSort) GetS() isRevenueListFilterSort_S {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *RevenueListFilterSort) GetGeneral() v1.GeneralSort {
+	if x != nil {
+		if x, ok := x.S.(*RevenueListFilterSort_General); ok {
+			return x.General
+		}
+	}
+	return v1.GeneralSort(0)
+}
+
+func (x *RevenueListFilterSort) GetRevenue() RevenueRowSort {
+	if x != nil {
+		if x, ok := x.S.(*RevenueListFilterSort_Revenue); ok {
+			return x.Revenue
+		}
+	}
+	return RevenueRowSort_REVENUE_ROW_SORT_UNSPECIFIED
+}
+
+type isRevenueListFilterSort_S interface {
+	isRevenueListFilterSort_S()
+}
+
+type RevenueListFilterSort_General struct {
+	General v1.GeneralSort `protobuf:"varint,2,opt,name=general,proto3,enum=warehouse.common.v1.GeneralSort,oneof"`
+}
+
+type RevenueListFilterSort_Revenue struct {
+	Revenue RevenueRowSort `protobuf:"varint,3,opt,name=revenue,proto3,enum=warehouse.revenue.v1.RevenueRowSort,oneof"`
+}
+
+func (*RevenueListFilterSort_General) isRevenueListFilterSort_S() {}
+
+func (*RevenueListFilterSort_Revenue) isRevenueListFilterSort_S() {}
+
 type RevenueListRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TeamId      uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter      *RevenueListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort        *RevenueListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest []RevenueListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.revenue.v1.RevenueListDataType" json:"data_request,omitempty"`
 	// Grows with every order, so it pages (HARD RULE 9).
-	Page *v1.PageFilter `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
-	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD (#171). Both empty = every order ever.
-	//
-	// Server-side, and that is the point of the field rather than a convenience: this list is
-	// paginated, so a client-side date filter narrows the loaded page only and leaves the TOTALS beside
-	// it unfiltered — a headline figure that is right on a page big enough to hold everything and
-	// quietly wrong the moment it is not. The same thing #130 and #151 settled for status filters.
-	//
-	// WHAT THE PERIOD SELECTS: a revenue row is dated by its `created_at`, which is the moment the
-	// order was PLACED — the event fires on placement (#153). A cost is dated by a day a person chose
-	// (#161).
-	// Those are two different senses of "belongs to July", and they are close enough to subtract only
-	// because an order's revenue is frozen the day it is placed. The profit screen (#172) relies on
-	// exactly that, so it is worth knowing before anybody reconciles the result against a bank
-	// statement.
-	From          string `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
-	To            string `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+	Page          *v1.CommonPagination `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RevenueListRequest) Reset() {
 	*x = RevenueListRequest{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[3]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -331,7 +568,7 @@ func (x *RevenueListRequest) String() string {
 func (*RevenueListRequest) ProtoMessage() {}
 
 func (x *RevenueListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[3]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +581,7 @@ func (x *RevenueListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueListRequest.ProtoReflect.Descriptor instead.
 func (*RevenueListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RevenueListRequest) GetTeamId() uint64 {
@@ -354,45 +591,293 @@ func (x *RevenueListRequest) GetTeamId() uint64 {
 	return 0
 }
 
-func (x *RevenueListRequest) GetPage() *v1.PageFilter {
+func (x *RevenueListRequest) GetFilter() *RevenueListFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *RevenueListRequest) GetSort() *RevenueListFilterSort {
+	if x != nil {
+		return x.Sort
+	}
+	return nil
+}
+
+func (x *RevenueListRequest) GetDataRequest() []RevenueListDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *RevenueListRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-func (x *RevenueListRequest) GetFrom() string {
-	if x != nil {
-		return x.From
-	}
-	return ""
+// RevenueRowItem is the REVENUE slice — the fields the revenue list renders (mirrors OrderRevenue).
+type RevenueRowItem struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	TeamId         uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId        uint64                 `protobuf:"varint,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Revenue        int64                  `protobuf:"varint,4,opt,name=revenue,proto3" json:"revenue,omitempty"`
+	Cogs           int64                  `protobuf:"varint,5,opt,name=cogs,proto3" json:"cogs,omitempty"`
+	ShippingCost   int64                  `protobuf:"varint,6,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
+	ExpectedMargin int64                  `protobuf:"varint,7,opt,name=expected_margin,json=expectedMargin,proto3" json:"expected_margin,omitempty"`
+	CostKnown      bool                   `protobuf:"varint,8,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
+	CreatedAtUnix  int64                  `protobuf:"varint,9,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	Voided         bool                   `protobuf:"varint,10,opt,name=voided,proto3" json:"voided,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *RevenueListRequest) GetTo() string {
-	if x != nil {
-		return x.To
-	}
-	return ""
+func (x *RevenueRowItem) Reset() {
+	*x = RevenueRowItem{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
+
+func (x *RevenueRowItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueRowItem) ProtoMessage() {}
+
+func (x *RevenueRowItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueRowItem.ProtoReflect.Descriptor instead.
+func (*RevenueRowItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RevenueRowItem) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetRevenue() int64 {
+	if x != nil {
+		return x.Revenue
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetCogs() int64 {
+	if x != nil {
+		return x.Cogs
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetShippingCost() int64 {
+	if x != nil {
+		return x.ShippingCost
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetExpectedMargin() int64 {
+	if x != nil {
+		return x.ExpectedMargin
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetCostKnown() bool {
+	if x != nil {
+		return x.CostKnown
+	}
+	return false
+}
+
+func (x *RevenueRowItem) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *RevenueRowItem) GetVoided() bool {
+	if x != nil {
+		return x.Voided
+	}
+	return false
+}
+
+type RevenueRowMapItem struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	MapData       map[uint64]*RevenueRowItem `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueRowMapItem) Reset() {
+	*x = RevenueRowMapItem{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueRowMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueRowMapItem) ProtoMessage() {}
+
+func (x *RevenueRowMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueRowMapItem.ProtoReflect.Descriptor instead.
+func (*RevenueRowMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RevenueRowMapItem) GetMapData() map[uint64]*RevenueRowItem {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type RevenueListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*RevenueListResponseItem_General
+	//	*RevenueListResponseItem_Revenue
+	D             isRevenueListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueListResponseItem) Reset() {
+	*x = RevenueListResponseItem{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueListResponseItem) ProtoMessage() {}
+
+func (x *RevenueListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueListResponseItem.ProtoReflect.Descriptor instead.
+func (*RevenueListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RevenueListResponseItem) GetD() isRevenueListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *RevenueListResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RevenueListResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *RevenueListResponseItem) GetRevenue() *RevenueRowMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RevenueListResponseItem_Revenue); ok {
+			return x.Revenue
+		}
+	}
+	return nil
+}
+
+type isRevenueListResponseItem_D interface {
+	isRevenueListResponseItem_D()
+}
+
+type RevenueListResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type RevenueListResponseItem_Revenue struct {
+	Revenue *RevenueRowMapItem `protobuf:"bytes,2,opt,name=revenue,proto3,oneof"`
+}
+
+func (*RevenueListResponseItem_General) isRevenueListResponseItem_D() {}
+
+func (*RevenueListResponseItem_Revenue) isRevenueListResponseItem_D() {}
 
 type RevenueListResponse struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Revenues []*OrderRevenue        `protobuf:"bytes,1,rep,name=revenues,proto3" json:"revenues,omitempty"`
-	PageInfo *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// The totals across the WHOLE team, not the loaded page (#78).
-	//
-	// Server-side because a page total is a different number wearing the same label: summing the twenty
-	// rows a screen happens to hold and calling it margin is wrong in a way the reader cannot see, and
-	// it silently changes when somebody picks a different page size. A report's headline figure has to
-	// mean the same thing whatever page you are on.
-	Totals        *RevenueTotals `protobuf:"bytes,3,opt,name=totals,proto3" json:"totals,omitempty"`
+	state protoimpl.MessageState     `protogen:"open.v1"`
+	Items []*RevenueListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// The revenue-row ids in sorted (page) order.
+	Ids      []uint64     `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo *v1.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	// The totals across the WHOLE team, not the loaded page (#78) — an additive aggregate the summary
+	// cards need. A page total would be a different number wearing the same label.
+	Totals        *RevenueTotals `protobuf:"bytes,4,opt,name=totals,proto3" json:"totals,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RevenueListResponse) Reset() {
 	*x = RevenueListResponse{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[4]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -404,7 +889,7 @@ func (x *RevenueListResponse) String() string {
 func (*RevenueListResponse) ProtoMessage() {}
 
 func (x *RevenueListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[4]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -417,12 +902,19 @@ func (x *RevenueListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueListResponse.ProtoReflect.Descriptor instead.
 func (*RevenueListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RevenueListResponse) GetRevenues() []*OrderRevenue {
+func (x *RevenueListResponse) GetItems() []*RevenueListResponseItem {
 	if x != nil {
-		return x.Revenues
+		return x.Items
+	}
+	return nil
+}
+
+func (x *RevenueListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -462,7 +954,7 @@ type RevenueTotals struct {
 
 func (x *RevenueTotals) Reset() {
 	*x = RevenueTotals{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[5]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +966,7 @@ func (x *RevenueTotals) String() string {
 func (*RevenueTotals) ProtoMessage() {}
 
 func (x *RevenueTotals) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[5]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +979,7 @@ func (x *RevenueTotals) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueTotals.ProtoReflect.Descriptor instead.
 func (*RevenueTotals) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RevenueTotals) GetRevenue() int64 {
@@ -535,7 +1027,7 @@ type RevenueVoidRequest struct {
 
 func (x *RevenueVoidRequest) Reset() {
 	*x = RevenueVoidRequest{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -547,7 +1039,7 @@ func (x *RevenueVoidRequest) String() string {
 func (*RevenueVoidRequest) ProtoMessage() {}
 
 func (x *RevenueVoidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[6]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -560,7 +1052,7 @@ func (x *RevenueVoidRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueVoidRequest.ProtoReflect.Descriptor instead.
 func (*RevenueVoidRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RevenueVoidRequest) GetTeamId() uint64 {
@@ -589,7 +1081,7 @@ type RevenueVoidResponse struct {
 
 func (x *RevenueVoidResponse) Reset() {
 	*x = RevenueVoidResponse{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -601,7 +1093,7 @@ func (x *RevenueVoidResponse) String() string {
 func (*RevenueVoidResponse) ProtoMessage() {}
 
 func (x *RevenueVoidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[7]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -614,7 +1106,7 @@ func (x *RevenueVoidResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueVoidResponse.ProtoReflect.Descriptor instead.
 func (*RevenueVoidResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RevenueVoidResponse) GetRevenue() *OrderRevenue {
@@ -628,7 +1120,7 @@ var File_warehouse_revenue_v1_revenue_proto protoreflect.FileDescriptor
 
 const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/revenue/v1/revenue.proto\x12\x14warehouse.revenue.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xad\x02\n" +
+	"\"warehouse/revenue/v1/revenue.proto\x12\x14warehouse.revenue.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xad\x02\n" +
 	"\fOrderRevenue\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x19\n" +
@@ -652,20 +1144,52 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"U\n" +
 	"\x15RevenueRecordResponse\x12<\n" +
-	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue\"\xb9\x01\n" +
-	"\x12RevenueListRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12;\n" +
-	"\x04page\x18\x02 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12\x1b\n" +
-	"\x04from\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
+	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue\"I\n" +
+	"\x11RevenueListFilter\x12\x1b\n" +
+	"\x04from\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
 	"R\x04from\x12\x17\n" +
-	"\x02to\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
-	"R\x02to:\n" +
+	"\x02to\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
+	"R\x02to\"\xde\x01\n" +
+	"\x15RevenueListFilterSort\x12@\n" +
+	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
+	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12@\n" +
+	"\arevenue\x18\x03 \x01(\x0e2$.warehouse.revenue.v1.RevenueRowSortH\x00R\arevenueB\x03\n" +
+	"\x01s\"\xd9\x02\n" +
+	"\x12RevenueListRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
+	"\x06filter\x18\x02 \x01(\v2'.warehouse.revenue.v1.RevenueListFilterR\x06filter\x12?\n" +
+	"\x04sort\x18\x03 \x01(\v2+.warehouse.revenue.v1.RevenueListFilterSortR\x04sort\x12L\n" +
+	"\fdata_request\x18\x04 \x03(\x0e2).warehouse.revenue.v1.RevenueListDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\n" +
 	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x04\"\xce\x01\n" +
-	"\x13RevenueListResponse\x12>\n" +
-	"\brevenues\x18\x01 \x03(\v2\".warehouse.revenue.v1.OrderRevenueR\brevenues\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12;\n" +
-	"\x06totals\x18\x03 \x01(\v2#.warehouse.revenue.v1.RevenueTotalsR\x06totals\"\xbb\x01\n" +
+	"\x04\x01\x02\x03\x04\"\xaf\x02\n" +
+	"\x0eRevenueRowItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
+	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x19\n" +
+	"\border_id\x18\x03 \x01(\x04R\aorderId\x12\x18\n" +
+	"\arevenue\x18\x04 \x01(\x03R\arevenue\x12\x12\n" +
+	"\x04cogs\x18\x05 \x01(\x03R\x04cogs\x12#\n" +
+	"\rshipping_cost\x18\x06 \x01(\x03R\fshippingCost\x12'\n" +
+	"\x0fexpected_margin\x18\a \x01(\x03R\x0eexpectedMargin\x12\x1d\n" +
+	"\n" +
+	"cost_known\x18\b \x01(\bR\tcostKnown\x12&\n" +
+	"\x0fcreated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix\x12\x16\n" +
+	"\x06voided\x18\n" +
+	" \x01(\bR\x06voided\"\xc6\x01\n" +
+	"\x11RevenueRowMapItem\x12O\n" +
+	"\bmap_data\x18\x01 \x03(\v24.warehouse.revenue.v1.RevenueRowMapItem.MapDataEntryR\amapData\x1a`\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.warehouse.revenue.v1.RevenueRowItemR\x05value:\x028\x01\"\xa4\x01\n" +
+	"\x17RevenueListResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12C\n" +
+	"\arevenue\x18\x02 \x01(\v2'.warehouse.revenue.v1.RevenueRowMapItemH\x00R\arevenueB\x03\n" +
+	"\x01d\"\xe5\x01\n" +
+	"\x13RevenueListResponse\x12C\n" +
+	"\x05items\x18\x01 \x03(\v2-.warehouse.revenue.v1.RevenueListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12;\n" +
+	"\x06totals\x18\x04 \x01(\v2#.warehouse.revenue.v1.RevenueTotalsR\x06totals\"\xbb\x01\n" +
 	"\rRevenueTotals\x12\x18\n" +
 	"\arevenue\x18\x01 \x01(\x03R\arevenue\x12\x12\n" +
 	"\x04cogs\x18\x02 \x01(\x03R\x04cogs\x12#\n" +
@@ -677,7 +1201,16 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"S\n" +
 	"\x13RevenueVoidResponse\x12<\n" +
-	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue2\xc2\x02\n" +
+	"\arevenue\x18\x01 \x01(\v2\".warehouse.revenue.v1.OrderRevenueR\arevenue*\x85\x01\n" +
+	"\x13RevenueListDataType\x12&\n" +
+	"\"REVENUE_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eREVENUE_LIST_DATA_TYPE_GENERAL\x10\x01\x12\"\n" +
+	"\x1eREVENUE_LIST_DATA_TYPE_REVENUE\x10\x02*\x97\x01\n" +
+	"\x0eRevenueRowSort\x12 \n" +
+	"\x1cREVENUE_ROW_SORT_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bREVENUE_ROW_SORT_CREATED_AT\x10\x01\x12$\n" +
+	" REVENUE_ROW_SORT_EXPECTED_MARGIN\x10\x02\x12\x1c\n" +
+	"\x18REVENUE_ROW_SORT_REVENUE\x10\x032\xc2\x02\n" +
 	"\x0eRevenueService\x12h\n" +
 	"\rRevenueRecord\x12*.warehouse.revenue.v1.RevenueRecordRequest\x1a+.warehouse.revenue.v1.RevenueRecordResponse\x12b\n" +
 	"\vRevenueList\x12(.warehouse.revenue.v1.RevenueListRequest\x1a).warehouse.revenue.v1.RevenueListResponse\x12b\n" +
@@ -695,37 +1228,59 @@ func file_warehouse_revenue_v1_revenue_proto_rawDescGZIP() []byte {
 	return file_warehouse_revenue_v1_revenue_proto_rawDescData
 }
 
-var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_warehouse_revenue_v1_revenue_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_warehouse_revenue_v1_revenue_proto_goTypes = []any{
-	(*OrderRevenue)(nil),          // 0: warehouse.revenue.v1.OrderRevenue
-	(*RevenueRecordRequest)(nil),  // 1: warehouse.revenue.v1.RevenueRecordRequest
-	(*RevenueRecordResponse)(nil), // 2: warehouse.revenue.v1.RevenueRecordResponse
-	(*RevenueListRequest)(nil),    // 3: warehouse.revenue.v1.RevenueListRequest
-	(*RevenueListResponse)(nil),   // 4: warehouse.revenue.v1.RevenueListResponse
-	(*RevenueTotals)(nil),         // 5: warehouse.revenue.v1.RevenueTotals
-	(*RevenueVoidRequest)(nil),    // 6: warehouse.revenue.v1.RevenueVoidRequest
-	(*RevenueVoidResponse)(nil),   // 7: warehouse.revenue.v1.RevenueVoidResponse
-	(*v1.PageFilter)(nil),         // 8: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),           // 9: warehouse.common.v1.PageInfo
+	(RevenueListDataType)(0),        // 0: warehouse.revenue.v1.RevenueListDataType
+	(RevenueRowSort)(0),             // 1: warehouse.revenue.v1.RevenueRowSort
+	(*OrderRevenue)(nil),            // 2: warehouse.revenue.v1.OrderRevenue
+	(*RevenueRecordRequest)(nil),    // 3: warehouse.revenue.v1.RevenueRecordRequest
+	(*RevenueRecordResponse)(nil),   // 4: warehouse.revenue.v1.RevenueRecordResponse
+	(*RevenueListFilter)(nil),       // 5: warehouse.revenue.v1.RevenueListFilter
+	(*RevenueListFilterSort)(nil),   // 6: warehouse.revenue.v1.RevenueListFilterSort
+	(*RevenueListRequest)(nil),      // 7: warehouse.revenue.v1.RevenueListRequest
+	(*RevenueRowItem)(nil),          // 8: warehouse.revenue.v1.RevenueRowItem
+	(*RevenueRowMapItem)(nil),       // 9: warehouse.revenue.v1.RevenueRowMapItem
+	(*RevenueListResponseItem)(nil), // 10: warehouse.revenue.v1.RevenueListResponseItem
+	(*RevenueListResponse)(nil),     // 11: warehouse.revenue.v1.RevenueListResponse
+	(*RevenueTotals)(nil),           // 12: warehouse.revenue.v1.RevenueTotals
+	(*RevenueVoidRequest)(nil),      // 13: warehouse.revenue.v1.RevenueVoidRequest
+	(*RevenueVoidResponse)(nil),     // 14: warehouse.revenue.v1.RevenueVoidResponse
+	nil,                             // 15: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
+	(v1.CommonSortType)(0),          // 16: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 17: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 18: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 19: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 20: warehouse.common.v1.PageInfo
 }
 var file_warehouse_revenue_v1_revenue_proto_depIdxs = []int32{
-	0, // 0: warehouse.revenue.v1.RevenueRecordResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
-	8, // 1: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	0, // 2: warehouse.revenue.v1.RevenueListResponse.revenues:type_name -> warehouse.revenue.v1.OrderRevenue
-	9, // 3: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	5, // 4: warehouse.revenue.v1.RevenueListResponse.totals:type_name -> warehouse.revenue.v1.RevenueTotals
-	0, // 5: warehouse.revenue.v1.RevenueVoidResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
-	1, // 6: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
-	3, // 7: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
-	6, // 8: warehouse.revenue.v1.RevenueService.RevenueVoid:input_type -> warehouse.revenue.v1.RevenueVoidRequest
-	2, // 9: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
-	4, // 10: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
-	7, // 11: warehouse.revenue.v1.RevenueService.RevenueVoid:output_type -> warehouse.revenue.v1.RevenueVoidResponse
-	9, // [9:12] is the sub-list for method output_type
-	6, // [6:9] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2,  // 0: warehouse.revenue.v1.RevenueRecordResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
+	16, // 1: warehouse.revenue.v1.RevenueListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	17, // 2: warehouse.revenue.v1.RevenueListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 3: warehouse.revenue.v1.RevenueListFilterSort.revenue:type_name -> warehouse.revenue.v1.RevenueRowSort
+	5,  // 4: warehouse.revenue.v1.RevenueListRequest.filter:type_name -> warehouse.revenue.v1.RevenueListFilter
+	6,  // 5: warehouse.revenue.v1.RevenueListRequest.sort:type_name -> warehouse.revenue.v1.RevenueListFilterSort
+	0,  // 6: warehouse.revenue.v1.RevenueListRequest.data_request:type_name -> warehouse.revenue.v1.RevenueListDataType
+	18, // 7: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	15, // 8: warehouse.revenue.v1.RevenueRowMapItem.map_data:type_name -> warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
+	19, // 9: warehouse.revenue.v1.RevenueListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	9,  // 10: warehouse.revenue.v1.RevenueListResponseItem.revenue:type_name -> warehouse.revenue.v1.RevenueRowMapItem
+	10, // 11: warehouse.revenue.v1.RevenueListResponse.items:type_name -> warehouse.revenue.v1.RevenueListResponseItem
+	20, // 12: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	12, // 13: warehouse.revenue.v1.RevenueListResponse.totals:type_name -> warehouse.revenue.v1.RevenueTotals
+	2,  // 14: warehouse.revenue.v1.RevenueVoidResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
+	8,  // 15: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry.value:type_name -> warehouse.revenue.v1.RevenueRowItem
+	3,  // 16: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
+	7,  // 17: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
+	13, // 18: warehouse.revenue.v1.RevenueService.RevenueVoid:input_type -> warehouse.revenue.v1.RevenueVoidRequest
+	4,  // 19: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
+	11, // 20: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
+	14, // 21: warehouse.revenue.v1.RevenueService.RevenueVoid:output_type -> warehouse.revenue.v1.RevenueVoidResponse
+	19, // [19:22] is the sub-list for method output_type
+	16, // [16:19] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_revenue_v1_revenue_proto_init() }
@@ -733,18 +1288,27 @@ func file_warehouse_revenue_v1_revenue_proto_init() {
 	if File_warehouse_revenue_v1_revenue_proto != nil {
 		return
 	}
+	file_warehouse_revenue_v1_revenue_proto_msgTypes[4].OneofWrappers = []any{
+		(*RevenueListFilterSort_General)(nil),
+		(*RevenueListFilterSort_Revenue)(nil),
+	}
+	file_warehouse_revenue_v1_revenue_proto_msgTypes[8].OneofWrappers = []any{
+		(*RevenueListResponseItem_General)(nil),
+		(*RevenueListResponseItem_Revenue)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_revenue_v1_revenue_proto_rawDesc), len(file_warehouse_revenue_v1_revenue_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   8,
+			NumEnums:      2,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_revenue_v1_revenue_proto_goTypes,
 		DependencyIndexes: file_warehouse_revenue_v1_revenue_proto_depIdxs,
+		EnumInfos:         file_warehouse_revenue_v1_revenue_proto_enumTypes,
 		MessageInfos:      file_warehouse_revenue_v1_revenue_proto_msgTypes,
 	}.Build()
 	File_warehouse_revenue_v1_revenue_proto = out.File
