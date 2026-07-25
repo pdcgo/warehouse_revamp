@@ -21,6 +21,7 @@ import {
 import { ChevronRight } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSettlementPositions } from "../../features/settlement/queries";
@@ -76,9 +77,10 @@ export function LiabilityListPage() {
   const teamsQuery = useQuery({
     queryKey: ["team-by-ids", ids.map((id) => id.toString()).sort()],
     enabled: ids.length > 0,
-    queryFn: () => teamClient.teamByIds({ ids }),
+    queryFn: async () =>
+      teamsByIds(await teamClient.teamByIds({ filter: { ids }, dataRequest: teamByIdsRowData() })),
   });
-  const teamMap = teamsQuery.data?.data ?? {};
+  const teamMap = teamsQuery.data ?? {};
 
   // Search and team-type filter narrow the LOADED page client-side, as the mock drives them.
   const rows = positions.filter((p) => {

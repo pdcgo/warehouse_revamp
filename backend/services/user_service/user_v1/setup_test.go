@@ -108,12 +108,30 @@ type fakeTeamClient struct {
 }
 
 func (f *fakeTeamClient) TeamByIds(_ context.Context, _ *connect.Request[teamv1.TeamByIdsRequest]) (*connect.Response[teamv1.TeamByIdsResponse], error) {
-	data := f.byIds
-	if data == nil {
-		data = map[uint64]*teamv1.Team{}
+	// The guideline by-ids shape: a map keyed by team id, each value holding the TEAM (row) slice.
+	items := map[uint64]*teamv1.TeamByIdsResponseList{}
+
+	for id, team := range f.byIds {
+		row := &teamv1.TeamRowItem{
+			Id:          team.GetId(),
+			Type:        team.GetType(),
+			Name:        team.GetName(),
+			TeamCode:    team.GetTeamCode(),
+			Description: team.GetDescription(),
+			Deleted:     team.GetDeleted(),
+			ImageUrl:    team.GetImageUrl(),
+		}
+
+		items[id] = &teamv1.TeamByIdsResponseList{
+			Items: []*teamv1.TeamByIdsResponseItem{{
+				D: &teamv1.TeamByIdsResponseItem_Team{
+					Team: &teamv1.TeamRowMapItem{MapData: map[uint64]*teamv1.TeamRowItem{id: row}},
+				},
+			}},
+		}
 	}
 
-	return connect.NewResponse(&teamv1.TeamByIdsResponse{Data: data}), nil
+	return connect.NewResponse(&teamv1.TeamByIdsResponse{Items: items}), nil
 }
 
 func (f *fakeTeamClient) TeamCreate(context.Context, *connect.Request[teamv1.TeamCreateRequest]) (*connect.Response[teamv1.TeamCreateResponse], error) {

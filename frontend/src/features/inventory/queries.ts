@@ -16,6 +16,7 @@ import {
   productsFromByIds,
   productsFromList,
 } from "../products/adapt";
+import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -136,8 +137,13 @@ export function useWarehouseProduct(args: {
       let ownerName = "";
       if (product && product.teamId > 0n) {
         try {
-          const teams = await teamClient.teamByIds({ ids: [product.teamId] });
-          ownerName = teams.data[product.teamId.toString()]?.name ?? "";
+          const teams = teamsByIds(
+            await teamClient.teamByIds({
+              filter: { ids: [product.teamId] },
+              dataRequest: teamByIdsRowData(),
+            }),
+          );
+          ownerName = teams[product.teamId.toString()]?.name ?? "";
         } catch {
           ownerName = "";
         }
@@ -360,9 +366,11 @@ export function useWarehouseBatches(args: {
           }
           const teamIds = [...new Set([...teamByProduct.values()])];
           if (teamIds.length > 0) {
-            const teams = await teamClient.teamByIds({ ids: teamIds });
+            const teams = teamsByIds(
+              await teamClient.teamByIds({ filter: { ids: teamIds }, dataRequest: teamByIdsRowData() }),
+            );
             for (const [productId, teamId] of teamByProduct) {
-              const name = teams.data[teamId.toString()]?.name;
+              const name = teams[teamId.toString()]?.name;
               if (name) ownerByProduct.set(productId, name);
             }
           }
@@ -447,8 +455,13 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         product = productsFromByIds(found)[0] ?? null;
         const ownerTeamId = product?.teamId ?? 0n;
         if (ownerTeamId > 0n) {
-          const teams = await teamClient.teamByIds({ ids: [ownerTeamId] });
-          ownerName = teams.data[ownerTeamId.toString()]?.name ?? "";
+          const teams = teamsByIds(
+            await teamClient.teamByIds({
+              filter: { ids: [ownerTeamId] },
+              dataRequest: teamByIdsRowData(),
+            }),
+          );
+          ownerName = teams[ownerTeamId.toString()]?.name ?? "";
         }
       } catch {
         product = null;
@@ -598,8 +611,13 @@ export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliver
 
       let warehouseName = "";
       try {
-        const teams = await teamClient.teamByIds({ ids: [res.warehouseId] });
-        warehouseName = teams.data[res.warehouseId.toString()]?.name ?? "";
+        const teams = teamsByIds(
+          await teamClient.teamByIds({
+            filter: { ids: [res.warehouseId] },
+            dataRequest: teamByIdsRowData(),
+          }),
+        );
+        warehouseName = teams[res.warehouseId.toString()]?.name ?? "";
       } catch {
         warehouseName = "";
       }

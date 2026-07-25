@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { teamClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { teamListRowData, teamsFromList } from "./adapt";
 import { useInvalidateUsers } from "../users/queries";
 
 // The team screens' reads (#176) and writes (#177). Query hooks live beside the screens that use
@@ -31,10 +32,14 @@ export function useTeams({ teamType, page, pageSize, enabled = true }: TeamListA
     queryKey: key.teams(undefined, { teamType: type, page, pageSize }),
     enabled,
     queryFn: async () => {
-      const res = await teamClient.teamList({ teamType: type, page: { page, limit: pageSize } });
+      const res = await teamClient.teamList({
+        filter: { teamType: type },
+        dataRequest: teamListRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
-        teams: res.teams,
+        teams: teamsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

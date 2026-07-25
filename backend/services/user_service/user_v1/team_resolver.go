@@ -75,7 +75,9 @@ func (r *teamResolver) resolve(ctx context.Context, bearer string, ids []uint64)
 	}
 
 	for chunk := range chunks(missing, teamByIdsMax) {
-		req := connect.NewRequest(&teamv1.TeamByIdsRequest{Ids: chunk})
+		req := connect.NewRequest(&teamv1.TeamByIdsRequest{
+			Filter: &teamv1.TeamByIdsFilter{Ids: chunk},
+		})
 		if bearer != "" {
 			req.Header().Set("Authorization", "Bearer "+bearer)
 		}
@@ -92,15 +94,24 @@ func (r *teamResolver) resolve(ctx context.Context, bearer string, ids []uint64)
 			return out
 		}
 
-		for id, team := range res.Msg.GetData() {
-			entry := cachedTeam{
-				Name:     team.GetName(),
-				Type:     int32(team.GetType()),
-				ImageURL: team.GetImageUrl(),
-			}
+		// The by-ids response is keyed by team id; each value carries the requested slices, and we read
+		// the TEAM (row) slice.
+		for id, list := range res.Msg.GetItems() {
+			for _, item := range list.GetItems() {
+				team := item.GetTeam().GetMapData()[id]
+				if team == nil {
+					continue
+				}
 
-			out[id] = entry
-			_ = r.cache.Set(ctx, teamCacheKey(id), entry, teamCacheTTL)
+				entry := cachedTeam{
+					Name:     team.GetName(),
+					Type:     int32(team.GetType()),
+					ImageURL: team.GetImageUrl(),
+				}
+
+				out[id] = entry
+				_ = r.cache.Set(ctx, teamCacheKey(id), entry, teamCacheTTL)
+			}
 		}
 	}
 

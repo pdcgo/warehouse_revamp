@@ -14,8 +14,20 @@ import (
 
 func listCodes(res *connect.Response[teamv1.TeamListResponse]) map[string]bool {
 	out := map[string]bool{}
-	for _, tm := range res.Msg.GetTeams() {
-		out[tm.GetTeamCode()] = true
+
+	var rowMap map[uint64]*teamv1.TeamRowItem
+	for _, it := range res.Msg.GetItems() {
+		t := it.GetTeam()
+		if t != nil {
+			rowMap = t.GetMapData()
+		}
+	}
+
+	for _, id := range res.Msg.GetIds() {
+		row, ok := rowMap[id]
+		if ok {
+			out[row.GetTeamCode()] = true
+		}
 	}
 
 	return out
@@ -30,8 +42,8 @@ func TestTeamList_ByType(t *testing.T) {
 	newTeam(t, db, "selling", "LSELL")
 
 	res, err := svc.TeamList(ctx, connect.NewRequest(&teamv1.TeamListRequest{
-		TeamType: teamv1.TeamType_TEAM_TYPE_WAREHOUSE,
-		Page:     &commonv1.PageFilter{Page: 1, Limit: 50},
+		Filter: &teamv1.TeamListFilter{TeamType: teamv1.TeamType_TEAM_TYPE_WAREHOUSE},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("TeamList: %v", err)
@@ -53,7 +65,7 @@ func TestTeamList_ExcludesDeleted(t *testing.T) {
 	db.Model(&team_service_models.Team{}).Where("id = ?", id).Update("deleted", true)
 
 	res, err := svc.TeamList(ctx, connect.NewRequest(&teamv1.TeamListRequest{
-		Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		Page: &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("TeamList: %v", err)
@@ -73,8 +85,8 @@ func TestTeamList_SearchByCode(t *testing.T) {
 	newTeam(t, db, "warehouse", "OTHER")
 
 	res, err := svc.TeamList(ctx, connect.NewRequest(&teamv1.TeamListRequest{
-		Q:    "FINDM",
-		Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		Filter: &teamv1.TeamListFilter{Q: "FINDM"},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("TeamList: %v", err)

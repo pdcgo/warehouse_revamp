@@ -14,6 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../features/teams/adapt";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { productListRowData, productsFromList } from "../features/products/adapt";
 import { useTeam } from "../features/team/TeamContext";
@@ -347,7 +348,7 @@ export function ProductPicker({
 
     void (async () => {
       try {
-        const res = await teamClient.teamByIds({ ids: missing });
+        const teams = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
 
         if (cancelled) {
           return;
@@ -355,7 +356,7 @@ export function ProductPicker({
 
         setTeamNames((prev) => {
           const next = new Map(prev);
-          for (const [id, team] of Object.entries(res.data)) {
+          for (const [id, team] of Object.entries(teams)) {
             next.set(id, team.name);
           }
 

@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.team.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -242,17 +243,74 @@ message TeamDeleteRequest {
 
 message TeamDeleteResponse {}
 
+// ── The guideline list shape for teams (guidelines/service-guideline.md) ──────────────────────────
+
+// TeamListDataType selects which slices the response carries per team.
+enum TeamListDataType {
+  TEAM_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_LIST_DATA_TYPE_GENERAL = 1;
+  // TEAM: the full team row a list/picker renders (never the `info`, which is TeamDetail-only).
+  TEAM_LIST_DATA_TYPE_TEAM = 2;
+}
+
+// TeamRowSort is the sort selection paired with the TEAM (row) slice.
+enum TeamRowSort {
+  TEAM_ROW_SORT_UNSPECIFIED = 0;
+  TEAM_ROW_SORT_NAME = 1;
+  TEAM_ROW_SORT_TEAM_CODE = 2;
+  TEAM_ROW_SORT_ID = 3;
+}
+
+// TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
+// so there is no team_id here at all.
+message TeamListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  TeamType team_type = 2;
+}
+
+message TeamListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    TeamRowSort team = 3;
+  }
+}
+
 message TeamListRequest {
   option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
 
-  string q = 1 [(buf.validate.field).string.max_len = 100];
-  TeamType team_type = 2;
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  TeamListFilter filter = 1;
+  TeamListFilterSort sort = 2;
+  repeated TeamListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+// TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
+message TeamRowItem {
+  uint64 id = 1;
+  TeamType type = 2;
+  string name = 3;
+  string team_code = 4;
+  string description = 5;
+  bool deleted = 6;
+  string image_url = 7;
+}
+
+message TeamRowMapItem {
+  map<uint64, TeamRowItem> map_data = 1;
+}
+
+message TeamListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    TeamRowMapItem team = 2;
+  }
 }
 
 message TeamListResponse {
-  repeated Team teams = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated TeamListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message TeamDetailRequest {
@@ -265,10 +323,16 @@ message TeamDetailResponse {
   Team team = 1;
 }
 
-message TeamByIdsRequest {
-  // Deliberately UNSCOPED: this is a cross-team bulk lookup. Scoping it would defeat it.
-  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+// TeamByIdsDataType selects which slices the by-ids response carries per team.
+enum TeamByIdsDataType {
+  TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_BY_IDS_DATA_TYPE_GENERAL = 1;
+  TEAM_BY_IDS_DATA_TYPE_TEAM = 2;
+}
 
+// TeamByIdsFilter carries the ids to resolve. Deliberately UNSCOPED (cross-team bulk lookup), so no
+// team_id.
+message TeamByIdsFilter {
   repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 200
@@ -279,10 +343,30 @@ message TeamByIdsRequest {
   }];
 }
 
+message TeamByIdsRequest {
+  // Deliberately UNSCOPED: this is a cross-team bulk lookup. Scoping it would defeat it.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  TeamByIdsFilter filter = 1 [(buf.validate.field).required = true];
+  // Which slices to load per team. Empty defaults to the TEAM (row) slice.
+  repeated TeamByIdsDataType data_request = 2;
+}
+
+message TeamByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    TeamRowMapItem team = 2;
+  }
+}
+
+message TeamByIdsResponseList {
+  repeated TeamByIdsResponseItem items = 1;
+}
+
 message TeamByIdsResponse {
   // Keyed by team id. Unknown AND soft-deleted ids are OMITTED — check presence, do not index
   // blindly. The map is never nil, so ranging an empty result is safe.
-  map<uint64, Team> data = 1;
+  map<uint64, TeamByIdsResponseList> items = 1;
 }
 
 message TeamInfoUpdateRequest {

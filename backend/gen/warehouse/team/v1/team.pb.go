@@ -151,6 +151,160 @@ func (TeamType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
 }
 
+// TeamListDataType selects which slices the response carries per team.
+type TeamListDataType int32
+
+const (
+	TeamListDataType_TEAM_LIST_DATA_TYPE_UNSPECIFIED TeamListDataType = 0
+	TeamListDataType_TEAM_LIST_DATA_TYPE_GENERAL     TeamListDataType = 1
+	// TEAM: the full team row a list/picker renders (never the `info`, which is TeamDetail-only).
+	TeamListDataType_TEAM_LIST_DATA_TYPE_TEAM TeamListDataType = 2
+)
+
+// Enum value maps for TeamListDataType.
+var (
+	TeamListDataType_name = map[int32]string{
+		0: "TEAM_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "TEAM_LIST_DATA_TYPE_GENERAL",
+		2: "TEAM_LIST_DATA_TYPE_TEAM",
+	}
+	TeamListDataType_value = map[string]int32{
+		"TEAM_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"TEAM_LIST_DATA_TYPE_GENERAL":     1,
+		"TEAM_LIST_DATA_TYPE_TEAM":        2,
+	}
+)
+
+func (x TeamListDataType) Enum() *TeamListDataType {
+	p := new(TeamListDataType)
+	*p = x
+	return p
+}
+
+func (x TeamListDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TeamListDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_team_v1_team_proto_enumTypes[2].Descriptor()
+}
+
+func (TeamListDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_team_v1_team_proto_enumTypes[2]
+}
+
+func (x TeamListDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TeamListDataType.Descriptor instead.
+func (TeamListDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{2}
+}
+
+// TeamRowSort is the sort selection paired with the TEAM (row) slice.
+type TeamRowSort int32
+
+const (
+	TeamRowSort_TEAM_ROW_SORT_UNSPECIFIED TeamRowSort = 0
+	TeamRowSort_TEAM_ROW_SORT_NAME        TeamRowSort = 1
+	TeamRowSort_TEAM_ROW_SORT_TEAM_CODE   TeamRowSort = 2
+	TeamRowSort_TEAM_ROW_SORT_ID          TeamRowSort = 3
+)
+
+// Enum value maps for TeamRowSort.
+var (
+	TeamRowSort_name = map[int32]string{
+		0: "TEAM_ROW_SORT_UNSPECIFIED",
+		1: "TEAM_ROW_SORT_NAME",
+		2: "TEAM_ROW_SORT_TEAM_CODE",
+		3: "TEAM_ROW_SORT_ID",
+	}
+	TeamRowSort_value = map[string]int32{
+		"TEAM_ROW_SORT_UNSPECIFIED": 0,
+		"TEAM_ROW_SORT_NAME":        1,
+		"TEAM_ROW_SORT_TEAM_CODE":   2,
+		"TEAM_ROW_SORT_ID":          3,
+	}
+)
+
+func (x TeamRowSort) Enum() *TeamRowSort {
+	p := new(TeamRowSort)
+	*p = x
+	return p
+}
+
+func (x TeamRowSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TeamRowSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_team_v1_team_proto_enumTypes[3].Descriptor()
+}
+
+func (TeamRowSort) Type() protoreflect.EnumType {
+	return &file_warehouse_team_v1_team_proto_enumTypes[3]
+}
+
+func (x TeamRowSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TeamRowSort.Descriptor instead.
+func (TeamRowSort) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{3}
+}
+
+// TeamByIdsDataType selects which slices the by-ids response carries per team.
+type TeamByIdsDataType int32
+
+const (
+	TeamByIdsDataType_TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED TeamByIdsDataType = 0
+	TeamByIdsDataType_TEAM_BY_IDS_DATA_TYPE_GENERAL     TeamByIdsDataType = 1
+	TeamByIdsDataType_TEAM_BY_IDS_DATA_TYPE_TEAM        TeamByIdsDataType = 2
+)
+
+// Enum value maps for TeamByIdsDataType.
+var (
+	TeamByIdsDataType_name = map[int32]string{
+		0: "TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED",
+		1: "TEAM_BY_IDS_DATA_TYPE_GENERAL",
+		2: "TEAM_BY_IDS_DATA_TYPE_TEAM",
+	}
+	TeamByIdsDataType_value = map[string]int32{
+		"TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED": 0,
+		"TEAM_BY_IDS_DATA_TYPE_GENERAL":     1,
+		"TEAM_BY_IDS_DATA_TYPE_TEAM":        2,
+	}
+)
+
+func (x TeamByIdsDataType) Enum() *TeamByIdsDataType {
+	p := new(TeamByIdsDataType)
+	*p = x
+	return p
+}
+
+func (x TeamByIdsDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TeamByIdsDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_team_v1_team_proto_enumTypes[4].Descriptor()
+}
+
+func (TeamByIdsDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_team_v1_team_proto_enumTypes[4]
+}
+
+func (x TeamByIdsDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TeamByIdsDataType.Descriptor instead.
+func (TeamByIdsDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{4}
+}
+
 // DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
 // Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
 type DayHours struct {
@@ -1016,18 +1170,163 @@ func (*TeamDeleteResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{13}
 }
 
-type TeamListRequest struct {
+// TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
+// so there is no team_id here at all.
+type TeamListFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
 	TeamType      TeamType               `protobuf:"varint,2,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamListFilter) Reset() {
+	*x = TeamListFilter{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamListFilter) ProtoMessage() {}
+
+func (x *TeamListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamListFilter.ProtoReflect.Descriptor instead.
+func (*TeamListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *TeamListFilter) GetQ() string {
+	if x != nil {
+		return x.Q
+	}
+	return ""
+}
+
+func (x *TeamListFilter) GetTeamType() TeamType {
+	if x != nil {
+		return x.TeamType
+	}
+	return TeamType_TEAM_TYPE_UNSPECIFIED
+}
+
+type TeamListFilterSort struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SortType v1.CommonSortType      `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
+	// Types that are valid to be assigned to S:
+	//
+	//	*TeamListFilterSort_General
+	//	*TeamListFilterSort_Team
+	S             isTeamListFilterSort_S `protobuf_oneof:"s"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamListFilterSort) Reset() {
+	*x = TeamListFilterSort{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamListFilterSort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamListFilterSort) ProtoMessage() {}
+
+func (x *TeamListFilterSort) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamListFilterSort.ProtoReflect.Descriptor instead.
+func (*TeamListFilterSort) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *TeamListFilterSort) GetSortType() v1.CommonSortType {
+	if x != nil {
+		return x.SortType
+	}
+	return v1.CommonSortType(0)
+}
+
+func (x *TeamListFilterSort) GetS() isTeamListFilterSort_S {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *TeamListFilterSort) GetGeneral() v1.GeneralSort {
+	if x != nil {
+		if x, ok := x.S.(*TeamListFilterSort_General); ok {
+			return x.General
+		}
+	}
+	return v1.GeneralSort(0)
+}
+
+func (x *TeamListFilterSort) GetTeam() TeamRowSort {
+	if x != nil {
+		if x, ok := x.S.(*TeamListFilterSort_Team); ok {
+			return x.Team
+		}
+	}
+	return TeamRowSort_TEAM_ROW_SORT_UNSPECIFIED
+}
+
+type isTeamListFilterSort_S interface {
+	isTeamListFilterSort_S()
+}
+
+type TeamListFilterSort_General struct {
+	General v1.GeneralSort `protobuf:"varint,2,opt,name=general,proto3,enum=warehouse.common.v1.GeneralSort,oneof"`
+}
+
+type TeamListFilterSort_Team struct {
+	Team TeamRowSort `protobuf:"varint,3,opt,name=team,proto3,enum=warehouse.team.v1.TeamRowSort,oneof"`
+}
+
+func (*TeamListFilterSort_General) isTeamListFilterSort_S() {}
+
+func (*TeamListFilterSort_Team) isTeamListFilterSort_S() {}
+
+type TeamListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filter        *TeamListFilter        `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort          *TeamListFilterSort    `protobuf:"bytes,2,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest   []TeamListDataType     `protobuf:"varint,3,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.team.v1.TeamListDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination   `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamListRequest) Reset() {
 	*x = TeamListRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1039,7 +1338,7 @@ func (x *TeamListRequest) String() string {
 func (*TeamListRequest) ProtoMessage() {}
 
 func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1052,41 +1351,268 @@ func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListRequest.ProtoReflect.Descriptor instead.
 func (*TeamListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *TeamListRequest) GetQ() string {
+func (x *TeamListRequest) GetFilter() *TeamListFilter {
 	if x != nil {
-		return x.Q
+		return x.Filter
 	}
-	return ""
+	return nil
 }
 
-func (x *TeamListRequest) GetTeamType() TeamType {
+func (x *TeamListRequest) GetSort() *TeamListFilterSort {
 	if x != nil {
-		return x.TeamType
+		return x.Sort
 	}
-	return TeamType_TEAM_TYPE_UNSPECIFIED
+	return nil
 }
 
-func (x *TeamListRequest) GetPage() *v1.PageFilter {
+func (x *TeamListRequest) GetDataRequest() []TeamListDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *TeamListRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type TeamListResponse struct {
+// TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
+type TeamRowItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Teams         []*Team                `protobuf:"bytes,1,rep,name=teams,proto3" json:"teams,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type          TeamType               `protobuf:"varint,2,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	TeamCode      string                 `protobuf:"bytes,4,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Deleted       bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	ImageUrl      string                 `protobuf:"bytes,7,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamRowItem) Reset() {
+	*x = TeamRowItem{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamRowItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamRowItem) ProtoMessage() {}
+
+func (x *TeamRowItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamRowItem.ProtoReflect.Descriptor instead.
+func (*TeamRowItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *TeamRowItem) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *TeamRowItem) GetType() TeamType {
+	if x != nil {
+		return x.Type
+	}
+	return TeamType_TEAM_TYPE_UNSPECIFIED
+}
+
+func (x *TeamRowItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TeamRowItem) GetTeamCode() string {
+	if x != nil {
+		return x.TeamCode
+	}
+	return ""
+}
+
+func (x *TeamRowItem) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *TeamRowItem) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
+}
+
+func (x *TeamRowItem) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
+}
+
+type TeamRowMapItem struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	MapData       map[uint64]*TeamRowItem `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamRowMapItem) Reset() {
+	*x = TeamRowMapItem{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamRowMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamRowMapItem) ProtoMessage() {}
+
+func (x *TeamRowMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamRowMapItem.ProtoReflect.Descriptor instead.
+func (*TeamRowMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TeamRowMapItem) GetMapData() map[uint64]*TeamRowItem {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type TeamListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*TeamListResponseItem_General
+	//	*TeamListResponseItem_Team
+	D             isTeamListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamListResponseItem) Reset() {
+	*x = TeamListResponseItem{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamListResponseItem) ProtoMessage() {}
+
+func (x *TeamListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamListResponseItem.ProtoReflect.Descriptor instead.
+func (*TeamListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TeamListResponseItem) GetD() isTeamListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *TeamListResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*TeamListResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *TeamListResponseItem) GetTeam() *TeamRowMapItem {
+	if x != nil {
+		if x, ok := x.D.(*TeamListResponseItem_Team); ok {
+			return x.Team
+		}
+	}
+	return nil
+}
+
+type isTeamListResponseItem_D interface {
+	isTeamListResponseItem_D()
+}
+
+type TeamListResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type TeamListResponseItem_Team struct {
+	Team *TeamRowMapItem `protobuf:"bytes,2,opt,name=team,proto3,oneof"`
+}
+
+func (*TeamListResponseItem_General) isTeamListResponseItem_D() {}
+
+func (*TeamListResponseItem_Team) isTeamListResponseItem_D() {}
+
+type TeamListResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Items         []*TeamListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids           []uint64                `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v1.PageInfo            `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamListResponse) Reset() {
 	*x = TeamListResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1624,7 @@ func (x *TeamListResponse) String() string {
 func (*TeamListResponse) ProtoMessage() {}
 
 func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,12 +1637,19 @@ func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListResponse.ProtoReflect.Descriptor instead.
 func (*TeamListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *TeamListResponse) GetTeams() []*Team {
+func (x *TeamListResponse) GetItems() []*TeamListResponseItem {
 	if x != nil {
-		return x.Teams
+		return x.Items
+	}
+	return nil
+}
+
+func (x *TeamListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -1137,7 +1670,7 @@ type TeamDetailRequest struct {
 
 func (x *TeamDetailRequest) Reset() {
 	*x = TeamDetailRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1149,7 +1682,7 @@ func (x *TeamDetailRequest) String() string {
 func (*TeamDetailRequest) ProtoMessage() {}
 
 func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1162,7 +1695,7 @@ func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailRequest.ProtoReflect.Descriptor instead.
 func (*TeamDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TeamDetailRequest) GetTeamId() uint64 {
@@ -1181,7 +1714,7 @@ type TeamDetailResponse struct {
 
 func (x *TeamDetailResponse) Reset() {
 	*x = TeamDetailResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1193,7 +1726,7 @@ func (x *TeamDetailResponse) String() string {
 func (*TeamDetailResponse) ProtoMessage() {}
 
 func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1206,7 +1739,7 @@ func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailResponse.ProtoReflect.Descriptor instead.
 func (*TeamDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *TeamDetailResponse) GetTeam() *Team {
@@ -1216,16 +1749,64 @@ func (x *TeamDetailResponse) GetTeam() *Team {
 	return nil
 }
 
-type TeamByIdsRequest struct {
+// TeamByIdsFilter carries the ids to resolve. Deliberately UNSCOPED (cross-team bulk lookup), so no
+// team_id.
+type TeamByIdsFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Ids           []uint64               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *TeamByIdsFilter) Reset() {
+	*x = TeamByIdsFilter{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamByIdsFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamByIdsFilter) ProtoMessage() {}
+
+func (x *TeamByIdsFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamByIdsFilter.ProtoReflect.Descriptor instead.
+func (*TeamByIdsFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TeamByIdsFilter) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type TeamByIdsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Filter *TeamByIdsFilter       `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Which slices to load per team. Empty defaults to the TEAM (row) slice.
+	DataRequest   []TeamByIdsDataType `protobuf:"varint,2,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.team.v1.TeamByIdsDataType" json:"data_request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
 func (x *TeamByIdsRequest) Reset() {
 	*x = TeamByIdsRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1237,7 +1818,7 @@ func (x *TeamByIdsRequest) String() string {
 func (*TeamByIdsRequest) ProtoMessage() {}
 
 func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1250,12 +1831,145 @@ func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsRequest.ProtoReflect.Descriptor instead.
 func (*TeamByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{24}
 }
 
-func (x *TeamByIdsRequest) GetIds() []uint64 {
+func (x *TeamByIdsRequest) GetFilter() *TeamByIdsFilter {
 	if x != nil {
-		return x.Ids
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *TeamByIdsRequest) GetDataRequest() []TeamByIdsDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+type TeamByIdsResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*TeamByIdsResponseItem_General
+	//	*TeamByIdsResponseItem_Team
+	D             isTeamByIdsResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamByIdsResponseItem) Reset() {
+	*x = TeamByIdsResponseItem{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamByIdsResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamByIdsResponseItem) ProtoMessage() {}
+
+func (x *TeamByIdsResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamByIdsResponseItem.ProtoReflect.Descriptor instead.
+func (*TeamByIdsResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *TeamByIdsResponseItem) GetD() isTeamByIdsResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *TeamByIdsResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*TeamByIdsResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *TeamByIdsResponseItem) GetTeam() *TeamRowMapItem {
+	if x != nil {
+		if x, ok := x.D.(*TeamByIdsResponseItem_Team); ok {
+			return x.Team
+		}
+	}
+	return nil
+}
+
+type isTeamByIdsResponseItem_D interface {
+	isTeamByIdsResponseItem_D()
+}
+
+type TeamByIdsResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type TeamByIdsResponseItem_Team struct {
+	Team *TeamRowMapItem `protobuf:"bytes,2,opt,name=team,proto3,oneof"`
+}
+
+func (*TeamByIdsResponseItem_General) isTeamByIdsResponseItem_D() {}
+
+func (*TeamByIdsResponseItem_Team) isTeamByIdsResponseItem_D() {}
+
+type TeamByIdsResponseList struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Items         []*TeamByIdsResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamByIdsResponseList) Reset() {
+	*x = TeamByIdsResponseList{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamByIdsResponseList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamByIdsResponseList) ProtoMessage() {}
+
+func (x *TeamByIdsResponseList) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamByIdsResponseList.ProtoReflect.Descriptor instead.
+func (*TeamByIdsResponseList) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *TeamByIdsResponseList) GetItems() []*TeamByIdsResponseItem {
+	if x != nil {
+		return x.Items
 	}
 	return nil
 }
@@ -1264,14 +1978,14 @@ type TeamByIdsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Keyed by team id. Unknown AND soft-deleted ids are OMITTED — check presence, do not index
 	// blindly. The map is never nil, so ranging an empty result is safe.
-	Data          map[uint64]*Team `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Items         map[uint64]*TeamByIdsResponseList `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TeamByIdsResponse) Reset() {
 	*x = TeamByIdsResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1283,7 +1997,7 @@ func (x *TeamByIdsResponse) String() string {
 func (*TeamByIdsResponse) ProtoMessage() {}
 
 func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1296,12 +2010,12 @@ func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsResponse.ProtoReflect.Descriptor instead.
 func (*TeamByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *TeamByIdsResponse) GetData() map[uint64]*Team {
+func (x *TeamByIdsResponse) GetItems() map[uint64]*TeamByIdsResponseList {
 	if x != nil {
-		return x.Data
+		return x.Items
 	}
 	return nil
 }
@@ -1325,7 +2039,7 @@ type TeamInfoUpdateRequest struct {
 
 func (x *TeamInfoUpdateRequest) Reset() {
 	*x = TeamInfoUpdateRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1337,7 +2051,7 @@ func (x *TeamInfoUpdateRequest) String() string {
 func (*TeamInfoUpdateRequest) ProtoMessage() {}
 
 func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1350,7 +2064,7 @@ func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateRequest.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *TeamInfoUpdateRequest) GetTeamId() uint64 {
@@ -1418,7 +2132,7 @@ type TeamInfoUpdateResponse struct {
 
 func (x *TeamInfoUpdateResponse) Reset() {
 	*x = TeamInfoUpdateResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1430,7 +2144,7 @@ func (x *TeamInfoUpdateResponse) String() string {
 func (*TeamInfoUpdateResponse) ProtoMessage() {}
 
 func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1443,7 +2157,7 @@ func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateResponse.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *TeamInfoUpdateResponse) GetInfo() *TeamInfo {
@@ -1457,7 +2171,7 @@ var File_warehouse_team_v1_team_proto protoreflect.FileDescriptor
 
 const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwarehouse/team/v1/team.proto\x12\x11warehouse.team.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xae\x01\n" +
+	"\x1cwarehouse/team/v1/team.proto\x12\x11warehouse.team.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xae\x01\n" +
 	"\bDayHours\x12@\n" +
 	"\aweekday\x18\x01 \x01(\x0e2\x1a.warehouse.team.v1.WeekdayB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\aweekday\x12\x12\n" +
@@ -1527,25 +2241,62 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x11TeamDeleteRequest\x12 \n" +
 	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"\x14\n" +
-	"\x12TeamDeleteResponse\"\xa7\x01\n" +
-	"\x0fTeamListRequest\x12\x15\n" +
+	"\x12TeamDeleteResponse\"a\n" +
+	"\x0eTeamListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x128\n" +
-	"\tteam_type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\x12;\n" +
-	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"}\n" +
-	"\x10TeamListResponse\x12-\n" +
-	"\x05teams\x18\x01 \x03(\v2\x17.warehouse.team.v1.TeamR\x05teams\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"=\n" +
+	"\tteam_type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"\xcf\x01\n" +
+	"\x12TeamListFilterSort\x12@\n" +
+	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
+	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x124\n" +
+	"\x04team\x18\x03 \x01(\x0e2\x1e.warehouse.team.v1.TeamRowSortH\x00R\x04teamB\x03\n" +
+	"\x01s\"\x9a\x02\n" +
+	"\x0fTeamListRequest\x129\n" +
+	"\x06filter\x18\x01 \x01(\v2!.warehouse.team.v1.TeamListFilterR\x06filter\x129\n" +
+	"\x04sort\x18\x02 \x01(\v2%.warehouse.team.v1.TeamListFilterSortR\x04sort\x12F\n" +
+	"\fdata_request\x18\x03 \x03(\x0e2#.warehouse.team.v1.TeamListDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\xd8\x01\n" +
+	"\vTeamRowItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1b\n" +
+	"\tteam_code\x18\x04 \x01(\tR\bteamCode\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x18\n" +
+	"\adeleted\x18\x06 \x01(\bR\adeleted\x12\x1b\n" +
+	"\timage_url\x18\a \x01(\tR\bimageUrl\"\xb7\x01\n" +
+	"\x0eTeamRowMapItem\x12I\n" +
+	"\bmap_data\x18\x01 \x03(\v2..warehouse.team.v1.TeamRowMapItem.MapDataEntryR\amapData\x1aZ\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x124\n" +
+	"\x05value\x18\x02 \x01(\v2\x1e.warehouse.team.v1.TeamRowItemR\x05value:\x028\x01\"\x95\x01\n" +
+	"\x14TeamListResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x127\n" +
+	"\x04team\x18\x02 \x01(\v2!.warehouse.team.v1.TeamRowMapItemH\x00R\x04teamB\x03\n" +
+	"\x01d\"\x9f\x01\n" +
+	"\x10TeamListResponse\x12=\n" +
+	"\x05items\x18\x01 \x03(\v2'.warehouse.team.v1.TeamListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"=\n" +
 	"\x11TeamDetailRequest\x12 \n" +
 	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\x06\x92\xb5\x18\x02 \x01\"A\n" +
 	"\x12TeamDetailResponse\x12+\n" +
-	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"A\n" +
-	"\x10TeamByIdsRequest\x12%\n" +
-	"\x03ids\x18\x01 \x03(\x04B\x13\xbaH\x10\x92\x01\r\b\x01\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x03ids:\x06\x92\xb5\x18\x02 \x01\"\xa9\x01\n" +
-	"\x11TeamByIdsResponse\x12B\n" +
-	"\x04data\x18\x01 \x03(\v2..warehouse.team.v1.TeamByIdsResponse.DataEntryR\x04data\x1aP\n" +
-	"\tDataEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\x04R\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.warehouse.team.v1.TeamR\x05value:\x028\x01\"\xc8\x04\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"8\n" +
+	"\x0fTeamByIdsFilter\x12%\n" +
+	"\x03ids\x18\x01 \x03(\x04B\x13\xbaH\x10\x92\x01\r\b\x01\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x03ids\"\xa7\x01\n" +
+	"\x10TeamByIdsRequest\x12B\n" +
+	"\x06filter\x18\x01 \x01(\v2\".warehouse.team.v1.TeamByIdsFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12G\n" +
+	"\fdata_request\x18\x02 \x03(\x0e2$.warehouse.team.v1.TeamByIdsDataTypeR\vdataRequest:\x06\x92\xb5\x18\x02 \x01\"\x96\x01\n" +
+	"\x15TeamByIdsResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x127\n" +
+	"\x04team\x18\x02 \x01(\v2!.warehouse.team.v1.TeamRowMapItemH\x00R\x04teamB\x03\n" +
+	"\x01d\"W\n" +
+	"\x15TeamByIdsResponseList\x12>\n" +
+	"\x05items\x18\x01 \x03(\v2(.warehouse.team.v1.TeamByIdsResponseItemR\x05items\"\xbe\x01\n" +
+	"\x11TeamByIdsResponse\x12E\n" +
+	"\x05items\x18\x01 \x03(\v2/.warehouse.team.v1.TeamByIdsResponse.ItemsEntryR\x05items\x1ab\n" +
+	"\n" +
+	"ItemsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12>\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.team.v1.TeamByIdsResponseListR\x05value:\x028\x01\"\xc8\x04\n" +
 	"\x15TeamInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
 	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x12)\n" +
@@ -1580,7 +2331,20 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0eTEAM_TYPE_ROOT\x10\x01\x12\x13\n" +
 	"\x0fTEAM_TYPE_ADMIN\x10\x02\x12\x17\n" +
 	"\x13TEAM_TYPE_WAREHOUSE\x10\x03\x12\x15\n" +
-	"\x11TEAM_TYPE_SELLING\x10\x042\xf9\x06\n" +
+	"\x11TEAM_TYPE_SELLING\x10\x04*v\n" +
+	"\x10TeamListDataType\x12#\n" +
+	"\x1fTEAM_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bTEAM_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1c\n" +
+	"\x18TEAM_LIST_DATA_TYPE_TEAM\x10\x02*w\n" +
+	"\vTeamRowSort\x12\x1d\n" +
+	"\x19TEAM_ROW_SORT_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12TEAM_ROW_SORT_NAME\x10\x01\x12\x1b\n" +
+	"\x17TEAM_ROW_SORT_TEAM_CODE\x10\x02\x12\x14\n" +
+	"\x10TEAM_ROW_SORT_ID\x10\x03*}\n" +
+	"\x11TeamByIdsDataType\x12%\n" +
+	"!TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dTEAM_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12\x1e\n" +
+	"\x1aTEAM_BY_IDS_DATA_TYPE_TEAM\x10\x022\xf9\x06\n" +
 	"\vTeamService\x12Y\n" +
 	"\n" +
 	"TeamCreate\x12$.warehouse.team.v1.TeamCreateRequest\x1a%.warehouse.team.v1.TeamCreateResponse\x12Y\n" +
@@ -1608,81 +2372,112 @@ func file_warehouse_team_v1_team_proto_rawDescGZIP() []byte {
 	return file_warehouse_team_v1_team_proto_rawDescData
 }
 
-var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_warehouse_team_v1_team_proto_goTypes = []any{
 	(Weekday)(0),                        // 0: warehouse.team.v1.Weekday
 	(TeamType)(0),                       // 1: warehouse.team.v1.TeamType
-	(*DayHours)(nil),                    // 2: warehouse.team.v1.DayHours
-	(*WarehouseInfo)(nil),               // 3: warehouse.team.v1.WarehouseInfo
-	(*WarehouseInfoDetailRequest)(nil),  // 4: warehouse.team.v1.WarehouseInfoDetailRequest
-	(*WarehouseInfoDetailResponse)(nil), // 5: warehouse.team.v1.WarehouseInfoDetailResponse
-	(*WarehouseInfoUpdateRequest)(nil),  // 6: warehouse.team.v1.WarehouseInfoUpdateRequest
-	(*WarehouseInfoUpdateResponse)(nil), // 7: warehouse.team.v1.WarehouseInfoUpdateResponse
-	(*TeamInfo)(nil),                    // 8: warehouse.team.v1.TeamInfo
-	(*Team)(nil),                        // 9: warehouse.team.v1.Team
-	(*TeamCreateRequest)(nil),           // 10: warehouse.team.v1.TeamCreateRequest
-	(*TeamCreateResponse)(nil),          // 11: warehouse.team.v1.TeamCreateResponse
-	(*TeamUpdateRequest)(nil),           // 12: warehouse.team.v1.TeamUpdateRequest
-	(*TeamUpdateResponse)(nil),          // 13: warehouse.team.v1.TeamUpdateResponse
-	(*TeamDeleteRequest)(nil),           // 14: warehouse.team.v1.TeamDeleteRequest
-	(*TeamDeleteResponse)(nil),          // 15: warehouse.team.v1.TeamDeleteResponse
-	(*TeamListRequest)(nil),             // 16: warehouse.team.v1.TeamListRequest
-	(*TeamListResponse)(nil),            // 17: warehouse.team.v1.TeamListResponse
-	(*TeamDetailRequest)(nil),           // 18: warehouse.team.v1.TeamDetailRequest
-	(*TeamDetailResponse)(nil),          // 19: warehouse.team.v1.TeamDetailResponse
-	(*TeamByIdsRequest)(nil),            // 20: warehouse.team.v1.TeamByIdsRequest
-	(*TeamByIdsResponse)(nil),           // 21: warehouse.team.v1.TeamByIdsResponse
-	(*TeamInfoUpdateRequest)(nil),       // 22: warehouse.team.v1.TeamInfoUpdateRequest
-	(*TeamInfoUpdateResponse)(nil),      // 23: warehouse.team.v1.TeamInfoUpdateResponse
-	nil,                                 // 24: warehouse.team.v1.TeamByIdsResponse.DataEntry
-	(*v1.PageFilter)(nil),               // 25: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),                 // 26: warehouse.common.v1.PageInfo
+	(TeamListDataType)(0),               // 2: warehouse.team.v1.TeamListDataType
+	(TeamRowSort)(0),                    // 3: warehouse.team.v1.TeamRowSort
+	(TeamByIdsDataType)(0),              // 4: warehouse.team.v1.TeamByIdsDataType
+	(*DayHours)(nil),                    // 5: warehouse.team.v1.DayHours
+	(*WarehouseInfo)(nil),               // 6: warehouse.team.v1.WarehouseInfo
+	(*WarehouseInfoDetailRequest)(nil),  // 7: warehouse.team.v1.WarehouseInfoDetailRequest
+	(*WarehouseInfoDetailResponse)(nil), // 8: warehouse.team.v1.WarehouseInfoDetailResponse
+	(*WarehouseInfoUpdateRequest)(nil),  // 9: warehouse.team.v1.WarehouseInfoUpdateRequest
+	(*WarehouseInfoUpdateResponse)(nil), // 10: warehouse.team.v1.WarehouseInfoUpdateResponse
+	(*TeamInfo)(nil),                    // 11: warehouse.team.v1.TeamInfo
+	(*Team)(nil),                        // 12: warehouse.team.v1.Team
+	(*TeamCreateRequest)(nil),           // 13: warehouse.team.v1.TeamCreateRequest
+	(*TeamCreateResponse)(nil),          // 14: warehouse.team.v1.TeamCreateResponse
+	(*TeamUpdateRequest)(nil),           // 15: warehouse.team.v1.TeamUpdateRequest
+	(*TeamUpdateResponse)(nil),          // 16: warehouse.team.v1.TeamUpdateResponse
+	(*TeamDeleteRequest)(nil),           // 17: warehouse.team.v1.TeamDeleteRequest
+	(*TeamDeleteResponse)(nil),          // 18: warehouse.team.v1.TeamDeleteResponse
+	(*TeamListFilter)(nil),              // 19: warehouse.team.v1.TeamListFilter
+	(*TeamListFilterSort)(nil),          // 20: warehouse.team.v1.TeamListFilterSort
+	(*TeamListRequest)(nil),             // 21: warehouse.team.v1.TeamListRequest
+	(*TeamRowItem)(nil),                 // 22: warehouse.team.v1.TeamRowItem
+	(*TeamRowMapItem)(nil),              // 23: warehouse.team.v1.TeamRowMapItem
+	(*TeamListResponseItem)(nil),        // 24: warehouse.team.v1.TeamListResponseItem
+	(*TeamListResponse)(nil),            // 25: warehouse.team.v1.TeamListResponse
+	(*TeamDetailRequest)(nil),           // 26: warehouse.team.v1.TeamDetailRequest
+	(*TeamDetailResponse)(nil),          // 27: warehouse.team.v1.TeamDetailResponse
+	(*TeamByIdsFilter)(nil),             // 28: warehouse.team.v1.TeamByIdsFilter
+	(*TeamByIdsRequest)(nil),            // 29: warehouse.team.v1.TeamByIdsRequest
+	(*TeamByIdsResponseItem)(nil),       // 30: warehouse.team.v1.TeamByIdsResponseItem
+	(*TeamByIdsResponseList)(nil),       // 31: warehouse.team.v1.TeamByIdsResponseList
+	(*TeamByIdsResponse)(nil),           // 32: warehouse.team.v1.TeamByIdsResponse
+	(*TeamInfoUpdateRequest)(nil),       // 33: warehouse.team.v1.TeamInfoUpdateRequest
+	(*TeamInfoUpdateResponse)(nil),      // 34: warehouse.team.v1.TeamInfoUpdateResponse
+	nil,                                 // 35: warehouse.team.v1.TeamRowMapItem.MapDataEntry
+	nil,                                 // 36: warehouse.team.v1.TeamByIdsResponse.ItemsEntry
+	(v1.CommonSortType)(0),              // 37: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),                 // 38: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),         // 39: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),           // 40: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                 // 41: warehouse.common.v1.PageInfo
 }
 var file_warehouse_team_v1_team_proto_depIdxs = []int32{
 	0,  // 0: warehouse.team.v1.DayHours.weekday:type_name -> warehouse.team.v1.Weekday
-	2,  // 1: warehouse.team.v1.WarehouseInfo.operating_hours:type_name -> warehouse.team.v1.DayHours
-	2,  // 2: warehouse.team.v1.WarehouseInfo.receiving_hours:type_name -> warehouse.team.v1.DayHours
-	3,  // 3: warehouse.team.v1.WarehouseInfoDetailResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
-	2,  // 4: warehouse.team.v1.WarehouseInfoUpdateRequest.operating_hours:type_name -> warehouse.team.v1.DayHours
-	2,  // 5: warehouse.team.v1.WarehouseInfoUpdateRequest.receiving_hours:type_name -> warehouse.team.v1.DayHours
-	3,  // 6: warehouse.team.v1.WarehouseInfoUpdateResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
+	5,  // 1: warehouse.team.v1.WarehouseInfo.operating_hours:type_name -> warehouse.team.v1.DayHours
+	5,  // 2: warehouse.team.v1.WarehouseInfo.receiving_hours:type_name -> warehouse.team.v1.DayHours
+	6,  // 3: warehouse.team.v1.WarehouseInfoDetailResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
+	5,  // 4: warehouse.team.v1.WarehouseInfoUpdateRequest.operating_hours:type_name -> warehouse.team.v1.DayHours
+	5,  // 5: warehouse.team.v1.WarehouseInfoUpdateRequest.receiving_hours:type_name -> warehouse.team.v1.DayHours
+	6,  // 6: warehouse.team.v1.WarehouseInfoUpdateResponse.info:type_name -> warehouse.team.v1.WarehouseInfo
 	1,  // 7: warehouse.team.v1.Team.type:type_name -> warehouse.team.v1.TeamType
-	8,  // 8: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
+	11, // 8: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
 	1,  // 9: warehouse.team.v1.TeamCreateRequest.type:type_name -> warehouse.team.v1.TeamType
-	9,  // 10: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
-	9,  // 11: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
-	1,  // 12: warehouse.team.v1.TeamListRequest.team_type:type_name -> warehouse.team.v1.TeamType
-	25, // 13: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	9,  // 14: warehouse.team.v1.TeamListResponse.teams:type_name -> warehouse.team.v1.Team
-	26, // 15: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	9,  // 16: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
-	24, // 17: warehouse.team.v1.TeamByIdsResponse.data:type_name -> warehouse.team.v1.TeamByIdsResponse.DataEntry
-	8,  // 18: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
-	9,  // 19: warehouse.team.v1.TeamByIdsResponse.DataEntry.value:type_name -> warehouse.team.v1.Team
-	10, // 20: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
-	12, // 21: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
-	14, // 22: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
-	16, // 23: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
-	18, // 24: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
-	20, // 25: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
-	22, // 26: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
-	4,  // 27: warehouse.team.v1.TeamService.WarehouseInfoDetail:input_type -> warehouse.team.v1.WarehouseInfoDetailRequest
-	6,  // 28: warehouse.team.v1.TeamService.WarehouseInfoUpdate:input_type -> warehouse.team.v1.WarehouseInfoUpdateRequest
-	11, // 29: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
-	13, // 30: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
-	15, // 31: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
-	17, // 32: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
-	19, // 33: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
-	21, // 34: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
-	23, // 35: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
-	5,  // 36: warehouse.team.v1.TeamService.WarehouseInfoDetail:output_type -> warehouse.team.v1.WarehouseInfoDetailResponse
-	7,  // 37: warehouse.team.v1.TeamService.WarehouseInfoUpdate:output_type -> warehouse.team.v1.WarehouseInfoUpdateResponse
-	29, // [29:38] is the sub-list for method output_type
-	20, // [20:29] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	12, // 10: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
+	12, // 11: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
+	1,  // 12: warehouse.team.v1.TeamListFilter.team_type:type_name -> warehouse.team.v1.TeamType
+	37, // 13: warehouse.team.v1.TeamListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	38, // 14: warehouse.team.v1.TeamListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	3,  // 15: warehouse.team.v1.TeamListFilterSort.team:type_name -> warehouse.team.v1.TeamRowSort
+	19, // 16: warehouse.team.v1.TeamListRequest.filter:type_name -> warehouse.team.v1.TeamListFilter
+	20, // 17: warehouse.team.v1.TeamListRequest.sort:type_name -> warehouse.team.v1.TeamListFilterSort
+	2,  // 18: warehouse.team.v1.TeamListRequest.data_request:type_name -> warehouse.team.v1.TeamListDataType
+	39, // 19: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	1,  // 20: warehouse.team.v1.TeamRowItem.type:type_name -> warehouse.team.v1.TeamType
+	35, // 21: warehouse.team.v1.TeamRowMapItem.map_data:type_name -> warehouse.team.v1.TeamRowMapItem.MapDataEntry
+	40, // 22: warehouse.team.v1.TeamListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	23, // 23: warehouse.team.v1.TeamListResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
+	24, // 24: warehouse.team.v1.TeamListResponse.items:type_name -> warehouse.team.v1.TeamListResponseItem
+	41, // 25: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	12, // 26: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
+	28, // 27: warehouse.team.v1.TeamByIdsRequest.filter:type_name -> warehouse.team.v1.TeamByIdsFilter
+	4,  // 28: warehouse.team.v1.TeamByIdsRequest.data_request:type_name -> warehouse.team.v1.TeamByIdsDataType
+	40, // 29: warehouse.team.v1.TeamByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	23, // 30: warehouse.team.v1.TeamByIdsResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
+	30, // 31: warehouse.team.v1.TeamByIdsResponseList.items:type_name -> warehouse.team.v1.TeamByIdsResponseItem
+	36, // 32: warehouse.team.v1.TeamByIdsResponse.items:type_name -> warehouse.team.v1.TeamByIdsResponse.ItemsEntry
+	11, // 33: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
+	22, // 34: warehouse.team.v1.TeamRowMapItem.MapDataEntry.value:type_name -> warehouse.team.v1.TeamRowItem
+	31, // 35: warehouse.team.v1.TeamByIdsResponse.ItemsEntry.value:type_name -> warehouse.team.v1.TeamByIdsResponseList
+	13, // 36: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
+	15, // 37: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
+	17, // 38: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
+	21, // 39: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
+	26, // 40: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
+	29, // 41: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
+	33, // 42: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
+	7,  // 43: warehouse.team.v1.TeamService.WarehouseInfoDetail:input_type -> warehouse.team.v1.WarehouseInfoDetailRequest
+	9,  // 44: warehouse.team.v1.TeamService.WarehouseInfoUpdate:input_type -> warehouse.team.v1.WarehouseInfoUpdateRequest
+	14, // 45: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
+	16, // 46: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
+	18, // 47: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
+	25, // 48: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
+	27, // 49: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
+	32, // 50: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
+	34, // 51: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
+	8,  // 52: warehouse.team.v1.TeamService.WarehouseInfoDetail:output_type -> warehouse.team.v1.WarehouseInfoDetailResponse
+	10, // 53: warehouse.team.v1.TeamService.WarehouseInfoUpdate:output_type -> warehouse.team.v1.WarehouseInfoUpdateResponse
+	45, // [45:54] is the sub-list for method output_type
+	36, // [36:45] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_team_v1_team_proto_init() }
@@ -1691,14 +2486,26 @@ func file_warehouse_team_v1_team_proto_init() {
 		return
 	}
 	file_warehouse_team_v1_team_proto_msgTypes[10].OneofWrappers = []any{}
-	file_warehouse_team_v1_team_proto_msgTypes[20].OneofWrappers = []any{}
+	file_warehouse_team_v1_team_proto_msgTypes[15].OneofWrappers = []any{
+		(*TeamListFilterSort_General)(nil),
+		(*TeamListFilterSort_Team)(nil),
+	}
+	file_warehouse_team_v1_team_proto_msgTypes[19].OneofWrappers = []any{
+		(*TeamListResponseItem_General)(nil),
+		(*TeamListResponseItem_Team)(nil),
+	}
+	file_warehouse_team_v1_team_proto_msgTypes[25].OneofWrappers = []any{
+		(*TeamByIdsResponseItem_General)(nil),
+		(*TeamByIdsResponseItem_Team)(nil),
+	}
+	file_warehouse_team_v1_team_proto_msgTypes[28].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_team_v1_team_proto_rawDesc), len(file_warehouse_team_v1_team_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   23,
+			NumEnums:      5,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
   SettlementPaymentStatus,
@@ -160,9 +161,15 @@ export function LiabilityDetailPage() {
   const teamQuery = useQuery({
     queryKey: ["team-by-ids", [counterpartyId.toString()]],
     enabled: counterpartyId > 0n,
-    queryFn: () => teamClient.teamByIds({ ids: [counterpartyId] }),
+    queryFn: async () =>
+      teamsByIds(
+        await teamClient.teamByIds({
+          filter: { ids: [counterpartyId] },
+          dataRequest: teamByIdsRowData(),
+        }),
+      ),
   });
-  const counterparty = teamQuery.data?.data[counterpartyId.toString()];
+  const counterparty = teamQuery.data?.[counterpartyId.toString()];
 
   const confirmPayment = useConfirmPayment();
 

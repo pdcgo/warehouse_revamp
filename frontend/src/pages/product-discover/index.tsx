@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Flex, HStack, Heading, Input, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
 import { rpcError, teamClient } from "../../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDiscoverProducts } from "../../features/products/queries";
 import { Pagination } from "../../components/Pagination";
@@ -68,7 +69,7 @@ export function DiscoverProductsPage() {
 
     void (async () => {
       try {
-        const res = await teamClient.teamByIds({ ids: missing });
+        const teams = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
 
         if (cancelled) {
           return;
@@ -76,7 +77,7 @@ export function DiscoverProductsPage() {
 
         setTeamNames((prev) => {
           const next = new Map(prev);
-          for (const [id, team] of Object.entries(res.data)) {
+          for (const [id, team] of Object.entries(teams)) {
             next.set(id, team.name);
           }
 

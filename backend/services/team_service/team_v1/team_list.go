@@ -24,12 +24,12 @@ func (s *Service) TeamList(
 		Model(&team_service_models.Team{}).
 		Where("deleted = ?", false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR team_code ILIKE ?", pattern, pattern)
 	}
 
-	if teamType := req.Msg.GetTeamType(); teamType != teamv1.TeamType_TEAM_TYPE_UNSPECIFIED {
+	if teamType := req.Msg.GetFilter().GetTeamType(); teamType != teamv1.TeamType_TEAM_TYPE_UNSPECIFIED {
 		text, err := teamTypeToText(teamType)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -50,7 +50,7 @@ func (s *Service) TeamList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(teamOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&teams).
@@ -59,13 +59,11 @@ func (s *Service) TeamList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*teamv1.Team, 0, len(teams))
-	for i := range teams {
-		out = append(out, teamToProto(&teams[i]))
-	}
+	items, ids := teamListItems(teams, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&teamv1.TeamListResponse{
-		Teams: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

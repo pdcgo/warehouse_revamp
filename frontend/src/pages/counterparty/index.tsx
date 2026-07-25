@@ -16,6 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { Pagination } from "../../components/Pagination";
 import { SettlementSourceType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah } from "../../lib/money";
@@ -82,10 +83,15 @@ export function CounterpartyPage() {
 
     void (async () => {
       try {
-        const res = await teamClient.teamByIds({ ids: [counterpartyId] });
+        const teams = teamsByIds(
+          await teamClient.teamByIds({
+            filter: { ids: [counterpartyId] },
+            dataRequest: teamByIdsRowData(),
+          }),
+        );
 
         if (!cancelled) {
-          setName(res.data[counterpartyId.toString()]?.name ?? "");
+          setName(teams[counterpartyId.toString()]?.name ?? "");
         }
       } catch {
         // The header falls back to the id.

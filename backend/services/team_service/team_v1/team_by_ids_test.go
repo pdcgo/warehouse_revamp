@@ -23,13 +23,13 @@ func TestTeamByIds_OmitsDeletedAndUnknown(t *testing.T) {
 	db.Model(&team_service_models.Team{}).Where("id = ?", gone).Update("deleted", true)
 
 	res, err := svc.TeamByIds(ctx, connect.NewRequest(&teamv1.TeamByIdsRequest{
-		Ids: []uint64{alive, gone, 9_999_999},
+		Filter: &teamv1.TeamByIdsFilter{Ids: []uint64{alive, gone, 9_999_999}},
 	}))
 	if err != nil {
 		t.Fatalf("TeamByIds: %v", err)
 	}
 
-	data := res.Msg.GetData()
+	data := teamByIdsRows(res.Msg)
 
 	if _, ok := data[alive]; !ok {
 		t.Errorf("the alive team is missing from the map")
@@ -44,7 +44,23 @@ func TestTeamByIds_OmitsDeletedAndUnknown(t *testing.T) {
 	}
 
 	// The map is never nil, so ranging an empty result is always safe.
-	if data == nil {
-		t.Error("data map is nil")
+	if res.Msg.GetItems() == nil {
+		t.Error("items map is nil")
 	}
+}
+
+// teamByIdsRows flattens a by-ids response (map id -> slices) to the TEAM row per id.
+func teamByIdsRows(res *teamv1.TeamByIdsResponse) map[uint64]*teamv1.TeamRowItem {
+	out := map[uint64]*teamv1.TeamRowItem{}
+
+	for id, list := range res.GetItems() {
+		for _, it := range list.GetItems() {
+			row := it.GetTeam().GetMapData()[id]
+			if row != nil {
+				out[id] = row
+			}
+		}
+	}
+
+	return out
 }

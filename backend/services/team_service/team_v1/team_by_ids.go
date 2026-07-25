@@ -27,7 +27,7 @@ func (s *Service) TeamByIds(
 
 	err := s.db.
 		WithContext(ctx).
-		Where("id IN ?", req.Msg.GetIds()).
+		Where("id IN ?", req.Msg.GetFilter().GetIds()).
 		Where("deleted = ?", false).
 		Find(&teams).
 		Error
@@ -35,12 +35,8 @@ func (s *Service) TeamByIds(
 		return nil, dbError(err)
 	}
 
-	// Never nil: ranging an empty result must be safe for every caller.
-	data := make(map[uint64]*teamv1.Team, len(teams))
-
-	for i := range teams {
-		data[teams[i].ID] = teamToProto(&teams[i])
-	}
-
-	return connect.NewResponse(&teamv1.TeamByIdsResponse{Data: data}), nil
+	// teamByIdsMap is never nil: ranging an empty result must be safe for every caller.
+	return connect.NewResponse(&teamv1.TeamByIdsResponse{
+		Items: teamByIdsMap(teams, req.Msg.GetDataRequest()),
+	}), nil
 }

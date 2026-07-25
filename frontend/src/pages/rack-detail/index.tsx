@@ -15,6 +15,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
+import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -219,12 +220,12 @@ export function RackDetailPage() {
 
     void (async () => {
       try {
-        const res = await teamClient.teamByIds({ ids: missing });
+        const teams = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
         if (ignore) return;
 
         setTeamNames((prev) => {
           const next = new Map(prev);
-          for (const [id, team] of Object.entries(res.data)) {
+          for (const [id, team] of Object.entries(teams)) {
             next.set(id, team.name);
           }
 

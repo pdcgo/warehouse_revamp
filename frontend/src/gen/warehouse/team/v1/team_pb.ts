@@ -5,7 +5,9 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/team/v1/team.proto.
  */
 export const file_warehouse_team_v1_team: GenFile = /*@__PURE__*/
-  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSKKAQoIRGF5SG91cnMSNwoHd2Vla2RheRgBIAEoDjIaLndhcmVob3VzZS50ZWFtLnYxLldlZWtkYXlCCrpIB4IBBBABIAASDAoEb3BlbhgCIAEoCBIaCglvcGVuX3RpbWUYAyABKAlCB7pIBHICGAUSGwoKY2xvc2VfdGltZRgEIAEoCUIHukgEcgIYBSKeAQoNV2FyZWhvdXNlSW5mbxIPCgd0ZWFtX2lkGAEgASgEEjQKD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzEjQKD3JlY2VpdmluZ19ob3VycxgDIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzEhAKCGxvY2F0aW9uGAQgASgJIj4KGldhcmVob3VzZUluZm9EZXRhaWxSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6BpK1GAIgASJNChtXYXJlaG91c2VJbmZvRGV0YWlsUmVzcG9uc2USLgoEaW5mbxgBIAEoCzIgLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm8i4gEKGldhcmVob3VzZUluZm9VcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEj4KD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzQgi6SAWSAQIQBxI+Cg9yZWNlaXZpbmdfaG91cnMYAyADKAsyGy53YXJlaG91c2UudGVhbS52MS5EYXlIb3Vyc0IIukgFkgECEAcSGgoIbG9jYXRpb24YBCABKAlCCLpIBXIDGPQDOgqStRgGCgQBAgYJIk0KG1dhcmVob3VzZUluZm9VcGRhdGVSZXNwb25zZRIuCgRpbmZvGAEgASgLMiAud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mbyLPAQoIVGVhbUluZm8SDwoHdGVhbV9pZBgBIAEoBBIWCg5jb250YWN0X251bWJlchgCIAEoCRIRCgliYW5rX3R5cGUYAyABKAkSFwoPYmFua19vd25lcl9uYW1lGAQgASgJEhsKE2JhbmtfYWNjb3VudF9udW1iZXIYBSABKAkSGwoTcmV0dXJuX3dhcmVob3VzZV9pZBgGIAEoBBIWCg5yZXR1cm5fdXNlcl9pZBgHIAEoBBIcChRkZWZhdWx0X3dhcmVob3VzZV9pZBgIIAEoBCLCAQoEVGVhbRIKCgJpZBgBIAEoBBIpCgR0eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSDAoEbmFtZRgDIAEoCRIRCgl0ZWFtX2NvZGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDwoHZGVsZXRlZBgGIAEoCBIpCgRpbmZvGAcgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8SEQoJaW1hZ2VfdXJsGAggASgJIq0BChFUZWFtQ3JlYXRlUmVxdWVzdBI3CgR0eXBlGAEgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGVCDLpICYIBBhABIAAgARIYCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABEhwKCXRlYW1fY29kZRgDIAEoCUIJukgGcgQQARgKEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxisAjoIkrUYBAoCAQIiOwoSVGVhbUNyZWF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIssBChFUZWFtVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABSACIAQESIgoLZGVzY3JpcHRpb24YAyABKAlCCLpIBXIDGKwCSAGIAQESIAoJaW1hZ2VfdXJsGAQgASgJQgi6SAVyAxiACEgCiAEBOgyStRgICgYBAgMEBglCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgwKCl9pbWFnZV91cmwiOwoSVGVhbVVwZGF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjcKEVRlYW1EZWxldGVSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6CJK1GAQKAgECIhQKElRlYW1EZWxldGVSZXNwb25zZSKUAQoPVGVhbUxpc3RSZXF1ZXN0EhIKAXEYASABKAlCB7pIBHICGGQSLgoJdGVhbV90eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSNQoEcGFnZRgDIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEibAoQVGVhbUxpc3RSZXNwb25zZRImCgV0ZWFtcxgBIAMoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0SMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyI1ChFUZWFtRGV0YWlsUmVxdWVzdBIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAOgaStRgCIAEiOwoSVGVhbURldGFpbFJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjwKEFRlYW1CeUlkc1JlcXVlc3QSIAoDaWRzGAEgAygEQhO6SBCSAQ0IARDIARgBIgQyAiAAOgaStRgCIAEilwEKEVRlYW1CeUlkc1Jlc3BvbnNlEjwKBGRhdGEYASADKAsyLi53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZS5EYXRhRW50cnkaRAoJRGF0YUVudHJ5EgsKA2tleRgBIAEoBBImCgV2YWx1ZRgCIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW06AjgBItADChVUZWFtSW5mb1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESJAoOY29udGFjdF9udW1iZXIYAiABKAlCB7pIBHICGChIAIgBARIfCgliYW5rX3R5cGUYAyABKAlCB7pIBHICGDxIAYgBARImCg9iYW5rX293bmVyX25hbWUYBCABKAlCCLpIBXIDGIABSAKIAQESKQoTYmFua19hY2NvdW50X251bWJlchgFIAEoCUIHukgEcgIYPEgDiAEBEiAKE3JldHVybl93YXJlaG91c2VfaWQYBiABKARIBIgBARIbCg5yZXR1cm5fdXNlcl9pZBgHIAEoBEgFiAEBEiEKFGRlZmF1bHRfd2FyZWhvdXNlX2lkGAggASgESAaIAQE6DJK1GAgKBgECAwQGCUIRCg9fY29udGFjdF9udW1iZXJCDAoKX2JhbmtfdHlwZUISChBfYmFua19vd25lcl9uYW1lQhYKFF9iYW5rX2FjY291bnRfbnVtYmVyQhYKFF9yZXR1cm5fd2FyZWhvdXNlX2lkQhEKD19yZXR1cm5fdXNlcl9pZEIXChVfZGVmYXVsdF93YXJlaG91c2VfaWQiQwoWVGVhbUluZm9VcGRhdGVSZXNwb25zZRIpCgRpbmZvGAEgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8qtgEKB1dlZWtkYXkSFwoTV0VFS0RBWV9VTlNQRUNJRklFRBAAEhIKDldFRUtEQVlfTU9OREFZEAESEwoPV0VFS0RBWV9UVUVTREFZEAISFQoRV0VFS0RBWV9XRURORVNEQVkQAxIUChBXRUVLREFZX1RIVVJTREFZEAQSEgoOV0VFS0RBWV9GUklEQVkQBRIUChBXRUVLREFZX1NBVFVSREFZEAYSEgoOV0VFS0RBWV9TVU5EQVkQByp+CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABISCg5URUFNX1RZUEVfUk9PVBABEhMKD1RFQU1fVFlQRV9BRE1JThACEhcKE1RFQU1fVFlQRV9XQVJFSE9VU0UQAxIVChFURUFNX1RZUEVfU0VMTElORxAEMvkGCgtUZWFtU2VydmljZRJZCgpUZWFtQ3JlYXRlEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbUNyZWF0ZVJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtQ3JlYXRlUmVzcG9uc2USWQoKVGVhbVVwZGF0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1VcGRhdGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbVVwZGF0ZVJlc3BvbnNlElkKClRlYW1EZWxldGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtRGVsZXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZWxldGVSZXNwb25zZRJTCghUZWFtTGlzdBIiLndhcmVob3VzZS50ZWFtLnYxLlRlYW1MaXN0UmVxdWVzdBojLndhcmVob3VzZS50ZWFtLnYxLlRlYW1MaXN0UmVzcG9uc2USWQoKVGVhbURldGFpbBIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZXRhaWxSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbURldGFpbFJlc3BvbnNlElYKCVRlYW1CeUlkcxIjLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1JlcXVlc3QaJC53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZRJlCg5UZWFtSW5mb1VwZGF0ZRIoLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVzcG9uc2USdAoTV2FyZWhvdXNlSW5mb0RldGFpbBItLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm9EZXRhaWxSZXF1ZXN0Gi4ud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mb0RldGFpbFJlc3BvbnNlEnQKE1dhcmVob3VzZUluZm9VcGRhdGUSLS53YXJlaG91c2UudGVhbS52MS5XYXJlaG91c2VJbmZvVXBkYXRlUmVxdWVzdBouLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm9VcGRhdGVSZXNwb25zZUJIWkZnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3RlYW0vdjE7dGVhbXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSKKAQoIRGF5SG91cnMSNwoHd2Vla2RheRgBIAEoDjIaLndhcmVob3VzZS50ZWFtLnYxLldlZWtkYXlCCrpIB4IBBBABIAASDAoEb3BlbhgCIAEoCBIaCglvcGVuX3RpbWUYAyABKAlCB7pIBHICGAUSGwoKY2xvc2VfdGltZRgEIAEoCUIHukgEcgIYBSKeAQoNV2FyZWhvdXNlSW5mbxIPCgd0ZWFtX2lkGAEgASgEEjQKD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzEjQKD3JlY2VpdmluZ19ob3VycxgDIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzEhAKCGxvY2F0aW9uGAQgASgJIj4KGldhcmVob3VzZUluZm9EZXRhaWxSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6BpK1GAIgASJNChtXYXJlaG91c2VJbmZvRGV0YWlsUmVzcG9uc2USLgoEaW5mbxgBIAEoCzIgLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm8i4gEKGldhcmVob3VzZUluZm9VcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEj4KD29wZXJhdGluZ19ob3VycxgCIAMoCzIbLndhcmVob3VzZS50ZWFtLnYxLkRheUhvdXJzQgi6SAWSAQIQBxI+Cg9yZWNlaXZpbmdfaG91cnMYAyADKAsyGy53YXJlaG91c2UudGVhbS52MS5EYXlIb3Vyc0IIukgFkgECEAcSGgoIbG9jYXRpb24YBCABKAlCCLpIBXIDGPQDOgqStRgGCgQBAgYJIk0KG1dhcmVob3VzZUluZm9VcGRhdGVSZXNwb25zZRIuCgRpbmZvGAEgASgLMiAud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mbyLPAQoIVGVhbUluZm8SDwoHdGVhbV9pZBgBIAEoBBIWCg5jb250YWN0X251bWJlchgCIAEoCRIRCgliYW5rX3R5cGUYAyABKAkSFwoPYmFua19vd25lcl9uYW1lGAQgASgJEhsKE2JhbmtfYWNjb3VudF9udW1iZXIYBSABKAkSGwoTcmV0dXJuX3dhcmVob3VzZV9pZBgGIAEoBBIWCg5yZXR1cm5fdXNlcl9pZBgHIAEoBBIcChRkZWZhdWx0X3dhcmVob3VzZV9pZBgIIAEoBCLCAQoEVGVhbRIKCgJpZBgBIAEoBBIpCgR0eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSDAoEbmFtZRgDIAEoCRIRCgl0ZWFtX2NvZGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDwoHZGVsZXRlZBgGIAEoCBIpCgRpbmZvGAcgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8SEQoJaW1hZ2VfdXJsGAggASgJIq0BChFUZWFtQ3JlYXRlUmVxdWVzdBI3CgR0eXBlGAEgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGVCDLpICYIBBhABIAAgARIYCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABEhwKCXRlYW1fY29kZRgDIAEoCUIJukgGcgQQARgKEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxisAjoIkrUYBAoCAQIiOwoSVGVhbUNyZWF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIssBChFUZWFtVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABSACIAQESIgoLZGVzY3JpcHRpb24YAyABKAlCCLpIBXIDGKwCSAGIAQESIAoJaW1hZ2VfdXJsGAQgASgJQgi6SAVyAxiACEgCiAEBOgyStRgICgYBAgMEBglCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgwKCl9pbWFnZV91cmwiOwoSVGVhbVVwZGF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjcKEVRlYW1EZWxldGVSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6CJK1GAQKAgECIhQKElRlYW1EZWxldGVSZXNwb25zZSJUCg5UZWFtTGlzdEZpbHRlchISCgFxGAEgASgJQge6SARyAhhkEi4KCXRlYW1fdHlwZRgCIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlIrYBChJUZWFtTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEi4KBHRlYW0YAyABKA4yHi53YXJlaG91c2UudGVhbS52MS5UZWFtUm93U29ydEgAQgMKAXMi+QEKD1RlYW1MaXN0UmVxdWVzdBIxCgZmaWx0ZXIYASABKAsyIS53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdEZpbHRlchIzCgRzb3J0GAIgASgLMiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RGaWx0ZXJTb3J0EjkKDGRhdGFfcmVxdWVzdBgDIAMoDjIjLndhcmVob3VzZS50ZWFtLnYxLlRlYW1MaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgaStRgCIAEingEKC1RlYW1Sb3dJdGVtEgoKAmlkGAEgASgEEikKBHR5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRIMCgRuYW1lGAMgASgJEhEKCXRlYW1fY29kZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIPCgdkZWxldGVkGAYgASgIEhEKCWltYWdlX3VybBgHIAEoCSKiAQoOVGVhbVJvd01hcEl0ZW0SQAoIbWFwX2RhdGEYASADKAsyLi53YXJlaG91c2UudGVhbS52MS5UZWFtUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaTgoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBItCgV2YWx1ZRgCIAEoCzIeLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Sb3dJdGVtOgI4ASKGAQoUVGVhbUxpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABIxCgR0ZWFtGAIgASgLMiEud2FyZWhvdXNlLnRlYW0udjEuVGVhbVJvd01hcEl0ZW1IAEIDCgFkIokBChBUZWFtTGlzdFJlc3BvbnNlEjYKBWl0ZW1zGAEgAygLMicud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iNQoRVGVhbURldGFpbFJlcXVlc3QSGAoHdGVhbV9pZBgBIAEoBEIHukgEMgIgADoGkrUYAiABIjsKElRlYW1EZXRhaWxSZXNwb25zZRIlCgR0ZWFtGAEgASgLMhcud2FyZWhvdXNlLnRlYW0udjEuVGVhbSIzCg9UZWFtQnlJZHNGaWx0ZXISIAoDaWRzGAEgAygEQhO6SBCSAQ0IARDIARgBIgQyAiAAIpIBChBUZWFtQnlJZHNSZXF1ZXN0EjoKBmZpbHRlchgBIAEoCzIiLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc0ZpbHRlckIGukgDyAEBEjoKDGRhdGFfcmVxdWVzdBgCIAMoDjIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc0RhdGFUeXBlOgaStRgCIAEihwEKFVRlYW1CeUlkc1Jlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjEKBHRlYW0YAiABKAsyIS53YXJlaG91c2UudGVhbS52MS5UZWFtUm93TWFwSXRlbUgAQgMKAWQiUAoVVGVhbUJ5SWRzUmVzcG9uc2VMaXN0EjcKBWl0ZW1zGAEgAygLMigud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2VJdGVtIqsBChFUZWFtQnlJZHNSZXNwb25zZRI+CgVpdGVtcxgBIAMoCzIvLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaVgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZUxpc3Q6AjgBItADChVUZWFtSW5mb1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESJAoOY29udGFjdF9udW1iZXIYAiABKAlCB7pIBHICGChIAIgBARIfCgliYW5rX3R5cGUYAyABKAlCB7pIBHICGDxIAYgBARImCg9iYW5rX293bmVyX25hbWUYBCABKAlCCLpIBXIDGIABSAKIAQESKQoTYmFua19hY2NvdW50X251bWJlchgFIAEoCUIHukgEcgIYPEgDiAEBEiAKE3JldHVybl93YXJlaG91c2VfaWQYBiABKARIBIgBARIbCg5yZXR1cm5fdXNlcl9pZBgHIAEoBEgFiAEBEiEKFGRlZmF1bHRfd2FyZWhvdXNlX2lkGAggASgESAaIAQE6DJK1GAgKBgECAwQGCUIRCg9fY29udGFjdF9udW1iZXJCDAoKX2JhbmtfdHlwZUISChBfYmFua19vd25lcl9uYW1lQhYKFF9iYW5rX2FjY291bnRfbnVtYmVyQhYKFF9yZXR1cm5fd2FyZWhvdXNlX2lkQhEKD19yZXR1cm5fdXNlcl9pZEIXChVfZGVmYXVsdF93YXJlaG91c2VfaWQiQwoWVGVhbUluZm9VcGRhdGVSZXNwb25zZRIpCgRpbmZvGAEgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8qtgEKB1dlZWtkYXkSFwoTV0VFS0RBWV9VTlNQRUNJRklFRBAAEhIKDldFRUtEQVlfTU9OREFZEAESEwoPV0VFS0RBWV9UVUVTREFZEAISFQoRV0VFS0RBWV9XRURORVNEQVkQAxIUChBXRUVLREFZX1RIVVJTREFZEAQSEgoOV0VFS0RBWV9GUklEQVkQBRIUChBXRUVLREFZX1NBVFVSREFZEAYSEgoOV0VFS0RBWV9TVU5EQVkQByp+CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABISCg5URUFNX1RZUEVfUk9PVBABEhMKD1RFQU1fVFlQRV9BRE1JThACEhcKE1RFQU1fVFlQRV9XQVJFSE9VU0UQAxIVChFURUFNX1RZUEVfU0VMTElORxAEKnYKEFRlYW1MaXN0RGF0YVR5cGUSIwofVEVBTV9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1RFQU1fTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEhwKGFRFQU1fTElTVF9EQVRBX1RZUEVfVEVBTRACKncKC1RlYW1Sb3dTb3J0Eh0KGVRFQU1fUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIWChJURUFNX1JPV19TT1JUX05BTUUQARIbChdURUFNX1JPV19TT1JUX1RFQU1fQ09ERRACEhQKEFRFQU1fUk9XX1NPUlRfSUQQAyp9ChFUZWFtQnlJZHNEYXRhVHlwZRIlCiFURUFNX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1URUFNX0JZX0lEU19EQVRBX1RZUEVfR0VORVJBTBABEh4KGlRFQU1fQllfSURTX0RBVEFfVFlQRV9URUFNEAIy+QYKC1RlYW1TZXJ2aWNlElkKClRlYW1DcmVhdGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtQ3JlYXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1DcmVhdGVSZXNwb25zZRJZCgpUZWFtVXBkYXRlEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbVVwZGF0ZVJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtVXBkYXRlUmVzcG9uc2USWQoKVGVhbURlbGV0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZWxldGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbURlbGV0ZVJlc3BvbnNlElMKCFRlYW1MaXN0EiIud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZRJZCgpUZWFtRGV0YWlsEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbURldGFpbFJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtRGV0YWlsUmVzcG9uc2USVgoJVGVhbUJ5SWRzEiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVxdWVzdBokLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlEmUKDlRlYW1JbmZvVXBkYXRlEigud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm9VcGRhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm9VcGRhdGVSZXNwb25zZRJ0ChNXYXJlaG91c2VJbmZvRGV0YWlsEi0ud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mb0RldGFpbFJlcXVlc3QaLi53YXJlaG91c2UudGVhbS52MS5XYXJlaG91c2VJbmZvRGV0YWlsUmVzcG9uc2USdAoTV2FyZWhvdXNlSW5mb1VwZGF0ZRItLndhcmVob3VzZS50ZWFtLnYxLldhcmVob3VzZUluZm9VcGRhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLnRlYW0udjEuV2FyZWhvdXNlSW5mb1VwZGF0ZVJlc3BvbnNlQkhaRmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvdGVhbS92MTt0ZWFtdjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
@@ -435,9 +437,12 @@ export const TeamDeleteResponseSchema: GenMessage<TeamDeleteResponse> = /*@__PUR
   messageDesc(file_warehouse_team_v1_team, 13);
 
 /**
- * @generated from message warehouse.team.v1.TeamListRequest
+ * TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
+ * so there is no team_id here at all.
+ *
+ * @generated from message warehouse.team.v1.TeamListFilter
  */
-export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
+export type TeamListFilter = Message<"warehouse.team.v1.TeamListFilter"> & {
   /**
    * @generated from field: string q = 1;
    */
@@ -447,11 +452,72 @@ export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
    * @generated from field: warehouse.team.v1.TeamType team_type = 2;
    */
   teamType: TeamType;
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamListFilter.
+ * Use `create(TeamListFilterSchema)` to create a new message.
+ */
+export const TeamListFilterSchema: GenMessage<TeamListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 14);
+
+/**
+ * @generated from message warehouse.team.v1.TeamListFilterSort
+ */
+export type TeamListFilterSort = Message<"warehouse.team.v1.TeamListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from oneof warehouse.team.v1.TeamListFilterSort.s
    */
-  page?: PageFilter;
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.team.v1.TeamRowSort team = 3;
+     */
+    value: TeamRowSort;
+    case: "team";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamListFilterSort.
+ * Use `create(TeamListFilterSortSchema)` to create a new message.
+ */
+export const TeamListFilterSortSchema: GenMessage<TeamListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 15);
+
+/**
+ * @generated from message warehouse.team.v1.TeamListRequest
+ */
+export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
+  /**
+   * @generated from field: warehouse.team.v1.TeamListFilter filter = 1;
+   */
+  filter?: TeamListFilter;
+
+  /**
+   * @generated from field: warehouse.team.v1.TeamListFilterSort sort = 2;
+   */
+  sort?: TeamListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.team.v1.TeamListDataType data_request = 3;
+   */
+  dataRequest: TeamListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -459,19 +525,119 @@ export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
  * Use `create(TeamListRequestSchema)` to create a new message.
  */
 export const TeamListRequestSchema: GenMessage<TeamListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 14);
+  messageDesc(file_warehouse_team_v1_team, 16);
+
+/**
+ * TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
+ *
+ * @generated from message warehouse.team.v1.TeamRowItem
+ */
+export type TeamRowItem = Message<"warehouse.team.v1.TeamRowItem"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: warehouse.team.v1.TeamType type = 2;
+   */
+  type: TeamType;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string team_code = 4;
+   */
+  teamCode: string;
+
+  /**
+   * @generated from field: string description = 5;
+   */
+  description: string;
+
+  /**
+   * @generated from field: bool deleted = 6;
+   */
+  deleted: boolean;
+
+  /**
+   * @generated from field: string image_url = 7;
+   */
+  imageUrl: string;
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamRowItem.
+ * Use `create(TeamRowItemSchema)` to create a new message.
+ */
+export const TeamRowItemSchema: GenMessage<TeamRowItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 17);
+
+/**
+ * @generated from message warehouse.team.v1.TeamRowMapItem
+ */
+export type TeamRowMapItem = Message<"warehouse.team.v1.TeamRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.team.v1.TeamRowItem> map_data = 1;
+   */
+  mapData: { [key: string]: TeamRowItem };
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamRowMapItem.
+ * Use `create(TeamRowMapItemSchema)` to create a new message.
+ */
+export const TeamRowMapItemSchema: GenMessage<TeamRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 18);
+
+/**
+ * @generated from message warehouse.team.v1.TeamListResponseItem
+ */
+export type TeamListResponseItem = Message<"warehouse.team.v1.TeamListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.team.v1.TeamListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.team.v1.TeamRowMapItem team = 2;
+     */
+    value: TeamRowMapItem;
+    case: "team";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamListResponseItem.
+ * Use `create(TeamListResponseItemSchema)` to create a new message.
+ */
+export const TeamListResponseItemSchema: GenMessage<TeamListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 19);
 
 /**
  * @generated from message warehouse.team.v1.TeamListResponse
  */
 export type TeamListResponse = Message<"warehouse.team.v1.TeamListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.team.v1.Team teams = 1;
+   * @generated from field: repeated warehouse.team.v1.TeamListResponseItem items = 1;
    */
-  teams: Team[];
+  items: TeamListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -481,7 +647,7 @@ export type TeamListResponse = Message<"warehouse.team.v1.TeamListResponse"> & {
  * Use `create(TeamListResponseSchema)` to create a new message.
  */
 export const TeamListResponseSchema: GenMessage<TeamListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 15);
+  messageDesc(file_warehouse_team_v1_team, 20);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailRequest
@@ -498,7 +664,7 @@ export type TeamDetailRequest = Message<"warehouse.team.v1.TeamDetailRequest"> &
  * Use `create(TeamDetailRequestSchema)` to create a new message.
  */
 export const TeamDetailRequestSchema: GenMessage<TeamDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 16);
+  messageDesc(file_warehouse_team_v1_team, 21);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailResponse
@@ -515,12 +681,15 @@ export type TeamDetailResponse = Message<"warehouse.team.v1.TeamDetailResponse">
  * Use `create(TeamDetailResponseSchema)` to create a new message.
  */
 export const TeamDetailResponseSchema: GenMessage<TeamDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 17);
+  messageDesc(file_warehouse_team_v1_team, 22);
 
 /**
- * @generated from message warehouse.team.v1.TeamByIdsRequest
+ * TeamByIdsFilter carries the ids to resolve. Deliberately UNSCOPED (cross-team bulk lookup), so no
+ * team_id.
+ *
+ * @generated from message warehouse.team.v1.TeamByIdsFilter
  */
-export type TeamByIdsRequest = Message<"warehouse.team.v1.TeamByIdsRequest"> & {
+export type TeamByIdsFilter = Message<"warehouse.team.v1.TeamByIdsFilter"> & {
   /**
    * @generated from field: repeated uint64 ids = 1;
    */
@@ -528,11 +697,81 @@ export type TeamByIdsRequest = Message<"warehouse.team.v1.TeamByIdsRequest"> & {
 };
 
 /**
+ * Describes the message warehouse.team.v1.TeamByIdsFilter.
+ * Use `create(TeamByIdsFilterSchema)` to create a new message.
+ */
+export const TeamByIdsFilterSchema: GenMessage<TeamByIdsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 23);
+
+/**
+ * @generated from message warehouse.team.v1.TeamByIdsRequest
+ */
+export type TeamByIdsRequest = Message<"warehouse.team.v1.TeamByIdsRequest"> & {
+  /**
+   * @generated from field: warehouse.team.v1.TeamByIdsFilter filter = 1;
+   */
+  filter?: TeamByIdsFilter;
+
+  /**
+   * Which slices to load per team. Empty defaults to the TEAM (row) slice.
+   *
+   * @generated from field: repeated warehouse.team.v1.TeamByIdsDataType data_request = 2;
+   */
+  dataRequest: TeamByIdsDataType[];
+};
+
+/**
  * Describes the message warehouse.team.v1.TeamByIdsRequest.
  * Use `create(TeamByIdsRequestSchema)` to create a new message.
  */
 export const TeamByIdsRequestSchema: GenMessage<TeamByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 18);
+  messageDesc(file_warehouse_team_v1_team, 24);
+
+/**
+ * @generated from message warehouse.team.v1.TeamByIdsResponseItem
+ */
+export type TeamByIdsResponseItem = Message<"warehouse.team.v1.TeamByIdsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.team.v1.TeamByIdsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.team.v1.TeamRowMapItem team = 2;
+     */
+    value: TeamRowMapItem;
+    case: "team";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamByIdsResponseItem.
+ * Use `create(TeamByIdsResponseItemSchema)` to create a new message.
+ */
+export const TeamByIdsResponseItemSchema: GenMessage<TeamByIdsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 25);
+
+/**
+ * @generated from message warehouse.team.v1.TeamByIdsResponseList
+ */
+export type TeamByIdsResponseList = Message<"warehouse.team.v1.TeamByIdsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.team.v1.TeamByIdsResponseItem items = 1;
+   */
+  items: TeamByIdsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamByIdsResponseList.
+ * Use `create(TeamByIdsResponseListSchema)` to create a new message.
+ */
+export const TeamByIdsResponseListSchema: GenMessage<TeamByIdsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 26);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsResponse
@@ -542,9 +781,9 @@ export type TeamByIdsResponse = Message<"warehouse.team.v1.TeamByIdsResponse"> &
    * Keyed by team id. Unknown AND soft-deleted ids are OMITTED — check presence, do not index
    * blindly. The map is never nil, so ranging an empty result is safe.
    *
-   * @generated from field: map<uint64, warehouse.team.v1.Team> data = 1;
+   * @generated from field: map<uint64, warehouse.team.v1.TeamByIdsResponseList> items = 1;
    */
-  data: { [key: string]: Team };
+  items: { [key: string]: TeamByIdsResponseList };
 };
 
 /**
@@ -552,7 +791,7 @@ export type TeamByIdsResponse = Message<"warehouse.team.v1.TeamByIdsResponse"> &
  * Use `create(TeamByIdsResponseSchema)` to create a new message.
  */
 export const TeamByIdsResponseSchema: GenMessage<TeamByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 19);
+  messageDesc(file_warehouse_team_v1_team, 27);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateRequest
@@ -614,7 +853,7 @@ export type TeamInfoUpdateRequest = Message<"warehouse.team.v1.TeamInfoUpdateReq
  * Use `create(TeamInfoUpdateRequestSchema)` to create a new message.
  */
 export const TeamInfoUpdateRequestSchema: GenMessage<TeamInfoUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 20);
+  messageDesc(file_warehouse_team_v1_team, 28);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateResponse
@@ -631,7 +870,7 @@ export type TeamInfoUpdateResponse = Message<"warehouse.team.v1.TeamInfoUpdateRe
  * Use `create(TeamInfoUpdateResponseSchema)` to create a new message.
  */
 export const TeamInfoUpdateResponseSchema: GenMessage<TeamInfoUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 21);
+  messageDesc(file_warehouse_team_v1_team, 29);
 
 /**
  * Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
@@ -729,6 +968,97 @@ export enum TeamType {
  */
 export const TeamTypeSchema: GenEnum<TeamType> = /*@__PURE__*/
   enumDesc(file_warehouse_team_v1_team, 1);
+
+/**
+ * TeamListDataType selects which slices the response carries per team.
+ *
+ * @generated from enum warehouse.team.v1.TeamListDataType
+ */
+export enum TeamListDataType {
+  /**
+   * @generated from enum value: TEAM_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * TEAM: the full team row a list/picker renders (never the `info`, which is TeamDetail-only).
+   *
+   * @generated from enum value: TEAM_LIST_DATA_TYPE_TEAM = 2;
+   */
+  TEAM = 2,
+}
+
+/**
+ * Describes the enum warehouse.team.v1.TeamListDataType.
+ */
+export const TeamListDataTypeSchema: GenEnum<TeamListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_team_v1_team, 2);
+
+/**
+ * TeamRowSort is the sort selection paired with the TEAM (row) slice.
+ *
+ * @generated from enum warehouse.team.v1.TeamRowSort
+ */
+export enum TeamRowSort {
+  /**
+   * @generated from enum value: TEAM_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_ROW_SORT_NAME = 1;
+   */
+  NAME = 1,
+
+  /**
+   * @generated from enum value: TEAM_ROW_SORT_TEAM_CODE = 2;
+   */
+  TEAM_CODE = 2,
+
+  /**
+   * @generated from enum value: TEAM_ROW_SORT_ID = 3;
+   */
+  ID = 3,
+}
+
+/**
+ * Describes the enum warehouse.team.v1.TeamRowSort.
+ */
+export const TeamRowSortSchema: GenEnum<TeamRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_team_v1_team, 3);
+
+/**
+ * TeamByIdsDataType selects which slices the by-ids response carries per team.
+ *
+ * @generated from enum warehouse.team.v1.TeamByIdsDataType
+ */
+export enum TeamByIdsDataType {
+  /**
+   * @generated from enum value: TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_BY_IDS_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: TEAM_BY_IDS_DATA_TYPE_TEAM = 2;
+   */
+  TEAM = 2,
+}
+
+/**
+ * Describes the enum warehouse.team.v1.TeamByIdsDataType.
+ */
+export const TeamByIdsDataTypeSchema: GenEnum<TeamByIdsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_team_v1_team, 4);
 
 /**
  * TeamService owns `teams` and `team_infos`.
