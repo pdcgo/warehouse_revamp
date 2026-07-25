@@ -12,8 +12,9 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
 )
 
-// ProductList returns the scoped team's active products, newest first, paginated. `q` filters by
-// name or SKU.
+// ProductList returns the scoped team's active products, paginated. The filter's `q` filters by name
+// or SKU; `sort` orders the page (default newest-first); `data_request` selects which slices the
+// response carries per product. See the guideline list shape in guidelines/service-guideline.md.
 func (s *Service) ProductList(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductListRequest],
@@ -25,7 +26,7 @@ func (s *Service) ProductList(
 		Model(&product_service_models.Product{}).
 		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
 	}
@@ -42,7 +43,7 @@ func (s *Service) ProductList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(productOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&products).
@@ -51,13 +52,11 @@ func (s *Service) ProductList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*productv1.Product, 0, len(products))
-	for i := range products {
-		out = append(out, toProto(&products[i]))
-	}
+	items, ids := productListItems(products, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&productv1.ProductListResponse{
-		Products: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

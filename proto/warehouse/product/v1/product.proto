@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.product.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -109,6 +110,68 @@ message ProductCreateResponse {
   Product product = 1;
 }
 
+// ── The shared product list shape (guideline "List View" — guidelines/service-guideline.md) ───────
+//
+// ProductList and ProductDiscover both answer "a page of products" and share this scaffolding: the
+// data-type slices a caller can ask for, the row slice, the sort selection, and the response item.
+
+// ProductListDataType selects which slices the response carries per product.
+enum ProductListDataType {
+  PRODUCT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // GENERAL: the shared id+name slice (warehouse.common.v1.GeneralMapItem).
+  PRODUCT_LIST_DATA_TYPE_GENERAL = 1;
+  // PRODUCT: the full catalogue row a product list/card renders (ProductRowMapItem).
+  PRODUCT_LIST_DATA_TYPE_PRODUCT = 2;
+}
+
+// ProductRowSort is the sort selection paired with the PRODUCT (row) slice.
+enum ProductRowSort {
+  PRODUCT_ROW_SORT_UNSPECIFIED = 0;
+  PRODUCT_ROW_SORT_NAME = 1;
+  PRODUCT_ROW_SORT_SKU = 2;
+  // ID: newest-first is DESC on id (the legacy default).
+  PRODUCT_ROW_SORT_ID = 3;
+}
+
+// ProductListFilter carries the NON-scope filters only (the scoped team_id stays top-level on the
+// request — see the scope note in warehouse/common/v1/list.proto).
+message ProductListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+message ProductListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    ProductRowSort product = 3;
+  }
+}
+
+// ProductRowItem is the PRODUCT slice — the fields a product list/card renders. Mirrors Product minus
+// the images gallery (a list carries only the denormalised cover, never the joined gallery).
+message ProductRowItem {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  uint64 category_id = 6;
+  string default_image_url = 7;
+  string default_image_thumbnail_url = 8;
+  bool deleted = 9;
+}
+
+message ProductRowMapItem {
+  map<uint64, ProductRowItem> map_data = 1;
+}
+
+message ProductListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductRowMapItem product = 2;
+  }
+}
+
 message ProductListRequest {
   // Read: anyone in the team, including staff and customer service.
   option (warehouse.role_base.v1.request_policy) = {
@@ -128,13 +191,19 @@ message ProductListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string q = 2 [(buf.validate.field).string.max_len = 100];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  ProductListFilter filter = 2;
+  ProductListFilterSort sort = 3;
+  repeated ProductListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
 message ProductListResponse {
-  repeated Product products = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  // One entry per requested data type; each is a map keyed by product id. Resolve a product by looking
+  // its id up in each slice.
+  repeated ProductListResponseItem items = 1;
+  // The product ids in sorted order — the authoritative ordering of the page.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // ProductDiscover lists products across ALL teams (open cross-team discovery, #106) so a selling team
@@ -156,13 +225,16 @@ message ProductDiscoverRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string q = 2 [(buf.validate.field).string.max_len = 100];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  ProductListFilter filter = 2;
+  ProductListFilterSort sort = 3;
+  repeated ProductListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
 message ProductDiscoverResponse {
-  repeated Product products = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated ProductListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
@@ -201,10 +273,23 @@ message ProductByIdsRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // The ids to resolve. It does not page and does not need to: the caller supplies the set, so the
-  // response can never be larger than what was asked for — which is why max_items is the whole story
-  // here, and a page cursor would be ceremony. The cap is what stops this becoming a bulk export.
-  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+  ProductByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Which slices to load per product. Empty defaults to the PRODUCT (row) slice.
+  repeated ProductByIdsDataType data_request = 3;
+}
+
+// ProductByIdsDataType selects which slices the by-ids response carries per product.
+enum ProductByIdsDataType {
+  PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_BY_IDS_DATA_TYPE_GENERAL = 1;
+  PRODUCT_BY_IDS_DATA_TYPE_PRODUCT = 2;
+}
+
+// ProductByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
+// top-level on the request. It does not page: the caller supplies the set, so the response can never
+// exceed what was asked for, and max_items is what stops this becoming a bulk export.
+message ProductByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 200
     unique: true
@@ -214,13 +299,23 @@ message ProductByIdsRequest {
   }];
 }
 
+message ProductByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductRowMapItem product = 2;
+  }
+}
+
+message ProductByIdsResponseList {
+  repeated ProductByIdsResponseItem items = 1;
+}
+
 message ProductByIdsResponse {
-  // The products that exist, in no guaranteed order — match them by id, not by position.
-  //
-  // An id that resolves to nothing is simply ABSENT rather than an error: a caller holding a stock row
-  // for a product that was since deleted is asking a reasonable question, and failing the whole lookup
-  // would blank a rack over one dead id. The caller renders what it cannot resolve as unknown.
-  repeated Product products = 1;
+  // Keyed by product id. An id that resolves to nothing is simply ABSENT rather than an error: a
+  // caller holding a stock row for a since-deleted product is asking a reasonable question, and
+  // failing the whole lookup would blank a rack over one dead id. Soft-deleted products ARE returned
+  // (stock outlives a catalogue entry); Product.deleted is on the wire so a caller that cares can tell.
+  map<uint64, ProductByIdsResponseList> items = 1;
 }
 
 message ProductUpdateRequest {

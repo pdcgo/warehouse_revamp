@@ -18,6 +18,7 @@ import { productClient, rackClient, rpcError, teamClient } from "../../api/clien
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { Pagination } from "../../components/Pagination";
 import { ProductListItem } from "../../components/ProductListItem";
@@ -159,10 +160,14 @@ export function RackDetailPage() {
           try {
             // `teamId` here is the team the CALLER holds a role in — this warehouse — not the team
             // whose products come back. That is what lets it resolve a selling team's product.
-            const productRes = await productClient.productByIds({ teamId, productIds: ids });
+            const productRes = await productClient.productByIds({
+              teamId,
+              filter: { ids },
+              dataRequest: productByIdsRowData(),
+            });
             if (ignore) return;
 
-            for (const product of productRes.products) {
+            for (const product of productsFromByIds(productRes)) {
               resolved.set(product.id.toString(), product);
             }
           } catch {

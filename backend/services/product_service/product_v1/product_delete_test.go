@@ -26,7 +26,7 @@ func TestProductDelete_SoftDeletesAndFreesSku(t *testing.T) {
 	}
 
 	list, err := svc.ProductList(context.Background(), connect.NewRequest(&productv1.ProductListRequest{
-		TeamId: 2, Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: 2, Page: &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ProductList: %v", err)

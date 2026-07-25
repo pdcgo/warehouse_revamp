@@ -26,7 +26,7 @@ func (s *Service) ProductDiscover(
 		Model(&product_service_models.Product{}).
 		Where("deleted = ?", false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
 	}
@@ -43,7 +43,7 @@ func (s *Service) ProductDiscover(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
-		Order("id DESC").
+		Order(productOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).
 		Find(&products).
@@ -52,13 +52,11 @@ func (s *Service) ProductDiscover(
 		return nil, dbError(err)
 	}
 
-	out := make([]*productv1.Product, 0, len(products))
-	for i := range products {
-		out = append(out, toProto(&products[i]))
-	}
+	items, ids := productListItems(products, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&productv1.ProductDiscoverResponse{
-		Products: out,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   totalPages(total, page.GetLimit()),

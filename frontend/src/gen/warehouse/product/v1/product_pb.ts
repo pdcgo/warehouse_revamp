@@ -2,10 +2,12 @@
 // @generated from file warehouse/product/v1/product.proto (package warehouse.product.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
-import type { PageFilter, PageInfo } from "../../common/v1/page_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
+import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/product/v1/product.proto.
  */
 export const file_warehouse_product_v1_product: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLwAQoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIu8BChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFOgyStRgICgYBAgMEBgkiRwoVUHJvZHVjdENyZWF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Io0BChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIngKE1Byb2R1Y3RMaXN0UmVzcG9uc2USLwoIcHJvZHVjdHMYASADKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0EjAKCXBhZ2VfaW5mbxgCIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8ijgEKFlByb2R1Y3REaXNjb3ZlclJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEgoBcRgCIAEoCUIHukgEcgIYZBI1CgRwYWdlGAMgASgLMh8ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlRmlsdGVyQga6SAPIAQE6C5K1GAcKBQECAwQFInwKF1Byb2R1Y3REaXNjb3ZlclJlc3BvbnNlEi8KCHByb2R1Y3RzGAEgAygLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIm0KE1Byb2R1Y3RCeUlkc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESKAoLcHJvZHVjdF9pZHMYAiADKARCE7pIEJIBDQgBEMgBGAEiBDICIAA6DpK1GAoKCAECAwQFBgkIIkcKFFByb2R1Y3RCeUlkc1Jlc3BvbnNlEi8KCHByb2R1Y3RzGAEgAygLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCLIAgoUUHJvZHVjdFVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIbCgNza3UYAyABKAlCCbpIBnIEEAEYQEgAiAEBEh0KBG5hbWUYBCABKAlCCrpIB3IFEAEYyAFIAYgBARIiCgtkZXNjcmlwdGlvbhgFIAEoCUIIukgFcgMY6AdIAogBARIhCgtjYXRlZ29yeV9pZBgGIAEoBEIHukgEMgIgAEgDiAEBEjMKBmltYWdlcxgHIAEoCzIjLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZXM6DJK1GAgKBgECAwQGCUIGCgRfc2t1QgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbkIOCgxfY2F0ZWdvcnlfaWQiRwoVUHJvZHVjdFVwZGF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0ImEKFFByb2R1Y3REZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkcKFVByb2R1Y3REZXRhaWxSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJfChRQcm9kdWN0RGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOgyStRgICgYBAgMEBgkiFwoVUHJvZHVjdERlbGV0ZVJlc3BvbnNlMvMFCg5Qcm9kdWN0U2VydmljZRJoCg1Qcm9kdWN0Q3JlYXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVzcG9uc2USYgoLUHJvZHVjdExpc3QSKC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlcXVlc3QaKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlEm4KD1Byb2R1Y3REaXNjb3ZlchIsLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlcXVlc3QaLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGlzY292ZXJSZXNwb25zZRJlCgxQcm9kdWN0QnlJZHMSKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXF1ZXN0Gioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2USaAoNUHJvZHVjdERldGFpbBIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZXRhaWxSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERldGFpbFJlc3BvbnNlEmgKDVByb2R1Y3RVcGRhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXNwb25zZRJoCg1Qcm9kdWN0RGVsZXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERlbGV0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9wcm9kdWN0L3YxO3Byb2R1Y3R2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcHJvZHVjdC92MS9wcm9kdWN0LnByb3RvEhR3YXJlaG91c2UucHJvZHVjdC52MSLwAQoHUHJvZHVjdBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgsKA3NrdRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgSEwoLY2F0ZWdvcnlfaWQYByABKAQSGQoRZGVmYXVsdF9pbWFnZV91cmwYCCABKAkSIwobZGVmYXVsdF9pbWFnZV90aHVtYm5haWxfdXJsGAkgASgJEjIKBmltYWdlcxgKIAMoCzIiLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RJbWFnZSJICgxQcm9kdWN0SW1hZ2USFwoDdXJsGAEgASgJQgq6SAdyBRABGIAQEh8KDXRodW1ibmFpbF91cmwYAiABKAlCCLpIBXIDGIAQIkwKDVByb2R1Y3RJbWFnZXMSOwoFaXRlbXMYASADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFIu8BChRQcm9kdWN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIWCgNza3UYAiABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAMgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxjoBxIcCgtjYXRlZ29yeV9pZBgFIAEoBEIHukgEMgIgABI8CgZpbWFnZXMYBiADKAsyIi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VCCLpIBZIBAhAFOgyStRgICgYBAgMEBgkiRwoVUHJvZHVjdENyZWF0ZVJlc3BvbnNlEi4KB3Byb2R1Y3QYASABKAsyHS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0IicKEVByb2R1Y3RMaXN0RmlsdGVyEhIKAXEYASABKAlCB7pIBHICGGQiwgEKFVByb2R1Y3RMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASNwoHcHJvZHVjdBgDIAEoDjIkLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSb3dTb3J0SABCAwoBcyLDAQoOUHJvZHVjdFJvd0l0ZW0SCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBILCgNza3UYAyABKAkSDAoEbmFtZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRITCgtjYXRlZ29yeV9pZBgGIAEoBBIZChFkZWZhdWx0X2ltYWdlX3VybBgHIAEoCRIjChtkZWZhdWx0X2ltYWdlX3RodW1ibmFpbF91cmwYCCABKAkSDwoHZGVsZXRlZBgJIAEoCCKxAQoRUHJvZHVjdFJvd01hcEl0ZW0SRgoIbWFwX2RhdGEYASADKAsyNC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Um93TWFwSXRlbS5NYXBEYXRhRW50cnkaVAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSb3dJdGVtOgI4ASKSAQoXUHJvZHVjdExpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI6Cgdwcm9kdWN0GAIgASgLMicud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdFJvd01hcEl0ZW1IAEIDCgFkIrQCChJQcm9kdWN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgikgEKE1Byb2R1Y3RMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyK1AgoWUHJvZHVjdERpc2NvdmVyUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdExpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSKWAQoXUHJvZHVjdERpc2NvdmVyUmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLHAQoTUHJvZHVjdEJ5SWRzUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJACgZmaWx0ZXIYAiABKAsyKC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNGaWx0ZXJCBrpIA8gBARJACgxkYXRhX3JlcXVlc3QYAyADKA4yKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNEYXRhVHlwZToOkrUYCgoIAQIDBAUGCQgiNgoSUHJvZHVjdEJ5SWRzRmlsdGVyEiAKA2lkcxgBIAMoBEITukgQkgENCAEQyAEYASIEMgIgACKTAQoYUHJvZHVjdEJ5SWRzUmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHcHJvZHVjdBgCIAEoCzInLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RSb3dNYXBJdGVtSABCAwoBZCJZChhQcm9kdWN0QnlJZHNSZXNwb25zZUxpc3QSPQoFaXRlbXMYASADKAsyLi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXNwb25zZUl0ZW0iugEKFFByb2R1Y3RCeUlkc1Jlc3BvbnNlEkQKBWl0ZW1zGAEgAygLMjUud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2UuSXRlbXNFbnRyeRpcCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI9CgV2YWx1ZRgCIAEoCzIuLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RCeUlkc1Jlc3BvbnNlTGlzdDoCOAEiyAIKFFByb2R1Y3RVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASGwoDc2t1GAMgASgJQgm6SAZyBBABGEBIAIgBARIdCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBSAGIAQESIgoLZGVzY3JpcHRpb24YBSABKAlCCLpIBXIDGOgHSAKIAQESIQoLY2F0ZWdvcnlfaWQYBiABKARCB7pIBDICIABIA4gBARIzCgZpbWFnZXMYByABKAsyIy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0SW1hZ2VzOgyStRgICgYBAgMEBglCBgoEX3NrdUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDgoMX2NhdGVnb3J5X2lkIkcKFVByb2R1Y3RVcGRhdGVSZXNwb25zZRIuCgdwcm9kdWN0GAEgASgLMh0ud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdCJhChRQcm9kdWN0RGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAOg6StRgKCggBAgMEBQYJCCJHChVQcm9kdWN0RGV0YWlsUmVzcG9uc2USLgoHcHJvZHVjdBgBIAEoCzIdLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3QiXwoUUHJvZHVjdERlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgADoMkrUYCAoGAQIDBAYJIhcKFVByb2R1Y3REZWxldGVSZXNwb25zZSqFAQoTUHJvZHVjdExpc3REYXRhVHlwZRImCiJQUk9EVUNUX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeUFJPRFVDVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeUFJPRFVDVF9MSVNUX0RBVEFfVFlQRV9QUk9EVUNUEAIqgAEKDlByb2R1Y3RSb3dTb3J0EiAKHFBST0RVQ1RfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIZChVQUk9EVUNUX1JPV19TT1JUX05BTUUQARIYChRQUk9EVUNUX1JPV19TT1JUX1NLVRACEhcKE1BST0RVQ1RfUk9XX1NPUlRfSUQQAyqMAQoUUHJvZHVjdEJ5SWRzRGF0YVR5cGUSKAokUFJPRFVDVF9CWV9JRFNfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASJAogUFJPRFVDVF9CWV9JRFNfREFUQV9UWVBFX0dFTkVSQUwQARIkCiBQUk9EVUNUX0JZX0lEU19EQVRBX1RZUEVfUFJPRFVDVBACMvMFCg5Qcm9kdWN0U2VydmljZRJoCg1Qcm9kdWN0Q3JlYXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdENyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0Q3JlYXRlUmVzcG9uc2USYgoLUHJvZHVjdExpc3QSKC53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlcXVlc3QaKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0TGlzdFJlc3BvbnNlEm4KD1Byb2R1Y3REaXNjb3ZlchIsLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REaXNjb3ZlclJlcXVlc3QaLS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGlzY292ZXJSZXNwb25zZRJlCgxQcm9kdWN0QnlJZHMSKS53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0QnlJZHNSZXF1ZXN0Gioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdEJ5SWRzUmVzcG9uc2USaAoNUHJvZHVjdERldGFpbBIqLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3REZXRhaWxSZXF1ZXN0Gisud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERldGFpbFJlc3BvbnNlEmgKDVByb2R1Y3RVcGRhdGUSKi53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0VXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5wcm9kdWN0LnYxLlByb2R1Y3RVcGRhdGVSZXNwb25zZRJoCg1Qcm9kdWN0RGVsZXRlEioud2FyZWhvdXNlLnByb2R1Y3QudjEuUHJvZHVjdERlbGV0ZVJlcXVlc3QaKy53YXJlaG91c2UucHJvZHVjdC52MS5Qcm9kdWN0RGVsZXRlUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9wcm9kdWN0L3YxO3Byb2R1Y3R2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.product.v1.Product
@@ -197,6 +199,166 @@ export const ProductCreateResponseSchema: GenMessage<ProductCreateResponse> = /*
   messageDesc(file_warehouse_product_v1_product, 4);
 
 /**
+ * ProductListFilter carries the NON-scope filters only (the scoped team_id stays top-level on the
+ * request — see the scope note in warehouse/common/v1/list.proto).
+ *
+ * @generated from message warehouse.product.v1.ProductListFilter
+ */
+export type ProductListFilter = Message<"warehouse.product.v1.ProductListFilter"> & {
+  /**
+   * @generated from field: string q = 1;
+   */
+  q: string;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductListFilter.
+ * Use `create(ProductListFilterSchema)` to create a new message.
+ */
+export const ProductListFilterSchema: GenMessage<ProductListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 5);
+
+/**
+ * @generated from message warehouse.product.v1.ProductListFilterSort
+ */
+export type ProductListFilterSort = Message<"warehouse.product.v1.ProductListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from oneof warehouse.product.v1.ProductListFilterSort.s
+   */
+  s: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
+     */
+    value: GeneralSort;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.product.v1.ProductRowSort product = 3;
+     */
+    value: ProductRowSort;
+    case: "product";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductListFilterSort.
+ * Use `create(ProductListFilterSortSchema)` to create a new message.
+ */
+export const ProductListFilterSortSchema: GenMessage<ProductListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 6);
+
+/**
+ * ProductRowItem is the PRODUCT slice — the fields a product list/card renders. Mirrors Product minus
+ * the images gallery (a list carries only the denormalised cover, never the joined gallery).
+ *
+ * @generated from message warehouse.product.v1.ProductRowItem
+ */
+export type ProductRowItem = Message<"warehouse.product.v1.ProductRowItem"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: string sku = 3;
+   */
+  sku: string;
+
+  /**
+   * @generated from field: string name = 4;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 5;
+   */
+  description: string;
+
+  /**
+   * @generated from field: uint64 category_id = 6;
+   */
+  categoryId: bigint;
+
+  /**
+   * @generated from field: string default_image_url = 7;
+   */
+  defaultImageUrl: string;
+
+  /**
+   * @generated from field: string default_image_thumbnail_url = 8;
+   */
+  defaultImageThumbnailUrl: string;
+
+  /**
+   * @generated from field: bool deleted = 9;
+   */
+  deleted: boolean;
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductRowItem.
+ * Use `create(ProductRowItemSchema)` to create a new message.
+ */
+export const ProductRowItemSchema: GenMessage<ProductRowItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 7);
+
+/**
+ * @generated from message warehouse.product.v1.ProductRowMapItem
+ */
+export type ProductRowMapItem = Message<"warehouse.product.v1.ProductRowMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.product.v1.ProductRowItem> map_data = 1;
+   */
+  mapData: { [key: string]: ProductRowItem };
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductRowMapItem.
+ * Use `create(ProductRowMapItemSchema)` to create a new message.
+ */
+export const ProductRowMapItemSchema: GenMessage<ProductRowMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 8);
+
+/**
+ * @generated from message warehouse.product.v1.ProductListResponseItem
+ */
+export type ProductListResponseItem = Message<"warehouse.product.v1.ProductListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.product.v1.ProductListResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.product.v1.ProductRowMapItem product = 2;
+     */
+    value: ProductRowMapItem;
+    case: "product";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductListResponseItem.
+ * Use `create(ProductListResponseItemSchema)` to create a new message.
+ */
+export const ProductListResponseItemSchema: GenMessage<ProductListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 9);
+
+/**
  * @generated from message warehouse.product.v1.ProductListRequest
  */
 export type ProductListRequest = Message<"warehouse.product.v1.ProductListRequest"> & {
@@ -206,14 +368,24 @@ export type ProductListRequest = Message<"warehouse.product.v1.ProductListReques
   teamId: bigint;
 
   /**
-   * @generated from field: string q = 2;
+   * @generated from field: warehouse.product.v1.ProductListFilter filter = 2;
    */
-  q: string;
+  filter?: ProductListFilter;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from field: warehouse.product.v1.ProductListFilterSort sort = 3;
    */
-  page?: PageFilter;
+  sort?: ProductListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.product.v1.ProductListDataType data_request = 4;
+   */
+  dataRequest: ProductListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -221,19 +393,29 @@ export type ProductListRequest = Message<"warehouse.product.v1.ProductListReques
  * Use `create(ProductListRequestSchema)` to create a new message.
  */
 export const ProductListRequestSchema: GenMessage<ProductListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 5);
+  messageDesc(file_warehouse_product_v1_product, 10);
 
 /**
  * @generated from message warehouse.product.v1.ProductListResponse
  */
 export type ProductListResponse = Message<"warehouse.product.v1.ProductListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.product.v1.Product products = 1;
+   * One entry per requested data type; each is a map keyed by product id. Resolve a product by looking
+   * its id up in each slice.
+   *
+   * @generated from field: repeated warehouse.product.v1.ProductListResponseItem items = 1;
    */
-  products: Product[];
+  items: ProductListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * The product ids in sorted order — the authoritative ordering of the page.
+   *
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -243,7 +425,7 @@ export type ProductListResponse = Message<"warehouse.product.v1.ProductListRespo
  * Use `create(ProductListResponseSchema)` to create a new message.
  */
 export const ProductListResponseSchema: GenMessage<ProductListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 6);
+  messageDesc(file_warehouse_product_v1_product, 11);
 
 /**
  * ProductDiscover lists products across ALL teams (open cross-team discovery, #106) so a selling team
@@ -260,14 +442,24 @@ export type ProductDiscoverRequest = Message<"warehouse.product.v1.ProductDiscov
   teamId: bigint;
 
   /**
-   * @generated from field: string q = 2;
+   * @generated from field: warehouse.product.v1.ProductListFilter filter = 2;
    */
-  q: string;
+  filter?: ProductListFilter;
 
   /**
-   * @generated from field: warehouse.common.v1.PageFilter page = 3;
+   * @generated from field: warehouse.product.v1.ProductListFilterSort sort = 3;
    */
-  page?: PageFilter;
+  sort?: ProductListFilterSort;
+
+  /**
+   * @generated from field: repeated warehouse.product.v1.ProductListDataType data_request = 4;
+   */
+  dataRequest: ProductListDataType[];
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination;
 };
 
 /**
@@ -275,19 +467,24 @@ export type ProductDiscoverRequest = Message<"warehouse.product.v1.ProductDiscov
  * Use `create(ProductDiscoverRequestSchema)` to create a new message.
  */
 export const ProductDiscoverRequestSchema: GenMessage<ProductDiscoverRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 7);
+  messageDesc(file_warehouse_product_v1_product, 12);
 
 /**
  * @generated from message warehouse.product.v1.ProductDiscoverResponse
  */
 export type ProductDiscoverResponse = Message<"warehouse.product.v1.ProductDiscoverResponse"> & {
   /**
-   * @generated from field: repeated warehouse.product.v1.Product products = 1;
+   * @generated from field: repeated warehouse.product.v1.ProductListResponseItem items = 1;
    */
-  products: Product[];
+  items: ProductListResponseItem[];
 
   /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   * @generated from field: repeated uint64 ids = 2;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
 };
@@ -297,7 +494,7 @@ export type ProductDiscoverResponse = Message<"warehouse.product.v1.ProductDisco
  * Use `create(ProductDiscoverResponseSchema)` to create a new message.
  */
 export const ProductDiscoverResponseSchema: GenMessage<ProductDiscoverResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 8);
+  messageDesc(file_warehouse_product_v1_product, 13);
 
 /**
  * ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
@@ -319,13 +516,16 @@ export type ProductByIdsRequest = Message<"warehouse.product.v1.ProductByIdsRequ
   teamId: bigint;
 
   /**
-   * The ids to resolve. It does not page and does not need to: the caller supplies the set, so the
-   * response can never be larger than what was asked for — which is why max_items is the whole story
-   * here, and a page cursor would be ceremony. The cap is what stops this becoming a bulk export.
-   *
-   * @generated from field: repeated uint64 product_ids = 2;
+   * @generated from field: warehouse.product.v1.ProductByIdsFilter filter = 2;
    */
-  productIds: bigint[];
+  filter?: ProductByIdsFilter;
+
+  /**
+   * Which slices to load per product. Empty defaults to the PRODUCT (row) slice.
+   *
+   * @generated from field: repeated warehouse.product.v1.ProductByIdsDataType data_request = 3;
+   */
+  dataRequest: ProductByIdsDataType[];
 };
 
 /**
@@ -333,22 +533,88 @@ export type ProductByIdsRequest = Message<"warehouse.product.v1.ProductByIdsRequ
  * Use `create(ProductByIdsRequestSchema)` to create a new message.
  */
 export const ProductByIdsRequestSchema: GenMessage<ProductByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 9);
+  messageDesc(file_warehouse_product_v1_product, 14);
+
+/**
+ * ProductByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
+ * top-level on the request. It does not page: the caller supplies the set, so the response can never
+ * exceed what was asked for, and max_items is what stops this becoming a bulk export.
+ *
+ * @generated from message warehouse.product.v1.ProductByIdsFilter
+ */
+export type ProductByIdsFilter = Message<"warehouse.product.v1.ProductByIdsFilter"> & {
+  /**
+   * @generated from field: repeated uint64 ids = 1;
+   */
+  ids: bigint[];
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductByIdsFilter.
+ * Use `create(ProductByIdsFilterSchema)` to create a new message.
+ */
+export const ProductByIdsFilterSchema: GenMessage<ProductByIdsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 15);
+
+/**
+ * @generated from message warehouse.product.v1.ProductByIdsResponseItem
+ */
+export type ProductByIdsResponseItem = Message<"warehouse.product.v1.ProductByIdsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.product.v1.ProductByIdsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.product.v1.ProductRowMapItem product = 2;
+     */
+    value: ProductRowMapItem;
+    case: "product";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductByIdsResponseItem.
+ * Use `create(ProductByIdsResponseItemSchema)` to create a new message.
+ */
+export const ProductByIdsResponseItemSchema: GenMessage<ProductByIdsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 16);
+
+/**
+ * @generated from message warehouse.product.v1.ProductByIdsResponseList
+ */
+export type ProductByIdsResponseList = Message<"warehouse.product.v1.ProductByIdsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.product.v1.ProductByIdsResponseItem items = 1;
+   */
+  items: ProductByIdsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.product.v1.ProductByIdsResponseList.
+ * Use `create(ProductByIdsResponseListSchema)` to create a new message.
+ */
+export const ProductByIdsResponseListSchema: GenMessage<ProductByIdsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_product_v1_product, 17);
 
 /**
  * @generated from message warehouse.product.v1.ProductByIdsResponse
  */
 export type ProductByIdsResponse = Message<"warehouse.product.v1.ProductByIdsResponse"> & {
   /**
-   * The products that exist, in no guaranteed order — match them by id, not by position.
+   * Keyed by product id. An id that resolves to nothing is simply ABSENT rather than an error: a
+   * caller holding a stock row for a since-deleted product is asking a reasonable question, and
+   * failing the whole lookup would blank a rack over one dead id. Soft-deleted products ARE returned
+   * (stock outlives a catalogue entry); Product.deleted is on the wire so a caller that cares can tell.
    *
-   * An id that resolves to nothing is simply ABSENT rather than an error: a caller holding a stock row
-   * for a product that was since deleted is asking a reasonable question, and failing the whole lookup
-   * would blank a rack over one dead id. The caller renders what it cannot resolve as unknown.
-   *
-   * @generated from field: repeated warehouse.product.v1.Product products = 1;
+   * @generated from field: map<uint64, warehouse.product.v1.ProductByIdsResponseList> items = 1;
    */
-  products: Product[];
+  items: { [key: string]: ProductByIdsResponseList };
 };
 
 /**
@@ -356,7 +622,7 @@ export type ProductByIdsResponse = Message<"warehouse.product.v1.ProductByIdsRes
  * Use `create(ProductByIdsResponseSchema)` to create a new message.
  */
 export const ProductByIdsResponseSchema: GenMessage<ProductByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 10);
+  messageDesc(file_warehouse_product_v1_product, 18);
 
 /**
  * @generated from message warehouse.product.v1.ProductUpdateRequest
@@ -410,7 +676,7 @@ export type ProductUpdateRequest = Message<"warehouse.product.v1.ProductUpdateRe
  * Use `create(ProductUpdateRequestSchema)` to create a new message.
  */
 export const ProductUpdateRequestSchema: GenMessage<ProductUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 11);
+  messageDesc(file_warehouse_product_v1_product, 19);
 
 /**
  * @generated from message warehouse.product.v1.ProductUpdateResponse
@@ -427,7 +693,7 @@ export type ProductUpdateResponse = Message<"warehouse.product.v1.ProductUpdateR
  * Use `create(ProductUpdateResponseSchema)` to create a new message.
  */
 export const ProductUpdateResponseSchema: GenMessage<ProductUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 12);
+  messageDesc(file_warehouse_product_v1_product, 20);
 
 /**
  * @generated from message warehouse.product.v1.ProductDetailRequest
@@ -449,7 +715,7 @@ export type ProductDetailRequest = Message<"warehouse.product.v1.ProductDetailRe
  * Use `create(ProductDetailRequestSchema)` to create a new message.
  */
 export const ProductDetailRequestSchema: GenMessage<ProductDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 13);
+  messageDesc(file_warehouse_product_v1_product, 21);
 
 /**
  * @generated from message warehouse.product.v1.ProductDetailResponse
@@ -466,7 +732,7 @@ export type ProductDetailResponse = Message<"warehouse.product.v1.ProductDetailR
  * Use `create(ProductDetailResponseSchema)` to create a new message.
  */
 export const ProductDetailResponseSchema: GenMessage<ProductDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 14);
+  messageDesc(file_warehouse_product_v1_product, 22);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteRequest
@@ -488,7 +754,7 @@ export type ProductDeleteRequest = Message<"warehouse.product.v1.ProductDeleteRe
  * Use `create(ProductDeleteRequestSchema)` to create a new message.
  */
 export const ProductDeleteRequestSchema: GenMessage<ProductDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 15);
+  messageDesc(file_warehouse_product_v1_product, 23);
 
 /**
  * @generated from message warehouse.product.v1.ProductDeleteResponse
@@ -501,7 +767,102 @@ export type ProductDeleteResponse = Message<"warehouse.product.v1.ProductDeleteR
  * Use `create(ProductDeleteResponseSchema)` to create a new message.
  */
 export const ProductDeleteResponseSchema: GenMessage<ProductDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_product_v1_product, 16);
+  messageDesc(file_warehouse_product_v1_product, 24);
+
+/**
+ * ProductListDataType selects which slices the response carries per product.
+ *
+ * @generated from enum warehouse.product.v1.ProductListDataType
+ */
+export enum ProductListDataType {
+  /**
+   * @generated from enum value: PRODUCT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * GENERAL: the shared id+name slice (warehouse.common.v1.GeneralMapItem).
+   *
+   * @generated from enum value: PRODUCT_LIST_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * PRODUCT: the full catalogue row a product list/card renders (ProductRowMapItem).
+   *
+   * @generated from enum value: PRODUCT_LIST_DATA_TYPE_PRODUCT = 2;
+   */
+  PRODUCT = 2,
+}
+
+/**
+ * Describes the enum warehouse.product.v1.ProductListDataType.
+ */
+export const ProductListDataTypeSchema: GenEnum<ProductListDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_product_v1_product, 0);
+
+/**
+ * ProductRowSort is the sort selection paired with the PRODUCT (row) slice.
+ *
+ * @generated from enum warehouse.product.v1.ProductRowSort
+ */
+export enum ProductRowSort {
+  /**
+   * @generated from enum value: PRODUCT_ROW_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PRODUCT_ROW_SORT_NAME = 1;
+   */
+  NAME = 1,
+
+  /**
+   * @generated from enum value: PRODUCT_ROW_SORT_SKU = 2;
+   */
+  SKU = 2,
+
+  /**
+   * ID: newest-first is DESC on id (the legacy default).
+   *
+   * @generated from enum value: PRODUCT_ROW_SORT_ID = 3;
+   */
+  ID = 3,
+}
+
+/**
+ * Describes the enum warehouse.product.v1.ProductRowSort.
+ */
+export const ProductRowSortSchema: GenEnum<ProductRowSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_product_v1_product, 1);
+
+/**
+ * ProductByIdsDataType selects which slices the by-ids response carries per product.
+ *
+ * @generated from enum warehouse.product.v1.ProductByIdsDataType
+ */
+export enum ProductByIdsDataType {
+  /**
+   * @generated from enum value: PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PRODUCT_BY_IDS_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: PRODUCT_BY_IDS_DATA_TYPE_PRODUCT = 2;
+   */
+  PRODUCT = 2,
+}
+
+/**
+ * Describes the enum warehouse.product.v1.ProductByIdsDataType.
+ */
+export const ProductByIdsDataTypeSchema: GenEnum<ProductByIdsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_product_v1_product, 2);
 
 /**
  * ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team owns

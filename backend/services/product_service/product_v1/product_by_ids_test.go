@@ -22,20 +22,17 @@ func TestProductByIds_ResolvesAcrossTeams(t *testing.T) {
 
 	// The caller is team 2 and gets team 3's product back — team_id authorizes, it does not filter.
 	resp, err := svc.ProductByIds(context.Background(), connect.NewRequest(&productv1.ProductByIdsRequest{
-		TeamId:     2,
-		ProductIds: []uint64{mine, theirs},
+		TeamId: 2,
+		Filter: &productv1.ProductByIdsFilter{Ids: []uint64{mine, theirs}},
 	}))
 	if err != nil {
 		t.Fatalf("ProductByIds: %v", err)
 	}
 
-	byID := map[uint64]*productv1.Product{}
-	for _, p := range resp.Msg.GetProducts() {
-		byID[p.GetId()] = p
-	}
+	byID := byIdsRows(resp.Msg.GetItems())
 
 	if len(byID) != 2 {
-		t.Fatalf("resolved %d products, want 2: %+v", len(byID), resp.Msg.GetProducts())
+		t.Fatalf("resolved %d products, want 2: %+v", len(byID), resp.Msg.GetItems())
 	}
 
 	// Each carries its OWNING team, which is how a caller can tell whose goods it is holding.
@@ -57,15 +54,16 @@ func TestProductByIds_UnknownIdIsAbsentNotAnError(t *testing.T) {
 	real := insertProduct(t, db, 2, "A-1", "Alpha")
 
 	resp, err := svc.ProductByIds(context.Background(), connect.NewRequest(&productv1.ProductByIdsRequest{
-		TeamId:     2,
-		ProductIds: []uint64{real, 999999},
+		TeamId: 2,
+		Filter: &productv1.ProductByIdsFilter{Ids: []uint64{real, 999999}},
 	}))
 	if err != nil {
 		t.Fatalf("an unknown id must not fail the lookup: %v", err)
 	}
 
-	if len(resp.Msg.GetProducts()) != 1 || resp.Msg.GetProducts()[0].GetId() != real {
-		t.Fatalf("want just the real product, got %+v", resp.Msg.GetProducts())
+	rows := byIdsRows(resp.Msg.GetItems())
+	if len(rows) != 1 || rows[real] == nil {
+		t.Fatalf("want just the real product, got %+v", resp.Msg.GetItems())
 	}
 }
 
@@ -86,18 +84,19 @@ func TestProductByIds_ResolvesADeletedProduct(t *testing.T) {
 	}
 
 	resp, err := svc.ProductByIds(context.Background(), connect.NewRequest(&productv1.ProductByIdsRequest{
-		TeamId:     2,
-		ProductIds: []uint64{id},
+		TeamId: 2,
+		Filter: &productv1.ProductByIdsFilter{Ids: []uint64{id}},
 	}))
 	if err != nil {
 		t.Fatalf("ProductByIds: %v", err)
 	}
 
-	if len(resp.Msg.GetProducts()) != 1 {
+	rows := byIdsRows(resp.Msg.GetItems())
+	if len(rows) != 1 {
 		t.Fatalf("a deleted product must still resolve — stock outlives the catalogue entry, got %+v",
-			resp.Msg.GetProducts())
+			resp.Msg.GetItems())
 	}
-	if !resp.Msg.GetProducts()[0].GetDeleted() {
+	if !rows[id].GetDeleted() {
 		t.Fatal("a deleted product must come back marked deleted, so a caller can tell")
 	}
 }

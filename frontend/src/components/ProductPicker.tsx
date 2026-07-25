@@ -15,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
+import { productListRowData, productsFromList } from "../features/products/adapt";
 import { useTeam } from "../features/team/TeamContext";
 import { Pagination } from "./Pagination";
 import { ProductListItem } from "./ProductListItem";
@@ -217,7 +218,12 @@ export function ProductPicker({
 
     void (async () => {
       try {
-        const req = { teamId: scopeTeamId, q, page: { page, limit: PAGE_SIZE } };
+        const req = {
+          teamId: scopeTeamId,
+          filter: { q },
+          dataRequest: productListRowData(),
+          page: { page, limit: PAGE_SIZE },
+        };
         const res = browseAll
           ? await productClient.productDiscover(req)
           : await productClient.productList(req);
@@ -226,13 +232,14 @@ export function ProductPicker({
           return;
         }
 
-        setProducts(res.products);
+        const found = productsFromList(res.items, res.ids);
+        setProducts(found);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
 
         // Every product we render is one we can now describe — remember it for Confirm.
         setKnown((prev) => {
           const next = new Map(prev);
-          for (const p of res.products) {
+          for (const p of found) {
             next.set(p.id.toString(), { id: p.id, sku: p.sku, name: p.name });
           }
           return next;

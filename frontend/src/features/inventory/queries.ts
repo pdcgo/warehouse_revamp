@@ -10,6 +10,12 @@ import {
   userClient,
 } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import {
+  productByIdsRowData,
+  productListRowData,
+  productsFromByIds,
+  productsFromList,
+} from "../products/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -42,7 +48,8 @@ export function useWarehouseStock(args: {
       const [productRes, stockRes] = await Promise.all([
         productClient.productList({
           teamId: warehouseId!,
-          q,
+          filter: { q },
+          dataRequest: productListRowData(),
           page: { page, limit: pageSize },
         }),
         inventoryClient.stockList({ warehouseId: warehouseId!, page: { page: 1, limit: levelLimit } }),
@@ -54,7 +61,7 @@ export function useWarehouseStock(args: {
       }
 
       return {
-        products: productRes.products,
+        products: productsFromList(productRes.items, productRes.ids),
         onHand,
         totalItems: Number(productRes.pageInfo?.totalItems ?? 0n),
       };
@@ -90,9 +97,10 @@ export function useWarehouseProduct(args: {
       // shelf must be able to read the label on the box sitting on it.
       const found = await productClient.productByIds({
         teamId: warehouseId!,
-        productIds: [productId],
+        filter: { ids: [productId] },
+        dataRequest: productByIdsRowData(),
       });
-      const product = found.products[0] ?? null;
+      const product = productsFromByIds(found)[0] ?? null;
 
       const [placesRes, costRes, opnameRes, historyRes, moveRes] = await Promise.all([
         inventoryClient.productPlaces({ warehouseId: warehouseId!, productIds: [productId] }),
@@ -341,9 +349,13 @@ export function useWarehouseBatches(args: {
       const productIds = [...new Set(res.batches.map((b) => b.productId).filter((id) => id > 0n))];
       if (productIds.length > 0) {
         try {
-          const found = await productClient.productByIds({ teamId: warehouseId!, productIds });
+          const found = await productClient.productByIds({
+            teamId: warehouseId!,
+            filter: { ids: productIds },
+            dataRequest: productByIdsRowData(),
+          });
           const teamByProduct = new Map<string, bigint>();
-          for (const p of found.products) {
+          for (const p of productsFromByIds(found)) {
             if (p.teamId > 0n) teamByProduct.set(p.id.toString(), p.teamId);
           }
           const teamIds = [...new Set([...teamByProduct.values()])];
@@ -429,9 +441,10 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       try {
         const found = await productClient.productByIds({
           teamId: warehouseId!,
-          productIds: [batch.productId],
+          filter: { ids: [batch.productId] },
+          dataRequest: productByIdsRowData(),
         });
-        product = found.products[0] ?? null;
+        product = productsFromByIds(found)[0] ?? null;
         const ownerTeamId = product?.teamId ?? 0n;
         if (ownerTeamId > 0n) {
           const teams = await teamClient.teamByIds({ ids: [ownerTeamId] });

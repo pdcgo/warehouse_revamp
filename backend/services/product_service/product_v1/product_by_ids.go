@@ -37,17 +37,14 @@ func (s *Service) ProductByIds(
 
 	err := s.db.
 		WithContext(ctx).
-		Where("id IN ?", req.Msg.GetProductIds()).
+		Where("id IN ?", req.Msg.GetFilter().GetIds()).
 		Find(&products).
 		Error
 	if err != nil {
 		return nil, dbError(err)
 	}
 
-	out := make([]*productv1.Product, 0, len(products))
-	for i := range products {
-		out = append(out, toProto(&products[i]))
-	}
-
-	return connect.NewResponse(&productv1.ProductByIdsResponse{Products: out}), nil
+	return connect.NewResponse(&productv1.ProductByIdsResponse{
+		Items: productByIdsMap(products, req.Msg.GetDataRequest()),
+	}), nil
 }

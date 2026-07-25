@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, productClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import {
+  productByIdsRowData,
+  productListRowData,
+  productsFromByIds,
+  productsFromList,
+} from "./adapt";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
 
@@ -42,20 +48,22 @@ export function useProducts({ teamId, isWarehouse, q, page, pageSize }: ProductL
 
         const resolved = await productClient.productByIds({
           teamId: teamId!,
-          productIds: arrangement.productIds,
+          filter: { ids: arrangement.productIds },
+          dataRequest: productByIdsRowData(),
         });
 
-        return { products: resolved.products, totalItems };
+        return { products: productsFromByIds(resolved), totalItems };
       }
 
       const res = await productClient.productList({
         teamId: teamId!,
-        q,
+        filter: { q },
+        dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        products: res.products,
+        products: productsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -80,12 +88,13 @@ export function useDiscoverProducts(args: {
     queryFn: async () => {
       const res = await productClient.productDiscover({
         teamId: teamId!,
-        q,
+        filter: { q },
+        dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        products: res.products,
+        products: productsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -176,13 +185,18 @@ export function useProductSearch(args: {
     queryKey: key.products(teamId, { search: q, scope }),
     enabled: q.length >= 2 && teamId > 0n,
     queryFn: async () => {
-      const req = { teamId, q, page: { page: 1, limit: 10 } };
+      const req = {
+        teamId,
+        filter: { q },
+        dataRequest: productListRowData(),
+        page: { page: 1, limit: 10 },
+      };
       const res =
         scope === "all"
           ? await productClient.productDiscover(req)
           : await productClient.productList(req);
 
-      return res.products;
+      return productsFromList(res.items, res.ids);
     },
   });
 }

@@ -45,20 +45,31 @@ func (c *productCatalog) Snapshots(
 	}
 
 	res, err := c.products.ProductByIds(ctx, connect.NewRequest(&productv1.ProductByIdsRequest{
-		TeamId:     sellingTeamID,
-		ProductIds: productIDs,
+		TeamId: sellingTeamID,
+		Filter: &productv1.ProductByIdsFilter{Ids: productIDs},
+		DataRequest: []productv1.ProductByIdsDataType{
+			productv1.ProductByIdsDataType_PRODUCT_BY_IDS_DATA_TYPE_PRODUCT,
+		},
 	}))
 	if err != nil {
 		return nil, err
 	}
 
 	// Only products that EXIST come back, so the map is naturally missing the rest — which is the
-	// distinction promote needs to name a dead reference.
-	for _, product := range res.Msg.GetProducts() {
-		snapshots[product.GetId()] = selling_v1.ProductSnapshot{
-			SKU:    product.GetSku(),
-			Name:   product.GetName(),
-			TeamID: product.GetTeamId(),
+	// distinction promote needs to name a dead reference. The by-ids response is keyed by product id;
+	// each value carries the requested slices, and we read the PRODUCT (row) slice.
+	for id, list := range res.Msg.GetItems() {
+		for _, item := range list.GetItems() {
+			row := item.GetProduct().GetMapData()[id]
+			if row == nil {
+				continue
+			}
+
+			snapshots[id] = selling_v1.ProductSnapshot{
+				SKU:    row.GetSku(),
+				Name:   row.GetName(),
+				TeamID: row.GetTeamId(),
+			}
 		}
 	}
 

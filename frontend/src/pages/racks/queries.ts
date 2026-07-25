@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { productClient, rackClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 
 // The rack screens' reads (#176).
 
@@ -80,9 +81,13 @@ export function useRackStock(args: {
         try {
           // `teamId` here is the team the CALLER holds a role in — this warehouse — not the team
           // whose products come back. That is what lets it resolve a selling team's product.
-          const productRes = await productClient.productByIds({ teamId: teamId!, productIds: ids });
+          const productRes = await productClient.productByIds({
+            teamId: teamId!,
+            filter: { ids },
+            dataRequest: productByIdsRowData(),
+          });
 
-          for (const product of productRes.products) {
+          for (const product of productsFromByIds(productRes)) {
             products.set(product.id.toString(), product);
           }
         } catch {

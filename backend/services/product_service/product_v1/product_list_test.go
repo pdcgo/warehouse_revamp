@@ -22,7 +22,7 @@ func TestProductList_ScopedToTeam(t *testing.T) {
 
 	resp, err := svc.ProductList(context.Background(), connect.NewRequest(&productv1.ProductListRequest{
 		TeamId: 2,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ProductList: %v", err)
@@ -31,7 +31,7 @@ func TestProductList_ScopedToTeam(t *testing.T) {
 	if resp.Msg.GetPageInfo().GetTotalItems() != 2 {
 		t.Fatalf("total items = %d, want 2 (team 3's product must not leak)", resp.Msg.GetPageInfo().GetTotalItems())
 	}
-	for _, p := range resp.Msg.GetProducts() {
+	for _, p := range listRows(resp.Msg.GetItems()) {
 		if p.GetTeamId() != 2 {
 			t.Errorf("got a product from team %d in team 2's list", p.GetTeamId())
 		}
@@ -48,8 +48,9 @@ func TestProductList_QueryAndPaging(t *testing.T) {
 
 	// q matches name OR sku.
 	resp, err := svc.ProductList(context.Background(), connect.NewRequest(&productv1.ProductListRequest{
-		TeamId: 2, Q: "steel",
-		Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: 2,
+		Filter: &productv1.ProductListFilter{Q: "steel"},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ProductList(q): %v", err)
@@ -61,13 +62,13 @@ func TestProductList_QueryAndPaging(t *testing.T) {
 	// limit 2 over 3 rows → 2 pages.
 	paged, err := svc.ProductList(context.Background(), connect.NewRequest(&productv1.ProductListRequest{
 		TeamId: 2,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 2},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 2},
 	}))
 	if err != nil {
 		t.Fatalf("ProductList(paged): %v", err)
 	}
-	if len(paged.Msg.GetProducts()) != 2 || paged.Msg.GetPageInfo().GetTotalPage() != 2 {
+	if len(paged.Msg.GetIds()) != 2 || paged.Msg.GetPageInfo().GetTotalPage() != 2 {
 		t.Fatalf("paging: got %d rows, %d pages; want 2 and 2",
-			len(paged.Msg.GetProducts()), paged.Msg.GetPageInfo().GetTotalPage())
+			len(paged.Msg.GetIds()), paged.Msg.GetPageInfo().GetTotalPage())
 	}
 }

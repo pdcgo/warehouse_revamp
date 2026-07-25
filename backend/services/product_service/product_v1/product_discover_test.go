@@ -24,7 +24,7 @@ func TestProductDiscover_CrossTeam(t *testing.T) {
 	// Caller is team 2, but discover returns all three teams' products.
 	resp, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
 		TeamId: 2,
-		Page:   &commonv1.PageFilter{Page: 1, Limit: 50},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ProductDiscover: %v", err)
@@ -35,13 +35,15 @@ func TestProductDiscover_CrossTeam(t *testing.T) {
 
 	// q filters across teams too.
 	q, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
-		TeamId: 2, Q: "Beta",
-		Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+		TeamId: 2,
+		Filter: &productv1.ProductListFilter{Q: "Beta"},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("ProductDiscover(q): %v", err)
 	}
-	if q.Msg.GetPageInfo().GetTotalItems() != 1 || q.Msg.GetProducts()[0].GetTeamId() != 3 {
+	rows := listRows(q.Msg.GetItems())
+	if q.Msg.GetPageInfo().GetTotalItems() != 1 || len(q.Msg.GetIds()) != 1 || rows[q.Msg.GetIds()[0]].GetTeamId() != 3 {
 		t.Fatalf("q=Beta should find team 3's product; got %d items", q.Msg.GetPageInfo().GetTotalItems())
 	}
 }
