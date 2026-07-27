@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/inventory/v1/inventory.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -72,7 +73,6 @@ message RackCreateResponse {
 }
 
 message RackListRequest {
-  // Read: anyone who works in the warehouse, staff included — they are the ones standing at the rack.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -87,13 +87,51 @@ message RackListRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  string q = 2 [(buf.validate.field).string.max_len = 100];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  RackListFilter filter = 2;
+  RackListFilterSort sort = 3;
+  repeated RackListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message RackListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+enum RackListDataType {
+  RACK_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  RACK_LIST_DATA_TYPE_GENERAL = 1;
+  RACK_LIST_DATA_TYPE_RACK = 2;
+}
+
+enum RackRowSort {
+  RACK_ROW_SORT_UNSPECIFIED = 0;
+  RACK_ROW_SORT_CODE = 1;
+  RACK_ROW_SORT_ID = 2;
+}
+
+message RackListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    RackRowSort rack = 3;
+  }
+}
+
+message RackRowMapItem {
+  map<uint64, Rack> map_data = 1;
+}
+
+message RackListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    RackRowMapItem rack = 2;
+  }
 }
 
 message RackListResponse {
-  repeated Rack racks = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated RackListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message RackDetailRequest {
@@ -177,7 +215,6 @@ message RackStockLine {
 }
 
 message RackStockRequest {
-  // Read: anyone who works in the warehouse, staff included — they are the ones standing at the rack.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -192,15 +229,37 @@ message RackStockRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // A rack's contents grow with the catalogue, so this pages: it is a browse/management screen, not a
-  // picker feed (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  RackStockFilter filter = 2;
+  repeated RackStockDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message RackStockFilter {
+  uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum RackStockDataType {
+  RACK_STOCK_DATA_TYPE_UNSPECIFIED = 0;
+  RACK_STOCK_DATA_TYPE_GENERAL = 1;
+  RACK_STOCK_DATA_TYPE_RACK_STOCK = 2;
+}
+
+// The RACK_STOCK slice reuses RackStockLine, keyed by product_id.
+message RackStockMapItem {
+  map<uint64, RackStockLine> map_data = 1;
+}
+
+message RackStockResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    RackStockMapItem rack_stock = 2;
+  }
 }
 
 message RackStockResponse {
-  repeated RackStockLine lines = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated RackStockResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message RackUpdateRequest {
@@ -260,7 +319,6 @@ message RackDeleteResponse {}
 // Every movement already carries `rack_id`, so this is a filter over data that exists rather than a
 // new ledger. Nothing is written differently for it.
 message RackHistoryRequest {
-  // Read: anyone who works in the warehouse, staff included — the people standing at the shelf.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -275,26 +333,37 @@ message RackHistoryRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+  RackHistoryFilter filter = 2;
+  repeated RackHistoryDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  // The ledger is append-only and grows forever, so this pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+message RackHistoryFilter {
+  uint64 rack_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // WHICH KINDS to return; empty means all of them. Server-side (the list is paginated).
+  repeated MovementKind kinds = 2 [(buf.validate.field).repeated.max_items = 8];
+}
 
-  // WHICH KINDS to return; empty means all of them.
-  //
-  // A LIST rather than the single `kind` StockHistory takes, because the detail page asks two
-  // different questions of the same ledger (#197):
-  //
-  //   - **Stock History** — everything that changed a count here.
-  //   - **Placement History** — the put-aways and moves that decided goods LIVE here (RECEIVE, MOVE).
-  //
-  // Server-side, for the same reason StockHistory filters server-side: the list is paginated, so a
-  // client-side filter narrows the loaded page only and reports the unfiltered total beside it.
-  repeated MovementKind kinds = 4 [(buf.validate.field).repeated.max_items = 8];
+enum RackHistoryDataType {
+  RACK_HISTORY_DATA_TYPE_UNSPECIFIED = 0;
+  RACK_HISTORY_DATA_TYPE_GENERAL = 1;
+  RACK_HISTORY_DATA_TYPE_MOVEMENT = 2;
+}
+
+// The MOVEMENT slice reuses StockMovement, keyed by movement id.
+message RackHistoryMapItem {
+  map<uint64, StockMovement> map_data = 1;
+}
+
+message RackHistoryResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    RackHistoryMapItem movement = 2;
+  }
 }
 
 message RackHistoryResponse {
-  // Newest first — the last thing that happened to this shelf is the thing somebody came to see.
-  repeated StockMovement movements = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated RackHistoryResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

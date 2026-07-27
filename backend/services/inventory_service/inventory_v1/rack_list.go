@@ -25,7 +25,7 @@ func (s *Service) RackList(
 		Model(&inventory_service_models.Rack{}).
 		Where("warehouse_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
 
-	if q := strings.TrimSpace(req.Msg.GetQ()); q != "" {
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("code ILIKE ? OR name ILIKE ?", pattern, pattern)
 	}
@@ -40,7 +40,7 @@ func (s *Service) RackList(
 	var racks []inventory_service_models.Rack
 
 	err = query.
-		Order("code ASC").
+		Order(rackOrderClause(req.Msg.GetSort())).
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
 		Find(&racks).
@@ -49,13 +49,11 @@ func (s *Service) RackList(
 		return nil, rackDBError(err)
 	}
 
-	out := make([]*inventoryv1.Rack, 0, len(racks))
-	for i := range racks {
-		out = append(out, rackToProto(&racks[i]))
-	}
+	items, ids := rackListItems(racks, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.RackListResponse{
-		Racks:    out,
+		Items:    items,
+		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
 }

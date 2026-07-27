@@ -26,7 +26,7 @@ func (s *Service) RackHistory(
 	req *connect.Request[inventoryv1.RackHistoryRequest],
 ) (*connect.Response[inventoryv1.RackHistoryResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
-	rackID := req.Msg.GetRackId()
+	rackID := req.Msg.GetFilter().GetRackId()
 	page := req.Msg.GetPage()
 
 	exists, err := rackExists(s.db.WithContext(ctx), warehouseID, rackID)
@@ -50,9 +50,9 @@ func (s *Service) RackHistory(
 	// that changed a count here, and the put-aways that decided goods LIVE here.
 	// `kind` is stored as the enum's NUMBER (see StockMovement.Kind), exactly as StockHistory filters
 	// it — so this is a numeric IN-list, not a text one.
-	kinds := make([]int32, 0, len(req.Msg.GetKinds()))
+	kinds := make([]int32, 0, len(req.Msg.GetFilter().GetKinds()))
 
-	for _, kind := range req.Msg.GetKinds() {
+	for _, kind := range req.Msg.GetFilter().GetKinds() {
 		// UNSPECIFIED is not a kind anything is ever written as, and treating it as a filter value
 		// would return nothing at all — which reads as "this shelf has no history" rather than as the
 		// caller having asked for a kind that does not exist.
@@ -92,8 +92,11 @@ func (s *Service) RackHistory(
 		out = append(out, movementToProto(&movements[i]))
 	}
 
+	items, ids := rackHistoryListItems(out, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.RackHistoryResponse{
-		Movements: out,
-		PageInfo:  pageInfo(page, total),
+		Items:    items,
+		Ids:      ids,
+		PageInfo: pageInfo(page, total),
 	}), nil
 }

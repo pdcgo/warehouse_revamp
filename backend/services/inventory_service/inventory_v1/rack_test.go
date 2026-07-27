@@ -60,13 +60,13 @@ func TestRack_CreateAndList(t *testing.T) {
 	createRack(t, svc, 6, "A-01-3", "Someone else's bay")
 
 	resp, err := svc.RackList(ctx, connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: warehouse, Page: page1(),
+		TeamId: warehouse, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList: %v", err)
 	}
 
-	got := resp.Msg.GetRacks()
+	got := rackRows(resp.Msg)
 	if len(got) != 2 {
 		t.Fatalf("racks = %d, want 2 (the other warehouse's must not appear)", len(got))
 	}
@@ -106,24 +106,24 @@ func TestRack_SearchByCodeOrName(t *testing.T) {
 
 	// By name.
 	resp, err := svc.RackList(context.Background(), connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: 5, Q: "cold", Page: page1(),
+		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "cold"}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList (q): %v", err)
 	}
-	if len(resp.Msg.GetRacks()) != 1 || resp.Msg.GetRacks()[0].GetCode() != "C-09-2" {
-		t.Fatalf("search by name = %+v", resp.Msg.GetRacks())
+	if len(rackRows(resp.Msg)) != 1 || rackRows(resp.Msg)[0].GetCode() != "C-09-2" {
+		t.Fatalf("search by name = %+v", rackRows(resp.Msg))
 	}
 
 	// By code — the label is what someone actually types.
 	resp, err = svc.RackList(context.Background(), connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: 5, Q: "A-01", Page: page1(),
+		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "A-01"}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList (code q): %v", err)
 	}
-	if len(resp.Msg.GetRacks()) != 1 || resp.Msg.GetRacks()[0].GetName() != "Receiving bay" {
-		t.Fatalf("search by code = %+v", resp.Msg.GetRacks())
+	if len(rackRows(resp.Msg)) != 1 || rackRows(resp.Msg)[0].GetName() != "Receiving bay" {
+		t.Fatalf("search by code = %+v", rackRows(resp.Msg))
 	}
 }
 
@@ -188,13 +188,13 @@ func TestRack_SoftDeleteFreesTheCode(t *testing.T) {
 	}
 
 	resp, err := svc.RackList(ctx, connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: warehouse, Page: page1(),
+		TeamId: warehouse, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList: %v", err)
 	}
-	if len(resp.Msg.GetRacks()) != 0 {
-		t.Fatalf("a deleted rack still lists: %+v", resp.Msg.GetRacks())
+	if len(rackRows(resp.Msg)) != 0 {
+		t.Fatalf("a deleted rack still lists: %+v", rackRows(resp.Msg))
 	}
 
 	// The code is reusable now.
@@ -295,7 +295,7 @@ func TestRackStock_ListsWhatIsOnTheShelf(t *testing.T) {
 	place(&rackA, 400, 0)  // a shelf that was counted to zero: not ON the rack
 
 	got, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: warehouse, RackId: rackA, Page: page1(),
+		TeamId: warehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackA}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackStock: %v", err)
@@ -303,7 +303,7 @@ func TestRackStock_ListsWhatIsOnTheShelf(t *testing.T) {
 
 	// Only what is physically on rackA: the other shelf's stock, the unplaced pile, and the zeroed
 	// line are all absent. A zeroed line especially — it would show a product that is not there.
-	lines := got.Msg.GetLines()
+	lines := rackStockRows(got.Msg)
 	if len(lines) != 2 {
 		t.Fatalf("rack A holds 2 products, got %d: %+v", len(lines), lines)
 	}
@@ -336,7 +336,7 @@ func TestRackStock_CrossWarehouseIsNotFoundNotEmpty(t *testing.T) {
 	theirRack := createRack(t, svc, theirs, "B-01-1", "")
 
 	_, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: mine, RackId: theirRack, Page: page1(),
+		TeamId: mine, Filter: &inventoryv1.RackStockFilter{RackId: theirRack}, Page: page1C(),
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeNotFound {
 		t.Fatalf("another warehouse's rack = %v, want NotFound", code)

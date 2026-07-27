@@ -20,6 +20,7 @@ import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_p
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
+import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { Pagination } from "../../components/Pagination";
 import { ProductListItem } from "../../components/ProductListItem";
@@ -147,13 +148,20 @@ export function RackDetailPage() {
 
     void (async () => {
       try {
-        const res = await rackClient.rackStock({ teamId, rackId, page: { page, limit: pageSize } });
+        const res = await rackClient.rackStock({
+          teamId,
+          filter: { rackId },
+          dataRequest: rackStockRowData(),
+          page: { page, limit: pageSize },
+        });
         if (ignore) return;
+
+        const stockLines = rackStockFromList(res.items, res.ids);
 
         // Unique and non-zero: ProductByIds demands min_items:1, unique ids, each > 0 — so a
         // duplicate or an empty set must never become a call. The cap is 200 and a page is at most
         // 50, so a page's ids always fit in ONE call.
-        const ids = [...new Set(res.lines.map((line) => line.productId).filter((id) => id > 0n))];
+        const ids = [...new Set(stockLines.map((line) => line.productId).filter((id) => id > 0n))];
 
         const resolved = new Map<string, Product>();
 
@@ -180,7 +188,7 @@ export function RackDetailPage() {
 
         if (ignore) return;
 
-        setLines(res.lines);
+        setLines(stockLines);
         setProducts(resolved);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
       } catch (err) {
@@ -631,14 +639,17 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
     rackClient
       .rackHistory({
         teamId,
-        rackId,
+        filter: {
+          rackId,
+          kinds: kindKey === "" ? [] : kindKey.split(",").map(Number),
+        },
+        dataRequest: rackHistoryRowData(),
         page: { page, limit: pageSize },
-        kinds: kindKey === "" ? [] : kindKey.split(",").map(Number),
       })
       .then((res) => {
         if (ignore) return;
 
-        setMovements(res.movements);
+        setMovements(rackHistoryFromList(res.items, res.ids));
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
       })
       .catch((err) => {

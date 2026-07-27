@@ -24,6 +24,202 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RackListDataType int32
+
+const (
+	RackListDataType_RACK_LIST_DATA_TYPE_UNSPECIFIED RackListDataType = 0
+	RackListDataType_RACK_LIST_DATA_TYPE_GENERAL     RackListDataType = 1
+	RackListDataType_RACK_LIST_DATA_TYPE_RACK        RackListDataType = 2
+)
+
+// Enum value maps for RackListDataType.
+var (
+	RackListDataType_name = map[int32]string{
+		0: "RACK_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "RACK_LIST_DATA_TYPE_GENERAL",
+		2: "RACK_LIST_DATA_TYPE_RACK",
+	}
+	RackListDataType_value = map[string]int32{
+		"RACK_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"RACK_LIST_DATA_TYPE_GENERAL":     1,
+		"RACK_LIST_DATA_TYPE_RACK":        2,
+	}
+)
+
+func (x RackListDataType) Enum() *RackListDataType {
+	p := new(RackListDataType)
+	*p = x
+	return p
+}
+
+func (x RackListDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RackListDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_rack_proto_enumTypes[0].Descriptor()
+}
+
+func (RackListDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_rack_proto_enumTypes[0]
+}
+
+func (x RackListDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RackListDataType.Descriptor instead.
+func (RackListDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{0}
+}
+
+type RackRowSort int32
+
+const (
+	RackRowSort_RACK_ROW_SORT_UNSPECIFIED RackRowSort = 0
+	RackRowSort_RACK_ROW_SORT_CODE        RackRowSort = 1
+	RackRowSort_RACK_ROW_SORT_ID          RackRowSort = 2
+)
+
+// Enum value maps for RackRowSort.
+var (
+	RackRowSort_name = map[int32]string{
+		0: "RACK_ROW_SORT_UNSPECIFIED",
+		1: "RACK_ROW_SORT_CODE",
+		2: "RACK_ROW_SORT_ID",
+	}
+	RackRowSort_value = map[string]int32{
+		"RACK_ROW_SORT_UNSPECIFIED": 0,
+		"RACK_ROW_SORT_CODE":        1,
+		"RACK_ROW_SORT_ID":          2,
+	}
+)
+
+func (x RackRowSort) Enum() *RackRowSort {
+	p := new(RackRowSort)
+	*p = x
+	return p
+}
+
+func (x RackRowSort) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RackRowSort) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_rack_proto_enumTypes[1].Descriptor()
+}
+
+func (RackRowSort) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_rack_proto_enumTypes[1]
+}
+
+func (x RackRowSort) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RackRowSort.Descriptor instead.
+func (RackRowSort) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{1}
+}
+
+type RackStockDataType int32
+
+const (
+	RackStockDataType_RACK_STOCK_DATA_TYPE_UNSPECIFIED RackStockDataType = 0
+	RackStockDataType_RACK_STOCK_DATA_TYPE_GENERAL     RackStockDataType = 1
+	RackStockDataType_RACK_STOCK_DATA_TYPE_RACK_STOCK  RackStockDataType = 2
+)
+
+// Enum value maps for RackStockDataType.
+var (
+	RackStockDataType_name = map[int32]string{
+		0: "RACK_STOCK_DATA_TYPE_UNSPECIFIED",
+		1: "RACK_STOCK_DATA_TYPE_GENERAL",
+		2: "RACK_STOCK_DATA_TYPE_RACK_STOCK",
+	}
+	RackStockDataType_value = map[string]int32{
+		"RACK_STOCK_DATA_TYPE_UNSPECIFIED": 0,
+		"RACK_STOCK_DATA_TYPE_GENERAL":     1,
+		"RACK_STOCK_DATA_TYPE_RACK_STOCK":  2,
+	}
+)
+
+func (x RackStockDataType) Enum() *RackStockDataType {
+	p := new(RackStockDataType)
+	*p = x
+	return p
+}
+
+func (x RackStockDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RackStockDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_rack_proto_enumTypes[2].Descriptor()
+}
+
+func (RackStockDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_rack_proto_enumTypes[2]
+}
+
+func (x RackStockDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RackStockDataType.Descriptor instead.
+func (RackStockDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{2}
+}
+
+type RackHistoryDataType int32
+
+const (
+	RackHistoryDataType_RACK_HISTORY_DATA_TYPE_UNSPECIFIED RackHistoryDataType = 0
+	RackHistoryDataType_RACK_HISTORY_DATA_TYPE_GENERAL     RackHistoryDataType = 1
+	RackHistoryDataType_RACK_HISTORY_DATA_TYPE_MOVEMENT    RackHistoryDataType = 2
+)
+
+// Enum value maps for RackHistoryDataType.
+var (
+	RackHistoryDataType_name = map[int32]string{
+		0: "RACK_HISTORY_DATA_TYPE_UNSPECIFIED",
+		1: "RACK_HISTORY_DATA_TYPE_GENERAL",
+		2: "RACK_HISTORY_DATA_TYPE_MOVEMENT",
+	}
+	RackHistoryDataType_value = map[string]int32{
+		"RACK_HISTORY_DATA_TYPE_UNSPECIFIED": 0,
+		"RACK_HISTORY_DATA_TYPE_GENERAL":     1,
+		"RACK_HISTORY_DATA_TYPE_MOVEMENT":    2,
+	}
+)
+
+func (x RackHistoryDataType) Enum() *RackHistoryDataType {
+	p := new(RackHistoryDataType)
+	*p = x
+	return p
+}
+
+func (x RackHistoryDataType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RackHistoryDataType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_rack_proto_enumTypes[3].Descriptor()
+}
+
+func (RackHistoryDataType) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_rack_proto_enumTypes[3]
+}
+
+func (x RackHistoryDataType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RackHistoryDataType.Descriptor instead.
+func (RackHistoryDataType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{3}
+}
+
 type Rack struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -227,8 +423,10 @@ func (x *RackCreateResponse) GetRack() *Rack {
 type RackListRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Q             string                 `protobuf:"bytes,2,opt,name=q,proto3" json:"q,omitempty"`
-	Page          *v1.PageFilter         `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	Filter        *RackListFilter        `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort          *RackListFilterSort    `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest   []RackListDataType     `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.inventory.v1.RackListDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination   `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -270,31 +468,306 @@ func (x *RackListRequest) GetTeamId() uint64 {
 	return 0
 }
 
-func (x *RackListRequest) GetQ() string {
+func (x *RackListRequest) GetFilter() *RackListFilter {
 	if x != nil {
-		return x.Q
+		return x.Filter
 	}
-	return ""
+	return nil
 }
 
-func (x *RackListRequest) GetPage() *v1.PageFilter {
+func (x *RackListRequest) GetSort() *RackListFilterSort {
+	if x != nil {
+		return x.Sort
+	}
+	return nil
+}
+
+func (x *RackListRequest) GetDataRequest() []RackListDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *RackListRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type RackListResponse struct {
+type RackListFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Racks         []*Rack                `protobuf:"bytes,1,rep,name=racks,proto3" json:"racks,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackListFilter) Reset() {
+	*x = RackListFilter{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackListFilter) ProtoMessage() {}
+
+func (x *RackListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackListFilter.ProtoReflect.Descriptor instead.
+func (*RackListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RackListFilter) GetQ() string {
+	if x != nil {
+		return x.Q
+	}
+	return ""
+}
+
+type RackListFilterSort struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SortType v1.CommonSortType      `protobuf:"varint,1,opt,name=sort_type,json=sortType,proto3,enum=warehouse.common.v1.CommonSortType" json:"sort_type,omitempty"`
+	// Types that are valid to be assigned to S:
+	//
+	//	*RackListFilterSort_General
+	//	*RackListFilterSort_Rack
+	S             isRackListFilterSort_S `protobuf_oneof:"s"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackListFilterSort) Reset() {
+	*x = RackListFilterSort{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackListFilterSort) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackListFilterSort) ProtoMessage() {}
+
+func (x *RackListFilterSort) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackListFilterSort.ProtoReflect.Descriptor instead.
+func (*RackListFilterSort) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RackListFilterSort) GetSortType() v1.CommonSortType {
+	if x != nil {
+		return x.SortType
+	}
+	return v1.CommonSortType(0)
+}
+
+func (x *RackListFilterSort) GetS() isRackListFilterSort_S {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *RackListFilterSort) GetGeneral() v1.GeneralSort {
+	if x != nil {
+		if x, ok := x.S.(*RackListFilterSort_General); ok {
+			return x.General
+		}
+	}
+	return v1.GeneralSort(0)
+}
+
+func (x *RackListFilterSort) GetRack() RackRowSort {
+	if x != nil {
+		if x, ok := x.S.(*RackListFilterSort_Rack); ok {
+			return x.Rack
+		}
+	}
+	return RackRowSort_RACK_ROW_SORT_UNSPECIFIED
+}
+
+type isRackListFilterSort_S interface {
+	isRackListFilterSort_S()
+}
+
+type RackListFilterSort_General struct {
+	General v1.GeneralSort `protobuf:"varint,2,opt,name=general,proto3,enum=warehouse.common.v1.GeneralSort,oneof"`
+}
+
+type RackListFilterSort_Rack struct {
+	Rack RackRowSort `protobuf:"varint,3,opt,name=rack,proto3,enum=warehouse.inventory.v1.RackRowSort,oneof"`
+}
+
+func (*RackListFilterSort_General) isRackListFilterSort_S() {}
+
+func (*RackListFilterSort_Rack) isRackListFilterSort_S() {}
+
+type RackRowMapItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MapData       map[uint64]*Rack       `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackRowMapItem) Reset() {
+	*x = RackRowMapItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackRowMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackRowMapItem) ProtoMessage() {}
+
+func (x *RackRowMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackRowMapItem.ProtoReflect.Descriptor instead.
+func (*RackRowMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RackRowMapItem) GetMapData() map[uint64]*Rack {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type RackListResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*RackListResponseItem_General
+	//	*RackListResponseItem_Rack
+	D             isRackListResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackListResponseItem) Reset() {
+	*x = RackListResponseItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackListResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackListResponseItem) ProtoMessage() {}
+
+func (x *RackListResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackListResponseItem.ProtoReflect.Descriptor instead.
+func (*RackListResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RackListResponseItem) GetD() isRackListResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *RackListResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackListResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *RackListResponseItem) GetRack() *RackRowMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackListResponseItem_Rack); ok {
+			return x.Rack
+		}
+	}
+	return nil
+}
+
+type isRackListResponseItem_D interface {
+	isRackListResponseItem_D()
+}
+
+type RackListResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type RackListResponseItem_Rack struct {
+	Rack *RackRowMapItem `protobuf:"bytes,2,opt,name=rack,proto3,oneof"`
+}
+
+func (*RackListResponseItem_General) isRackListResponseItem_D() {}
+
+func (*RackListResponseItem_Rack) isRackListResponseItem_D() {}
+
+type RackListResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Items         []*RackListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids           []uint64                `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v1.PageInfo            `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RackListResponse) Reset() {
 	*x = RackListResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +779,7 @@ func (x *RackListResponse) String() string {
 func (*RackListResponse) ProtoMessage() {}
 
 func (x *RackListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[4]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,12 +792,19 @@ func (x *RackListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackListResponse.ProtoReflect.Descriptor instead.
 func (*RackListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *RackListResponse) GetRacks() []*Rack {
+func (x *RackListResponse) GetItems() []*RackListResponseItem {
 	if x != nil {
-		return x.Racks
+		return x.Items
+	}
+	return nil
+}
+
+func (x *RackListResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -347,7 +827,7 @@ type RackDetailRequest struct {
 
 func (x *RackDetailRequest) Reset() {
 	*x = RackDetailRequest{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +839,7 @@ func (x *RackDetailRequest) String() string {
 func (*RackDetailRequest) ProtoMessage() {}
 
 func (x *RackDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[5]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +852,7 @@ func (x *RackDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackDetailRequest.ProtoReflect.Descriptor instead.
 func (*RackDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RackDetailRequest) GetTeamId() uint64 {
@@ -402,7 +882,7 @@ type RackDetailResponse struct {
 
 func (x *RackDetailResponse) Reset() {
 	*x = RackDetailResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +894,7 @@ func (x *RackDetailResponse) String() string {
 func (*RackDetailResponse) ProtoMessage() {}
 
 func (x *RackDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[6]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +907,7 @@ func (x *RackDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackDetailResponse.ProtoReflect.Descriptor instead.
 func (*RackDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RackDetailResponse) GetRack() *Rack {
@@ -473,7 +953,7 @@ type RackSummary struct {
 
 func (x *RackSummary) Reset() {
 	*x = RackSummary{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -485,7 +965,7 @@ func (x *RackSummary) String() string {
 func (*RackSummary) ProtoMessage() {}
 
 func (x *RackSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[7]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -498,7 +978,7 @@ func (x *RackSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackSummary.ProtoReflect.Descriptor instead.
 func (*RackSummary) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RackSummary) GetTotalOnHand() int64 {
@@ -557,7 +1037,7 @@ type RackStockLine struct {
 
 func (x *RackStockLine) Reset() {
 	*x = RackStockLine{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -569,7 +1049,7 @@ func (x *RackStockLine) String() string {
 func (*RackStockLine) ProtoMessage() {}
 
 func (x *RackStockLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -582,7 +1062,7 @@ func (x *RackStockLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackStockLine.ProtoReflect.Descriptor instead.
 func (*RackStockLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RackStockLine) GetProductId() uint64 {
@@ -621,19 +1101,18 @@ func (x *RackStockLine) GetValue() int64 {
 }
 
 type RackStockRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	RackId uint64                 `protobuf:"varint,2,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
-	// A rack's contents grow with the catalogue, so this pages: it is a browse/management screen, not a
-	// picker feed (HARD RULE 9).
-	Page          *v1.PageFilter `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *RackStockFilter       `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	DataRequest   []RackStockDataType    `protobuf:"varint,3,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.inventory.v1.RackStockDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination   `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RackStockRequest) Reset() {
 	*x = RackStockRequest{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +1124,7 @@ func (x *RackStockRequest) String() string {
 func (*RackStockRequest) ProtoMessage() {}
 
 func (x *RackStockRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +1137,7 @@ func (x *RackStockRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackStockRequest.ProtoReflect.Descriptor instead.
 func (*RackStockRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RackStockRequest) GetTeamId() uint64 {
@@ -668,31 +1147,210 @@ func (x *RackStockRequest) GetTeamId() uint64 {
 	return 0
 }
 
-func (x *RackStockRequest) GetRackId() uint64 {
+func (x *RackStockRequest) GetFilter() *RackStockFilter {
 	if x != nil {
-		return x.RackId
+		return x.Filter
 	}
-	return 0
+	return nil
 }
 
-func (x *RackStockRequest) GetPage() *v1.PageFilter {
+func (x *RackStockRequest) GetDataRequest() []RackStockDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *RackStockRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type RackStockResponse struct {
+type RackStockFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Lines         []*RackStockLine       `protobuf:"bytes,1,rep,name=lines,proto3" json:"lines,omitempty"`
-	PageInfo      *v1.PageInfo           `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	RackId        uint64                 `protobuf:"varint,1,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackStockFilter) Reset() {
+	*x = RackStockFilter{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackStockFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackStockFilter) ProtoMessage() {}
+
+func (x *RackStockFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackStockFilter.ProtoReflect.Descriptor instead.
+func (*RackStockFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RackStockFilter) GetRackId() uint64 {
+	if x != nil {
+		return x.RackId
+	}
+	return 0
+}
+
+// The RACK_STOCK slice reuses RackStockLine, keyed by product_id.
+type RackStockMapItem struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	MapData       map[uint64]*RackStockLine `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackStockMapItem) Reset() {
+	*x = RackStockMapItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackStockMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackStockMapItem) ProtoMessage() {}
+
+func (x *RackStockMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackStockMapItem.ProtoReflect.Descriptor instead.
+func (*RackStockMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RackStockMapItem) GetMapData() map[uint64]*RackStockLine {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type RackStockResponseItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*RackStockResponseItem_General
+	//	*RackStockResponseItem_RackStock
+	D             isRackStockResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackStockResponseItem) Reset() {
+	*x = RackStockResponseItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackStockResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackStockResponseItem) ProtoMessage() {}
+
+func (x *RackStockResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackStockResponseItem.ProtoReflect.Descriptor instead.
+func (*RackStockResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *RackStockResponseItem) GetD() isRackStockResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *RackStockResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackStockResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *RackStockResponseItem) GetRackStock() *RackStockMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackStockResponseItem_RackStock); ok {
+			return x.RackStock
+		}
+	}
+	return nil
+}
+
+type isRackStockResponseItem_D interface {
+	isRackStockResponseItem_D()
+}
+
+type RackStockResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type RackStockResponseItem_RackStock struct {
+	RackStock *RackStockMapItem `protobuf:"bytes,2,opt,name=rack_stock,json=rackStock,proto3,oneof"`
+}
+
+func (*RackStockResponseItem_General) isRackStockResponseItem_D() {}
+
+func (*RackStockResponseItem_RackStock) isRackStockResponseItem_D() {}
+
+type RackStockResponse struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Items         []*RackStockResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids           []uint64                 `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v1.PageInfo             `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RackStockResponse) Reset() {
 	*x = RackStockResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -704,7 +1362,7 @@ func (x *RackStockResponse) String() string {
 func (*RackStockResponse) ProtoMessage() {}
 
 func (x *RackStockResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -717,12 +1375,19 @@ func (x *RackStockResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackStockResponse.ProtoReflect.Descriptor instead.
 func (*RackStockResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *RackStockResponse) GetLines() []*RackStockLine {
+func (x *RackStockResponse) GetItems() []*RackStockResponseItem {
 	if x != nil {
-		return x.Lines
+		return x.Items
+	}
+	return nil
+}
+
+func (x *RackStockResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -748,7 +1413,7 @@ type RackUpdateRequest struct {
 
 func (x *RackUpdateRequest) Reset() {
 	*x = RackUpdateRequest{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -760,7 +1425,7 @@ func (x *RackUpdateRequest) String() string {
 func (*RackUpdateRequest) ProtoMessage() {}
 
 func (x *RackUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -773,7 +1438,7 @@ func (x *RackUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackUpdateRequest.ProtoReflect.Descriptor instead.
 func (*RackUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RackUpdateRequest) GetTeamId() uint64 {
@@ -820,7 +1485,7 @@ type RackUpdateResponse struct {
 
 func (x *RackUpdateResponse) Reset() {
 	*x = RackUpdateResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -832,7 +1497,7 @@ func (x *RackUpdateResponse) String() string {
 func (*RackUpdateResponse) ProtoMessage() {}
 
 func (x *RackUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -845,7 +1510,7 @@ func (x *RackUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackUpdateResponse.ProtoReflect.Descriptor instead.
 func (*RackUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RackUpdateResponse) GetRack() *Rack {
@@ -865,7 +1530,7 @@ type RackDeleteRequest struct {
 
 func (x *RackDeleteRequest) Reset() {
 	*x = RackDeleteRequest{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +1542,7 @@ func (x *RackDeleteRequest) String() string {
 func (*RackDeleteRequest) ProtoMessage() {}
 
 func (x *RackDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +1555,7 @@ func (x *RackDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackDeleteRequest.ProtoReflect.Descriptor instead.
 func (*RackDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RackDeleteRequest) GetTeamId() uint64 {
@@ -915,7 +1580,7 @@ type RackDeleteResponse struct {
 
 func (x *RackDeleteResponse) Reset() {
 	*x = RackDeleteResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[14]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1592,7 @@ func (x *RackDeleteResponse) String() string {
 func (*RackDeleteResponse) ProtoMessage() {}
 
 func (x *RackDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[14]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1605,7 @@ func (x *RackDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackDeleteResponse.ProtoReflect.Descriptor instead.
 func (*RackDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{21}
 }
 
 // RackHistory is the movement ledger narrowed to ONE SHELF (#197).
@@ -952,29 +1617,18 @@ func (*RackDeleteResponse) Descriptor() ([]byte, []int) {
 // Every movement already carries `rack_id`, so this is a filter over data that exists rather than a
 // new ledger. Nothing is written differently for it.
 type RackHistoryRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	RackId uint64                 `protobuf:"varint,2,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
-	// The ledger is append-only and grows forever, so this pages (HARD RULE 9).
-	Page *v1.PageFilter `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
-	// WHICH KINDS to return; empty means all of them.
-	//
-	// A LIST rather than the single `kind` StockHistory takes, because the detail page asks two
-	// different questions of the same ledger (#197):
-	//
-	//   - **Stock History** — everything that changed a count here.
-	//   - **Placement History** — the put-aways and moves that decided goods LIVE here (RECEIVE, MOVE).
-	//
-	// Server-side, for the same reason StockHistory filters server-side: the list is paginated, so a
-	// client-side filter narrows the loaded page only and reports the unfiltered total beside it.
-	Kinds         []MovementKind `protobuf:"varint,4,rep,packed,name=kinds,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kinds,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *RackHistoryFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	DataRequest   []RackHistoryDataType  `protobuf:"varint,3,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.inventory.v1.RackHistoryDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination   `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RackHistoryRequest) Reset() {
 	*x = RackHistoryRequest{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1640,7 @@ func (x *RackHistoryRequest) String() string {
 func (*RackHistoryRequest) ProtoMessage() {}
 
 func (x *RackHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1653,7 @@ func (x *RackHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackHistoryRequest.ProtoReflect.Descriptor instead.
 func (*RackHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RackHistoryRequest) GetTeamId() uint64 {
@@ -1009,39 +1663,219 @@ func (x *RackHistoryRequest) GetTeamId() uint64 {
 	return 0
 }
 
-func (x *RackHistoryRequest) GetRackId() uint64 {
+func (x *RackHistoryRequest) GetFilter() *RackHistoryFilter {
 	if x != nil {
-		return x.RackId
+		return x.Filter
 	}
-	return 0
+	return nil
 }
 
-func (x *RackHistoryRequest) GetPage() *v1.PageFilter {
+func (x *RackHistoryRequest) GetDataRequest() []RackHistoryDataType {
+	if x != nil {
+		return x.DataRequest
+	}
+	return nil
+}
+
+func (x *RackHistoryRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-func (x *RackHistoryRequest) GetKinds() []MovementKind {
+type RackHistoryFilter struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	RackId uint64                 `protobuf:"varint,1,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
+	// WHICH KINDS to return; empty means all of them. Server-side (the list is paginated).
+	Kinds         []MovementKind `protobuf:"varint,2,rep,packed,name=kinds,proto3,enum=warehouse.inventory.v1.MovementKind" json:"kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackHistoryFilter) Reset() {
+	*x = RackHistoryFilter{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackHistoryFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackHistoryFilter) ProtoMessage() {}
+
+func (x *RackHistoryFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackHistoryFilter.ProtoReflect.Descriptor instead.
+func (*RackHistoryFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RackHistoryFilter) GetRackId() uint64 {
+	if x != nil {
+		return x.RackId
+	}
+	return 0
+}
+
+func (x *RackHistoryFilter) GetKinds() []MovementKind {
 	if x != nil {
 		return x.Kinds
 	}
 	return nil
 }
 
-type RackHistoryResponse struct {
+// The MOVEMENT slice reuses StockMovement, keyed by movement id.
+type RackHistoryMapItem struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	MapData       map[uint64]*StockMovement `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackHistoryMapItem) Reset() {
+	*x = RackHistoryMapItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackHistoryMapItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackHistoryMapItem) ProtoMessage() {}
+
+func (x *RackHistoryMapItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackHistoryMapItem.ProtoReflect.Descriptor instead.
+func (*RackHistoryMapItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *RackHistoryMapItem) GetMapData() map[uint64]*StockMovement {
+	if x != nil {
+		return x.MapData
+	}
+	return nil
+}
+
+type RackHistoryResponseItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Newest first — the last thing that happened to this shelf is the thing somebody came to see.
-	Movements     []*StockMovement `protobuf:"bytes,1,rep,name=movements,proto3" json:"movements,omitempty"`
-	PageInfo      *v1.PageInfo     `protobuf:"bytes,2,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+	// Types that are valid to be assigned to D:
+	//
+	//	*RackHistoryResponseItem_General
+	//	*RackHistoryResponseItem_Movement
+	D             isRackHistoryResponseItem_D `protobuf_oneof:"d"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RackHistoryResponseItem) Reset() {
+	*x = RackHistoryResponseItem{}
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RackHistoryResponseItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RackHistoryResponseItem) ProtoMessage() {}
+
+func (x *RackHistoryResponseItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RackHistoryResponseItem.ProtoReflect.Descriptor instead.
+func (*RackHistoryResponseItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RackHistoryResponseItem) GetD() isRackHistoryResponseItem_D {
+	if x != nil {
+		return x.D
+	}
+	return nil
+}
+
+func (x *RackHistoryResponseItem) GetGeneral() *v1.GeneralMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackHistoryResponseItem_General); ok {
+			return x.General
+		}
+	}
+	return nil
+}
+
+func (x *RackHistoryResponseItem) GetMovement() *RackHistoryMapItem {
+	if x != nil {
+		if x, ok := x.D.(*RackHistoryResponseItem_Movement); ok {
+			return x.Movement
+		}
+	}
+	return nil
+}
+
+type isRackHistoryResponseItem_D interface {
+	isRackHistoryResponseItem_D()
+}
+
+type RackHistoryResponseItem_General struct {
+	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
+}
+
+type RackHistoryResponseItem_Movement struct {
+	Movement *RackHistoryMapItem `protobuf:"bytes,2,opt,name=movement,proto3,oneof"`
+}
+
+func (*RackHistoryResponseItem_General) isRackHistoryResponseItem_D() {}
+
+func (*RackHistoryResponseItem_Movement) isRackHistoryResponseItem_D() {}
+
+type RackHistoryResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Items         []*RackHistoryResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids           []uint64                   `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo      *v1.PageInfo               `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RackHistoryResponse) Reset() {
 	*x = RackHistoryResponse{}
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1053,7 +1887,7 @@ func (x *RackHistoryResponse) String() string {
 func (*RackHistoryResponse) ProtoMessage() {}
 
 func (x *RackHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_rack_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1066,12 +1900,19 @@ func (x *RackHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RackHistoryResponse.ProtoReflect.Descriptor instead.
 func (*RackHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_inventory_v1_rack_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *RackHistoryResponse) GetMovements() []*StockMovement {
+func (x *RackHistoryResponse) GetItems() []*RackHistoryResponseItem {
 	if x != nil {
-		return x.Movements
+		return x.Items
+	}
+	return nil
+}
+
+func (x *RackHistoryResponse) GetIds() []uint64 {
+	if x != nil {
+		return x.Ids
 	}
 	return nil
 }
@@ -1087,7 +1928,7 @@ var File_warehouse_inventory_v1_rack_proto protoreflect.FileDescriptor
 
 const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\n" +
-	"!warehouse/inventory/v1/rack.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a&warehouse/inventory/v1/inventory.proto\x1a!warehouse/role_base/v1/role.proto\"\x9d\x01\n" +
+	"!warehouse/inventory/v1/rack.proto\x12\x16warehouse.inventory.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a&warehouse/inventory/v1/inventory.proto\x1a!warehouse/role_base/v1/role.proto\"\x9d\x01\n" +
 	"\x04Rack\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\x04R\vwarehouseId\x12\x12\n" +
@@ -1103,15 +1944,34 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"F\n" +
 	"\x12RackCreateResponse\x120\n" +
-	"\x04rack\x18\x01 \x01(\v2\x1c.warehouse.inventory.v1.RackR\x04rack\"\x98\x01\n" +
+	"\x04rack\x18\x01 \x01(\v2\x1c.warehouse.inventory.v1.RackR\x04rack\"\xd4\x02\n" +
 	"\x0fRackListRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x15\n" +
-	"\x01q\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12;\n" +
-	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\x82\x01\n" +
-	"\x10RackListResponse\x122\n" +
-	"\x05racks\x18\x01 \x03(\v2\x1c.warehouse.inventory.v1.RackR\x05racks\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"h\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12>\n" +
+	"\x06filter\x18\x02 \x01(\v2&.warehouse.inventory.v1.RackListFilterR\x06filter\x12>\n" +
+	"\x04sort\x18\x03 \x01(\v2*.warehouse.inventory.v1.RackListFilterSortR\x04sort\x12K\n" +
+	"\fdata_request\x18\x04 \x03(\x0e2(.warehouse.inventory.v1.RackListDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"'\n" +
+	"\x0eRackListFilter\x12\x15\n" +
+	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\"\xd4\x01\n" +
+	"\x12RackListFilterSort\x12@\n" +
+	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
+	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x129\n" +
+	"\x04rack\x18\x03 \x01(\x0e2#.warehouse.inventory.v1.RackRowSortH\x00R\x04rackB\x03\n" +
+	"\x01s\"\xba\x01\n" +
+	"\x0eRackRowMapItem\x12N\n" +
+	"\bmap_data\x18\x01 \x03(\v23.warehouse.inventory.v1.RackRowMapItem.MapDataEntryR\amapData\x1aX\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.warehouse.inventory.v1.RackR\x05value:\x028\x01\"\x9a\x01\n" +
+	"\x14RackListResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12<\n" +
+	"\x04rack\x18\x02 \x01(\v2&.warehouse.inventory.v1.RackRowMapItemH\x00R\x04rackB\x03\n" +
+	"\x01d\"\xa4\x01\n" +
+	"\x10RackListResponse\x12B\n" +
+	"\x05items\x18\x01 \x03(\v2,.warehouse.inventory.v1.RackListResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"h\n" +
 	"\x11RackDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\arack_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId:\v\x92\xb5\x18\a\n" +
@@ -1132,15 +1992,29 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\tunit_cost\x18\x03 \x01(\x03R\bunitCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x04 \x01(\bR\tcostKnown\x12\x14\n" +
-	"\x05value\x18\x05 \x01(\x03R\x05value\"\xa4\x01\n" +
+	"\x05value\x18\x05 \x01(\x03R\x05value\"\x97\x02\n" +
 	"\x10RackStockRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
-	"\arack_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\x12;\n" +
-	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\x8c\x01\n" +
-	"\x11RackStockResponse\x12;\n" +
-	"\x05lines\x18\x01 \x03(\v2%.warehouse.inventory.v1.RackStockLineR\x05lines\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x81\x02\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
+	"\x06filter\x18\x02 \x01(\v2'.warehouse.inventory.v1.RackStockFilterR\x06filter\x12L\n" +
+	"\fdata_request\x18\x03 \x03(\x0e2).warehouse.inventory.v1.RackStockDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"3\n" +
+	"\x0fRackStockFilter\x12 \n" +
+	"\arack_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\"\xc7\x01\n" +
+	"\x10RackStockMapItem\x12P\n" +
+	"\bmap_data\x18\x01 \x03(\v25.warehouse.inventory.v1.RackStockMapItem.MapDataEntryR\amapData\x1aa\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12;\n" +
+	"\x05value\x18\x02 \x01(\v2%.warehouse.inventory.v1.RackStockLineR\x05value:\x028\x01\"\xa8\x01\n" +
+	"\x15RackStockResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12I\n" +
+	"\n" +
+	"rack_stock\x18\x02 \x01(\v2(.warehouse.inventory.v1.RackStockMapItemH\x00R\trackStockB\x03\n" +
+	"\x01d\"\xa6\x01\n" +
+	"\x11RackStockResponse\x12C\n" +
+	"\x05items\x18\x01 \x03(\v2-.warehouse.inventory.v1.RackStockResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\x81\x02\n" +
 	"\x11RackUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\arack_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\x12\"\n" +
@@ -1159,16 +2033,45 @@ const file_warehouse_inventory_v1_rack_proto_rawDesc = "" +
 	"\arack_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"\x14\n" +
-	"\x12RackDeleteResponse\"\xec\x01\n" +
+	"\x12RackDeleteResponse\"\x9d\x02\n" +
 	"\x12RackHistoryRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
-	"\arack_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\x12;\n" +
-	"\x04page\x18\x03 \x01(\v2\x1f.warehouse.common.v1.PageFilterB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12D\n" +
-	"\x05kinds\x18\x04 \x03(\x0e2$.warehouse.inventory.v1.MovementKindB\b\xbaH\x05\x92\x01\x02\x10\bR\x05kinds:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\x96\x01\n" +
-	"\x13RackHistoryResponse\x12C\n" +
-	"\tmovements\x18\x01 \x03(\v2%.warehouse.inventory.v1.StockMovementR\tmovements\x12:\n" +
-	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo2\xca\x05\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12A\n" +
+	"\x06filter\x18\x02 \x01(\v2).warehouse.inventory.v1.RackHistoryFilterR\x06filter\x12N\n" +
+	"\fdata_request\x18\x03 \x03(\x0e2+.warehouse.inventory.v1.RackHistoryDataTypeR\vdataRequest\x12A\n" +
+	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"{\n" +
+	"\x11RackHistoryFilter\x12 \n" +
+	"\arack_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06rackId\x12D\n" +
+	"\x05kinds\x18\x02 \x03(\x0e2$.warehouse.inventory.v1.MovementKindB\b\xbaH\x05\x92\x01\x02\x10\bR\x05kinds\"\xcb\x01\n" +
+	"\x12RackHistoryMapItem\x12R\n" +
+	"\bmap_data\x18\x01 \x03(\v27.warehouse.inventory.v1.RackHistoryMapItem.MapDataEntryR\amapData\x1aa\n" +
+	"\fMapDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12;\n" +
+	"\x05value\x18\x02 \x01(\v2%.warehouse.inventory.v1.StockMovementR\x05value:\x028\x01\"\xa9\x01\n" +
+	"\x17RackHistoryResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12H\n" +
+	"\bmovement\x18\x02 \x01(\v2*.warehouse.inventory.v1.RackHistoryMapItemH\x00R\bmovementB\x03\n" +
+	"\x01d\"\xaa\x01\n" +
+	"\x13RackHistoryResponse\x12E\n" +
+	"\x05items\x18\x01 \x03(\v2/.warehouse.inventory.v1.RackHistoryResponseItemR\x05items\x12\x10\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*v\n" +
+	"\x10RackListDataType\x12#\n" +
+	"\x1fRACK_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bRACK_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1c\n" +
+	"\x18RACK_LIST_DATA_TYPE_RACK\x10\x02*Z\n" +
+	"\vRackRowSort\x12\x1d\n" +
+	"\x19RACK_ROW_SORT_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12RACK_ROW_SORT_CODE\x10\x01\x12\x14\n" +
+	"\x10RACK_ROW_SORT_ID\x10\x02*\x80\x01\n" +
+	"\x11RackStockDataType\x12$\n" +
+	" RACK_STOCK_DATA_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cRACK_STOCK_DATA_TYPE_GENERAL\x10\x01\x12#\n" +
+	"\x1fRACK_STOCK_DATA_TYPE_RACK_STOCK\x10\x02*\x86\x01\n" +
+	"\x13RackHistoryDataType\x12&\n" +
+	"\"RACK_HISTORY_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eRACK_HISTORY_DATA_TYPE_GENERAL\x10\x01\x12#\n" +
+	"\x1fRACK_HISTORY_DATA_TYPE_MOVEMENT\x10\x022\xca\x05\n" +
 	"\vRackService\x12c\n" +
 	"\n" +
 	"RackCreate\x12).warehouse.inventory.v1.RackCreateRequest\x1a*.warehouse.inventory.v1.RackCreateResponse\x12]\n" +
@@ -1194,64 +2097,107 @@ func file_warehouse_inventory_v1_rack_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_rack_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_rack_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_warehouse_inventory_v1_rack_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_warehouse_inventory_v1_rack_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_warehouse_inventory_v1_rack_proto_goTypes = []any{
-	(*Rack)(nil),                // 0: warehouse.inventory.v1.Rack
-	(*RackCreateRequest)(nil),   // 1: warehouse.inventory.v1.RackCreateRequest
-	(*RackCreateResponse)(nil),  // 2: warehouse.inventory.v1.RackCreateResponse
-	(*RackListRequest)(nil),     // 3: warehouse.inventory.v1.RackListRequest
-	(*RackListResponse)(nil),    // 4: warehouse.inventory.v1.RackListResponse
-	(*RackDetailRequest)(nil),   // 5: warehouse.inventory.v1.RackDetailRequest
-	(*RackDetailResponse)(nil),  // 6: warehouse.inventory.v1.RackDetailResponse
-	(*RackSummary)(nil),         // 7: warehouse.inventory.v1.RackSummary
-	(*RackStockLine)(nil),       // 8: warehouse.inventory.v1.RackStockLine
-	(*RackStockRequest)(nil),    // 9: warehouse.inventory.v1.RackStockRequest
-	(*RackStockResponse)(nil),   // 10: warehouse.inventory.v1.RackStockResponse
-	(*RackUpdateRequest)(nil),   // 11: warehouse.inventory.v1.RackUpdateRequest
-	(*RackUpdateResponse)(nil),  // 12: warehouse.inventory.v1.RackUpdateResponse
-	(*RackDeleteRequest)(nil),   // 13: warehouse.inventory.v1.RackDeleteRequest
-	(*RackDeleteResponse)(nil),  // 14: warehouse.inventory.v1.RackDeleteResponse
-	(*RackHistoryRequest)(nil),  // 15: warehouse.inventory.v1.RackHistoryRequest
-	(*RackHistoryResponse)(nil), // 16: warehouse.inventory.v1.RackHistoryResponse
-	(*v1.PageFilter)(nil),       // 17: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),         // 18: warehouse.common.v1.PageInfo
-	(MovementKind)(0),           // 19: warehouse.inventory.v1.MovementKind
-	(*StockMovement)(nil),       // 20: warehouse.inventory.v1.StockMovement
+	(RackListDataType)(0),           // 0: warehouse.inventory.v1.RackListDataType
+	(RackRowSort)(0),                // 1: warehouse.inventory.v1.RackRowSort
+	(RackStockDataType)(0),          // 2: warehouse.inventory.v1.RackStockDataType
+	(RackHistoryDataType)(0),        // 3: warehouse.inventory.v1.RackHistoryDataType
+	(*Rack)(nil),                    // 4: warehouse.inventory.v1.Rack
+	(*RackCreateRequest)(nil),       // 5: warehouse.inventory.v1.RackCreateRequest
+	(*RackCreateResponse)(nil),      // 6: warehouse.inventory.v1.RackCreateResponse
+	(*RackListRequest)(nil),         // 7: warehouse.inventory.v1.RackListRequest
+	(*RackListFilter)(nil),          // 8: warehouse.inventory.v1.RackListFilter
+	(*RackListFilterSort)(nil),      // 9: warehouse.inventory.v1.RackListFilterSort
+	(*RackRowMapItem)(nil),          // 10: warehouse.inventory.v1.RackRowMapItem
+	(*RackListResponseItem)(nil),    // 11: warehouse.inventory.v1.RackListResponseItem
+	(*RackListResponse)(nil),        // 12: warehouse.inventory.v1.RackListResponse
+	(*RackDetailRequest)(nil),       // 13: warehouse.inventory.v1.RackDetailRequest
+	(*RackDetailResponse)(nil),      // 14: warehouse.inventory.v1.RackDetailResponse
+	(*RackSummary)(nil),             // 15: warehouse.inventory.v1.RackSummary
+	(*RackStockLine)(nil),           // 16: warehouse.inventory.v1.RackStockLine
+	(*RackStockRequest)(nil),        // 17: warehouse.inventory.v1.RackStockRequest
+	(*RackStockFilter)(nil),         // 18: warehouse.inventory.v1.RackStockFilter
+	(*RackStockMapItem)(nil),        // 19: warehouse.inventory.v1.RackStockMapItem
+	(*RackStockResponseItem)(nil),   // 20: warehouse.inventory.v1.RackStockResponseItem
+	(*RackStockResponse)(nil),       // 21: warehouse.inventory.v1.RackStockResponse
+	(*RackUpdateRequest)(nil),       // 22: warehouse.inventory.v1.RackUpdateRequest
+	(*RackUpdateResponse)(nil),      // 23: warehouse.inventory.v1.RackUpdateResponse
+	(*RackDeleteRequest)(nil),       // 24: warehouse.inventory.v1.RackDeleteRequest
+	(*RackDeleteResponse)(nil),      // 25: warehouse.inventory.v1.RackDeleteResponse
+	(*RackHistoryRequest)(nil),      // 26: warehouse.inventory.v1.RackHistoryRequest
+	(*RackHistoryFilter)(nil),       // 27: warehouse.inventory.v1.RackHistoryFilter
+	(*RackHistoryMapItem)(nil),      // 28: warehouse.inventory.v1.RackHistoryMapItem
+	(*RackHistoryResponseItem)(nil), // 29: warehouse.inventory.v1.RackHistoryResponseItem
+	(*RackHistoryResponse)(nil),     // 30: warehouse.inventory.v1.RackHistoryResponse
+	nil,                             // 31: warehouse.inventory.v1.RackRowMapItem.MapDataEntry
+	nil,                             // 32: warehouse.inventory.v1.RackStockMapItem.MapDataEntry
+	nil,                             // 33: warehouse.inventory.v1.RackHistoryMapItem.MapDataEntry
+	(*v1.CommonPagination)(nil),     // 34: warehouse.common.v1.CommonPagination
+	(v1.CommonSortType)(0),          // 35: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 36: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),       // 37: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 38: warehouse.common.v1.PageInfo
+	(MovementKind)(0),               // 39: warehouse.inventory.v1.MovementKind
+	(*StockMovement)(nil),           // 40: warehouse.inventory.v1.StockMovement
 }
 var file_warehouse_inventory_v1_rack_proto_depIdxs = []int32{
-	0,  // 0: warehouse.inventory.v1.RackCreateResponse.rack:type_name -> warehouse.inventory.v1.Rack
-	17, // 1: warehouse.inventory.v1.RackListRequest.page:type_name -> warehouse.common.v1.PageFilter
-	0,  // 2: warehouse.inventory.v1.RackListResponse.racks:type_name -> warehouse.inventory.v1.Rack
-	18, // 3: warehouse.inventory.v1.RackListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	0,  // 4: warehouse.inventory.v1.RackDetailResponse.rack:type_name -> warehouse.inventory.v1.Rack
-	7,  // 5: warehouse.inventory.v1.RackDetailResponse.summary:type_name -> warehouse.inventory.v1.RackSummary
-	17, // 6: warehouse.inventory.v1.RackStockRequest.page:type_name -> warehouse.common.v1.PageFilter
-	8,  // 7: warehouse.inventory.v1.RackStockResponse.lines:type_name -> warehouse.inventory.v1.RackStockLine
-	18, // 8: warehouse.inventory.v1.RackStockResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	0,  // 9: warehouse.inventory.v1.RackUpdateResponse.rack:type_name -> warehouse.inventory.v1.Rack
-	17, // 10: warehouse.inventory.v1.RackHistoryRequest.page:type_name -> warehouse.common.v1.PageFilter
-	19, // 11: warehouse.inventory.v1.RackHistoryRequest.kinds:type_name -> warehouse.inventory.v1.MovementKind
-	20, // 12: warehouse.inventory.v1.RackHistoryResponse.movements:type_name -> warehouse.inventory.v1.StockMovement
-	18, // 13: warehouse.inventory.v1.RackHistoryResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	1,  // 14: warehouse.inventory.v1.RackService.RackCreate:input_type -> warehouse.inventory.v1.RackCreateRequest
-	3,  // 15: warehouse.inventory.v1.RackService.RackList:input_type -> warehouse.inventory.v1.RackListRequest
-	5,  // 16: warehouse.inventory.v1.RackService.RackDetail:input_type -> warehouse.inventory.v1.RackDetailRequest
-	9,  // 17: warehouse.inventory.v1.RackService.RackStock:input_type -> warehouse.inventory.v1.RackStockRequest
-	15, // 18: warehouse.inventory.v1.RackService.RackHistory:input_type -> warehouse.inventory.v1.RackHistoryRequest
-	11, // 19: warehouse.inventory.v1.RackService.RackUpdate:input_type -> warehouse.inventory.v1.RackUpdateRequest
-	13, // 20: warehouse.inventory.v1.RackService.RackDelete:input_type -> warehouse.inventory.v1.RackDeleteRequest
-	2,  // 21: warehouse.inventory.v1.RackService.RackCreate:output_type -> warehouse.inventory.v1.RackCreateResponse
-	4,  // 22: warehouse.inventory.v1.RackService.RackList:output_type -> warehouse.inventory.v1.RackListResponse
-	6,  // 23: warehouse.inventory.v1.RackService.RackDetail:output_type -> warehouse.inventory.v1.RackDetailResponse
-	10, // 24: warehouse.inventory.v1.RackService.RackStock:output_type -> warehouse.inventory.v1.RackStockResponse
-	16, // 25: warehouse.inventory.v1.RackService.RackHistory:output_type -> warehouse.inventory.v1.RackHistoryResponse
-	12, // 26: warehouse.inventory.v1.RackService.RackUpdate:output_type -> warehouse.inventory.v1.RackUpdateResponse
-	14, // 27: warehouse.inventory.v1.RackService.RackDelete:output_type -> warehouse.inventory.v1.RackDeleteResponse
-	21, // [21:28] is the sub-list for method output_type
-	14, // [14:21] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	4,  // 0: warehouse.inventory.v1.RackCreateResponse.rack:type_name -> warehouse.inventory.v1.Rack
+	8,  // 1: warehouse.inventory.v1.RackListRequest.filter:type_name -> warehouse.inventory.v1.RackListFilter
+	9,  // 2: warehouse.inventory.v1.RackListRequest.sort:type_name -> warehouse.inventory.v1.RackListFilterSort
+	0,  // 3: warehouse.inventory.v1.RackListRequest.data_request:type_name -> warehouse.inventory.v1.RackListDataType
+	34, // 4: warehouse.inventory.v1.RackListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	35, // 5: warehouse.inventory.v1.RackListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	36, // 6: warehouse.inventory.v1.RackListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 7: warehouse.inventory.v1.RackListFilterSort.rack:type_name -> warehouse.inventory.v1.RackRowSort
+	31, // 8: warehouse.inventory.v1.RackRowMapItem.map_data:type_name -> warehouse.inventory.v1.RackRowMapItem.MapDataEntry
+	37, // 9: warehouse.inventory.v1.RackListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	10, // 10: warehouse.inventory.v1.RackListResponseItem.rack:type_name -> warehouse.inventory.v1.RackRowMapItem
+	11, // 11: warehouse.inventory.v1.RackListResponse.items:type_name -> warehouse.inventory.v1.RackListResponseItem
+	38, // 12: warehouse.inventory.v1.RackListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 13: warehouse.inventory.v1.RackDetailResponse.rack:type_name -> warehouse.inventory.v1.Rack
+	15, // 14: warehouse.inventory.v1.RackDetailResponse.summary:type_name -> warehouse.inventory.v1.RackSummary
+	18, // 15: warehouse.inventory.v1.RackStockRequest.filter:type_name -> warehouse.inventory.v1.RackStockFilter
+	2,  // 16: warehouse.inventory.v1.RackStockRequest.data_request:type_name -> warehouse.inventory.v1.RackStockDataType
+	34, // 17: warehouse.inventory.v1.RackStockRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	32, // 18: warehouse.inventory.v1.RackStockMapItem.map_data:type_name -> warehouse.inventory.v1.RackStockMapItem.MapDataEntry
+	37, // 19: warehouse.inventory.v1.RackStockResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	19, // 20: warehouse.inventory.v1.RackStockResponseItem.rack_stock:type_name -> warehouse.inventory.v1.RackStockMapItem
+	20, // 21: warehouse.inventory.v1.RackStockResponse.items:type_name -> warehouse.inventory.v1.RackStockResponseItem
+	38, // 22: warehouse.inventory.v1.RackStockResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 23: warehouse.inventory.v1.RackUpdateResponse.rack:type_name -> warehouse.inventory.v1.Rack
+	27, // 24: warehouse.inventory.v1.RackHistoryRequest.filter:type_name -> warehouse.inventory.v1.RackHistoryFilter
+	3,  // 25: warehouse.inventory.v1.RackHistoryRequest.data_request:type_name -> warehouse.inventory.v1.RackHistoryDataType
+	34, // 26: warehouse.inventory.v1.RackHistoryRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	39, // 27: warehouse.inventory.v1.RackHistoryFilter.kinds:type_name -> warehouse.inventory.v1.MovementKind
+	33, // 28: warehouse.inventory.v1.RackHistoryMapItem.map_data:type_name -> warehouse.inventory.v1.RackHistoryMapItem.MapDataEntry
+	37, // 29: warehouse.inventory.v1.RackHistoryResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	28, // 30: warehouse.inventory.v1.RackHistoryResponseItem.movement:type_name -> warehouse.inventory.v1.RackHistoryMapItem
+	29, // 31: warehouse.inventory.v1.RackHistoryResponse.items:type_name -> warehouse.inventory.v1.RackHistoryResponseItem
+	38, // 32: warehouse.inventory.v1.RackHistoryResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	4,  // 33: warehouse.inventory.v1.RackRowMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.Rack
+	16, // 34: warehouse.inventory.v1.RackStockMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.RackStockLine
+	40, // 35: warehouse.inventory.v1.RackHistoryMapItem.MapDataEntry.value:type_name -> warehouse.inventory.v1.StockMovement
+	5,  // 36: warehouse.inventory.v1.RackService.RackCreate:input_type -> warehouse.inventory.v1.RackCreateRequest
+	7,  // 37: warehouse.inventory.v1.RackService.RackList:input_type -> warehouse.inventory.v1.RackListRequest
+	13, // 38: warehouse.inventory.v1.RackService.RackDetail:input_type -> warehouse.inventory.v1.RackDetailRequest
+	17, // 39: warehouse.inventory.v1.RackService.RackStock:input_type -> warehouse.inventory.v1.RackStockRequest
+	26, // 40: warehouse.inventory.v1.RackService.RackHistory:input_type -> warehouse.inventory.v1.RackHistoryRequest
+	22, // 41: warehouse.inventory.v1.RackService.RackUpdate:input_type -> warehouse.inventory.v1.RackUpdateRequest
+	24, // 42: warehouse.inventory.v1.RackService.RackDelete:input_type -> warehouse.inventory.v1.RackDeleteRequest
+	6,  // 43: warehouse.inventory.v1.RackService.RackCreate:output_type -> warehouse.inventory.v1.RackCreateResponse
+	12, // 44: warehouse.inventory.v1.RackService.RackList:output_type -> warehouse.inventory.v1.RackListResponse
+	14, // 45: warehouse.inventory.v1.RackService.RackDetail:output_type -> warehouse.inventory.v1.RackDetailResponse
+	21, // 46: warehouse.inventory.v1.RackService.RackStock:output_type -> warehouse.inventory.v1.RackStockResponse
+	30, // 47: warehouse.inventory.v1.RackService.RackHistory:output_type -> warehouse.inventory.v1.RackHistoryResponse
+	23, // 48: warehouse.inventory.v1.RackService.RackUpdate:output_type -> warehouse.inventory.v1.RackUpdateResponse
+	25, // 49: warehouse.inventory.v1.RackService.RackDelete:output_type -> warehouse.inventory.v1.RackDeleteResponse
+	43, // [43:50] is the sub-list for method output_type
+	36, // [36:43] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_rack_proto_init() }
@@ -1260,19 +2206,36 @@ func file_warehouse_inventory_v1_rack_proto_init() {
 		return
 	}
 	file_warehouse_inventory_v1_inventory_proto_init()
-	file_warehouse_inventory_v1_rack_proto_msgTypes[11].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[5].OneofWrappers = []any{
+		(*RackListFilterSort_General)(nil),
+		(*RackListFilterSort_Rack)(nil),
+	}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[7].OneofWrappers = []any{
+		(*RackListResponseItem_General)(nil),
+		(*RackListResponseItem_Rack)(nil),
+	}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[16].OneofWrappers = []any{
+		(*RackStockResponseItem_General)(nil),
+		(*RackStockResponseItem_RackStock)(nil),
+	}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[18].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_rack_proto_msgTypes[25].OneofWrappers = []any{
+		(*RackHistoryResponseItem_General)(nil),
+		(*RackHistoryResponseItem_Movement)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_rack_proto_rawDesc), len(file_warehouse_inventory_v1_rack_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   17,
+			NumEnums:      4,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_warehouse_inventory_v1_rack_proto_goTypes,
 		DependencyIndexes: file_warehouse_inventory_v1_rack_proto_depIdxs,
+		EnumInfos:         file_warehouse_inventory_v1_rack_proto_enumTypes,
 		MessageInfos:      file_warehouse_inventory_v1_rack_proto_msgTypes,
 	}.Build()
 	File_warehouse_inventory_v1_rack_proto = out.File

@@ -20,6 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, Pencil, Printer } from "lucide-react";
 import { rackClient, rpcError, supplierClient } from "../../api/clients";
+import { racksFromList, rackListRowData } from "../../features/racks/adapt";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -198,12 +199,12 @@ export function RestockRequestDetailPage() {
     let ignore = false;
 
     rackClient
-      .rackList({ teamId: warehouseId, q: "", page: { page: 1, limit: 200 } })
+      .rackList({ teamId: warehouseId, dataRequest: rackListRowData(), page: { page: 1, limit: 200 } })
       .then((res) => {
         if (ignore) return;
 
         const codes: Record<string, string> = {};
-        for (const rack of res.racks) {
+        for (const rack of racksFromList(res.items, res.ids)) {
           codes[rack.id.toString()] = rack.code;
         }
         setRackCodes(codes);

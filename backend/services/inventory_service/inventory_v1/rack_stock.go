@@ -27,7 +27,7 @@ func (s *Service) RackStock(
 	req *connect.Request[inventoryv1.RackStockRequest],
 ) (*connect.Response[inventoryv1.RackStockResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
-	rackID := req.Msg.GetRackId()
+	rackID := req.Msg.GetFilter().GetRackId()
 	page := req.Msg.GetPage()
 
 	exists, err := rackExists(s.db.WithContext(ctx), warehouseID, rackID)
@@ -101,8 +101,11 @@ func (s *Service) RackStock(
 		lines = append(lines, line)
 	}
 
+	items, lineIDs := rackStockListItems(lines, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.RackStockResponse{
-		Lines:    lines,
+		Items:    items,
+		Ids:      lineIDs,
 		PageInfo: pageInfo(page, total),
 	}), nil
 }

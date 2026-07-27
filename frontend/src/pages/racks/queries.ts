@@ -3,6 +3,7 @@ import { productClient, rackClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
+import { racksFromList, rackListRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
 
 // The rack screens' reads (#176).
 
@@ -18,10 +19,15 @@ export function useRacks(args: {
     queryKey: key.racks(teamId, { q, page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
-      const res = await rackClient.rackList({ teamId: teamId!, q, page: { page, limit: pageSize } });
+      const res = await rackClient.rackList({
+        teamId: teamId!,
+        filter: { q },
+        dataRequest: rackListRowData(),
+        page: { page, limit: pageSize },
+      });
 
       return {
-        racks: res.racks,
+        racks: racksFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -66,14 +72,17 @@ export function useRackStock(args: {
     queryFn: async () => {
       const res = await rackClient.rackStock({
         teamId: teamId!,
-        rackId,
+        filter: { rackId },
+        dataRequest: rackStockRowData(),
         page: { page, limit: pageSize },
       });
+
+      const stockLines = rackStockFromList(res.items, res.ids);
 
       // Unique and non-zero: ProductByIds demands min_items:1, unique ids, each > 0 — so a duplicate
       // or an empty set must never become a call. The cap is 200 and a page is at most 50, so a
       // page's ids always fit in ONE call.
-      const ids = [...new Set(res.lines.map((line) => line.productId).filter((id) => id > 0n))];
+      const ids = [...new Set(stockLines.map((line) => line.productId).filter((id) => id > 0n))];
 
       const products = new Map<string, Product>();
 
@@ -96,7 +105,7 @@ export function useRackStock(args: {
       }
 
       return {
-        lines: res.lines,
+        lines: stockLines,
         products,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };

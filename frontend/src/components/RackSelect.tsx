@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NativeSelect } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rackClient, rpcError } from "../api/clients";
+import { racksFromList, rackListRowData } from "../features/racks/adapt";
 import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
 
 /**
@@ -53,9 +54,9 @@ export function RackSelect({ warehouseId, value, onChange, placeholder, disabled
     // handler matches it against the rack's `warehouse_id`. Deleted racks are filtered server-side,
     // and the list comes back ordered by code, which is how someone walking the aisles reads it.
     rackClient
-      .rackList({ teamId: warehouseId, q: "", page: { page: 1, limit: 200 } })
+      .rackList({ teamId: warehouseId, dataRequest: rackListRowData(), page: { page: 1, limit: 200 } })
       .then((res) => {
-        if (alive) setRacks(res.racks);
+        if (alive) setRacks(racksFromList(res.items, res.ids));
       })
       .catch((err) => {
         if (alive) setError(rpcError(err));

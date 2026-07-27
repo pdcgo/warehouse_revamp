@@ -20,6 +20,7 @@ import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { restocksFromList, restockListRowData } from "../restock/adapt";
+import { racksFromList, rackListRowData } from "../racks/adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -166,10 +167,10 @@ export function useWarehouseProduct(args: {
       try {
         const racks = await rackClient.rackList({
           teamId: warehouseId!,
-          q: "",
+          dataRequest: rackListRowData(),
           page: { page: 1, limit: 200 },
         });
-        for (const r of racks.racks) {
+        for (const r of racksFromList(racks.items, racks.ids)) {
           rackCodes.set(r.id.toString(), r.code);
         }
       } catch {
@@ -607,10 +608,10 @@ export function useBatchReceipt(args: { warehouseId: bigint | undefined; deliver
       try {
         const racks = await rackClient.rackList({
           teamId: warehouseId!,
-          q: "",
+          dataRequest: rackListRowData(),
           page: { page: 1, limit: 200 },
         });
-        for (const r of racks.racks) {
+        for (const r of racksFromList(racks.items, racks.ids)) {
           rackCodes.set(r.id.toString(), r.code);
         }
       } catch {

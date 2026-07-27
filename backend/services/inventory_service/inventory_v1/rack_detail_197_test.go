@@ -180,14 +180,14 @@ func TestRackStock_CarriesTheCostAndTheValue(t *testing.T) {
 	rackID, priced, unpriced := aRackWithGoods(t, svc, db)
 
 	res, err := svc.RackStock(ctxUser(1), connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: rackWarehouse, RackId: rackID, Page: page1(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackID}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackStock: %v", err)
 	}
 
 	byProduct := map[uint64]*inventoryv1.RackStockLine{}
-	for _, line := range res.Msg.GetLines() {
+	for _, line := range rackStockRows(res.Msg) {
 		byProduct[line.GetProductId()] = line
 	}
 
@@ -212,18 +212,18 @@ func TestRackHistory_ReturnsWhatHappenedToThisShelf(t *testing.T) {
 	rackID, _, _ := aRackWithGoods(t, svc, db)
 
 	res, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: rackWarehouse, RackId: rackID, Page: page1(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory: %v", err)
 	}
 
 	// Two receives landed on this shelf: the restock and the direct one.
-	if len(res.Msg.GetMovements()) != 2 {
-		t.Fatalf("%d movements, want 2", len(res.Msg.GetMovements()))
+	if len(rackHistoryRows(res.Msg)) != 2 {
+		t.Fatalf("%d movements, want 2", len(rackHistoryRows(res.Msg)))
 	}
 
-	for _, m := range res.Msg.GetMovements() {
+	for _, m := range rackHistoryRows(res.Msg) {
 		if m.GetRackId() != rackID {
 			t.Fatalf("a movement on rack %d leaked into rack %d's history", m.GetRackId(), rackID)
 		}
@@ -249,29 +249,33 @@ func TestRackHistory_FiltersToThePlacementKinds(t *testing.T) {
 	}
 
 	all, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: rackWarehouse, RackId: rackID, Page: page1(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory: %v", err)
 	}
 
-	if len(all.Msg.GetMovements()) != 3 {
-		t.Fatalf("%d movements unfiltered, want 3", len(all.Msg.GetMovements()))
+	if len(rackHistoryRows(all.Msg)) != 3 {
+		t.Fatalf("%d movements unfiltered, want 3", len(rackHistoryRows(all.Msg)))
 	}
 
 	placements, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: rackWarehouse, RackId: rackID, Page: page1(),
-		Kinds: []inventoryv1.MovementKind{
-			inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
-			inventoryv1.MovementKind_MOVEMENT_KIND_MOVE,
+		TeamId: rackWarehouse,
+		Filter: &inventoryv1.RackHistoryFilter{
+			RackId: rackID,
+			Kinds: []inventoryv1.MovementKind{
+				inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
+				inventoryv1.MovementKind_MOVEMENT_KIND_MOVE,
+			},
 		},
+		Page: page1C(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory(placements): %v", err)
 	}
 
-	if len(placements.Msg.GetMovements()) != 2 {
-		t.Fatalf("%d placement movements, want the 2 receives", len(placements.Msg.GetMovements()))
+	if len(rackHistoryRows(placements.Msg)) != 2 {
+		t.Fatalf("%d placement movements, want the 2 receives", len(rackHistoryRows(placements.Msg)))
 	}
 
 	// The count must follow the filter too, or the pager reports rows the tab will not show.
@@ -290,7 +294,7 @@ func TestRackHistory_AnotherWarehousesRackIsNotFound(t *testing.T) {
 	rackID, _, _ := aRackWithGoods(t, svc, db)
 
 	_, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: 9, RackId: rackID, Page: page1(),
+		TeamId: 9, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))

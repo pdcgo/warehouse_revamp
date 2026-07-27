@@ -27,6 +27,66 @@ func supplierRows(res *inventoryv1.SupplierListResponse) []*inventoryv1.Supplier
 	return out
 }
 
+func rackRows(res *inventoryv1.RackListResponse) []*inventoryv1.Rack {
+	var m map[uint64]*inventoryv1.Rack
+	for _, it := range res.GetItems() {
+		r := it.GetRack()
+		if r != nil {
+			m = r.GetMapData()
+		}
+	}
+
+	out := make([]*inventoryv1.Rack, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		r, ok := m[id]
+		if ok {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}
+
+func rackStockRows(res *inventoryv1.RackStockResponse) []*inventoryv1.RackStockLine {
+	var m map[uint64]*inventoryv1.RackStockLine
+	for _, it := range res.GetItems() {
+		l := it.GetRackStock()
+		if l != nil {
+			m = l.GetMapData()
+		}
+	}
+
+	out := make([]*inventoryv1.RackStockLine, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		r, ok := m[id]
+		if ok {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}
+
+func rackHistoryRows(res *inventoryv1.RackHistoryResponse) []*inventoryv1.StockMovement {
+	var m map[uint64]*inventoryv1.StockMovement
+	for _, it := range res.GetItems() {
+		mv := it.GetMovement()
+		if mv != nil {
+			m = mv.GetMapData()
+		}
+	}
+
+	out := make([]*inventoryv1.StockMovement, 0, len(res.GetIds()))
+	for _, id := range res.GetIds() {
+		r, ok := m[id]
+		if ok {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}
+
 func requestRows(res *inventoryv1.RestockRequestListResponse) []*inventoryv1.RestockRequest {
 	var m map[uint64]*inventoryv1.RestockRequest
 	for _, it := range res.GetItems() {
