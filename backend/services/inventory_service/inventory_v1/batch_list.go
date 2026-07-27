@@ -38,23 +38,23 @@ func (s *Service) BatchList(
 			Joins("JOIN restock_requests r ON r.id = b.delivery_id").
 			Where("b.warehouse_id = ?", warehouseID)
 
-		if productID := req.Msg.GetProductId(); productID != 0 {
+		if productID := req.Msg.GetFilter().GetProductId(); productID != 0 {
 			q = q.Where("b.product_id = ?", productID)
 		}
 
 		// A batch id and a receipt share the delivery number, so one box searches both. A leading '#' is
 		// how the number reads on screen — stripped so "#3007" and "3007" match the same row.
-		if search := req.Msg.GetSearch(); search != "" {
+		if search := req.Msg.GetFilter().GetSearch(); search != "" {
 			like := "%" + search + "%"
 			bare := "%" + trimHash(search) + "%"
 			q = q.Where("CAST(b.delivery_id AS TEXT) ILIKE ? OR r.receipt ILIKE ?", bare, like)
 		}
 
-		if supplierID := req.Msg.GetSupplierId(); supplierID != 0 {
+		if supplierID := req.Msg.GetFilter().GetSupplierId(); supplierID != 0 {
 			q = q.Where("r.supplier_id = ?", supplierID)
 		}
 
-		switch req.Msg.GetExpiry() {
+		switch req.Msg.GetFilter().GetExpiry() {
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_EXPIRING_SOON:
 			q = q.Where("b.expires_on IS NOT NULL AND b.expires_on <= ?", soonCutoff())
 		case inventoryv1.BatchExpiryFilter_BATCH_EXPIRY_FILTER_NO_EXPIRY:
@@ -64,7 +64,7 @@ func (s *Service) BatchList(
 		// A date range on one date field (#217). Applied to the accepted-at (arrived) or the expiry.
 		// An EXPIRING range implicitly excludes no-expiry batches (a NULL never satisfies a bound).
 		var dateCol string
-		switch req.Msg.GetDateField() {
+		switch req.Msg.GetFilter().GetDateField() {
 		case inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED:
 			// created_at is when the batch was minted = when the delivery was accepted (accepted_at is
 			// never set). This is the "arrived" date the list and receipt show.
@@ -73,10 +73,10 @@ func (s *Service) BatchList(
 			dateCol = "b.expires_on"
 		}
 		if dateCol != "" {
-			if from := req.Msg.GetFromUnix(); from > 0 {
+			if from := req.Msg.GetFilter().GetFromUnix(); from > 0 {
 				q = q.Where(dateCol+" >= ?", time.Unix(from, 0))
 			}
-			if to := req.Msg.GetToUnix(); to > 0 {
+			if to := req.Msg.GetFilter().GetToUnix(); to > 0 {
 				q = q.Where(dateCol+" <= ?", time.Unix(to, 0))
 			}
 		}
@@ -201,8 +201,11 @@ func (s *Service) BatchList(
 		batches = append(batches, out)
 	}
 
+	items, ids := batchListItems(batches, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.BatchListResponse{
-		Batches: batches,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   pageCount(total, page.GetLimit()),

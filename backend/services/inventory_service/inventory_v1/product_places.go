@@ -41,7 +41,7 @@ func (s *Service) ProductPlaces(
 		Select("sl.product_id AS product_id, sl.rack_id AS rack_id, r.code AS rack_code, sl.on_hand AS on_hand").
 		Joins("LEFT JOIN racks r ON r.id = sl.rack_id").
 		Where("sl.warehouse_id = ? AND sl.product_id IN ? AND sl.on_hand > 0",
-			req.Msg.GetWarehouseId(), req.Msg.GetProductIds()).
+			req.Msg.GetWarehouseId(), req.Msg.GetFilter().GetIds()).
 		// The unplaced pile first, then shelves by label — the same order the pick walk uses (#151), so
 		// a place reads the same wherever it is shown. `IS NOT NULL` rather than `IS NULL`: false sorts
 		// first, so this puts the nulls first (the inverted form is a trap #151 already fell into).
@@ -73,5 +73,7 @@ func (s *Service) ProductPlaces(
 		out = append(out, &place)
 	}
 
-	return connect.NewResponse(&inventoryv1.ProductPlacesResponse{Places: out}), nil
+	return connect.NewResponse(&inventoryv1.ProductPlacesResponse{
+		Items: productPlacesMap(out, req.Msg.GetDataRequest()),
+	}), nil
 }

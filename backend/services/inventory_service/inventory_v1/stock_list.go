@@ -66,8 +66,11 @@ func (s *Service) StockList(
 		out = append(out, levelToProto(&levels[i]))
 	}
 
+	items, ids := stockLevelItems(out, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.StockListResponse{
-		Levels:   out,
+		Items:    items,
+		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
 }

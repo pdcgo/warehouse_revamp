@@ -42,13 +42,13 @@ export function useProducts({ teamId, isWarehouse, q, page, pageSize }: ProductL
         const totalItems = Number(arrangement.pageInfo?.totalItems ?? 0n);
 
         // No ids means no second call — ProductByIds with an empty list is a request for nothing.
-        if (arrangement.productIds.length === 0) {
+        if (arrangement.ids.length === 0) {
           return { products: [], totalItems };
         }
 
         const resolved = await productClient.productByIds({
           teamId: teamId!,
-          filter: { ids: arrangement.productIds },
+          filter: { ids: arrangement.ids },
           dataRequest: productByIdsRowData(),
         });
 

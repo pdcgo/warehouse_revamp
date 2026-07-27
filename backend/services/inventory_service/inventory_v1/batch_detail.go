@@ -161,7 +161,7 @@ func (s *Service) BatchPlacementList(
 			WithContext(ctx).
 			Table("stock_shelf_batches AS sb").
 			Joins("JOIN stock_batches b ON b.id = sb.batch_id").
-			Where("sb.batch_id = ? AND b.warehouse_id = ? AND sb.qty > 0", req.Msg.GetBatchId(), req.Msg.GetTeamId())
+			Where("sb.batch_id = ? AND b.warehouse_id = ? AND sb.qty > 0", req.Msg.GetFilter().GetBatchId(), req.Msg.GetTeamId())
 	}
 
 	var total int64
@@ -211,8 +211,11 @@ func (s *Service) BatchPlacementList(
 		shelves = append(shelves, shelf)
 	}
 
+	items, ids := batchPlacementItems(shelves, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.BatchPlacementListResponse{
-		Shelves: shelves,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   pageCount(total, page.GetLimit()),

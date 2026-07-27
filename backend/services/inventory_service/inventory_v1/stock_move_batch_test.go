@@ -37,11 +37,11 @@ func TestStockMove_BatchAware(t *testing.T) {
 
 	acceptOne(t, svc, warehouse, rackAID, product, 100, 4000000) // batch of 100 on A
 
-	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	batchID := list.Msg.GetBatches()[0].GetId()
+	batchID := batchRows(list.Msg)[0].GetId()
 
 	// Move 30 of the batch A → B.
 	_, err = svc.StockMove(context.Background(), connect.NewRequest(&inventoryv1.StockMoveRequest{
@@ -65,12 +65,12 @@ func TestStockMove_BatchAware(t *testing.T) {
 	}
 
 	// The batch placements read back the same split.
-	places, err := svc.BatchPlacementList(ctx, connect.NewRequest(&inventoryv1.BatchPlacementListRequest{TeamId: warehouse, BatchId: batchID, Page: page1()}))
+	places, err := svc.BatchPlacementList(ctx, connect.NewRequest(&inventoryv1.BatchPlacementListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchPlacementListFilter{BatchId: batchID}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchPlacementList: %v", err)
 	}
 	byRack := map[uint64]int64{}
-	for _, s := range places.Msg.GetShelves() {
+	for _, s := range batchShelfRows(places.Msg) {
 		byRack[s.GetRackId()] = s.GetQty()
 	}
 	if byRack[rackAID] != 70 || byRack[rackBID] != 30 {

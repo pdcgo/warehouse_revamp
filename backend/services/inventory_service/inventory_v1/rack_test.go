@@ -60,7 +60,7 @@ func TestRack_CreateAndList(t *testing.T) {
 	createRack(t, svc, 6, "A-01-3", "Someone else's bay")
 
 	resp, err := svc.RackList(ctx, connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: warehouse, Page: page1C(),
+		TeamId: warehouse, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList: %v", err)
@@ -106,7 +106,7 @@ func TestRack_SearchByCodeOrName(t *testing.T) {
 
 	// By name.
 	resp, err := svc.RackList(context.Background(), connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "cold"}, Page: page1C(),
+		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "cold"}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList (q): %v", err)
@@ -117,7 +117,7 @@ func TestRack_SearchByCodeOrName(t *testing.T) {
 
 	// By code — the label is what someone actually types.
 	resp, err = svc.RackList(context.Background(), connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "A-01"}, Page: page1C(),
+		TeamId: 5, Filter: &inventoryv1.RackListFilter{Q: "A-01"}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList (code q): %v", err)
@@ -188,7 +188,7 @@ func TestRack_SoftDeleteFreesTheCode(t *testing.T) {
 	}
 
 	resp, err := svc.RackList(ctx, connect.NewRequest(&inventoryv1.RackListRequest{
-		TeamId: warehouse, Page: page1C(),
+		TeamId: warehouse, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackList: %v", err)
@@ -295,7 +295,7 @@ func TestRackStock_ListsWhatIsOnTheShelf(t *testing.T) {
 	place(&rackA, 400, 0)  // a shelf that was counted to zero: not ON the rack
 
 	got, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: warehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackA}, Page: page1C(),
+		TeamId: warehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackA}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackStock: %v", err)
@@ -336,7 +336,7 @@ func TestRackStock_CrossWarehouseIsNotFoundNotEmpty(t *testing.T) {
 	theirRack := createRack(t, svc, theirs, "B-01-1", "")
 
 	_, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: mine, Filter: &inventoryv1.RackStockFilter{RackId: theirRack}, Page: page1C(),
+		TeamId: mine, Filter: &inventoryv1.RackStockFilter{RackId: theirRack}, Page: page1(),
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeNotFound {
 		t.Fatalf("another warehouse's rack = %v, want NotFound", code)

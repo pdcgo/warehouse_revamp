@@ -38,13 +38,13 @@ func TestProductPlaces_ListsEveryShelfHoldingTheProduct(t *testing.T) {
 	seed(&rackB, 7)
 
 	res, err := svc.ProductPlaces(ctxUser(1), connect.NewRequest(&inventoryv1.ProductPlacesRequest{
-		WarehouseId: warehouseA, ProductIds: []uint64{productX},
+		WarehouseId: warehouseA, Filter: &inventoryv1.ProductPlacesFilter{Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("ProductPlaces: %v", err)
 	}
 
-	got := res.Msg.GetPlaces()
+	got := productPlacesList(res.Msg)
 	if len(got) != 3 {
 		t.Fatalf("the product sits in 3 places, got %d: %+v", len(got), got)
 	}
@@ -86,13 +86,13 @@ func TestProductPlaces_SkipsShelvesHoldingNone(t *testing.T) {
 	}
 
 	res, err := svc.ProductPlaces(ctxUser(1), connect.NewRequest(&inventoryv1.ProductPlacesRequest{
-		WarehouseId: warehouseA, ProductIds: []uint64{productX},
+		WarehouseId: warehouseA, Filter: &inventoryv1.ProductPlacesFilter{Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("ProductPlaces: %v", err)
 	}
 
-	got := res.Msg.GetPlaces()
+	got := productPlacesList(res.Msg)
 	if len(got) != 1 {
 		t.Fatalf("got %d places, want only the one holding stock: %+v", len(got), got)
 	}
@@ -125,13 +125,13 @@ func TestProductPlaces_ManyProductsAndScopedToTheWarehouse(t *testing.T) {
 	}
 
 	res, err := svc.ProductPlaces(ctxUser(1), connect.NewRequest(&inventoryv1.ProductPlacesRequest{
-		WarehouseId: warehouseA, ProductIds: []uint64{productX, productY},
+		WarehouseId: warehouseA, Filter: &inventoryv1.ProductPlacesFilter{Ids: []uint64{productX, productY}},
 	}))
 	if err != nil {
 		t.Fatalf("ProductPlaces: %v", err)
 	}
 
-	got := res.Msg.GetPlaces()
+	got := productPlacesList(res.Msg)
 	if len(got) != 2 {
 		t.Fatalf("got %d places, want one per product in THIS warehouse: %+v", len(got), got)
 	}

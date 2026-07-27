@@ -26,11 +26,11 @@ func TestProductStockSummary_ReadyOngoingLast(t *testing.T) {
 	acceptOne(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 100, 4000000) // ready 100 @ 40.000
 
 	// The last delivery id — the accepted restock.
-	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	lastDelivery := batches.Msg.GetBatches()[0].GetDeliveryId()
+	lastDelivery := batchRows(batches.Msg)[0].GetDeliveryId()
 
 	// A second restock, LEFT PENDING — this is the ongoing (inbound) stock.
 	_, err = svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{

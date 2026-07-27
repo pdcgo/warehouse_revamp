@@ -94,7 +94,7 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	// Both the requesting team and the target warehouse see the request.
 	for _, team := range []uint64{sellingTeam, warehouse} {
 		lst, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Page: page1C(),
+			TeamId: team, Page: page1(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list team %d: %v", team, listErr)
@@ -105,7 +105,7 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	}
 
 	// An unrelated team sees nothing.
-	other, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{TeamId: 9, Page: page1C()}))
+	other, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{TeamId: 9, Page: page1()}))
 	if err != nil {
 		t.Fatalf("list other: %v", err)
 	}
@@ -137,8 +137,8 @@ func TestRestockRequest_CreateListFulfil(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StockList: %v", err)
 	}
-	if len(levels.Msg.GetLevels()) != 1 || levels.Msg.GetLevels()[0].GetOnHand() != 10 {
-		t.Fatalf("on-hand after fulfil should be 10, got %+v", levels.Msg.GetLevels())
+	if len(stockLevelRows(levels.Msg)) != 1 || stockLevelRows(levels.Msg)[0].GetOnHand() != 10 {
+		t.Fatalf("on-hand after fulfil should be 10, got %+v", stockLevelRows(levels.Msg))
 	}
 
 	// Re-fulfilling a fulfilled request is rejected.
@@ -199,7 +199,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 		t.Helper()
 
 		resp, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Filter: &inventoryv1.RestockRequestListFilter{Status: status}, Page: page1C(),
+			TeamId: team, Filter: &inventoryv1.RestockRequestListFilter{Status: status}, Page: page1(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list: %v", listErr)
@@ -237,7 +237,7 @@ func TestRestockRequestList_FilterByStatus(t *testing.T) {
 
 	// And the counts must be the FILTERED totals, or the pager lies.
 	resp, err := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-		TeamId: sellingTeam, Filter: &inventoryv1.RestockRequestListFilter{Status: pending}, Page: page1C(),
+		TeamId: sellingTeam, Filter: &inventoryv1.RestockRequestListFilter{Status: pending}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -429,7 +429,7 @@ func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	}
 
 	onHand := map[uint64]int64{}
-	for _, l := range levels.Msg.GetLevels() {
+	for _, l := range stockLevelRows(levels.Msg) {
 		onHand[l.GetProductId()] = l.GetOnHand()
 	}
 
@@ -608,7 +608,7 @@ func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	}
 
 	onHand := map[uint64]int64{}
-	for _, lvl := range levels.Msg.GetLevels() {
+	for _, lvl := range stockLevelRows(levels.Msg) {
 		onHand[lvl.GetProductId()] = lvl.GetOnHand()
 	}
 
@@ -619,7 +619,7 @@ func TestRestockRequest_FulfilReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	}
 
 	if _, present := onHand[400]; present {
-		t.Fatalf("a line that never arrived must not create a stock level, got %+v", levels.Msg.GetLevels())
+		t.Fatalf("a line that never arrived must not create a stock level, got %+v", stockLevelRows(levels.Msg))
 	}
 }
 
@@ -765,8 +765,8 @@ func TestRestockRequest_FulfilRefusesArrivedGoodsWithNoPlace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StockList: %v", err)
 	}
-	if len(levels.Msg.GetLevels()) != 0 {
-		t.Fatalf("a refused acceptance must move no stock, got %+v", levels.Msg.GetLevels())
+	if len(stockLevelRows(levels.Msg)) != 0 {
+		t.Fatalf("a refused acceptance must move no stock, got %+v", stockLevelRows(levels.Msg))
 	}
 
 	// A line that did NOT arrive owes no place — nothing is there to put anywhere.
@@ -904,8 +904,8 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 	if err != nil {
 		t.Fatalf("StockList: %v", err)
 	}
-	if len(levels.Msg.GetLevels()) != 0 {
-		t.Fatalf("a claimed receipt must move no stock, got %+v", levels.Msg.GetLevels())
+	if len(stockLevelRows(levels.Msg)) != 0 {
+		t.Fatalf("a claimed receipt must move no stock, got %+v", stockLevelRows(levels.Msg))
 	}
 }
 
@@ -968,8 +968,8 @@ func TestRestockRequest_FulfilRefusesAnIncompleteCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StockList: %v", err)
 	}
-	if len(levels.Msg.GetLevels()) != 0 {
-		t.Fatalf("a refused count must move no stock, got %+v", levels.Msg.GetLevels())
+	if len(stockLevelRows(levels.Msg)) != 0 {
+		t.Fatalf("a refused count must move no stock, got %+v", stockLevelRows(levels.Msg))
 	}
 
 	if err = tryCount(allArrived(req)); err != nil {
@@ -1055,7 +1055,7 @@ func TestRestockRequest_Update(t *testing.T) {
 	// The warehouse it MOVED TO can see it; the one it moved off can no longer.
 	for team, want := range map[uint64]int{otherWarehouse: 1, warehouse: 0} {
 		lst, listErr := svc.RestockRequestList(ctx, connect.NewRequest(&inventoryv1.RestockRequestListRequest{
-			TeamId: team, Page: page1C(),
+			TeamId: team, Page: page1(),
 		}))
 		if listErr != nil {
 			t.Fatalf("list team %d: %v", team, listErr)

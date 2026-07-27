@@ -27,11 +27,11 @@ func TestStockAdjust_ReasonDrivenAndBatchAware(t *testing.T) {
 	rackID := rack.Msg.GetRack().GetId()
 	acceptOne(t, svc, warehouse, rackID, product, 100, 4000000) // one batch of 100 on A
 
-	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	batchID := list.Msg.GetBatches()[0].GetId()
+	batchID := batchRows(list.Msg)[0].GetId()
 
 	shelfBatch := func() int64 {
 		var sb inventory_service_models.StockShelfBatch

@@ -58,7 +58,7 @@ func warehouseTotal(
 		t.Fatalf("StockList: %v", err)
 	}
 
-	for _, lvl := range resp.Msg.GetLevels() {
+	for _, lvl := range stockLevelRows(resp.Msg) {
 		if lvl.GetProductId() == product {
 			return lvl.GetOnHand()
 		}

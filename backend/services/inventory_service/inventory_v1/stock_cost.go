@@ -29,7 +29,7 @@ func (s *Service) StockCost(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockCostRequest],
 ) (*connect.Response[inventoryv1.StockCostResponse], error) {
-	costs, err := s.unitCosts(ctx, req.Msg.GetWarehouseId(), req.Msg.GetProductIds())
+	costs, err := s.unitCosts(ctx, req.Msg.GetFilter().GetWarehouseId(), req.Msg.GetFilter().GetIds())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -42,7 +42,9 @@ func (s *Service) StockCost(
 		})
 	}
 
-	return connect.NewResponse(&inventoryv1.StockCostResponse{Costs: out}), nil
+	return connect.NewResponse(&inventoryv1.StockCostResponse{
+		Items: stockCostMap(out, req.Msg.GetDataRequest()),
+	}), nil
 }
 
 // unitCosts is the HPP query itself, shared by StockCost and by the rack's valuation (#197).

@@ -60,12 +60,12 @@ func TestCostLayerList_GroupsByFrozenCost(t *testing.T) {
 	acceptOne(t, svc, warehouse, rackID, product, 50, 1250000)  // 25.000/pc
 
 	res, err := svc.CostLayerList(context.Background(), connect.NewRequest(&inventoryv1.CostLayerListRequest{
-		TeamId: warehouse, ProductId: product, Page: page1(),
+		TeamId: warehouse, Filter: &inventoryv1.CostLayerListFilter{ProductId: product}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("CostLayerList: %v", err)
 	}
-	layers := res.Msg.GetLayers()
+	layers := costLayerRows(res.Msg)
 
 	if len(layers) != 2 {
 		t.Fatalf("%d layers, want 2", len(layers))

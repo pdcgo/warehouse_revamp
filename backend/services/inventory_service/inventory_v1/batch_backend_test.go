@@ -54,14 +54,14 @@ func acceptLine(
 		t.Fatalf("fulfil: %v", err)
 	}
 
-	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	if len(list.Msg.GetBatches()) == 0 {
+	if len(batchRows(list.Msg)) == 0 {
 		t.Fatal("no batch minted")
 	}
-	return list.Msg.GetBatches()[0].GetId()
+	return batchRows(list.Msg)[0].GetId()
 }
 
 // The damaged bucket splits into broken vs lost from the typed damage records (#227), the identity
@@ -105,11 +105,11 @@ func TestBatch_SplitsBrokenLost_AndOriginRestock(t *testing.T) {
 	}
 	assertLifecycle("detail", detail.Msg.GetBatch())
 
-	list, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	list, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	assertLifecycle("list", list.Msg.GetBatches()[0])
+	assertLifecycle("list", batchRows(list.Msg)[0])
 }
 
 // Placements carry the last opname per shelf (#226): the last ADJUST (a stock-take) on that rack. A
@@ -130,12 +130,12 @@ func TestBatchPlacement_LastOpname(t *testing.T) {
 
 	shelf := func() *inventoryv1.BatchShelf {
 		res, pErr := svc.BatchPlacementList(context.Background(), connect.NewRequest(&inventoryv1.BatchPlacementListRequest{
-			TeamId: warehouse, BatchId: batchID, Page: page1(),
+			TeamId: warehouse, Filter: &inventoryv1.BatchPlacementListFilter{BatchId: batchID}, Page: page1(),
 		}))
 		if pErr != nil {
 			t.Fatalf("BatchPlacementList: %v", pErr)
 		}
-		for _, s := range res.Msg.GetShelves() {
+		for _, s := range batchShelfRows(res.Msg) {
 			if s.GetRackId() == rackID {
 				return s
 			}

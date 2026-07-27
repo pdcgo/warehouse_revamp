@@ -14,6 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
+import { stockLevelsFromList, stockListRowData } from "../features/inventory/adapt";
 import { teamByIdsRowData, teamsByIds } from "../features/teams/adapt";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
 import { productListRowData, productsFromList } from "../features/products/adapt";
@@ -289,6 +290,7 @@ export function ProductPicker({
         for (let p = 1; p <= STOCK_MAX_PAGES; p++) {
           const res = await inventoryClient.stockList({
             warehouseId: stockWarehouseId,
+            dataRequest: stockListRowData(),
             page: { page: p, limit: STOCK_PAGE_LIMIT },
           });
 
@@ -296,12 +298,13 @@ export function ProductPicker({
             return;
           }
 
-          for (const level of res.levels) {
+          const levelsPage = stockLevelsFromList(res);
+          for (const level of levelsPage) {
             levels.set(level.productId.toString(), level.onHand);
           }
 
           // A short page is the last one.
-          if (res.levels.length < STOCK_PAGE_LIMIT) {
+          if (levelsPage.length < STOCK_PAGE_LIMIT) {
             break;
           }
         }

@@ -58,18 +58,18 @@ func TestStockCost_LatestFulfilledRestockPrice(t *testing.T) {
 	place(9999, false) // still pending — a price somebody hoped for, never paid
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouse, Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	if len(res.Msg.GetCosts()) != 1 {
-		t.Fatalf("costs = %+v, want one line", res.Msg.GetCosts())
+	if len(stockCostLines(res.Msg)) != 1 {
+		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
 	// 7000, not 9999 (pending) and not 5000 (superseded).
-	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 7000 {
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 7000 {
 		t.Fatalf("unit cost = %d, want 7000 — the latest FULFILLED price", got)
 	}
 }
@@ -83,14 +83,14 @@ func TestStockCost_UnknownProductIsAbsentNotZero(t *testing.T) {
 	ctx := ctxUser(1)
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: 2, WarehouseId: 5, ProductIds: []uint64{productX, 999999},
+		TeamId: 2, Filter: &inventoryv1.StockCostFilter{WarehouseId: 5, Ids: []uint64{productX, 999999}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	if len(res.Msg.GetCosts()) != 0 {
-		t.Fatalf("costs = %+v, want none — nothing was ever restocked", res.Msg.GetCosts())
+	if len(stockCostLines(res.Msg)) != 0 {
+		t.Fatalf("costs = %+v, want none — nothing was ever restocked", stockCostLines(res.Msg))
 	}
 }
 
@@ -122,14 +122,14 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: mine, ProductIds: []uint64{productX},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: mine, Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	if len(res.Msg.GetCosts()) != 0 {
-		t.Fatalf("another warehouse's price leaked in: %+v", res.Msg.GetCosts())
+	if len(stockCostLines(res.Msg)) != 0 {
+		t.Fatalf("another warehouse's price leaked in: %+v", stockCostLines(res.Msg))
 	}
 }
 
@@ -171,19 +171,19 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouse, Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	if len(res.Msg.GetCosts()) != 1 {
-		t.Fatalf("costs = %+v, want one line", res.Msg.GetCosts())
+	if len(stockCostLines(res.Msg)) != 1 {
+		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
 	// Rounded DOWN, and defined rather than incidental: an order books 3.333 for a unit that cost
 	// 3.333,33. Rounding up would have the order claim to have paid more than the invoice.
-	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 3333 {
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 3333 {
 		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, rounded down)", got)
 	}
 }
@@ -226,13 +226,13 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouse, Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 12000 {
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
 		t.Fatalf("HPP = %d, want 12000 (10.000 goods + 2.000 freight share)", got)
 	}
 }
@@ -282,7 +282,7 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouse, Ids: []uint64{productX}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
@@ -290,7 +290,7 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 
 	// goods 100.000 / 8 = 12.500 ; freight 20.000 / 8 = 2.500 ; HPP = 15.000.
 	// Dividing the freight by 10 instead would give 12.500 + 2.000 = 14.500.
-	if got := res.Msg.GetCosts()[0].GetUnitCost(); got != 15000 {
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 15000 {
 		t.Fatalf("HPP = %d, want 15000 — freight over the 8 SELLABLE units, not over all 10", got)
 	}
 }
@@ -326,7 +326,7 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ProductIds: []uint64{productX, productY},
+		TeamId: sellingTeam, Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouse, Ids: []uint64{productX, productY}},
 	}))
 	if err != nil {
 		t.Fatalf("StockCost: %v", err)
@@ -337,13 +337,13 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 	//   Gadget: 40.000 / 2 = 20.000 + 2.000 = 22.000
 	want := map[uint64]int64{productX: 12000, productY: 22000}
 
-	for _, c := range res.Msg.GetCosts() {
+	for _, c := range stockCostLines(res.Msg) {
 		if got := c.GetUnitCost(); got != want[c.GetProductId()] {
 			t.Fatalf("product %d HPP = %d, want %d", c.GetProductId(), got, want[c.GetProductId()])
 		}
 	}
 
-	if len(res.Msg.GetCosts()) != 2 {
-		t.Fatalf("costs = %+v, want both products", res.Msg.GetCosts())
+	if len(stockCostLines(res.Msg)) != 2 {
+		t.Fatalf("costs = %+v, want both products", stockCostLines(res.Msg))
 	}
 }

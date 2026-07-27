@@ -85,19 +85,24 @@ func (p *stockPicker) UnitCosts(
 	productIDs []uint64,
 ) (map[uint64]int64, error) {
 	res, err := p.inventory.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
-		TeamId:      sellingTeamID,
-		WarehouseId: warehouseID,
-		ProductIds:  productIDs,
+		TeamId: sellingTeamID,
+		Filter: &inventoryv1.StockCostFilter{WarehouseId: warehouseID, Ids: productIDs},
 	}))
 	if err != nil {
 		return nil, err
 	}
 
 	// Only products with a KNOWN cost come back, so the map is naturally missing the rest — which is
-	// the distinction the caller needs (#74).
-	costs := make(map[uint64]int64, len(res.Msg.GetCosts()))
-	for _, c := range res.Msg.GetCosts() {
-		costs[c.GetProductId()] = c.GetUnitCost()
+	// the distinction the caller needs (#74). The by-ids response is keyed by product id; each value
+	// carries the COST slice.
+	costs := make(map[uint64]int64, len(res.Msg.GetItems()))
+	for id, list := range res.Msg.GetItems() {
+		for _, item := range list.GetItems() {
+			line := item.GetCost().GetMapData()[id]
+			if line != nil {
+				costs[id] = line.GetUnitCost()
+			}
+		}
 	}
 
 	return costs, nil

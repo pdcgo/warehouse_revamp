@@ -20,7 +20,7 @@ func (s *Service) CostLayerList(
 	req *connect.Request[inventoryv1.CostLayerListRequest],
 ) (*connect.Response[inventoryv1.CostLayerListResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
-	productID := req.Msg.GetProductId()
+	productID := req.Msg.GetFilter().GetProductId()
 	page := req.Msg.GetPage()
 
 	// One layer per distinct frozen cost, its on-hand the Ready across every batch at that price. NULL
@@ -90,8 +90,11 @@ func (s *Service) CostLayerList(
 		})
 	}
 
+	items, ids := costLayerItems(layers, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.CostLayerListResponse{
-		Layers: layers,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   pageCount(total, page.GetLimit()),

@@ -34,12 +34,12 @@ func TestPlacementList_PerShelfWithDates(t *testing.T) {
 	acceptOne(t, svc, warehouse, rackBID, product, 50, 2000000)
 
 	res, err := svc.PlacementList(context.Background(), connect.NewRequest(&inventoryv1.PlacementListRequest{
-		TeamId: warehouse, ProductId: product, Page: page1(),
+		TeamId: warehouse, Filter: &inventoryv1.PlacementListFilter{ProductId: product}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("PlacementList: %v", err)
 	}
-	placements := res.Msg.GetPlacements()
+	placements := placementRows(res.Msg)
 
 	if len(placements) != 2 {
 		t.Fatalf("%d placements, want 2 shelves", len(placements))

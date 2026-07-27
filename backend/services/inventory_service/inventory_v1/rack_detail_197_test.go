@@ -180,7 +180,7 @@ func TestRackStock_CarriesTheCostAndTheValue(t *testing.T) {
 	rackID, priced, unpriced := aRackWithGoods(t, svc, db)
 
 	res, err := svc.RackStock(ctxUser(1), connect.NewRequest(&inventoryv1.RackStockRequest{
-		TeamId: rackWarehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackID}, Page: page1C(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackID}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackStock: %v", err)
@@ -212,7 +212,7 @@ func TestRackHistory_ReturnsWhatHappenedToThisShelf(t *testing.T) {
 	rackID, _, _ := aRackWithGoods(t, svc, db)
 
 	res, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory: %v", err)
@@ -249,7 +249,7 @@ func TestRackHistory_FiltersToThePlacementKinds(t *testing.T) {
 	}
 
 	all, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
+		TeamId: rackWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory: %v", err)
@@ -268,7 +268,7 @@ func TestRackHistory_FiltersToThePlacementKinds(t *testing.T) {
 				inventoryv1.MovementKind_MOVEMENT_KIND_MOVE,
 			},
 		},
-		Page: page1C(),
+		Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("RackHistory(placements): %v", err)
@@ -294,7 +294,7 @@ func TestRackHistory_AnotherWarehousesRackIsNotFound(t *testing.T) {
 	rackID, _, _ := aRackWithGoods(t, svc, db)
 
 	_, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
-		TeamId: 9, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1C(),
+		TeamId: 9, Filter: &inventoryv1.RackHistoryFilter{RackId: rackID}, Page: page1(),
 	}))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))

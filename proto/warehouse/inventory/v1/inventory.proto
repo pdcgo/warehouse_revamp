@@ -4,6 +4,7 @@ package warehouse.inventory.v1;
 
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -133,7 +134,6 @@ message StockMovement {
 // -------------------------------------------------------------------------- reads
 
 message StockListRequest {
-  // Read: warehouse staff and up, plus root/admin.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -143,17 +143,36 @@ message StockListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 warehouse_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  repeated StockListDataType data_request = 2;
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+enum StockListDataType {
+  STOCK_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  STOCK_LIST_DATA_TYPE_GENERAL = 1;
+  STOCK_LIST_DATA_TYPE_STOCK = 2;
+}
+
+// The STOCK slice reuses StockLevel, keyed by product_id.
+message StockLevelMapItem {
+  map<uint64, StockLevel> map_data = 1;
+}
+
+message StockListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    StockLevelMapItem stock = 2;
+  }
 }
 
 message StockListResponse {
-  repeated StockLevel levels = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated StockListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message StockHistoryRequest {
@@ -166,39 +185,44 @@ message StockHistoryRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 warehouse_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  StockHistoryFilter filter = 2 [(buf.validate.field).required = true];
+  repeated StockHistoryDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  // Narrow to ONE kind of movement, or UNSPECIFIED for all of them (#158).
-  //
-  // Server-side, for the same reason #130 filtered restocks server-side: the ledger is paginated and
-  // grows forever, so a client-side filter narrows the loaded page only. "When was this last counted"
-  // would then read as "never" whenever the last stock-take fell off page one — which is precisely
-  // when the question is worth asking.
-  MovementKind kind = 4;
+message StockHistoryFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  MovementKind kind = 2;
+  uint64 batch_id = 3;
+  int64 from_unix = 4;
+  int64 to_unix = 5;
+}
 
-  // Narrow to ONE batch (#209); 0 = every batch. The Stock History tab's batch filter — and a batch
-  // recount (batch_id 0) drops out of a batch-specific view, as it should. Placement History passes
-  // `kind = MOVE` alongside to become the moves-only, batch-filterable view of the same ledger.
-  uint64 batch_id = 5;
+enum StockHistoryDataType {
+  STOCK_HISTORY_DATA_TYPE_UNSPECIFIED = 0;
+  STOCK_HISTORY_DATA_TYPE_GENERAL = 1;
+  STOCK_HISTORY_DATA_TYPE_MOVEMENT = 2;
+}
 
-  // A date range over the movement's OWN timestamp (created_at); unix seconds, 0 = open on that end.
-  // Server-side, for the reason spelled out on `kind` above: the ledger is paginated and grows
-  // forever, so a client-side date filter would narrow only the loaded page — "what moved last week"
-  // would silently miss everything that fell off page one. Only one date to filter on (a movement
-  // happens at one instant), so unlike BatchList this needs no date_field selector.
-  int64 from_unix = 6;
-  int64 to_unix = 7;
+message StockHistoryMapItem {
+  map<uint64, StockMovement> map_data = 1;
+}
+
+message StockHistoryResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    StockHistoryMapItem movement = 2;
+  }
 }
 
 message StockHistoryResponse {
-  repeated StockMovement movements = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated StockHistoryResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // -------------------------------------------------------------------------- writes
@@ -460,9 +484,6 @@ message StockCostLine {
 }
 
 message StockCostRequest {
-  // Read: the selling roles that place orders, since freezing an order's COGS is what this serves.
-  // Scoped to the SELLING team exactly as StockPick is, and for the same reason: nobody in a selling
-  // team holds a role inside a warehouse, so scoping to the warehouse would deny every real caller.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -472,15 +493,17 @@ message StockCostRequest {
       ROLE_TEAM_CUSTOMER_SERVICE
     ]
   };
-
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // Whose costs. An ordinary parameter, not use_scope — see above.
-  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+  StockCostFilter filter = 2 [(buf.validate.field).required = true];
+  repeated StockCostDataType data_request = 3;
+}
 
-  repeated uint64 product_ids = 3 [(buf.validate.field).repeated = {
+message StockCostFilter {
+  uint64 warehouse_id = 1 [(buf.validate.field).uint64.gt = 0];
+  repeated uint64 ids = 2 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 200
     unique: true
@@ -490,11 +513,30 @@ message StockCostRequest {
   }];
 }
 
+enum StockCostDataType {
+  STOCK_COST_DATA_TYPE_UNSPECIFIED = 0;
+  STOCK_COST_DATA_TYPE_GENERAL = 1;
+  STOCK_COST_DATA_TYPE_COST = 2;
+}
+
+// The COST slice reuses StockCostLine, keyed by product_id.
+message StockCostLineMapItem {
+  map<uint64, StockCostLine> map_data = 1;
+}
+
+message StockCostResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    StockCostLineMapItem cost = 2;
+  }
+}
+
+message StockCostResponseList {
+  repeated StockCostResponseItem items = 1;
+}
+
 message StockCostResponse {
-  // One line per product that HAS a known cost. A product with no restock history is simply absent —
-  // "we do not know what this cost" and "this cost nothing" are different facts, and a zero row would
-  // conflate them.
-  repeated StockCostLine costs = 1;
+  map<uint64, StockCostResponseList> items = 1;
 }
 
 message StockTransferRequest {
@@ -600,7 +642,6 @@ message StockPickLocationsResponse {
 // it should see is what somebody has asked it to hold, which today means the products named on a
 // restock request sent to it (owner, 2026-07-20).
 message WarehouseProductListRequest {
-  // Read: the warehouse's own people. This is their catalogue.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -610,23 +651,31 @@ message WarehouseProductListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 warehouse_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // Grows with every product the warehouse is asked to handle, so it pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  repeated WarehouseProductListDataType data_request = 2;
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+// WarehouseProductList returns opaque product ids; the only slice is GENERAL (id only). Callers
+// resolve names via ProductByIds.
+enum WarehouseProductListDataType {
+  WAREHOUSE_PRODUCT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  WAREHOUSE_PRODUCT_LIST_DATA_TYPE_GENERAL = 1;
+}
+
+message WarehouseProductListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+  }
 }
 
 message WarehouseProductListResponse {
-  // Product IDS, not products — and that is deliberate.
-  //
-  // inventory_service does not own the catalogue and must not mirror it (HARD RULE 3). The names and
-  // SKUs come from product_service via ProductByIds, in one follow-up call. Returning copies here would
-  // put a product's name in two places, and the copy would go stale the first time somebody renamed it.
-  repeated uint64 product_ids = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated WarehouseProductListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // ProductPlaces answers "WHICH SHELVES ALREADY HOLD THIS PRODUCT, and how many are on each" (#156).
@@ -639,7 +688,6 @@ message WarehouseProductListResponse {
 // StockList is per product SUMMED across racks and deliberately carries no rack (#135), and
 // StockPickLocations reads the LEDGER for one pick rather than current levels.
 message ProductPlacesRequest {
-  // Read: the warehouse's own people — they are the ones walking to the shelf.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -649,21 +697,41 @@ message ProductPlacesRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 warehouse_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
+  ProductPlacesFilter filter = 2 [(buf.validate.field).required = true];
+  repeated ProductPlacesDataType data_request = 3;
+}
 
-  // The products to look up. A LIST because the Accept screen asks about every line of a delivery at
-  // once, and one call beats one per line.
-  //
-  // Capped rather than paginated: a restock request's lines are the bound, and a page cursor over
-  // "the places of these products" would be a window into an answer the caller needs whole.
-  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+message ProductPlacesFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 200
   }];
+}
+
+enum ProductPlacesDataType {
+  PRODUCT_PLACES_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_PLACES_DATA_TYPE_GENERAL = 1;
+  PRODUCT_PLACES_DATA_TYPE_PLACE = 2;
+}
+
+// A product sits on several racks, so the PLACE slice maps by rack_id within each product entry.
+message ProductPlaceMapItem {
+  map<uint64, ProductPlace> map_data = 1;
+}
+
+message ProductPlacesResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductPlaceMapItem place = 2;
+  }
+}
+
+message ProductPlacesResponseList {
+  repeated ProductPlacesResponseItem items = 1;
 }
 
 // One product, on one shelf, and how many sit there right now.
@@ -679,13 +747,7 @@ message ProductPlace {
 }
 
 message ProductPlacesResponse {
-  // Ordered product, then the unplaced pile, then shelves by label — the same order the pick walk uses
-  // (#151), so a place reads the same wherever it is shown.
-  //
-  // UNPAGINATED, and the HARD RULE 9 exemption stated out loud: it is bounded by the products ASKED
-  // FOR (capped above) times the handful of places each one sits on. A product on a hundred shelves is
-  // not a paging problem, it is a warehouse that needs tidying.
-  repeated ProductPlace places = 1;
+  map<uint64, ProductPlacesResponseList> items = 1;
 }
 
 // A batch as the batch screens read it (#209) — one product's units from one delivery, a cost layer.
@@ -748,7 +810,6 @@ enum BatchExpiryFilter {
 }
 
 message BatchListRequest {
-  // Read: anyone who works in the warehouse — the crew reads batches at the shelf.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -758,29 +819,40 @@ message BatchListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // Deliveries of stock grow with every restock, so this pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 2 [(buf.validate.field).required = true];
+  BatchListFilter filter = 2;
+  repeated BatchListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
 
-  // Narrow to ONE product (the detail's Batches tab); 0 = every product (the warehouse-wide list).
-  uint64 product_id = 3;
-  // Match a batch/delivery number or a receipt no; "" = no search.
-  string search = 4;
-  // Narrow to one supplier; 0 = all.
-  uint64 supplier_id = 5;
-  // Narrow by expiry.
-  BatchExpiryFilter expiry = 6 [(buf.validate.field).enum.defined_only = true];
+message BatchListFilter {
+  uint64 product_id = 1;
+  string search = 2;
+  uint64 supplier_id = 3;
+  BatchExpiryFilter expiry = 4 [(buf.validate.field).enum.defined_only = true];
+  BatchDateField date_field = 5 [(buf.validate.field).enum.defined_only = true];
+  int64 from_unix = 6;
+  int64 to_unix = 7;
+}
 
-  // A date range on ONE date field (#217) — the management list filters "what arrived / expires in this
-  // window". `date_field` picks which date the range applies to; `from`/`to` are unix seconds, 0 = open
-  // on that end. A batch with no expiry drops out of an EXPIRING range, as it should.
-  BatchDateField date_field = 7 [(buf.validate.field).enum.defined_only = true];
-  int64 from_unix = 8;
-  int64 to_unix = 9;
+enum BatchListDataType {
+  BATCH_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  BATCH_LIST_DATA_TYPE_GENERAL = 1;
+  BATCH_LIST_DATA_TYPE_BATCH = 2;
+}
+
+message BatchMapItem {
+  map<uint64, StockBatch> map_data = 1;
+}
+
+message BatchListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    BatchMapItem batch = 2;
+  }
 }
 
 // Which date a BatchList date range applies to (#217).
@@ -791,13 +863,11 @@ enum BatchDateField {
 }
 
 message BatchListResponse {
-  repeated StockBatch batches = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-
-  // Stat tiles over the WHOLE filtered set (not just this page): the ready value of every matching
-  // batch, and how many are expiring soon — the batch list's header numbers.
-  int64 ready_value_total = 3;
-  uint64 expiring_soon_count = 4;
+  repeated BatchListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  int64 ready_value_total = 4;
+  uint64 expiring_soon_count = 5;
 }
 
 // One row of the PRICES tab (#209) — stock value by cost price. Batches that froze the same unit cost
@@ -823,21 +893,43 @@ message CostLayerListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // A product accrues a cost layer per distinct price it ever arrived at, so this pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  CostLayerListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated CostLayerListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message CostLayerListFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum CostLayerListDataType {
+  COST_LAYER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  COST_LAYER_LIST_DATA_TYPE_GENERAL = 1;
+  COST_LAYER_LIST_DATA_TYPE_LAYER = 2;
+}
+
+// CostLayer has no id of its own; the response keys layers by 1-based FIFO position and ids carries
+// that order.
+message CostLayerMapItem {
+  map<uint64, CostLayer> map_data = 1;
+}
+
+message CostLayerListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    CostLayerMapItem layer = 2;
+  }
 }
 
 message CostLayerListResponse {
-  repeated CostLayer layers = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
-  // The header total — stock value summed over every layer (known-cost only, #74).
-  int64 total_value = 3;
+  repeated CostLayerListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  int64 total_value = 4;
 }
 
 // One row of the PLACEMENT tab (#209) — a product on one shelf, and when it last moved. The dates flag
@@ -863,19 +955,41 @@ message PlacementListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
-  // A product can spread across many shelves as the warehouse fills, so this pages (HARD RULE 9).
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  PlacementListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated PlacementListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message PlacementListFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum PlacementListDataType {
+  PLACEMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  PLACEMENT_LIST_DATA_TYPE_GENERAL = 1;
+  PLACEMENT_LIST_DATA_TYPE_PLACEMENT = 2;
+}
+
+// The PLACEMENT slice reuses ProductPlacement, keyed by rack_id.
+message ProductPlacementMapItem {
+  map<uint64, ProductPlacement> map_data = 1;
+}
+
+message PlacementListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductPlacementMapItem placement = 2;
+  }
 }
 
 message PlacementListResponse {
-  repeated ProductPlacement placements = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated PlacementListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message ProductStockSummaryRequest {
@@ -962,18 +1076,41 @@ message BatchPlacementListRequest {
       ROLE_WAREHOUSE_STAFF
     ]
   };
-
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  uint64 batch_id = 2 [(buf.validate.field).uint64.gt = 0];
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  BatchPlacementListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated BatchPlacementListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message BatchPlacementListFilter {
+  uint64 batch_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+enum BatchPlacementListDataType {
+  BATCH_PLACEMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  BATCH_PLACEMENT_LIST_DATA_TYPE_GENERAL = 1;
+  BATCH_PLACEMENT_LIST_DATA_TYPE_SHELF = 2;
+}
+
+// The SHELF slice reuses BatchShelf, keyed by rack_id (0 = unplaced).
+message BatchShelfMapItem {
+  map<uint64, BatchShelf> map_data = 1;
+}
+
+message BatchPlacementListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    BatchShelfMapItem shelf = 2;
+  }
 }
 
 message BatchPlacementListResponse {
-  repeated BatchShelf shelves = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated BatchPlacementListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 // The goods-received receipt for one DELIVERY (#219) — the printable document behind a batch. A

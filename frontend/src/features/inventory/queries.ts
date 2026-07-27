@@ -21,6 +21,24 @@ import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { restocksFromList, restockListRowData } from "../restock/adapt";
 import { racksFromList, rackListRowData } from "../racks/adapt";
+import {
+  batchesFromList,
+  batchListRowData,
+  batchPlacementRowData,
+  costLayerRowData,
+  layersFromList,
+  movementsFromList,
+  placementListRowData,
+  placementsFromList,
+  productPlacesFlat,
+  productPlacesRowData,
+  shelvesFromList,
+  stockCostLines,
+  stockCostRowData,
+  stockHistoryRowData,
+  stockListRowData,
+  stockLevelsFromList,
+} from "./adapt";
 import type {
   BatchReceiptResponse,
   StockBatch,
@@ -57,11 +75,15 @@ export function useWarehouseStock(args: {
           dataRequest: productListRowData(),
           page: { page, limit: pageSize },
         }),
-        inventoryClient.stockList({ warehouseId: warehouseId!, page: { page: 1, limit: levelLimit } }),
+        inventoryClient.stockList({
+          warehouseId: warehouseId!,
+          dataRequest: stockListRowData(),
+          page: { page: 1, limit: levelLimit },
+        }),
       ]);
 
       const onHand = new Map<string, bigint>();
-      for (const level of stockRes.levels) {
+      for (const level of stockLevelsFromList(stockRes)) {
         onHand.set(level.productId.toString(), level.onHand);
       }
 
@@ -108,32 +130,42 @@ export function useWarehouseProduct(args: {
       const product = productsFromByIds(found)[0] ?? null;
 
       const [placesRes, costRes, opnameRes, historyRes, moveRes] = await Promise.all([
-        inventoryClient.productPlaces({ warehouseId: warehouseId!, productIds: [productId] }),
+        inventoryClient.productPlaces({
+          warehouseId: warehouseId!,
+          filter: { ids: [productId] },
+          dataRequest: productPlacesRowData(),
+        }),
         inventoryClient.stockCost({
           teamId: warehouseId!,
-          warehouseId: warehouseId!,
-          productIds: [productId],
+          filter: { warehouseId: warehouseId!, ids: [productId] },
+          dataRequest: stockCostRowData(),
         }),
         // The LAST stock-take. Filtered server-side (#158) — page one of an unfiltered ledger would
         // report "never counted" the moment the last one scrolled off it.
         inventoryClient.stockHistory({
           warehouseId: warehouseId!,
-          productId,
+          filter: { productId, kind: adjustKind },
+          dataRequest: stockHistoryRowData(),
           page: { page: 1, limit: 1 },
-          kind: adjustKind,
         }),
         inventoryClient.stockHistory({
           warehouseId: warehouseId!,
-          productId,
+          filter: { productId },
+          dataRequest: stockHistoryRowData(),
           page: { page: 1, limit: 50 },
         }),
         inventoryClient.stockHistory({
           warehouseId: warehouseId!,
-          productId,
+          filter: { productId, kind: moveKind },
+          dataRequest: stockHistoryRowData(),
           page: { page: 1, limit: 50 },
-          kind: moveKind,
         }),
       ]);
+
+      // The map response, rebuilt into ordered rows once, then read below.
+      const opnameRows = movementsFromList(opnameRes);
+      const historyRows = movementsFromList(historyRes);
+      const moveRows = movementsFromList(moveRes);
 
       // Who owns the catalogue entry — a warehouse holds other teams' products (#142). Best-effort:
       // an unknown or soft-deleted id is OMITTED from the map, so this is a presence check rather
@@ -155,13 +187,13 @@ export function useWarehouseProduct(args: {
 
       // ABSENT means the cost is UNKNOWN, not zero (#74). A valuation computed over an unknown cost
       // would read as "these goods are worth nothing", which is a different claim entirely.
-      const cost = costRes.costs[0];
+      const cost = stockCostLines(costRes)[0];
 
       // The two history tabs show a "By" and a rack CODE per event (#209). Resolve both after the
       // ledger is in hand: the rack code from the warehouse's rack registry (which covers shelves the
       // product has since LEFT, unlike `places`), and the actor's name from user_service. Both are
       // best-effort — an unknown id falls back to "#id", never a blank.
-      const events = [...historyRes.movements, ...moveRes.movements];
+      const events = [...historyRows, ...moveRows];
 
       const rackCodes = new Map<string, string>();
       try {
@@ -193,12 +225,12 @@ export function useWarehouseProduct(args: {
       return {
         product,
         ownerName,
-        places: placesRes.places,
+        places: productPlacesFlat(placesRes),
         unitCost: cost?.unitCost ?? 0n,
         costKnown: cost !== undefined,
-        lastOpname: opnameRes.movements[0] ?? null,
-        history: historyRes.movements,
-        placementHistory: moveRes.movements,
+        lastOpname: opnameRows[0] ?? null,
+        history: historyRows,
+        placementHistory: moveRows,
         rackCodes,
         actorNames,
       };
@@ -267,10 +299,11 @@ export function useProductPlaces(args: { warehouseId: bigint | undefined; produc
     queryFn: async () => {
       const found = await inventoryClient.productPlaces({
         warehouseId: warehouseId!,
-        productIds,
+        filter: { ids: productIds },
+        dataRequest: productPlacesRowData(),
       });
 
-      return found.places;
+      return productPlacesFlat(found);
     },
   });
 }
@@ -287,12 +320,13 @@ export function useProductBatches(args: { warehouseId: bigint | undefined; produ
     queryFn: async () => {
       const res = await inventoryClient.batchList({
         teamId: warehouseId!,
-        productId,
+        filter: { productId },
+        dataRequest: batchListRowData(),
         page: { page: 1, limit: 200 },
       });
 
       // A depleted batch cannot be moved or adjusted, so it is not offered.
-      return res.batches.filter((b) => b.ready > 0n);
+      return batchesFromList(res).filter((b) => b.ready > 0n);
     },
   });
 }
@@ -308,10 +342,11 @@ export function useCostLayers(args: { warehouseId: bigint | undefined; productId
     queryFn: async () => {
       const res = await inventoryClient.costLayerList({
         teamId: warehouseId!,
-        productId,
+        filter: { productId },
+        dataRequest: costLayerRowData(),
         page: { page: 1, limit: 100 },
       });
-      return res;
+      return { layers: layersFromList(res), totalValue: res.totalValue };
     },
   });
 }
@@ -347,16 +382,19 @@ export function useWarehouseBatches(args: {
     }),
     enabled: warehouseId !== undefined,
     queryFn: async () => {
-      const res = await inventoryClient.batchList({
+      const raw = await inventoryClient.batchList({
         teamId: warehouseId!,
-        search,
-        supplierId,
-        expiry,
-        dateField,
-        fromUnix,
-        toUnix,
+        filter: { search, supplierId, expiry, dateField, fromUnix, toUnix },
+        dataRequest: batchListRowData(),
         page: { page, limit: pageSize },
       });
+      // Normalise to the shape the page reads (rows + header stats), so the screen is unchanged.
+      const res = {
+        batches: batchesFromList(raw),
+        pageInfo: raw.pageInfo,
+        readyValueTotal: raw.readyValueTotal,
+        expiringSoonCount: raw.expiringSoonCount,
+      };
 
       // Resolve the owning team NAME for each row's product, best-effort — product → team, both
       // batched into one call each. An unresolved id simply leaves the cell blank.
@@ -442,11 +480,12 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
 
       const placesRes = await inventoryClient.productPlaces({
         warehouseId: warehouseId!,
-        productIds: [batch.productId],
+        filter: { ids: [batch.productId] },
+        dataRequest: productPlacesRowData(),
       });
 
       const rackCodes = new Map<string, string>();
-      for (const p of placesRes.places) {
+      for (const p of productPlacesFlat(placesRes)) {
         rackCodes.set(p.rackId.toString(), p.rackCode);
       }
 
@@ -540,10 +579,11 @@ export function useBatchPlacements(args: {
     queryFn: async () => {
       const res = await inventoryClient.batchPlacementList({
         teamId: warehouseId!,
-        batchId,
+        filter: { batchId },
+        dataRequest: batchPlacementRowData(),
         page: { page, limit: pageSize },
       });
-      return res;
+      return { shelves: shelvesFromList(res), pageInfo: res.pageInfo };
     },
   });
 }
@@ -574,13 +614,11 @@ export function useBatchHistory(args: {
     queryFn: async () => {
       const res = await inventoryClient.stockHistory({
         warehouseId: warehouseId!,
-        productId,
-        batchId,
+        filter: { productId, batchId, fromUnix, toUnix },
+        dataRequest: stockHistoryRowData(),
         page: { page, limit: pageSize },
-        fromUnix,
-        toUnix,
       });
-      return res;
+      return { movements: movementsFromList(res), pageInfo: res.pageInfo };
     },
   });
 }
@@ -674,10 +712,11 @@ export function usePlacementList(args: { warehouseId: bigint | undefined; produc
     queryFn: async () => {
       const res = await inventoryClient.placementList({
         teamId: warehouseId!,
-        productId,
+        filter: { productId },
+        dataRequest: placementListRowData(),
         page: { page: 1, limit: 100 },
       });
-      return res.placements;
+      return placementsFromList(res);
     },
   });
 }

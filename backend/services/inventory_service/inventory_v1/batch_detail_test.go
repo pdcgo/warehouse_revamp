@@ -54,11 +54,11 @@ func TestBatchDetailAndPlacements(t *testing.T) {
 		t.Fatalf("fulfil: %v", err)
 	}
 
-	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	batchID := list.Msg.GetBatches()[0].GetId()
+	batchID := batchRows(list.Msg)[0].GetId()
 
 	// Detail.
 	detail, err := svc.BatchDetail(context.Background(), connect.NewRequest(&inventoryv1.BatchDetailRequest{TeamId: warehouse, BatchId: batchID}))
@@ -72,13 +72,13 @@ func TestBatchDetailAndPlacements(t *testing.T) {
 
 	// Placements — the two shelves.
 	places, err := svc.BatchPlacementList(context.Background(), connect.NewRequest(&inventoryv1.BatchPlacementListRequest{
-		TeamId: warehouse, BatchId: batchID, Page: page1(),
+		TeamId: warehouse, Filter: &inventoryv1.BatchPlacementListFilter{BatchId: batchID}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("BatchPlacementList: %v", err)
 	}
 	byRack := map[uint64]int64{}
-	for _, s := range places.Msg.GetShelves() {
+	for _, s := range batchShelfRows(places.Msg) {
 		byRack[s.GetRackId()] = s.GetQty()
 	}
 	if byRack[rackAID] != 60 || byRack[rackBID] != 40 {

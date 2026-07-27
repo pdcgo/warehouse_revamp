@@ -16,13 +16,13 @@ func warehouseProducts(t *testing.T, svc *inventory_v1.Service, warehouseID uint
 
 	res, err := svc.WarehouseProductList(ctxUser(1), connect.NewRequest(&inventoryv1.WarehouseProductListRequest{
 		WarehouseId: warehouseID,
-		Page:        &commonv1.PageFilter{Page: 1, Limit: 50},
+		Page:        &commonv1.CommonPagination{Page: 1, Limit: 50},
 	}))
 	if err != nil {
 		t.Fatalf("WarehouseProductList: %v", err)
 	}
 
-	return res.Msg.GetProductIds()
+	return res.Msg.GetIds()
 }
 
 // createRestock sends a restock request naming these products, which is what makes them visible to the

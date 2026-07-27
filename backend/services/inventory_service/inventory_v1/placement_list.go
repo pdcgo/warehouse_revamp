@@ -21,7 +21,7 @@ func (s *Service) PlacementList(
 	req *connect.Request[inventoryv1.PlacementListRequest],
 ) (*connect.Response[inventoryv1.PlacementListResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
-	productID := req.Msg.GetProductId()
+	productID := req.Msg.GetFilter().GetProductId()
 	page := req.Msg.GetPage()
 
 	var total int64
@@ -95,8 +95,11 @@ func (s *Service) PlacementList(
 		placements = append(placements, p)
 	}
 
+	items, ids := placementItems(placements, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.PlacementListResponse{
-		Placements: placements,
+		Items: items,
+		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
 			CurrentPage: page.GetPage(),
 			TotalPage:   pageCount(total, page.GetLimit()),

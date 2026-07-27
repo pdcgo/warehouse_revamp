@@ -58,12 +58,12 @@ func TestStockList_SumsAcrossRacksAsOneProduct(t *testing.T) {
 
 	// ONE line, not three. A product on two shelves is one product — "how much of X is here?" has
 	// never meant "on which shelf". Three lines here would also make the page size count PLACES.
-	if len(got.Msg.GetLevels()) != 1 {
+	if len(stockLevelRows(got.Msg)) != 1 {
 		t.Fatalf("a product across 3 places must read as ONE line, got %d: %+v",
-			len(got.Msg.GetLevels()), got.Msg.GetLevels())
+			len(stockLevelRows(got.Msg)), stockLevelRows(got.Msg))
 	}
 
-	if on := got.Msg.GetLevels()[0].GetOnHand(); on != 107 {
+	if on := stockLevelRows(got.Msg)[0].GetOnHand(); on != 107 {
 		t.Fatalf("warehouse total = %d, want 107 (40 + 60 + 7 unplaced)", on)
 	}
 
@@ -174,11 +174,11 @@ func TestStockReceive_ThenList(t *testing.T) {
 		t.Fatalf("StockList: %v", err)
 	}
 
-	if len(res.Msg.GetLevels()) != 1 {
-		t.Fatalf("levels = %d, want 1", len(res.Msg.GetLevels()))
+	if len(stockLevelRows(res.Msg)) != 1 {
+		t.Fatalf("levels = %d, want 1", len(stockLevelRows(res.Msg)))
 	}
 
-	if got := res.Msg.GetLevels()[0].GetOnHand(); got != 140 {
+	if got := stockLevelRows(res.Msg)[0].GetOnHand(); got != 140 {
 		t.Errorf("on_hand = %d, want 140", got)
 	}
 }
@@ -193,13 +193,13 @@ func TestStockHistory_RunningBalance(t *testing.T) {
 	receive(t, svc, ctx, warehouseA, productX, 25)
 
 	res, err := svc.StockHistory(ctx, connect.NewRequest(&inventoryv1.StockHistoryRequest{
-		WarehouseId: warehouseA, ProductId: productX, Page: page1(),
+		WarehouseId: warehouseA, Filter: &inventoryv1.StockHistoryFilter{ProductId: productX}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("StockHistory: %v", err)
 	}
 
-	movements := res.Msg.GetMovements()
+	movements := stockHistoryRows(res.Msg)
 	if len(movements) != 2 {
 		t.Fatalf("movements = %d, want 2", len(movements))
 	}
@@ -346,7 +346,7 @@ func TestStockAdjust_RefusesACountWithNoPlace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StockList: %v", err)
 	}
-	if on := got.Msg.GetLevels()[0].GetOnHand(); on != 100 {
+	if on := stockLevelRows(got.Msg)[0].GetOnHand(); on != 100 {
 		t.Fatalf("a refused stock-take still wrote: on_hand = %d, want 100", on)
 	}
 }
@@ -479,7 +479,7 @@ func onHand(
 		t.Fatalf("StockList: %v", err)
 	}
 
-	for _, level := range res.Msg.GetLevels() {
+	for _, level := range stockLevelRows(res.Msg) {
 		if level.GetProductId() == productID {
 			return level.GetOnHand()
 		}
@@ -518,14 +518,15 @@ func TestStockHistory_FiltersByKind(t *testing.T) {
 		t.Helper()
 
 		res, hErr := svc.StockHistory(ctx, connect.NewRequest(&inventoryv1.StockHistoryRequest{
-			WarehouseId: warehouseA, ProductId: productX,
-			Page: &commonv1.PageFilter{Page: 1, Limit: 50}, Kind: kind,
+			WarehouseId: warehouseA,
+			Filter:      &inventoryv1.StockHistoryFilter{ProductId: productX, Kind: kind},
+			Page:        &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 		if hErr != nil {
 			t.Fatalf("StockHistory(%v): %v", kind, hErr)
 		}
 
-		return res.Msg.GetMovements()
+		return stockHistoryRows(res.Msg)
 	}
 
 	// UNSPECIFIED means all of them — the filter must not become a requirement.

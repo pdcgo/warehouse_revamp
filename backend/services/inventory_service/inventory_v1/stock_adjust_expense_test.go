@@ -27,11 +27,11 @@ func TestStockAdjust_WritesOffLossValue(t *testing.T) {
 	rackID := rack.Msg.GetRack().GetId()
 	acceptOne(t, svc, warehouse, rackID, product, 100, 4000000) // 40.000/pc, no freight
 
-	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	batchID := batches.Msg.GetBatches()[0].GetId()
+	batchID := batchRows(batches.Msg)[0].GetId()
 
 	adjust := func(reason inventoryv1.StockAdjustReason, qty, onHand int64) {
 		t.Helper()

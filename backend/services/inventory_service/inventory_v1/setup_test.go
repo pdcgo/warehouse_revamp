@@ -89,14 +89,9 @@ func newServiceWithSettlement(
 	return inventory_v1.NewService(db, poster, nil)
 }
 
-// page1 is the first page at a generous limit — enough for the tiny fixtures here.
-func page1() *commonv1.PageFilter {
-	return &commonv1.PageFilter{Page: 1, Limit: 50}
-}
-
-// page1C is page1 for the guideline list RPCs, which take CommonPagination. Both live here during the
-// inventory migration; page1 goes away once every inventory list is on the new shape.
-func page1C() *commonv1.CommonPagination {
+// page1 is the first page at a generous limit — enough for the tiny fixtures here. Every inventory
+// list RPC now takes the guideline CommonPagination.
+func page1() *commonv1.CommonPagination {
 	return &commonv1.CommonPagination{Page: 1, Limit: 50}
 }
 

@@ -109,8 +109,11 @@ func (s *Service) WarehouseProductList(
 		productIDs = append(productIDs, rows[i].ProductID)
 	}
 
+	items, ids := warehouseProductItems(productIDs, req.Msg.GetDataRequest())
+
 	return connect.NewResponse(&inventoryv1.WarehouseProductListResponse{
-		ProductIds: productIDs,
-		PageInfo:   pageInfo(page, total),
+		Items:    items,
+		Ids:      ids,
+		PageInfo: pageInfo(page, total),
 	}), nil
 }

@@ -76,12 +76,12 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	}
 	msg := res.Msg
 
-	if len(msg.GetBatches()) != 2 {
-		t.Fatalf("%d batches, want 2", len(msg.GetBatches()))
+	if len(batchRows(msg)) != 2 {
+		t.Fatalf("%d batches, want 2", len(batchRows(msg)))
 	}
 
 	byProduct := map[uint64]*inventoryv1.StockBatch{}
-	for _, b := range msg.GetBatches() {
+	for _, b := range batchRows(msg) {
 		byProduct[b.GetProductId()] = b
 	}
 
@@ -125,24 +125,24 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 
 	// Filter to one product — the detail's Batches tab.
 	only, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
-		TeamId: warehouse, Page: page1(), ProductId: 100,
+		TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: 100}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("BatchList product filter: %v", err)
 	}
-	if len(only.Msg.GetBatches()) != 1 || only.Msg.GetBatches()[0].GetProductId() != 100 {
-		t.Fatalf("product filter returned %d batches, want 1 for product 100", len(only.Msg.GetBatches()))
+	if len(batchRows(only.Msg)) != 1 || batchRows(only.Msg)[0].GetProductId() != 100 {
+		t.Fatalf("product filter returned %d batches, want 1 for product 100", len(batchRows(only.Msg)))
 	}
 
 	// Search by the delivery/batch number (with the on-screen '#') finds the delivery's batches.
 	found, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
-		TeamId: warehouse, Page: page1(), Search: "GRN-0721",
+		TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{Search: "GRN-0721"}, Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("BatchList search: %v", err)
 	}
-	if len(found.Msg.GetBatches()) != 2 {
-		t.Fatalf("receipt search returned %d, want 2", len(found.Msg.GetBatches()))
+	if len(batchRows(found.Msg)) != 2 {
+		t.Fatalf("receipt search returned %d, want 2", len(batchRows(found.Msg)))
 	}
 }
 
@@ -159,29 +159,33 @@ func TestBatchList_DateRange(t *testing.T) {
 
 	// Arrived on or before yesterday — nothing (they just arrived).
 	past, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
-		TeamId:    warehouse,
-		Page:      page1(),
-		DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
-		ToUnix:    now.AddDate(0, 0, -1).Unix(),
+		TeamId: warehouse,
+		Filter: &inventoryv1.BatchListFilter{
+			DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
+			ToUnix:    now.AddDate(0, 0, -1).Unix(),
+		},
+		Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("BatchList past: %v", err)
 	}
-	if len(past.Msg.GetBatches()) != 0 {
-		t.Fatalf("arrived ≤ yesterday returned %d, want 0", len(past.Msg.GetBatches()))
+	if len(batchRows(past.Msg)) != 0 {
+		t.Fatalf("arrived ≤ yesterday returned %d, want 0", len(batchRows(past.Msg)))
 	}
 
 	// Arrived on or before tomorrow — both.
 	upto, err := svc.BatchList(context.Background(), connect.NewRequest(&inventoryv1.BatchListRequest{
-		TeamId:    warehouse,
-		Page:      page1(),
-		DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
-		ToUnix:    now.AddDate(0, 0, 1).Unix(),
+		TeamId: warehouse,
+		Filter: &inventoryv1.BatchListFilter{
+			DateField: inventoryv1.BatchDateField_BATCH_DATE_FIELD_ARRIVED,
+			ToUnix:    now.AddDate(0, 0, 1).Unix(),
+		},
+		Page: page1(),
 	}))
 	if err != nil {
 		t.Fatalf("BatchList upto: %v", err)
 	}
-	if len(upto.Msg.GetBatches()) != 2 {
-		t.Fatalf("arrived ≤ tomorrow returned %d, want 2", len(upto.Msg.GetBatches()))
+	if len(batchRows(upto.Msg)) != 2 {
+		t.Fatalf("arrived ≤ tomorrow returned %d, want 2", len(batchRows(upto.Msg)))
 	}
 }

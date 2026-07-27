@@ -28,21 +28,22 @@ func TestStockHistory_CarriesAndFiltersByBatch(t *testing.T) {
 	acceptOne(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 100, 4000000)
 
 	// The batch minted for this product.
-	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Page: page1(), ProductId: product}))
+	batches, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
 	if err != nil {
 		t.Fatalf("BatchList: %v", err)
 	}
-	batchID := batches.Msg.GetBatches()[0].GetId()
+	batchID := batchRows(batches.Msg)[0].GetId()
 
 	history := func(batch uint64) []*inventoryv1.StockMovement {
 		res, hErr := svc.StockHistory(context.Background(), connect.NewRequest(&inventoryv1.StockHistoryRequest{
-			WarehouseId: warehouse, ProductId: product, BatchId: batch,
-			Page: &commonv1.PageFilter{Page: 1, Limit: 50},
+			WarehouseId: warehouse,
+			Filter:      &inventoryv1.StockHistoryFilter{ProductId: product, BatchId: batch},
+			Page:        &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 		if hErr != nil {
 			t.Fatalf("StockHistory: %v", hErr)
 		}
-		return res.Msg.GetMovements()
+		return stockHistoryRows(res.Msg)
 	}
 
 	// Filtered to this batch: the one receive movement, carrying the batch.
@@ -81,14 +82,14 @@ func TestStockHistory_FiltersByDateRange(t *testing.T) {
 
 	count := func(from, to int64) int {
 		res, hErr := svc.StockHistory(context.Background(), connect.NewRequest(&inventoryv1.StockHistoryRequest{
-			WarehouseId: warehouse, ProductId: product,
-			Page:     &commonv1.PageFilter{Page: 1, Limit: 50},
-			FromUnix: from, ToUnix: to,
+			WarehouseId: warehouse,
+			Filter:      &inventoryv1.StockHistoryFilter{ProductId: product, FromUnix: from, ToUnix: to},
+			Page:        &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 		if hErr != nil {
 			t.Fatalf("StockHistory: %v", hErr)
 		}
-		return len(res.Msg.GetMovements())
+		return len(stockHistoryRows(res.Msg))
 	}
 
 	if n := count(now-3600, now+3600); n != 1 {
