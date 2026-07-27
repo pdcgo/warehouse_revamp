@@ -31,6 +31,17 @@ service OrderService {
   rpc OrderPick(OrderPickRequest) returns (OrderPickResponse);
   rpc OrderPack(OrderPackRequest) returns (OrderPackResponse);
   rpc OrderShip(OrderShipRequest) returns (OrderShipResponse);
+
+  // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
+  //
+  // The selling team's product list asks one question of this service: when did each of these
+  // products last SELL? It is the other half of the stock picture — a product with a full shelf and
+  // no order in two months is a different problem from one that is simply out.
+  //
+  // Both are team-scoped like every other read here, so they can only ever describe the caller's own
+  // orders.
+  rpc OrderProductActivityByIds(OrderProductActivityByIdsRequest) returns (OrderProductActivityByIdsResponse);
+  rpc OrderActivityStat(OrderActivityStatRequest) returns (OrderActivityStatResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -446,4 +457,106 @@ message OrderShipRequest {
 
 message OrderShipResponse {
   Order order = 1;
+}
+
+// ── Order activity, per product ──────────────────────────────────────────────────────────────────
+
+// OrderProductActivityItem is what one product has been doing on this team's orders.
+message OrderProductActivityItem {
+  // When it last sold. 0 = never ordered.
+  //
+  // CANCELLED orders do not count. The question this answers is "is this product moving", and an
+  // order that was placed and then unwound moved nothing — treating it as a sale would make a dead
+  // product look alive on the strength of a mistake somebody corrected.
+  int64 last_order_unix = 1;
+
+  // How many UNITS of it were sold in the last 30 days, over the same non-cancelled orders. A date
+  // alone cannot separate "sold one, once" from "sells fifty a week".
+  int64 sold_qty_30d = 2;
+}
+
+message OrderProductActivityMapItem {
+  map<uint64, OrderProductActivityItem> map_data = 1;
+}
+
+enum OrderProductActivityDataType {
+  ORDER_PRODUCT_ACTIVITY_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_PRODUCT_ACTIVITY_DATA_TYPE_ACTIVITY = 1;
+}
+
+message OrderProductActivityByIdsFilter {
+  // The products to answer for — ids the caller already holds from its own catalogue. No paging: the
+  // caller supplies the set, and max_items is what stops this becoming a bulk export.
+  repeated uint64 product_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message OrderProductActivityByIdsRequest {
+  // Read: the team's own people, the same audience as OrderList.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  OrderProductActivityByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OrderProductActivityDataType data_request = 3;
+}
+
+message OrderProductActivityByIdsResponseItem {
+  oneof d {
+    OrderProductActivityMapItem activity = 1;
+  }
+}
+
+message OrderProductActivityByIdsResponseList {
+  repeated OrderProductActivityByIdsResponseItem items = 1;
+}
+
+message OrderProductActivityByIdsResponse {
+  // Keyed by product id. A product that has never been ordered is ABSENT rather than a row of zeros.
+  map<uint64, OrderProductActivityByIdsResponseList> items = 1;
+}
+
+message OrderActivityStatRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+}
+
+message OrderActivityPreview {
+  // The last time this team sold ANYTHING. 0 = never.
+  int64 last_order_unix = 1;
+  // Orders placed in the last 30 days, cancelled ones excluded.
+  int64 orders_30d = 2;
+}
+
+message OrderActivityStatResponse {
+  OrderActivityPreview preview = 1;
 }

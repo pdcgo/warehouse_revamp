@@ -247,8 +247,15 @@ func (s *Service) RestockRequestFulfill(
 				// that never entered stock. Ready (= Σ shelf_batch.qty) equals line.quantity right now.
 				ArrivedQty: line.quantity + damagedQty,
 				DamagedQty: damagedQty,
-				// Who raised the restock is not tracked on the request yet; who accepted it is the actor.
+				// The same actor the request itself now records as its acceptor, written in this one
+				// transaction so a batch and its delivery can never name two different people.
 				AcceptedBy: actor,
+				// WHEN it was accepted. Stamped explicitly, even though the column DEFAULTs to NOW():
+				// AcceptedAt is a non-pointer time.Time, so GORM includes it in the INSERT whatever its
+				// value, and the zero value wins over the default. Every batch written before this read
+				// as accepted in the year 1 — invisible on a detail page that only prints a date, and
+				// wrong the moment anything sorted or aggregated on it.
+				AcceptedAt: time.Now(),
 			}
 
 			batchErr := tx.Create(&batch).Error
@@ -319,12 +326,22 @@ func (s *Service) RestockRequestFulfill(
 		// is the side that paid it — and it lands in the same transaction as the goods it belongs to.
 		rr.CODShippingFee = req.Msg.GetCodShippingFee()
 
+		// WHO COUNTED IT, AND WHEN (owner) — the same actor and moment the batches above record, so a
+		// delivery and its cost layers can never disagree about who accepted them. Stamped rather than
+		// read back off `updated_at`, which any later write would move.
+		acceptedAt := time.Now()
+
+		rr.AcceptedByUserID = actor
+		rr.AcceptedAt = &acceptedAt
+
 		statusErr := tx.
 			Model(&rr).
 			Updates(map[string]any{
-				"status":           restockStatusFulfilled,
-				"cod_shipping_fee": rr.CODShippingFee,
-				"updated_at":       time.Now(),
+				"status":              restockStatusFulfilled,
+				"cod_shipping_fee":    rr.CODShippingFee,
+				"accepted_by_user_id": actor,
+				"accepted_at":         acceptedAt,
+				"updated_at":          acceptedAt,
 			}).
 			Error
 		if statusErr != nil {

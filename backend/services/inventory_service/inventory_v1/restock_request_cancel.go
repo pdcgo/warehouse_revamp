@@ -37,11 +37,20 @@ func (s *Service) RestockRequestCancel(
 			return errRestockNotPending
 		}
 
+		// WHEN it was called off, stamped here rather than left to `updated_at`: any later write would
+		// move that column, and "cancelled last Tuesday" has to stay true afterwards.
+		now := time.Now()
+
 		rr.Status = restockStatusCancelled
+		rr.CancelledAt = &now
 
 		return tx.
 			Model(&rr).
-			Updates(map[string]any{"status": restockStatusCancelled, "updated_at": time.Now()}).
+			Updates(map[string]any{
+				"status":       restockStatusCancelled,
+				"cancelled_at": now,
+				"updated_at":   now,
+			}).
 			Error
 	})
 	if err != nil {

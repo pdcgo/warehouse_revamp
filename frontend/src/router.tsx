@@ -3,7 +3,8 @@ import { createBrowserRouter } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./features/auth/AuthGate";
 import { LoginPage } from "./pages/login/index";
 import { Layout } from "./layouts/Layout";
-import { TeamProvider } from "./features/team/TeamContext";
+import { TeamProvider, useTeam } from "./features/team/TeamContext";
+import { TeamType } from "./gen/warehouse/team/v1/team_pb";
 
 // The app SHELL (auth gate, protected route, team provider, layout) and the LOGIN page load eagerly —
 // they are on the critical path to the first paint. Every PAGE behind the layout is code-split with
@@ -120,14 +121,22 @@ const PickOrderPage = lazy(() =>
 const RackDetailPage = lazy(() =>
   import("./pages/rack-detail").then((m) => ({ default: m.RackDetailPage })),
 );
-const RestockRequestsPage = lazy(() =>
-  import("./pages/restock-requests").then((m) => ({ default: m.RestockRequestsPage })),
+const RestockSellingPage = lazy(() =>
+  import("./pages/restock-selling").then((m) => ({ default: m.RestockSellingPage })),
+);
+const RestockWarehousePage = lazy(() =>
+  import("./pages/restock-warehouse").then((m) => ({ default: m.RestockWarehousePage })),
 );
 const RestockRequestFormPage = lazy(() =>
   import("./pages/restock-request-form").then((m) => ({ default: m.RestockRequestFormPage })),
 );
-const RestockRequestDetailPage = lazy(() =>
-  import("./pages/restock-request-detail").then((m) => ({ default: m.RestockRequestDetailPage })),
+const RestockSellingDetailPage = lazy(() =>
+  import("./pages/restock-selling-detail").then((m) => ({ default: m.RestockSellingDetailPage })),
+);
+const RestockWarehouseDetailPage = lazy(() =>
+  import("./pages/restock-warehouse-detail").then((m) => ({
+    default: m.RestockWarehouseDetailPage,
+  })),
 );
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
@@ -152,6 +161,42 @@ function AppShell() {
         <Layout />
       </TeamProvider>
     </ProtectedRoute>
+  );
+}
+
+// /inventories/restock is TWO screens, chosen by the current team's type.
+//
+// A restock has two sides doing two different jobs — a selling team BUYS goods and wants to know
+// what it has committed money to, a warehouse RECEIVES them and wants a work queue — and one table
+// could not be honest about both, so they are separate pages (#105 / #133).
+//
+// They share ONE PATH deliberately, rather than getting a route each. The team switcher changes the
+// current team WITHOUT navigating, so a per-type path would strand a person on the other side's
+// screen the moment they switched teams — the URL would still say the page they were on while the
+// data underneath had become somebody else's. One path means switching re-renders the right screen.
+//
+// Anything that is not a warehouse — selling, and root/admin looking on — gets the buying view: it
+// is the side that ORIGINATES a restock, and root creates them (the e2e does exactly this).
+function RestockRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? <RestockWarehousePage /> : <RestockSellingPage />;
+}
+
+// …and so is /inventories/restock/:requestId, on the same rule and for the same reason.
+//
+// The list and the detail split together on purpose. Splitting only the list would have left every
+// row opening back into the one page that tries to serve both sides — which is where the awkward
+// gating lived: `showPlaces` (fulfilled AND the warehouse), a supplier field the warehouse could
+// never resolve, a Cancel button hidden from half its readers. Choosing the page by team type
+// deletes all of it, because each page is only ever read by one side.
+function RestockDetailRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? (
+    <RestockWarehouseDetailPage />
+  ) : (
+    <RestockSellingDetailPage />
   );
 }
 
@@ -214,11 +259,11 @@ export const router = createBrowserRouter([
       { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
       { path: "settlement/:counterpartyId", element: <CounterpartyPage /> },
       { path: "inventory", element: <InventoryPage /> },
-      // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122) — one screen that
-      // reads differently per team type: a SELLING team creates requests, a WAREHOUSE team accepts
-      // them. The on-hand list is "Stock" (it was only ever called Restock under the superseded
-      // "pick a warehouse and receive there" design). Placements is a stub.
-      { path: "inventories/restock", element: <RestockRequestsPage /> },
+      // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
+      // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever
+      // called Restock under the superseded "pick a warehouse and receive there" design).
+      // Placements is a stub.
+      { path: "inventories/restock", element: <RestockRoute /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
       //
@@ -227,7 +272,7 @@ export const router = createBrowserRouter([
       // type at the same position otherwise keeps its state, which would carry a loaded request's
       // fields into a blank create form.
       { path: "inventories/restock/new", element: <RestockRequestFormPage key="create" /> },
-      { path: "inventories/restock/:requestId", element: <RestockRequestDetailPage /> },
+      { path: "inventories/restock/:requestId", element: <RestockDetailRoute /> },
       { path: "inventories/restock/:requestId/edit", element: <RestockRequestFormPage key="edit" /> },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: <RestockAcceptPage /> },

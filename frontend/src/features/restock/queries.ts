@@ -1,37 +1,135 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { restockClient } from "../../api/clients";
+import { inventoryClient, restockClient, userClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
+import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import type { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
 
-export function useRestockRequests(args: {
+export interface RestockListArgs {
   teamId: bigint | undefined;
   status: RestockRequestStatus;
+  /** 0 = every warehouse. */
+  warehouseId?: bigint;
+  /** Which of a restock's three dates the range is about; UNSPECIFIED reads as created. */
+  dateField?: RestockDateField;
+  /** Unix seconds; 0 = open at that end. */
+  fromUnix?: bigint;
+  toUnix?: bigint;
+  /** Free text over number / tracking / order ref / SKU / product name. */
+  q?: string;
   page: number;
   pageSize: number;
-}) {
-  const { teamId, status, page, pageSize } = args;
+}
+
+export function useRestockRequests(args: RestockListArgs) {
+  const {
+    teamId,
+    status,
+    warehouseId = 0n,
+    dateField = RestockDateField.UNSPECIFIED,
+    fromUnix = 0n,
+    toUnix = 0n,
+    q = "",
+    page,
+    pageSize,
+  } = args;
 
   return useQuery({
-    // `status` is in the key because it is a SERVER-side filter — each tab is a different question,
-    // with its own `totalItems`. Sharing one entry across tabs would show one tab's rows under
-    // another's pager.
-    queryKey: key.restock(teamId, { status, page, pageSize }),
+    // EVERY filter is in the key, because every one of them is SERVER-side — each combination is a
+    // different question with its own `totalItems`, and sharing one entry across them would show one
+    // filter's rows under another's pager.
+    queryKey: key.restock(teamId, {
+      status,
+      warehouseId: warehouseId.toString(),
+      dateField,
+      fromUnix: fromUnix.toString(),
+      toUnix: toUnix.toString(),
+      q,
+      page,
+      pageSize,
+    }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await restockClient.restockRequestList({
         teamId: teamId!,
-        filter: { status },
+        filter: { status, warehouseId, dateField, fromUnix, toUnix, q },
         dataRequest: restockListRowData(),
         page: { page, limit: pageSize },
       });
 
+      const requests = restocksFromList(res.items, res.ids);
+
+      // WHO RAISED IT AND WHO ACCEPTED IT, resolved in the same query rather than by each row.
+      //
+      // The request carries user IDS, not names (a person's name is not part of what was agreed, so
+      // it is read live rather than snapshotted) — so one UserByIDs call turns the whole page's
+      // actors into names. Both columns come from the same map: the same person often does both.
+      const actorNames = new Map<string, string>();
+      const actorIds = [
+        ...new Set(
+          requests
+            .flatMap((r) => [r.createdByUserId, r.acceptedByUserId])
+            .filter((id) => id > 0n),
+        ),
+      ];
+
+      if (actorIds.length > 0) {
+        try {
+          const users = publicUsersByIds(
+            await userClient.userByIDs({
+              filter: { ids: actorIds },
+              dataRequest: userByIdsRowData(),
+            }),
+          );
+
+          for (const [id, u] of Object.entries(users)) {
+            actorNames.set(id, u.name || u.username);
+          }
+        } catch {
+          // Left empty on purpose — a name lookup that fails must not take the list down with it.
+          // Each column falls back to naming the id, exactly as an unresolved rack does.
+        }
+      }
+
       return {
-        requests: restocksFromList(res.items, res.ids),
+        requests,
+        actorNames,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// THE ONGOING STOCK HEADLINE (owner) — how much this team has bought that has not landed yet, and
+// what it is worth.
+//
+// It is `OwnerStockStat`, not a total of the rows on screen, and that is the point: the tile
+// describes what the team has in flight, while the table beside it shows twenty rows narrowed by a
+// search box and a status tab. Adding up the visible rows would make the headline move every time
+// somebody typed, which is the one thing a headline must not do.
+//
+// Server-side "ongoing" is exactly this screen's subject: Σ of the lines on PENDING restocks, scoped
+// to the requesting team — so the tile and the Pending tab can never tell different stories.
+//
+// It takes the WAREHOUSE FILTER and nothing else. A warehouse lens restates the question ("what is
+// in flight to Jakarta") rather than narrowing a list; a date range or a search box does not — those
+// pick rows, and a headline that followed them would stop being a headline.
+export function useRestockOngoing(args: { teamId: bigint | undefined; warehouseId?: bigint }) {
+  const { teamId, warehouseId = 0n } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, { ongoing: true, warehouseId: warehouseId.toString() }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await inventoryClient.ownerStockStat({ teamId: teamId!, filter: { warehouseId } });
+
+      return {
+        qty: res.preview?.ongoingQty ?? 0n,
+        value: res.preview?.ongoingValueEst ?? 0n,
       };
     },
   });

@@ -90,6 +90,12 @@ const (
 	// InventoryServiceBatchReceiptProcedure is the fully-qualified name of the InventoryService's
 	// BatchReceipt RPC.
 	InventoryServiceBatchReceiptProcedure = "/warehouse.inventory.v1.InventoryService/BatchReceipt"
+	// InventoryServiceOwnerStockByIdsProcedure is the fully-qualified name of the InventoryService's
+	// OwnerStockByIds RPC.
+	InventoryServiceOwnerStockByIdsProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockByIds"
+	// InventoryServiceOwnerStockStatProcedure is the fully-qualified name of the InventoryService's
+	// OwnerStockStat RPC.
+	InventoryServiceOwnerStockStatProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockStat"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -130,6 +136,18 @@ type InventoryServiceClient interface {
 	BatchPlacementList(context.Context, *connect.Request[v1.BatchPlacementListRequest]) (*connect.Response[v1.BatchPlacementListResponse], error)
 	// The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
 	BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error)
+	// ── The CATALOGUE OWNER's view of its own stock ────────────────────────────────────────────────
+	//
+	// Every read above answers for a WAREHOUSE: the caller is the building, and team_id is the building's
+	// team. These two answer for the SELLING TEAM that owns the goods — "how much of MY product is on a
+	// shelf, anywhere, and what is it worth" — which no RPC could answer before.
+	//
+	// Ownership is not taken on trust and is not a new column: stock arrives through an accepted restock
+	// line, so every batch traces batch → restock_request_item → restock_request.requesting_team_id.
+	// Both reads join through that chain, which means a caller passing another team's product id gets
+	// zeros rather than their numbers.
+	OwnerStockByIds(context.Context, *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error)
+	OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -257,6 +275,18 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
 			connect.WithClientOptions(opts...),
 		),
+		ownerStockByIds: connect.NewClient[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse](
+			httpClient,
+			baseURL+InventoryServiceOwnerStockByIdsProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockByIds")),
+			connect.WithClientOptions(opts...),
+		),
+		ownerStockStat: connect.NewClient[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse](
+			httpClient,
+			baseURL+InventoryServiceOwnerStockStatProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -281,6 +311,8 @@ type inventoryServiceClient struct {
 	batchDetail          *connect.Client[v1.BatchDetailRequest, v1.BatchDetailResponse]
 	batchPlacementList   *connect.Client[v1.BatchPlacementListRequest, v1.BatchPlacementListResponse]
 	batchReceipt         *connect.Client[v1.BatchReceiptRequest, v1.BatchReceiptResponse]
+	ownerStockByIds      *connect.Client[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse]
+	ownerStockStat       *connect.Client[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -378,6 +410,16 @@ func (c *inventoryServiceClient) BatchReceipt(ctx context.Context, req *connect.
 	return c.batchReceipt.CallUnary(ctx, req)
 }
 
+// OwnerStockByIds calls warehouse.inventory.v1.InventoryService.OwnerStockByIds.
+func (c *inventoryServiceClient) OwnerStockByIds(ctx context.Context, req *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error) {
+	return c.ownerStockByIds.CallUnary(ctx, req)
+}
+
+// OwnerStockStat calls warehouse.inventory.v1.InventoryService.OwnerStockStat.
+func (c *inventoryServiceClient) OwnerStockStat(ctx context.Context, req *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error) {
+	return c.ownerStockStat.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -417,6 +459,18 @@ type InventoryServiceHandler interface {
 	BatchPlacementList(context.Context, *connect.Request[v1.BatchPlacementListRequest]) (*connect.Response[v1.BatchPlacementListResponse], error)
 	// The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
 	BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error)
+	// ── The CATALOGUE OWNER's view of its own stock ────────────────────────────────────────────────
+	//
+	// Every read above answers for a WAREHOUSE: the caller is the building, and team_id is the building's
+	// team. These two answer for the SELLING TEAM that owns the goods — "how much of MY product is on a
+	// shelf, anywhere, and what is it worth" — which no RPC could answer before.
+	//
+	// Ownership is not taken on trust and is not a new column: stock arrives through an accepted restock
+	// line, so every batch traces batch → restock_request_item → restock_request.requesting_team_id.
+	// Both reads join through that chain, which means a caller passing another team's product id gets
+	// zeros rather than their numbers.
+	OwnerStockByIds(context.Context, *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error)
+	OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -540,6 +594,18 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("BatchReceipt")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceOwnerStockByIdsHandler := connect.NewUnaryHandler(
+		InventoryServiceOwnerStockByIdsProcedure,
+		svc.OwnerStockByIds,
+		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceOwnerStockStatHandler := connect.NewUnaryHandler(
+		InventoryServiceOwnerStockStatProcedure,
+		svc.OwnerStockStat,
+		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -580,6 +646,10 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceBatchPlacementListHandler.ServeHTTP(w, r)
 		case InventoryServiceBatchReceiptProcedure:
 			inventoryServiceBatchReceiptHandler.ServeHTTP(w, r)
+		case InventoryServiceOwnerStockByIdsProcedure:
+			inventoryServiceOwnerStockByIdsHandler.ServeHTTP(w, r)
+		case InventoryServiceOwnerStockStatProcedure:
+			inventoryServiceOwnerStockStatHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -663,4 +733,12 @@ func (UnimplementedInventoryServiceHandler) BatchPlacementList(context.Context, 
 
 func (UnimplementedInventoryServiceHandler) BatchReceipt(context.Context, *connect.Request[v1.BatchReceiptRequest]) (*connect.Response[v1.BatchReceiptResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.BatchReceipt is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) OwnerStockByIds(context.Context, *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockByIds is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockStat is not implemented"))
 }

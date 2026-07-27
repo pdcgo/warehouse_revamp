@@ -26,6 +26,13 @@ func (s *Service) ProductCreate(
 		CategoryID:               req.Msg.GetCategoryId(),
 		DefaultImageURL:          coverURL,
 		DefaultImageThumbnailURL: coverThumb,
+		// Absent means 0 — no markup, the other team pays our cost. That is a legitimate answer, so
+		// there is nothing to default here.
+		CrossMarkupBps: req.Msg.GetCrossMarkupBps(),
+		CrossLocked:    req.Msg.GetCrossLocked(),
+		// Absent means 0 — hold nothing back. Also a legitimate answer, and the one the catalogue
+		// behaved as before the column existed.
+		ReservedStock: req.Msg.GetReservedStock(),
 		// GORM inserts these rows in the same transaction as the product, stamping their ProductID.
 		Images: modelImages(images),
 	}

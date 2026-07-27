@@ -139,6 +139,15 @@
     "fromOnly": "From {{date}}",
     "toOnly": "Until {{date}}"
   },
+  "productLines": {
+    "title": "Products",
+    "sku": "SKU",
+    "name": "Name",
+    "qty": "Qty",
+    "unitPrice": "Unit price",
+    "lineTotal": "Line total",
+    "total": "Products total"
+  },
   "datePicker": {
     "clear": "Clear date"
   },
@@ -259,7 +268,12 @@
       "created": "Product \"{{sku}}\" created",
       "uploadFailed": "Upload failed",
       "tooManyImages": "Only {{max}} images allowed",
-      "keptFirst": "Kept the first {{room}}."
+      "keptFirst": "Kept the first {{room}}.",
+      "archived": "Product \"{{sku}}\" archived",
+      "archiveFailed": "Archive failed",
+      "restored": "Product \"{{sku}}\" restored",
+      "restoreFailed": "Restore failed",
+      "lockFailed": "Could not change the lock"
     },
     "heading": "Products",
     "totalStat": "Total products",
@@ -276,35 +290,123 @@
     "addImages": "Add images",
     "imagesHelp": "{{used}}/{{max}} images. The first is the cover. JPG or PNG.",
     "table": {
-      "image": "Image",
-      "sku": "SKU",
-      "name": "Name",
-      "description": "Description",
-      "actions": "Actions"
-    },
-    "deleteDialog": {
-      "title": "Delete Product",
-      "message": "Delete \"{{sku}}\"? This cannot be undone.",
-      "confirmLabel": "Delete"
+      "actions": "Actions",
+      "product": "Product",
+      "ready": "Ready",
+      "ongoing": "Ongoing",
+      "reserved": "Reserved",
+      "oldestBatch": "Oldest batch",
+      "lastOrder": "Last order",
+      "lastRestock": "Last restock",
+      "cross": "Cross",
+      "locked": "Locked",
+      "priceRange": "Cost range"
     },
     "detail": {
       "heading": "Product Details",
       "noTeam": "Select a team to view its products.",
       "notFound": "Product not found.",
-      "noImages": "No images."
+      "noImages": "No images.",
+      "tab": {
+        "info": "Info",
+        "price": "Price",
+        "batch": "Batch",
+        "stockHistory": "Stock history"
+      },
+      "reservedHint": "Never offered for sale, wherever this product is stocked.",
+      "costHeading": "What it costs you",
+      "costHelp": "A product has no selling price — what a buyer pays is set per order, on the shop that sells it. These are the two figures the catalogue entry itself carries.",
+      "crossPrice": "What another team pays",
+      "crossPriceHint": "Your cost plus the markup, per unit.",
+      "crossHeading": "Cross-sell",
+      "crossHelp": "Another team selling YOUR product through its own shop: the goods leave your stock, and it pays you your cost plus a markup.",
+      "crossMarkupHint": "Over your cost, per unit.",
+      "lockedHint": "Locked keeps it out of other teams' discovery — yours only.",
+      "batchHeading": "Deliveries",
+      "batchHelp": "Every batch is one delivery of this product into one warehouse, and each froze the cost its units carry.",
+      "batchPending": "Awaiting the stock service — a selling team cannot read batches yet.",
+      "batch": {
+        "delivery": "Delivery",
+        "warehouse": "Warehouse",
+        "arrivedOn": "Arrived",
+        "unitCost": "Unit cost",
+        "ready": "Ready",
+        "value": "Value"
+      },
+      "historyHeading": "Every movement",
+      "historyHelp": "What arrived, shipped, was counted, adjusted, damaged or found — newest first. A move between two shelves of one warehouse is the warehouse's business and is not listed here.",
+      "historyPending": "Awaiting the stock service — a selling team cannot read stock history yet.",
+      "history": {
+        "when": "When",
+        "what": "What",
+        "batch": "Batch",
+        "change": "Change",
+        "after": "After"
+      },
+      "showImage": "Show image {{n}}",
+      "warehouseNote": "Every figure below is {{warehouse}} only — not your total.",
+      "layerPending": "Awaiting the stock service — a selling team cannot read cost layers yet.",
+      "layer": {
+        "unitCost": "Unit cost",
+        "batches": "Batches",
+        "ready": "Ready",
+        "value": "Value",
+        "crossPrice": "Cross-sell price"
+      }
     },
     "field": {
       "sku": "SKU",
       "name": "Name",
       "description": "Description",
-      "category": "Category"
+      "category": "Category",
+      "crossMarkup": "Cross markup",
+      "reservedStock": "Reserved stock",
+      "crossLocked": "Ours only"
     },
     "form": {
       "editTitle": "Edit Product",
       "newTitle": "New Product",
       "categoryPlaceholder": "Select a category",
-      "categoryHelp": "Every product is filed under an end category."
-    }
+      "categoryHelp": "Every product is filed under an end category.",
+      "crossMarkupHelp": "What another team pays over your cost when it sells this product on its own order. Leave empty for none.",
+      "crossMarkupInvalid": "Enter a percent between 0 and 1000.",
+      "units": "units",
+      "reservedStockHelp": "Units always held back from selling, wherever this product is stocked. Leave empty to hold nothing back.",
+      "crossLockedHelp": "On: no other team can put this product on its own order, and it stays out of their discovery. Off: any team may sell it and pays you the markup above.",
+      "reservedStockInvalid": "Enter a whole number of units between 0 and 1,000,000."
+    },
+    "tab": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "restore": "Restore",
+    "emptyArchived": "Nothing archived.",
+    "stat": {
+      "ready": "Ready stock",
+      "readyHint": "at cost",
+      "ongoing": "Ongoing stock",
+      "ongoingHint": "estimated, at cost",
+      "pcs": "{{n}} pcs",
+      "pending": "Awaiting the stock service",
+      "lastOrder": "Last order",
+      "lastOrderHint": "last sale from this catalogue",
+      "lastRestock": "Last restock",
+      "lastRestockHint": "last stock that arrived",
+      "never": "Never"
+    },
+    "archiveDialog": {
+      "title": "Archive Product",
+      "message": "Archive \"{{sku}}\"? It leaves your catalogue, pickers and new orders, and moves to the Archived tab. You can restore it later.",
+      "confirmLabel": "Archive"
+    },
+    "restoreDialog": {
+      "title": "Restore Product",
+      "newSku": "New SKU",
+      "newSkuHelp": "Archiving freed the old SKU and another product took it. Give this one a free SKU to bring it back.",
+      "confirmLabel": "Restore"
+    },
+    "allWarehouses": "All warehouses",
+    "archive": "Archive"
   },
   "orders": {
     "title": "Orders",
@@ -423,7 +525,7 @@
     "selectTeam": "Select a team to view its restock requests.",
     "selectTeamCreate": "Select a team to create a restock request.",
     "selectTeamEdit": "Select a team to edit a restock request.",
-    "newRequest": "New restock request",
+    "newRequest": "New restock",
     "newRequestTitle": "New Restock Request",
     "editRequestTitle": "Edit Restock Request",
     "edit": "Edit",
@@ -432,6 +534,27 @@
     "back": "Back",
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
+    "selling": {
+      "subtitle": "Stock you've ordered in — what it cost, where it's going, and what actually landed."
+    },
+    "searchPlaceholder": "Search restock, tracking, order or SKU",
+    "warehouseAll": "All warehouses",
+    "stat": {
+      "ongoing": "Ongoing",
+      "ongoingHint": "pcs in flight — ordered, not landed",
+      "ongoingValue": "Ongoing value",
+      "ongoingValueHint": "what you've committed on them"
+    },
+    "dateField": {
+      "created": "Created",
+      "accepted": "Accepted",
+      "cancelled": "Cancelled"
+    },
+    "inbound": {
+      "title": "Incoming Restocks",
+      "subtitle": "Deliveries on their way to this warehouse — accept one to count it onto the shelves.",
+      "empty": "Nothing is coming in to this warehouse yet."
+    },
     "detail": {
       "title": "Restock Request",
       "requestTitle": "Restock Request #{{id}}",
@@ -439,6 +562,8 @@
       "notFound": "Restock request not found.",
       "invalidId": "Invalid restock request id.",
       "request": "Request",
+      "delivery": "Delivery",
+      "created": "Created",
       "sku": "SKU",
       "name": "Name",
       "unitPrice": "Unit price",
@@ -468,13 +593,28 @@
     },
     "table": {
       "status": "Status",
+      "restock": "Restock",
       "warehouse": "Warehouse",
+      "destination": "Destination",
+      "from": "From",
+      "supplier": "Supplier",
       "requestedBy": "Requested by",
       "product": "Products",
       "qty": "Qty",
+      "value": "Value",
       "shipment": "Shipment",
+      "receipt": "Receipt",
+      "accepted": "Accepted",
+      "reference": "Reference",
+      "orderRefValue": "Order {{value}}",
+      "receiptValue": "Resi {{value}}",
+      "by": "by {{name}}",
+      "userRef": "User #{{id}}",
       "actions": "Actions",
-      "moreProducts": "+{{count}} more",
+      "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
+      "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
+      "firstAndMore": "{{sku}} +{{count}} more",
+      "shortBy": "{{count}} short",
       "noProducts": "No products"
     },
     "form": {

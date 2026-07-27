@@ -130,6 +130,64 @@ func (ProductRowSort) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{1}
 }
 
+// ProductStatus selects which half of the catalogue a list answers over: the live products, or the
+// archived ones. It is the ACTIVE / ARCHIVED tab on the product list.
+//
+// An archived product is not deleted — the row survives, its stock outlives it, and its past orders
+// still name it. What archiving does is take it out of circulation: out of the pickers, out of new
+// orders, out of restocks.
+type ProductStatus int32
+
+const (
+	// UNSPECIFIED means ACTIVE, and must keep meaning that. Every caller that already exists sends no
+	// status (the pickers, the order lines, the restock form), and an archived product must never
+	// appear in a list something is picked FROM — so the safe reading of "unset" is the live half.
+	ProductStatus_PRODUCT_STATUS_UNSPECIFIED ProductStatus = 0
+	ProductStatus_PRODUCT_STATUS_ACTIVE      ProductStatus = 1
+	ProductStatus_PRODUCT_STATUS_ARCHIVED    ProductStatus = 2
+)
+
+// Enum value maps for ProductStatus.
+var (
+	ProductStatus_name = map[int32]string{
+		0: "PRODUCT_STATUS_UNSPECIFIED",
+		1: "PRODUCT_STATUS_ACTIVE",
+		2: "PRODUCT_STATUS_ARCHIVED",
+	}
+	ProductStatus_value = map[string]int32{
+		"PRODUCT_STATUS_UNSPECIFIED": 0,
+		"PRODUCT_STATUS_ACTIVE":      1,
+		"PRODUCT_STATUS_ARCHIVED":    2,
+	}
+)
+
+func (x ProductStatus) Enum() *ProductStatus {
+	p := new(ProductStatus)
+	*p = x
+	return p
+}
+
+func (x ProductStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ProductStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_product_v1_product_proto_enumTypes[2].Descriptor()
+}
+
+func (ProductStatus) Type() protoreflect.EnumType {
+	return &file_warehouse_product_v1_product_proto_enumTypes[2]
+}
+
+func (x ProductStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ProductStatus.Descriptor instead.
+func (ProductStatus) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{2}
+}
+
 // ProductByIdsDataType selects which slices the by-ids response carries per product.
 type ProductByIdsDataType int32
 
@@ -164,11 +222,11 @@ func (x ProductByIdsDataType) String() string {
 }
 
 func (ProductByIdsDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_product_v1_product_proto_enumTypes[2].Descriptor()
+	return file_warehouse_product_v1_product_proto_enumTypes[3].Descriptor()
 }
 
 func (ProductByIdsDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_product_v1_product_proto_enumTypes[2]
+	return &file_warehouse_product_v1_product_proto_enumTypes[3]
 }
 
 func (x ProductByIdsDataType) Number() protoreflect.EnumNumber {
@@ -177,7 +235,7 @@ func (x ProductByIdsDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProductByIdsDataType.Descriptor instead.
 func (ProductByIdsDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{3}
 }
 
 type Product struct {
@@ -198,7 +256,14 @@ type Product struct {
 	// The full gallery (up to 5), ordered; the first is the cover. Populated by ProductDetail ONLY —
 	// ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
 	// denormalised cover) so a list never has to join product_images.
-	Images        []*ProductImage `protobuf:"bytes,10,rep,name=images,proto3" json:"images,omitempty"`
+	Images []*ProductImage `protobuf:"bytes,10,rep,name=images,proto3" json:"images,omitempty"`
+	// CROSS markup — see the note above ProductCreateRequest.cross_markup_bps. Basis points:
+	// 1250 = 12.50%. 0 = no markup.
+	CrossMarkupBps uint32 `protobuf:"varint,11,opt,name=cross_markup_bps,json=crossMarkupBps,proto3" json:"cross_markup_bps,omitempty"`
+	// LOCKED — see ProductCreateRequest.cross_locked. true = ours only, no other team may order it.
+	CrossLocked bool `protobuf:"varint,12,opt,name=cross_locked,json=crossLocked,proto3" json:"cross_locked,omitempty"`
+	// RESERVED — see ProductCreateRequest.reserved_stock. Units held back from selling; 0 = none.
+	ReservedStock uint32 `protobuf:"varint,13,opt,name=reserved_stock,json=reservedStock,proto3" json:"reserved_stock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -301,6 +366,27 @@ func (x *Product) GetImages() []*ProductImage {
 		return x.Images
 	}
 	return nil
+}
+
+func (x *Product) GetCrossMarkupBps() uint32 {
+	if x != nil {
+		return x.CrossMarkupBps
+	}
+	return 0
+}
+
+func (x *Product) GetCrossLocked() bool {
+	if x != nil {
+		return x.CrossLocked
+	}
+	return false
+}
+
+func (x *Product) GetReservedStock() uint32 {
+	if x != nil {
+		return x.ReservedStock
+	}
+	return 0
 }
 
 // ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
@@ -412,7 +498,49 @@ type ProductCreateRequest struct {
 	// Category is required — every new product is filed under one taxonomy node.
 	CategoryId uint64 `protobuf:"varint,5,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
 	// Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
-	Images        []*ProductImage `protobuf:"bytes,6,rep,name=images,proto3" json:"images,omitempty"`
+	Images []*ProductImage `protobuf:"bytes,6,rep,name=images,proto3" json:"images,omitempty"`
+	// ── CROSS ────────────────────────────────────────────────────────────────────────────────────
+	//
+	// "Cross" is another team using OUR product on THEIR order: they sell it through their own shop,
+	// the goods come out of our stock, and we charge them a MARKUP over our cost for it. The markup is
+	// therefore a property of the product being lent out, set by the team that owns it.
+	//
+	// In BASIS POINTS — 1/100 of a percent, so 1250 = 12.50%. Percent is the format a person types and
+	// reads, and the UI shows exactly that; the wire keeps it as an integer because this number
+	// multiplies money, and a float that rounds differently on two screens becomes an argument between
+	// two teams rather than a display bug.
+	//
+	// 0 = no markup: the other team pays what we paid. That is a real, chooseable answer, which is why
+	// it is not modelled as "unset".
+	CrossMarkupBps uint32 `protobuf:"varint,7,opt,name=cross_markup_bps,json=crossMarkupBps,proto3" json:"cross_markup_bps,omitempty"`
+	// LOCKED — may another team put this product on ITS order?
+	//
+	// false (the default) = yes: it appears in ProductDiscover and another team can build an order
+	// around it, paying cross_markup_bps over our cost. That is how every product has behaved so far.
+	// true = ours only: it drops out of cross-team discovery entirely.
+	//
+	// The field is named for what it DOES to other teams, because that is the question its owner is
+	// answering — "can somebody else sell this?" — and a flag named for the permissive state would
+	// read as a double negative on every screen that shows it.
+	CrossLocked bool `protobuf:"varint,8,opt,name=cross_locked,json=crossLocked,proto3" json:"cross_locked,omitempty"`
+	// ── RESERVED ─────────────────────────────────────────────────────────────────────────────────
+	//
+	// A HOLD-BACK BUFFER, not a quantity: how many units of this product are never offered for sale,
+	// so that `available = on_hand − reserved_stock`. It is the answer to "never sell the last N" —
+	// the margin that keeps a count that drifted, a unit that got damaged on the shelf, or two orders
+	// landing in the same second from turning into an oversell somebody has to apologise for.
+	//
+	// It belongs to the PRODUCT, not to a warehouse: it is a decision about the item ("this one is
+	// fragile / always miscounted / a display piece"), taken once by the person who owns the
+	// catalogue, and it holds wherever the thing is stocked. The physical per-warehouse quantities
+	// stay in inventory_service, which applies this buffer when it computes what is sellable.
+	//
+	// In UNITS, matching how stock is counted everywhere else — a percentage would round to fractions
+	// of a physical object. 0 = hold nothing back, which is the default and a real answer.
+	//
+	// The upper bound is a sanity rail, not a policy: a million units is far past any real buffer and
+	// still catches a quantity typed into the wrong field.
+	ReservedStock uint32 `protobuf:"varint,9,opt,name=reserved_stock,json=reservedStock,proto3" json:"reserved_stock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -489,6 +617,27 @@ func (x *ProductCreateRequest) GetImages() []*ProductImage {
 	return nil
 }
 
+func (x *ProductCreateRequest) GetCrossMarkupBps() uint32 {
+	if x != nil {
+		return x.CrossMarkupBps
+	}
+	return 0
+}
+
+func (x *ProductCreateRequest) GetCrossLocked() bool {
+	if x != nil {
+		return x.CrossLocked
+	}
+	return false
+}
+
+func (x *ProductCreateRequest) GetReservedStock() uint32 {
+	if x != nil {
+		return x.ReservedStock
+	}
+	return 0
+}
+
 type ProductCreateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Product       *Product               `protobuf:"bytes,1,opt,name=product,proto3" json:"product,omitempty"`
@@ -536,8 +685,11 @@ func (x *ProductCreateResponse) GetProduct() *Product {
 // ProductListFilter carries the NON-scope filters only (the scoped team_id stays top-level on the
 // request — see the scope note in warehouse/common/v1/list.proto).
 type ProductListFilter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Q     string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	// Which half of the catalogue to list. An enum rather than a bool: "discontinued" or "draft" is a
+	// plausible third tab, and a boolean cannot grow into one.
+	Status        ProductStatus `protobuf:"varint,2,opt,name=status,proto3,enum=warehouse.product.v1.ProductStatus" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -577,6 +729,13 @@ func (x *ProductListFilter) GetQ() string {
 		return x.Q
 	}
 	return ""
+}
+
+func (x *ProductListFilter) GetStatus() ProductStatus {
+	if x != nil {
+		return x.Status
+	}
+	return ProductStatus_PRODUCT_STATUS_UNSPECIFIED
 }
 
 type ProductListFilterSort struct {
@@ -682,8 +841,18 @@ type ProductRowItem struct {
 	DefaultImageUrl          string                 `protobuf:"bytes,7,opt,name=default_image_url,json=defaultImageUrl,proto3" json:"default_image_url,omitempty"`
 	DefaultImageThumbnailUrl string                 `protobuf:"bytes,8,opt,name=default_image_thumbnail_url,json=defaultImageThumbnailUrl,proto3" json:"default_image_thumbnail_url,omitempty"`
 	Deleted                  bool                   `protobuf:"varint,9,opt,name=deleted,proto3" json:"deleted,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// The CROSS markup another team pays over our cost when it sells this product (basis points,
+	// 1250 = 12.50%). On the row because it is a per-product decision the owner reviews across the
+	// whole catalogue at once — "what am I charging for what" is a list question, not a detail one.
+	CrossMarkupBps uint32 `protobuf:"varint,10,opt,name=cross_markup_bps,json=crossMarkupBps,proto3" json:"cross_markup_bps,omitempty"`
+	// Whether other teams may order this product. On the row because it is edited FROM the list — a
+	// switch per line — rather than by opening each product in turn.
+	CrossLocked bool `protobuf:"varint,11,opt,name=cross_locked,json=crossLocked,proto3" json:"cross_locked,omitempty"`
+	// The hold-back buffer in units. On the row because a list is where "which products am I holding
+	// stock back on, and how much" is actually asked — one product at a time would never surface it.
+	ReservedStock uint32 `protobuf:"varint,12,opt,name=reserved_stock,json=reservedStock,proto3" json:"reserved_stock,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductRowItem) Reset() {
@@ -777,6 +946,27 @@ func (x *ProductRowItem) GetDeleted() bool {
 		return x.Deleted
 	}
 	return false
+}
+
+func (x *ProductRowItem) GetCrossMarkupBps() uint32 {
+	if x != nil {
+		return x.CrossMarkupBps
+	}
+	return 0
+}
+
+func (x *ProductRowItem) GetCrossLocked() bool {
+	if x != nil {
+		return x.CrossLocked
+	}
+	return false
+}
+
+func (x *ProductRowItem) GetReservedStock() uint32 {
+	if x != nil {
+		return x.ReservedStock
+	}
+	return 0
 }
 
 type ProductRowMapItem struct {
@@ -1049,8 +1239,11 @@ func (x *ProductListResponse) GetPageInfo() *v1.PageInfo {
 // request (use_scope: the caller must be a member with a listed role), but the results are NOT filtered
 // to it. Read-only; each Product carries its owning team_id.
 type ProductDiscoverRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// Shares ProductListFilter with ProductList, but `status` is IGNORED here: discovery is always the
+	// live catalogue. Nobody browses another team's archive to find something to sell, and an archived
+	// product is precisely one its owner has taken out of circulation.
 	Filter        *ProductListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
 	Sort          *ProductListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
 	DataRequest   []ProductListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.product.v1.ProductListDataType" json:"data_request,omitempty"`
@@ -1486,7 +1679,18 @@ type ProductUpdateRequest struct {
 	CategoryId *uint64 `protobuf:"varint,6,opt,name=category_id,json=categoryId,proto3,oneof" json:"category_id,omitempty"`
 	// The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
 	// exactly its items (the edit page always sends the full desired set). The first is the cover.
-	Images        *ProductImages `protobuf:"bytes,7,opt,name=images,proto3" json:"images,omitempty"`
+	Images *ProductImages `protobuf:"bytes,7,opt,name=images,proto3" json:"images,omitempty"`
+	// The CROSS markup in basis points (1250 = 12.50%). Absent = leave alone; 0 = charge no markup.
+	// Optional rather than a plain uint32 precisely because those two are different instructions, and
+	// a bare 0 could not tell them apart.
+	CrossMarkupBps *uint32 `protobuf:"varint,8,opt,name=cross_markup_bps,json=crossMarkupBps,proto3,oneof" json:"cross_markup_bps,omitempty"`
+	// Absent = leave alone. Present = lock (true) or unlock (false) it for other teams. Optional so a
+	// form that does not show the switch cannot silently unlock everything it saves.
+	CrossLocked *bool `protobuf:"varint,9,opt,name=cross_locked,json=crossLocked,proto3,oneof" json:"cross_locked,omitempty"`
+	// The hold-back buffer in units (see ProductCreateRequest.reserved_stock). Absent = leave alone;
+	// 0 = hold nothing back. Optional for the same reason as the markup: "stop reserving" and "I am
+	// not touching this" are different instructions, and a bare 0 cannot tell them apart.
+	ReservedStock *uint32 `protobuf:"varint,10,opt,name=reserved_stock,json=reservedStock,proto3,oneof" json:"reserved_stock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1568,6 +1772,27 @@ func (x *ProductUpdateRequest) GetImages() *ProductImages {
 		return x.Images
 	}
 	return nil
+}
+
+func (x *ProductUpdateRequest) GetCrossMarkupBps() uint32 {
+	if x != nil && x.CrossMarkupBps != nil {
+		return *x.CrossMarkupBps
+	}
+	return 0
+}
+
+func (x *ProductUpdateRequest) GetCrossLocked() bool {
+	if x != nil && x.CrossLocked != nil {
+		return *x.CrossLocked
+	}
+	return false
+}
+
+func (x *ProductUpdateRequest) GetReservedStock() uint32 {
+	if x != nil && x.ReservedStock != nil {
+		return *x.ReservedStock
+	}
+	return 0
 }
 
 type ProductUpdateResponse struct {
@@ -1798,11 +2023,125 @@ func (*ProductDeleteResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{24}
 }
 
+// ProductRestore puts an archived product back into the catalogue (`deleted = false`).
+//
+// It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
+// reason no other update can: archiving frees the SKU (the uniqueness index is partial —
+// `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
+// may be holding it. The restore is then REFUSED with the conflicting product named, rather than
+// succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
+// one behind their back is worse than making them choose.
+type ProductRestoreRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	TeamId    uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ProductId uint64                 `protobuf:"varint,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// Optional NEW sku, which is how a caller resolves the collision above in one step: restore under
+	// a free SKU instead of the taken one. Absent = restore with the SKU it was archived under.
+	Sku           *string `protobuf:"bytes,3,opt,name=sku,proto3,oneof" json:"sku,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProductRestoreRequest) Reset() {
+	*x = ProductRestoreRequest{}
+	mi := &file_warehouse_product_v1_product_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductRestoreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductRestoreRequest) ProtoMessage() {}
+
+func (x *ProductRestoreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_product_v1_product_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductRestoreRequest.ProtoReflect.Descriptor instead.
+func (*ProductRestoreRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ProductRestoreRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ProductRestoreRequest) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *ProductRestoreRequest) GetSku() string {
+	if x != nil && x.Sku != nil {
+		return *x.Sku
+	}
+	return ""
+}
+
+type ProductRestoreResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Product       *Product               `protobuf:"bytes,1,opt,name=product,proto3" json:"product,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProductRestoreResponse) Reset() {
+	*x = ProductRestoreResponse{}
+	mi := &file_warehouse_product_v1_product_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductRestoreResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductRestoreResponse) ProtoMessage() {}
+
+func (x *ProductRestoreResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_product_v1_product_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductRestoreResponse.ProtoReflect.Descriptor instead.
+func (*ProductRestoreResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_product_v1_product_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ProductRestoreResponse) GetProduct() *Product {
+	if x != nil {
+		return x.Product
+	}
+	return nil
+}
+
 var File_warehouse_product_v1_product_proto protoreflect.FileDescriptor
 
 const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/product/v1/product.proto\x12\x14warehouse.product.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xdc\x02\n" +
+	"\"warehouse/product/v1/product.proto\x12\x14warehouse.product.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xd0\x03\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x10\n" +
@@ -1815,13 +2154,16 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x11default_image_url\x18\b \x01(\tR\x0fdefaultImageUrl\x12=\n" +
 	"\x1bdefault_image_thumbnail_url\x18\t \x01(\tR\x18defaultImageThumbnailUrl\x12:\n" +
 	"\x06images\x18\n" +
-	" \x03(\v2\".warehouse.product.v1.ProductImageR\x06images\"[\n" +
+	" \x03(\v2\".warehouse.product.v1.ProductImageR\x06images\x12(\n" +
+	"\x10cross_markup_bps\x18\v \x01(\rR\x0ecrossMarkupBps\x12!\n" +
+	"\fcross_locked\x18\f \x01(\bR\vcrossLocked\x12%\n" +
+	"\x0ereserved_stock\x18\r \x01(\rR\rreservedStock\"[\n" +
 	"\fProductImage\x12\x1c\n" +
 	"\x03url\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x10R\x03url\x12-\n" +
 	"\rthumbnail_url\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\fthumbnailUrl\"S\n" +
 	"\rProductImages\x12B\n" +
-	"\x05items\x18\x01 \x03(\v2\".warehouse.product.v1.ProductImageB\b\xbaH\x05\x92\x01\x02\x10\x05R\x05items\"\xa3\x02\n" +
+	"\x05items\x18\x01 \x03(\v2\".warehouse.product.v1.ProductImageB\b\xbaH\x05\x92\x01\x02\x10\x05R\x05items\"\xad\x03\n" +
 	"\x14ProductCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x1b\n" +
 	"\x03sku\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x03sku\x12\x1e\n" +
@@ -1830,17 +2172,21 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\vdescription\x12(\n" +
 	"\vcategory_id\x18\x05 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
 	"categoryId\x12D\n" +
-	"\x06images\x18\x06 \x03(\v2\".warehouse.product.v1.ProductImageB\b\xbaH\x05\x92\x01\x02\x10\x05R\x06images:\f\x92\xb5\x18\b\n" +
+	"\x06images\x18\x06 \x03(\v2\".warehouse.product.v1.ProductImageB\b\xbaH\x05\x92\x01\x02\x10\x05R\x06images\x123\n" +
+	"\x10cross_markup_bps\x18\a \x01(\rB\t\xbaH\x06*\x04\x18\xa0\x8d\x06R\x0ecrossMarkupBps\x12!\n" +
+	"\fcross_locked\x18\b \x01(\bR\vcrossLocked\x120\n" +
+	"\x0ereserved_stock\x18\t \x01(\rB\t\xbaH\x06*\x04\x18\xc0\x84=R\rreservedStock:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"P\n" +
 	"\x15ProductCreateResponse\x127\n" +
-	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct\"*\n" +
+	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct\"q\n" +
 	"\x11ProductListFilter\x12\x15\n" +
-	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\"\xde\x01\n" +
+	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12E\n" +
+	"\x06status\x18\x02 \x01(\x0e2#.warehouse.product.v1.ProductStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\"\xde\x01\n" +
 	"\x15ProductListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12@\n" +
 	"\aproduct\x18\x03 \x01(\x0e2$.warehouse.product.v1.ProductRowSortH\x00R\aproductB\x03\n" +
-	"\x01s\"\xa7\x02\n" +
+	"\x01s\"\x9b\x03\n" +
 	"\x0eProductRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x10\n" +
@@ -1851,7 +2197,11 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"categoryId\x12*\n" +
 	"\x11default_image_url\x18\a \x01(\tR\x0fdefaultImageUrl\x12=\n" +
 	"\x1bdefault_image_thumbnail_url\x18\b \x01(\tR\x18defaultImageThumbnailUrl\x12\x18\n" +
-	"\adeleted\x18\t \x01(\bR\adeleted\"\xc6\x01\n" +
+	"\adeleted\x18\t \x01(\bR\adeleted\x12(\n" +
+	"\x10cross_markup_bps\x18\n" +
+	" \x01(\rR\x0ecrossMarkupBps\x12!\n" +
+	"\fcross_locked\x18\v \x01(\bR\vcrossLocked\x12%\n" +
+	"\x0ereserved_stock\x18\f \x01(\rR\rreservedStock\"\xc6\x01\n" +
 	"\x11ProductRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.product.v1.ProductRowMapItem.MapDataEntryR\amapData\x1a`\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -1903,7 +2253,7 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12D\n" +
-	"\x05value\x18\x02 \x01(\v2..warehouse.product.v1.ProductByIdsResponseListR\x05value:\x028\x01\"\x87\x03\n" +
+	"\x05value\x18\x02 \x01(\v2..warehouse.product.v1.ProductByIdsResponseListR\x05value:\x028\x01\"\xd9\x04\n" +
 	"\x14ProductUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
@@ -1914,12 +2264,19 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aH\x02R\vdescription\x88\x01\x01\x12-\n" +
 	"\vcategory_id\x18\x06 \x01(\x04B\a\xbaH\x042\x02 \x00H\x03R\n" +
 	"categoryId\x88\x01\x01\x12;\n" +
-	"\x06images\x18\a \x01(\v2#.warehouse.product.v1.ProductImagesR\x06images:\f\x92\xb5\x18\b\n" +
+	"\x06images\x18\a \x01(\v2#.warehouse.product.v1.ProductImagesR\x06images\x128\n" +
+	"\x10cross_markup_bps\x18\b \x01(\rB\t\xbaH\x06*\x04\x18\xa0\x8d\x06H\x04R\x0ecrossMarkupBps\x88\x01\x01\x12&\n" +
+	"\fcross_locked\x18\t \x01(\bH\x05R\vcrossLocked\x88\x01\x01\x125\n" +
+	"\x0ereserved_stock\x18\n" +
+	" \x01(\rB\t\xbaH\x06*\x04\x18\xc0\x84=H\x06R\rreservedStock\x88\x01\x01:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\tB\x06\n" +
 	"\x04_skuB\a\n" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\x0e\n" +
-	"\f_category_id\"P\n" +
+	"\f_category_idB\x13\n" +
+	"\x11_cross_markup_bpsB\x0f\n" +
+	"\r_cross_lockedB\x11\n" +
+	"\x0f_reserved_stock\"P\n" +
 	"\x15ProductUpdateResponse\x127\n" +
 	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct\"t\n" +
 	"\x14ProductDetailRequest\x12$\n" +
@@ -1935,7 +2292,16 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"\x17\n" +
-	"\x15ProductDeleteResponse*\x85\x01\n" +
+	"\x15ProductDeleteResponse\"\x9d\x01\n" +
+	"\x15ProductRestoreRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\x12 \n" +
+	"\x03sku\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@H\x00R\x03sku\x88\x01\x01:\f\x92\xb5\x18\b\n" +
+	"\x06\x01\x02\x03\x04\x06\tB\x06\n" +
+	"\x04_sku\"Q\n" +
+	"\x16ProductRestoreResponse\x127\n" +
+	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct*\x85\x01\n" +
 	"\x13ProductListDataType\x12&\n" +
 	"\"PRODUCT_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1ePRODUCT_LIST_DATA_TYPE_GENERAL\x10\x01\x12\"\n" +
@@ -1944,11 +2310,15 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x1cPRODUCT_ROW_SORT_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15PRODUCT_ROW_SORT_NAME\x10\x01\x12\x18\n" +
 	"\x14PRODUCT_ROW_SORT_SKU\x10\x02\x12\x17\n" +
-	"\x13PRODUCT_ROW_SORT_ID\x10\x03*\x8c\x01\n" +
+	"\x13PRODUCT_ROW_SORT_ID\x10\x03*g\n" +
+	"\rProductStatus\x12\x1e\n" +
+	"\x1aPRODUCT_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15PRODUCT_STATUS_ACTIVE\x10\x01\x12\x1b\n" +
+	"\x17PRODUCT_STATUS_ARCHIVED\x10\x02*\x8c\x01\n" +
 	"\x14ProductByIdsDataType\x12(\n" +
 	"$PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12$\n" +
 	" PRODUCT_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12$\n" +
-	" PRODUCT_BY_IDS_DATA_TYPE_PRODUCT\x10\x022\xf3\x05\n" +
+	" PRODUCT_BY_IDS_DATA_TYPE_PRODUCT\x10\x022\xe0\x06\n" +
 	"\x0eProductService\x12h\n" +
 	"\rProductCreate\x12*.warehouse.product.v1.ProductCreateRequest\x1a+.warehouse.product.v1.ProductCreateResponse\x12b\n" +
 	"\vProductList\x12(.warehouse.product.v1.ProductListRequest\x1a).warehouse.product.v1.ProductListResponse\x12n\n" +
@@ -1956,7 +2326,8 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\fProductByIds\x12).warehouse.product.v1.ProductByIdsRequest\x1a*.warehouse.product.v1.ProductByIdsResponse\x12h\n" +
 	"\rProductDetail\x12*.warehouse.product.v1.ProductDetailRequest\x1a+.warehouse.product.v1.ProductDetailResponse\x12h\n" +
 	"\rProductUpdate\x12*.warehouse.product.v1.ProductUpdateRequest\x1a+.warehouse.product.v1.ProductUpdateResponse\x12h\n" +
-	"\rProductDelete\x12*.warehouse.product.v1.ProductDeleteRequest\x1a+.warehouse.product.v1.ProductDeleteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1b\x06proto3"
+	"\rProductDelete\x12*.warehouse.product.v1.ProductDeleteRequest\x1a+.warehouse.product.v1.ProductDeleteResponse\x12k\n" +
+	"\x0eProductRestore\x12+.warehouse.product.v1.ProductRestoreRequest\x1a,.warehouse.product.v1.ProductRestoreResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1b\x06proto3"
 
 var (
 	file_warehouse_product_v1_product_proto_rawDescOnce sync.Once
@@ -1970,98 +2341,105 @@ func file_warehouse_product_v1_product_proto_rawDescGZIP() []byte {
 	return file_warehouse_product_v1_product_proto_rawDescData
 }
 
-var file_warehouse_product_v1_product_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_warehouse_product_v1_product_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_warehouse_product_v1_product_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_warehouse_product_v1_product_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_warehouse_product_v1_product_proto_goTypes = []any{
 	(ProductListDataType)(0),         // 0: warehouse.product.v1.ProductListDataType
 	(ProductRowSort)(0),              // 1: warehouse.product.v1.ProductRowSort
-	(ProductByIdsDataType)(0),        // 2: warehouse.product.v1.ProductByIdsDataType
-	(*Product)(nil),                  // 3: warehouse.product.v1.Product
-	(*ProductImage)(nil),             // 4: warehouse.product.v1.ProductImage
-	(*ProductImages)(nil),            // 5: warehouse.product.v1.ProductImages
-	(*ProductCreateRequest)(nil),     // 6: warehouse.product.v1.ProductCreateRequest
-	(*ProductCreateResponse)(nil),    // 7: warehouse.product.v1.ProductCreateResponse
-	(*ProductListFilter)(nil),        // 8: warehouse.product.v1.ProductListFilter
-	(*ProductListFilterSort)(nil),    // 9: warehouse.product.v1.ProductListFilterSort
-	(*ProductRowItem)(nil),           // 10: warehouse.product.v1.ProductRowItem
-	(*ProductRowMapItem)(nil),        // 11: warehouse.product.v1.ProductRowMapItem
-	(*ProductListResponseItem)(nil),  // 12: warehouse.product.v1.ProductListResponseItem
-	(*ProductListRequest)(nil),       // 13: warehouse.product.v1.ProductListRequest
-	(*ProductListResponse)(nil),      // 14: warehouse.product.v1.ProductListResponse
-	(*ProductDiscoverRequest)(nil),   // 15: warehouse.product.v1.ProductDiscoverRequest
-	(*ProductDiscoverResponse)(nil),  // 16: warehouse.product.v1.ProductDiscoverResponse
-	(*ProductByIdsRequest)(nil),      // 17: warehouse.product.v1.ProductByIdsRequest
-	(*ProductByIdsFilter)(nil),       // 18: warehouse.product.v1.ProductByIdsFilter
-	(*ProductByIdsResponseItem)(nil), // 19: warehouse.product.v1.ProductByIdsResponseItem
-	(*ProductByIdsResponseList)(nil), // 20: warehouse.product.v1.ProductByIdsResponseList
-	(*ProductByIdsResponse)(nil),     // 21: warehouse.product.v1.ProductByIdsResponse
-	(*ProductUpdateRequest)(nil),     // 22: warehouse.product.v1.ProductUpdateRequest
-	(*ProductUpdateResponse)(nil),    // 23: warehouse.product.v1.ProductUpdateResponse
-	(*ProductDetailRequest)(nil),     // 24: warehouse.product.v1.ProductDetailRequest
-	(*ProductDetailResponse)(nil),    // 25: warehouse.product.v1.ProductDetailResponse
-	(*ProductDeleteRequest)(nil),     // 26: warehouse.product.v1.ProductDeleteRequest
-	(*ProductDeleteResponse)(nil),    // 27: warehouse.product.v1.ProductDeleteResponse
-	nil,                              // 28: warehouse.product.v1.ProductRowMapItem.MapDataEntry
-	nil,                              // 29: warehouse.product.v1.ProductByIdsResponse.ItemsEntry
-	(v1.CommonSortType)(0),           // 30: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),              // 31: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),        // 32: warehouse.common.v1.GeneralMapItem
-	(*v1.CommonPagination)(nil),      // 33: warehouse.common.v1.CommonPagination
-	(*v1.PageInfo)(nil),              // 34: warehouse.common.v1.PageInfo
+	(ProductStatus)(0),               // 2: warehouse.product.v1.ProductStatus
+	(ProductByIdsDataType)(0),        // 3: warehouse.product.v1.ProductByIdsDataType
+	(*Product)(nil),                  // 4: warehouse.product.v1.Product
+	(*ProductImage)(nil),             // 5: warehouse.product.v1.ProductImage
+	(*ProductImages)(nil),            // 6: warehouse.product.v1.ProductImages
+	(*ProductCreateRequest)(nil),     // 7: warehouse.product.v1.ProductCreateRequest
+	(*ProductCreateResponse)(nil),    // 8: warehouse.product.v1.ProductCreateResponse
+	(*ProductListFilter)(nil),        // 9: warehouse.product.v1.ProductListFilter
+	(*ProductListFilterSort)(nil),    // 10: warehouse.product.v1.ProductListFilterSort
+	(*ProductRowItem)(nil),           // 11: warehouse.product.v1.ProductRowItem
+	(*ProductRowMapItem)(nil),        // 12: warehouse.product.v1.ProductRowMapItem
+	(*ProductListResponseItem)(nil),  // 13: warehouse.product.v1.ProductListResponseItem
+	(*ProductListRequest)(nil),       // 14: warehouse.product.v1.ProductListRequest
+	(*ProductListResponse)(nil),      // 15: warehouse.product.v1.ProductListResponse
+	(*ProductDiscoverRequest)(nil),   // 16: warehouse.product.v1.ProductDiscoverRequest
+	(*ProductDiscoverResponse)(nil),  // 17: warehouse.product.v1.ProductDiscoverResponse
+	(*ProductByIdsRequest)(nil),      // 18: warehouse.product.v1.ProductByIdsRequest
+	(*ProductByIdsFilter)(nil),       // 19: warehouse.product.v1.ProductByIdsFilter
+	(*ProductByIdsResponseItem)(nil), // 20: warehouse.product.v1.ProductByIdsResponseItem
+	(*ProductByIdsResponseList)(nil), // 21: warehouse.product.v1.ProductByIdsResponseList
+	(*ProductByIdsResponse)(nil),     // 22: warehouse.product.v1.ProductByIdsResponse
+	(*ProductUpdateRequest)(nil),     // 23: warehouse.product.v1.ProductUpdateRequest
+	(*ProductUpdateResponse)(nil),    // 24: warehouse.product.v1.ProductUpdateResponse
+	(*ProductDetailRequest)(nil),     // 25: warehouse.product.v1.ProductDetailRequest
+	(*ProductDetailResponse)(nil),    // 26: warehouse.product.v1.ProductDetailResponse
+	(*ProductDeleteRequest)(nil),     // 27: warehouse.product.v1.ProductDeleteRequest
+	(*ProductDeleteResponse)(nil),    // 28: warehouse.product.v1.ProductDeleteResponse
+	(*ProductRestoreRequest)(nil),    // 29: warehouse.product.v1.ProductRestoreRequest
+	(*ProductRestoreResponse)(nil),   // 30: warehouse.product.v1.ProductRestoreResponse
+	nil,                              // 31: warehouse.product.v1.ProductRowMapItem.MapDataEntry
+	nil,                              // 32: warehouse.product.v1.ProductByIdsResponse.ItemsEntry
+	(v1.CommonSortType)(0),           // 33: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),              // 34: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),        // 35: warehouse.common.v1.GeneralMapItem
+	(*v1.CommonPagination)(nil),      // 36: warehouse.common.v1.CommonPagination
+	(*v1.PageInfo)(nil),              // 37: warehouse.common.v1.PageInfo
 }
 var file_warehouse_product_v1_product_proto_depIdxs = []int32{
-	4,  // 0: warehouse.product.v1.Product.images:type_name -> warehouse.product.v1.ProductImage
-	4,  // 1: warehouse.product.v1.ProductImages.items:type_name -> warehouse.product.v1.ProductImage
-	4,  // 2: warehouse.product.v1.ProductCreateRequest.images:type_name -> warehouse.product.v1.ProductImage
-	3,  // 3: warehouse.product.v1.ProductCreateResponse.product:type_name -> warehouse.product.v1.Product
-	30, // 4: warehouse.product.v1.ProductListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	31, // 5: warehouse.product.v1.ProductListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	1,  // 6: warehouse.product.v1.ProductListFilterSort.product:type_name -> warehouse.product.v1.ProductRowSort
-	28, // 7: warehouse.product.v1.ProductRowMapItem.map_data:type_name -> warehouse.product.v1.ProductRowMapItem.MapDataEntry
-	32, // 8: warehouse.product.v1.ProductListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	11, // 9: warehouse.product.v1.ProductListResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
-	8,  // 10: warehouse.product.v1.ProductListRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
-	9,  // 11: warehouse.product.v1.ProductListRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
-	0,  // 12: warehouse.product.v1.ProductListRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
-	33, // 13: warehouse.product.v1.ProductListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	12, // 14: warehouse.product.v1.ProductListResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
-	34, // 15: warehouse.product.v1.ProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	8,  // 16: warehouse.product.v1.ProductDiscoverRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
-	9,  // 17: warehouse.product.v1.ProductDiscoverRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
-	0,  // 18: warehouse.product.v1.ProductDiscoverRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
-	33, // 19: warehouse.product.v1.ProductDiscoverRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	12, // 20: warehouse.product.v1.ProductDiscoverResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
-	34, // 21: warehouse.product.v1.ProductDiscoverResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	18, // 22: warehouse.product.v1.ProductByIdsRequest.filter:type_name -> warehouse.product.v1.ProductByIdsFilter
-	2,  // 23: warehouse.product.v1.ProductByIdsRequest.data_request:type_name -> warehouse.product.v1.ProductByIdsDataType
-	32, // 24: warehouse.product.v1.ProductByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	11, // 25: warehouse.product.v1.ProductByIdsResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
-	19, // 26: warehouse.product.v1.ProductByIdsResponseList.items:type_name -> warehouse.product.v1.ProductByIdsResponseItem
-	29, // 27: warehouse.product.v1.ProductByIdsResponse.items:type_name -> warehouse.product.v1.ProductByIdsResponse.ItemsEntry
-	5,  // 28: warehouse.product.v1.ProductUpdateRequest.images:type_name -> warehouse.product.v1.ProductImages
-	3,  // 29: warehouse.product.v1.ProductUpdateResponse.product:type_name -> warehouse.product.v1.Product
-	3,  // 30: warehouse.product.v1.ProductDetailResponse.product:type_name -> warehouse.product.v1.Product
-	10, // 31: warehouse.product.v1.ProductRowMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductRowItem
-	20, // 32: warehouse.product.v1.ProductByIdsResponse.ItemsEntry.value:type_name -> warehouse.product.v1.ProductByIdsResponseList
-	6,  // 33: warehouse.product.v1.ProductService.ProductCreate:input_type -> warehouse.product.v1.ProductCreateRequest
-	13, // 34: warehouse.product.v1.ProductService.ProductList:input_type -> warehouse.product.v1.ProductListRequest
-	15, // 35: warehouse.product.v1.ProductService.ProductDiscover:input_type -> warehouse.product.v1.ProductDiscoverRequest
-	17, // 36: warehouse.product.v1.ProductService.ProductByIds:input_type -> warehouse.product.v1.ProductByIdsRequest
-	24, // 37: warehouse.product.v1.ProductService.ProductDetail:input_type -> warehouse.product.v1.ProductDetailRequest
-	22, // 38: warehouse.product.v1.ProductService.ProductUpdate:input_type -> warehouse.product.v1.ProductUpdateRequest
-	26, // 39: warehouse.product.v1.ProductService.ProductDelete:input_type -> warehouse.product.v1.ProductDeleteRequest
-	7,  // 40: warehouse.product.v1.ProductService.ProductCreate:output_type -> warehouse.product.v1.ProductCreateResponse
-	14, // 41: warehouse.product.v1.ProductService.ProductList:output_type -> warehouse.product.v1.ProductListResponse
-	16, // 42: warehouse.product.v1.ProductService.ProductDiscover:output_type -> warehouse.product.v1.ProductDiscoverResponse
-	21, // 43: warehouse.product.v1.ProductService.ProductByIds:output_type -> warehouse.product.v1.ProductByIdsResponse
-	25, // 44: warehouse.product.v1.ProductService.ProductDetail:output_type -> warehouse.product.v1.ProductDetailResponse
-	23, // 45: warehouse.product.v1.ProductService.ProductUpdate:output_type -> warehouse.product.v1.ProductUpdateResponse
-	27, // 46: warehouse.product.v1.ProductService.ProductDelete:output_type -> warehouse.product.v1.ProductDeleteResponse
-	40, // [40:47] is the sub-list for method output_type
-	33, // [33:40] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	5,  // 0: warehouse.product.v1.Product.images:type_name -> warehouse.product.v1.ProductImage
+	5,  // 1: warehouse.product.v1.ProductImages.items:type_name -> warehouse.product.v1.ProductImage
+	5,  // 2: warehouse.product.v1.ProductCreateRequest.images:type_name -> warehouse.product.v1.ProductImage
+	4,  // 3: warehouse.product.v1.ProductCreateResponse.product:type_name -> warehouse.product.v1.Product
+	2,  // 4: warehouse.product.v1.ProductListFilter.status:type_name -> warehouse.product.v1.ProductStatus
+	33, // 5: warehouse.product.v1.ProductListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	34, // 6: warehouse.product.v1.ProductListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 7: warehouse.product.v1.ProductListFilterSort.product:type_name -> warehouse.product.v1.ProductRowSort
+	31, // 8: warehouse.product.v1.ProductRowMapItem.map_data:type_name -> warehouse.product.v1.ProductRowMapItem.MapDataEntry
+	35, // 9: warehouse.product.v1.ProductListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	12, // 10: warehouse.product.v1.ProductListResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
+	9,  // 11: warehouse.product.v1.ProductListRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
+	10, // 12: warehouse.product.v1.ProductListRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
+	0,  // 13: warehouse.product.v1.ProductListRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
+	36, // 14: warehouse.product.v1.ProductListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	13, // 15: warehouse.product.v1.ProductListResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
+	37, // 16: warehouse.product.v1.ProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	9,  // 17: warehouse.product.v1.ProductDiscoverRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
+	10, // 18: warehouse.product.v1.ProductDiscoverRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
+	0,  // 19: warehouse.product.v1.ProductDiscoverRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
+	36, // 20: warehouse.product.v1.ProductDiscoverRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	13, // 21: warehouse.product.v1.ProductDiscoverResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
+	37, // 22: warehouse.product.v1.ProductDiscoverResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	19, // 23: warehouse.product.v1.ProductByIdsRequest.filter:type_name -> warehouse.product.v1.ProductByIdsFilter
+	3,  // 24: warehouse.product.v1.ProductByIdsRequest.data_request:type_name -> warehouse.product.v1.ProductByIdsDataType
+	35, // 25: warehouse.product.v1.ProductByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	12, // 26: warehouse.product.v1.ProductByIdsResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
+	20, // 27: warehouse.product.v1.ProductByIdsResponseList.items:type_name -> warehouse.product.v1.ProductByIdsResponseItem
+	32, // 28: warehouse.product.v1.ProductByIdsResponse.items:type_name -> warehouse.product.v1.ProductByIdsResponse.ItemsEntry
+	6,  // 29: warehouse.product.v1.ProductUpdateRequest.images:type_name -> warehouse.product.v1.ProductImages
+	4,  // 30: warehouse.product.v1.ProductUpdateResponse.product:type_name -> warehouse.product.v1.Product
+	4,  // 31: warehouse.product.v1.ProductDetailResponse.product:type_name -> warehouse.product.v1.Product
+	4,  // 32: warehouse.product.v1.ProductRestoreResponse.product:type_name -> warehouse.product.v1.Product
+	11, // 33: warehouse.product.v1.ProductRowMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductRowItem
+	21, // 34: warehouse.product.v1.ProductByIdsResponse.ItemsEntry.value:type_name -> warehouse.product.v1.ProductByIdsResponseList
+	7,  // 35: warehouse.product.v1.ProductService.ProductCreate:input_type -> warehouse.product.v1.ProductCreateRequest
+	14, // 36: warehouse.product.v1.ProductService.ProductList:input_type -> warehouse.product.v1.ProductListRequest
+	16, // 37: warehouse.product.v1.ProductService.ProductDiscover:input_type -> warehouse.product.v1.ProductDiscoverRequest
+	18, // 38: warehouse.product.v1.ProductService.ProductByIds:input_type -> warehouse.product.v1.ProductByIdsRequest
+	25, // 39: warehouse.product.v1.ProductService.ProductDetail:input_type -> warehouse.product.v1.ProductDetailRequest
+	23, // 40: warehouse.product.v1.ProductService.ProductUpdate:input_type -> warehouse.product.v1.ProductUpdateRequest
+	27, // 41: warehouse.product.v1.ProductService.ProductDelete:input_type -> warehouse.product.v1.ProductDeleteRequest
+	29, // 42: warehouse.product.v1.ProductService.ProductRestore:input_type -> warehouse.product.v1.ProductRestoreRequest
+	8,  // 43: warehouse.product.v1.ProductService.ProductCreate:output_type -> warehouse.product.v1.ProductCreateResponse
+	15, // 44: warehouse.product.v1.ProductService.ProductList:output_type -> warehouse.product.v1.ProductListResponse
+	17, // 45: warehouse.product.v1.ProductService.ProductDiscover:output_type -> warehouse.product.v1.ProductDiscoverResponse
+	22, // 46: warehouse.product.v1.ProductService.ProductByIds:output_type -> warehouse.product.v1.ProductByIdsResponse
+	26, // 47: warehouse.product.v1.ProductService.ProductDetail:output_type -> warehouse.product.v1.ProductDetailResponse
+	24, // 48: warehouse.product.v1.ProductService.ProductUpdate:output_type -> warehouse.product.v1.ProductUpdateResponse
+	28, // 49: warehouse.product.v1.ProductService.ProductDelete:output_type -> warehouse.product.v1.ProductDeleteResponse
+	30, // 50: warehouse.product.v1.ProductService.ProductRestore:output_type -> warehouse.product.v1.ProductRestoreResponse
+	43, // [43:51] is the sub-list for method output_type
+	35, // [35:43] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_product_v1_product_proto_init() }
@@ -2082,13 +2460,14 @@ func file_warehouse_product_v1_product_proto_init() {
 		(*ProductByIdsResponseItem_Product)(nil),
 	}
 	file_warehouse_product_v1_product_proto_msgTypes[19].OneofWrappers = []any{}
+	file_warehouse_product_v1_product_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_product_v1_product_proto_rawDesc), len(file_warehouse_product_v1_product_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   27,
+			NumEnums:      4,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

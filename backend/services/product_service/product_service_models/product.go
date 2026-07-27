@@ -24,6 +24,22 @@ type Product struct {
 	// leaves it empty and relies on the denormalised cover above.
 	Images []ProductImage `gorm:"foreignKey:ProductID"`
 
+	// CROSS markup: what another team pays OVER our cost when it sells this product on its own
+	// order. Basis points (1/100 of a percent) — 1250 = 12.50%, 0 = no markup. An integer because it
+	// multiplies money; see the migration for why that matters.
+	CrossMarkupBps uint32 `gorm:"column:cross_markup_bps"`
+
+	// LOCKED: true = ours only, no other team may build an order around it (it drops out of
+	// ProductDiscover). false = available for cross selling, which is how everything behaved before
+	// this column existed.
+	CrossLocked bool `gorm:"column:cross_locked"`
+
+	// RESERVED: the hold-back buffer in units — how many are never offered for sale, so that
+	// available = on_hand - ReservedStock. A property of the ITEM (set once by the catalogue owner,
+	// true wherever it is stocked), which is why it sits here and not on an inventory row. 0 = hold
+	// nothing back.
+	ReservedStock uint32 `gorm:"column:reserved_stock"`
+
 	Deleted   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time

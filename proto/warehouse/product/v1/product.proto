@@ -30,7 +30,12 @@ service ProductService {
   rpc ProductByIds(ProductByIdsRequest) returns (ProductByIdsResponse);
   rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
   rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
+  // ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
+  // Archive for that reason. ProductRestore is the way back.
   rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
+  // ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
+  // archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
+  rpc ProductRestore(ProductRestoreRequest) returns (ProductRestoreResponse);
 }
 
 message Product {
@@ -54,6 +59,16 @@ message Product {
   // ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
   // denormalised cover) so a list never has to join product_images.
   repeated ProductImage images = 10;
+
+  // CROSS markup — see the note above ProductCreateRequest.cross_markup_bps. Basis points:
+  // 1250 = 12.50%. 0 = no markup.
+  uint32 cross_markup_bps = 11;
+
+  // LOCKED — see ProductCreateRequest.cross_locked. true = ours only, no other team may order it.
+  bool cross_locked = 12;
+
+  // RESERVED — see ProductCreateRequest.reserved_stock. Units held back from selling; 0 = none.
+  uint32 reserved_stock = 13;
 }
 
 // ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
@@ -104,6 +119,51 @@ message ProductCreateRequest {
 
   // Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
   repeated ProductImage images = 6 [(buf.validate.field).repeated.max_items = 5];
+
+  // ── CROSS ────────────────────────────────────────────────────────────────────────────────────
+  //
+  // "Cross" is another team using OUR product on THEIR order: they sell it through their own shop,
+  // the goods come out of our stock, and we charge them a MARKUP over our cost for it. The markup is
+  // therefore a property of the product being lent out, set by the team that owns it.
+  //
+  // In BASIS POINTS — 1/100 of a percent, so 1250 = 12.50%. Percent is the format a person types and
+  // reads, and the UI shows exactly that; the wire keeps it as an integer because this number
+  // multiplies money, and a float that rounds differently on two screens becomes an argument between
+  // two teams rather than a display bug.
+  //
+  // 0 = no markup: the other team pays what we paid. That is a real, chooseable answer, which is why
+  // it is not modelled as "unset".
+  uint32 cross_markup_bps = 7 [(buf.validate.field).uint32.lte = 100000];
+
+  // LOCKED — may another team put this product on ITS order?
+  //
+  // false (the default) = yes: it appears in ProductDiscover and another team can build an order
+  // around it, paying cross_markup_bps over our cost. That is how every product has behaved so far.
+  // true = ours only: it drops out of cross-team discovery entirely.
+  //
+  // The field is named for what it DOES to other teams, because that is the question its owner is
+  // answering — "can somebody else sell this?" — and a flag named for the permissive state would
+  // read as a double negative on every screen that shows it.
+  bool cross_locked = 8;
+
+  // ── RESERVED ─────────────────────────────────────────────────────────────────────────────────
+  //
+  // A HOLD-BACK BUFFER, not a quantity: how many units of this product are never offered for sale,
+  // so that `available = on_hand − reserved_stock`. It is the answer to "never sell the last N" —
+  // the margin that keeps a count that drifted, a unit that got damaged on the shelf, or two orders
+  // landing in the same second from turning into an oversell somebody has to apologise for.
+  //
+  // It belongs to the PRODUCT, not to a warehouse: it is a decision about the item ("this one is
+  // fragile / always miscounted / a display piece"), taken once by the person who owns the
+  // catalogue, and it holds wherever the thing is stocked. The physical per-warehouse quantities
+  // stay in inventory_service, which applies this buffer when it computes what is sellable.
+  //
+  // In UNITS, matching how stock is counted everywhere else — a percentage would round to fractions
+  // of a physical object. 0 = hold nothing back, which is the default and a real answer.
+  //
+  // The upper bound is a sanity rail, not a policy: a million units is far past any real buffer and
+  // still catches a quantity typed into the wrong field.
+  uint32 reserved_stock = 9 [(buf.validate.field).uint32.lte = 1000000];
 }
 
 message ProductCreateResponse {
@@ -133,10 +193,28 @@ enum ProductRowSort {
   PRODUCT_ROW_SORT_ID = 3;
 }
 
+// ProductStatus selects which half of the catalogue a list answers over: the live products, or the
+// archived ones. It is the ACTIVE / ARCHIVED tab on the product list.
+//
+// An archived product is not deleted — the row survives, its stock outlives it, and its past orders
+// still name it. What archiving does is take it out of circulation: out of the pickers, out of new
+// orders, out of restocks.
+enum ProductStatus {
+  // UNSPECIFIED means ACTIVE, and must keep meaning that. Every caller that already exists sends no
+  // status (the pickers, the order lines, the restock form), and an archived product must never
+  // appear in a list something is picked FROM — so the safe reading of "unset" is the live half.
+  PRODUCT_STATUS_UNSPECIFIED = 0;
+  PRODUCT_STATUS_ACTIVE = 1;
+  PRODUCT_STATUS_ARCHIVED = 2;
+}
+
 // ProductListFilter carries the NON-scope filters only (the scoped team_id stays top-level on the
 // request — see the scope note in warehouse/common/v1/list.proto).
 message ProductListFilter {
   string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Which half of the catalogue to list. An enum rather than a bool: "discontinued" or "draft" is a
+  // plausible third tab, and a boolean cannot grow into one.
+  ProductStatus status = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ProductListFilterSort {
@@ -159,6 +237,19 @@ message ProductRowItem {
   string default_image_url = 7;
   string default_image_thumbnail_url = 8;
   bool deleted = 9;
+
+  // The CROSS markup another team pays over our cost when it sells this product (basis points,
+  // 1250 = 12.50%). On the row because it is a per-product decision the owner reviews across the
+  // whole catalogue at once — "what am I charging for what" is a list question, not a detail one.
+  uint32 cross_markup_bps = 10;
+
+  // Whether other teams may order this product. On the row because it is edited FROM the list — a
+  // switch per line — rather than by opening each product in turn.
+  bool cross_locked = 11;
+
+  // The hold-back buffer in units. On the row because a list is where "which products am I holding
+  // stock back on, and how much" is actually asked — one product at a time would never surface it.
+  uint32 reserved_stock = 12;
 }
 
 message ProductRowMapItem {
@@ -225,6 +316,9 @@ message ProductDiscoverRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
+  // Shares ProductListFilter with ProductList, but `status` is IGNORED here: discovery is always the
+  // live catalogue. Nobody browses another team's archive to find something to sell, and an archived
+  // product is precisely one its owner has taken out of circulation.
   ProductListFilter filter = 2;
   ProductListFilterSort sort = 3;
   repeated ProductListDataType data_request = 4;
@@ -353,6 +447,20 @@ message ProductUpdateRequest {
   // The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
   // exactly its items (the edit page always sends the full desired set). The first is the cover.
   ProductImages images = 7;
+
+  // The CROSS markup in basis points (1250 = 12.50%). Absent = leave alone; 0 = charge no markup.
+  // Optional rather than a plain uint32 precisely because those two are different instructions, and
+  // a bare 0 could not tell them apart.
+  optional uint32 cross_markup_bps = 8 [(buf.validate.field).uint32.lte = 100000];
+
+  // Absent = leave alone. Present = lock (true) or unlock (false) it for other teams. Optional so a
+  // form that does not show the switch cannot silently unlock everything it saves.
+  optional bool cross_locked = 9;
+
+  // The hold-back buffer in units (see ProductCreateRequest.reserved_stock). Absent = leave alone;
+  // 0 = hold nothing back. Optional for the same reason as the markup: "stop reserving" and "I am
+  // not touching this" are different instructions, and a bare 0 cannot tell them apart.
+  optional uint32 reserved_stock = 10 [(buf.validate.field).uint32.lte = 1000000];
 }
 
 message ProductUpdateResponse {
@@ -405,3 +513,42 @@ message ProductDeleteRequest {
 }
 
 message ProductDeleteResponse {}
+
+// ProductRestore puts an archived product back into the catalogue (`deleted = false`).
+//
+// It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
+// reason no other update can: archiving frees the SKU (the uniqueness index is partial —
+// `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
+// may be holding it. The restore is then REFUSED with the conflicting product named, rather than
+// succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
+// one behind their back is worse than making them choose.
+message ProductRestoreRequest {
+  // Write: the same managers who may archive. Team-level roles are legal — team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Optional NEW sku, which is how a caller resolves the collision above in one step: restore under
+  // a free SKU instead of the taken one. Absent = restore with the SKU it was archived under.
+  optional string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+message ProductRestoreResponse {
+  Product product = 1;
+}

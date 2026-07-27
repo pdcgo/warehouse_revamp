@@ -139,6 +139,15 @@
     "fromOnly": "Dari {{date}}",
     "toOnly": "Sampai {{date}}"
   },
+  "productLines": {
+    "title": "Produk",
+    "sku": "SKU",
+    "name": "Nama",
+    "qty": "Jml",
+    "unitPrice": "Harga satuan",
+    "lineTotal": "Total baris",
+    "total": "Total produk"
+  },
   "datePicker": {
     "clear": "Hapus tanggal"
   },
@@ -256,7 +265,12 @@
       "created": "Produk \"{{sku}}\" dibuat",
       "uploadFailed": "Gagal mengunggah",
       "tooManyImages": "Hanya {{max}} gambar yang diizinkan",
-      "keptFirst": "Menyimpan {{room}} yang pertama."
+      "keptFirst": "Menyimpan {{room}} yang pertama.",
+      "archived": "Produk \"{{sku}}\" diarsipkan",
+      "archiveFailed": "Gagal mengarsipkan",
+      "restored": "Produk \"{{sku}}\" dipulihkan",
+      "restoreFailed": "Gagal memulihkan",
+      "lockFailed": "Gagal mengubah kunci"
     },
     "heading": "Produk",
     "totalStat": "Total produk",
@@ -273,35 +287,123 @@
     "addImages": "Tambah gambar",
     "imagesHelp": "{{used}}/{{max}} gambar. Yang pertama adalah sampul. JPG atau PNG.",
     "table": {
-      "image": "Gambar",
-      "sku": "SKU",
-      "name": "Nama",
-      "description": "Deskripsi",
-      "actions": "Aksi"
-    },
-    "deleteDialog": {
-      "title": "Hapus Produk",
-      "message": "Hapus \"{{sku}}\"? Tindakan ini tidak dapat dibatalkan.",
-      "confirmLabel": "Hapus"
+      "actions": "Aksi",
+      "product": "Produk",
+      "ready": "Siap",
+      "ongoing": "Dalam perjalanan",
+      "reserved": "Dipesan",
+      "oldestBatch": "Batch terlama",
+      "lastOrder": "Pesanan terakhir",
+      "lastRestock": "Restock terakhir",
+      "cross": "Cross",
+      "locked": "Terkunci",
+      "priceRange": "Rentang HPP"
     },
     "detail": {
       "heading": "Detail Produk",
       "noTeam": "Pilih tim untuk melihat produknya.",
       "notFound": "Produk tidak ditemukan.",
-      "noImages": "Tidak ada gambar."
+      "noImages": "Tidak ada gambar.",
+      "tab": {
+        "info": "Info",
+        "price": "Harga",
+        "batch": "Batch",
+        "stockHistory": "Riwayat stok"
+      },
+      "reservedHint": "Tidak pernah dijual, di gudang mana pun produk ini disimpan.",
+      "costHeading": "Biaya produk ini",
+      "costHelp": "Produk tidak punya harga jual — harga yang dibayar pembeli ditentukan per pesanan, di toko yang menjualnya. Ini dua angka yang memang melekat pada katalog.",
+      "crossPrice": "Yang dibayar tim lain",
+      "crossPriceHint": "Harga modal Anda plus markup, per unit.",
+      "crossHeading": "Cross-sell",
+      "crossHelp": "Tim lain menjual produk ANDA lewat tokonya sendiri: barang keluar dari stok Anda, dan mereka membayar harga modal Anda plus markup.",
+      "crossMarkupHint": "Di atas harga modal Anda, per unit.",
+      "lockedHint": "Terkunci membuatnya tidak muncul di pencarian tim lain — hanya milik Anda.",
+      "batchHeading": "Pengiriman",
+      "batchHelp": "Setiap batch adalah satu pengiriman produk ini ke satu gudang, dan masing-masing membekukan harga modal unitnya.",
+      "batchPending": "Menunggu layanan stok — tim penjualan belum bisa membaca batch.",
+      "batch": {
+        "delivery": "Pengiriman",
+        "warehouse": "Gudang",
+        "arrivedOn": "Tiba",
+        "unitCost": "Harga modal",
+        "ready": "Siap",
+        "value": "Nilai"
+      },
+      "historyHeading": "Semua pergerakan",
+      "historyHelp": "Yang tiba, terkirim, dihitung, disesuaikan, rusak atau ditemukan — terbaru dulu. Perpindahan antar rak di satu gudang adalah urusan gudang dan tidak ditampilkan di sini.",
+      "historyPending": "Menunggu layanan stok — tim penjualan belum bisa membaca riwayat stok.",
+      "history": {
+        "when": "Waktu",
+        "what": "Kejadian",
+        "batch": "Batch",
+        "change": "Perubahan",
+        "after": "Sesudah"
+      },
+      "showImage": "Tampilkan gambar {{n}}",
+      "warehouseNote": "Semua angka di bawah hanya untuk {{warehouse}} — bukan total Anda.",
+      "layerPending": "Menunggu layanan stok — tim penjualan belum bisa membaca lapisan harga modal.",
+      "layer": {
+        "unitCost": "Harga modal",
+        "batches": "Batch",
+        "ready": "Siap",
+        "value": "Nilai",
+        "crossPrice": "Harga cross-sell"
+      }
     },
     "field": {
       "sku": "SKU",
       "name": "Nama",
       "description": "Deskripsi",
-      "category": "Kategori"
+      "category": "Kategori",
+      "crossMarkup": "Markup cross",
+      "reservedStock": "Stok cadangan",
+      "crossLocked": "Hanya milik kami"
     },
     "form": {
       "editTitle": "Ubah Produk",
       "newTitle": "Produk Baru",
       "categoryPlaceholder": "Pilih kategori",
-      "categoryHelp": "Setiap produk dikelompokkan di bawah kategori akhir."
-    }
+      "categoryHelp": "Setiap produk dikelompokkan di bawah kategori akhir.",
+      "crossMarkupHelp": "Tambahan yang dibayar tim lain di atas harga modal Anda saat menjual produk ini di pesanan mereka. Kosongkan jika tidak ada.",
+      "crossMarkupInvalid": "Masukkan persen antara 0 dan 1000.",
+      "units": "pcs",
+      "reservedStockHelp": "Jumlah unit yang selalu disisihkan dan tidak dijual, di gudang mana pun produk ini disimpan. Kosongkan jika tidak ada.",
+      "crossLockedHelp": "Aktif: tim lain tidak bisa memasukkan produk ini ke pesanan mereka, dan produk ini tidak muncul di pencarian mereka. Nonaktif: tim mana pun boleh menjualnya dan membayar markup di atas.",
+      "reservedStockInvalid": "Masukkan jumlah unit bulat antara 0 dan 1.000.000."
+    },
+    "tab": {
+      "active": "Aktif",
+      "archived": "Arsip"
+    },
+    "restore": "Pulihkan",
+    "emptyArchived": "Tidak ada produk yang diarsipkan.",
+    "stat": {
+      "ready": "Stok siap",
+      "readyHint": "harga modal",
+      "ongoing": "Stok dalam perjalanan",
+      "ongoingHint": "perkiraan, harga modal",
+      "pcs": "{{n}} pcs",
+      "pending": "Menunggu layanan stok",
+      "lastOrder": "Pesanan terakhir",
+      "lastOrderHint": "penjualan terakhir dari katalog ini",
+      "lastRestock": "Restock terakhir",
+      "lastRestockHint": "stok terakhir yang tiba",
+      "never": "Belum pernah"
+    },
+    "archiveDialog": {
+      "title": "Arsipkan Produk",
+      "message": "Arsipkan \"{{sku}}\"? Produk keluar dari katalog, pemilih produk, dan pesanan baru, lalu pindah ke tab Arsip. Bisa dipulihkan nanti.",
+      "confirmLabel": "Arsipkan"
+    },
+    "restoreDialog": {
+      "title": "Pulihkan Produk",
+      "newSku": "SKU baru",
+      "newSkuHelp": "Pengarsipan membebaskan SKU lama dan produk lain sudah memakainya. Beri SKU yang belum dipakai untuk memulihkannya.",
+      "confirmLabel": "Pulihkan"
+    },
+    "allWarehouses": "Semua gudang",
+    "archive": "Arsipkan"
   },
   "orders": {
     "title": "Pesanan",
@@ -420,7 +522,7 @@
     "selectTeam": "Pilih tim untuk melihat permintaan restoknya.",
     "selectTeamCreate": "Pilih tim untuk membuat permintaan restok.",
     "selectTeamEdit": "Pilih tim untuk mengubah permintaan restok.",
-    "newRequest": "Permintaan restok baru",
+    "newRequest": "Restok baru",
     "newRequestTitle": "Permintaan Restok Baru",
     "editRequestTitle": "Ubah Permintaan Restok",
     "edit": "Ubah",
@@ -429,6 +531,27 @@
     "back": "Kembali",
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
+    "selling": {
+      "subtitle": "Stok yang kamu pesan — biayanya, tujuannya, dan berapa yang benar-benar tiba."
+    },
+    "searchPlaceholder": "Cari restok, resi, pesanan atau SKU",
+    "warehouseAll": "Semua gudang",
+    "stat": {
+      "ongoing": "Dalam perjalanan",
+      "ongoingHint": "pcs dipesan, belum tiba",
+      "ongoingValue": "Nilai dalam perjalanan",
+      "ongoingValueHint": "yang sudah kamu keluarkan untuknya"
+    },
+    "dateField": {
+      "created": "Dibuat",
+      "accepted": "Diterima",
+      "cancelled": "Dibatalkan"
+    },
+    "inbound": {
+      "title": "Restok Masuk",
+      "subtitle": "Kiriman yang menuju gudang ini — terima untuk menghitungnya ke rak.",
+      "empty": "Belum ada kiriman masuk ke gudang ini."
+    },
     "detail": {
       "title": "Permintaan Restok",
       "requestTitle": "Permintaan Restok #{{id}}",
@@ -436,6 +559,8 @@
       "notFound": "Permintaan restok tidak ditemukan.",
       "invalidId": "ID permintaan restok tidak valid.",
       "request": "Permintaan",
+      "delivery": "Kiriman",
+      "created": "Dibuat",
       "sku": "SKU",
       "name": "Nama",
       "unitPrice": "Harga satuan",
@@ -465,13 +590,28 @@
     },
     "table": {
       "status": "Status",
+      "restock": "Restok",
       "warehouse": "Gudang",
+      "destination": "Tujuan",
+      "from": "Dari",
+      "supplier": "Pemasok",
       "requestedBy": "Diminta oleh",
       "product": "Produk",
       "qty": "Jml",
+      "value": "Nilai",
       "shipment": "Pengiriman",
+      "receipt": "Tanda terima",
+      "accepted": "Diterima",
+      "reference": "Referensi",
+      "orderRefValue": "Pesanan {{value}}",
+      "receiptValue": "Resi {{value}}",
+      "by": "oleh {{name}}",
+      "userRef": "Pengguna #{{id}}",
       "actions": "Aksi",
-      "moreProducts": "+{{count}} lainnya",
+      "itemsSummary_one": "{{count}} produk · {{pieces}} pcs",
+      "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
+      "firstAndMore": "{{sku}} +{{count}} lainnya",
+      "shortBy": "kurang {{count}}",
       "noProducts": "Tidak ada produk"
     },
     "form": {

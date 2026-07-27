@@ -128,8 +128,10 @@ export function ProductImagesInput({
 
   return (
     <Stack gap="card" data-testid="product-images-input">
+      {/* Three across at every width: this card is now the narrower right-hand column of the form,
+          where five thumbnails would each be too small to tell two similar photos apart. */}
       {value.length > 0 && (
-        <SimpleGrid columns={{ base: 3, md: 5 }} gap="card">
+        <SimpleGrid columns={3} gap="card">
           {value.map((img, i) => (
             <Box key={`${img.url}-${i}`} position="relative" borderWidth="1px" borderRadius="md" overflow="hidden">
               <Image

@@ -136,6 +136,15 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   }
   if (teamType === TeamType.SELLING) {
     menu.push(PRODUCTS_GROUP);
+    // Inventories sits DIRECTLY under Products for a selling team, because for that team the two are
+    // one subject read in one sitting: the product list now shows the stock behind each row (ready,
+    // ongoing, oldest batch), and every answer to "why is this empty" — the restock, the placement,
+    // the supplier — is in this menu. Leaving it below the money section made a person cross the
+    // whole sidebar to follow a question they were already asking.
+    //
+    // A WAREHOUSE keeps it further down (see below): stock is not a footnote to a catalogue there,
+    // it is the job, and its Inventories group holds different children.
+    menu.push(inventoriesFor(teamType));
   }
 
   // Shops and orders are SELLING-team concepts (#66/#68).
@@ -170,9 +179,10 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(SETTLEMENT);
   }
 
-  // Inventories sub-menu — restock + placements — for the two team types that work with stock (#95).
-  // Its children depend on the team type: a warehouse also gets Racks (#129).
-  if (teamType === TeamType.WAREHOUSE || teamType === TeamType.SELLING) {
+  // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team
+  // has already had its own (differently populated) Inventories group pushed directly under Products
+  // above, which is where that team reads it from.
+  if (teamType === TeamType.WAREHOUSE) {
     menu.push(inventoriesFor(teamType));
   }
 

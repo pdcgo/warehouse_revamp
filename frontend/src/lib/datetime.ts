@@ -103,3 +103,38 @@ export function monthGrid(viewMonth: Date): Date[] {
     (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i),
   );
 }
+
+/**
+ * unix seconds → a short human date ("25 Jul 2026"). `0n` (and anything below) is the RPC's "never",
+ * and renders as an em dash — the same glyph an UNKNOWN uses, because to a reader both mean "there
+ * is no date here", and the caller that needs to tell them apart already knows which it is holding.
+ */
+export function formatUnixDate(unix: bigint): string {
+  if (unix <= 0n) return "—";
+
+  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/**
+ * unix seconds → a short human date AND TIME ("25 Jul 2026, 14:30"). Same "never" contract as
+ * {@link formatUnixDate}.
+ *
+ * Use it where the CLOCK matters and not only the day: two restocks raised the same morning, or a
+ * delivery accepted at 17:55 that somebody remembers arriving "at the end of the day". Where only
+ * the day is meaningful, prefer formatUnixDate — a time nobody needs is noise in a table cell.
+ */
+export function formatUnixDateTime(unix: bigint): string {
+  if (unix <= 0n) return "—";
+
+  return new Date(Number(unix) * 1000).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

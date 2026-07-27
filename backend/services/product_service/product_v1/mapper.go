@@ -26,6 +26,9 @@ func toProto(p *product_service_models.Product) *productv1.Product {
 		DefaultImageThumbnailUrl: p.DefaultImageThumbnailURL,
 		Images:                   images,
 		Deleted:                  p.Deleted,
+		CrossMarkupBps:           p.CrossMarkupBps,
+		CrossLocked:              p.CrossLocked,
+		ReservedStock:            p.ReservedStock,
 	}
 }
 
@@ -68,6 +71,9 @@ func productRowItem(p *product_service_models.Product) *productv1.ProductRowItem
 		DefaultImageUrl:          p.DefaultImageURL,
 		DefaultImageThumbnailUrl: p.DefaultImageThumbnailURL,
 		Deleted:                  p.Deleted,
+		CrossMarkupBps:           p.CrossMarkupBps,
+		CrossLocked:              p.CrossLocked,
+		ReservedStock:            p.ReservedStock,
 	}
 }
 

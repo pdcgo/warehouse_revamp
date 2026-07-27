@@ -12,19 +12,25 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
 )
 
-// ProductList returns the scoped team's active products, paginated. The filter's `q` filters by name
-// or SKU; `sort` orders the page (default newest-first); `data_request` selects which slices the
-// response carries per product. See the guideline list shape in guidelines/service-guideline.md.
+// ProductList returns one half of the scoped team's catalogue, paginated — ACTIVE by default, or the
+// ARCHIVED half when the filter asks for it (the two tabs on the product list). The filter's `q`
+// filters by name or SKU; `sort` orders the page (default newest-first); `data_request` selects which
+// slices the response carries per product. See the guideline list shape in
+// guidelines/service-guideline.md.
 func (s *Service) ProductList(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductListRequest],
 ) (*connect.Response[productv1.ProductListResponse], error) {
 	page := req.Msg.GetPage()
 
+	// UNSPECIFIED is ACTIVE, not "both": every caller that predates the status filter sends nothing,
+	// and an archived product must not reappear in a picker because a field was left unset.
+	archived := req.Msg.GetFilter().GetStatus() == productv1.ProductStatus_PRODUCT_STATUS_ARCHIVED
+
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), false)
+		Where("team_id = ? AND deleted = ?", req.Msg.GetTeamId(), archived)
 
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"

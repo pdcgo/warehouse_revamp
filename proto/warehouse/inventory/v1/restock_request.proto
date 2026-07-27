@@ -140,6 +140,29 @@ message RestockRequest {
   RestockPaymentType payment_type = 17;
   // A free-text note about this restock (#127).
   string note = 18;
+
+  // WHO DID WHAT, AND WHEN (owner). A restock is handled by two teams and at least two people, and
+  // until now the record said neither: a short delivery had no one to ask about it on either side.
+  //
+  // Both are opaque user_service ids — no FK, like every cross-service id here — and both are 0 when
+  // nobody has acted yet or when the row predates this. The caller resolves names through
+  // UserByIDs; they are deliberately NOT snapshotted onto the row, because unlike a product's
+  // sku/name (which must keep reading as it was ordered) a person's name is not part of what was
+  // agreed, and a renamed user should read with their current name everywhere.
+  //
+  // Taken from the CALLER'S IDENTITY, never from the request body: a client that could nominate its
+  // own `created_by` could file somebody else's name against a delivery that never arrived.
+  uint64 created_by_user_id = 20;
+  // Who ACCEPTED the delivery — the warehouse person who counted it (#133). 0 until it is accepted.
+  uint64 accepted_by_user_id = 21;
+
+  // WHEN it was accepted / cancelled, unix seconds; 0 if it has not been. `created_at_unix` above is
+  // the third of the set.
+  //
+  // These are stored rather than derived because the status alone cannot say when it changed, and
+  // "everything that landed last week" is the question a buyer reconciling invoices actually asks.
+  int64 accepted_at_unix = 22;
+  int64 cancelled_at_unix = 23;
 }
 
 message RestockRequestCreateRequest {
@@ -216,6 +239,47 @@ message RestockRequestListFilter {
   RestockRequestStatus status = 1 [(buf.validate.field).enum.defined_only = true];
   // Only requests carrying THIS product on one of their lines (#159). 0 = no filter. Server-side.
   uint64 product_id = 2;
+
+  // Only restocks going to THIS warehouse; 0 = every warehouse (owner). A selling team ships to
+  // several, and "what is going to Jakarta" is a different question from "what is going anywhere".
+  //
+  // Meaningless on the warehouse side, where it could only ever equal the caller's own team — that
+  // screen does not offer it.
+  uint64 warehouse_id = 3;
+
+  // THE PERIOD, and WHICH DATE it is about (owner). Both bounds 0 = every restock ever.
+  //
+  // The field selector is the point: a restock has three dates that answer three different
+  // questions — when it was raised, when it landed, when it was called off — and a range with no
+  // named field would silently pick one and mislabel the other two. UNSPECIFIED reads as CREATED,
+  // which is the only date every row has.
+  //
+  // Rows with no such date are EXCLUDED rather than kept: "accepted last week" cannot be true of a
+  // request nobody has accepted, and letting the pending ones through would answer a different
+  // question than the one asked.
+  //
+  // Server-side, like every filter here — the list is paginated, so a client-side range would narrow
+  // the loaded page only and leave `total_items` counting the unfiltered set.
+  RestockDateField date_field = 4 [(buf.validate.field).enum.defined_only = true];
+  int64 from_unix = 5;
+  int64 to_unix = 6;
+
+  // FREE TEXT over what a person actually remembers about a restock: its number, the courier's
+  // tracking number, the order it was for, and the SKU or product name on one of its lines. Empty =
+  // no search. Case-insensitive, substring — except the number, which matches a whole id only
+  // ("#31" must not find restock 310, or a search for one delivery returns ten).
+  string q = 7 [(buf.validate.field).string.max_len = 100];
+}
+
+// Which of a restock's three dates a range filter is about (owner). APPEND ONLY, like every enum
+// here.
+enum RestockDateField {
+  // Reads as CREATED — see RestockRequestListFilter.date_field.
+  RESTOCK_DATE_FIELD_UNSPECIFIED = 0;
+  RESTOCK_DATE_FIELD_CREATED = 1;
+  // When the warehouse accepted the delivery — the moment the goods became stock (#133).
+  RESTOCK_DATE_FIELD_ACCEPTED = 2;
+  RESTOCK_DATE_FIELD_CANCELLED = 3;
 }
 
 enum RestockRequestListDataType {

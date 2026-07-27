@@ -111,10 +111,12 @@ test("Create with image: the upload succeeds and the cover shows in the list (#8
 
   await page.getByTestId("product-edit-save").click();
 
-  // Back on the list, the product shows its denormalised cover thumbnail.
+  // Back on the list, the product shows its denormalised cover thumbnail. The row draws itself with
+  // the shared ProductListItem now, so the cover is that component's avatar image — a product with
+  // none falls back to the package ICON and renders no <img> at all, which is what this asserts.
   await expect(page.getByTestId("products-table")).toBeVisible();
   await expect(page.getByTestId(`product-row-${SKU_IMG}`)).toBeVisible();
-  await expect(page.getByTestId(`product-cover-${SKU_IMG}`)).toBeVisible();
+  await expect(page.getByTestId(`product-row-${SKU_IMG}`).locator("img")).toBeVisible();
 });
 
 test("Detail: the product detail page opens from the row (#83)", async ({ page }) => {

@@ -105,3 +105,41 @@ func TestProductDetail_CrossTeamIsolation(t *testing.T) {
 		t.Fatalf("cross-team detail code = %v, want NotFound", connect.CodeOf(err))
 	}
 }
+
+// An ARCHIVED product still opens. The detail page is where somebody stands when they decide to
+// restore one, so answering NotFound would make Unarchive a button nothing could ever reach — and
+// would claim a row that still owns stock and order history does not exist.
+func TestProductDetail_ReturnsArchived(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	id := insertProduct(t, db, 2, "SKU-ARCH", "Archived product")
+
+	_, err := svc.ProductDelete(context.Background(), connect.NewRequest(&productv1.ProductDeleteRequest{
+		TeamId: 2, ProductId: id,
+	}))
+	if err != nil {
+		t.Fatalf("ProductDelete: %v", err)
+	}
+
+	resp, err := svc.ProductDetail(context.Background(), connect.NewRequest(&productv1.ProductDetailRequest{
+		TeamId: 2, ProductId: id,
+	}))
+	if err != nil {
+		t.Fatalf("ProductDetail on archived: %v", err)
+	}
+
+	// `deleted` is how the caller tells the two apart — the screen withdraws Edit and offers Restore
+	// off exactly this flag, so it has to survive the round trip rather than merely not error.
+	if !resp.Msg.GetProduct().GetDeleted() {
+		t.Fatalf("archived product came back with deleted = false")
+	}
+
+	// Scope still holds: archived does not mean public.
+	_, err = svc.ProductDetail(context.Background(), connect.NewRequest(&productv1.ProductDetailRequest{
+		TeamId: 3, ProductId: id,
+	}))
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("cross-team archived detail code = %v, want NotFound", connect.CodeOf(err))
+	}
+}

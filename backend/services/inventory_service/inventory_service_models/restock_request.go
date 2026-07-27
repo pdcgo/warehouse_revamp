@@ -37,6 +37,20 @@ type RestockRequest struct {
 	PaymentType  string
 	Note         string
 
+	// WHO handled it, as opaque user_service ids (no FK, like the team ids above). Both 0 until the
+	// act happens — and 0 on any row raised before 00018, which is deliberately not backfilled: a
+	// guessed id would put a real person's name against work they may not have done.
+	//
+	// Set from the CALLER'S IDENTITY in the handler, never from the request body.
+	CreatedByUserID  uint64
+	AcceptedByUserID uint64
+
+	// WHEN it was accepted / cancelled. Pointers because "has not been" is a real state and NULL is
+	// how the column says it — a zero time.Time would read as the first second of year 1, which sorts
+	// and filters as a date somebody could actually ask about.
+	AcceptedAt  *time.Time
+	CancelledAt *time.Time
+
 	// The lines. GORM loads them via RestockRequestID.
 	Items []RestockRequestItem `gorm:"foreignKey:RestockRequestID"`
 

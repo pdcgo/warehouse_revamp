@@ -372,3 +372,76 @@ send" drifts from the handler's idea of "acceptable".
 The COD fee feeds the cost live (#155), because the person entering it is entitled to see what it does
 before committing. The screen's arithmetic mirrors `StockCost`'s SQL — same divisor (sellable units),
 same rounding (down) — so the figure on screen is the one an order will actually book.
+
+---
+
+## OwnerStockByIds / OwnerStockStat — the catalogue owner's stock (the selling team's product list)
+
+Every other read in this service answers **for a warehouse**: the caller is the building, and
+`team_id` is that building's team. These two answer **for the selling team that owns the goods** —
+*how much of my product is on a shelf, anywhere, and what is it worth* — which no RPC could answer
+before.
+
+### Ownership is derived, never asserted
+
+`inventory_service` does not know who owns a product: `product_id` is an opaque id and no stock row
+carries an owner. What it does know is **how the stock got there** — every unit arrives on an accepted
+restock line, and a restock names the team that raised it:
+
+```mermaid
+flowchart LR
+    SSB[stock_shelf_batches — units on a shelf] --> B[stock_batches — one delivery's units, frozen HPP]
+    B --> RI[restock_request_items]
+    RI --> RR["restock_requests.requesting_team_id — THE OWNER"]
+```
+
+That chain **is** the authorization. A caller passing another team's product id joins to none of its
+rows and gets nothing back — no ownership column that could disagree with the restock it came from,
+and no trust placed in the client.
+
+### The page's three reads
+
+The product list is one screen over three services, and each answers for the **whole page** rather
+than per row — a per-row fetch is an N+1 that only reveals itself once a real catalogue is loaded.
+
+```mermaid
+sequenceDiagram
+    participant UI as Products (selling team)
+    participant P as product_service
+    participant I as inventory_service
+    participant S as selling_service
+
+    UI->>P: ProductList (team, ACTIVE or ARCHIVED, q, page)
+    P-->>UI: the page's products + ids
+
+    par one round trip, two services
+        UI->>I: OwnerStockByIds (team, ids, warehouse lens)
+        I-->>UI: ready, ongoing, HPP spread, oldest batch, last restock
+    and
+        UI->>S: OrderProductActivityByIds (team, ids)
+        S-->>UI: last order, units sold in 30d
+    end
+```
+
+The stat row above the tabs is the same three questions asked of the whole catalogue —
+`ProductList` for the count, `OwnerStockStat`, `OrderActivityStat` — and deliberately **not** a total
+of the visible page: a headline that moved every time somebody typed in the search box would be
+describing the search rather than the business.
+
+### The rules these reads keep
+
+| Rule | Why |
+| --- | --- |
+| Unknown-cost batches add **units, not money** | A batch whose HPP was never recorded is not free (#74). It counts in `ready_qty` and contributes nothing to `ready_value`; `cost_known` says whether the spread means anything at all. |
+| The cost **spread**, not an average | The same product genuinely arrives at different prices. The average is exactly what hides that. |
+| Oldest batch = oldest with **ready units** | A delivery that has sold out is not old stock; it is gone. Dating the column from it would flag healthy products as stale. |
+| Ongoing is an **estimate** and never summed into ready | Its cost settles on what actually lands (#74). |
+| A **cancelled** order is not a sale | On the selling side, both `last_order_unix` and the 30-day units exclude cancelled orders — otherwise a dead product reads as alive on the strength of a mistake somebody corrected. |
+| A product with nothing behind it is **absent**, not zeroed | The caller knows which ids it asked about. "Nothing to say" travels lighter, and the UI renders it as *unknown* rather than a confident `0` beside a full shelf. |
+
+### The warehouse lens
+
+`filter.warehouse_id = 0` means every warehouse holding this team's goods. Set it and **every figure
+restates as that one building's** — which is the honest reading, because stock is held per warehouse
+and a total can never tell you whether *one* of them can fill an order. The UI says so out loud by
+appending the warehouse's name to each stock column header.

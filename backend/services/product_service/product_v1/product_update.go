@@ -40,6 +40,23 @@ func (s *Service) ProductUpdate(
 		updates["category_id"] = req.Msg.GetCategoryId()
 	}
 
+	// Present-and-0 means "charge nothing", absent means "leave whatever it was" — two different
+	// instructions that a non-optional field could not tell apart.
+	if req.Msg.CrossMarkupBps != nil {
+		updates["cross_markup_bps"] = req.Msg.GetCrossMarkupBps()
+	}
+
+	// The list edits this one directly, a switch per row, so it arrives on its own with nothing else
+	// in the message — which is exactly why every other field has to be absent-means-untouched.
+	if req.Msg.CrossLocked != nil {
+		updates["cross_locked"] = req.Msg.GetCrossLocked()
+	}
+
+	// Present-and-0 means "stop holding anything back"; absent means "leave the buffer alone".
+	if req.Msg.ReservedStock != nil {
+		updates["reserved_stock"] = req.Msg.GetReservedStock()
+	}
+
 	// A present wrapper (even with zero items) means "replace the gallery with exactly these".
 	replaceImages := req.Msg.Images != nil
 	newImages := req.Msg.GetImages().GetItems()

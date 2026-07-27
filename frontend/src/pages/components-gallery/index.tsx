@@ -33,6 +33,10 @@ import {
   description as paymentTypeSelectDescription,
 } from "../../components/PaymentTypeSelect";
 import { ShippingBadge, description as shippingBadgeDescription } from "../../components/ShippingBadge";
+import {
+  ProductLinesPopover,
+  description as productLinesPopoverDescription,
+} from "../../components/ProductLinesPopover";
 import { OrderStatusBadge, description as orderStatusBadgeDescription } from "../../components/OrderStatusBadge";
 import {
   RestockStatusBadge,
@@ -760,6 +764,35 @@ const ENTRIES: Entry[] = [
         ].map((code) => (
           <ShippingBadge key={code || "empty"} code={code} />
         ))}
+      </Flex>
+    ),
+  },
+  {
+    id: "product-lines-popover",
+    title: "ProductLinesPopover",
+    description: productLinesPopoverDescription,
+    render: () => (
+      // Both modes side by side, because which one is right depends on WHO is reading: the buying
+      // side sees the money, a warehouse's counting queue does not.
+      <Flex gap="6" wrap="wrap" align="center">
+        <ProductLinesPopover
+          testId="gallery-lines-priced"
+          label="KAOS-CC30-HTM-L +2 more"
+          lines={[
+            { id: "1", sku: "KAOS-CC30-HTM-L", name: "Kaos Polos Cotton Combed 30s — Hitam", quantity: 120n, totalPrice: 5040000n },
+            { id: "2", sku: "KAOS-CC30-PTH-L", name: "Kaos Polos Cotton Combed 30s — Putih", quantity: 90n, totalPrice: 3780000n },
+            { id: "3", sku: "KMJ-FLN-MRH-M", name: "Kemeja Flanel Kotak — Merah", quantity: 63n, totalPrice: 5166000n },
+          ]}
+        />
+        <ProductLinesPopover
+          testId="gallery-lines-plain"
+          showPrices={false}
+          label="TMB-500-005 +1 more"
+          lines={[
+            { id: "1", sku: "TMB-500-005", name: "Tumbler Stainless 500ml", quantity: 60n, totalPrice: 4800000n },
+            { id: "2", sku: "KPH-L-001", name: "Kaos Polos Hitam — L", quantity: 120n, totalPrice: 4800000n },
+          ]}
+        />
       </Flex>
     ),
   },

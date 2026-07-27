@@ -11,10 +11,15 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
 )
 
-// ProductDiscover lists active products across ALL teams (open cross-team discovery, #106), newest
-// first, paginated, searchable by name/SKU. Unlike ProductList it does NOT filter by team — the
-// request's team_id only authorizes the caller (use_scope). Each returned Product still carries its
-// owning team_id.
+// ProductDiscover lists active, UNLOCKED products across ALL teams (cross-team discovery, #106),
+// newest first, paginated, searchable by name/SKU. Unlike ProductList it does NOT filter by team —
+// the request's team_id only authorizes the caller (use_scope). Each returned Product still carries
+// its owning team_id.
+//
+// A LOCKED product is absent here, and that is where the lock bites: discovery is how another team
+// finds something to build an order around, so a product its owner has kept back must not be in the
+// list in the first place. The owner's own ProductList still shows it — locking is about other
+// teams, not about hiding it from yourself.
 func (s *Service) ProductDiscover(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductDiscoverRequest],
@@ -24,7 +29,7 @@ func (s *Service) ProductDiscover(
 	query := s.db.
 		WithContext(ctx).
 		Model(&product_service_models.Product{}).
-		Where("deleted = ?", false)
+		Where("deleted = ? AND cross_locked = ?", false, false)
 
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"

@@ -64,6 +64,19 @@ service InventoryService {
 
   // The goods-received receipt for ONE delivery (#219) — every product line that arrived on it.
   rpc BatchReceipt(BatchReceiptRequest) returns (BatchReceiptResponse);
+
+  // ── The CATALOGUE OWNER's view of its own stock ────────────────────────────────────────────────
+  //
+  // Every read above answers for a WAREHOUSE: the caller is the building, and team_id is the building's
+  // team. These two answer for the SELLING TEAM that owns the goods — "how much of MY product is on a
+  // shelf, anywhere, and what is it worth" — which no RPC could answer before.
+  //
+  // Ownership is not taken on trust and is not a new column: stock arrives through an accepted restock
+  // line, so every batch traces batch → restock_request_item → restock_request.requesting_team_id.
+  // Both reads join through that chain, which means a caller passing another team's product id gets
+  // zeros rather than their numbers.
+  rpc OwnerStockByIds(OwnerStockByIdsRequest) returns (OwnerStockByIdsResponse);
+  rpc OwnerStockStat(OwnerStockStatRequest) returns (OwnerStockStatResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -1168,4 +1181,153 @@ message BatchReceiptResponse {
   repeated BatchReceiptLine lines = 8;
   int64 total_accepted = 9; // Σ accepted
   int64 total_value = 10; // Σ line_cost over known-cost lines only (#74)
+}
+
+// ── OwnerStock — the selling team's own stock, across the warehouses holding it ───────────────────
+
+// OwnerStockItem is everything the owner's product list shows for ONE product. Read together because
+// they are read together: a row that had to make five calls to fill itself would make five hundred on
+// a page of a hundred.
+message OwnerStockItem {
+  // READY — units on a shelf, sellable now, and what they COST US (`ready_value`). Value counts
+  // known-cost layers only (#74): a batch whose cost never got recorded adds units without adding
+  // money, because valuing it at 0 would quietly understate the stock.
+  int64 ready_qty = 1;
+  int64 ready_value = 2;
+
+  // ONGOING — ordered on restocks the warehouse has not accepted yet, and what those lines are
+  // expected to cost. An ESTIMATE until the goods land: the cost settles on what actually arrives
+  // (#74), which is why it is never added to ready_value.
+  int64 ongoing_qty = 3;
+  int64 ongoing_value_est = 4;
+
+  // The HPP SPREAD of the ready units — cheapest and dearest unit cost still on a shelf. A range, not
+  // an average, because the same product genuinely arrives at different prices and the average is
+  // exactly what hides that.
+  //
+  // `cost_known` is false when NO ready unit has a recorded cost; the two figures are then 0 and mean
+  // nothing. Without it a caller cannot tell "we do not know" from "it cost nothing".
+  int64 cost_min = 5;
+  int64 cost_max = 6;
+  bool cost_known = 7;
+
+  // When the OLDEST units still on a shelf arrived. 0 = nothing on hand. This is what finds stock that
+  // has stopped moving, so it is the oldest batch with READY units, not the oldest batch ever.
+  int64 oldest_batch_unix = 8;
+
+  // When stock last ARRIVED for this product. 0 = never.
+  int64 last_restock_unix = 9;
+}
+
+message OwnerStockMapItem {
+  map<uint64, OwnerStockItem> map_data = 1;
+}
+
+enum OwnerStockDataType {
+  OWNER_STOCK_DATA_TYPE_UNSPECIFIED = 0;
+  // STOCK: the OwnerStockItem above — the only slice so far, and the default.
+  OWNER_STOCK_DATA_TYPE_STOCK = 1;
+}
+
+// OwnerStockByIdsFilter carries the NON-scope inputs. The scoped team_id stays top-level.
+message OwnerStockByIdsFilter {
+  // The products to answer for — the ids the caller already holds from its own ProductList. It does
+  // not page for the same reason ProductByIds does not: the caller supplies the set, so the response
+  // can never exceed the ask, and max_items is what stops this becoming a bulk export.
+  repeated uint64 product_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+
+  // The WAREHOUSE LENS. 0 = every warehouse holding this team's goods (the total). Set it and every
+  // figure describes that one building — which is the honest reading, because stock is held per
+  // warehouse and a total can never tell you whether ONE of them can fill an order.
+  uint64 warehouse_id = 2;
+}
+
+message OwnerStockByIdsRequest {
+  // Read: the SELLING side. A warehouse is deliberately absent — it has its own screens for what it
+  // holds, and this one answers "what do I own", which is not a question a warehouse asks.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // The OWNING team — both the authorization scope and the filter. Unlike ProductByIds, where team_id
+  // only authorizes, here it also decides which stock is yours: the join runs through
+  // restock_requests.requesting_team_id, so this is the same team twice on purpose.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  OwnerStockByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Which slices to load per product. Empty defaults to STOCK.
+  repeated OwnerStockDataType data_request = 3;
+}
+
+message OwnerStockByIdsResponseItem {
+  oneof d {
+    OwnerStockMapItem stock = 1;
+  }
+}
+
+message OwnerStockByIdsResponseList {
+  repeated OwnerStockByIdsResponseItem items = 1;
+}
+
+message OwnerStockByIdsResponse {
+  // Keyed by product id. A product with no stock anywhere is ABSENT rather than a row of zeros — the
+  // caller already knows which ids it asked about, and "nothing to say" travels lighter.
+  map<uint64, OwnerStockByIdsResponseList> items = 1;
+}
+
+// OwnerStockPreview is the STAT above the product list — the same facts as OwnerStockItem, summed
+// over the whole catalogue rather than per product.
+//
+// The cost SPREAD is deliberately absent: cheapest-to-dearest across every product in a catalogue is
+// a number about nothing.
+message OwnerStockPreview {
+  int64 ready_qty = 1;
+  int64 ready_value = 2;
+  int64 ongoing_qty = 3;
+  int64 ongoing_value_est = 4;
+  // The last time ANY of this team's stock arrived. 0 = never.
+  int64 last_restock_unix = 5;
+}
+
+message OwnerStockStatFilter {
+  // Same lens as the list — 0 = every warehouse.
+  uint64 warehouse_id = 1;
+}
+
+message OwnerStockStatRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OwnerStockStatFilter filter = 2;
+}
+
+message OwnerStockStatResponse {
+  OwnerStockPreview preview = 1;
 }

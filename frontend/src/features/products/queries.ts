@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { categoryClient, inventoryClient, productClient } from "../../api/clients";
+import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { ProductListDataType, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
 import {
+  activityFromByIds,
+  ownerStockFromByIds,
   productByIdsRowData,
   productListRowData,
   productsFromByIds,
   productsFromList,
 } from "./adapt";
+import type { OwnerStockRow, ProductActivityRow } from "./adapt";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
 
@@ -16,6 +20,15 @@ interface ProductListArgs {
   q: string;
   page: number;
   pageSize: number;
+  /** Which half of the catalogue — the ACTIVE tab or the ARCHIVED one. Defaults to ACTIVE. */
+  status?: ProductStatus;
+  /**
+   * The warehouse LENS (0n = all). It is in the KEY and not yet in the request: it will decide which
+   * warehouse the stock figures describe once inventory_service exposes an owner-side read, and two
+   * lenses are two different answers that must never share a cache entry — wiring the key now means
+   * that day changes the queryFn only.
+   */
+  warehouseId?: bigint;
 }
 
 // The team's catalogue — or, for a WAREHOUSE, what it has been asked to hold.
@@ -28,9 +41,19 @@ interface ProductListArgs {
 // `isWarehouse` is in the key even though it is derived from the team. It changes WHICH RPC answers,
 // so two cache entries that disagree about that must not collide — and a key that reads
 // `{ isWarehouse: true }` says why the entry exists without tracing it back through team type.
-export function useProducts({ teamId, isWarehouse, q, page, pageSize }: ProductListArgs) {
+export function useProducts({
+  teamId,
+  isWarehouse,
+  q,
+  page,
+  pageSize,
+  status = ProductStatus.ACTIVE,
+  warehouseId = 0n,
+}: ProductListArgs) {
   return useQuery({
-    queryKey: key.products(teamId, { isWarehouse, q, page, pageSize }),
+    // `status` is in the key because the two tabs are two different answers: caching the archived
+    // page under the active one would show a dead SKU where the live catalogue belongs.
+    queryKey: key.products(teamId, { isWarehouse, q, page, pageSize, status, warehouseId: warehouseId.toString() }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       if (isWarehouse) {
@@ -57,14 +80,94 @@ export function useProducts({ teamId, isWarehouse, q, page, pageSize }: ProductL
 
       const res = await productClient.productList({
         teamId: teamId!,
-        filter: { q },
+        filter: { q, status },
         dataRequest: productListRowData(),
         page: { page, limit: pageSize },
       });
 
+      const products = productsFromList(res.items, res.ids);
+      const totalItems = Number(res.pageInfo?.totalItems ?? 0n);
+
+      // The catalogue row carries no stock and no sales — those live in inventory_service and
+      // selling_service, and each answers for the whole PAGE at once rather than per row. Two
+      // batched by-ids calls, not forty: a per-row fetch is an N+1 that only shows itself once a
+      // real catalogue is loaded.
+      //
+      // They run alongside each other because neither needs the other's answer, and they are
+      // deliberately NOT their own useQuery: a row half-filled with stock and no dates (or the
+      // reverse) is a flicker on every page change, and one entry means the three arrive together.
+      if (res.ids.length === 0) {
+        return { products, totalItems, stock: emptyStock, activity: emptyActivity };
+      }
+
+      const [stock, activity] = await Promise.all([
+        inventoryClient.ownerStockByIds({
+          teamId: teamId!,
+          // 0n = every warehouse holding this team's goods; a chosen one restates every figure.
+          filter: { productIds: res.ids, warehouseId },
+        }),
+        orderClient.orderProductActivityByIds({
+          teamId: teamId!,
+          filter: { productIds: res.ids },
+        }),
+      ]);
+
       return {
-        products: productsFromList(res.items, res.ids),
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+        products,
+        totalItems,
+        stock: ownerStockFromByIds(stock),
+        activity: activityFromByIds(activity),
+      };
+    },
+  });
+}
+
+// Shared empties, so a page with no rows still hands the table the same shape (and does not mint a
+// new Map on every render for React to treat as a change).
+const emptyStock: ReadonlyMap<string, OwnerStockRow> = new Map();
+const emptyActivity: ReadonlyMap<string, ProductActivityRow> = new Map();
+
+// The catalogue's headline numbers, for the stat row that sits ABOVE the tabs.
+//
+// Its own query, deliberately: the stats are not the tab's. They describe the whole catalogue, so
+// they must not move when you switch to Archived or type in the search box — which is exactly what
+// would happen if the visible table's page were their source.
+//
+// It asks for one row of the GENERAL slice: all it wants is `page_info.total_items`, and the cheapest
+// honest way to get a count from a list RPC is the smallest page of the narrowest slice.
+//
+// Three services answer it — the catalogue counts itself, inventory totals the stock behind it, and
+// selling says when it last sold — so the three go out together and land as one entry. The warehouse
+// lens narrows the STOCK half only: how many products you have, and when you last sold one, are not
+// facts about a building.
+export function useProductStats(args: { teamId: bigint | undefined; warehouseId?: bigint }) {
+  const { teamId, warehouseId = 0n } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { stats: true, warehouseId: warehouseId.toString() }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const [count, stock, activity] = await Promise.all([
+        // One row of the narrowest slice: all this wants is `page_info.total_items`, and that is the
+        // cheapest honest way to get a count out of a list RPC.
+        productClient.productList({
+          teamId: teamId!,
+          filter: { status: ProductStatus.ACTIVE },
+          dataRequest: [ProductListDataType.GENERAL],
+          page: { page: 1, limit: 1 },
+        }),
+        inventoryClient.ownerStockStat({ teamId: teamId!, filter: { warehouseId } }),
+        orderClient.orderActivityStat({ teamId: teamId! }),
+      ]);
+
+      const preview = stock.preview;
+
+      return {
+        activeProducts: Number(count.pageInfo?.totalItems ?? 0n),
+        ready: preview ? { qty: preview.readyQty, value: preview.readyValue } : undefined,
+        ongoing: preview ? { qty: preview.ongoingQty, value: preview.ongoingValueEst } : undefined,
+        lastRestockUnix: preview?.lastRestockUnix,
+        lastOrderUnix: activity.preview?.lastOrderUnix,
       };
     },
   });
@@ -126,6 +229,57 @@ export function useProductDetail(args: { teamId: bigint | undefined; productId: 
   });
 }
 
+// The stock and selling facts for ONE product — the detail page's half of what the list gets per
+// page. The same two by-ids reads, asked for a single id.
+//
+// A SEPARATE entry from useProductDetail, not folded into it: the catalogue record is one service's
+// answer and cannot fail with the other two, while these two cross a service boundary each. Joined,
+// an inventory hiccup would blank the product's name and category as well — the exact failure #176
+// fixed on the warehouse product page by splitting one query into two.
+//
+// Both are absent-means-unknown, never zero: OwnerStockByIds omits a product it has nothing to say
+// about, and "no stock row" is not the same claim as "none on a shelf" (#74).
+export function useProductActivity(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  /** The warehouse LENS — 0n is everywhere. It restates the stock half; sales are not per-building. */
+  warehouseId?: bigint;
+}) {
+  const { teamId, productId, warehouseId = 0n } = args;
+
+  return useQuery({
+    // The lens is in the key because a warehouse's figures are a different answer, not a filtered
+    // view of the same one — serving one under the other is how a building's stock reads as a total.
+    queryKey: key.products(teamId, {
+      activity: productId.toString(),
+      warehouseId: warehouseId.toString(),
+    }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const [stock, activity] = await Promise.all([
+        inventoryClient.ownerStockByIds({
+          teamId: teamId!,
+          // 0n = every warehouse holding this team's goods; a chosen one restates every figure.
+          filter: { productIds: [productId], warehouseId },
+        }),
+        // Deliberately NOT lensed. When this product last sold is a fact about the catalogue, not
+        // about a building — narrowing it by warehouse would answer a question nobody asked.
+        orderClient.orderProductActivityByIds({
+          teamId: teamId!,
+          filter: { productIds: [productId] },
+        }),
+      ]);
+
+      const id = productId.toString();
+
+      return {
+        stock: ownerStockFromByIds(stock).get(id),
+        activity: activityFromByIds(activity).get(id),
+      };
+    },
+  });
+}
+
 // ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
 //
 // The catalogue's writes. Each declares its invalidation here rather than leaving the page that
@@ -155,12 +309,47 @@ export function useSaveProduct() {
   });
 }
 
-export function useDeleteProduct() {
+// ARCHIVE. The RPC is still called ProductDelete on the wire, but nothing is deleted: the row keeps
+// its id, its stock outlives it, and its past orders still name it — so every word the user reads
+// says Archive, and the Archived tab is where it goes.
+export function useArchiveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
     mutationFn: (vars: Parameters<typeof productClient.productDelete>[0]) =>
       productClient.productDelete(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// LOCK / UNLOCK, edited straight from the list — one switch per row, no dialog.
+//
+// It is a plain ProductUpdate carrying only `cross_locked`, which works because every other field on
+// that message is absent-means-untouched. A dedicated RPC would have bought nothing except a second
+// place for the scope check to be got wrong.
+export function useSetProductLocked() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: (vars: { teamId: bigint; productId: bigint; locked: boolean }) =>
+      productClient.productUpdate({
+        teamId: vars.teamId,
+        productId: vars.productId,
+        crossLocked: vars.locked,
+      }),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// RESTORE — the way back out of the Archived tab, and the one write on these screens that can fail
+// for a reason the user must act on: archiving FREES the SKU, so another product may hold it by now.
+// The server refuses and names the holder; `sku` is how the caller then restores under a free one.
+export function useRestoreProduct() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof productClient.productRestore>[0]) =>
+      productClient.productRestore(vars),
     onSuccess: () => invalidate(),
   });
 }

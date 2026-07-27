@@ -53,6 +53,12 @@ const (
 	OrderServiceOrderPackProcedure = "/warehouse.selling.v1.OrderService/OrderPack"
 	// OrderServiceOrderShipProcedure is the fully-qualified name of the OrderService's OrderShip RPC.
 	OrderServiceOrderShipProcedure = "/warehouse.selling.v1.OrderService/OrderShip"
+	// OrderServiceOrderProductActivityByIdsProcedure is the fully-qualified name of the OrderService's
+	// OrderProductActivityByIds RPC.
+	OrderServiceOrderProductActivityByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderProductActivityByIds"
+	// OrderServiceOrderActivityStatProcedure is the fully-qualified name of the OrderService's
+	// OrderActivityStat RPC.
+	OrderServiceOrderActivityStatProcedure = "/warehouse.selling.v1.OrderService/OrderActivityStat"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -72,6 +78,16 @@ type OrderServiceClient interface {
 	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
 	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
 	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
+	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
+	//
+	// The selling team's product list asks one question of this service: when did each of these
+	// products last SELL? It is the other half of the stock picture — a product with a full shelf and
+	// no order in two months is a different problem from one that is simply out.
+	//
+	// Both are team-scoped like every other read here, so they can only ever describe the caller's own
+	// orders.
+	OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error)
+	OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -133,19 +149,33 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderShip")),
 			connect.WithClientOptions(opts...),
 		),
+		orderProductActivityByIds: connect.NewClient[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse](
+			httpClient,
+			baseURL+OrderServiceOrderProductActivityByIdsProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+			connect.WithClientOptions(opts...),
+		),
+		orderActivityStat: connect.NewClient[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse](
+			httpClient,
+			baseURL+OrderServiceOrderActivityStatProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // orderServiceClient implements OrderServiceClient.
 type orderServiceClient struct {
-	orderCreate  *connect.Client[v1.OrderCreateRequest, v1.OrderCreateResponse]
-	orderList    *connect.Client[v1.OrderListRequest, v1.OrderListResponse]
-	orderDetail  *connect.Client[v1.OrderDetailRequest, v1.OrderDetailResponse]
-	orderConfirm *connect.Client[v1.OrderConfirmRequest, v1.OrderConfirmResponse]
-	orderCancel  *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
-	orderPick    *connect.Client[v1.OrderPickRequest, v1.OrderPickResponse]
-	orderPack    *connect.Client[v1.OrderPackRequest, v1.OrderPackResponse]
-	orderShip    *connect.Client[v1.OrderShipRequest, v1.OrderShipResponse]
+	orderCreate               *connect.Client[v1.OrderCreateRequest, v1.OrderCreateResponse]
+	orderList                 *connect.Client[v1.OrderListRequest, v1.OrderListResponse]
+	orderDetail               *connect.Client[v1.OrderDetailRequest, v1.OrderDetailResponse]
+	orderConfirm              *connect.Client[v1.OrderConfirmRequest, v1.OrderConfirmResponse]
+	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
+	orderPick                 *connect.Client[v1.OrderPickRequest, v1.OrderPickResponse]
+	orderPack                 *connect.Client[v1.OrderPackRequest, v1.OrderPackResponse]
+	orderShip                 *connect.Client[v1.OrderShipRequest, v1.OrderShipResponse]
+	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
+	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -188,6 +218,16 @@ func (c *orderServiceClient) OrderShip(ctx context.Context, req *connect.Request
 	return c.orderShip.CallUnary(ctx, req)
 }
 
+// OrderProductActivityByIds calls warehouse.selling.v1.OrderService.OrderProductActivityByIds.
+func (c *orderServiceClient) OrderProductActivityByIds(ctx context.Context, req *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {
+	return c.orderProductActivityByIds.CallUnary(ctx, req)
+}
+
+// OrderActivityStat calls warehouse.selling.v1.OrderService.OrderActivityStat.
+func (c *orderServiceClient) OrderActivityStat(ctx context.Context, req *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error) {
+	return c.orderActivityStat.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
@@ -205,6 +245,16 @@ type OrderServiceHandler interface {
 	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
 	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
 	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
+	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
+	//
+	// The selling team's product list asks one question of this service: when did each of these
+	// products last SELL? It is the other half of the stock picture — a product with a full shelf and
+	// no order in two months is a different problem from one that is simply out.
+	//
+	// Both are team-scoped like every other read here, so they can only ever describe the caller's own
+	// orders.
+	OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error)
+	OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -262,6 +312,18 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderShip")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderProductActivityByIdsHandler := connect.NewUnaryHandler(
+		OrderServiceOrderProductActivityByIdsProcedure,
+		svc.OrderProductActivityByIds,
+		connect.WithSchema(orderServiceMethods.ByName("OrderProductActivityByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderActivityStatHandler := connect.NewUnaryHandler(
+		OrderServiceOrderActivityStatProcedure,
+		svc.OrderActivityStat,
+		connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -280,6 +342,10 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderPackHandler.ServeHTTP(w, r)
 		case OrderServiceOrderShipProcedure:
 			orderServiceOrderShipHandler.ServeHTTP(w, r)
+		case OrderServiceOrderProductActivityByIdsProcedure:
+			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
+		case OrderServiceOrderActivityStatProcedure:
+			orderServiceOrderActivityStatHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -319,4 +385,12 @@ func (UnimplementedOrderServiceHandler) OrderPack(context.Context, *connect.Requ
 
 func (UnimplementedOrderServiceHandler) OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderShip is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderProductActivityByIds is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderActivityStat is not implemented"))
 }

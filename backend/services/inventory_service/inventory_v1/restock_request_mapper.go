@@ -173,11 +173,23 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		CodShippingFee:   r.CODShippingFee,
 		PaymentType:      restockPaymentFromText(r.PaymentType),
 		Note:             r.Note,
+		CreatedByUserId:  r.CreatedByUserID,
+		AcceptedByUserId: r.AcceptedByUserID,
 	}
 
 	// A nil supplier is "none recorded" — the wire carries 0 rather than a null.
 	if r.SupplierID != nil {
 		out.SupplierId = *r.SupplierID
+	}
+
+	// Same shape for the two nullable timestamps: NULL means "it has not happened", and the wire says
+	// that as 0 rather than as the zero time.Time, which would ride over as a date in year 1.
+	if r.AcceptedAt != nil {
+		out.AcceptedAtUnix = r.AcceptedAt.Unix()
+	}
+
+	if r.CancelledAt != nil {
+		out.CancelledAtUnix = r.CancelledAt.Unix()
 	}
 
 	return out

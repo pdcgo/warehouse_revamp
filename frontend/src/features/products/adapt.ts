@@ -9,6 +9,8 @@ import {
   type ProductRowItem,
   ProductSchema,
 } from "../../gen/warehouse/product/v1/product_pb";
+import type { OwnerStockByIdsResponse } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import type { OrderProductActivityByIdsResponse } from "../../gen/warehouse/selling/v1/order_pb";
 
 // The guideline list/by-ids RPCs (guidelines/service-guideline.md) return per-id "slices" keyed by
 // product id, plus a sorted `ids` list, instead of a flat Product[]. The product screens still want
@@ -31,6 +33,9 @@ function rowToProduct(r: ProductRowItem): Product {
     defaultImageUrl: r.defaultImageUrl,
     defaultImageThumbnailUrl: r.defaultImageThumbnailUrl,
     deleted: r.deleted,
+    crossMarkupBps: r.crossMarkupBps,
+    crossLocked: r.crossLocked,
+    reservedStock: r.reservedStock,
   });
 }
 
@@ -71,6 +76,74 @@ export function productsFromByIds(res: ProductByIdsResponse): Product[] {
         const row = it.d.value.mapData[id];
         if (row) out.push(rowToProduct(row));
       }
+    }
+  }
+
+  return out;
+}
+
+// ── The two by-ids reads behind the product list's stock columns ─────────────────────────────────
+//
+// Both follow the guideline by-ids envelope — a map of product id → a list of slices — and both are
+// flattened here, at the query boundary, so no screen ever has to walk a oneof to read a number.
+
+// One product's stock facts, as the LIST renders them.
+export interface OwnerStockRow {
+  readyQty: bigint;
+  readyValue: bigint;
+  ongoingQty: bigint;
+  ongoingValueEst: bigint;
+  costMin: bigint;
+  costMax: bigint;
+  costKnown: boolean;
+  oldestBatchUnix: bigint;
+  lastRestockUnix: bigint;
+}
+
+export function ownerStockFromByIds(res: OwnerStockByIdsResponse): Map<string, OwnerStockRow> {
+  const out = new Map<string, OwnerStockRow>();
+
+  for (const [id, list] of Object.entries(res.items)) {
+    for (const it of list.items) {
+      if (it.d.case !== "stock") continue;
+
+      const row = it.d.value.mapData[id];
+      if (!row) continue;
+
+      out.set(id, {
+        readyQty: row.readyQty,
+        readyValue: row.readyValue,
+        ongoingQty: row.ongoingQty,
+        ongoingValueEst: row.ongoingValueEst,
+        costMin: row.costMin,
+        costMax: row.costMax,
+        costKnown: row.costKnown,
+        oldestBatchUnix: row.oldestBatchUnix,
+        lastRestockUnix: row.lastRestockUnix,
+      });
+    }
+  }
+
+  return out;
+}
+
+// One product's selling activity.
+export interface ProductActivityRow {
+  lastOrderUnix: bigint;
+  soldQty30d: bigint;
+}
+
+export function activityFromByIds(res: OrderProductActivityByIdsResponse): Map<string, ProductActivityRow> {
+  const out = new Map<string, ProductActivityRow>();
+
+  for (const [id, list] of Object.entries(res.items)) {
+    for (const it of list.items) {
+      if (it.d.case !== "activity") continue;
+
+      const row = it.d.value.mapData[id];
+      if (!row) continue;
+
+      out.set(id, { lastOrderUnix: row.lastOrderUnix, soldQty30d: row.soldQty30d });
     }
   }
 

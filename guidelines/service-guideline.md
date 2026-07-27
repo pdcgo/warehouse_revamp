@@ -1,6 +1,6 @@
-# Service RPC Proto Rule
+# Service RPC Proto Rule.
 
-**This in Programmer Authoritative, and AI agent should not rewrite this**.
+**This in Programmer Authoritative, and AI agent should not rewrite this without explicit ask.**
 ---------------------------------------------------------------------------------------
 This rule how each service interfacing and serve their data.
 
@@ -93,6 +93,14 @@ This rule for creating schema rpc data list like for example `RackList`, `Produc
 All api list must be flexible for load various data and maybe various metric of statistic. So we need flexible structure that can cover it.
 Base structure of list api rpc must obey of this structure :
 ```
+
+enum CommonSortType {
+	COMMON_SORT_TYPE_UNSPECIFIED = 0
+	COMMON_SORT_TYPE_DESC = 1
+	COMMON_SORT_TYPE_ASC = 2
+}
+
+
 message ListFilter {
 
 	...
@@ -161,6 +169,64 @@ message ListResponseItem {
 message ListResponse {
 	repeated ListResponseItem 	items
 	repeated uint64 			ids 	// <--- this is sorted ids of the data
+}
+
+```
+
+## Rule Exposing Data Collection Overview.
+This heavily used for frontend in top of statistic.
+Base structure of list api rpc must obey of this structure :
+```
+message RestockOverviewFilter { // <-- this used for scoping data
+
+	...
+}
+
+enum MetricDataType { // this hold what kind data that have loaded in response
+	METRIC_DATA_TYPE_UNSPECIFIED
+	METRIC_DATA_TYPE_CREATED
+	METRIC_DATA_TYPE_COMPLETED
+}
+
+
+enum CreatedSort { 						// <--- this data always paired MetricDataType with METRIC_DATA_TYPE_CREATED
+	CREATED_SORT_UNSPECIFIED
+	CREATED_SORT_AMOUNT
+	CREATED_SORT_COUNT
+}
+
+
+
+message RestockOverviewFilterSort {
+	CommonSortType sort_type
+	oneof s {
+		CompletedSort 	completed
+		CreatedSort		created
+	}
+}
+
+message RestockOverviewRequest {
+	RestockOverviewFilter 				filter
+	RestockOverviewFilterSort 			sort
+	repeated MetricDataType 			metric_request
+	CommonPagination 					page
+}
+
+message CreatedItem { // <--- this data always paired MetricDataType with METRIC_DATA_TYPE_CREATED
+	int64 count
+	double amount
+}
+
+
+message ListResponseItem {
+	oneof d {
+		CreatedItem 		created
+		CompletedItem 		completed
+	}
+}
+
+message ListResponse {
+	repeated ListResponseItem 	items
 }
 
 ```

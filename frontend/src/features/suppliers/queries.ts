@@ -102,9 +102,10 @@ export function useInvalidateSuppliers() {
 //
 //   - A RestockRequest stores `supplier_id` alone (restock_request.proto) — no denormalised name — so
 //     renaming a supplier cannot stale a cached restock row.
-//   - The two places that DO show a supplier's name outside this domain — SupplierSelect and
-//     RestockRequestDetailPage's lookup — fetch it themselves in an effect and hold no query cache
-//     entry, so there is nothing there to invalidate.
+//   - SupplierSelect, which shows a supplier's name outside this domain, fetches it itself in an
+//     effect and holds no query cache entry, so there is nothing there to invalidate.
+//   - The selling restock detail DOES cache one, but through `useSupplier` above — so it sits under
+//     this same `suppliers` prefix and a rename already reaches it.
 //
 // A channel write invalidates the whole `suppliers` prefix rather than just the channel list, because
 // the channels are read as part of the supplier: the detail page's two queries share the prefix, and

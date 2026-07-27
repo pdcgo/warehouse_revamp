@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* apply saved / system theme before paint (no flash) */(function(){try{var t=localStorage.getItem('mock-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Mock · Products (selling team)</title>
+
+<!-- ------------------------------------------------------------------ *
+ * MOCKUP ONLY. Hardcoded data, no build. The SELLING TEAM's product      *
+ * list — its own catalogue, with the stock reality attached. Today's     *
+ * wired screen shows sku/name/description and nothing else, which        *
+ * answers "what is in my catalogue" and NOT the question a seller walks  *
+ * up with: "what can I sell right now, and what is on the way?"          *
+ *                                                                        *
+ * What this mock proposes:                                               *
+ *  1. ACTIVE / ARCHIVED tabs. `deleted` already exists on the product    *
+ *     row and ProductList hard-filters it, so archived products are      *
+ *     currently unreachable forever. A tab makes them visible and        *
+ *     restorable — and renames the action from Delete to Archive,        *
+ *     because the row is not gone.                                       *
+ *  2. READY and ONGOING stock, each as COUNT + VALUATION. Ready = on     *
+ *     hand now. Ongoing = inbound on restocks not yet accepted. Value is *
+ *     AT COST, never selling price (a product has no catalogue price).   *
+ *  3. A WAREHOUSE FILTER that is not decoration: stock is held PER       *
+ *     WAREHOUSE, so choosing one RE-STATES every ready/ongoing figure on *
+ *     the page as that warehouse's, not the total.                       *
+ *  4. CROSS-SELL — another team ordering OUR product from its own shop.  *
+ *     Per row: whether it is open to other teams, the MARKUP they pay    *
+ *     over our cost, and how much they have actually moved. None of      *
+ *     this exists in the model yet; see the footnote.                    *
+ *  5. ONE "Product" column, drawn by the SHARED ProductListItem (#128).  *
+ *     No image column, no SKU column — the cover, the name and the SKU   *
+ *     are one thing, and the app already owns the one way to draw it.    *
+ *                                                                        *
+ * Styled with TAILWIND via the Play CDN; Tailwind's theme is mapped onto *
+ * the shared :root design tokens, dark mode riding on [data-theme=dark]. *
+ * ------------------------------------------------------------------ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: ['selector', '[data-theme="dark"]'],
+    theme: {
+      extend: {
+        colors: {
+          bg: 'var(--bg)',
+          surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)' },
+          sidebar: 'var(--sidebar)',
+          line: { DEFAULT: 'var(--border)', strong: 'var(--border-strong)' },
+          fg: { DEFAULT: 'var(--fg)', muted: 'var(--fg-muted)', subtle: 'var(--fg-subtle)' },
+          accent: { DEFAULT: 'var(--accent)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
+          warn: { DEFAULT: 'var(--warn)', soft: 'var(--warn-soft)', border: 'var(--warn-border)' },
+          pos: { DEFAULT: 'var(--pos)', soft: 'var(--pos-soft)' },
+          neg: { DEFAULT: 'var(--neg)', soft: 'var(--neg-soft)' },
+        },
+        borderRadius: { DEFAULT: 'var(--radius)', sm: 'var(--radius-sm)' },
+        boxShadow: {
+          DEFAULT: 'var(--shadow)',
+          lg: 'var(--shadow-lg)',
+        },
+        fontFamily: { sans: ['var(--font)'] },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* The shared design-token set (#213) — the single source, kept in step with
+     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
+    --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --fg: #101828; --fg-muted: #667085; --fg-subtle: #98a2b3;
+    --accent: #7c3aed; --accent-soft: #f5f3ff; --accent-fg: #6d28d9;
+    --warn: #b54708; --warn-soft: #fffaeb; --warn-border: #fedf89;
+    --pos: #067647; --pos-soft: #ecfdf3;
+    --neg: #d92d20; --neg-soft: #fef3f2;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.18), 0 2px 8px rgba(16,24,40,.12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0e12; --surface: #161a20; --surface-2: #1b2027;
+    --sidebar: #12151b; --border: #262b33; --border-strong: #333a44;
+    --fg: #f0f2f5; --fg-muted: #98a2b3; --fg-subtle: #667085;
+    --accent: #8b5cf6; --accent-soft: #2e1065; --accent-fg: #c4b5fd;
+    --warn: #f5a524; --warn-soft: #2a2113; --warn-border: #4a3a15;
+    --pos: #47c67e; --pos-soft: #13251b;
+    --neg: #f97066; --neg-soft: #2a1615;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.45);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* Extras this page needs that aren't canonical tokens, plus what utilities can't
+     express: the striped banner, the icon-in-background form controls, the coloured
+     left edge on rows that need action, the tabs, and the row overflow menu. */
+  :root {
+    --info: #175cd3; --info-soft: #eff8ff; --info-border: #b2ddff;
+    --accent-line: color-mix(in srgb, var(--accent) 28%, transparent);
+    --neg-line: color-mix(in srgb, var(--neg) 30%, transparent);
+  }
+  :root[data-theme="dark"] { --info: #6bb5ff; --info-soft: #12233a; --info-border: #234968; }
+
+  .mock-banner { background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 12px, transparent 12px, transparent 24px); }
+  .search-input {
+    font-family: inherit; font-size: 13px; color: var(--fg); min-width: 250px;
+    background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 10px 7px 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: left 9px center; background-size: 14px;
+  }
+  .search-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .select {
+    appearance: none; font-family: inherit; font-size: 13px; font-weight: 550;
+    color: var(--fg); background-color: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 7px 30px 7px 10px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+  }
+  /* The warehouse select is the one filter that changes what every NUMBER means, not just which
+     rows show — so it reads as active while it is set. */
+  .select.armed { border-color: var(--accent); color: var(--accent-fg); background-color: var(--accent-soft); }
+
+  /* A product that cannot be sold and has nothing coming gets an amber edge — it is the
+     only row on the page that is WORK. Nothing else is coloured, so it stays loud. */
+  tbody tr[data-stock="out"] td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+  /* An ARCHIVED product that still has units on a shelf: goods stranded under a dead
+     catalogue entry. Red edge — it is worse than out of stock, because it is invisible. */
+  tbody tr[data-stranded="yes"] td:first-child { box-shadow: inset 3px 0 0 var(--neg); }
+
+  /* ── ProductListItem, stood up in plain CSS ────────────────────────────────────────
+     There is no separate image column and no separate SKU column: a product is ONE
+     thing, and the app already has the one way to draw it —
+     frontend/src/components/ProductListItem.tsx (#128). The real screen renders
+     <ProductListItem product={row} /> in this cell; the classes below just mirror what
+     that component looks like (rounded md avatar with a package-icon fallback, name at
+     medium weight clamped to one line, SKU muted underneath) so the mock and the app
+     cannot drift. Mocks are self-contained, so a photo is stood in for by a tinted block. */
+  .pli { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .pli-title { font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pli-sku { color: var(--fg-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); flex: 0 0 auto; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .thumb-empty { background: var(--surface-2); color: var(--fg-subtle); }
+
+  .tabs { display: flex; gap: 2px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: -2px 0 16px; overflow-x: auto; }
+  .tab { appearance: none; font-family: inherit; cursor: pointer; background: none; border: none; border-bottom: 2px solid transparent; color: var(--fg-muted); font-size: 13px; font-weight: 600; padding: 9px 13px; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--accent-fg); border-bottom-color: var(--accent); }
+  .tab-count { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg-subtle); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; line-height: 17px; }
+  .tab.active .tab-count { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-line); }
+
+  /* Row overflow menu — Edit / Restock / Archive behind one kebab (CLAUDE.md: three or
+     more row actions collapse into a Menu, every item with a leading icon). */
+  .menu-wrap { position: relative; display: inline-flex; }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 50; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); padding: 4px; display: none; }
+  .menu-wrap.open .menu { display: block; }
+  .menu-item { display: flex; width: 100%; align-items: center; gap: 9px; font: inherit; font-size: 13px; text-align: left; color: var(--fg); background: none; border: none; border-radius: 6px; padding: 7px 9px; cursor: pointer; white-space: nowrap; text-decoration: none; }
+  .menu-item:hover { background: var(--surface-2); }
+  .menu-item.danger { color: var(--neg); }
+  .menu-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+  /* Shared pill. `chip-*` variants keep the badge vocabulary in one place instead of
+     repeating six utility strings per row. */
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .chip-warn { color: var(--warn); background: var(--warn-soft); border-color: var(--warn-border); }
+  .chip-info { color: var(--info); background: var(--info-soft); border-color: var(--info-border); }
+  .chip-neg  { color: var(--neg);  background: var(--neg-soft);  border-color: var(--neg-line); }
+  .chip-accent { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-line); }
+  .chip-mute { color: var(--fg-subtle); background: var(--surface-2); border-color: var(--border); }
+  .chip-xs { font-size: 10.5px; padding: 1px 7px; }
+</style>
+</head>
+<body class="m-0 bg-bg text-fg font-sans text-[14px] leading-[1.45] [&_svg]:block">
+  <div class="mock-banner border-b border-line text-accent-fg text-xs text-center py-1.5 px-3 tracking-[.02em]">MOCKUP · Products — selling team · fake data · not the app</div>
+
+  <header class="border-b border-line bg-surface">
+    <div class="max-w-[1400px] mx-auto py-3.5 px-5 flex items-center gap-3 flex-wrap">
+      <a class="inline-flex items-center gap-1.5 text-fg-muted no-underline text-[13px] py-1 px-2 rounded-sm hover:bg-surface-2 hover:text-fg" href="../index.html">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        Mocks
+      </a>
+      <div class="flex-auto"></div>
+      <a class="inline-flex items-center gap-1.5 text-[13px] font-[650] py-2 px-3.5 rounded-sm bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] border border-accent no-underline cursor-pointer hover:brightness-105" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        New product
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-[1400px] mx-auto p-5">
+    <!-- The tiles follow the warehouse filter: with one picked they state THAT warehouse's stock,
+         not the total. Ready and Ongoing each carry BOTH a count and a valuation, because "600 pcs
+         coming" and "Rp 18 juta committed" are different decisions — one is whether you can sell,
+         the other is what you owe. Value is AT COST throughout. -->
+    <div class="grid grid-cols-5 max-[1180px]:grid-cols-3 max-[820px]:grid-cols-2 max-[520px]:grid-cols-1 gap-3.5 mb-4">
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ready stock</div>
+        <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]" id="tile-ready-qty">14.820 <span class="text-[13px] font-semibold text-fg-muted">pcs</span></div>
+        <div class="text-[12.5px] text-fg-muted mt-0.5 [font-variant-numeric:tabular-nums]" id="tile-ready-val">Rp 214.360.000 <span class="text-fg-subtle">at cost</span></div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Ongoing · inbound</div>
+        <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-[color:var(--info)]" id="tile-ongoing-qty">1.140 <span class="text-[13px] font-semibold text-fg-muted">pcs</span></div>
+        <div class="text-[12.5px] text-fg-muted mt-0.5 [font-variant-numeric:tabular-nums]" id="tile-ongoing-val">Rp 24.860.000 <span class="text-fg-subtle">est · 6 restocks</span></div>
+      </div>
+      <!-- Cross-sell: units OTHER teams sold out of our catalogue, and the markup that earned us.
+           It is the tile that says whether opening the catalogue up is worth anything. -->
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Cross-sell · 30d</div>
+        <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-accent-fg">244 <span class="text-[13px] font-semibold text-fg-muted">pcs</span></div>
+        <div class="text-[12.5px] text-fg-muted mt-0.5 [font-variant-numeric:tabular-nums]">Rp 1.180.000 <span class="text-fg-subtle">markup earned · 5 teams</span></div>
+      </div>
+      <div class="bg-surface border border-line rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold">Active products</div>
+        <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums]">128</div>
+        <div class="text-[12.5px] text-fg-subtle mt-0.5">14 archived · 96 open to cross-sell</div>
+      </div>
+      <div class="bg-warn-soft border border-warn-border rounded shadow p-[14px_16px]">
+        <div class="text-[11px] uppercase tracking-[.04em] text-warn font-semibold">Can't sell · nothing coming</div>
+        <div class="text-[22px] font-[650] mt-1 [font-variant-numeric:tabular-nums] text-warn">7</div>
+        <div class="text-[11.5px] text-fg-subtle mt-0.5">0 ready and no restock raised</div>
+      </div>
+    </div>
+
+    <div class="bg-surface border border-line rounded shadow"><div class="p-[18px]">
+      <!-- ACTIVE / ARCHIVED. Two tabs, not a checkbox: they are different jobs with different
+           columns and different actions, and an "include archived" toggle would mix a dead SKU
+           into the list you pick from. -->
+      <div class="tabs" id="status-tabs" role="tablist">
+        <button class="tab active" data-panel="active" role="tab" aria-selected="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          Active <span class="tab-count">128</span>
+        </button>
+        <button class="tab" data-panel="archived" role="tab" aria-selected="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+          Archived <span class="tab-count">14</span>
+        </button>
+      </div>
+
+      <!-- ─────────────────────────── ACTIVE ─────────────────────────── -->
+      <section id="panel-active">
+        <div class="flex items-center gap-3 flex-wrap mb-4">
+          <input class="search-input" id="q" type="search" placeholder="Search name or SKU…" aria-label="Search products" />
+          <span class="flex-auto"></span>
+          <div class="inline-flex items-center gap-2">
+            <label class="text-[12px] text-fg-muted font-semibold" for="f-wh">Warehouse</label>
+            <select class="select" id="f-wh">
+              <option value="">All warehouses</option>
+              <option value="Gudang Jakarta">Gudang Jakarta</option>
+              <option value="Gudang Surabaya">Gudang Surabaya</option>
+              <option value="Gudang Bandung">Gudang Bandung</option>
+            </select>
+          </div>
+          <div class="inline-flex items-center gap-2">
+            <label class="text-[12px] text-fg-muted font-semibold" for="f-cat">Category</label>
+            <select class="select" id="f-cat">
+              <option value="">All categories</option>
+              <option value="Apparel">Apparel</option>
+              <option value="Accessories">Accessories</option>
+              <option value="Drinkware">Drinkware</option>
+              <option value="Medical">Medical</option>
+            </select>
+          </div>
+          <div class="inline-flex items-center gap-2">
+            <label class="text-[12px] text-fg-muted font-semibold" for="f-stock">Stock</label>
+            <select class="select" id="f-stock">
+              <option value="">Any</option>
+              <option value="in">In stock</option>
+              <option value="out">Can't sell</option>
+              <option value="incoming">Restocking</option>
+            </select>
+          </div>
+          <div class="inline-flex items-center gap-2">
+            <label class="text-[12px] text-fg-muted font-semibold" for="f-xsell">Cross-sell</label>
+            <select class="select" id="f-xsell">
+              <option value="">Any</option>
+              <option value="open">Open to other teams</option>
+              <option value="closed">Not shared</option>
+            </select>
+          </div>
+          <div class="inline-flex items-center gap-2">
+            <label class="text-[12px] text-fg-muted font-semibold" for="f-sort">Sort</label>
+            <select class="select" id="f-sort">
+              <option value="new">Newest</option>
+              <option value="name">Name</option>
+              <option value="sku">SKU</option>
+              <option value="ready-desc">Ready qty ↓</option>
+              <option value="ready-asc">Ready qty ↑</option>
+              <option value="value-desc">Ready value ↓</option>
+              <option value="xsell-desc">Cross-sold ↓</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Says out loud what the warehouse filter did to the numbers. Hidden until one is picked,
+             because a banner that is always there stops being read. -->
+        <div class="hidden mb-3 rounded-sm border border-[color:var(--accent-line)] bg-accent-soft text-accent-fg text-[12.5px] py-2 px-3 flex items-center gap-2" id="wh-note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+          <span>Every ready and ongoing figure below is <strong id="wh-note-name">this warehouse</strong> only — not your total.</span>
+        </div>
+
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead>
+            <tr>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Product</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Category</th>
+              <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Ready · on hand</th>
+              <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Ongoing · inbound</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Where it sits</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Cross-sell</th>
+              <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap"></th>
+            </tr>
+          </thead>
+          <tbody id="rows-active">
+
+            <!-- Ready / ongoing are held PER WAREHOUSE, so the row carries the split and the cells
+                 are rendered from it — picking a warehouse restates them rather than filtering rows
+                 to a number that still says "total". -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Apparel"
+                data-ready='{"Gudang Jakarta":[210,10500000],"Gudang Surabaya":[38,1900000]}'
+                data-ongoing='{"Gudang Jakarta":[300,9000000]}'
+                data-xsell="open" data-markup="+12%" data-xsold="180" data-xteams="3"
+                data-search="kaos polos hitam l kph-l-001"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#334155,#0f172a)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Kaos Polos Hitam — L</span>
+                    <span class="pli-sku">KPH-L-001</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Apparel › T-Shirt</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Sold out but ALREADY restocking — 0 ready is NOT alarming here, and the row must
+                 not read the same as one with nothing coming. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Apparel"
+                data-ready='{}'
+                data-ongoing='{"Gudang Jakarta":[240,4320000]}'
+                data-xsell="open" data-markup="+12%" data-xsold="40" data-xteams="1"
+                data-search="kaos polos putih m kpp-m-002"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#f1f5f9,#cbd5e1)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Kaos Polos Putih — M</span>
+                    <span class="pli-sku">KPP-M-002</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Apparel › T-Shirt</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- The hard case for VALUATION: some units have no known cost yet (#74 — ready_value
+                 counts known-cost layers only). The count is 34; the money only covers 22. Saying
+                 "Rp 770.000" flat would quietly undercount the stock, so the gap is NAMED.
+                 Also the plainest cross-sell state: NOT shared. Nobody else may order it. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Medical"
+                data-ready='{"Gudang Jakarta":[34,770000]}'
+                data-ongoing='{}'
+                data-uncosted='{"Gudang Jakarta":12}'
+                data-xsell="closed"
+                data-search="masker medis 3ply box msk-3p-050"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#dbeafe,#93c5fd)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Masker Medis 3ply (box 50)</span>
+                    <span class="pli-sku">MSK-3P-050</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Medical › Disposables</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- THE WORK: 0 ready, nothing inbound — and TWO other teams are trying to sell it.
+                 An out-of-stock product that is open to cross-sell is worse than one that isn't:
+                 somebody else's customer is the one who finds out. Amber edge, action promoted
+                 out of the kebab. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Apparel"
+                data-ready='{}'
+                data-ongoing='{}'
+                data-xsell="open" data-markup="+15%" data-xsold="0" data-xteams="2" data-xstarved="yes"
+                data-search="hoodie zipper navy xl hzn-xl-004"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#1e3a8a,#1e293b)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Hoodie Zipper Navy — XL</span>
+                    <span class="pli-sku">HZN-XL-004</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Apparel › Outerwear</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" onclick="event.stopPropagation()">
+                <div class="inline-flex items-center gap-1.5">
+                  <a class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-accent text-white [[data-theme=dark]_&]:text-[#0c0e12] border border-accent no-underline hover:brightness-105" href="restock-list.html">Restock →</a>
+                  <div class="menu-wrap">
+                    <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                    </button>
+                    <div class="menu" role="menu">
+                      <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                      <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                      <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Pause cross-sell</button>
+                      <div class="menu-sep"></div>
+                      <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- No image at all — the real empty state (ProductListItem falls back to the package
+                 icon), a long name that has to truncate, and a FLAT markup rather than a percent:
+                 the two shapes have to coexist, which is a decision, not a detail. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Accessories"
+                data-ready='{"Gudang Bandung":[1240,3100000]}'
+                data-ongoing='{}'
+                data-xsell="open" data-markup="Rp 500/pc" data-xsold="24" data-xteams="1"
+                data-search="tali sepatu katun 120cm hitam pack isi 12 tsk-120-h"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb thumb-empty"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
+                  <span class="flex flex-col min-w-0">
+                    <span class="font-[600] truncate max-w-[240px]" title="Aksesoris Tali Sepatu Katun 120cm Warna Hitam Pack Isi 12">Aksesoris Tali Sepatu Katun 120cm Warna Hitam Pack Isi 12</span>
+                    <span class="pli-sku">TSK-120-H</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Accessories › Footwear</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Spread across THREE warehouses. The total is 96, but no single warehouse can fill
+                 an order for 60 — which is exactly why the warehouse filter restates the numbers
+                 instead of only hiding rows. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Drinkware"
+                data-ready='{"Gudang Bandung":[54,4320000],"Gudang Jakarta":[30,2400000],"Gudang Surabaya":[12,960000]}'
+                data-ongoing='{"Gudang Jakarta":[60,4800000]}'
+                data-xsell="open" data-markup="+10%" data-xsold="24" data-xteams="1"
+                data-search="tumbler stainless 500ml tmb-500-005"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#a5b4fc,#6366f1)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Tumbler Stainless 500ml</span>
+                    <span class="pli-sku">TMB-500-005</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Drinkware › Bottles</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Ordinary, high-volume, single warehouse, not shared — the row that proves the
+                 layout still reads when nothing is wrong. -->
+            <tr class="cursor-pointer hover:bg-surface-2"
+                data-cat="Medical"
+                data-ready='{"Gudang Surabaya":[420,5040000]}'
+                data-ongoing='{}'
+                data-xsell="closed"
+                data-search="sarung tangan nitrile s stn-s-007"
+                onclick="location.href='../product-detail-selling.html'">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb" style="background:linear-gradient(135deg,#bbf7d0,#4ade80)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title">Sarung Tangan Nitrile — S</span>
+                    <span class="pli-sku">STN-S-007</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Medical › Disposables</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ready"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap" data-cell="ongoing"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-muted" data-cell="where"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap" data-cell="xsell"></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right" onclick="event.stopPropagation()">
+                <div class="menu-wrap">
+                  <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg-muted rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center hover:bg-surface-2 hover:text-fg" aria-label="More actions" data-menu>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                  <div class="menu" role="menu">
+                    <a class="menu-item" href="../product-detail-selling.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>View detail</a>
+                    <a class="menu-item" href="#" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>Edit</a>
+                    <a class="menu-item" href="restock-list.html" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>New restock</a>
+                    <button class="menu-item" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3 3 21"/></svg>Cross-sell settings</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-item danger" role="menuitem"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>Archive</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+          <span class="text-[12.5px] text-fg-subtle" id="pager-info">Showing 1–7 of 128 products</span>
+          <div class="inline-flex items-center gap-1.5">
+            <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+            <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 19</span>
+            <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────── ARCHIVED ─────────────────────────── -->
+      <!-- Different columns on purpose: nobody archives a product to read its stock split. What
+           matters here is WHEN it was archived, WHO did it, whether anything is stranded under it,
+           and whether it can come back. -->
+      <section id="panel-archived" class="hidden">
+        <div class="flex items-center gap-3 flex-wrap mb-4">
+          <input class="search-input" id="q-arch" type="search" placeholder="Search archived name or SKU…" aria-label="Search archived products" />
+          <span class="flex-auto"></span>
+          <span class="text-[12.5px] text-fg-muted">Archived is hidden from pickers, orders, restocks and cross-sell — but its past orders and stock history keep it.</span>
+        </div>
+
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead>
+            <tr>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Product</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Category</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Archived</th>
+              <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap">Stock still held</th>
+              <th class="text-left text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap"></th>
+              <th class="text-right text-[11px] uppercase tracking-[.04em] text-fg-subtle font-semibold py-[9px] px-3 border-b border-line whitespace-nowrap"></th>
+            </tr>
+          </thead>
+          <tbody id="rows-archived">
+
+            <!-- THE hard case for this tab: archived, but 8 pcs are still sitting on a shelf in
+                 Jakarta. The warehouse can still see them (ProductByIds deliberately returns
+                 archived products — stock outlives a catalogue entry), but nobody here can sell
+                 them. That is money stranded behind a dead row. Red edge. -->
+            <tr data-stranded="yes" data-search="kaos polos hitam s kph-s-009">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb opacity-60" style="background:linear-gradient(135deg,#334155,#0f172a)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title text-fg-muted">Kaos Polos Hitam — S</span>
+                    <span class="pli-sku">KPH-S-009</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Apparel › T-Shirt</td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap">
+                <div class="[font-variant-numeric:tabular-nums]">2026-06-14</div>
+                <div class="text-fg-subtle text-[11.5px] mt-0.5">by Dewi</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <div class="font-[650] [font-variant-numeric:tabular-nums] text-[color:var(--neg)]">8 <span class="text-[11.5px] font-semibold">pcs</span></div>
+                <div class="text-fg-muted text-[12px] [font-variant-numeric:tabular-nums]">Rp 400.000</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap"><span class="chip chip-neg">Stranded at Gudang Jakarta</span></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <button class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-surface text-fg border border-line-strong cursor-pointer hover:bg-surface-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Restore
+                </button>
+              </td>
+            </tr>
+
+            <!-- Clean: nothing held, SKU free. Restore just works. -->
+            <tr data-search="masker kain 2ply msk-2p-011">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb opacity-60" style="background:linear-gradient(135deg,#fecaca,#f87171)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title text-fg-muted">Masker Kain 2ply</span>
+                    <span class="pli-sku">MSK-2P-011</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Medical › Reusable</td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap">
+                <div class="[font-variant-numeric:tabular-nums]">2026-05-02</div>
+                <div class="text-fg-subtle text-[11.5px] mt-0.5">by you</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <div class="font-[650] [font-variant-numeric:tabular-nums] text-fg-subtle">0 <span class="text-[11.5px] font-semibold">pcs</span></div>
+                <div class="text-fg-subtle text-[12px]">—</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-subtle">Nothing held · SKU free</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <button class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-surface text-fg border border-line-strong cursor-pointer hover:bg-surface-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Restore
+                </button>
+              </td>
+            </tr>
+
+            <!-- The collision. Archiving FREES the SKU (the unique index is partial:
+                 (team_id, sku) WHERE deleted = FALSE), so somebody re-used TMB-P-500 on a new
+                 product. Restore cannot silently succeed and must not silently rename — so the
+                 button is disabled and the row SAYS WHY, naming the product that took the SKU. -->
+            <tr data-search="tumbler plastik 500ml tmb-p-500">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb opacity-60" style="background:linear-gradient(135deg,#bae6fd,#38bdf8)"></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title text-fg-muted">Tumbler Plastik 500ml</span>
+                    <span class="pli-sku">TMB-P-500</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Drinkware › Bottles</td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap">
+                <div class="[font-variant-numeric:tabular-nums]">2026-04-20</div>
+                <div class="text-fg-subtle text-[11.5px] mt-0.5">by Rian</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <div class="font-[650] [font-variant-numeric:tabular-nums] text-fg-subtle">0 <span class="text-[11.5px] font-semibold">pcs</span></div>
+                <div class="text-fg-subtle text-[12px]">—</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap"><span class="chip chip-warn">SKU taken by “Tumbler Plastik 500ml v2”</span></td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <button class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-surface text-fg-subtle border border-line cursor-not-allowed opacity-60" disabled title="Change the SKU before restoring — TMB-P-500 belongs to another active product">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Restore
+                </button>
+                <div class="text-fg-subtle text-[11px] mt-1">Rename its SKU first</div>
+              </td>
+            </tr>
+
+            <!-- Long-dead, uneventful. -->
+            <tr data-search="topi bucket krem tpb-k-014">
+              <td class="py-[11px] px-3 border-b border-line align-top">
+                <!-- ONE "Product" — the shared ProductListItem, not an image column plus a SKU column. -->
+                <div class="pli">
+                  <span class="thumb thumb-empty opacity-60"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="pli-title text-fg-muted">Topi Bucket Krem</span>
+                    <span class="pli-sku">TPB-K-014</span>
+                  </span>
+                </div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-fg-muted text-[12.5px]">Accessories › Headwear</td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap">
+                <div class="[font-variant-numeric:tabular-nums]">2026-03-11</div>
+                <div class="text-fg-subtle text-[11.5px] mt-0.5">by Dewi</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <div class="font-[650] [font-variant-numeric:tabular-nums] text-fg-subtle">0 <span class="text-[11.5px] font-semibold">pcs</span></div>
+                <div class="text-fg-subtle text-[12px]">—</div>
+              </td>
+              <td class="py-[11px] px-3 border-b border-line align-top whitespace-nowrap text-[12px] text-fg-subtle">Nothing held · SKU free</td>
+              <td class="py-[11px] px-3 border-b border-line align-top text-right whitespace-nowrap">
+                <button class="inline-flex items-center gap-1.5 text-[12.5px] font-[650] py-1.5 px-[13px] rounded-sm bg-surface text-fg border border-line-strong cursor-pointer hover:bg-surface-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Restore
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 mt-3.5 flex-wrap">
+          <span class="text-[12.5px] text-fg-subtle" id="pager-info-arch">Showing 1–4 of 14 archived</span>
+          <div class="inline-flex items-center gap-1.5">
+            <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" disabled aria-label="Previous page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+            <span class="text-[12.5px] text-fg-muted [font-variant-numeric:tabular-nums] px-1">Page 1 of 4</span>
+            <button class="appearance-none font-[inherit] border border-line-strong bg-surface text-fg rounded-sm py-[5px] px-2 cursor-pointer inline-flex items-center enabled:hover:bg-surface-2 disabled:opacity-45 disabled:cursor-not-allowed" aria-label="Next page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <p class="text-fg-subtle text-[12px] mt-4 leading-[1.6]">
+        <strong>Ready</strong> = units on a shelf you can sell today. <strong>Ongoing</strong> = units on restocks
+        ordered but not yet accepted onto a rack. Both carry a <strong>count and a value</strong>, and the value is
+        always <strong>at cost</strong> — a product has no catalogue price, so this screen can never show a selling
+        figure. Ongoing value is an <strong>estimate</strong> (cost settles on what actually lands, #74), which is why
+        it is labelled and never added to Ready.
+        <strong>Cross-sell</strong> is another team ordering OUR product for its own shop: the row shows whether it is
+        open to them, the <strong>markup</strong> they pay over our cost, and what they have actually moved in 30 days.
+        <strong>The warehouse filter is not cosmetic</strong> — stock is held per warehouse, so choosing one restates
+        every ready/ongoing figure and every tile as that warehouse's.
+        <br /><br />
+        <strong>Open questions this mock raises, for the backend that follows:</strong>
+        (1) Neither stock number exists on a product — both live in <code>inventory_service</code>, per warehouse, and
+        today only <em>warehouse</em> roles may read them. A selling team's own list needs an
+        <strong>owner-side stock read</strong> that does not exist yet.
+        (2) <strong>Cross-sell has no model at all.</strong> <code>ProductDiscover</code> today exposes every team's
+        catalogue to every selling team with no opt-in and no price — so "open / not shared", the markup, and the
+        30-day units are all NEW. Three decisions hide in there: is markup a <strong>percent or a flat per-pc amount</strong>
+        (both are drawn above, deliberately), is it <strong>one number or per-team</strong>, and does it live on the
+        product, on a cross-sell agreement, or in <code>settlement_service</code> where the money between teams
+        already settles?
+        (3) A product that is <strong>open to cross-sell but out of stock</strong> (row four) is a state somebody must
+        own — do we auto-pause it, or let the other team discover the hard way?
+        (4) <strong>Sorting by ready qty / value / cross-sold</strong> is a cross-service sort — the catalogue is paged by
+        <code>product_service</code> and those numbers come from elsewhere, so it cannot be a plain <code>ORDER BY</code>.
+        (5) Under a warehouse filter, a product with stock <em>nowhere</em> drops out of the list entirely — including the
+        can't-sell rows you most want to see. Is "warehouse" a filter on rows, or only a lens on the numbers?
+        (6) <strong>Archive vs Delete</strong> — the wire still says <code>ProductDelete</code>; only the UI word changes
+        here, and <strong>Restore</strong> is a new RPC that can legitimately fail on a re-used SKU.
+        (7) The Product column is the shared <code>ProductListItem</code>, and two of its props need a decision here:
+        it renders the <strong>owning team</strong> as a badge, which on your OWN catalogue is the same name on all 128
+        rows (pass no <code>teamId</code>, or leave it and accept the noise), and it takes an optional
+        <strong>stock badge</strong> that this screen deliberately does not use — ready stock is a column with a value
+        beside it, and the same number twice in one row is how two figures start disagreeing.
+        <br />
+        Paginated (HARD RULE 9). Search &amp; filters re-query the full set.
+      </p>
+    </div></div>
+  </main>
+
+  <button class="fixed right-4 bottom-4 z-[9999] w-10 h-10 rounded-full border border-line-strong bg-surface text-fg-muted shadow cursor-pointer flex items-center justify-center hover:text-fg hover:border-accent" id="themeToggle" aria-label="Toggle light or dark" title="Toggle light / dark">
+    <svg class="block [[data-theme=dark]_&]:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg class="hidden [[data-theme=dark]_&]:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
+
+<script>
+  // ── Tabs: Active / Archived ────────────────────────────────────────────────
+  const tabsEl = document.getElementById("status-tabs");
+  const panels = { active: document.getElementById("panel-active"), archived: document.getElementById("panel-archived") };
+
+  tabsEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    tabsEl.querySelectorAll(".tab").forEach((t) => {
+      const on = t === btn;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    Object.entries(panels).forEach(([name, el]) => el.classList.toggle("hidden", name !== btn.dataset.panel));
+    // The tiles sit ABOVE the tabs and follow the Active tab's warehouse lens. On Archived that
+    // lens is not on screen, so leaving them narrowed would show one warehouse's numbers under a
+    // filter the reader cannot see.
+    if (btn.dataset.panel === "archived") resetTiles(); else apply();
+  });
+
+  // ── Active tab: the warehouse lens + the filters ───────────────────────────
+  const q = document.getElementById("q");
+  const fWh = document.getElementById("f-wh");
+  const fCat = document.getElementById("f-cat");
+  const fStock = document.getElementById("f-stock");
+  const fXsell = document.getElementById("f-xsell");
+  const rows = [...document.querySelectorAll("#rows-active tr")];
+  const info = document.getElementById("pager-info");
+  const whNote = document.getElementById("wh-note");
+  const whNoteName = document.getElementById("wh-note-name");
+  const tiles = {
+    readyQty: document.getElementById("tile-ready-qty"),
+    readyVal: document.getElementById("tile-ready-val"),
+    ongoingQty: document.getElementById("tile-ongoing-qty"),
+    ongoingVal: document.getElementById("tile-ongoing-val"),
+  };
+
+  const num = (n) => n.toLocaleString("id-ID");
+  const rp = (n) => "Rp " + n.toLocaleString("id-ID");
+  const json = (el, attr) => { try { return JSON.parse(el.dataset[attr] || "{}"); } catch (e) { return {}; } };
+
+  // Sum a {warehouse: [qty, value]} map — the whole map, or one warehouse's entry.
+  function total(map, wh) {
+    const entries = wh ? (map[wh] ? [[wh, map[wh]]] : []) : Object.entries(map);
+    return entries.reduce((a, [, v]) => ({ qty: a.qty + v[0], val: a.val + v[1] }), { qty: 0, val: 0 });
+  }
+
+  function renderRow(r, wh) {
+    const ready = total(json(r, "ready"), wh);
+    const ongoing = total(json(r, "ongoing"), wh);
+    const uncostedMap = json(r, "uncosted");
+    const uncosted = wh ? (uncostedMap[wh] || 0) : Object.values(uncostedMap).reduce((a, b) => a + b, 0);
+
+    // The stock STATE is derived, not stored — so it stays true under the warehouse lens.
+    const state = ready.qty > 0 ? "in" : ongoing.qty > 0 ? "incoming" : "out";
+    r.dataset.stock = state;
+
+    r.querySelector('[data-cell="ready"]').innerHTML =
+      '<div class="font-[650] [font-variant-numeric:tabular-nums] ' + (ready.qty ? "" : state === "out" ? "text-warn" : "text-fg-subtle") + '">' +
+        num(ready.qty) + ' <span class="text-[11.5px] font-semibold text-fg-subtle">pcs</span></div>' +
+      '<div class="text-[12px] [font-variant-numeric:tabular-nums] ' + (ready.qty ? "text-fg-muted" : "text-fg-subtle") + '">' +
+        (ready.qty ? rp(ready.val) : "—") + '</div>' +
+      // The count and the money disagree when some layers have no cost yet (#74) — name the gap
+      // rather than quietly publishing a total that undercounts the shelf.
+      (uncosted ? '<div class="mt-1"><span class="chip chip-warn chip-xs">' + num(uncosted) + ' pcs uncosted</span></div>' : "");
+
+    r.querySelector('[data-cell="ongoing"]').innerHTML =
+      '<div class="font-[650] [font-variant-numeric:tabular-nums] ' + (ongoing.qty ? "text-[color:var(--info)]" : "text-fg-subtle") + '">' +
+        num(ongoing.qty) + ' <span class="text-[11.5px] font-semibold text-fg-subtle">pcs</span></div>' +
+      '<div class="text-[12px] [font-variant-numeric:tabular-nums] ' + (ongoing.qty ? "text-fg-muted" : "text-fg-subtle") + '">' +
+        (ongoing.qty ? rp(ongoing.val) + ' <span class="text-fg-subtle">est</span>' : "—") + '</div>';
+
+    // "Where it sits" is the status column when there is nothing to place — an out-of-stock or
+    // restocking row has no shelf to name, and the badge is the more useful answer.
+    let where;
+    if (state === "out") {
+      where = '<span class="chip chip-warn">Can\'t sell · nothing coming</span>';
+    } else if (state === "incoming") {
+      where = '<span class="chip chip-info">Restocking · ETA 27 Jul</span>';
+    } else {
+      const map = json(r, "ready");
+      const list = wh ? [[wh, map[wh]]] : Object.entries(map).sort((a, b) => b[1][0] - a[1][0]);
+      where = list.map(([name, v]) => '<div>' + name + ' <span class="[font-variant-numeric:tabular-nums] text-fg">' + num(v[0]) + '</span></div>').join("");
+    }
+    r.querySelector('[data-cell="where"]').innerHTML = where;
+
+    // Cross-sell: open (with its markup and what other teams moved), or plainly not shared.
+    const open = r.dataset.xsell === "open";
+    r.querySelector('[data-cell="xsell"]').innerHTML = open
+      ? '<span class="chip chip-accent">Open · ' + r.dataset.markup + '</span>' +
+        '<div class="text-[11.5px] text-fg-subtle mt-1 [font-variant-numeric:tabular-nums]">' +
+          r.dataset.xteams + (r.dataset.xteams === "1" ? " team · " : " teams · ") + num(Number(r.dataset.xsold)) + ' pcs / 30d</div>' +
+        (r.dataset.xstarved === "yes" && state === "out"
+          ? '<div class="mt-1"><span class="chip chip-neg chip-xs">Other teams selling · nothing to give</span></div>'
+          : "")
+      : '<span class="text-fg-subtle text-[12.5px]">Not shared</span>';
+
+    return { ready, ongoing };
+  }
+
+  // The catalogue-wide figures — what the real screen would fetch as aggregates rather than sum
+  // from a page of seven rows.
+  function resetTiles() {
+    tiles.readyQty.innerHTML = '14.820 <span class="text-[13px] font-semibold text-fg-muted">pcs</span>';
+    tiles.readyVal.innerHTML = 'Rp 214.360.000 <span class="text-fg-subtle">at cost</span>';
+    tiles.ongoingQty.innerHTML = '1.140 <span class="text-[13px] font-semibold text-fg-muted">pcs</span>';
+    tiles.ongoingVal.innerHTML = 'Rp 24.860.000 <span class="text-fg-subtle">est · 6 restocks</span>';
+  }
+
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    const wh = fWh.value, cat = fCat.value, st = fStock.value, xs = fXsell.value;
+
+    fWh.classList.toggle("armed", !!wh);
+    whNote.classList.toggle("hidden", !wh);
+    if (wh) whNoteName.textContent = wh;
+
+    let shown = 0;
+    const sum = { readyQty: 0, readyVal: 0, ongoingQty: 0, ongoingVal: 0 };
+
+    rows.forEach((r) => {
+      const { ready, ongoing } = renderRow(r, wh);
+
+      // A warehouse lens narrows to what that warehouse holds or expects. A product with stock
+      // nowhere at all has no warehouse to belong to — see open question (5) in the footnote.
+      const atWarehouse = !wh || ready.qty > 0 || ongoing.qty > 0;
+      const ok =
+        (!term || r.dataset.search.includes(term)) &&
+        (!cat || r.dataset.cat === cat) &&
+        (!st || r.dataset.stock === st) &&
+        (!xs || r.dataset.xsell === xs) &&
+        atWarehouse;
+
+      r.style.display = ok ? "" : "none";
+      if (ok) {
+        shown++;
+        sum.readyQty += ready.qty; sum.readyVal += ready.val;
+        sum.ongoingQty += ongoing.qty; sum.ongoingVal += ongoing.val;
+      }
+    });
+
+    // With a warehouse picked the tiles state THAT warehouse (summed from the rows in view);
+    // with none, they are the catalogue-wide figures the real screen would fetch as aggregates.
+    if (wh) {
+      tiles.readyQty.innerHTML = num(sum.readyQty) + ' <span class="text-[13px] font-semibold text-fg-muted">pcs</span>';
+      tiles.readyVal.innerHTML = rp(sum.readyVal) + ' <span class="text-fg-subtle">at cost · ' + wh + '</span>';
+      tiles.ongoingQty.innerHTML = num(sum.ongoingQty) + ' <span class="text-[13px] font-semibold text-fg-muted">pcs</span>';
+      tiles.ongoingVal.innerHTML = rp(sum.ongoingVal) + ' <span class="text-fg-subtle">est · ' + wh + '</span>';
+    } else {
+      resetTiles();
+    }
+
+    const filtering = term || wh || cat || st || xs;
+    info.textContent = filtering ? "Showing " + shown + " of " + shown + " (filtered)" : "Showing 1–7 of 128 products";
+  }
+
+  [q, fWh, fCat, fStock, fXsell].forEach((el) => el.addEventListener("input", apply));
+  apply();
+
+  // ── Archived tab search ────────────────────────────────────────────────────
+  const qArch = document.getElementById("q-arch");
+  const rowsArch = [...document.querySelectorAll("#rows-archived tr")];
+  const infoArch = document.getElementById("pager-info-arch");
+
+  qArch.addEventListener("input", () => {
+    const term = qArch.value.trim().toLowerCase();
+    let shown = 0;
+    rowsArch.forEach((r) => {
+      const ok = !term || r.dataset.search.includes(term);
+      r.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    });
+    infoArch.textContent = term ? "Showing " + shown + " of " + shown + " (filtered)" : "Showing 1–4 of 14 archived";
+  });
+
+  // ── Row overflow menus ─────────────────────────────────────────────────────
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-menu]");
+    const wrap = trigger && trigger.closest(".menu-wrap");
+    document.querySelectorAll(".menu-wrap.open").forEach((w) => { if (w !== wrap) w.classList.remove("open"); });
+    if (wrap) wrap.classList.toggle("open");
+  });
+
+  (function(){
+    var tt = document.getElementById('themeToggle');
+    if (!tt) return;
+    tt.addEventListener('click', function(){
+      var d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', d);
+      try { localStorage.setItem('mock-theme', d); } catch(e){}
+    });
+  })();
+</script>
+</body>
+</html>

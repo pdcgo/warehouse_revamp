@@ -54,6 +54,9 @@ const (
 	// ProductServiceProductDeleteProcedure is the fully-qualified name of the ProductService's
 	// ProductDelete RPC.
 	ProductServiceProductDeleteProcedure = "/warehouse.product.v1.ProductService/ProductDelete"
+	// ProductServiceProductRestoreProcedure is the fully-qualified name of the ProductService's
+	// ProductRestore RPC.
+	ProductServiceProductRestoreProcedure = "/warehouse.product.v1.ProductService/ProductRestore"
 )
 
 // ProductServiceClient is a client for the warehouse.product.v1.ProductService service.
@@ -66,7 +69,12 @@ type ProductServiceClient interface {
 	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
+	// ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
+	// Archive for that reason. ProductRestore is the way back.
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
+	// ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
+	// archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
+	ProductRestore(context.Context, *connect.Request[v1.ProductRestoreRequest]) (*connect.Response[v1.ProductRestoreResponse], error)
 }
 
 // NewProductServiceClient constructs a client for the warehouse.product.v1.ProductService service.
@@ -122,6 +130,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(productServiceMethods.ByName("ProductDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		productRestore: connect.NewClient[v1.ProductRestoreRequest, v1.ProductRestoreResponse](
+			httpClient,
+			baseURL+ProductServiceProductRestoreProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductRestore")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -134,6 +148,7 @@ type productServiceClient struct {
 	productDetail   *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
 	productUpdate   *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
 	productDelete   *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
+	productRestore  *connect.Client[v1.ProductRestoreRequest, v1.ProductRestoreResponse]
 }
 
 // ProductCreate calls warehouse.product.v1.ProductService.ProductCreate.
@@ -171,6 +186,11 @@ func (c *productServiceClient) ProductDelete(ctx context.Context, req *connect.R
 	return c.productDelete.CallUnary(ctx, req)
 }
 
+// ProductRestore calls warehouse.product.v1.ProductService.ProductRestore.
+func (c *productServiceClient) ProductRestore(ctx context.Context, req *connect.Request[v1.ProductRestoreRequest]) (*connect.Response[v1.ProductRestoreResponse], error) {
+	return c.productRestore.CallUnary(ctx, req)
+}
+
 // ProductServiceHandler is an implementation of the warehouse.product.v1.ProductService service.
 type ProductServiceHandler interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
@@ -181,7 +201,12 @@ type ProductServiceHandler interface {
 	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
+	// ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
+	// Archive for that reason. ProductRestore is the way back.
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
+	// ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
+	// archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
+	ProductRestore(context.Context, *connect.Request[v1.ProductRestoreRequest]) (*connect.Response[v1.ProductRestoreResponse], error)
 }
 
 // NewProductServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -233,6 +258,12 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		connect.WithSchema(productServiceMethods.ByName("ProductDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	productServiceProductRestoreHandler := connect.NewUnaryHandler(
+		ProductServiceProductRestoreProcedure,
+		svc.ProductRestore,
+		connect.WithSchema(productServiceMethods.ByName("ProductRestore")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.product.v1.ProductService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProductServiceProductCreateProcedure:
@@ -249,6 +280,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductUpdateHandler.ServeHTTP(w, r)
 		case ProductServiceProductDeleteProcedure:
 			productServiceProductDeleteHandler.ServeHTTP(w, r)
+		case ProductServiceProductRestoreProcedure:
+			productServiceProductRestoreHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -284,4 +317,8 @@ func (UnimplementedProductServiceHandler) ProductUpdate(context.Context, *connec
 
 func (UnimplementedProductServiceHandler) ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDelete is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductRestore(context.Context, *connect.Request[v1.ProductRestoreRequest]) (*connect.Response[v1.ProductRestoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductRestore is not implemented"))
 }

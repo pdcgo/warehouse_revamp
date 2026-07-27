@@ -2,6 +2,9 @@ package inventory_v1
 
 import (
 	"context"
+	"strconv"
+	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -48,6 +51,15 @@ func (s *Service) RestockRequestList(
 		)
 	}
 
+	// Only restocks going to ONE warehouse (owner). A selling team ships to several, and this is how
+	// it asks "what is going to Jakarta" rather than "what is going anywhere".
+	if warehouseID := req.Msg.GetFilter().GetWarehouseId(); warehouseID != 0 {
+		query = query.Where("warehouse_id = ?", warehouseID)
+	}
+
+	query = applyRestockDateRange(query, req.Msg.GetFilter())
+	query = applyRestockSearch(query, req.Msg.GetFilter().GetQ())
+
 	var total int64
 
 	err := query.Count(&total).Error
@@ -85,4 +97,92 @@ func (s *Service) RestockRequestList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// restockDateColumn maps the caller's chosen date to its column (owner).
+//
+// A CLOSED switch over the enum, never a caller-supplied string: the result is concatenated into SQL
+// below, and the only safe way to do that is for every possible value to be written here. UNSPECIFIED
+// reads as created_at, which is the one date every row has.
+func restockDateColumn(field inventoryv1.RestockDateField) string {
+	switch field {
+	case inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_ACCEPTED:
+		return "accepted_at"
+	case inventoryv1.RestockDateField_RESTOCK_DATE_FIELD_CANCELLED:
+		return "cancelled_at"
+	default:
+		return "created_at"
+	}
+}
+
+// applyRestockDateRange narrows to restocks whose CHOSEN date falls in the range (owner).
+//
+// Either bound may be left at 0, which means "open at that end" — a `to` alone is "everything up to
+// Friday". Both 0 is no filter at all, and the whole clause is skipped so a request with no range
+// pays nothing for it.
+//
+// Rows with no such date are EXCLUDED rather than kept. "Accepted last week" cannot be true of a
+// request nobody has accepted, and a NULL comparison would drop them anyway — the explicit IS NOT
+// NULL says so out loud, and lets the partial indexes from 00018 serve the query.
+func applyRestockDateRange(query *gorm.DB, filter *inventoryv1.RestockRequestListFilter) *gorm.DB {
+	from, to := filter.GetFromUnix(), filter.GetToUnix()
+
+	if from == 0 && to == 0 {
+		return query
+	}
+
+	column := restockDateColumn(filter.GetDateField())
+
+	if column != "created_at" {
+		query = query.Where(column + " IS NOT NULL")
+	}
+
+	if from != 0 {
+		query = query.Where(column+" >= ?", time.Unix(from, 0))
+	}
+
+	if to != 0 {
+		query = query.Where(column+" <= ?", time.Unix(to, 0))
+	}
+
+	return query
+}
+
+// applyRestockSearch narrows by FREE TEXT over what a person remembers about a restock (owner): its
+// number, the courier's tracking number, the order it was for, or a SKU / product name on one of its
+// lines.
+//
+// The lines are matched with EXISTS rather than a JOIN, for the reason the product filter above gives:
+// a join returns a request once per matching line, double-counting both the rows and the paginated
+// total.
+//
+// THE NUMBER MATCHES WHOLE, not as a substring. "31" finding restock 310, 313 and 3100 would bury the
+// one delivery somebody typed the number of — so a numeric term is an equality on id, and it is added
+// BESIDE the text conditions rather than replacing them, because "500" is a plausible SKU fragment too.
+func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return query
+	}
+
+	like := "%" + strings.ToLower(q) + "%"
+
+	conditions := []string{
+		"LOWER(receipt) LIKE ?",
+		"LOWER(order_ref) LIKE ?",
+		"EXISTS (SELECT 1 FROM restock_request_items i " +
+			"WHERE i.restock_request_id = restock_requests.id " +
+			"AND (LOWER(i.sku) LIKE ? OR LOWER(i.name) LIKE ?))",
+	}
+	args := []any{like, like, like, like}
+
+	// "#312" and "312" are the same search — people copy the number off the screen, where it is
+	// printed with the hash.
+	id, err := strconv.ParseUint(strings.TrimPrefix(q, "#"), 10, 64)
+	if err == nil && id != 0 {
+		conditions = append(conditions, "restock_requests.id = ?")
+		args = append(args, id)
+	}
+
+	return query.Where("("+strings.Join(conditions, " OR ")+")", args...)
 }

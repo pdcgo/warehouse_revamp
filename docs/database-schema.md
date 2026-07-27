@@ -161,7 +161,10 @@ erDiagram
         bigint      category_id                 "required on write, opaque cross-service id, no FK"
         text        default_image_url           "denormalised cover, mirrors images[0]"
         text        default_image_thumbnail_url "denormalised cover thumbnail"
-        boolean     deleted                     "soft delete"
+        int         cross_markup_bps            "CROSS: markup another team pays over our cost, basis points (1250 = 12.50%), 0 = none"
+        boolean     cross_locked                "CROSS: true = ours only, absent from ProductDiscover so no other team can order it"
+        int         reserved_stock              "hold-back buffer in units, available = on_hand - reserved_stock, 0 = none"
+        boolean     deleted                     "soft delete, ARCHIVED in the UI"
         timestamptz created_at
         timestamptz updated_at
     }

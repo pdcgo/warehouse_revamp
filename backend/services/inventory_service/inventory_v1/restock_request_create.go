@@ -32,6 +32,9 @@ func (s *Service) RestockRequestCreate(
 		PaymentType:      restockPaymentToText(req.Msg.GetPaymentType()),
 		Note:             req.Msg.GetNote(),
 		Items:            restockItemModels(req.Msg.GetItems()),
+		// WHO RAISED IT, from the caller's identity rather than the request body — a client that
+		// could nominate its own author could file somebody else's name against a delivery.
+		CreatedByUserID: actorFrom(ctx),
 	}
 
 	if supplierID := req.Msg.GetSupplierId(); supplierID != 0 {
