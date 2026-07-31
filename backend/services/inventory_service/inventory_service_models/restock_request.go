@@ -34,8 +34,8 @@ type RestockRequest struct {
 	// is the side that pays it and it only exists once the goods turn up. Summed with ShippingCost and
 	// spread across the units that arrived sellable.
 	CODShippingFee int64 `gorm:"column:cod_shipping_fee"`
-	PaymentType  string
-	Note         string
+	PaymentType    string
+	Note           string
 
 	// WHO handled it, as opaque user_service ids (no FK, like the team ids above). Both 0 until the
 	// act happens — and 0 on any row raised before 00018, which is deliberately not backfilled: a
@@ -44,6 +44,9 @@ type RestockRequest struct {
 	// Set from the CALLER'S IDENTITY in the handler, never from the request body.
 	CreatedByUserID  uint64
 	AcceptedByUserID uint64
+	// Who called it off (00019). 0 until it is cancelled — and 0 forever on a row cancelled before
+	// that migration, for the same reason the two above are: a guessed id is worse than none.
+	CancelledByUserID uint64
 
 	// WHEN it was accepted / cancelled. Pointers because "has not been" is a real state and NULL is
 	// how the column says it — a zero time.Time would read as the first second of year 1, which sorts
@@ -53,6 +56,11 @@ type RestockRequest struct {
 
 	// The lines. GORM loads them via RestockRequestID.
 	Items []RestockRequestItem `gorm:"foreignKey:RestockRequestID"`
+
+	// The HISTORY (00019) — one row per thing that happened, oldest first. Preloaded by Detail only:
+	// a page of twenty restocks has no use for every event of each, exactly as it has none for the
+	// lines' placements.
+	Events []RestockRequestEvent `gorm:"foreignKey:RestockRequestID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

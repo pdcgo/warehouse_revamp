@@ -1,19 +1,67 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { inventoryClient, restockClient, userClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import type { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
 
+// WHO DID WHAT — the PEOPLE behind a restock's user ids.
+//
+// A restock carries user IDS, not names — a person's name is not part of what was agreed, so it is
+// read live and never snapshotted onto the row. One `UserByIDs` call turns a screen's actors into
+// people, and it lives here because BOTH the list (a page of rows) and the detail (one row's
+// timeline) ask the same question of the same ids. Two copies of it is how one screen starts falling
+// back to "User #7" and the other to a blank.
+//
+// It returns the WHOLE `PublicUser`, not a name string. The list only needs the name, but the
+// timeline renders `UserItem` — avatar, name, @username — and a helper that had already thrown the
+// avatar away would force a second read of the same people to get the picture back.
+//
+// It never throws: a lookup that fails must not take the screen down with it, and every caller falls
+// back to naming the id — the same rule an unresolved rack follows.
+async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser>> {
+  const actors = new Map<string, PublicUser>();
+  const wanted = [...new Set(ids.filter((id) => id > 0n))];
+
+  if (wanted.length === 0) return actors;
+
+  try {
+    const users = publicUsersByIds(
+      await userClient.userByIDs({
+        filter: { ids: wanted },
+        dataRequest: userByIdsRowData(),
+      }),
+    );
+
+    for (const [id, u] of Object.entries(users)) {
+      actors.set(id, u);
+    }
+  } catch {
+    // Deliberately empty — see above.
+  }
+
+  return actors;
+}
+
 export interface RestockListArgs {
   teamId: bigint | undefined;
   status: RestockRequestStatus;
-  /** 0 = every warehouse. */
+  /** 0 = every warehouse. The SELLING side's lens — which building the goods are going to. */
   warehouseId?: bigint;
+  /** 0 = every team. The WAREHOUSE side's mirror of it — which team the goods are coming from. */
+  requestingTeamId?: bigint;
+  /** 0 = anyone. Who RAISED the restock. */
+  createdByUserId?: bigint;
+  /**
+   * 0 = anyone. Who COUNTED it at the door. Implies an accepted restock — a pending one records
+   * nobody, so this and the Pending tab together correctly return nothing.
+   */
+  acceptedByUserId?: bigint;
   /** Which of a restock's three dates the range is about; UNSPECIFIED reads as created. */
   dateField?: RestockDateField;
   /** Unix seconds; 0 = open at that end. */
@@ -30,6 +78,9 @@ export function useRestockRequests(args: RestockListArgs) {
     teamId,
     status,
     warehouseId = 0n,
+    requestingTeamId = 0n,
+    createdByUserId = 0n,
+    acceptedByUserId = 0n,
     dateField = RestockDateField.UNSPECIFIED,
     fromUnix = 0n,
     toUnix = 0n,
@@ -45,6 +96,9 @@ export function useRestockRequests(args: RestockListArgs) {
     queryKey: key.restock(teamId, {
       status,
       warehouseId: warehouseId.toString(),
+      requestingTeamId: requestingTeamId.toString(),
+      createdByUserId: createdByUserId.toString(),
+      acceptedByUserId: acceptedByUserId.toString(),
       dateField,
       fromUnix: fromUnix.toString(),
       toUnix: toUnix.toString(),
@@ -52,52 +106,38 @@ export function useRestockRequests(args: RestockListArgs) {
       page,
       pageSize,
     }),
+    ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await restockClient.restockRequestList({
         teamId: teamId!,
-        filter: { status, warehouseId, dateField, fromUnix, toUnix, q },
+        filter: {
+          status,
+          warehouseId,
+          requestingTeamId,
+          createdByUserId,
+          acceptedByUserId,
+          dateField,
+          fromUnix,
+          toUnix,
+          q,
+        },
         dataRequest: restockListRowData(),
         page: { page, limit: pageSize },
       });
 
       const requests = restocksFromList(res.items, res.ids);
 
-      // WHO RAISED IT AND WHO ACCEPTED IT, resolved in the same query rather than by each row.
-      //
-      // The request carries user IDS, not names (a person's name is not part of what was agreed, so
-      // it is read live rather than snapshotted) — so one UserByIDs call turns the whole page's
-      // actors into names. Both columns come from the same map: the same person often does both.
-      const actorNames = new Map<string, string>();
-      const actorIds = [
-        ...new Set(
-          requests
-            .flatMap((r) => [r.createdByUserId, r.acceptedByUserId])
-            .filter((id) => id > 0n),
-        ),
-      ];
-
-      if (actorIds.length > 0) {
-        try {
-          const users = publicUsersByIds(
-            await userClient.userByIDs({
-              filter: { ids: actorIds },
-              dataRequest: userByIdsRowData(),
-            }),
-          );
-
-          for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, u.name || u.username);
-          }
-        } catch {
-          // Left empty on purpose — a name lookup that fails must not take the list down with it.
-          // Each column falls back to naming the id, exactly as an unresolved rack does.
-        }
-      }
+      // WHO RAISED IT AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
+      // one call for the whole page. Both columns come from the same map: the same person often
+      // does both.
+      const actors = await fetchActors(
+        requests.flatMap((r) => [r.createdByUserId, r.acceptedByUserId]),
+      );
 
       return {
         requests,
-        actorNames,
+        actors,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -135,6 +175,44 @@ export function useRestockOngoing(args: { teamId: bigint | undefined; warehouseI
   });
 }
 
+// THE INBOUND HEADLINE (owner) — the warehouse side's mirror of useRestockOngoing above: what is
+// still waiting at this warehouse's door, over every PENDING restock targeting it.
+//
+// A SEPARATE RPC rather than the same one read differently, and the reason is not tidiness. The
+// buyer's tiles are about money it has committed and not received; these are about work that has not
+// been done — different sets (`warehouse_id = team`, not `requesting_team_id = team`), and
+// `OwnerStockStat`'s policy carries no warehouse roles at all, so the crew reading this screen would
+// have got PermissionDenied from it.
+//
+// It takes the REQUESTING-TEAM FILTER and nothing else, exactly as the buyer's tiles take only the
+// warehouse lens. That filter restates the question ("what is coming from Bandung"); a search box or
+// a status tab picks rows out of an answer, and a headline that followed those would stop being one.
+export function useRestockInbound(args: { teamId: bigint | undefined; requestingTeamId?: bigint }) {
+  const { teamId, requestingTeamId = 0n } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, {
+      inbound: true,
+      requestingTeamId: requestingTeamId.toString(),
+    }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await restockClient.restockInboundStat({
+        teamId: teamId!,
+        filter: { requestingTeamId },
+      });
+
+      return {
+        restockCount: res.preview?.restockCount ?? 0n,
+        productCount: res.preview?.productCount ?? 0n,
+        unitCount: res.preview?.unitCount ?? 0n,
+        amount: res.preview?.amount ?? 0n,
+        oldestPendingUnix: res.preview?.oldestPendingUnix ?? 0n,
+      };
+    },
+  });
+}
+
 // The printable labels for a fulfilled restock (#207), scoped to the accepting warehouse. Its own
 // key params so it caches independently of the request detail — a different question about the same
 // receipt. Only enabled once we have a warehouse team and a real request id.
@@ -163,6 +241,27 @@ export function useRestockRequest(args: { teamId: bigint | undefined; requestId:
 
       return res.request ?? null;
     },
+  });
+}
+
+// The PEOPLE behind one restock's two actor ids — who raised it, who accepted it.
+//
+// A separate query rather than part of `useRestockRequest` on purpose: the request itself is the
+// record, and who-did-it is read on top of it. Keeping them apart means the detail page renders the
+// moment the restock arrives instead of waiting on user_service, and a `UserByIDs` that fails
+// degrades one line of a timeline rather than blanking the page.
+//
+// Keyed on the ids, so the same two people are resolved once no matter which restock asks. No team
+// in the key, and that is not the omission the queryClient warns about: `UserByIDs` takes no
+// `team_id` — a public user by id reads the same for everyone — so there is no per-team answer to
+// keep apart.
+export function useRestockActors(userIds: bigint[]) {
+  const wanted = [...new Set(userIds.filter((id) => id > 0n))].sort();
+
+  return useQuery({
+    queryKey: key.users(undefined, { actors: wanted.join(",") }),
+    enabled: wanted.length > 0,
+    queryFn: () => fetchActors(wanted),
   });
 }
 

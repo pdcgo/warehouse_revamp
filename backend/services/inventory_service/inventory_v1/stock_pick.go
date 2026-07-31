@@ -120,6 +120,16 @@ func pickOneLine(
 			return nil, applyErr
 		}
 
+		// And off the BATCHES on that shelf, oldest first (#232). Without this the draw moved
+		// `stock_levels` and left `stock_shelf_batches` alone, so a batch kept its arrival quantity as
+		// Ready forever — every cost layer, every batch row and every `used` figure overstated the shelf
+		// by everything that had ever shipped. The movement stays batch-less on purpose: a line can be
+		// filled from several batches, and naming one of them would be picking a winner.
+		fifoErr := attributeDeltaFIFO(tx, warehouseID, productID, places[i].RackID, -take)
+		if fifoErr != nil {
+			return nil, fifoErr
+		}
+
 		mv, moveErr := appendMovement(tx, warehouseID, productID, places[i].RackID, nil, -take, balance,
 			inventoryv1.MovementKind_MOVEMENT_KIND_PICK, "order", ref, actor)
 		if moveErr != nil {

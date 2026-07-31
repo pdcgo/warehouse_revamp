@@ -510,16 +510,26 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
       }
 
+      // A supplier owned by the BUYING team (1), never by the warehouse — so naming it on the accept
+      // screen is a genuine cross-team read and not an accident of both sides being the same team.
+      const supplierName = "Sinar Jaya Textile";
+      const supplier = await call("inventory.v1.SupplierService/SupplierCreate", {
+        teamId: "1",
+        code: "E2E-ACC",
+        name: supplierName,
+      });
+
       const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
         teamId: "1",
         warehouseId: warehouse.id,
         shippingCost: "20000",
+        supplierId: supplier.supplier.id,
         items: [
           { productId: product.id, sku, name: "e2e accept", quantity: "10", totalPrice: "100000" },
         ],
       });
 
-      return { requestId: created.request.id, productId: product.id };
+      return { requestId: created.request.id, productId: product.id, supplierName };
     },
     [WH_CODE, SKU],
   );
@@ -529,6 +539,11 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
   const line = page.getByTestId(`accept-line-${seeded.productId}`);
   await expect(line).toBeVisible();
+
+  // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs
+  // to team 1 and we are reading as the WAREHOUSE, which every other supplier read refuses. If this
+  // regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
+  await expect(page.getByTestId("accept-supplier")).toHaveText(seeded.supplierName);
 
   // The count is DERIVED now (#206): the line seeds with the ordered 10 on ONE row with no shelf, so
   // Accept is blocked until every quantity has a home — there is no separate "arrived" box to type.
@@ -540,13 +555,21 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   // The disabled button SAYS WHY, beside itself — the header names the line still to place.
   await expect(page.getByTestId("accept-progress")).toContainText("1 line not placed");
 
+  // RackSelect is a Chakra Select, not a native one, so a place is CHOSEN — open the trigger, click
+  // the option — rather than set with selectOption(). `getByRole` only sees the open listbox: a
+  // closed Select.Content is hidden, and hidden nodes are out of the accessibility tree.
+  const pickRack = async (index: number, code: string) => {
+    await line.getByTestId("rack-select").nth(index).click();
+    await page.getByRole("option", { name: new RegExp(`^${code}\\b`) }).click();
+  };
+
   // 8 are sellable: split 5 on the first shelf, 3 on the second.
   await firstQty.fill("5");
-  await line.getByTestId("rack-select").first().selectOption({ label: "ACC-01" });
+  await pickRack(0, "ACC-01");
 
   await page.getByTestId(`accept-add-placement-${seeded.productId}`).click();
   await line.getByTestId(/^accept-placement-qty-/).nth(1).fill("3");
-  await line.getByTestId("rack-select").nth(1).selectOption({ label: "ACC-02" });
+  await pickRack(1, "ACC-02");
 
   // Everything typed now has a shelf — the blocking pill is gone and the progress line with it.
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeHidden();
@@ -708,7 +731,7 @@ test("Warehouse product: the stock view shows placement, valuation and history (
 
   // Tab 5 — nothing has been MOVED between shelves, so this one is honestly empty.
   await page.getByTestId("wp-tab-placement-history").click();
-  await expect(page.getByTestId("wp-placement-history-table-empty")).toBeVisible();
+  await expect(page.getByTestId("wp-placement-history-empty")).toBeVisible();
 
   // E/G (#159) — the last order and the last delivery, answerable only because the list RPCs can now
   // be narrowed to one product. Back to Info, which is where they sit (#198).

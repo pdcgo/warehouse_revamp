@@ -92,6 +92,15 @@ func (s *Service) StockReturn(
 				return applyErr
 			}
 
+			// Back onto the batches too (#232) — the exact inverse of what the pick took off them. The
+			// pair must move together: giving stock back to `stock_levels` alone would leave the shelf
+			// holding more units than its batches account for, which is the same drift the pick caused,
+			// pointing the other way.
+			fifoErr := attributeDeltaFIFO(tx, warehouseID, picks[i].ProductID, picks[i].RackID, give)
+			if fifoErr != nil {
+				return fifoErr
+			}
+
 			mv, moveErr := appendMovement(tx, warehouseID, picks[i].ProductID, picks[i].RackID,
 				nil, give, balance, inventoryv1.MovementKind_MOVEMENT_KIND_RETURN, "order returned", ref, actor)
 			if moveErr != nil {

@@ -40,18 +40,30 @@ func (s *Service) RestockRequestCancel(
 		// WHEN it was called off, stamped here rather than left to `updated_at`: any later write would
 		// move that column, and "cancelled last Tuesday" has to stay true afterwards.
 		now := time.Now()
+		actor := actorFrom(ctx)
 
 		rr.Status = restockStatusCancelled
 		rr.CancelledAt = &now
+		// WHO called it off (00019) — from the caller's identity, exactly as created-by and accepted-by
+		// are. Before this the cancelled step on the timeline could name a date and nobody, while every
+		// other step named somebody.
+		rr.CancelledByUserID = actor
 
-		return tx.
+		updateErr := tx.
 			Model(&rr).
 			Updates(map[string]any{
-				"status":       restockStatusCancelled,
-				"cancelled_at": now,
-				"updated_at":   now,
+				"status":               restockStatusCancelled,
+				"cancelled_at":         now,
+				"cancelled_by_user_id": actor,
+				"updated_at":           now,
 			}).
 			Error
+		if updateErr != nil {
+			return updateErr
+		}
+
+		// Same transaction, same instant as the column above — see recordRestockEvent.
+		return recordRestockEvent(tx, rr.ID, restockEventCancelled, actor, now)
 	})
 	if err != nil {
 		return nil, restockErr(err)

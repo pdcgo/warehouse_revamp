@@ -1,19 +1,15 @@
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
   Button,
-  Card,
   Flex,
   Heading,
   Icon,
-  Separator,
-  SimpleGrid,
   Spacer,
   Spinner,
   Stack,
-  Table,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, Ban, Pencil } from "lucide-react";
@@ -22,18 +18,18 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useSupplier } from "../../features/suppliers/queries";
-import { useRestockRequest, useCancelRestockRequest } from "../../features/restock/queries";
-import { DetailField } from "../../features/restock/DetailField";
-import { deltaLabel } from "../../features/restock/counting";
-import { lineTotal, unitPrice } from "../../features/restock/lines";
-import { askedQuantity, goodsTotal, receivedQuantity } from "../../features/restock/summary";
+import {
+  useCancelRestockRequest,
+  useRestockActors,
+  useRestockRequest,
+} from "../../features/restock/queries";
+import { askedQuantity, receivedQuantity } from "../../features/restock/summary";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { RestockStatusBadge } from "../../components/RestockStatusBadge";
-import { paymentTypeLabel } from "../../components/PaymentTypeSelect";
-import { ShippingBadge } from "../../components/ShippingBadge";
 import { toaster } from "../../components/Toaster";
-import { formatUnixDate } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { InfoPanel } from "./components/InfoPanel";
+import { ProductsPanel } from "./components/ProductsPanel";
+import { TimelinePanel } from "./components/TimelinePanel";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -55,10 +51,17 @@ function parseRequestId(raw: string | undefined): bigint {
 // warehouse, and a selling team is never a warehouse target — so Edit and Cancel are gated on the
 // STATUS alone (#131), which is the only thing that actually varies.
 //
-// The PLACE a line was shelved on is deliberately absent, and it is not a permissions dodge: RackList
-// is scoped to the warehouse and would refuse this team outright, but more to the point, which shelf
-// inside somebody else's building a line went on is not a fact a buyer acts on. What the buyer wants
-// to know — did my stock arrive, and how much of it — is the Arrived column, and that stays.
+// THREE TABS, and the split is by the QUESTION being asked, not by how much fits on a screen:
+//
+//   Info      — what was agreed, and with whom. The terms of the purchase.
+//   Product   — what was ordered, what arrived, what it cost.
+//   Timeline  — who did what, and when.
+//
+// Vertically, down the left (#198) — the same shape the rack, batch and warehouse-product details
+// use, because they are the same kind of screen: one record, read section by section. What stays
+// OUTSIDE the tabs is the identity and the actions: the number, the status, and Edit/Cancel are true
+// of the whole restock, and a person who came here to cancel one should not have to guess which tab
+// hid the button.
 export function RestockSellingDetailPage() {
   const { t } = useTranslation();
   const { requestId } = useParams();
@@ -90,24 +93,22 @@ export function RestockSellingDetailPage() {
   // readable here. "Warehouse #3" is not somewhere goods go.
   const warehouse = useTeamDetail({ teamId: warehouseId, enabled: warehouseId > 0n });
 
-  // Only a FULFILLED request has been counted, so it is the only one whose `receivedQuantity` means
-  // anything. On a pending or cancelled request it is 0 because nobody ever opened the box — showing
-  // that would read as "nothing came" when the truth is "not counted yet".
-  const isFulfilled = request?.status === RestockRequestStatus.FULFILLED;
-
-  const items = useMemo(() => request?.items ?? [], [request]);
-  const productsTotal = useMemo(() => goodsTotal(items), [items]);
-  const askedTotal = useMemo(() => askedQuantity(items), [items]);
-  const receivedTotal = useMemo(() => receivedQuantity(items), [items]);
-
-  // The goods plus EVERY freight charge on them — the same arithmetic the list's Value column does,
-  // so a row and the page it opens can never disagree about what a restock cost.
+  // THE PEOPLE ON THE TIMELINE. The ids come from the EVENTS now (00019), not from the two actor
+  // columns: a restock edited three times has three more people to name — often the same person, which
+  // is why they are deduplicated into one lookup — and reading the columns would miss every one.
   //
-  // `cod_shipping_fee` is what the courier charged at the door (#155). The warehouse pays and enters
-  // it, but it is freight on this team's goods, so it belongs in this team's total; it is 0 until a
-  // delivery is accepted, and its row is hidden until there is one.
-  const codFee = request?.codShippingFee ?? 0n;
-  const grandTotal = productsTotal + (request?.shippingCost ?? 0n) + codFee;
+  // The columns are still the right source for the LIST's two cells; here the history is the subject.
+  const actors = useRestockActors(request?.events.map((event) => event.actorUserId) ?? []);
+
+  // Names an actor the lookup could not resolve. 0 is "not recorded" — a backfilled event whose actor
+  // the old columns never captured — and gets nothing, because inventing a name there would be worse
+  // than the gap. A set-but-unresolved id names its number, exactly as an unresolved rack does.
+  function actorFallback(userId: bigint): string {
+    if (userId === 0n) return "";
+    return actors.data?.get(userId.toString())
+      ? ""
+      : t("restock.table.userRef", { id: userId.toString() });
+  }
 
   // Cancel INVALIDATES rather than re-rendering off the response: cancelling moves this request
   // between STATUS TABS on the list, and writing the new status only into this page's state would
@@ -163,6 +164,13 @@ export function RestockSellingDetailPage() {
   }
 
   const isPending = request.status === RestockRequestStatus.PENDING;
+
+  // Only a FULFILLED request has been counted, so it is the only one that can be short — see
+  // `shortfall`. The badge sits in the header rather than on the Product tab because it is a fact
+  // about the whole delivery, and the reader must not have to open a tab to find out it went wrong.
+  const isFulfilled = request.status === RestockRequestStatus.FULFILLED;
+  const askedTotal = askedQuantity(request.items);
+  const receivedTotal = receivedQuantity(request.items);
   const short = isFulfilled && receivedTotal < askedTotal ? askedTotal - receivedTotal : 0n;
 
   return (
@@ -222,211 +230,55 @@ export function RestockSellingDetailPage() {
         )}
       </Flex>
 
-      {/* WHERE IT IS GOING. No "Requested by" — every restock this page can open was raised by the
-          team reading it, so the field could only repeat the team switcher. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.detail.request")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
-              <DetailField
-                label={t("restock.table.destination")}
-                value={
-                  warehouse.data?.name ||
-                  t("restock.warehouseRef", { id: request.warehouseId.toString() })
-                }
-                testId="restock-detail-warehouse"
-              />
-              <DetailField
-                label={t("restock.table.shipment")}
-                value={<ShippingBadge code={request.shippingCode} />}
-              />
-              <DetailField
-                label={t("restock.detail.created")}
-                value={formatUnixDate(request.createdAtUnix)}
-              />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+      {/* Info first because it is what the request IS; Product second because it is what the request
+          is FOR; Timeline last because it is what has happened to it so far. */}
+      <Tabs.Root defaultValue="info" orientation="vertical" data-testid="restock-detail-tabs">
+        <Tabs.List minW="40">
+          <Tabs.Trigger value="info" data-testid="restock-detail-tab-info">
+            {t("restock.detail.tab.info")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="products" data-testid="restock-detail-tab-products">
+            {t("restock.detail.tab.products")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="timeline" data-testid="restock-detail-tab-timeline">
+            {t("restock.detail.tab.timeline")}
+          </Tabs.Trigger>
+        </Tabs.List>
 
-      {/* WHAT WAS AGREED, AND WITH WHOM (#127) — the buying side's own card, and the one the
-          warehouse's copy of this page does not have at all. Each field is legitimately absent
-          (0n / ""), and an absent one renders the same muted "—" as anywhere else. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.orderDetails")}
-            </Text>
-            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-              <DetailField
-                label={t("restock.form.supplier")}
-                value={
-                  supplierId === 0n
-                    ? ""
-                    : (supplier.data?.name ??
-                      t("restock.detail.supplierRef", { id: supplierId.toString() }))
-                }
-                testId="restock-detail-supplier"
-              />
-              <DetailField label={t("restock.form.receipt")} value={request.receipt} />
-              {/* #127: a free-text reference to an order living somewhere else (a marketplace, a
-                  chat), not an id into this system — so it is shown verbatim, not as "Order #n". */}
-              <DetailField
-                label={t("restock.form.orderRef")}
-                value={request.orderRef}
-                testId="restock-detail-order-ref"
-              />
-              <DetailField
-                label={t("restock.form.shippingCost")}
-                value={formatRupiah(request.shippingCost)}
-                testId="restock-detail-shipping-cost"
-              />
-              <DetailField
-                label={t("restock.form.paymentType")}
-                value={paymentTypeLabel(t, request.paymentType)}
-                testId="restock-detail-payment-type"
-              />
-            </SimpleGrid>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+        {/* minW="0" ON EVERY PANEL. A vertical Tabs.Root is a flex ROW, and a flex child defaults to
+            min-width:auto — it refuses to shrink below its content, so a wide table inside one does
+            not overflow the panel, it WIDENS it, and the whole page gains a horizontal scrollbar.
+            This is the fix people reach for last and it is the one that matters: the card's maxW and
+            the table's scroll area can only work once the panel is allowed to be narrower than what
+            it holds. */}
+        <Tabs.Content value="info" flex="1" minW="0">
+          <InfoPanel
+            request={request}
+            warehouseName={
+              warehouse.data?.name ||
+              t("restock.warehouseRef", { id: request.warehouseId.toString() })
+            }
+            supplierName={
+              supplierId === 0n
+                ? ""
+                : (supplier.data?.name ??
+                  t("restock.detail.supplierRef", { id: supplierId.toString() }))
+            }
+          />
+        </Tabs.Content>
 
-      {/* The restock note (#127). Free text up to 1000 chars, so it gets its own full-width card
-          rather than a cell in the grid above. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.note")}
-            </Text>
-            <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="restock-detail-note">
-              {request.note || "—"}
-            </Text>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+        <Tabs.Content value="products" flex="1" minW="0">
+          <ProductsPanel request={request} teamId={teamId} />
+        </Tabs.Content>
 
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-              {t("restock.form.products")}
-            </Text>
-
-            {/* The Arrived column exists only once the count HAS been made — see `isFulfilled`. The
-                asked quantity keeps its neutral "Qty" heading until there is a second number to tell
-                it apart from. */}
-            <Table.Root size="sm" data-testid="restock-detail-items">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>{t("restock.detail.sku")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("restock.detail.name")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {isFulfilled ? t("restock.detail.asked") : t("restock.table.qty")}
-                  </Table.ColumnHeader>
-                  {isFulfilled && (
-                    <Table.ColumnHeader textAlign="end">
-                      {t("restock.detail.arrived")}
-                    </Table.ColumnHeader>
-                  )}
-                  <Table.ColumnHeader textAlign="end">
-                    {t("restock.detail.unitPrice")}
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {t("restock.detail.lineTotal")}
-                  </Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {request.items.map((item) => {
-                  const delta = isFulfilled ? deltaLabel(t, item.quantity, item.receivedQuantity) : "";
-
-                  return (
-                    <Table.Row
-                      key={item.id.toString()}
-                      data-testid={`restock-detail-item-${item.productId}`}
-                    >
-                      <Table.Cell>{item.sku}</Table.Cell>
-                      <Table.Cell>{item.name}</Table.Cell>
-                      <Table.Cell textAlign="end">{item.quantity.toString()}</Table.Cell>
-                      {isFulfilled && (
-                        <Table.Cell
-                          textAlign="end"
-                          data-testid={`restock-detail-received-${item.productId}`}
-                        >
-                          <Flex align="center" justify="end" gap="2" wrap="wrap">
-                            <Text as="span" fontWeight={delta ? "semibold" : "normal"}>
-                              {item.receivedQuantity.toString()}
-                            </Text>
-                            {/* Short and over are BOTH worth chasing, but they are not the same
-                                problem: red is stock that never arrived, orange is stock that
-                                arrived unasked. */}
-                            {delta && (
-                              <Badge
-                                colorPalette={
-                                  item.receivedQuantity < item.quantity ? "red" : "orange"
-                                }
-                                data-testid={`restock-detail-delta-${item.productId}`}
-                              >
-                                {delta}
-                              </Badge>
-                            )}
-                          </Flex>
-                        </Table.Cell>
-                      )}
-                      <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
-                      <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-
-            <Separator />
-
-            {/* What was ordered, what it cost, and — once counted — what actually landed against it. */}
-            <Stack gap="1" align="end">
-              {isFulfilled && (
-                <Text fontSize="sm" color="fg.muted">
-                  {t("restock.detail.receivedTotal")}:{" "}
-                  <Text as="span" fontWeight="medium" data-testid="restock-detail-received-total">
-                    {receivedTotal.toString()} / {askedTotal.toString()}
-                  </Text>
-                </Text>
-              )}
-              <Text fontSize="sm" color="fg.muted">
-                {t("restock.summary.productsTotal")}:{" "}
-                <Text as="span" data-testid="restock-detail-products-total">
-                  {formatRupiah(productsTotal)}
-                </Text>
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
-                {t("restock.form.shippingCost")}:{" "}
-                <Text as="span" data-testid="restock-detail-shipping">
-                  {formatRupiah(request.shippingCost)}
-                </Text>
-              </Text>
-              {/* Hidden until there IS one: most deliveries are not COD, and a "Rp 0" row would
-                  invite the reader to wonder what they had missed. */}
-              {codFee > 0n && (
-                <Text fontSize="sm" color="fg.muted">
-                  {t("restock.accept.codFee")}:{" "}
-                  <Text as="span" data-testid="restock-detail-cod-fee">
-                    {formatRupiah(codFee)}
-                  </Text>
-                </Text>
-              )}
-              <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.summary.grandTotal")}: {formatRupiah(grandTotal)}
-              </Text>
-            </Stack>
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+        <Tabs.Content value="timeline" flex="1" minW="0">
+          <TimelinePanel
+            request={request}
+            actors={actors.data}
+            actorFallback={actorFallback}
+          />
+        </Tabs.Content>
+      </Tabs.Root>
     </Stack>
   );
 }

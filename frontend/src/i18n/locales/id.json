@@ -239,6 +239,7 @@
   "productListItem": {
     "stock": "Stok {{n}}",
     "outOfStock": "Stok habis",
+    "ongoing": "Dalam perjalanan {{n}}",
     "teamFallback": "Tim #{{id}}",
     "productFallback": "Produk #{{id}}"
   },
@@ -248,7 +249,9 @@
     "selected": "{{n}} dipilih",
     "clear": "Kosongkan",
     "noTeam": "Pilih tim untuk menjelajahi katalognya.",
-    "noTeamAll": "Pilih tim untuk menemukan produk."
+    "noTeamAll": "Pilih tim untuk menemukan produk.",
+    "stockScope": "Stok dihitung di gudang tujuan; dalam perjalanan dihitung dari semua gudang.",
+    "ongoingScope": "Dalam perjalanan dihitung dari pesanan ke semua gudang yang belum diterima."
   },
   "discover": {
     "title": "Temukan Produk",
@@ -321,7 +324,6 @@
       "lockedHint": "Terkunci membuatnya tidak muncul di pencarian tim lain — hanya milik Anda.",
       "batchHeading": "Pengiriman",
       "batchHelp": "Setiap batch adalah satu pengiriman produk ini ke satu gudang, dan masing-masing membekukan harga modal unitnya.",
-      "batchPending": "Menunggu layanan stok — tim penjualan belum bisa membaca batch.",
       "batch": {
         "delivery": "Pengiriman",
         "warehouse": "Gudang",
@@ -332,24 +334,23 @@
       },
       "historyHeading": "Semua pergerakan",
       "historyHelp": "Yang tiba, terkirim, dihitung, disesuaikan, rusak atau ditemukan — terbaru dulu. Perpindahan antar rak di satu gudang adalah urusan gudang dan tidak ditampilkan di sini.",
-      "historyPending": "Menunggu layanan stok — tim penjualan belum bisa membaca riwayat stok.",
       "history": {
-        "when": "Waktu",
-        "what": "Kejadian",
-        "batch": "Batch",
-        "change": "Perubahan",
-        "after": "Sesudah"
+        "afterInWarehouse": "Sisa di gudang itu"
       },
       "showImage": "Tampilkan gambar {{n}}",
       "warehouseNote": "Semua angka di bawah hanya untuk {{warehouse}} — bukan total Anda.",
-      "layerPending": "Menunggu layanan stok — tim penjualan belum bisa membaca lapisan harga modal.",
       "layer": {
         "unitCost": "Harga modal",
-        "batches": "Batch",
         "ready": "Siap",
         "value": "Nilai",
-        "crossPrice": "Harga cross-sell"
-      }
+        "crossPrice": "Harga cross-sell",
+        "unknown": "Tidak diketahui"
+      },
+      "layerEmpty": "Tidak ada stok di rak, jadi tidak ada yang dihargai.",
+      "layerTotal": "Stok dengan modal diketahui: {{value}}",
+      "batchEmpty": "Belum ada pengiriman produk ini.",
+      "batchTotal": "Stok siap dengan modal diketahui: {{value}}",
+      "historyEmpty": "Belum ada pergerakan."
     },
     "field": {
       "sku": "SKU",
@@ -540,7 +541,17 @@
       "ongoing": "Dalam perjalanan",
       "ongoingHint": "pcs dipesan, belum tiba",
       "ongoingValue": "Nilai dalam perjalanan",
-      "ongoingValueHint": "yang sudah kamu keluarkan untuknya"
+      "ongoingValueHint": "yang sudah kamu keluarkan untuknya",
+      "inboundProducts": "Produk menunggu",
+      "inboundProductsHint": "jenis barang untuk dirakkan",
+      "inboundUnits": "Pcs menunggu",
+      "inboundUnitsHint": "untuk dihitung di pintu",
+      "inboundAmount": "Nilai antrean",
+      "inboundAmountHint": "barang yang belum dihitung masuk",
+      "oldestPending": "Menunggu terlama",
+      "oldestDays_other": "{{count}} hari",
+      "inboundRestocks": "Restock menunggu",
+      "inboundRestocksHint": "pengiriman di pintu"
     },
     "dateField": {
       "created": "Dibuat",
@@ -550,7 +561,11 @@
     "inbound": {
       "title": "Restok Masuk",
       "subtitle": "Kiriman yang menuju gudang ini — terima untuk menghitungnya ke rak.",
-      "empty": "Belum ada kiriman masuk ke gudang ini."
+      "empty": "Belum ada kiriman masuk ke gudang ini.",
+      "fromAll": "Dari semua tim",
+      "actorCreated": "Dibuat oleh",
+      "actorAccepted": "Dihitung oleh",
+      "actorAll": "Siapa saja"
     },
     "detail": {
       "title": "Permintaan Restok",
@@ -570,7 +585,24 @@
       "arrived": "Tiba",
       "place": "Tempat",
       "rackUnknown": "Rak tidak diketahui",
-      "receivedTotal": "Diterima ke stok"
+      "receivedTotal": "Diterima ke stok",
+      "tab": {
+        "info": "Info",
+        "products": "Produk",
+        "timeline": "Riwayat"
+      },
+      "product": "Produk",
+      "accepted": "Diterima"
+    },
+    "timeline": {
+      "created": "Permintaan dibuat",
+      "accepted": "Kiriman diterima",
+      "codFee": "Ongkir COD dibayar di tempat",
+      "cancelled": "Permintaan dibatalkan",
+      "awaiting": "Menunggu gudang",
+      "noDate": "Tanggal tidak tercatat",
+      "edited": "Permintaan diubah",
+      "unknown": "Ada perubahan"
     },
     "summary": {
       "totalProducts": "Total produk",
@@ -705,13 +737,13 @@
     },
     "accept": {
       "title": "Terima Kiriman",
-      "heading": "Terima Restock #{{id}}",
       "back": "Kembali ke Permintaan",
       "warehouseOnly": "Hanya gudang tujuan restock yang dapat menerimanya.",
       "notFound": "Permintaan restock itu bukan untuk gudang ini.",
       "action": "Terima Kiriman",
       "codFee": "Biaya COD",
       "freightTotal": "Total Ongkir",
+      "goodsPrice": "Harga / pcs",
       "hpp": "Biaya / pcs (HPP)",
       "perPiece": "{{price}} / pcs",
       "putaway": "Taruh ke rak",
@@ -726,6 +758,7 @@
       "addPlacement": "Pisah ke rak lain",
       "removePlacement": "Hapus tempat ini",
       "reportProblem": "Laporkan masalah",
+      "noProblems": "Tidak ada yang rusak atau hilang",
       "problems": "Masalah — tidak masuk stok",
       "problemBroken": "Rusak",
       "problemLost": "Hilang",
@@ -733,14 +766,22 @@
       "addProblem": "Tambah lagi",
       "removeProblem": "Hapus masalah ini",
       "summary": {
-        "order": "Pesanan",
+        "restock": "Restock",
+        "team": "Tim",
+        "raisedBy": "Orang",
+        "order": "Pesanan & Kiriman",
         "shipping": "Pengiriman",
         "freight": "Ongkir",
         "orderRef": "ID Pesanan",
         "supplier": "Pemasok",
         "ordered": "Dipesan",
         "courier": "Kurir",
-        "receipt": "AWB / Resi"
+        "receipt": "AWB / Resi",
+        "cost": "Nilai",
+        "productTotal": "Produk",
+        "shippingTotal": "Pengiriman",
+        "shippingBreakdown": "{{shipping}} ongkir + {{cod}} COD",
+        "grandTotal": "Total"
       },
       "confirm": {
         "title": "Terima Kiriman Ini",
@@ -751,7 +792,9 @@
         "accepted": "Kiriman diterima",
         "failed": "Tidak dapat menerima kiriman"
       }
-    }
+    },
+    "createdByAll": "Siapa saja yang membuat",
+    "acceptedByAll": "Siapa saja yang menerima"
   },
   "shops": {
     "title": "Toko",
@@ -1230,7 +1273,17 @@
     "moveReasonPlaceholder": "mis. penempatan barang, penataan ulang rak",
     "movePlacesRequiredError": "Pilih kedua tempat — lokasi stok sekarang, dan tujuannya.",
     "moveSamePlaceError": "Pilih dua tempat yang berbeda — pemindahan harus menuju tempat lain.",
-    "movedToast": "Memindahkan {{qty}} × {{sku}}"
+    "movedToast": "Memindahkan {{qty}} × {{sku}}",
+    "movement": {
+      "when": "Waktu",
+      "what": "Kegiatan",
+      "change": "Perubahan",
+      "by": "Oleh",
+      "batch": "Batch",
+      "place": "Tempat",
+      "product": "Produk",
+      "warehouse": "Gudang"
+    }
   },
   "address": {
     "loading": "Memuat…",

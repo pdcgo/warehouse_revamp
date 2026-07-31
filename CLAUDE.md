@@ -200,6 +200,31 @@ plans/
 A service is designed in its `brainstorming.md` first. Code follows the doc, not the other way
 round — and the doc stays current as decisions land (see HARD RULE 6).
 
+### 7b. `./disscuss/` is NOT final — it is where architecture is argued out
+
+`./disscuss/` holds the **brainstorming process** for architecture detail and anything else being
+thought through. Nothing in it is settled.
+
+> ⚠ **Never rely on `disscuss/`, never cite it as a decision, and never build from it.** A doc there
+> may be mid-argument, may contain options nobody picked, and may contain critique that was later
+> withdrawn.
+
+**When something IS final, it MOVES:**
+
+```
+disscuss/architecture/<topic>.md      ← being argued out. Not authoritative.
+        ↓  the owner says it is final
+guidelines/architectures/<topic>.md   ← authoritative. Build from this.
+```
+
+**And it is REMOVED from `disscuss/` in the same change** — a copy left behind is how a superseded
+draft gets read as current. The move is not a publish step; it is the whole distinction between the
+two folders.
+
+`guidelines/` is programmer-authoritative (see the note at the top of
+[guidelines/service-guideline.md](guidelines/service-guideline.md)) — do not rewrite anything in it
+without an explicit ask.
+
 ### 8. Don't settle open questions unilaterally
 
 This is a collaborative design. When a decision is needed, put it in the relevant
@@ -229,6 +254,60 @@ breaking change; adding one to a list that already hurts is an incident.
   *browse / management* screen over the same growing data must still paginate (load a level's
   children by `parent_id`, which is naturally small). Never let a "load everything" read quietly
   become the backing for a growing management list.
+
+### 10. The frontend is ALWAYS FRESH — and never blanks while it refreshes
+
+`staleTime: 0` in [frontend/src/api/queryClient.ts](frontend/src/api/queryClient.ts). Every read
+refetches on every mount, tab switch, page turn and filter change. (owner)
+
+The people using this app work in pairs on a shared stock level, from a scanner and a phone at the
+same shelf. "The number I am reading was true half a minute ago" is not a property a stock count can
+have — **freshness here is correctness, not polish.** This reverses an earlier 30s window that
+optimised for request count; that argument was answering a different question.
+
+**The two halves are a PAIR. Never adopt one without the other:**
+
+| | |
+| --- | --- |
+| `staleTime: 0` | *whether* we refetch → always |
+| `placeholderData: keepPreviousData` | *what is on screen while it runs* → the previous rows |
+
+Always-fresh **without** keeping the previous rows trades a stale screen for a flickering one — the
+table tears down on every interaction instead of only on uncached ones. That is strictly worse than
+what it replaced.
+
+So, three requirements on any list:
+
+1. **A paginated or filtered list spreads `listQuery`.** Not the raw option — the preset, so the
+   reason travels with the setting and every list is findable by one name.
+2. **It wraps its table in [`RefreshOverlay`](frontend/src/components/RefreshOverlay.tsx)**, with
+   `busy={query.isFetching && !query.isPending}`. Kept rows with no indicator are a screen that
+   silently lies about how current it is. The overlay waits 150ms before showing, so a fast refetch
+   never flickers — that delay is the component's job, not the caller's.
+3. **`isPending` is excluded from `busy`, always.** A genuine first load has no rows to keep and
+   shows the page's own spinner; dimming an empty table behind a progress bar is two loading
+   indicators for one wait.
+
+⚠ **`listQuery` is NOT a global default, and must not become one.** It is right when a key change
+*refines the same question* (page 2, the Fulfilled tab, supplier = Ani) and wrong when the key change
+picks a *different subject*. A by-id detail hook keyed on product 5 would spend a beat rendering
+product 5 under a URL that already says product 9 — which reads as the wrong record having loaded.
+The two dozen by-id hooks stay on the plain default.
+
+**The one buy-out is `referenceQuery`** — a picker feed or a name lookup (`TeamSelect`'s options, a
+debounced product search, a team's shops). That data is read to LABEL something, not to work from; it
+is re-read every time a dropdown mounts, several times per screen, and a stale courier name is
+cosmetic where a stale stock count is not. Buy out **by name**, never by hand-writing a `staleTime`.
+`useTeams` carries a `reference` flag because it is the one hook with callers on both sides.
+
+Not everything went through TanStack: `CategorySelect`, `SupplierSelect`, `RackSelect`,
+`ProductPicker` and the courier catalogue run their own `useEffect`/session caches and never saw
+`staleTime` at all. If you touch one, it is not covered by this rule until it moves to a query hook.
+
+`refetchOnWindowFocus: false` **survives** this change and is not an inconsistency — it answers a
+third question. The app is used with a scanner and a spreadsheet beside it, so focus is lost and
+regained constantly; a refetch per alt-tab is a request storm, and staleness is already handled by
+refetching whenever the screen actually asks something.
 
 ---
 

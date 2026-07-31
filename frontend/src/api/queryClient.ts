@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, QueryClient } from "@tanstack/react-query";
 
 // The app's ONE QueryClient, and the conventions every query in it follows (#174).
 //
@@ -7,15 +7,24 @@ import { QueryClient } from "@tanstack/react-query";
 
 // ── Defaults ────────────────────────────────────────────────────────────────────────────────────
 //
-// `staleTime: 0` is TanStack's default and is wrong for this app. Every list here is a warehouse
-// record that a person changed deliberately — stock, orders, teams — not a live feed. Refetching the
-// instant a component remounts means a back-navigation hits the server for data that was correct a
-// second ago. Thirty seconds is short enough that nobody works from a stale screen and long enough
-// that moving between two pages is free.
+// ⚠ `staleTime: 0` — ALWAYS FRESH (owner). This reverses the 30s window this file used to argue for,
+// and the reasoning is worth keeping because the old argument was not wrong, it was answering a
+// different question.
 //
-// `refetchOnWindowFocus: false` for the same reason, and one more: this app is used with a warehouse
-// scanner and a spreadsheet open beside it, so the window loses and regains focus constantly. A
-// refetch on every alt-tab is a request storm that answers a question nobody asked.
+// The 30s window optimised for REQUEST COUNT: a warehouse record is changed deliberately, so re-asking
+// the server a second after it answered looked like waste. What it actually bought was a window in
+// which the screen can be confidently wrong — and the people using this app work in pairs, on a shared
+// stock level, from a scanner and a phone at the same shelf. "The number I am reading was true half a
+// minute ago" is not a property a stock count can have. Freshness here is correctness, not polish.
+//
+// This is only affordable because of `listQuery` below. Fresh-on-every-mount WITHOUT keeping the
+// previous rows on screen would blank a table on every tab, page and filter change — trading a stale
+// screen for a flickering one. The two decisions are a pair; do not adopt one without the other.
+//
+// `refetchOnWindowFocus: false` SURVIVES the change, because it answers a third question. This app is
+// used with a warehouse scanner and a spreadsheet open beside it, so the window loses and regains
+// focus constantly. A refetch on every alt-tab is a request storm nobody asked for, and staleness is
+// already handled by refetching whenever the screen actually asks a question.
 //
 // `retry: 1` — a Connect error is usually a real answer (NotFound, PermissionDenied, a validation
 // violation), not a blip. Retrying those three times delays the error message the user needs to see
@@ -23,12 +32,49 @@ import { QueryClient } from "@tanstack/react-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 0,
       refetchOnWindowFocus: false,
       retry: 1,
     },
   },
 });
+
+// ── Two opt-ins, because "always fresh" is not free everywhere ──────────────────────────────────
+//
+// Spread these into a `useQuery` rather than hand-writing the option, so the REASON travels with the
+// setting and a reader can find every list or picker feed by searching for one name.
+
+// `listQuery` — for a paginated or filtered LIST.
+//
+// `keepPreviousData` keeps the rows that are already on screen while the next answer loads, instead of
+// dropping `data` to undefined and tearing the table down. Switching tab, turning a page or changing a
+// filter then reads as the same table answering a new question, rather than as a screen that vanished.
+//
+// ⚠ NOT a global default, and that is the point. It is right when the key change REFINES the same
+// question (page 2, the Fulfilled tab, supplier = Ani) and wrong when the key change picks a DIFFERENT
+// SUBJECT — a by-id detail hook keyed on product 5 would spend a beat showing product 5's name under a
+// URL that already says product 9, which reads as the wrong record having loaded. There are two dozen
+// such hooks; they stay on the plain default.
+//
+// Pair it at the call site with `<RefreshOverlay busy={query.isFetching && !query.isPending}>`, or the
+// kept rows give no sign that a newer answer is on its way.
+export const listQuery = {
+  placeholderData: keepPreviousData,
+} as const;
+
+// `referenceQuery` — for a PICKER FEED or a name lookup.
+//
+// Reference data (the teams in a dropdown, a debounced product search, a team's shops) is read to
+// LABEL something, not to work from. It is re-read every time a dropdown mounts, several times per
+// screen, and a stale courier name is a cosmetic problem where a stale stock count is not — so this is
+// the one place the always-fresh default is bought out, deliberately and by name.
+//
+// Only reaches TanStack-backed feeds. `CategorySelect`, `SupplierSelect`, `RackSelect`,
+// `ProductPicker` and the courier catalogue run their own `useEffect`/session caches and never saw
+// `staleTime` at all — see features/shipping/catalogue.ts.
+export const referenceQuery = {
+  staleTime: 5 * 60_000,
+} as const;
 
 // ── Query keys ──────────────────────────────────────────────────────────────────────────────────
 //

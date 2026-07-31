@@ -89,6 +89,8 @@ func (s *Service) RestockRequestUpdate(
 		rr.PaymentType = restockPaymentToText(req.Msg.GetPaymentType())
 		rr.Note = req.Msg.GetNote()
 
+		editedAt := time.Now()
+
 		// A map, not the struct: GORM skips a struct's zero values, which is precisely backwards here
 		// — clearing the note, dropping the supplier, or zeroing the freight IS the edit, and a
 		// struct update would silently keep the old value instead.
@@ -103,11 +105,21 @@ func (s *Service) RestockRequestUpdate(
 				"shipping_cost": rr.ShippingCost,
 				"payment_type":  rr.PaymentType,
 				"note":          rr.Note,
-				"updated_at":    time.Now(),
+				"updated_at":    editedAt,
 			}).
 			Error
 		if updErr != nil {
 			return updErr
+		}
+
+		// AN EDIT IS AN EVENT (owner, 00019), and this is the one the event table exists for: a restock
+		// is edited repeatedly while it is still pending, so an `updated_by` column could only ever
+		// remember the last of them. One row per edit means the timeline shows all of them — and stays
+		// silent on WHICH FIELDS moved, because an edit here is a full replace of every line and the
+		// diff is not computed. That is a deliberate stopping point, not an oversight.
+		eventErr := recordRestockEvent(tx, rr.ID, restockEventEdited, actorFrom(ctx), editedAt)
+		if eventErr != nil {
+			return eventErr
 		}
 
 		delErr := tx.

@@ -76,12 +76,22 @@ async function seed(page: Page, tag: string) {
       // is no team on this call.
       const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
 
+      // skuA gets a COVER, skuB deliberately does not — so one test can prove both that a picked
+      // product keeps its picture and that one without a picture still renders (the placeholder).
+      //
+      // A data: URI, not a document-service upload: it loads in the browser with no network and no
+      // files on disk, so this asserts the COVER SURVIVES THE PICK — which is the bug — rather than
+      // re-testing image storage, which has its own coverage and its own reasons to fail.
+      const cover =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
       for (const sku of [skuA, skuB]) {
         await call("product.v1.ProductService/ProductCreate", {
           teamId: "1",
           sku,
           name: `E2E ${sku}`,
           categoryId: cat.category.id,
+          images: sku === skuA ? [{ url: cover, thumbnailUrl: cover }] : [],
         });
       }
     },
@@ -151,6 +161,18 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await expect(page.getByTestId("restock-line-1")).toBeVisible();
   await expect(page.getByTestId("restock-summary-count")).toContainText("2");
 
+  // THE COVER SURVIVES THE PICK (owner: "product show and it has image, i choose it but in list
+  // product that i choosed not showed"). The dialog rendered a photo and the line it produced showed a
+  // grey placeholder, because the emitted snapshot carried only id/sku/name — so the picked product
+  // stopped looking like the one that was ticked, which reads as having picked the wrong thing.
+  //
+  // skuA is the seeded product WITH a cover; skuB has none and keeps the placeholder, which is why the
+  // assertion names line 0 rather than "an image somewhere on the form".
+  await expect(page.getByTestId("restock-line-0").locator("img")).toHaveAttribute(
+    "src",
+    /^data:image\/png/,
+  );
+
   await page.getByTestId("restock-qty-0").fill("4");
   await page.getByTestId("restock-total-price-0").fill("40000");
   await page.getByTestId("restock-qty-1").fill("2");
@@ -181,8 +203,71 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // …and it really carries BOTH products, which is the only proof the picker's set reached the server
   // rather than just the screen.
   await row.click();
-  await expect(page.getByTestId("restock-detail-page")).toContainText(skuA);
-  await expect(page.getByTestId("restock-detail-page")).toContainText(skuB);
+
+  // The lines live on the PRODUCT tab, so the tab gets clicked rather than the assertion reaching
+  // through it: an unselected Chakra tab panel is hidden but still in the DOM, so a `toContainText`
+  // against the whole page would pass on text nobody can see — and would keep passing if the tab
+  // stopped opening.
+  await page.getByTestId("restock-detail-tab-products").click();
+  await expect(page.getByTestId("restock-detail-products")).toContainText(skuA);
+  await expect(page.getByTestId("restock-detail-products")).toContainText(skuB);
+
+  // Who raised it, on the tab that answers it. The BY LINE is asserted, not just the step: the row
+  // carries a user id and the name comes from a second read, so a `UserByIDs` that failed would
+  // silently leave a step with a date and no person — and nothing else on the page would notice.
+  // It asserts the line EXISTS rather than which name is in it, because the account the suite logs
+  // in as is the fixture's business, not this assertion's.
+  await page.getByTestId("restock-detail-tab-timeline").click();
+  await expect(page.getByTestId("restock-timeline-created-by")).toBeVisible();
+  // A pending request ends with what has NOT happened yet, rather than stopping dead at "raised".
+  await expect(page.getByTestId("restock-timeline-awaiting")).toBeVisible();
+
+  await page.getByTestId("restock-detail-tab-info").click();
+
+  // …and EDITING it shows the cover too, which is a SEPARATE path worth its own assertion: a stored
+  // restock line holds sku/name and no image at all, so the form has to resolve covers by id rather
+  // than read them off the row. Line 0's picture proves that lookup ran and landed on the right line.
+  await page.getByTestId("restock-detail-edit").click();
+  await expect(page.getByTestId("restock-edit-page")).toBeVisible();
+  await expect(page.getByTestId("restock-line-0").locator("img")).toHaveAttribute(
+    "src",
+    /^data:image\/png/,
+  );
+
+  // ── ONGOING: the request just filed is now "on the way" (owner) ──────────────────────────────
+  //
+  // The double-order guard, asserted against a restock this test really created rather than a seeded
+  // number: 4 of skuA were ordered above, nobody has accepted them, so the picker must say 4 the next
+  // time somebody opens it to buy more.
+  //
+  // On a FRESH create form, with NO destination warehouse chosen — which is the point of totalling
+  // ongoing across every warehouse. Ready needs a building to be about and shows nothing here; "have I
+  // already bought this?" is a question about the purchase, so it answers straight away.
+  await page.goto("/inventories/restock/new");
+  await page.getByTestId("restock-pick-products").click();
+  await page.getByTestId("product-picker-search").fill(skuA);
+
+  const picked = page
+    .getByTestId("product-picker-list")
+    .locator('[data-testid^="product-picker-option-"]')
+    .filter({ hasText: skuA });
+  await expect(picked).toHaveCount(1);
+
+  await expect(picked.locator('[data-testid^="product-list-item-ongoing-"]')).toContainText("4");
+
+  // And the scope is stated on screen, because ready and ongoing count different sets of warehouses
+  // and two badges side by side would otherwise read as one number about one place.
+  await expect(page.getByTestId("product-picker-stock-scope")).toBeVisible();
+
+  // skuB was ordered on the SAME request (2 of them), so it is on the way too — proof the badge
+  // reflects the line rather than the request.
+  await page.getByTestId("product-picker-search").fill(skuB);
+  const pickedB = page
+    .getByTestId("product-picker-list")
+    .locator('[data-testid^="product-picker-option-"]')
+    .filter({ hasText: skuB });
+  await expect(pickedB).toHaveCount(1);
+  await expect(pickedB.locator('[data-testid^="product-list-item-ongoing-"]')).toContainText("2");
 });
 
 // THE REGRESSION THIS CHANGE COULD MOST EASILY CAUSE, and the reason pickProducts reconciles rather
@@ -225,4 +310,259 @@ test("Restock create: reopening the picker keeps what was already typed (#165)",
 
   await expect(page.getByTestId("restock-line-1")).toBeHidden();
   await expect(page.getByTestId("restock-qty-0")).toHaveValue("3");
+});
+
+// LOST and BROKEN on the buyer's Product tab (#154 → owner). The two come from ONE `damaged` array
+// filtered by TYPE, and crossing them is a bug nothing else would catch: both cells would still show a
+// number, both would still show a reason, and the buyer would chase a re-send for goods that arrived
+// crushed. So the test asserts the pairing — which number and which reason land in which column.
+//
+// The delivery is accepted through the API rather than the accept FORM: that form has its own coverage
+// in orders.spec, and driving it here would make a rendering test fail for reasons about racks and
+// placements. `unplaced` is a legal place (#135), which is what lets this skip creating shelves.
+test("Restock detail: lost and broken show with their reasons (#154)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const tag = "D";
+  const { whCode, whName, category, skuA } = names(tag);
+
+  const seeded = await page.evaluate(
+    async ([whCode, whName, category, skuA]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const wh = await call("team.v1.TeamService/TeamCreate", {
+        type: 3,
+        name: whName,
+        teamCode: whCode,
+      });
+      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
+      const product = await call("product.v1.ProductService/ProductCreate", {
+        teamId: "1",
+        sku: skuA,
+        name: `E2E ${skuA}`,
+        categoryId: cat.category.id,
+      });
+
+      // 10 asked. 7 turn up sellable, 2 arrive crushed, 1 was never in the box — so the three columns
+      // must each show a different number, and the row is legitimately short by 3.
+      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: "1",
+        warehouseId: wh.team.id,
+        shippingCode: "jne",
+        items: [
+          { productId: product.product.id, sku: skuA, name: `E2E ${skuA}`, quantity: 10, totalPrice: 500000 },
+        ],
+      });
+
+      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
+        teamId: wh.team.id,
+        requestId: created.request.id,
+        lines: [
+          {
+            itemId: created.request.items[0].id,
+            receivedQuantity: 7,
+            // The unplaced pile — a real place (#135), so no rack has to exist for this test.
+            placements: [{ unplaced: true, quantity: 7 }],
+            damaged: [
+              { quantity: 2, reason: "crushed in transit", type: "RESTOCK_DAMAGE_TYPE_BROKEN" },
+              { quantity: 1, reason: "never in the box", type: "RESTOCK_DAMAGE_TYPE_LOST" },
+            ],
+          },
+        ],
+      });
+
+      return {
+        requestId: created.request.id,
+        productId: product.product.id,
+        warehouseId: wh.team.id,
+      };
+    },
+    [whCode, whName, category, skuA] as const,
+  );
+
+  await page.goto(`/inventories/restock/${seeded.requestId}`);
+  await page.getByTestId("restock-detail-tab-products").click();
+
+  // ACCEPTED is what became sellable stock — 7, not the 10 asked and not the 9 that physically turned
+  // up. And the shortfall is flagged, because 3 of what was paid for is not on a shelf.
+  const accepted = page.getByTestId(`restock-detail-received-${seeded.productId}`);
+  await expect(accepted).toContainText("7");
+
+  // The shortfall is flagged ONCE, in the page header — the per-line "short by n" badge was removed
+  // (owner) because the row itself now itemises the gap: asked 10, accepted 7, lost 1, broken 2.
+  await expect(page.getByTestId("restock-detail-short")).toBeVisible();
+
+  // ⚠ THE PAIRING IS THE POINT. Each cell carries ITS OWN number and ITS OWN reason; a filter on the
+  // wrong damage type puts "crushed in transit" under Lost and reads as a supplier who shorted us.
+  const lost = page.getByTestId(`restock-detail-lost-${seeded.productId}`);
+  await expect(lost).toContainText("1");
+  await expect(lost).toContainText("never in the box");
+  await expect(lost).not.toContainText("crushed in transit");
+
+  const broken = page.getByTestId(`restock-detail-broken-${seeded.productId}`);
+  await expect(broken).toContainText("2");
+  await expect(broken).toContainText("crushed in transit");
+  await expect(broken).not.toContainText("never in the box");
+
+  // The columns are there on a request NOBODY HAS COUNTED too, reading "—" rather than 0 — a pending
+  // delivery has not arrived empty, and gating the columns on acceptance is what used to hide them
+  // from every restock still in flight.
+  const pending = await page.evaluate(
+    async ([skuA, warehouseId, productId]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch(
+        "http://localhost:8081/warehouse.inventory.v1.RestockRequestService/RestockRequestCreate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            teamId: "1",
+            warehouseId,
+            items: [{ productId, sku: skuA, name: `E2E ${skuA}`, quantity: 4, totalPrice: 100000 }],
+          }),
+        },
+      );
+      if (!res.ok) throw new Error(`create pending: ${res.status} ${await res.text()}`);
+
+      return (await res.json()).request.id;
+    },
+    [skuA, seeded.warehouseId, seeded.productId] as const,
+  );
+
+  await page.goto(`/inventories/restock/${pending}`);
+  await page.getByTestId("restock-detail-tab-products").click();
+  await expect(page.getByTestId(`restock-detail-lost-${seeded.productId}`)).toHaveText("—");
+  await expect(page.getByTestId(`restock-detail-broken-${seeded.productId}`)).toHaveText("—");
+  await expect(page.getByTestId(`restock-detail-received-${seeded.productId}`)).toHaveText("—");
+});
+
+// THE COD FEE, ON THE SCREEN OF THE TEAM THAT HAS TO PAY IT (#155/#184).
+//
+// The backend has this covered where the numbers are written; what only a browser can answer is
+// whether the fee reaches the SELLING team's page at all — the fee is entered by the warehouse, and
+// the requesting team never sees the accept form. Two things are asserted, and they fail separately:
+// the money (the fee is listed and the total moved by exactly it) and the HISTORY (paying the courier
+// and counting the box in are TWO steps, in that order).
+//
+// Accepted through the API rather than the accept form for the same reason the test above it is: that
+// form has its own coverage, and driving it here would make this fail for reasons about racks.
+test("Restock detail: a COD fee shows in the total and as its own timeline step (#155)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const tag = "C";
+  const { whCode, whName, category, skuA } = names(tag);
+
+  const seeded = await page.evaluate(
+    async ([whCode, whName, category, skuA]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const wh = await call("team.v1.TeamService/TeamCreate", {
+        type: 3,
+        name: whName,
+        teamCode: whCode,
+      });
+      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
+      const product = await call("product.v1.ProductService/ProductCreate", {
+        teamId: "1",
+        sku: skuA,
+        name: `E2E ${skuA}`,
+        categoryId: cat.category.id,
+      });
+
+      // 500.000 of goods and 15.000 of freight agreed up front — so the only number that can move the
+      // total once the delivery lands is the fee the courier takes at the door.
+      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: "1",
+        warehouseId: wh.team.id,
+        shippingCode: "jne",
+        shippingCost: 15000,
+        items: [
+          {
+            productId: product.product.id,
+            sku: skuA,
+            name: `E2E ${skuA}`,
+            quantity: 10,
+            totalPrice: 500000,
+          },
+        ],
+      });
+
+      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
+        teamId: wh.team.id,
+        requestId: created.request.id,
+        // What the courier charged at the door — known only to the warehouse, and only now.
+        codShippingFee: 25000,
+        lines: [
+          {
+            itemId: created.request.items[0].id,
+            receivedQuantity: 10,
+            placements: [{ unplaced: true, quantity: 10 }],
+          },
+        ],
+      });
+
+      return { requestId: created.request.id };
+    },
+    [whCode, whName, category, skuA] as const,
+  );
+
+  await page.goto(`/inventories/restock/${seeded.requestId}`);
+
+  // ── THE MONEY ────────────────────────────────────────────────────────────────────────────────
+  await page.getByTestId("restock-detail-tab-products").click();
+
+  // Listed as its own line, not folded into the freight: the fee is a separate obligation to the
+  // warehouse (#184), and a total that merely got bigger tells nobody what to settle.
+  await expect(page.getByTestId("restock-detail-cod-fee")).toContainText("25.000");
+
+  // 500.000 goods + 15.000 freight + 25.000 at the door. A total still reading 515.000 means the fee
+  // was stored and never counted — which is exactly how it stays unpaid.
+  await expect(page.getByTestId("restock-detail-total")).toContainText("540.000");
+
+  // ── THE HISTORY ──────────────────────────────────────────────────────────────────────────────
+  await page.getByTestId("restock-detail-tab-timeline").click();
+
+  // The WHOLE sequence, in order, rather than two separate visibility checks: the order is the claim
+  // — the courier is paid at the door and THEN the box is opened and counted. `-by` nodes are the
+  // person inside a step, not steps of their own.
+  const steps = await page.getByTestId("restock-detail-timeline").evaluate((root) =>
+    Array.from(root.querySelectorAll("[data-testid^='restock-timeline-']"))
+      .map((node) => node.getAttribute("data-testid"))
+      .filter((id): id is string => !!id && !id.endsWith("-by")),
+  );
+
+  expect(steps).toEqual([
+    "restock-timeline-created",
+    "restock-timeline-cod-fee",
+    "restock-timeline-accepted",
+  ]);
 });

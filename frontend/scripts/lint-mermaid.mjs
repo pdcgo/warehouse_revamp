@@ -22,7 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..", "..");
 
 // Where prose lives. Generated output and dependencies are not ours to lint.
-const ROOTS = ["docs", "plans"];
+const ROOTS = ["docs", "plans", "disscuss", "guidelines"];
 const EXTRA = ["CLAUDE.md", "README.md"];
 const SKIP = ["node_modules", ".git", "graphify-out", ".venv", "dist"];
 

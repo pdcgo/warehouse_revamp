@@ -25,3 +25,6 @@ development_data/
 .claude/skills/run-warehouse-revamp/shots/
 .claude/skills/run-warehouse-revamp/logs/
 .claude/skills/run-warehouse-revamp/.driver-state.json
+
+# audit-frontend-structure output (regenerated on every run)
+.claude/skills/audit-frontend-structure/last-report.md

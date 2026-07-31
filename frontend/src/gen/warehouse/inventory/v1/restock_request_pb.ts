@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/restock_request.proto.
  */
 export const file_warehouse_inventory_v1_restock_request: GenFile = /*@__PURE__*/
-  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLgAgoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAkgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYCiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgIEAlSEHJlY2VpdmVkX3JhY2tfaWQi6AQKDlJlc3RvY2tSZXF1ZXN0EgoKAmlkGAEgASgEEhoKEnJlcXVlc3RpbmdfdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRI8CgZzdGF0dXMYCSABKA4yLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0U3RhdHVzEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAxI5CgVpdGVtcxgLIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtEg8KB3JlY2VpcHQYDSABKAkSEwoLc3VwcGxpZXJfaWQYDiABKAQSEQoJb3JkZXJfcmVmGA8gASgJEhUKDXNoaXBwaW5nX2Nvc3QYECABKAMSGAoQY29kX3NoaXBwaW5nX2ZlZRgTIAEoAxJACgxwYXltZW50X3R5cGUYESABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZRIMCgRub3RlGBIgASgJEhoKEmNyZWF0ZWRfYnlfdXNlcl9pZBgUIAEoBBIbChNhY2NlcHRlZF9ieV91c2VyX2lkGBUgASgEEhgKEGFjY2VwdGVkX2F0X3VuaXgYFiABKAMSGQoRY2FuY2VsbGVkX2F0X3VuaXgYFyABKANKBAgEEAVKBAgFEAZKBAgGEAdKBAgHEAhKBAgMEA1SCnByb2R1Y3RfaWRSA3NrdVIEbmFtZVIIcXVhbnRpdHlSCG9yZGVyX2lkIuQDChtSZXN0b2NrUmVxdWVzdENyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHQoMd2FyZWhvdXNlX2lkGAIgASgEQge6SAQyAiAAEh4KDXNoaXBwaW5nX2NvZGUYByABKAlCB7pIBHICGCgSQwoFaXRlbXMYCCADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbUIIukgFkgECCAESGAoHcmVjZWlwdBgKIAEoCUIHukgEcgIYZBITCgtzdXBwbGllcl9pZBgLIAEoBBIaCglvcmRlcl9yZWYYDCABKAlCB7pIBHICGGQSHgoNc2hpcHBpbmdfY29zdBgNIAEoA0IHukgEIgIoABJKCgxwYXltZW50X3R5cGUYDiABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZUIIukgFggECEAESFgoEbm90ZRgPIAEoCUIIukgFcgMY6Ac6C5K1GAcKBQECAwQFSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHSgQICRAKUgpwcm9kdWN0X2lkUgNza3VSBG5hbWVSCHF1YW50aXR5UghvcmRlcl9pZCJXChxSZXN0b2NrUmVxdWVzdENyZWF0ZVJlc3BvbnNlEjcKB3JlcXVlc3QYASABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0IpICChlSZXN0b2NrUmVxdWVzdExpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0RmlsdGVyEkgKDGRhdGFfcmVxdWVzdBgDIAMoDjIyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOg6StRgKCggBAgMEBQYJCCKMAgoYUmVzdG9ja1JlcXVlc3RMaXN0RmlsdGVyEkYKBnN0YXR1cxgBIAEoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RTdGF0dXNCCLpIBYIBAhABEhIKCnByb2R1Y3RfaWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEkYKCmRhdGVfZmllbGQYBCABKA4yKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYXRlRmllbGRCCLpIBYIBAhABEhEKCWZyb21fdW5peBgFIAEoAxIPCgd0b191bml4GAYgASgDEhIKAXEYByABKAlCB7pIBHICGGQivQEKFVJlc3RvY2tSZXF1ZXN0TWFwSXRlbRJMCghtYXBfZGF0YRgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtLk1hcERhdGFFbnRyeRpWCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdDoCOAEipwEKHlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkgKD3Jlc3RvY2tfcmVxdWVzdBgCIAEoCzItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtSABCAwoBZCJoChtSZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiVwocUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKiAQoaUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USRQoFaXRlbXMYASADKAsyNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyK4AwobUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAMgASgEQge6SAQyAiAAEh4KDXNoaXBwaW5nX2NvZGUYBCABKAlCB7pIBHICGCgSQwoFaXRlbXMYBSADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbUIIukgFkgECCAESGAoHcmVjZWlwdBgGIAEoCUIHukgEcgIYZBITCgtzdXBwbGllcl9pZBgHIAEoBBIaCglvcmRlcl9yZWYYCCABKAlCB7pIBHICGGQSHgoNc2hpcHBpbmdfY29zdBgJIAEoA0IHukgEIgIoABJKCgxwYXltZW50X3R5cGUYCiABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZUIIukgFggECEAESFgoEbm90ZRgLIAEoCUIIukgFcgMY6Ac6C5K1GAcKBQECAwQFIlcKHFJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3Qi1gEKHFJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgABJLCgVsaW5lcxgDIAMoCzIyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmVCCLpIBZIBAggBEiEKEGNvZF9zaGlwcGluZ19mZWUYBCABKANCB7pIBCICKAA6C5K1GAcKBQECBgkIIm8KEFJlc3RvY2tQbGFjZW1lbnQSGgoHcmFja19pZBgBIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAIgASgIQge6SARqAggBSAASGQoIcXVhbnRpdHkYAyABKANCB7pIBCICIABCBwoFcGxhY2UingEKE1Jlc3RvY2tEYW1hZ2VkVW5pdHMSGQoIcXVhbnRpdHkYASABKANCB7pIBCICIAASGgoGcmVhc29uGAIgASgJQgq6SAdyBRABGMgBEkMKBHR5cGUYBCABKA4yKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VUeXBlQgq6SAeCAQQQASAASgQIAxAEUgV2YWx1ZSL8AQoaUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmUSGAoHaXRlbV9pZBgBIAEoBEIHukgEMgIgABIiChFyZWNlaXZlZF9xdWFudGl0eRgCIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAUgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYBiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgDEARKBAgEEAVSB3JhY2tfaWRSCHVucGxhY2VkUgVwbGFjZSJYCh1SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdExhYmVsc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgikwEKDFJlc3RvY2tMYWJlbBISCgpwcm9kdWN0X2lkGAEgASgEEgsKA3NrdRgCIAEoCRIMCgRuYW1lGAMgASgJEhAKCGJhdGNoX2lkGAQgASgEEhAKCHF1YW50aXR5GAUgASgDEhEKCXJhY2tfY29kZRgGIAEoCRIQCgh1bnBsYWNlZBgHIAEoCBILCgNocHAYCCABKAMimgEKHFJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVzcG9uc2USEgoKcmVzdG9ja19pZBgBIAEoBBIYChByZWNlaXZlZF9hdF91bml4GAIgASgDEjQKBmxhYmVscxgDIAMoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0xhYmVsEhYKDmV4Y2x1ZGVkX2NvdW50GAQgASgDKq4BChRSZXN0b2NrUmVxdWVzdFN0YXR1cxImCiJSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIgoeUkVTVE9DS19SRVFVRVNUX1NUQVRVU19QRU5ESU5HEAESJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19GVUxGSUxMRUQQAhIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0NBTkNFTExFRBADKoYBChJSZXN0b2NrUGF5bWVudFR5cGUSJAogUkVTVE9DS19QQVlNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9SRVNUT0NLX1BBWU1FTlRfVFlQRV9TSE9QRUVfUEFZEAESJQohUkVTVE9DS19QQVlNRU5UX1RZUEVfQkFOS19BQ0NPVU5UEAIqmQEKEFJlc3RvY2tEYXRlRmllbGQSIgoeUkVTVE9DS19EQVRFX0ZJRUxEX1VOU1BFQ0lGSUVEEAASHgoaUkVTVE9DS19EQVRFX0ZJRUxEX0NSRUFURUQQARIfChtSRVNUT0NLX0RBVEVfRklFTERfQUNDRVBURUQQAhIgChxSRVNUT0NLX0RBVEVfRklFTERfQ0FOQ0VMTEVEEAMqrAEKGlJlc3RvY2tSZXF1ZXN0TGlzdERhdGFUeXBlEi4KKlJFU1RPQ0tfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEioKJlJFU1RPQ0tfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESMgouUkVTVE9DS19SRVFVRVNUX0xJU1RfREFUQV9UWVBFX1JFU1RPQ0tfUkVRVUVTVBACKnYKEVJlc3RvY2tEYW1hZ2VUeXBlEiMKH1JFU1RPQ0tfREFNQUdFX1RZUEVfVU5TUEVDSUZJRUQQABIeChpSRVNUT0NLX0RBTUFHRV9UWVBFX0JST0tFThABEhwKGFJFU1RPQ0tfREFNQUdFX1RZUEVfTE9TVBACMq8HChVSZXN0b2NrUmVxdWVzdFNlcnZpY2USgQEKFFJlc3RvY2tSZXF1ZXN0Q3JlYXRlEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USewoSUmVzdG9ja1JlcXVlc3RMaXN0EjEud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXF1ZXN0GjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3REZXRhaWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RVcGRhdGUSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXNwb25zZRKEAQoVUmVzdG9ja1JlcXVlc3RGdWxmaWxsEjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXF1ZXN0GjUud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RDYW5jZWwSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRKBAQoUUmVzdG9ja1JlcXVlc3RMYWJlbHMSMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVxdWVzdBo0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMYWJlbHNSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
+  fileDesc("Cix3YXJlaG91c2UvaW52ZW50b3J5L3YxL3Jlc3RvY2tfcmVxdWVzdC5wcm90bxIWd2FyZWhvdXNlLmludmVudG9yeS52MSLgAgoSUmVzdG9ja1JlcXVlc3RJdGVtEgoKAmlkGAEgASgEEhsKCnByb2R1Y3RfaWQYAiABKARCB7pIBDICIAASFgoDc2t1GAMgASgJQgm6SAZyBBABGEASGAoEbmFtZRgEIAEoCUIKukgHcgUQARjIARIZCghxdWFudGl0eRgFIAEoA0IHukgEIgIgABIcCgt0b3RhbF9wcmljZRgGIAEoA0IHukgEIgIoABIiChFyZWNlaXZlZF9xdWFudGl0eRgHIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAkgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYCiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgIEAlSEHJlY2VpdmVkX3JhY2tfaWQiiAEKE1Jlc3RvY2tSZXF1ZXN0RXZlbnQSCgoCaWQYASABKAQSPQoEa2luZBgCIAEoDjIvLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RFdmVudEtpbmQSFQoNYWN0b3JfdXNlcl9pZBgDIAEoBBIPCgdhdF91bml4GAQgASgDIsMFCg5SZXN0b2NrUmVxdWVzdBIKCgJpZBgBIAEoBBIaChJyZXF1ZXN0aW5nX3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhUKDXNoaXBwaW5nX2NvZGUYCCABKAkSPAoGc3RhdHVzGAkgASgOMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFN0YXR1cxIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSOQoFaXRlbXMYCyADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbRIPCgdyZWNlaXB0GA0gASgJEhMKC3N1cHBsaWVyX2lkGA4gASgEEhEKCW9yZGVyX3JlZhgPIAEoCRIVCg1zaGlwcGluZ19jb3N0GBAgASgDEhgKEGNvZF9zaGlwcGluZ19mZWUYEyABKAMSQAoMcGF5bWVudF90eXBlGBEgASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGF5bWVudFR5cGUSDAoEbm90ZRgSIAEoCRIaChJjcmVhdGVkX2J5X3VzZXJfaWQYFCABKAQSGwoTYWNjZXB0ZWRfYnlfdXNlcl9pZBgVIAEoBBIcChRjYW5jZWxsZWRfYnlfdXNlcl9pZBgYIAEoBBI7CgZldmVudHMYGSADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RXZlbnQSGAoQYWNjZXB0ZWRfYXRfdW5peBgWIAEoAxIZChFjYW5jZWxsZWRfYXRfdW5peBgXIAEoA0oECAQQBUoECAUQBkoECAYQB0oECAcQCEoECAwQDVIKcHJvZHVjdF9pZFIDc2t1UgRuYW1lUghxdWFudGl0eVIIb3JkZXJfaWQi5AMKG1Jlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgx3YXJlaG91c2VfaWQYAiABKARCB7pIBDICIAASHgoNc2hpcHBpbmdfY29kZRgHIAEoCUIHukgEcgIYKBJDCgVpdGVtcxgIIAMoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RJdGVtQgi6SAWSAQIIARIYCgdyZWNlaXB0GAogASgJQge6SARyAhhkEhMKC3N1cHBsaWVyX2lkGAsgASgEEhoKCW9yZGVyX3JlZhgMIAEoCUIHukgEcgIYZBIeCg1zaGlwcGluZ19jb3N0GA0gASgDQge6SAQiAigAEkoKDHBheW1lbnRfdHlwZRgOIAEoDjIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1BheW1lbnRUeXBlQgi6SAWCAQIQARIWCgRub3RlGA8gASgJQgi6SAVyAxjoBzoLkrUYBwoFAQIDBAVKBAgDEARKBAgEEAVKBAgFEAZKBAgGEAdKBAgJEApSCnByb2R1Y3RfaWRSA3NrdVIEbmFtZVIIcXVhbnRpdHlSCG9yZGVyX2lkIlcKHFJlc3RvY2tSZXF1ZXN0Q3JlYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3QikgIKGVJlc3RvY2tSZXF1ZXN0TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQAoGZmlsdGVyGAIgASgLMjAud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3RGaWx0ZXISSAoMZGF0YV9yZXF1ZXN0GAMgAygOMjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExpc3REYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIuECChhSZXN0b2NrUmVxdWVzdExpc3RGaWx0ZXISRgoGc3RhdHVzGAEgASgOMiwud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFN0YXR1c0IIukgFggECEAESEgoKcHJvZHVjdF9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSRgoKZGF0ZV9maWVsZBgEIAEoDjIoLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0RhdGVGaWVsZEIIukgFggECEAESEQoJZnJvbV91bml4GAUgASgDEg8KB3RvX3VuaXgYBiABKAMSEgoBcRgHIAEoCUIHukgEcgIYZBIaChJyZXF1ZXN0aW5nX3RlYW1faWQYCCABKAQSGgoSY3JlYXRlZF9ieV91c2VyX2lkGAkgASgEEhsKE2FjY2VwdGVkX2J5X3VzZXJfaWQYCiABKAQivQEKFVJlc3RvY2tSZXF1ZXN0TWFwSXRlbRJMCghtYXBfZGF0YRgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtLk1hcERhdGFFbnRyeRpWCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdDoCOAEipwEKHlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkgKD3Jlc3RvY2tfcmVxdWVzdBgCIAEoCzItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RNYXBJdGVtSABCAwoBZCJoChtSZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiVwocUmVzdG9ja1JlcXVlc3REZXRhaWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCKiAQoaUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USRQoFaXRlbXMYASADKAsyNi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKGAQoVUmVzdG9ja0luYm91bmRQcmV2aWV3EhUKDXJlc3RvY2tfY291bnQYBSABKAMSFQoNcHJvZHVjdF9jb3VudBgBIAEoAxISCgp1bml0X2NvdW50GAIgASgDEg4KBmFtb3VudBgDIAEoAxIbChNvbGRlc3RfcGVuZGluZ191bml4GAQgASgDIjYKGFJlc3RvY2tJbmJvdW5kU3RhdEZpbHRlchIaChJyZXF1ZXN0aW5nX3RlYW1faWQYASABKAQiiAEKGVJlc3RvY2tJbmJvdW5kU3RhdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQAoGZmlsdGVyGAIgASgLMjAud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrSW5ib3VuZFN0YXRGaWx0ZXI6C5K1GAcKBQECBgkIIlwKGlJlc3RvY2tJbmJvdW5kU3RhdFJlc3BvbnNlEj4KB3ByZXZpZXcYASABKAsyLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tJbmJvdW5kUHJldmlldyK4AwobUmVzdG9ja1JlcXVlc3RVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnJlcXVlc3RfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAMgASgEQge6SAQyAiAAEh4KDXNoaXBwaW5nX2NvZGUYBCABKAlCB7pIBHICGCgSQwoFaXRlbXMYBSADKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0SXRlbUIIukgFkgECCAESGAoHcmVjZWlwdBgGIAEoCUIHukgEcgIYZBITCgtzdXBwbGllcl9pZBgHIAEoBBIaCglvcmRlcl9yZWYYCCABKAlCB7pIBHICGGQSHgoNc2hpcHBpbmdfY29zdBgJIAEoA0IHukgEIgIoABJKCgxwYXltZW50X3R5cGUYCiABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tQYXltZW50VHlwZUIIukgFggECEAESFgoEbm90ZRgLIAEoCUIIukgFcgMY6Ac6C5K1GAcKBQECAwQFIlcKHFJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVzcG9uc2USNwoHcmVxdWVzdBgBIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3Qi1gEKHFJlc3RvY2tSZXF1ZXN0RnVsZmlsbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgABJLCgVsaW5lcxgDIAMoCzIyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmVCCLpIBZIBAggBEiEKEGNvZF9zaGlwcGluZ19mZWUYBCABKANCB7pIBCICKAA6C5K1GAcKBQECBgkIIm8KEFJlc3RvY2tQbGFjZW1lbnQSGgoHcmFja19pZBgBIAEoBEIHukgEMgIgAEgAEhsKCHVucGxhY2VkGAIgASgIQge6SARqAggBSAASGQoIcXVhbnRpdHkYAyABKANCB7pIBCICIABCBwoFcGxhY2UingEKE1Jlc3RvY2tEYW1hZ2VkVW5pdHMSGQoIcXVhbnRpdHkYASABKANCB7pIBCICIAASGgoGcmVhc29uGAIgASgJQgq6SAdyBRABGMgBEkMKBHR5cGUYBCABKA4yKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VUeXBlQgq6SAeCAQQQASAASgQIAxAEUgV2YWx1ZSL8AQoaUmVzdG9ja1JlcXVlc3RSZWNlaXZlZExpbmUSGAoHaXRlbV9pZBgBIAEoBEIHukgEMgIgABIiChFyZWNlaXZlZF9xdWFudGl0eRgCIAEoA0IHukgEIgIoABI8CgpwbGFjZW1lbnRzGAUgAygLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUGxhY2VtZW50EjwKB2RhbWFnZWQYBiADKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tEYW1hZ2VkVW5pdHNKBAgDEARKBAgEEAVSB3JhY2tfaWRSCHVucGxhY2VkUgVwbGFjZSJYCh1SZXN0b2NrUmVxdWVzdEZ1bGZpbGxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiVwocUmVzdG9ja1JlcXVlc3RDYW5jZWxSZXNwb25zZRI3CgdyZXF1ZXN0GAEgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdCJlChtSZXN0b2NrUmVxdWVzdExhYmVsc1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcmVxdWVzdF9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgikwEKDFJlc3RvY2tMYWJlbBISCgpwcm9kdWN0X2lkGAEgASgEEgsKA3NrdRgCIAEoCRIMCgRuYW1lGAMgASgJEhAKCGJhdGNoX2lkGAQgASgEEhAKCHF1YW50aXR5GAUgASgDEhEKCXJhY2tfY29kZRgGIAEoCRIQCgh1bnBsYWNlZBgHIAEoCBILCgNocHAYCCABKAMimgEKHFJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVzcG9uc2USEgoKcmVzdG9ja19pZBgBIAEoBBIYChByZWNlaXZlZF9hdF91bml4GAIgASgDEjQKBmxhYmVscxgDIAMoCzIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja0xhYmVsEhYKDmV4Y2x1ZGVkX2NvdW50GAQgASgDKq4BChRSZXN0b2NrUmVxdWVzdFN0YXR1cxImCiJSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIgoeUkVTVE9DS19SRVFVRVNUX1NUQVRVU19QRU5ESU5HEAESJAogUkVTVE9DS19SRVFVRVNUX1NUQVRVU19GVUxGSUxMRUQQAhIkCiBSRVNUT0NLX1JFUVVFU1RfU1RBVFVTX0NBTkNFTExFRBADKoYBChJSZXN0b2NrUGF5bWVudFR5cGUSJAogUkVTVE9DS19QQVlNRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9SRVNUT0NLX1BBWU1FTlRfVFlQRV9TSE9QRUVfUEFZEAESJQohUkVTVE9DS19QQVlNRU5UX1RZUEVfQkFOS19BQ0NPVU5UEAIqjwIKF1Jlc3RvY2tSZXF1ZXN0RXZlbnRLaW5kEioKJlJFU1RPQ0tfUkVRVUVTVF9FVkVOVF9LSU5EX1VOU1BFQ0lGSUVEEAASJgoiUkVTVE9DS19SRVFVRVNUX0VWRU5UX0tJTkRfQ1JFQVRFRBABEiUKIVJFU1RPQ0tfUkVRVUVTVF9FVkVOVF9LSU5EX0VESVRFRBACEicKI1JFU1RPQ0tfUkVRVUVTVF9FVkVOVF9LSU5EX0FDQ0VQVEVEEAMSKAokUkVTVE9DS19SRVFVRVNUX0VWRU5UX0tJTkRfQ0FOQ0VMTEVEEAQSJgoiUkVTVE9DS19SRVFVRVNUX0VWRU5UX0tJTkRfQ09EX0ZFRRAFKpkBChBSZXN0b2NrRGF0ZUZpZWxkEiIKHlJFU1RPQ0tfREFURV9GSUVMRF9VTlNQRUNJRklFRBAAEh4KGlJFU1RPQ0tfREFURV9GSUVMRF9DUkVBVEVEEAESHwobUkVTVE9DS19EQVRFX0ZJRUxEX0FDQ0VQVEVEEAISIAocUkVTVE9DS19EQVRFX0ZJRUxEX0NBTkNFTExFRBADKqwBChpSZXN0b2NrUmVxdWVzdExpc3REYXRhVHlwZRIuCipSRVNUT0NLX1JFUVVFU1RfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIqCiZSRVNUT0NLX1JFUVVFU1RfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEjIKLlJFU1RPQ0tfUkVRVUVTVF9MSVNUX0RBVEFfVFlQRV9SRVNUT0NLX1JFUVVFU1QQAip2ChFSZXN0b2NrRGFtYWdlVHlwZRIjCh9SRVNUT0NLX0RBTUFHRV9UWVBFX1VOU1BFQ0lGSUVEEAASHgoaUkVTVE9DS19EQU1BR0VfVFlQRV9CUk9LRU4QARIcChhSRVNUT0NLX0RBTUFHRV9UWVBFX0xPU1QQAjKsCAoVUmVzdG9ja1JlcXVlc3RTZXJ2aWNlEoEBChRSZXN0b2NrUmVxdWVzdENyZWF0ZRIzLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RDcmVhdGVSZXF1ZXN0GjQud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENyZWF0ZVJlc3BvbnNlEnsKElJlc3RvY2tSZXF1ZXN0TGlzdBIxLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVxdWVzdBoyLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RMaXN0UmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0RGV0YWlsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdERldGFpbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0RGV0YWlsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0VXBkYXRlEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdFVwZGF0ZVJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0VXBkYXRlUmVzcG9uc2UShAEKFVJlc3RvY2tSZXF1ZXN0RnVsZmlsbBI0LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVxdWVzdBo1LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmVzdG9ja1JlcXVlc3RGdWxmaWxsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0Q2FuY2VsEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdENhbmNlbFJlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0Q2FuY2VsUmVzcG9uc2USgQEKFFJlc3RvY2tSZXF1ZXN0TGFiZWxzEjMud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrUmVxdWVzdExhYmVsc1JlcXVlc3QaNC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJlc3RvY2tSZXF1ZXN0TGFiZWxzUmVzcG9uc2USewoSUmVzdG9ja0luYm91bmRTdGF0EjEud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrSW5ib3VuZFN0YXRSZXF1ZXN0GjIud2FyZWhvdXNlLmludmVudG9yeS52MS5SZXN0b2NrSW5ib3VuZFN0YXRSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
 
 /**
  * One line of a restock request: a product, how much of it, and what it costs.
@@ -108,6 +108,46 @@ export type RestockRequestItem = Message<"warehouse.inventory.v1.RestockRequestI
  */
 export const RestockRequestItemSchema: GenMessage<RestockRequestItem> = /*@__PURE__*/
   messageDesc(file_warehouse_inventory_v1_restock_request, 0);
+
+/**
+ * One entry in a restock's history — WHAT happened, WHO did it, WHEN.
+ *
+ * @generated from message warehouse.inventory.v1.RestockRequestEvent
+ */
+export type RestockRequestEvent = Message<"warehouse.inventory.v1.RestockRequestEvent"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.RestockRequestEventKind kind = 2;
+   */
+  kind: RestockRequestEventKind;
+
+  /**
+   * The opaque user_service id of whoever did it; 0 = not recorded. Resolved to a name through
+   * UserByIDs at read time, never snapshotted — the same rule the actor columns follow.
+   *
+   * @generated from field: uint64 actor_user_id = 3;
+   */
+  actorUserId: bigint;
+
+  /**
+   * WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
+   * moment its column recorded, which may be months before the row existed.
+   *
+   * @generated from field: int64 at_unix = 4;
+   */
+  atUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockRequestEvent.
+ * Use `create(RestockRequestEventSchema)` to create a new message.
+ */
+export const RestockRequestEventSchema: GenMessage<RestockRequestEvent> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 1);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequest
@@ -232,6 +272,34 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
   acceptedByUserId: bigint;
 
   /**
+   * Who CALLED IT OFF. 0 until it is cancelled, and 0 forever on a row cancelled before the column
+   * existed — the same "not recorded" the two ids above carry.
+   *
+   * @generated from field: uint64 cancelled_by_user_id = 24;
+   */
+  cancelledByUserId: bigint;
+
+  /**
+   * THE RESTOCK'S HISTORY, oldest first (owner) — one entry per thing that happened to it.
+   *
+   * ⚠ DETAIL ONLY. Loaded by RestockRequestDetail and left EMPTY by RestockRequestList, exactly like a
+   * line's placements: a page of twenty restocks would pull every event of each to render a table that
+   * shows none of them.
+   *
+   * It exists because two columns cannot record REPEATED editing. `updated_at`/`updated_by` would have
+   * remembered only the most recent edit, and a request edited five times would read as one edited
+   * once — so the events are rows, and the timeline reads THIS rather than assembling itself from
+   * three separate column pairs.
+   *
+   * The columns are NOT superseded: `created_by_user_id` and the three timestamps stay, because the
+   * list filters and sorts on them and a filter cannot reach into a child table cheaply. The events
+   * are how the history is read IN ORDER; the columns are how the current state is queried.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RestockRequestEvent events = 25;
+   */
+  events: RestockRequestEvent[];
+
+  /**
    * WHEN it was accepted / cancelled, unix seconds; 0 if it has not been. `created_at_unix` above is
    * the third of the set.
    *
@@ -253,7 +321,7 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
  * Use `create(RestockRequestSchema)` to create a new message.
  */
 export const RestockRequestSchema: GenMessage<RestockRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 1);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 2);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCreateRequest
@@ -319,7 +387,7 @@ export type RestockRequestCreateRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestCreateRequestSchema)` to create a new message.
  */
 export const RestockRequestCreateRequestSchema: GenMessage<RestockRequestCreateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 2);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 3);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCreateResponse
@@ -336,7 +404,7 @@ export type RestockRequestCreateResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestCreateResponseSchema)` to create a new message.
  */
 export const RestockRequestCreateResponseSchema: GenMessage<RestockRequestCreateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 3);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 4);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestListRequest
@@ -368,7 +436,7 @@ export type RestockRequestListRequest = Message<"warehouse.inventory.v1.RestockR
  * Use `create(RestockRequestListRequestSchema)` to create a new message.
  */
 export const RestockRequestListRequestSchema: GenMessage<RestockRequestListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 4);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 5);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestListFilter
@@ -437,6 +505,49 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
    * @generated from field: string q = 7;
    */
   q: string;
+
+  /**
+   * Only restocks raised BY THIS TEAM; 0 = every team. The mirror image of `warehouse_id`, and it
+   * exists for the mirror reason (owner): a warehouse receives from several selling teams, and "what
+   * is coming from Bandung" is a different question from "what is coming at all".
+   *
+   * Meaningless on the SELLING side, where it could only ever equal the caller's own team — that
+   * screen does not offer it, exactly as this one does not offer `warehouse_id`.
+   *
+   * @generated from field: uint64 requesting_team_id = 8;
+   */
+  requestingTeamId: bigint;
+
+  /**
+   * BY PERSON: who raised the restock, and who accepted the delivery (owner). 0 = anybody.
+   *
+   * Two filters rather than one "involved this person", because the two questions are asked by
+   * different people for different reasons: a manager reviewing purchasing asks whose orders these
+   * are, while somebody chasing a bad delivery asks who was at the door. Merged into one field, an
+   * answer could not say which side of the restock the person was on.
+   *
+   * They also COMBINE: both set means "raised by A and accepted by B", not "either" — an AND is the
+   * only reading under which each filter keeps meaning what it means alone.
+   *
+   * `accepted_by_user_id` implies an accepted restock, so it excludes every pending and cancelled one
+   * by construction (their column is 0) — the same rule the ACCEPTED date field follows, and for the
+   * same reason: "accepted by Rina" cannot be true of a delivery nobody accepted.
+   *
+   * ⚠ These are the ACTOR ids, and a restock predating them carries 0 — such a row can therefore never
+   * match a filter. That is correct: the record does not say who raised it, and returning it under
+   * somebody's name would be inventing the one fact being filtered on.
+   *
+   * Server-side, like every filter here — see `date_field` for why a paginated list cannot filter in
+   * the client.
+   *
+   * @generated from field: uint64 created_by_user_id = 9;
+   */
+  createdByUserId: bigint;
+
+  /**
+   * @generated from field: uint64 accepted_by_user_id = 10;
+   */
+  acceptedByUserId: bigint;
 };
 
 /**
@@ -444,7 +555,7 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
  * Use `create(RestockRequestListFilterSchema)` to create a new message.
  */
 export const RestockRequestListFilterSchema: GenMessage<RestockRequestListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 5);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 6);
 
 /**
  * The RESTOCK_REQUEST slice reuses the RestockRequest message directly.
@@ -463,7 +574,7 @@ export type RestockRequestMapItem = Message<"warehouse.inventory.v1.RestockReque
  * Use `create(RestockRequestMapItemSchema)` to create a new message.
  */
 export const RestockRequestMapItemSchema: GenMessage<RestockRequestMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 6);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 7);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestListResponseItem
@@ -492,7 +603,7 @@ export type RestockRequestListResponseItem = Message<"warehouse.inventory.v1.Res
  * Use `create(RestockRequestListResponseItemSchema)` to create a new message.
  */
 export const RestockRequestListResponseItemSchema: GenMessage<RestockRequestListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 7);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 8);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestDetailRequest
@@ -514,7 +625,7 @@ export type RestockRequestDetailRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestDetailRequestSchema)` to create a new message.
  */
 export const RestockRequestDetailRequestSchema: GenMessage<RestockRequestDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 8);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 9);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestDetailResponse
@@ -531,7 +642,7 @@ export type RestockRequestDetailResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestDetailResponseSchema)` to create a new message.
  */
 export const RestockRequestDetailResponseSchema: GenMessage<RestockRequestDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 9);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestListResponse
@@ -558,7 +669,140 @@ export type RestockRequestListResponse = Message<"warehouse.inventory.v1.Restock
  * Use `create(RestockRequestListResponseSchema)` to create a new message.
  */
 export const RestockRequestListResponseSchema: GenMessage<RestockRequestListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 10);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
+
+/**
+ * RestockInboundPreview — WHAT IS STILL WAITING AT THE DOOR, over every PENDING restock targeting
+ * this warehouse (owner).
+ *
+ * PENDING ONLY, and that is the whole meaning of the tiles. A fulfilled delivery has been counted and
+ * is now stock — it is reported by the stock screens, and counting it here would make the queue look
+ * like it never drains. A cancelled one never arrives at all.
+ *
+ * Every figure is a SERVER-SIDE total over the whole queue, not over the visible page: a headline
+ * that silently described page 1 of 6 would be worse than no headline, because it looks authoritative.
+ *
+ * @generated from message warehouse.inventory.v1.RestockInboundPreview
+ */
+export type RestockInboundPreview = Message<"warehouse.inventory.v1.RestockInboundPreview"> & {
+  /**
+   * How many RESTOCKS are in the queue — deliveries, not products and not pieces (owner).
+   *
+   * The coarsest of the counts and the one the crew plans a shift by: 3 deliveries of 400 pieces and
+   * 30 deliveries of 400 pieces are the same stock and completely different amounts of door-opening,
+   * paperwork and label-printing. Counted over the REQUESTS, so a request whose lines were all
+   * deleted still counts as something waiting to be dealt with.
+   *
+   * @generated from field: int64 restock_count = 5;
+   */
+  restockCount: bigint;
+
+  /**
+   * How many DISTINCT products are in the queue — a product on four deliveries counts once. This is
+   * the "how many different things must be found a shelf" number, which the unit count cannot give:
+   * 400 pieces of one SKU and 400 pieces across 90 SKUs are the same afternoon's counting and very
+   * different afternoons' put-away.
+   *
+   * @generated from field: int64 product_count = 1;
+   */
+  productCount: bigint;
+
+  /**
+   * How many PIECES are expected, summed over every pending line. The ASKED quantity — nobody has
+   * counted these yet, which is exactly why they are on this list.
+   *
+   * @generated from field: int64 unit_count = 2;
+   */
+  unitCount: bigint;
+
+  /**
+   * What the queue is WORTH, in whole rupiah: the line totals as typed off the invoice.
+   *
+   * Freight is deliberately NOT in it. `shipping_cost` is what the buying team paid to get the goods
+   * moving and `cod_shipping_fee` is 0 until someone accepts, so adding either would answer a
+   * question about somebody else's spending rather than about the goods on the pallet.
+   *
+   * @generated from field: int64 amount = 3;
+   */
+  amount: bigint;
+
+  /**
+   * When the LONGEST-WAITING pending restock was raised (unix seconds), or 0 when nothing is pending.
+   *
+   * A count of 7 hides the box that has sat for five days behind six that arrived this morning, so
+   * the age is reported rather than left to be inferred. It is the CREATED date because that is the
+   * only date a pending restock has — accepted_at and cancelled_at are by definition null here.
+   *
+   * @generated from field: int64 oldest_pending_unix = 4;
+   */
+  oldestPendingUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockInboundPreview.
+ * Use `create(RestockInboundPreviewSchema)` to create a new message.
+ */
+export const RestockInboundPreviewSchema: GenMessage<RestockInboundPreview> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
+
+/**
+ * @generated from message warehouse.inventory.v1.RestockInboundStatFilter
+ */
+export type RestockInboundStatFilter = Message<"warehouse.inventory.v1.RestockInboundStatFilter"> & {
+  /**
+   * The same lens as the list's, and it must be — a headline that ignored the filter under it would
+   * contradict the table it sits above. 0 = every requesting team.
+   *
+   * @generated from field: uint64 requesting_team_id = 1;
+   */
+  requestingTeamId: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockInboundStatFilter.
+ * Use `create(RestockInboundStatFilterSchema)` to create a new message.
+ */
+export const RestockInboundStatFilterSchema: GenMessage<RestockInboundStatFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
+
+/**
+ * @generated from message warehouse.inventory.v1.RestockInboundStatRequest
+ */
+export type RestockInboundStatRequest = Message<"warehouse.inventory.v1.RestockInboundStatRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.RestockInboundStatFilter filter = 2;
+   */
+  filter?: RestockInboundStatFilter;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockInboundStatRequest.
+ * Use `create(RestockInboundStatRequestSchema)` to create a new message.
+ */
+export const RestockInboundStatRequestSchema: GenMessage<RestockInboundStatRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
+
+/**
+ * @generated from message warehouse.inventory.v1.RestockInboundStatResponse
+ */
+export type RestockInboundStatResponse = Message<"warehouse.inventory.v1.RestockInboundStatResponse"> & {
+  /**
+   * @generated from field: warehouse.inventory.v1.RestockInboundPreview preview = 1;
+   */
+  preview?: RestockInboundPreview;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RestockInboundStatResponse.
+ * Use `create(RestockInboundStatResponseSchema)` to create a new message.
+ */
+export const RestockInboundStatResponseSchema: GenMessage<RestockInboundStatResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_restock_request, 15);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestUpdateRequest
@@ -640,7 +884,7 @@ export type RestockRequestUpdateRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestUpdateRequestSchema)` to create a new message.
  */
 export const RestockRequestUpdateRequestSchema: GenMessage<RestockRequestUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 11);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 16);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestUpdateResponse
@@ -657,7 +901,7 @@ export type RestockRequestUpdateResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestUpdateResponseSchema)` to create a new message.
  */
 export const RestockRequestUpdateResponseSchema: GenMessage<RestockRequestUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 12);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 17);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestFulfillRequest
@@ -704,7 +948,7 @@ export type RestockRequestFulfillRequest = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestFulfillRequestSchema)` to create a new message.
  */
 export const RestockRequestFulfillRequestSchema: GenMessage<RestockRequestFulfillRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 13);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 18);
 
 /**
  * RestockPlacement — how many of a received line's units went to ONE place (#154).
@@ -755,7 +999,7 @@ export type RestockPlacement = Message<"warehouse.inventory.v1.RestockPlacement"
  * Use `create(RestockPlacementSchema)` to create a new message.
  */
 export const RestockPlacementSchema: GenMessage<RestockPlacement> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 14);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 19);
 
 /**
  * RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
@@ -794,7 +1038,7 @@ export type RestockDamagedUnits = Message<"warehouse.inventory.v1.RestockDamaged
  * Use `create(RestockDamagedUnitsSchema)` to create a new message.
  */
 export const RestockDamagedUnitsSchema: GenMessage<RestockDamagedUnits> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 15);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 20);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestReceivedLine
@@ -855,7 +1099,7 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
  * Use `create(RestockRequestReceivedLineSchema)` to create a new message.
  */
 export const RestockRequestReceivedLineSchema: GenMessage<RestockRequestReceivedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 16);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 21);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestFulfillResponse
@@ -872,7 +1116,7 @@ export type RestockRequestFulfillResponse = Message<"warehouse.inventory.v1.Rest
  * Use `create(RestockRequestFulfillResponseSchema)` to create a new message.
  */
 export const RestockRequestFulfillResponseSchema: GenMessage<RestockRequestFulfillResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 17);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 22);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelRequest
@@ -894,7 +1138,7 @@ export type RestockRequestCancelRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestCancelRequestSchema)` to create a new message.
  */
 export const RestockRequestCancelRequestSchema: GenMessage<RestockRequestCancelRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 18);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 23);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestCancelResponse
@@ -911,7 +1155,7 @@ export type RestockRequestCancelResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestCancelResponseSchema)` to create a new message.
  */
 export const RestockRequestCancelResponseSchema: GenMessage<RestockRequestCancelResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 19);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 24);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestLabelsRequest
@@ -933,7 +1177,7 @@ export type RestockRequestLabelsRequest = Message<"warehouse.inventory.v1.Restoc
  * Use `create(RestockRequestLabelsRequestSchema)` to create a new message.
  */
 export const RestockRequestLabelsRequestSchema: GenMessage<RestockRequestLabelsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 20);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 25);
 
 /**
  * One printable label = one PLACEMENT of stock that entered the warehouse (#207).
@@ -1008,7 +1252,7 @@ export type RestockLabel = Message<"warehouse.inventory.v1.RestockLabel"> & {
  * Use `create(RestockLabelSchema)` to create a new message.
  */
 export const RestockLabelSchema: GenMessage<RestockLabel> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 21);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 26);
 
 /**
  * @generated from message warehouse.inventory.v1.RestockRequestLabelsResponse
@@ -1048,7 +1292,7 @@ export type RestockRequestLabelsResponse = Message<"warehouse.inventory.v1.Resto
  * Use `create(RestockRequestLabelsResponseSchema)` to create a new message.
  */
 export const RestockRequestLabelsResponseSchema: GenMessage<RestockRequestLabelsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_restock_request, 22);
+  messageDesc(file_warehouse_inventory_v1_restock_request, 27);
 
 /**
  * @generated from enum warehouse.inventory.v1.RestockRequestStatus
@@ -1110,6 +1354,66 @@ export const RestockPaymentTypeSchema: GenEnum<RestockPaymentType> = /*@__PURE__
   enumDesc(file_warehouse_inventory_v1_restock_request, 1);
 
 /**
+ * What happened to a restock. APPEND ONLY, like every enum here — and unlike a status, a new kind here
+ * costs nothing: the timeline renders what it knows and ignores what it does not.
+ *
+ * @generated from enum warehouse.inventory.v1.RestockRequestEventKind
+ */
+export enum RestockRequestEventKind {
+  /**
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * It was raised. Every restock has exactly one, including the ones backfilled from `created_at`.
+   *
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_CREATED = 1;
+   */
+  CREATED = 1,
+
+  /**
+   * The requesting team rewrote it while it was still pending (#131). A restock has AS MANY of these
+   * as it was edited — which is the whole reason events are rows and not two columns.
+   *
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_EDITED = 2;
+   */
+  EDITED = 2,
+
+  /**
+   * The warehouse counted the delivery in (#133).
+   *
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_ACCEPTED = 3;
+   */
+  ACCEPTED = 3,
+
+  /**
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_CANCELLED = 4;
+   */
+  CANCELLED = 4,
+
+  /**
+   * The warehouse paid the courier at the door (#155) and entered what it cost. Its OWN step, written
+   * immediately before the acceptance it arrived with, because the two are different claims about
+   * different money: one says goods landed, the other says the warehouse is out of pocket for them and
+   * the requesting team now owes it (#184). Folded into ACCEPTED, the payment is invisible on the only
+   * screen that shows the requesting team what happened — and it is the half they have to settle.
+   *
+   * Only written when the fee is > 0. Most deliveries are not COD, and a step saying "paid nothing at
+   * the door" is a claim about an event that did not occur.
+   *
+   * @generated from enum value: RESTOCK_REQUEST_EVENT_KIND_COD_FEE = 5;
+   */
+  COD_FEE = 5,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.RestockRequestEventKind.
+ */
+export const RestockRequestEventKindSchema: GenEnum<RestockRequestEventKind> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_restock_request, 2);
+
+/**
  * Which of a restock's three dates a range filter is about (owner). APPEND ONLY, like every enum
  * here.
  *
@@ -1145,7 +1449,7 @@ export enum RestockDateField {
  * Describes the enum warehouse.inventory.v1.RestockDateField.
  */
 export const RestockDateFieldSchema: GenEnum<RestockDateField> = /*@__PURE__*/
-  enumDesc(file_warehouse_inventory_v1_restock_request, 2);
+  enumDesc(file_warehouse_inventory_v1_restock_request, 3);
 
 /**
  * @generated from enum warehouse.inventory.v1.RestockRequestListDataType
@@ -1171,7 +1475,7 @@ export enum RestockRequestListDataType {
  * Describes the enum warehouse.inventory.v1.RestockRequestListDataType.
  */
 export const RestockRequestListDataTypeSchema: GenEnum<RestockRequestListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_inventory_v1_restock_request, 3);
+  enumDesc(file_warehouse_inventory_v1_restock_request, 4);
 
 /**
  * How a received unit failed to become stock (#154) — the two are DIFFERENT questions a supplier
@@ -1205,7 +1509,7 @@ export enum RestockDamageType {
  * Describes the enum warehouse.inventory.v1.RestockDamageType.
  */
 export const RestockDamageTypeSchema: GenEnum<RestockDamageType> = /*@__PURE__*/
-  enumDesc(file_warehouse_inventory_v1_restock_request, 4);
+  enumDesc(file_warehouse_inventory_v1_restock_request, 5);
 
 /**
  * RestockRequestService (#105): a SELLING team asks a WAREHOUSE to restock a product (with shipment
@@ -1285,6 +1589,17 @@ export const RestockRequestService: GenService<{
     methodKind: "unary";
     input: typeof RestockRequestLabelsRequestSchema;
     output: typeof RestockRequestLabelsResponseSchema;
+  },
+  /**
+   * The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
+   * Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+   *
+   * @generated from rpc warehouse.inventory.v1.RestockRequestService.RestockInboundStat
+   */
+  restockInboundStat: {
+    methodKind: "unary";
+    input: typeof RestockInboundStatRequestSchema;
+    output: typeof RestockInboundStatResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_inventory_v1_restock_request, 0);

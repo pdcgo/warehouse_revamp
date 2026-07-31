@@ -416,6 +416,47 @@ flow (§1) and is not built.
 
 ## 10. Session log
 
+- **2026-07-30** — **The selling team's product detail: Price, Batch and Stock history, made to work**
+  (owner, #232). Three of that page's four tabs had never shown a row. They were not unfinished screens
+  — they were screens with no RPC that could answer them, and the page said so in three separate
+  "awaiting the stock service" notes.
+  - **One cause under all three.** Every batch, layer and movement read in this service is scoped to the
+    WAREHOUSE team and admits WAREHOUSE roles only. A selling team has no building to name and no role
+    to ask with. `OwnerStockByIds` was the one read that could answer, and it returns per-product
+    AGGREGATES — the spread, the ready count — never the rows they are made of. So the Price tab could
+    show "Rp 25.000 – Rp 40.000" above a table that could not show what sat between the two ends.
+  - **Three owner-scoped reads**, mirroring the warehouse trio: `OwnerCostLayerList`, `OwnerBatchList`,
+    `OwnerStockHistory`. The same questions, asked by the team that owns the goods, over the same
+    ownership climb every owner read makes (batch → restock line → the team that raised it).
+  - **The warehouse stops being the SCOPE and becomes a LENS**, and that is the substantive change
+    rather than a plumbing detail. An owner's purchases are not a fact about a building — 200 units in
+    Surabaya and 300 in Jakarta are one purchase history — so the deliveries list spans every warehouse
+    holding the goods and names the building on each row, a shape the warehouse-side reads can never
+    produce because a warehouse can only ever be asked about itself.
+  - **RECOUNTS ARE INCLUDED, and working out why took a second ownership rule** (owner). A batch-less
+    movement cannot climb the restock chain, so the strict reading drops it. That reading also drops
+    **every PICK** — `stock_pick.go` writes them with no batch — which would leave the owner's ledger
+    showing goods arriving and never leaving. So a batch-less event belongs to whoever owns batches of
+    that product in that building. Still a join, never a claim from the client.
+  - **The "After" column got its own table** (owner). The ledger's `balance` is THAT SHELF's running
+    total, and printing it under a Warehouse column states a rack fact as a building one — the #135
+    mistake in a new costume. `stock_owner_movements` (`00020`) projects each event into the owner's
+    lens: ownership resolved once at write time, shelf MOVEs dropped because they change nothing the
+    owner holds, and a backfill so the tab does not open empty on products that already have a history.
+    Written inline by `appendMovement` today, an **event consumer later** (owner) — the rows and the
+    read shape do not change when it moves.
+  - **The projection stores NO balance**, deliberately. Two writers on different shelves of one product
+    have nothing serialising them, so a stored running total is a number two concurrent receives would
+    both get wrong. It is a window function at read time instead — which also has to run BEFORE the
+    kind and date filters, or it totals "the adjustments I asked to see" rather than the stock.
+  - **`MovementTable` was widened, not copied.** It already served three ledgers and its own header
+    says why that matters. It gained a `warehouse` context column and a row type the owner's message
+    can satisfy; a fourth copy would have drifted exactly as the first three did.
+  - **Still open, deliberately:** the history has no kind or date filter on screen yet, though the RPC
+    takes both. Which of them a catalogue owner actually reaches for is worth watching before adding
+    controls — the warehouse's version grew a date range because receiving is a daily rhythm, and an
+    owner's question ("why is this number wrong") may not have a date in it at all.
+
 - **2026-07-15** — Opened the doc from issue #22. Framed inventory from first principles (movements
   ledger + derived on-hand), separated the §1-independent core from the §1-blocked detail, and
   proposed a sub-issue breakdown. All key model/scope decisions raised as options — none settled.
@@ -490,3 +531,416 @@ flow (§1) and is not built.
     anyone shelves them, so it is a selectable value everywhere, while *unanswered* is refused. The two
     look identical in a nullable column and mean opposite things, which is why every query matches with
     `IS NOT DISTINCT FROM` and every picker separates "unplaced" from its placeholder.
+- **2026-07-30** — **Choosing what to restock: own catalogue only, with ready and ongoing on the row**
+  (owner). Two calls that arrived together in one sentence, and that is the interesting part — they are
+  not two features, they are one, and neither is sound alone.
+  - **The picker is scoped to the team's OWN catalogue.** It used to browse every team's
+    (`ProductDiscover`, no `teamId`), so a selling team could put another team's product on its
+    request. The rare, deliberate case was the default and the ordinary one had no guard rail.
+  - **Each row shows READY and ONGOING** — #209's words, unchanged, so the picker does not invent a
+    third vocabulary for the numbers the product detail already names.
+  - **Why they are one decision:** `OwnerStockByIds` establishes ownership by joining
+    `batch → restock_request_item → restock_request.requesting_team_id`, so another team's product
+    answers **zero**. On screen "0 ready, 0 on the way" reads as *we have none* when the truth is *not
+    mine to know* — a wrong number, not a missing one. **Narrowing the catalogue is what makes the
+    badges honest**, which is why they landed in the same change.
+  - **The two figures have DIFFERENT WAREHOUSE LENSES, on purpose:**
+
+    | | lens | the question it answers |
+    | --- | --- | --- |
+    | ready | the **destination** warehouse | does *this building* need a delivery? |
+    | ongoing | **every** warehouse (owner) | have I already bought this? |
+
+    Ongoing is a fact about the **purchase**, not about a building — 200 already heading to Surabaya is
+    money spent whether or not Jakarta is the destination — so it answers before a warehouse is even
+    chosen. `filter.warehouse_id` is one lens over the whole `OwnerStockItem`, so this is deliberately
+    **two calls**, not one. They run in parallel over the same ten ids.
+  - **They also show under opposite rules**, and the asymmetry is the point: ready renders at **0**
+    (out-of-stock is the case worth seeing), ongoing renders only when there **is** some (nothing on the
+    way is the normal state of most products, and a badge saying so on every row is noise). Two numbers
+    with two lenses side by side read as one number about one place, so the dialog states the scopes
+    once above the list rather than lengthening both labels on every row.
+  - **A read that had never once worked, found on the way in.** The badge was fed by `StockList`,
+    which is policied to **warehouse roles** — and it was called scoped to the *destination* warehouse,
+    where a selling team holds no role. Every call was denied and swallowed by a `catch` commented
+    "stock is decoration", so unless you were ROOT the number had simply never appeared. It read as a
+    design gap ("the picker shows no stock") and was an authorization bug. **A silent catch around a
+    read is how a feature stays broken without anyone filing a bug** — it deserves at least a
+    console-visible trace next time one is written.
+  - The same change removed a **1000-row cliff**: the old code paged up to 5 × 200 whole-warehouse
+    stock rows on every open and joined them client-side, so the 1001st stocked product silently had no
+    badge. The by-ids read asks about the **ten ids on screen**, per page.
+  - **Still open, deliberately:** ordering. The list is still the catalogue's order, so "what is
+    actually running low" is something you read off the badges rather than something the screen sorts
+    by. Low-stock-first ordering, and a supplier's usual products, are the next question — and they are
+    what would turn a generic catalogue browser into a restock-aware one, which is a fork worth taking
+    on its own rather than by accident.
+
+- **2026-07-30** — **The warehouse's inbound queue gets a headline and a lens** (owner). The receiving
+  restock list had status tabs and nothing else; the buying side had gained tiles, a search box, a
+  warehouse lens and a date range. This closes the gap on the side that does the physical work — but
+  deliberately not by copying, because the two sides ask different questions of the same rows.
+  - **Four tiles, chosen by the owner:** total product, total count, total amount, oldest pending. Over
+    **PENDING restocks targeting this warehouse** only — a fulfilled delivery has become stock and a
+    cancelled one never arrives, so either leaking in gives a queue that never drains.
+  - **`product_count` is DISTINCT products, not lines.** One SKU on four deliveries is one thing to
+    find a shelf for. 400 pieces of one SKU and 400 across 90 SKUs are the same afternoon's counting
+    and very different afternoons' put-away, and the unit count cannot tell them apart.
+  - **The age is the value, the date is the help text.** "3 days" is the thing worth acting on; a count
+    of 7 waiting hides the box that has sat since Monday behind six that came this morning. Calendar
+    days, not elapsed hours — a delivery raised at 23:00 has been waiting *since yesterday* to the crew
+    reading it at 08:00, and flooring the elapsed time would call that "today".
+  - ⚠ **MONEY CAME ONTO THIS PAGE, and the old rule was narrowed rather than dropped.** The page
+    previously refused money outright, on the argument that another team's purchase prices have no
+    place on a counting crew's work queue. The owner's call splits it: what the QUEUE is worth is the
+    warehouse's own exposure and belongs in the headline; a per-line purchase price beside a product
+    somebody is counting is still one supplier's invoice terms on every row, and the table still asks
+    for `showPrices={false}`. Recorded because the page's own comment used to argue the opposite, and a
+    comment left claiming a rule the code no longer keeps is worse than no comment.
+  - **`requesting_team_id` is the mirror of `warehouse_id`, and the mirror is exact.** Each side has
+    exactly ONE lens, and it is the one whose answer varies: a buyer picks the destination, a warehouse
+    picks the origin. The other is meaningless on that screen because it could only ever equal the
+    caller's own team.
+  - ⚠ **A lens must NARROW the two-sided scope, never replace it.** `RestockRequestList` is scoped
+    `requesting_team_id = team OR warehouse_id = team`. Written as a substitute for that clause, the
+    new filter would hand one warehouse another team's entire book — and it would pass every
+    filter-shaped test, because those only ever check that the right rows come back. The test that
+    catches it seeds a restock from the named team to a DIFFERENT warehouse and asserts it stays out.
+  - **A separate RPC, not a parameter on `OwnerStockStat`.** Two reasons, and the second is the hard
+    one: they are different sets (`warehouse_id = team` vs `requesting_team_id = team`), and
+    `OwnerStockStat`'s policy carries **no warehouse roles at all** — the crew reading this screen
+    would have got PermissionDenied. A stat RPC's policy is part of whose question it is.
+  - **The team badge came off the header** (owner). The switcher already names the team and every row
+    targets it, so the badge restated the chrome — the same reason the selling list dropped its title,
+    badge and blurb earlier.
+  - **A process lesson, not a design one.** Verifying this in a browser meant standing up a stack, and
+    the ad-hoc API server bound `:8081` two minutes before the owner started `npm run e2e`. Playwright's
+    `reuseExistingServer: true` adopted it — with `ALLOWED_ORIGINS` pointing at the wrong UI port — so
+    the suite ran against a server whose CORS rejected its own browser. **`reuseExistingServer` means a
+    stray server is not ignored, it is CONSCRIPTED.** Check for a live Playwright run before binding
+    either test port, not just whether the port is free.
+  - **Later the same day, four more owner calls on the same screen**, recorded because two of them
+    reverse a default the code had argued for:
+    1. **The From lens offers SELLING teams only.** The consequence is real and invisible from the
+       control: a ROOT-raised restock still appears in the table but cannot be picked, so it is
+       filterable only by leaving the lens unset. The "From" column's own lookup stays UNrestricted —
+       restricting it would print a bare id on exactly those rows.
+    2. **A date range, defaulting to the last 7 days** (a live relative window, so it still means "the
+       last 7" tomorrow). ⚠ It is a lens on the TABLE only — the tiles keep ignoring it, which is what
+       keeps "Oldest waiting" honest, since an age measured inside a 7-day window could never exceed 7.
+       The trap that leaves: a delivery older than the window is COUNTED in the headline with NO ROW
+       under it. The tile is then the prompt to widen the range, which works but is a thing to watch.
+    3. **ONE person filter with a role, not two pickers.** The proto keeps both `created_by_user_id`
+       and `accepted_by_user_id` and would AND them; the UI can only set one, so "raised by Ani AND
+       counted by Budi" is simply not offered. **The role also decides the picker's SCOPE** — "raised
+       by" searches across teams (the buyer is in a selling team), "counted by" scopes to the current
+       team (the crew at the door) — and switching the role must CLEAR the person, or the new question
+       is silently asked about somebody who cannot answer it.
+    4. **A fifth tile: the restock count**, leading, because it is the coarsest and the one a shift is
+       planned by. Counted over the REQUESTS — off the item join it would report a two-line delivery
+       twice, which is also why the oldest-pending query now carries it.
+  - **`RESTOCK_DATE_FIELDS` moved to `features/restock/`** the moment the second list offered it. A
+    restock has the same three dates on either screen, and two copies is how one of them quietly gains
+    a fourth or drops `cancelled`.
+- **2026-07-30** — **The selling team's restock DETAIL, rebuilt as three tabs** (owner): Info · Product
+  · Timeline, vertical down the left like the rack, batch and warehouse-product details. The split is
+  by the QUESTION, not by how much fits on a screen — Info is the terms of the purchase, Product is
+  what was ordered and what became of it, Timeline is who did what. What stays OUTSIDE the tabs is the
+  identity and the actions: the number, the status and Edit/Cancel are true of the whole restock, and
+  somebody who came to cancel one should not have to guess which tab hid the button.
+  - **THE DRILL-DOWN WAS LOSING INFORMATION, and that is why the Timeline exists.** The LIST already
+    showed created-by, accepted-by and accepted-at; the page you reached by clicking that row showed a
+    single "Created" date and no people at all. The record had carried the answer since the actor
+    columns landed and the detail screen threw it away. Worth generalising: **a row that says more
+    than the page it opens is a bug, and nothing about either screen looks wrong on its own.**
+  - **A timeline rather than three more fields in the Info grid**, because these are EVENTS. A grid
+    says everything in it is equally true right now; a sequence says one thing followed another, which
+    is what somebody reconstructing "when did this land, and who counted it" actually reads. It is also
+    the only shape with somewhere honest to put what has NOT happened: a pending restock ends with a
+    dimmed "waiting for the warehouse" step instead of stopping dead.
+  - **The step follows the STATUS, never the timestamp.** A FULFILLED restock from before
+    `accepted_at_unix` existed carries 0 there, and keying the step off the date dropped "Delivery
+    accepted" from a delivery whose goods are demonstrably on a shelf. The missing date is SAID ("Date
+    not recorded"), not hidden — the same refuse-do-not-interpret rule §10 keeps re-deriving, applied
+    to a read rather than a write.
+  - **The person leads, through the shared `UserItem`** (owner) — avatar, name, @username, then the
+    caption beside it: "Rina │ raised the request / Monday". A hand-rolled "by Rina" is how two screens
+    start disagreeing about what a person looks like. Two Chakra details worth keeping: a
+    `size="sm"` timeline indicator is a **16px disc**, so a 12px glyph in it renders as an unreadable
+    blob (lg + `variant="subtle"` is what fits and stops each step out-shouting the avatar), and a
+    vertical `Separator` has **no intrinsic height** — without `alignSelf="stretch"` the rule simply
+    never appears.
+  - ⚠ **CANCELLING RECORDS NO PERSON.** `created_by_user_id` and `accepted_by_user_id` exist;
+    `cancelled_by_user_id` does not, so that step can only give a date. Left visible rather than
+    papered over with the author's name, which would claim the person who raised it is the person who
+    called it off. **Open: is that column worth adding?**
+- **2026-07-30** — **ACCEPTED · LOST · BROKEN on the line, both sides** (owner). The Product tab and the
+  warehouse's line table now carry three numbers where one used to be, and the reason is #154's own
+  argument finally reaching the screen that acts on it: **"they sent it crushed" and "they never sent
+  it" are two different conversations with a supplier** — one is a claim, the other a re-send.
+  - The buyer previously got a single red "short by 3" derived from asked − accepted. Because
+    `received_quantity` EXCLUDES damaged units, that 3 could be *1 never arrived + 2 arrived broken*,
+    and the required `reason` the warehouse typed at the door reached nobody. The warehouse recorded
+    the difference, the batch receipt printed it, and the team that raises the claim could not see it.
+  - **Zeros show as an em dash, but the COLUMNS stay on any counted delivery** — unlike the Rp 0 COD
+    row, which is hidden. The distinction: "0 lost, 0 broken" is a positive fact somebody wants
+    confirmed, while a zero COD fee means "not that kind of delivery".
+  - `DamageCell` went to `features/restock/` the moment the second page used it — the same rule that
+    moved `RESTOCK_DATE_FIELDS`. One product column (cover + name + SKU via `ProductListItem`) replaced
+    the SKU/Name pair: a picture, a name and a code are one identity, and splitting them made the row
+    read as two facts while pushing the numbers to the far right.
+- **2026-07-30** — **Filtering a restock list BY PERSON** (owner): `created_by_user_id` and
+  `accepted_by_user_id` on `RestockRequestListFilter`, server-side like every filter there.
+  - **Two fields, ANDed, not one "involved this person".** The two are asked by different people for
+    different reasons — a manager reviewing purchasing asks whose orders these are, somebody chasing a
+    bad delivery asks who was at the door — and merged into one field an answer could not say which
+    side of the restock the person was on. `accepted_by_user_id` implies an accepted restock, so it
+    excludes pending and cancelled ones by construction, exactly as the ACCEPTED date field does.
+  - ⚠ **A restock predating the actor columns carries 0 and can therefore never match.** That is
+    correct: the record does not say who raised it, and returning it under somebody's name would invent
+    the one fact being filtered on.
+  - **The two screens chose DIFFERENT controls over the same two fields**, and the difference is worth
+    keeping visible rather than smoothing over: the warehouse list has one picker with a role segment
+    (so the pair cannot be asked for, and the role decides the picker's scope), while the selling list
+    has two pickers (so it can ask for the pair, and each is scoped to the team that person works in —
+    the author is in this selling team, the acceptor at the destination warehouse). **Open: should they
+    converge?** One control is tidier; two can express "raised by Ani and counted by Budi".
+  - **The role segment and the person picker are ONE form group** (owner). Two separately-bordered
+    controls read as two independent filters; one border with a divider says the left half names what
+    the right half is asking. It reuses `DateRangePicker`'s exact shape — bordered `Flex`, ghost Menu
+    button with square corners, 1px divider — so the two controls sitting side by side on this page
+    are visibly siblings rather than two people's ideas of a segmented control.
+    - This needed `UserSelect` to gain a **`flush`** prop (drop its own border/rounding), which is the
+      "extend the shared component rather than fork it" rule doing its job: the alternative was the
+      page reaching into the combobox's input with a CSS selector, which would have broken silently
+      the next time the picker's internals moved. The focus ring deliberately STAYS — it is the only
+      thing that says which half of a fused control has the keyboard.
+- **2026-07-30** — **A restock's history is a TABLE, not two columns** (owner, `00019`). "When we edit the
+  restock, it's logged in the timeline" was the ask; the cheap answer was `updated_at` + `updated_by`,
+  and it was rejected for a reason worth keeping: **a pending restock is edited REPEATEDLY** — a
+  quantity corrected, a courier added, a line dropped — so a column pair remembers only the most recent
+  edit and a request edited five times reads exactly like one edited once. That failure cannot be fixed
+  out of the column pair, so the events became rows.
+  - `restock_request_events` is **append-only**: `created` · `edited` · `accepted` · `cancelled`, each
+    with an actor and the moment it happened. Nothing is ever updated or deleted — an event is a claim
+    that something happened at a moment, and a mutable history is not a history.
+  - **Written in the SAME TRANSACTION as the change it describes, carrying the SAME instant.** Both
+    halves matter: an event outside the transaction can survive a rolled-back write, and an event that
+    called `time.Now()` again would have the timeline and the `accepted_at` date filter naming
+    different seconds for one delivery. `recordRestockEvent` takes both `tx` and `at` for exactly this.
+  - **The COLUMNS ARE NOT SUPERSEDED, and the split is the interesting part.** The list filters and
+    sorts on `created_by_user_id` / `accepted_at` / `cancelled_at`, which a child table cannot serve
+    cheaply — so the columns answer *what is the current state*, and the events answer *what happened,
+    in order*. Detail preloads the events; the list deliberately does not, exactly as it skips a line's
+    placements. That is two representations of overlapping facts, which is normally a smell — it is
+    accepted here because each is unusable for the other's job, and both are written in one transaction
+    so they cannot disagree.
+  - **The pre-existing rows were BACKFILLED** from those same columns, because the screen reads events
+    now and an old restock would otherwise show an empty timeline — a record of nothing rather than a
+    record whose history was kept differently. `actor_user_id` carries `0` across unchanged: the row
+    does not say who raised it, and inventing an id would put a real person's name against work they
+    may not have done (00018's rule, re-applied). **`edited` events cannot be backfilled and are not
+    faked** — nothing ever recorded an edit, so an old restock's history begins with what is known.
+  - **What the timeline still does NOT say: WHICH FIELDS an edit changed.** An edit is a full replace of
+    every line (#131), so a diff has to be computed at write time and stored, and that was a deliberate
+    stopping point rather than an oversight. "quantity 10 → 12" is the obvious next step if anyone asks
+    for it.
+  - **`cancelled_by_user_id` landed with it** (owner). 00018 recorded *when* a cancellation happened and
+    never *who*, so the cancelled step was the one step on the timeline that could not name a person —
+    while a colleague cancelling somebody else's restock is the ordinary case, which is why the id
+    cannot be inferred from `created_by_user_id`.
+  - **A process trap, not a design one: a green suite went red on stale data, not on code.**
+    `TestRestockRequestList_FilterByStatus` counted 6 rows where it seeded 3, and the cause was
+    COMMITTED rows left in `warehouse_test` by an e2e run — `san_testdb` rolls back its own transaction
+    and can do nothing about data another process committed. The tell is a count that is a multiple of
+    what the test seeded; the fix is `go run ./cmd/tool db reset-test`. Worth reaching for before
+    debugging a filter that "suddenly" over-returns.
+
+- **2026-07-30** — **The accept line is THREE COLUMNS, and the COD fee sits outside the summary card**
+  (owner). A layout call, but it encodes what accepting a delivery actually is: three questions asked
+  at the pallet, not one long form scrolled top to bottom.
+  - **`what it is` · `where it goes` · `what went wrong`**, side by side (`3fr / 4fr / 3fr`). Stacked,
+    a 40-line delivery was read card by card; in columns it is scanned DOWN one — *has everything got a
+    shelf?* is a single sweep of the middle column. Put-away is widest because it is the column you
+    type in.
+  - **The problems column is ALWAYS THERE, even empty.** It used to be a ghost "Report a problem" link
+    that appeared under the put-away box, which quietly framed reporting a loss as an unusual thing to
+    do — the opposite of what a system that refuses to interpret a count wants. A reserved column says
+    the question is asked of every line; "nothing broken or missing" is just the usual answer.
+  - **Two rows per problem, not one.** In a third of the width, the kind, the count and *what
+    happened?* cannot share a line and stay typeable. The note gets its own full-width row.
+  - **Only the panels stretch.** The product column is `alignSelf: start`: matching its height to the
+    put-away panel beside it opened a bare gap between the SKU and the HPP that read as a rendering
+    fault rather than as space.
+  - **The COD fee moved OUT of the summary card.** Everything in that card is a fact already recorded
+    on the request — read it, do not touch it. The COD fee is the one money figure the person at the
+    door *types*: what the courier actually collected on handover. Inside the card it looked like
+    another recorded row, while it is an input that moves every HPP on the page below it.
+  - **The width cap belongs to the SUMMARY, not the page** (owner). The delivery summary is a
+    read-only block of short values, and at full width on a wide monitor it strings six labels across a
+    metre of screen with nothing between them — so it stops at `7xl`. The counting below keeps every
+    pixel: three columns of put-away is the work, and narrowing it to keep a header tidy is backwards.
+  - Below `xl` all three collapse to one column. A rack picker, a quantity and a free-text note cannot
+    share a narrower row without all three becoming unusable, and the phone case is a person standing
+    at a pallet.
+
+- **2026-07-30** — **The last two native dropdowns are gone: `RackSelect` and a new `DamageTypeSelect`**
+  (owner). `RackSelect` was the only shared picker still on `NativeSelect`, and the accept screen's
+  three columns are what made it obvious — it now sits directly beside a Chakra `Input` in the
+  put-away panel, where native chrome reads as a different app. #165 had already settled the argument
+  for `PaymentTypeSelect` and the reasoning carries unchanged: `Select` is in the bundle for every
+  other picker, so there is no weight to earn.
+  - **The migration DELETED a rule rather than porting it.** `""` (unanswered) was an
+    `<option value="" disabled>` with eight lines defending why this one disabled placeholder was
+    legitimate. Chakra's `Select` models it directly — an empty value array IS "nothing selected" —
+    so the hack is gone and the semantics are identical: `unplaced` stays a selectable ITEM, and
+    unanswered stays unpickable.
+  - **`DamageTypeSelect` is new, extracted from the accept page** where BROKEN/LOST had been two
+    hand-written `<option>`s inline. Two options is not a reason to skip the design system: the next
+    screen that reports the same loss would have written its own pair of words for it. It emits the
+    enum, so the page no longer maps `"broken" | "lost"` strings on the way to the payload.
+  - **A hand-rolled fetch went with it.** `RackSelect` loaded racks in a `useEffect` keyed on
+    `warehouseId` and, on failure, set an error and stopped — the effect could not re-run because the
+    warehouse had not changed, so ONE transient failure left the picker permanently empty with no way
+    back but a reload. `ShopSelect` hit exactly this in #176. It now reads through react-query, and
+    `useRacks` / `useRackCodes` share one cache entry via `select`, so a screen that both shows a
+    placement and lets you change it fetches a warehouse's shelves once.
+  - **The e2e had to change with it, and that is the honest cost:** `selectOption()` only drives a
+    native `<select>`. A place is now CHOSEN — open the trigger, click the option — which is what a
+    person does anyway. `getByRole("option")` sees only the open listbox, because a closed
+    `Select.Content` is hidden and hidden nodes are out of the accessibility tree.
+- **2026-07-30** — **Two corrections to the same tab, both found by the owner LOOKING at it** — worth
+  recording because in each case the code was doing exactly what it had been told to.
+  - **ACCEPTED · LOST · BROKEN were gated on acceptance, so nobody saw them.** They rendered only when
+    `status == FULFILLED`, which is defensible per-cell and wrong per-screen: **a restock you are
+    looking at is usually PENDING** — that is the whole state the screen exists to track — so the
+    common case showed none of the three columns and the tab looked as though it had never gained them.
+    The ask arrived four times before the cause was clear, which is the tell: **when a feature is
+    reported missing and the code says it is present, the gate is the bug.** Now always present, an
+    uncounted line reading `—` per cell. The em dash is load-bearing: `received_quantity` is genuinely
+    0 before the count, and printing 0 would tell the buyer nothing arrived when nobody has opened the
+    box. Same fix on the warehouse's table — except PLACE, which stays gated, because an uncounted line
+    has no shelf and an em dash there invites the crew to hunt for one they forgot.
+  - **The card overflowed the page, and it took THREE fixes because it was three problems.** Seven
+    columns do not fit a laptop, and each layer fails on its own:
+    1. `minW="0"` on every `Tabs.Content` — **a vertical `Tabs.Root` is a flex ROW**, and a flex child
+       defaults to `min-width:auto`, so it refuses to shrink below its content: the wide table did not
+       overflow the panel, it WIDENED it.
+    2. `maxW="full"` on the card, so the card can never exceed the panel that holds it.
+    3. Chakra's `Table.ScrollArea` around the table, so **the table scrolls and the page does not** —
+       the header and the totals stay put and only the columns slide.
+    Verified by measuring `documentElement.scrollWidth` against `clientWidth` at 1440 / 1100 / 900 —
+    eyeballing a screenshot cannot tell "fits" from "the page grew".
+  - **The e2e covers the pairing, not just the presence** (`Restock detail: lost and broken show with
+    their reasons`): 10 asked, 7 sellable, 2 broken, 1 lost, each with its own reason, and the test
+    asserts each cell holds ITS number and ITS reason and *not* the other's. Both figures come from one
+    `damaged` array filtered by TYPE, so a crossed filter leaves both cells looking perfectly
+    plausible — and a buyer chasing a re-send for goods that arrived crushed. It accepts through the
+    API with `unplaced` placements (a legal place, #135), so a rendering test needs no racks and does
+    not re-test the accept form that orders.spec already drives.
+  - **A harness trap, twice in one session: `reuseExistingServer: true` CONSCRIPTS a stray server.**
+    First an unrelated Vite app on `:5175` (every spec failed at the login form, against somebody
+    else's app); then a leftover e2e backend on `:8081` whose `ALLOWED_ORIGINS` still named a dead UI
+    port, so CORS refused the suite its own browser. Both read as the app being broken. When the whole
+    suite fails at login, **check who owns the ports before reading any diff.**
+
+- **2026-07-30** — **The delivery summary is THREE CARDS, and the line shows TWO prices** (owner). The
+  single stacked summary card had become nine small grey labels in a row, which is the shape a screen
+  takes when nobody decides what it is answering. Split by question:
+  - **WHO raised it** — the requesting team and the person, through the shared `TeamItem` and
+    `UserItem` rather than a hand-rolled avatar and label. Worth recording because the first cut *was*
+    hand-rolled: `components/` already had both, and re-implementing them is precisely how one screen
+    starts showing a team differently from every other. A warehouse counting a delivery is settling
+    someone else's order, and "who do I ask about this?" is the first question a short count produces.
+  - **WHAT was ordered and how it travelled** — order ref, supplier, date, AWB, courier, note.
+    - ⚠ **The supplier still shows a REFERENCE, not a name, and cannot show one.** `SupplierDetail` is
+      scoped to the caller's team and the supplier belongs to the REQUESTING team, so the warehouse
+      has no read that resolves it. Naming it needs a by-ids read the warehouse may call — the same
+      shape `ProductByIds` already took for exactly this reason. **Open: worth adding?**
+  - **WHAT IT COST** — a Chakra `Stat` block: products, shipping, total. These are the three numbers
+    that decide whether the invoice in the courier's hand matches the order, so they are figures to
+    read at arm's length, not another labelled row. Shipping carries its own breakdown and MOVES as
+    the COD fee is typed.
+  - **`Freight Total` is gone** from beside the COD input — the Shipping stat says it, and two live
+    totals a hand apart is one more than anyone needs.
+  - **Each line shows the price BEFORE freight as well as the HPP.** With only the HPP, typing a COD
+    fee made the number move and it read as *the supplier's price changing*. Two figures make the gap
+    between them what it actually is: what the delivery cost to get the goods here.
+
+- **2026-07-30** — **`SupplierByIds`: the warehouse may now NAME the vendor it is receiving from**
+  (owner). This **reverses a call recorded above**, so it is written down as a reversal rather than
+  slipped in — #133/#125 stripped the supplier from the warehouse's restock detail on the grounds
+  that a buying team's vendor is its own commercial business *and* that the warehouse "was never
+  entitled to" it.
+  - **What changed is which of those two reasons was load-bearing.** The accept screen is not a record
+    being read after the fact — it is a person standing at a pallet with the supplier's carton in
+    their hands, matching it against a screen. Withholding the name there protects nothing they cannot
+    read off the box, and costs them the check they are there to make. "Supplier #2" was a number
+    standing in for a fact already in the room.
+  - **A new RPC, not a widened policy.** `SupplierDetail` ALREADY granted warehouse roles and still
+    returned NotFound cross-team, because the barrier was never the policy — it was the `team_id = ?`
+    in the handler's WHERE. `SupplierByIds` is the only supplier read without that clause, and it is
+    the guideline's ByIDs shape, mirroring `ProductByIds` which took the identical decision for the
+    identical reason (a warehouse must be able to read the label on a box on its shelf).
+  - **The bound is the shape, not the role list:** a by-ids lookup is NOT a browse — the caller must
+    already hold the id — and what comes back is a NAME, not terms, prices or payment details. There
+    is still no way for a warehouse to enumerate who a selling team buys from.
+  - **A missing id is absent, never an error, and soft-deleted suppliers ARE returned** — a restock
+    outlives its vendor record, and a delivery from a retired supplier should still name it. One dead
+    id must not blank a delivery.
+  - **The e2e proves the cross-team read specifically**: the supplier is created under team 1 and the
+    assertion runs as the WAREHOUSE. A same-team fixture would have passed against the old behaviour
+    and told us nothing.
+  - The warehouse restock DETAIL page still omits the supplier — now by relevance, not permission.
+    Its header comment says so, because the old comment asserted a barrier that no longer exists.
+    **Open: should the detail page show it too, now that it can?**
+
+## 11. Daily statistics — how the numbers get built (owner's proposal)
+
+**Owner, 2026-07-30.** Not settled yet — this records the proposal as stated, so the open points
+below can be worked one at a time rather than re-argued from scratch.
+
+```mermaid
+flowchart TB
+    W["a business write — restock, order, opname, create, update"]
+
+    subgraph TX["one transaction"]
+        S["state — stock_levels, stock_shelf_batches"]
+        L["LOG — stock_movements, append-only, the source of truth"]
+    end
+
+    W --> S
+    W --> L
+
+    L -->|publish event| B["message broker"]
+    B -->|subscription| C["stat consumer"]
+
+    C --> D1["product daily history"]
+    C --> D2["product in warehouse daily history"]
+    C --> D3["placement daily history"]
+    C --> D4["and others as needed"]
+```
+
+**The four steps.**
+
+1. **A table holds the source of truth, like a log.** For inventory that is `stock_movements` —
+   append-only, one row per change, with its cause and a signed delta. Nothing else is authoritative.
+2. **Every business write writes the state change AND the log in ONE transaction, synchronously.**
+   Create, update, opname, restock, order. The two commit together, so they cannot disagree.
+3. **The write then sends an event to the message broker.**
+4. **A consumer processes those events and builds up the statistical tables** — product daily
+   history, product-in-warehouse daily history, daily placement history, and others as they are
+   needed.
+
+**What this fixes, and is not up for re-discussion:** the log is authoritative and the stat tables
+are derived from it; the log write is transactional, not eventual; the stat tables are BUILT UP from
+events rather than computed on read.
+
+**Open, and to be taken one at a time:**
+
+- [ ] What the event carries, and whether inventory publishes one event or several.
+- [ ] What one row of a statistical table holds — the day's movement, the day's ending position, or
+      both.
+- [ ] Which day a movement belongs to, and in whose timezone.
+- [ ] What happens when the broker delivers an event twice, or drops one.
+- [ ] What "and others" turns out to be.

@@ -19,6 +19,28 @@ export function unixSeconds(d: Date): bigint {
   return BigInt(Math.floor(d.getTime() / 1000));
 }
 
+/**
+ * How many CALENDAR DAYS ago a unix timestamp was — 0 for today, 1 for yesterday. `0n` (the RPC's
+ * "never") and anything in the future return 0.
+ *
+ * Calendar days, not elapsed 24-hour periods, and the difference is the whole point of a "waiting
+ * since" figure: a delivery raised at 23:00 last night has been waiting *since yesterday* to the crew
+ * reading it at 08:00, even though barely nine hours have passed. Flooring the elapsed milliseconds
+ * would call that 0 days and report a box that has already survived a shift change as "today".
+ *
+ * Both ends are taken to LOCAL midnight for the reason this whole module exists — a UTC comparison
+ * shifts the boundary by seven hours in Indonesia, which is exactly where the off-by-one lives.
+ */
+export function daysSinceUnix(unix: bigint): number {
+  if (unix <= 0n) return 0;
+
+  const then = startOfDay(new Date(Number(unix) * 1000)).getTime();
+  const today = startOfDay(new Date()).getTime();
+  const days = Math.round((today - then) / 86_400_000);
+
+  return days > 0 ? days : 0;
+}
+
 /** A `<input type="date">` value (`yyyy-mm-dd`) parsed at LOCAL midnight. `""`/malformed → null. */
 export function parseLocalDate(s: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
@@ -131,6 +153,31 @@ export function formatUnixDateTime(unix: bigint): string {
   if (unix <= 0n) return "—";
 
   return new Date(Number(unix) * 1000).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * An RFC3339 timestamp STRING → the same "25 Jul 2026, 14:30" rendering as
+ * {@link formatUnixDateTime}. The stock RPCs send a movement's `created_at` as a string rather than
+ * unix seconds, and a ledger needs the clock: two movements on one morning are indistinguishable by
+ * date alone, and "when did this stock move" is the whole point of the row.
+ *
+ * `""` is "no timestamp" and renders as the em dash the rest of this file uses. An UNPARSEABLE string
+ * falls back to itself — showing the raw server value beats showing "Invalid Date", because it is at
+ * least evidence of what arrived.
+ */
+export function formatRfc3339DateTime(rfc3339: string): string {
+  if (!rfc3339) return "—";
+
+  const d = new Date(rfc3339);
+  if (Number.isNaN(d.getTime())) return rfc3339;
+
+  return d.toLocaleString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",

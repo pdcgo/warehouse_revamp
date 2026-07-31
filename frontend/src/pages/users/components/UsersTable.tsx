@@ -22,6 +22,7 @@ import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
 import { useTeam } from "../../../features/team/TeamContext";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { RefreshOverlay } from "../../../components/RefreshOverlay";
 import { UserItem } from "../../../components/UserItem";
 import { Pagination } from "../../../components/Pagination";
 import { toaster } from "../../../components/Toaster";
@@ -79,7 +80,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
 
   // The team-filter options (all mode only). A failure is non-fatal — `?? []` leaves "All teams" as
   // the sole choice, which still lists everyone, exactly as the old swallowed catch did.
-  const teamsQuery = useTeams({ page: 1, pageSize: 200, enabled: mode === "all" });
+  const teamsQuery = useTeams({ page: 1, pageSize: 200, enabled: mode === "all", reference: true });
   const teams = teamsQuery.data?.teams ?? [];
 
   const suspendUser = useSuspendUser();
@@ -89,6 +90,10 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
   const users = query.data?.users ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending && teamId !== undefined;
+  // Always-fresh: this list refetches on every mount, tab and page change. `listQuery` keeps the rows
+  // already on screen while it does, and RefreshOverlay says a newer answer is coming. `isPending` is
+  // excluded — a first load has nothing to keep and shows the spinner instead.
+  const refreshing = query.isFetching && !query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
   // All three of these are reached through ConfirmDialog, which AWAITS its onConfirm to hold the
@@ -133,276 +138,278 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
   }
 
   return (
-    <Stack gap="section">
-      <HStack gap="card">
-        <Input
-          maxW="sm"
-          placeholder={t("users.searchPlaceholder")}
-          value={q}
-          data-testid="user-search"
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-        />
+    <RefreshOverlay busy={refreshing}>
+      <Stack gap="section">
+        <HStack gap="card">
+          <Input
+            maxW="sm"
+            placeholder={t("users.searchPlaceholder")}
+            value={q}
+            data-testid="user-search"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
 
-        {mode === "all" && (
-          <NativeSelect.Root maxW="xs">
-            <NativeSelect.Field
-              value={filterTeamId.toString()}
-              data-testid="users-team-filter"
-              onChange={(e) => {
-                setFilterTeamId(BigInt(e.target.value));
-                setPage(1);
-              }}
-            >
-              <option value="0">{t("users.allTeams")}</option>
-              {teams.map((team) => (
-                <option key={team.id.toString()} value={team.id.toString()}>
-                  {team.name || `Team #${team.id}`}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          {mode === "all" && (
+            <NativeSelect.Root maxW="xs">
+              <NativeSelect.Field
+                value={filterTeamId.toString()}
+                data-testid="users-team-filter"
+                onChange={(e) => {
+                  setFilterTeamId(BigInt(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value="0">{t("users.allTeams")}</option>
+                {teams.map((team) => (
+                  <option key={team.id.toString()} value={team.id.toString()}>
+                    {team.name || `Team #${team.id}`}
+                  </option>
+                ))}
+              </NativeSelect.Field>
+              <NativeSelect.Indicator />
+            </NativeSelect.Root>
+          )}
+        </HStack>
+
+        {error && (
+          <Text color="red.fg" data-testid="users-error">
+            {error}
+          </Text>
         )}
-      </HStack>
 
-      {error && (
-        <Text color="red.fg" data-testid="users-error">
-          {error}
-        </Text>
-      )}
+        {loading ? (
+          <Spinner colorPalette="brand" />
+        ) : (
+          <Table.Root size="sm" data-testid="users-table">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader>{t("users.table.user")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("users.table.email")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("users.table.status")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("users.table.actions")}</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
 
-      {loading ? (
-        <Spinner colorPalette="brand" />
-      ) : (
-        <Table.Root size="sm" data-testid="users-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader>{t("users.table.user")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("users.table.email")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("users.table.status")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("users.table.actions")}</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
+            <Table.Body>
+              {users.map((user) => {
+                // Never offer to suspend or delete yourself — the confirm would be the last thing you
+                // ever did in this app.
+                const isSelf = identity?.identityId === user.id;
 
-          <Table.Body>
-            {users.map((user) => {
-              // Never offer to suspend or delete yourself — the confirm would be the last thing you
-              // ever did in this app.
-              const isSelf = identity?.identityId === user.id;
-
-              return (
-                <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
-                  <Table.Cell>
-                    {globalAdmin ? (
-                      // The detail PAGE reads UserTeams (root/admin only), so only offer
-                      // click-to-open where it will actually work.
-                      <Box
-                        cursor="pointer"
-                        data-testid={`open-user-${user.username}`}
-                        onClick={() => navigate(`/users/${user.id}`)}
-                      >
-                        <UserItem user={user} />
-                      </Box>
-                    ) : (
-                      <UserItem user={user} />
-                    )}
-                  </Table.Cell>
-                  <Table.Cell>{user.email}</Table.Cell>
-                  <Table.Cell>
-                    {user.isSuspended ? (
-                      <Badge colorPalette="red" data-testid={`suspended-${user.username}`}>
-                        {t("users.status.suspended")}
-                      </Badge>
-                    ) : (
-                      <Badge colorPalette="green">{t("users.status.active")}</Badge>
-                    )}
-                  </Table.Cell>
-
-                  <Table.Cell textAlign="end">
-                    <Menu.Root>
-                      <Menu.Trigger asChild>
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          aria-label="Actions"
-                          data-testid={`row-actions-${user.username}`}
+                return (
+                  <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
+                    <Table.Cell>
+                      {globalAdmin ? (
+                        // The detail PAGE reads UserTeams (root/admin only), so only offer
+                        // click-to-open where it will actually work.
+                        <Box
+                          cursor="pointer"
+                          data-testid={`open-user-${user.username}`}
+                          onClick={() => navigate(`/users/${user.id}`)}
                         >
-                          <Icon as={MoreHorizontal} boxSize="4" />
-                        </IconButton>
-                      </Menu.Trigger>
+                          <UserItem user={user} />
+                        </Box>
+                      ) : (
+                        <UserItem user={user} />
+                      )}
+                    </Table.Cell>
+                    <Table.Cell>{user.email}</Table.Cell>
+                    <Table.Cell>
+                      {user.isSuspended ? (
+                        <Badge colorPalette="red" data-testid={`suspended-${user.username}`}>
+                          {t("users.status.suspended")}
+                        </Badge>
+                      ) : (
+                        <Badge colorPalette="green">{t("users.status.active")}</Badge>
+                      )}
+                    </Table.Cell>
 
-                      <Portal>
-                        <Menu.Positioner>
-                          <Menu.Content>
-                            <Menu.Item
-                              value="edit"
-                              data-testid={`edit-${user.username}`}
-                              onClick={() => setDialog({ kind: "edit", user })}
-                            >
-                              <Icon as={Pencil} boxSize="4" />
-                              {t("users.action.edit")}
-                            </Menu.Item>
+                    <Table.Cell textAlign="end">
+                      <Menu.Root>
+                        <Menu.Trigger asChild>
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Actions"
+                            data-testid={`row-actions-${user.username}`}
+                          >
+                            <Icon as={MoreHorizontal} boxSize="4" />
+                          </IconButton>
+                        </Menu.Trigger>
 
-                            {/* UserTeams is root/admin only — offer the view only where it works. */}
-                            {globalAdmin && (
+                        <Portal>
+                          <Menu.Positioner>
+                            <Menu.Content>
                               <Menu.Item
-                                value="details"
-                                data-testid={`details-${user.username}`}
-                                onClick={() => navigate(`/users/${user.id}`)}
+                                value="edit"
+                                data-testid={`edit-${user.username}`}
+                                onClick={() => setDialog({ kind: "edit", user })}
                               >
-                                <Icon as={Eye} boxSize="4" />
-                                {t("users.action.details")}
+                                <Icon as={Pencil} boxSize="4" />
+                                {t("users.action.edit")}
                               </Menu.Item>
-                            )}
 
-                            {mode === "team" && current && !isSelf && (
-                              <Menu.Item
-                                value="remove"
-                                data-testid={`remove-${user.username}`}
-                                onClick={() => setDialog({ kind: "remove", user })}
-                              >
-                                <Icon as={UserMinus} boxSize="4" />
-                                {t("users.action.removeFromTeam")}
-                              </Menu.Item>
-                            )}
-
-                            {globalAdmin && !isSelf && (
-                              <>
-                                {/* An admin sets a password without knowing the old one — exactly
-                                    the situation when someone is locked out. */}
+                              {/* UserTeams is root/admin only — offer the view only where it works. */}
+                              {globalAdmin && (
                                 <Menu.Item
-                                  value="reset"
-                                  data-testid={`reset-password-${user.username}`}
-                                  onClick={() => setDialog({ kind: "reset", user })}
+                                  value="details"
+                                  data-testid={`details-${user.username}`}
+                                  onClick={() => navigate(`/users/${user.id}`)}
                                 >
-                                  <Icon as={KeyRound} boxSize="4" />
-                                  {t("users.action.resetPassword")}
+                                  <Icon as={Eye} boxSize="4" />
+                                  {t("users.action.details")}
                                 </Menu.Item>
+                              )}
 
+                              {mode === "team" && current && !isSelf && (
                                 <Menu.Item
-                                  value="suspend"
-                                  data-testid={`suspend-${user.username}`}
-                                  onClick={() => setDialog({ kind: "suspend", user })}
+                                  value="remove"
+                                  data-testid={`remove-${user.username}`}
+                                  onClick={() => setDialog({ kind: "remove", user })}
                                 >
-                                  <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
-                                  {user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
+                                  <Icon as={UserMinus} boxSize="4" />
+                                  {t("users.action.removeFromTeam")}
                                 </Menu.Item>
+                              )}
 
-                                <Menu.Item
-                                  value="delete"
-                                  color="fg.error"
-                                  data-testid={`delete-${user.username}`}
-                                  onClick={() => setDialog({ kind: "delete", user })}
-                                >
-                                  <Icon as={Trash2} boxSize="4" />
-                                  {t("users.action.delete")}
-                                </Menu.Item>
-                              </>
-                            )}
-                          </Menu.Content>
-                        </Menu.Positioner>
-                      </Portal>
-                    </Menu.Root>
-                  </Table.Cell>
-                </Table.Row>
-              );
+                              {globalAdmin && !isSelf && (
+                                <>
+                                  {/* An admin sets a password without knowing the old one — exactly
+                                      the situation when someone is locked out. */}
+                                  <Menu.Item
+                                    value="reset"
+                                    data-testid={`reset-password-${user.username}`}
+                                    onClick={() => setDialog({ kind: "reset", user })}
+                                  >
+                                    <Icon as={KeyRound} boxSize="4" />
+                                    {t("users.action.resetPassword")}
+                                  </Menu.Item>
+
+                                  <Menu.Item
+                                    value="suspend"
+                                    data-testid={`suspend-${user.username}`}
+                                    onClick={() => setDialog({ kind: "suspend", user })}
+                                  >
+                                    <Icon as={user.isSuspended ? Play : Pause} boxSize="4" />
+                                    {user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
+                                  </Menu.Item>
+
+                                  <Menu.Item
+                                    value="delete"
+                                    color="fg.error"
+                                    data-testid={`delete-${user.username}`}
+                                    onClick={() => setDialog({ kind: "delete", user })}
+                                  >
+                                    <Icon as={Trash2} boxSize="4" />
+                                    {t("users.action.delete")}
+                                  </Menu.Item>
+                                </>
+                              )}
+                            </Menu.Content>
+                          </Menu.Positioner>
+                        </Portal>
+                      </Menu.Root>
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table.Root>
+        )}
+
+        {!loading && users.length === 0 && !error && (
+          <Text color="fg.muted" data-testid="users-empty">
+            {t("users.empty")}
+          </Text>
+        )}
+
+        {!loading && (
+          <Pagination
+            count={totalItems}
+            pageSize={pageSize}
+            page={page}
+            onPageChange={setPage}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
+          />
+        )}
+
+        {/* One instance of each dialog, driven by the row menu's selection above. */}
+        {dialog?.kind === "edit" && (
+          <EditUserDialog
+            key={dialog.user.id.toString()}
+            user={dialog.user}
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+          />
+        )}
+
+        {dialog?.kind === "reset" && (
+          <AdminResetPasswordDialog
+            key={dialog.user.id.toString()}
+            user={dialog.user}
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+          />
+        )}
+
+        {dialog?.kind === "remove" && (
+          <ConfirmDialog
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+            title={t("users.confirm.removeFromTeam.title")}
+            message={t("users.confirm.removeFromTeam.message", {
+              username: dialog.user.username,
+              team: current?.teamName || t("users.thisTeam"),
             })}
-          </Table.Body>
-        </Table.Root>
-      )}
+            confirmLabel={t("users.confirm.removeFromTeam.confirm")}
+            onConfirm={() => removeFromTeam(dialog.user)}
+          />
+        )}
 
-      {!loading && users.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="users-empty">
-          {t("users.empty")}
-        </Text>
-      )}
+        {dialog?.kind === "suspend" && (
+          <ConfirmDialog
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+            title={dialog.user.isSuspended ? t("users.confirm.restore.title") : t("users.confirm.suspend.title")}
+            message={
+              dialog.user.isSuspended
+                ? t("users.confirm.restore.message", { username: dialog.user.username })
+                : t("users.confirm.suspend.message", { username: dialog.user.username })
+            }
+            confirmLabel={dialog.user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
+            destructive={!dialog.user.isSuspended}
+            onConfirm={() => suspend(dialog.user, !dialog.user.isSuspended)}
+          />
+        )}
 
-      {!loading && (
-        <Pagination
-          count={totalItems}
-          pageSize={pageSize}
-          page={page}
-          onPageChange={setPage}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          onPageSizeChange={(n) => {
-            setPageSize(n);
-            setPage(1);
-          }}
-        />
-      )}
-
-      {/* One instance of each dialog, driven by the row menu's selection above. */}
-      {dialog?.kind === "edit" && (
-        <EditUserDialog
-          key={dialog.user.id.toString()}
-          user={dialog.user}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
-      {dialog?.kind === "reset" && (
-        <AdminResetPasswordDialog
-          key={dialog.user.id.toString()}
-          user={dialog.user}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
-
-      {dialog?.kind === "remove" && (
-        <ConfirmDialog
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          title={t("users.confirm.removeFromTeam.title")}
-          message={t("users.confirm.removeFromTeam.message", {
-            username: dialog.user.username,
-            team: current?.teamName || t("users.thisTeam"),
-          })}
-          confirmLabel={t("users.confirm.removeFromTeam.confirm")}
-          onConfirm={() => removeFromTeam(dialog.user)}
-        />
-      )}
-
-      {dialog?.kind === "suspend" && (
-        <ConfirmDialog
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          title={dialog.user.isSuspended ? t("users.confirm.restore.title") : t("users.confirm.suspend.title")}
-          message={
-            dialog.user.isSuspended
-              ? t("users.confirm.restore.message", { username: dialog.user.username })
-              : t("users.confirm.suspend.message", { username: dialog.user.username })
-          }
-          confirmLabel={dialog.user.isSuspended ? t("users.action.restore") : t("users.action.suspend")}
-          destructive={!dialog.user.isSuspended}
-          onConfirm={() => suspend(dialog.user, !dialog.user.isSuspended)}
-        />
-      )}
-
-      {dialog?.kind === "delete" && (
-        <ConfirmDialog
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          title={t("users.confirm.delete.title")}
-          message={t("users.confirm.delete.message", { username: dialog.user.username })}
-          confirmLabel={t("users.action.delete")}
-          onConfirm={() => remove(dialog.user)}
-        />
-      )}
-    </Stack>
+        {dialog?.kind === "delete" && (
+          <ConfirmDialog
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+            title={t("users.confirm.delete.title")}
+            message={t("users.confirm.delete.message", { username: dialog.user.username })}
+            confirmLabel={t("users.action.delete")}
+            onConfirm={() => remove(dialog.user)}
+          />
+        )}
+      </Stack>
+    </RefreshOverlay>
   );
 }

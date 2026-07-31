@@ -10,6 +10,15 @@ export interface PickedProduct {
   id: bigint;
   sku: string;
   name: string;
+  /** The COVER, carried so a picked product still looks like itself once it is on the line — the
+   * picker shows a photo and the list it feeds showed a grey placeholder, which reads as having
+   * picked the wrong thing.
+   *
+   * OPTIONAL, and not part of the snapshot in the way sku/name are: those are frozen onto the record
+   * because they are what was ordered, while a picture is only how the product looks NOW. A caller
+   * that has no image (ProductSelect emits none) simply leaves them out and gets the placeholder. */
+  defaultImageUrl?: string;
+  defaultImageThumbnailUrl?: string;
 }
 
 interface SelectableProduct {

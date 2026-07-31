@@ -2,7 +2,10 @@ import type {
   RestockRequest,
   RestockRequestItem,
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import {
+  RestockDamageType,
+  RestockRequestStatus,
+} from "../../gen/warehouse/inventory/v1/restock_request_pb";
 
 // What a restock's LINES add up to — the numbers both restock lists put in a row.
 //
@@ -19,6 +22,37 @@ export function askedQuantity(items: RestockRequestItem[]): bigint {
 // it only says anything once the request is FULFILLED — see shortfall().
 export function receivedQuantity(items: RestockRequestItem[]): bigint {
   return items.reduce((sum, item) => sum + item.receivedQuantity, 0n);
+}
+
+// WHAT WENT WRONG WITH A LINE, split the way #154 split it — and the split is the whole point for a
+// buyer: "they sent it crushed" and "they never sent it" are two different conversations with a
+// supplier. One is a claim on damaged goods, the other is a re-send. A single "short by 3" cannot
+// tell them apart, which is why these are two functions and two columns rather than one total.
+//
+// Neither ever entered stock (owner, 2026-07-20): `received_quantity` counts what is SELLABLE, so
+// these sit beside it and are never subtracted from it.
+export function brokenQuantity(item: RestockRequestItem): bigint {
+  return item.damaged
+    .filter((d) => d.type === RestockDamageType.BROKEN)
+    .reduce((sum, d) => sum + d.quantity, 0n);
+}
+
+export function lostQuantity(item: RestockRequestItem): bigint {
+  return item.damaged
+    .filter((d) => d.type === RestockDamageType.LOST)
+    .reduce((sum, d) => sum + d.quantity, 0n);
+}
+
+// WHY, as the person at the door wrote it down. Every damaged entry carries a required non-empty
+// reason (#154) — it is the difference between a loss that gets chased and a number nobody can act on
+// — so the screen that shows the quantity shows the reason with it. Several entries of one type are
+// joined, because a line can be crushed for two different reasons.
+export function damageReasons(item: RestockRequestItem, type: RestockDamageType): string {
+  return item.damaged
+    .filter((d) => d.type === type)
+    .map((d) => d.reason)
+    .filter((r) => r !== "")
+    .join(" · ");
 }
 
 // What the GOODS cost — the line totals as typed off the invoice (#140), with no freight in them.

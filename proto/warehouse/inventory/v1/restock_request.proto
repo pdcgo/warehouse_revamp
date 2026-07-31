@@ -28,6 +28,9 @@ service RestockRequestService {
   // The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
   // warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
   rpc RestockRequestLabels(RestockRequestLabelsRequest) returns (RestockRequestLabelsResponse);
+  // The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
+  // Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+  rpc RestockInboundStat(RestockInboundStatRequest) returns (RestockInboundStatResponse);
 }
 
 enum RestockRequestStatus {
@@ -97,6 +100,41 @@ message RestockRequestItem {
   reserved "received_rack_id";
 }
 
+// What happened to a restock. APPEND ONLY, like every enum here — and unlike a status, a new kind here
+// costs nothing: the timeline renders what it knows and ignores what it does not.
+enum RestockRequestEventKind {
+  RESTOCK_REQUEST_EVENT_KIND_UNSPECIFIED = 0;
+  // It was raised. Every restock has exactly one, including the ones backfilled from `created_at`.
+  RESTOCK_REQUEST_EVENT_KIND_CREATED = 1;
+  // The requesting team rewrote it while it was still pending (#131). A restock has AS MANY of these
+  // as it was edited — which is the whole reason events are rows and not two columns.
+  RESTOCK_REQUEST_EVENT_KIND_EDITED = 2;
+  // The warehouse counted the delivery in (#133).
+  RESTOCK_REQUEST_EVENT_KIND_ACCEPTED = 3;
+  RESTOCK_REQUEST_EVENT_KIND_CANCELLED = 4;
+  // The warehouse paid the courier at the door (#155) and entered what it cost. Its OWN step, written
+  // immediately before the acceptance it arrived with, because the two are different claims about
+  // different money: one says goods landed, the other says the warehouse is out of pocket for them and
+  // the requesting team now owes it (#184). Folded into ACCEPTED, the payment is invisible on the only
+  // screen that shows the requesting team what happened — and it is the half they have to settle.
+  //
+  // Only written when the fee is > 0. Most deliveries are not COD, and a step saying "paid nothing at
+  // the door" is a claim about an event that did not occur.
+  RESTOCK_REQUEST_EVENT_KIND_COD_FEE = 5;
+}
+
+// One entry in a restock's history — WHAT happened, WHO did it, WHEN.
+message RestockRequestEvent {
+  uint64 id = 1;
+  RestockRequestEventKind kind = 2;
+  // The opaque user_service id of whoever did it; 0 = not recorded. Resolved to a name through
+  // UserByIDs at read time, never snapshotted — the same rule the actor columns follow.
+  uint64 actor_user_id = 3;
+  // WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
+  // moment its column recorded, which may be months before the row existed.
+  int64 at_unix = 4;
+}
+
 message RestockRequest {
   uint64 id = 1;
   uint64 requesting_team_id = 2;
@@ -155,6 +193,26 @@ message RestockRequest {
   uint64 created_by_user_id = 20;
   // Who ACCEPTED the delivery — the warehouse person who counted it (#133). 0 until it is accepted.
   uint64 accepted_by_user_id = 21;
+
+  // Who CALLED IT OFF. 0 until it is cancelled, and 0 forever on a row cancelled before the column
+  // existed — the same "not recorded" the two ids above carry.
+  uint64 cancelled_by_user_id = 24;
+
+  // THE RESTOCK'S HISTORY, oldest first (owner) — one entry per thing that happened to it.
+  //
+  // ⚠ DETAIL ONLY. Loaded by RestockRequestDetail and left EMPTY by RestockRequestList, exactly like a
+  // line's placements: a page of twenty restocks would pull every event of each to render a table that
+  // shows none of them.
+  //
+  // It exists because two columns cannot record REPEATED editing. `updated_at`/`updated_by` would have
+  // remembered only the most recent edit, and a request edited five times would read as one edited
+  // once — so the events are rows, and the timeline reads THIS rather than assembling itself from
+  // three separate column pairs.
+  //
+  // The columns are NOT superseded: `created_by_user_id` and the three timestamps stay, because the
+  // list filters and sorts on them and a filter cannot reach into a child table cheaply. The events
+  // are how the history is read IN ORDER; the columns are how the current state is queried.
+  repeated RestockRequestEvent events = 25;
 
   // WHEN it was accepted / cancelled, unix seconds; 0 if it has not been. `created_at_unix` above is
   // the third of the set.
@@ -269,6 +327,37 @@ message RestockRequestListFilter {
   // no search. Case-insensitive, substring — except the number, which matches a whole id only
   // ("#31" must not find restock 310, or a search for one delivery returns ten).
   string q = 7 [(buf.validate.field).string.max_len = 100];
+
+  // Only restocks raised BY THIS TEAM; 0 = every team. The mirror image of `warehouse_id`, and it
+  // exists for the mirror reason (owner): a warehouse receives from several selling teams, and "what
+  // is coming from Bandung" is a different question from "what is coming at all".
+  //
+  // Meaningless on the SELLING side, where it could only ever equal the caller's own team — that
+  // screen does not offer it, exactly as this one does not offer `warehouse_id`.
+  uint64 requesting_team_id = 8;
+
+  // BY PERSON: who raised the restock, and who accepted the delivery (owner). 0 = anybody.
+  //
+  // Two filters rather than one "involved this person", because the two questions are asked by
+  // different people for different reasons: a manager reviewing purchasing asks whose orders these
+  // are, while somebody chasing a bad delivery asks who was at the door. Merged into one field, an
+  // answer could not say which side of the restock the person was on.
+  //
+  // They also COMBINE: both set means "raised by A and accepted by B", not "either" — an AND is the
+  // only reading under which each filter keeps meaning what it means alone.
+  //
+  // `accepted_by_user_id` implies an accepted restock, so it excludes every pending and cancelled one
+  // by construction (their column is 0) — the same rule the ACCEPTED date field follows, and for the
+  // same reason: "accepted by Rina" cannot be true of a delivery nobody accepted.
+  //
+  // ⚠ These are the ACTOR ids, and a restock predating them carries 0 — such a row can therefore never
+  // match a filter. That is correct: the record does not say who raised it, and returning it under
+  // somebody's name would be inventing the one fact being filtered on.
+  //
+  // Server-side, like every filter here — see `date_field` for why a paginated list cannot filter in
+  // the client.
+  uint64 created_by_user_id = 9;
+  uint64 accepted_by_user_id = 10;
 }
 
 // Which of a restock's three dates a range filter is about (owner). APPEND ONLY, like every enum
@@ -331,6 +420,83 @@ message RestockRequestListResponse {
   repeated RestockRequestListResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// RestockInboundPreview — WHAT IS STILL WAITING AT THE DOOR, over every PENDING restock targeting
+// this warehouse (owner).
+//
+// PENDING ONLY, and that is the whole meaning of the tiles. A fulfilled delivery has been counted and
+// is now stock — it is reported by the stock screens, and counting it here would make the queue look
+// like it never drains. A cancelled one never arrives at all.
+//
+// Every figure is a SERVER-SIDE total over the whole queue, not over the visible page: a headline
+// that silently described page 1 of 6 would be worse than no headline, because it looks authoritative.
+message RestockInboundPreview {
+  // How many RESTOCKS are in the queue — deliveries, not products and not pieces (owner).
+  //
+  // The coarsest of the counts and the one the crew plans a shift by: 3 deliveries of 400 pieces and
+  // 30 deliveries of 400 pieces are the same stock and completely different amounts of door-opening,
+  // paperwork and label-printing. Counted over the REQUESTS, so a request whose lines were all
+  // deleted still counts as something waiting to be dealt with.
+  int64 restock_count = 5;
+
+  // How many DISTINCT products are in the queue — a product on four deliveries counts once. This is
+  // the "how many different things must be found a shelf" number, which the unit count cannot give:
+  // 400 pieces of one SKU and 400 pieces across 90 SKUs are the same afternoon's counting and very
+  // different afternoons' put-away.
+  int64 product_count = 1;
+
+  // How many PIECES are expected, summed over every pending line. The ASKED quantity — nobody has
+  // counted these yet, which is exactly why they are on this list.
+  int64 unit_count = 2;
+
+  // What the queue is WORTH, in whole rupiah: the line totals as typed off the invoice.
+  //
+  // Freight is deliberately NOT in it. `shipping_cost` is what the buying team paid to get the goods
+  // moving and `cod_shipping_fee` is 0 until someone accepts, so adding either would answer a
+  // question about somebody else's spending rather than about the goods on the pallet.
+  int64 amount = 3;
+
+  // When the LONGEST-WAITING pending restock was raised (unix seconds), or 0 when nothing is pending.
+  //
+  // A count of 7 hides the box that has sat for five days behind six that arrived this morning, so
+  // the age is reported rather than left to be inferred. It is the CREATED date because that is the
+  // only date a pending restock has — accepted_at and cancelled_at are by definition null here.
+  int64 oldest_pending_unix = 4;
+}
+
+message RestockInboundStatFilter {
+  // The same lens as the list's, and it must be — a headline that ignored the filter under it would
+  // contradict the table it sits above. 0 = every requesting team.
+  uint64 requesting_team_id = 1;
+}
+
+message RestockInboundStatRequest {
+  // Warehouse-side ONLY, exactly like Fulfill and Labels: this counts what has arrived at a
+  // warehouse's own door. `team_id` is that warehouse, and is the scope.
+  //
+  // The selling roles are deliberately absent rather than merely unused. A buying team's equivalent
+  // question is "what have I committed and not received", which is OwnerStockStat — a different
+  // number over a different set, and letting one RPC serve both is how the two silently converge.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  RestockInboundStatFilter filter = 2;
+}
+
+message RestockInboundStatResponse {
+  RestockInboundPreview preview = 1;
 }
 
 message RestockRequestUpdateRequest {

@@ -40,15 +40,18 @@ import {
 } from "../../features/restock/queries";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
+import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { committedValue, shortfall } from "../../features/restock/summary";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ALL_DATES, DateRangePicker, resolveRange } from "../../components/DateRangePicker";
 import type { DateRange } from "../../components/DateRangePicker";
 import { Pagination } from "../../components/Pagination";
+import { RefreshOverlay } from "../../components/RefreshOverlay";
 import { RestockStatusBadge } from "../../components/RestockStatusBadge";
 import { ShippingBadge } from "../../components/ShippingBadge";
 import { TeamItem } from "../../components/TeamItem";
 import { TeamSelect } from "../../components/TeamSelect";
+import { UserSelect } from "../../components/UserSelect";
 import { toaster } from "../../components/Toaster";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
@@ -59,14 +62,8 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // and suppliers as it has rows, so one modest read covers every page-size the pager offers.
 const NAME_LOOKUP_SIZE = 200;
 
-// The three dates a restock has, offered as the range picker's field segment (#224's `fields` API).
-// One control therefore picks BOTH which timestamp and which window — the same shape the returns
-// list uses, because a return is a restock's mirror image (#163) and they should not diverge.
-const DATE_FIELDS: { value: RestockDateField; labelKey: string }[] = [
-  { value: RestockDateField.CREATED, labelKey: "restock.dateField.created" },
-  { value: RestockDateField.ACCEPTED, labelKey: "restock.dateField.accepted" },
-  { value: RestockDateField.CANCELLED, labelKey: "restock.dateField.cancelled" },
-];
+// The three dates a restock has now live in features/restock/dateFields.ts — the warehouse list
+// offers the same segment, and a restock has the same three dates on either screen (#224/#163).
 
 // RestockSellingPage — the RESTOCK LIST AS A BUYER SEES IT (#105).
 //
@@ -103,6 +100,9 @@ export function RestockSellingPage() {
 
   const [search, setSearch] = useState("");
   const [warehouseFilter, setWarehouseFilter] = useState(0n);
+  // 0 = anybody. Two ids, not one: see the pickers below for why the two sides are separate filters.
+  const [createdByFilter, setCreatedByFilter] = useState(0n);
+  const [acceptedByFilter, setAcceptedByFilter] = useState(0n);
   const [range, setRange] = useState<DateRange>(ALL_DATES);
   const [dateField, setDateField] = useState<RestockDateField>(RestockDateField.CREATED);
 
@@ -120,6 +120,8 @@ export function RestockSellingPage() {
     teamId,
     status,
     warehouseId: warehouseFilter,
+    createdByUserId: createdByFilter,
+    acceptedByUserId: acceptedByFilter,
     dateField,
     fromUnix,
     toUnix,
@@ -141,6 +143,7 @@ export function RestockSellingPage() {
     teamType: TeamType.WAREHOUSE,
     page: 1,
     pageSize: NAME_LOOKUP_SIZE,
+    reference: true,
   });
   const suppliers = useSuppliers({ teamId, q: "", page: 1, pageSize: NAME_LOOKUP_SIZE });
 
@@ -161,9 +164,13 @@ export function RestockSellingPage() {
   }, [suppliers.data]);
 
   const requests = query.data?.requests ?? [];
-  const actorNames = query.data?.actorNames;
+  const actors = query.data?.actors;
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
+  // Always-fresh means every tab, page and filter change refetches; `listQuery` keeps the rows that
+  // are already up while it does, and RefreshOverlay is what says so. `isPending` is excluded — a
+  // first load has nothing to keep and shows the spinner instead.
+  const refreshing = query.isFetching && !query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
   // Any change to a filter restarts at page 1 — the page number belongs to the OLD question, and
@@ -184,7 +191,11 @@ export function RestockSellingPage() {
   // honest answer there is nothing rather than a name we would have to invent.
   function actorLabel(id: bigint): string {
     if (id === 0n) return "";
-    return actorNames?.get(id.toString()) ?? t("restock.table.userRef", { id: id.toString() });
+    // A NAME here, not the whole person: a table cell has room for "by Rina" and nothing more. The
+    // avatar the same read carries is what the detail page's timeline renders instead.
+    const user = actors?.get(id.toString());
+
+    return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
   }
 
   async function cancelRequest(request: RestockRequest) {
@@ -269,13 +280,42 @@ export function RestockSellingPage() {
             onChange={(id) => refilter(() => setWarehouseFilter(id))}
           />
         </Box>
+        {/* BY PERSON (owner) — TWO pickers, because they answer two questions asked by two people:
+            a manager reviewing purchasing asks whose orders these are, somebody chasing a bad
+            delivery asks who was at the door. One "involved this person" box could not say which.
+
+            They are scoped to DIFFERENT TEAMS on purpose, and that is the whole reason they are not
+            one control: the author is a member of THIS selling team, while the person who counted the
+            goods works at the destination warehouse. A single team-scoped picker could never offer
+            both, and an unscoped one would offer every user in the system as a plausible filter for
+            restocks they cannot appear on.
+
+            The acceptor's picker is scoped to the WAREHOUSE FILTER when one is set, and unscoped
+            otherwise — with no destination chosen there is no single warehouse whose staff to list,
+            and pretending there is would hide the right person behind an empty search. */}
+        <Box maxW="56" w="full">
+          <UserSelect
+            value={createdByFilter > 0n ? createdByFilter : undefined}
+            teamId={teamId}
+            placeholder={t("restock.createdByAll")}
+            onChange={(id) => refilter(() => setCreatedByFilter(id))}
+          />
+        </Box>
+        <Box maxW="56" w="full">
+          <UserSelect
+            value={acceptedByFilter > 0n ? acceptedByFilter : undefined}
+            teamId={warehouseFilter > 0n ? warehouseFilter : undefined}
+            placeholder={t("restock.acceptedByAll")}
+            onChange={(id) => refilter(() => setAcceptedByFilter(id))}
+          />
+        </Box>
         {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which
             of a restock's three timestamps the window filters on. Without that, a range would
             silently pick one and mislabel the other two. */}
         <DateRangePicker
           value={range}
           onChange={(r) => refilter(() => setRange(r))}
-          fields={DATE_FIELDS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          fields={RESTOCK_DATE_FIELDS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
           field={dateField}
           onFieldChange={(v) => refilter(() => setDateField(v))}
           testId="restock-date"
@@ -299,6 +339,7 @@ export function RestockSellingPage() {
         </Tabs.List>
 
         <Tabs.Content value={tab}>
+          <RefreshOverlay busy={refreshing}>
           <Stack gap="section">
             {error && (
               <Text color="red.fg" data-testid="restock-requests-error">
@@ -554,6 +595,7 @@ export function RestockSellingPage() {
               />
             )}
           </Stack>
+          </RefreshOverlay>
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

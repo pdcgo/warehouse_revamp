@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import {
   teamAccessFromList,
@@ -34,6 +34,7 @@ interface UserListArgs {
 export function useUsers({ teamId, q, page, pageSize }: UserListArgs) {
   return useQuery({
     queryKey: key.users(teamId, { q, page, pageSize }),
+    ...listQuery,
     // The current team is not known on first paint (TeamProvider is still resolving memberships),
     // and a request sent in that window would be scoped to nothing and rejected.
     enabled: teamId !== undefined,
@@ -105,6 +106,7 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
 
   return useQuery({
     queryKey: key.users(teamId, { search: q }),
+    ...referenceQuery,
     // Both backends want >= 2 characters (SearchUser rejects fewer; UserList is held to the same bar
     // for a consistent feel), so below that we do not ask at all.
     enabled: q.length >= 2,

@@ -14,10 +14,15 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { inventoryClient, productClient, rpcError, teamClient } from "../api/clients";
-import { stockLevelsFromList, stockListRowData } from "../features/inventory/adapt";
 import { teamByIdsRowData, teamsByIds } from "../features/teams/adapt";
 import type { Product } from "../gen/warehouse/product/v1/product_pb";
-import { productListRowData, productsFromList } from "../features/products/adapt";
+import {
+  ownerStockFromByIds,
+  productByIdsRowData,
+  productListRowData,
+  productsFromByIds,
+  productsFromList,
+} from "../features/products/adapt";
 import { useTeam } from "../features/team/TeamContext";
 import { Pagination } from "./Pagination";
 import { ProductListItem } from "./ProductListItem";
@@ -26,12 +31,18 @@ import type { PickedProduct } from "./ProductSelect";
 // PageFilter.limit is validated 1..200 — a dialog page stays small so the list never scrolls far.
 const PAGE_SIZE = 10;
 
-// StockList is not filterable by product, so the warehouse's levels are pulled up-front and joined
-// client-side. 200 is the proto's max limit; we page up to STOCK_MAX_PAGES of them, so a warehouse
-// with more than 1000 stocked lines shows no badge for the overflow (unknown renders nothing —
-// never a wrong "out of stock").
-const STOCK_PAGE_LIMIT = 200;
-const STOCK_MAX_PAGES = 5;
+// What this dialog emits for one product. ONE definition, used by both the page load and the seeded-id
+// resolve — they used to build the snapshot inline and separately, which is how the cover could reach
+// the caller from one path and not the other.
+function pickedOf(p: Product): PickedProduct {
+  return {
+    id: p.id,
+    sku: p.sku,
+    name: p.name,
+    defaultImageUrl: p.defaultImageUrl,
+    defaultImageThumbnailUrl: p.defaultImageThumbnailUrl,
+  };
+}
 
 export interface ProductPickerProps {
   /** Which catalogue to browse. SET → only that team's products (ProductList). UNSET → products
@@ -39,9 +50,13 @@ export interface ProductPickerProps {
    * team, none selected yet" passes 0n and gets the no-team state — undefined is "all teams", so
    * a missing team must not silently widen the browse. */
   teamId?: bigint;
-  /** Show ready stock from THIS warehouse. Stock is per-warehouse (inventory_service owns it), so
-   * there is no "total stock" to show and `teamId` cannot stand in for one — a selling team is not
-   * a warehouse. Omit it and no stock is shown. */
+  /** Show READY stock from THIS warehouse. Stock is held per building (inventory_service owns it),
+   * so there is no "total ready" to show and `teamId` cannot stand in for one — a selling team is
+   * not a warehouse. Omit it and no ready figure is shown.
+   *
+   * ONGOING is not gated on this, and deliberately so (owner): it is totalled across EVERY warehouse
+   * holding the team's goods, because "have I already bought this?" is a question about the purchase,
+   * not about a building. So it appears as soon as there is a catalogue, warehouse chosen or not. */
   stockWarehouseId?: bigint;
   /** The ticked product ids. Re-seeds the draft every time the dialog opens. */
   value: bigint[];
@@ -58,7 +73,7 @@ export interface ProductPickerProps {
 // search — for picking several products at once. Ticks are DRAFT state: seeded from `value` on open,
 // applied by Confirm, discarded by Cancel/Esc/close.
 export const description =
-  "Multi-select product picker in a dialog (#110): searchable, paginated, one ProductListItem per row with a checkbox. `teamId` set browses that team's catalogue; unset discovers products across ALL teams. `stockWarehouseId` adds each product's ready stock from that warehouse. Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot.";
+  "Multi-select product picker in a dialog (#110): searchable, paginated, one ProductListItem per row with a checkbox. `teamId` set browses that team's catalogue; unset discovers products across ALL teams. It also shows what you already have: READY stock at `stockWarehouseId`, and ONGOING — on order but not yet accepted — totalled across every warehouse, both read per page via OwnerStockByIds. Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot.";
 
 export function ProductPicker({
   teamId,
@@ -91,9 +106,13 @@ export function ProductPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // productId -> on-hand at `stockWarehouseId`. A MAP, not a lookup on the product: 0n is falsy, so
+  // productId -> READY at `stockWarehouseId`. A MAP, not a lookup on the product: 0n is falsy, so
   // "has the id" is the only way to tell a real zero (→ "Out of stock") from unknown (→ no badge).
   const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
+
+  // productId -> ONGOING across every warehouse. Its own map, because it has its own LENS and its own
+  // failure: with no warehouse chosen the ready read does not happen at all, and this one still does.
+  const [ongoing, setOngoing] = useState<Map<string, bigint>>(new Map());
 
   // teamId -> name, for the row badge. Batched per page (TeamByIds), never per row.
   const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
@@ -123,8 +142,12 @@ export function ProductPicker({
 
   // A seeded id has no sku/name until its product is loaded. Resolve the missing ones on open, so a
   // selection the user never scrolls to still Confirms with a real snapshot instead of a blank one.
-  // ProductDetail is team-scoped: browsing ALL teams, a CROSS-team id cannot resolve, and that tick
-  // stays id-only (preserved — never dropped; see confirm()).
+  //
+  // ProductByIds (#138), in ONE call: it resolves ids the caller ALREADY HOLDS whoever owns them,
+  // which is exactly this. It replaces a per-id ProductDetail loop — N round-trips for N ticks, and
+  // team-scoped, so while browsing all teams a cross-team id could not resolve at all and that tick
+  // stayed id-only. An id that still does not come back is preserved as a tick regardless, never
+  // dropped (see confirm()).
   //
   // The promise is kept so confirm() can AWAIT it. Confirm is live from the first frame, and a click
   // landing inside this window used to read the not-yet-populated `known` and emit {sku:"", name:""}
@@ -148,22 +171,21 @@ export function ProductPicker({
     }
 
     const resolving = (async () => {
-      const found = await Promise.all(
-        missing.map(async (productId) => {
-          try {
-            const res = await productClient.productDetail({ teamId: scopeTeamId, productId });
-            const p = res.product;
-            return p ? { id: p.id, sku: p.sku, name: p.name } : null;
-          } catch {
-            // Cross-team while browsing all, or deleted. The tick survives; only its label is unknown.
-            return null;
-          }
-        }),
-      );
+      try {
+        const res = await productClient.productByIds({
+          teamId: scopeTeamId,
+          filter: { ids: missing },
+          dataRequest: productByIdsRowData(),
+        });
 
-      // Each lookup swallows its own failure, so this never rejects — confirm() can await it without
-      // a catch, and it always settles, so the button can never hang.
-      return found.filter((p): p is PickedProduct => p !== null);
+        return productsFromByIds(res).map(pickedOf);
+      } catch {
+        // Deleted, or a scope that cannot see them. The ticks survive; only their labels are unknown.
+        //
+        // The catch swallows the whole call, so this never rejects — confirm() can await it without a
+        // catch of its own, and it always settles, so the button can never hang.
+        return [];
+      }
     })();
 
     resolveRef.current = resolving;
@@ -242,7 +264,7 @@ export function ProductPicker({
         setKnown((prev) => {
           const next = new Map(prev);
           for (const p of found) {
-            next.set(p.id.toString(), { id: p.id, sku: p.sku, name: p.name });
+            next.set(p.id.toString(), pickedOf(p));
           }
           return next;
         });
@@ -264,65 +286,80 @@ export function ProductPicker({
     };
   }, [open, scopeTeamId, noTeam, browseAll, q, page]);
 
-  // Ready stock, loaded ONCE PER OPEN — not per row (that would be an N+1 across the page) and not
-  // per page (the levels are the whole warehouse; paging the product list doesn't change them).
-  // StockList has no product filter, so the join is client-side.
+  // READY and ONGOING for the products ON THIS PAGE (owner). Two reads, because they are two
+  // different questions:
+  //
+  //   ready   — `warehouse_id` = the destination. What is on a shelf THERE, which is what says
+  //             whether that building needs a delivery at all.
+  //   ongoing — `warehouse_id` = 0, every warehouse. What is already bought and not yet accepted
+  //             ANYWHERE, which is what stops the same order being placed twice.
+  //
+  // They cannot share a call: `filter.warehouse_id` is one lens over the whole OwnerStockItem, so a
+  // single request would have to answer both figures for the same building.
+  //
+  // OwnerStockByIds, not StockList, and that is the load-bearing change: StockList is policied to
+  // WAREHOUSE roles, so a selling team asking about the destination warehouse was denied every time
+  // and the catch below silently swallowed it — the badge has never rendered for the people this
+  // dialog is for. OwnerStockByIds answers the SELLING side by construction (it establishes ownership
+  // through restock_requests.requesting_team_id), which is the same reason this picker is now scoped
+  // to one catalogue: it can only tell the truth about products the team actually owns.
+  //
+  // Per PAGE, not per open: the ask is the ten ids on screen, so paging re-reads and nothing is
+  // pulled that nobody looks at. The old code paged up to 1000 whole-warehouse stock rows on every
+  // open and joined them client-side, which also meant the 1001st stocked product silently had no badge.
   useEffect(() => {
-    if (stockWarehouseId === undefined || stockWarehouseId <= 0n) {
-      // No warehouse → no stock. Drop any levels a PREVIOUS warehouse left behind, so a caller that
-      // turns stock off can never keep showing the old one's numbers. Returning `prev` unchanged
-      // when it's already empty keeps the identity, so React bails out instead of re-rendering.
-      setOnHand((prev) => (prev.size === 0 ? prev : new Map()));
-
+    if (!open || noTeam || products.length === 0) {
       return;
     }
 
-    if (!open) {
+    const productIds = products.map((p) => p.id).filter((id) => id > 0n);
+    if (productIds.length === 0) {
       return;
     }
+
+    const wantReady = stockWarehouseId !== undefined && stockWarehouseId > 0n;
 
     let cancelled = false;
 
     void (async () => {
-      const levels = new Map<string, bigint>();
+      // Each read swallows its own failure, so one lens failing never blanks the other. Stock is
+      // DECORATION here — the job of this dialog is picking products, and a read the caller has no
+      // role for must not take the picker down.
+      const ask = (warehouseId: bigint) =>
+        inventoryClient
+          .ownerStockByIds({ teamId: scopeTeamId, filter: { productIds, warehouseId } })
+          .then(ownerStockFromByIds)
+          .catch(() => null);
 
-      try {
-        for (let p = 1; p <= STOCK_MAX_PAGES; p++) {
-          const res = await inventoryClient.stockList({
-            warehouseId: stockWarehouseId,
-            dataRequest: stockListRowData(),
-            page: { page: p, limit: STOCK_PAGE_LIMIT },
-          });
+      const [readyRes, ongoingRes] = await Promise.all([
+        wantReady ? ask(stockWarehouseId) : Promise.resolve(null),
+        ask(0n),
+      ]);
 
-          if (cancelled) {
-            return;
-          }
+      if (cancelled) {
+        return;
+      }
 
-          const levelsPage = stockLevelsFromList(res);
-          for (const level of levelsPage) {
-            levels.set(level.productId.toString(), level.onHand);
-          }
-
-          // A short page is the last one.
-          if (levelsPage.length < STOCK_PAGE_LIMIT) {
-            break;
-          }
+      // ABSENT means ZERO here, not unknown — and only because we named the ids. The response omits a
+      // product the team holds none of ("nothing to say travels lighter"), but we asked about every id
+      // on the page, so silence about one IS the answer for it. Unknown is the whole map missing: the
+      // read failed, or was never made, and then no badge is shown rather than a fabricated 0.
+      const spread = (rows: Map<string, { readyQty: bigint; ongoingQty: bigint }> | null, pick: "readyQty" | "ongoingQty") => {
+        if (!rows) {
+          return new Map<string, bigint>();
         }
-      } catch {
-        // Stock is DECORATION here — the job of this dialog is picking products. A stock read that
-        // fails (or that the caller lacks the warehouse role for) must not take the picker down;
-        // whatever landed is kept and the rest simply shows no badge.
-      }
 
-      if (!cancelled) {
-        setOnHand(levels);
-      }
+        return new Map(productIds.map((id) => [id.toString(), rows.get(id.toString())?.[pick] ?? 0n]));
+      };
+
+      setOnHand(spread(readyRes, "readyQty"));
+      setOngoing(spread(ongoingRes, "ongoingQty"));
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, stockWarehouseId]);
+  }, [open, noTeam, scopeTeamId, stockWarehouseId, products]);
 
   // The owning team's NAME for the row badge. Browsing all teams, a page's rows come from many teams,
   // so this resolves the page's ids in ONE batch and caches them for the component's life — paging
@@ -451,7 +488,9 @@ export function ProductPicker({
     <Dialog.Root
       open={open}
       onOpenChange={(e) => handleOpenChange(e.open)}
-      size="md"
+      // A row carries a lot now — cover, name, SKU, team, and two stock badges — and at `md` the name
+      // was the only part that could give way, so it clipped while the badges kept their width.
+      size="xl"
       scrollBehavior="inside"
     >
       <Dialog.Trigger asChild data-testid="product-picker-trigger">
@@ -475,6 +514,16 @@ export function ProductPicker({
                   data-testid="product-picker-search"
                   onChange={(e) => setInput(e.target.value)}
                 />
+
+                {/* The badges carry TWO DIFFERENT SCOPES — ready is this warehouse, ongoing is every
+                    warehouse — and side by side on one row they read as one number about one place.
+                    Saying it once here is cheaper than lengthening both labels on every row.
+                    Rendered only when a figure actually landed, so it never explains absent badges. */}
+                {(onHand.size > 0 || ongoing.size > 0) && (
+                  <Text fontSize="xs" color="fg.muted" data-testid="product-picker-stock-scope">
+                    {t(onHand.size > 0 ? "productPicker.stockScope" : "productPicker.ongoingScope")}
+                  </Text>
+                )}
 
                 <Flex align="center" justify="space-between" gap="2">
                   <Text fontSize="sm" color="fg.muted" data-testid="product-picker-count">
@@ -539,9 +588,13 @@ export function ProductPicker({
                               <Checkbox.HiddenInput />
                               <Flex align="center" gap="card" w="full">
                                 <Checkbox.Control flexShrink={0} />
+                                {/* `.has()` then `.get()`, never `.get() ?? undefined`: 0n is a real
+                                    answer ("out of stock") and a missing entry is "we don't know",
+                                    and the badge renders those two differently. */}
                                 <ProductListItem
                                   product={p}
                                   stock={onHand.has(key) ? onHand.get(key) : undefined}
+                                  ongoing={ongoing.has(key) ? ongoing.get(key) : undefined}
                                   teamName={teamNames.get(p.teamId.toString())}
                                 />
                               </Flex>

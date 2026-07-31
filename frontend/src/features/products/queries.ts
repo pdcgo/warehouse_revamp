@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { ProductListDataType, ProductStatus } from "../../gen/warehouse/product/v1/product_pb";
 import {
   activityFromByIds,
+  batchesFromList,
+  layersFromList,
+  movementsFromList,
+  ownerBatchData,
+  ownerLayerData,
+  ownerMovementData,
   ownerStockFromByIds,
   productByIdsRowData,
   productListRowData,
@@ -54,6 +60,7 @@ export function useProducts({
     // `status` is in the key because the two tabs are two different answers: caching the archived
     // page under the active one would show a dead SKU where the live catalogue belongs.
     queryKey: key.products(teamId, { isWarehouse, q, page, pageSize, status, warehouseId: warehouseId.toString() }),
+    ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       if (isWarehouse) {
@@ -229,6 +236,37 @@ export function useProductDetail(args: { teamId: bigint | undefined; productId: 
   });
 }
 
+// THE CATALOGUE RECORDS BEHIND A SET OF IDS, as a map — one call for a whole screenful.
+//
+// What needs it: a screen that stores a SNAPSHOT of a product and wants the picture too. A restock
+// line keeps `sku`/`name` as they were ordered and no image at all, so the cover has to be looked up
+// by id — and looked up ONCE for every line on the page, never per row (#138's ProductByIds).
+//
+// ⚠ THE SNAPSHOT STILL WINS for sku and name. This read is how a page gets the IMAGE; taking the
+// name from here as well would silently re-title a two-month-old restock with whatever the product is
+// called today, which is the opposite of why the snapshot is stored.
+//
+// A missing id is simply absent from the map — ProductByIds omits what it cannot answer for, and a
+// product from another team's catalogue is exactly that. The caller renders its placeholder.
+export function useProductsByIds(args: { teamId: bigint | undefined; productIds: bigint[] }) {
+  const { teamId } = args;
+  const productIds = [...new Set(args.productIds.filter((id) => id > 0n))].sort();
+
+  return useQuery({
+    queryKey: key.products(teamId, { byIds: productIds.map(String).join(",") }),
+    enabled: teamId !== undefined && productIds.length > 0,
+    queryFn: async () => {
+      const res = await productClient.productByIds({
+        teamId: teamId!,
+        filter: { ids: productIds },
+        dataRequest: productByIdsRowData(),
+      });
+
+      return new Map(productsFromByIds(res).map((p) => [p.id.toString(), p]));
+    },
+  });
+}
+
 // The stock and selling facts for ONE product — the detail page's half of what the list gets per
 // page. The same two by-ids reads, asked for a single id.
 //
@@ -275,6 +313,124 @@ export function useProductActivity(args: {
       return {
         stock: ownerStockFromByIds(stock).get(id),
         activity: activityFromByIds(activity).get(id),
+      };
+    },
+  });
+}
+
+// ── The detail page's three ROW-level reads (#232) ──────────────────────────────────────────────
+//
+// Price, Batch and Stock history. Each is its OWN entry rather than one call per tab-switch: the three
+// are read one at a time, they page independently, and a single query would make opening the Batch tab
+// re-fetch the layers nobody is looking at.
+//
+// All three spread `listQuery` — they are paginated lists whose key changes REFINE the same question
+// (page 2, the Jakarta lens), which is exactly what keepPreviousData is for. Pair each with a
+// RefreshOverlay at the call site.
+//
+// The warehouse LENS is in every key. Two lenses are two different answers, not a filtered view of one
+// — serving a building's figures under the total is how a partial number reads as a complete one.
+
+export function useOwnerCostLayers(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, productId, warehouseId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, {
+      layers: productId.toString(),
+      warehouseId: warehouseId.toString(),
+      page,
+      pageSize,
+    }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.ownerCostLayerList({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: ownerLayerData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        layers: layersFromList(res),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+        // Values the KNOWN-cost layers only — an unknown layer is worth "Unknown", not 0 (#74).
+        totalValue: res.totalValue,
+      };
+    },
+  });
+}
+
+export function useOwnerBatches(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, productId, warehouseId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, {
+      batches: productId.toString(),
+      warehouseId: warehouseId.toString(),
+      page,
+      pageSize,
+    }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.ownerBatchList({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: ownerBatchData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        batches: batchesFromList(res),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+        readyValueTotal: res.readyValueTotal,
+      };
+    },
+  });
+}
+
+export function useOwnerStockHistory(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, productId, warehouseId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, {
+      history: productId.toString(),
+      warehouseId: warehouseId.toString(),
+      page,
+      pageSize,
+    }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.ownerStockHistory({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: ownerMovementData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        movements: movementsFromList(res),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
   });
@@ -372,6 +528,7 @@ export function useProductSearch(args: {
 
   return useQuery({
     queryKey: key.products(teamId, { search: q, scope }),
+    ...referenceQuery,
     enabled: q.length >= 2 && teamId > 0n,
     queryFn: async () => {
       const req = {

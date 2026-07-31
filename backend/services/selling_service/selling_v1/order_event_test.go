@@ -3,6 +3,7 @@ package selling_v1_test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -224,5 +225,89 @@ func TestOrderCancel_SurvivesAPublishFailure(t *testing.T) {
 
 	if res.Msg.GetOrder().GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCELLED {
 		t.Fatalf("order status = %v, want CANCELLED", res.Msg.GetOrder().GetStatus())
+	}
+}
+
+// The san_event contract fields must actually be POPULATED at the publish site.
+//
+// This is a regression test with a real bug behind it: event_id and occurred_at_unix carry
+// buf.validate constraints, and every sender validates before publishing — so leaving them unset does
+// not fail loudly, it makes the publish return an error that both call sites deliberately only LOG.
+// The order still succeeds, every other test stays green, and the event silently never goes out.
+func TestOrderCreate_PublishesTheEventContractFields(t *testing.T) {
+	db := san_testdb.DB(t)
+	rec := &recorder{}
+	svc := newServiceWithEvents(t, db, rec.send)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	event := rec.placed(t)
+
+	// DERIVED from the order, so a redelivery and a replay are the same logical fact and collide.
+	want := "order-placed:" + strconv.FormatUint(created.Msg.GetOrder().GetId(), 10)
+	if event.GetEventId() != want {
+		t.Fatalf("event_id = %q, want %q — it must be derived from the order, never a fresh UUID", event.GetEventId(), want)
+	}
+
+	if event.GetOccurredAtUnix() <= 0 {
+		t.Fatal("occurred_at_unix must be filled — a consumer buckets by it")
+	}
+
+	// The sender validates before publishing, so an unpopulated contract field would make the publish
+	// fail rather than the assertion above. Prove the event passes the validation a real sender runs.
+	_, err = event_source.EmptySender(context.Background(), event)
+	if err != nil {
+		t.Fatalf("the published event must pass validation, or every real sender would drop it: %v", err)
+	}
+}
+
+// The same, for the cancel path — which has its own publish site and its own way of getting the
+// occurrence time (the order's updated_at, stamped by setOrderStatus).
+func TestOrderCancel_PublishesTheEventContractFields(t *testing.T) {
+	db := san_testdb.DB(t)
+	rec := &recorder{}
+	svc := newServiceWithEvents(t, db, rec.send)
+	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
+
+	created, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	orderID := created.Msg.GetOrder().GetId()
+
+	_, err = svc.OrderCancel(context.Background(), connect.NewRequest(&sellingv1.OrderCancelRequest{
+		TeamId:  2,
+		OrderId: orderID,
+	}))
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	if len(rec.events) != 2 {
+		t.Fatalf("published %d events, want the placed and the cancelled", len(rec.events))
+	}
+
+	event, ok := rec.events[1].(*sellingv1.OrderCancelledEvent)
+	if !ok {
+		t.Fatalf("published %T, want an OrderCancelledEvent", rec.events[1])
+	}
+
+	want := "order-cancelled:" + strconv.FormatUint(orderID, 10)
+	if event.GetEventId() != want {
+		t.Fatalf("event_id = %q, want %q", event.GetEventId(), want)
+	}
+
+	if event.GetOccurredAtUnix() <= 0 {
+		t.Fatal("occurred_at_unix must be filled from the order's updated_at")
+	}
+
+	_, err = event_source.EmptySender(context.Background(), event)
+	if err != nil {
+		t.Fatalf("the published event must pass validation: %v", err)
 	}
 }

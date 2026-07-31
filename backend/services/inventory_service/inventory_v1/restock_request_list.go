@@ -57,6 +57,32 @@ func (s *Service) RestockRequestList(
 		query = query.Where("warehouse_id = ?", warehouseID)
 	}
 
+	// Only restocks raised by ONE selling team (owner) — the mirror of the warehouse lens above, and
+	// the receiving side's version of the same question: "what is coming from Bandung" rather than
+	// "what is coming".
+	//
+	// It NARROWS the two-sided scope, it does not widen it: the OR above still applies, so a warehouse
+	// asking for team 9's restocks gets the ones addressed to itself and not team 9's whole book.
+	if requesterID := req.Msg.GetFilter().GetRequestingTeamId(); requesterID != 0 {
+		query = query.Where("requesting_team_id = ?", requesterID)
+	}
+
+	// BY PERSON (owner): whose orders these are, and who was at the door. Two independent filters that
+	// AND together — see the proto for why they are not one "involved this person" field.
+	//
+	// Both match the ACTOR columns, so a restock raised before those columns existed (0) matches
+	// neither. That is deliberate: the record does not say who raised it, and returning it under
+	// somebody's name would invent the one fact being filtered on.
+	if createdBy := req.Msg.GetFilter().GetCreatedByUserId(); createdBy != 0 {
+		query = query.Where("created_by_user_id = ?", createdBy)
+	}
+
+	// Implies an accepted restock — a pending or cancelled one has 0 here, so it drops out without a
+	// status filter having to say so.
+	if acceptedBy := req.Msg.GetFilter().GetAcceptedByUserId(); acceptedBy != 0 {
+		query = query.Where("accepted_by_user_id = ?", acceptedBy)
+	}
+
 	query = applyRestockDateRange(query, req.Msg.GetFilter())
 	query = applyRestockSearch(query, req.Msg.GetFilter().GetQ())
 
@@ -156,13 +182,33 @@ func applyRestockDateRange(query *gorm.DB, filter *inventoryv1.RestockRequestLis
 // a join returns a request once per matching line, double-counting both the rows and the paginated
 // total.
 //
-// THE NUMBER MATCHES WHOLE, not as a substring. "31" finding restock 310, 313 and 3100 would bury the
-// one delivery somebody typed the number of — so a numeric term is an equality on id, and it is added
-// BESIDE the text conditions rather than replacing them, because "500" is a plausible SKU fragment too.
+// A NUMBER IS AMBIGUOUS, AND THE HASH IS HOW SOMEBODY RESOLVES IT.
+//
+// "500" is both a plausible restock number and a plausible SKU fragment (TMB-500-005), so a bare
+// numeric term searches the id AND the text — narrowing it to the id would make the SKU unfindable.
+// The cost is that a short number is noisy: "9" also matches tracking number JP1830099.
+//
+// So "#9" means THE NUMBER, ALONE. The hash is what a person types when they mean the id — they copied
+// it off the screen, where it is printed with one — and it is the only way to ask for one delivery and
+// get one row. Either way the number matches WHOLE: "#31" must not find 310, or asking for one
+// delivery returns ten.
 func applyRestockSearch(query *gorm.DB, q string) *gorm.DB {
 	q = strings.TrimSpace(q)
 	if q == "" {
 		return query
+	}
+
+	// The explicit form first, because it is a NARROWER question and not one leg of a broader one.
+	if strings.HasPrefix(q, "#") {
+		id, err := strconv.ParseUint(strings.TrimPrefix(q, "#"), 10, 64)
+		if err == nil && id != 0 {
+			return query.Where("restock_requests.id = ?", id)
+		}
+		// A "#" followed by something that is not a number is NOT an id, and the term keeps its hash
+		// on the way into the text search below rather than being stripped: a hash inside a reference
+		// is real ("PO#4127"), so stripping it would make that reference unfindable. The consequence
+		// is that "#MP-4127" matches nothing while "MP-4127" matches the row — which is the same rule
+		// stated once, not two behaviours.
 	}
 
 	like := "%" + strings.ToLower(q) + "%"

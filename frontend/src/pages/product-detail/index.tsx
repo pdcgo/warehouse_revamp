@@ -17,8 +17,6 @@ import {
   Spacer,
   Spinner,
   Stack,
-  Switch,
-  Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
@@ -26,7 +24,6 @@ import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { TeamSelect } from "../../components/TeamSelect";
 import { toaster } from "../../components/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
@@ -38,13 +35,14 @@ import {
   useRestoreProduct,
   useSetProductLocked,
 } from "../../features/products/queries";
-import type { OwnerStockRow } from "../../features/products/adapt";
 import { RestoreProductDialog } from "../../features/products/RestoreProductDialog";
 import { pathToRoot } from "../../features/categories/categoryTree";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { formatUnixDate } from "../../lib/datetime";
 import { formatMarkup } from "../../lib/markup";
-import { formatRupiah } from "../../lib/money";
+import { BatchTab } from "./components/BatchTab";
+import { HistoryTab } from "./components/HistoryTab";
+import { PriceTab } from "./components/PriceTab";
+import { Field, Stat, WhenOrNever } from "./components/parts";
 
 function parseProductId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -53,187 +51,6 @@ function parseProductId(raw: string | undefined): bigint {
   } catch {
     return 0n;
   }
-}
-
-// A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
-  );
-}
-
-// The same shape as Field, for a value that is a component rather than a string.
-function Stat({
-  label,
-  hint,
-  testId,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  testId?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Stack gap="0.5" minW="0" data-testid={testId}>
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" asChild>
-        <div>{children}</div>
-      </Text>
-      {hint && (
-        <Text fontSize="xs" color="fg.subtle">
-          {hint}
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
-// ⚠ A figure another service owns and a selling team cannot ask for yet — see the Batch panel's
-// note. It renders as a dash with the reason beside it rather than as a 0: an unknown figure is not a
-// zero one (#74), and a screen that prints Rp 0 where it means "I could not find out" is worse than
-// one that says so.
-function Pending() {
-  const { t } = useTranslation();
-
-  return (
-    <HStack gap="1.5">
-      <Text color="fg.subtle" data-testid="stock-unknown">
-        —
-      </Text>
-      <Text fontSize="xs" color="fg.subtle">
-        {t("products.stat.pending")}
-      </Text>
-    </HStack>
-  );
-}
-
-// A date, or "Never" — and, while the read is still in flight, neither. An undefined unix means the
-// answer has not arrived; a 0 means it arrived and the answer is that this has never happened. They
-// are different sentences and a screen that renders both as "Never" tells the second one as fact.
-function WhenOrNever({ unix }: { unix?: bigint }) {
-  const { t } = useTranslation();
-
-  if (unix === undefined) {
-    return (
-      <Text color="fg.subtle" data-testid="stock-unknown">
-        —
-      </Text>
-    );
-  }
-
-  if (unix === 0n) {
-    return <Text color="fg.muted">{t("products.stat.never")}</Text>;
-  }
-
-  return <Text>{formatUnixDate(unix)}</Text>;
-}
-
-// The WAREHOUSE LENS control, on each of the three tabs whose figures are per-warehouse.
-//
-// The shared TeamSelect restricted to WAREHOUSE teams — the same picker the product list uses, not a
-// second dropdown of this page's own. It carries its own ✕, so there is no separate clear button.
-function WarehouseFilter({
-  value,
-  onChange,
-  testId,
-}: {
-  value: bigint;
-  onChange: (id: bigint) => void;
-  testId: string;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <Box minW="16rem" data-testid={testId}>
-      <TeamSelect
-        value={value}
-        onChange={onChange}
-        teamType={TeamType.WAREHOUSE}
-        placeholder={t("products.allWarehouses")}
-      />
-    </Box>
-  );
-}
-
-// Choosing a warehouse RESTATES every figure below as that warehouse's — it does not merely hide
-// rows. Saying so is the point: a stock number that quietly became one building's, while still
-// looking like the total, is the way this screen could lie without a single wrong value on it.
-function WarehouseNote({
-  warehouseId,
-  warehouseName,
-}: {
-  warehouseId: bigint;
-  warehouseName?: string;
-}) {
-  const { t } = useTranslation();
-
-  if (warehouseId === 0n) {
-    return null;
-  }
-
-  return (
-    <Text fontSize="sm" color="fg.muted" data-testid="pd-warehouse-note">
-      {t("products.detail.warehouseNote", {
-        warehouse: warehouseName || `#${warehouseId}`,
-      })}
-    </Text>
-  );
-}
-
-// The HPP SPREAD of the units on hand — cheapest to dearest. A RANGE, not an average, because the
-// same product genuinely arrives at different prices and an average is exactly what hides that.
-function CostRange({ stock }: { stock?: OwnerStockRow }) {
-  if (stock === undefined || !stock.costKnown) {
-    return <Pending />;
-  }
-
-  // One price when every layer agrees — "Rp 5.000 – Rp 5.000" would be noise.
-  if (stock.costMin === stock.costMax) {
-    return <Text>{formatRupiah(stock.costMin)}</Text>;
-  }
-
-  return (
-    <Text>
-      {formatRupiah(stock.costMin)} – {formatRupiah(stock.costMax)}
-    </Text>
-  );
-}
-
-// What a cross-selling team pays per unit: our cost plus the markup.
-//
-// Derived here rather than served, because it is arithmetic over two numbers the caller already has,
-// and a figure computed in two places is a figure that will one day disagree with itself. The
-// rounding is deliberate and the same both ends of the range — basis points over rupiah lands on
-// fractions of a cent that no invoice can carry.
-function CrossPrice({ stock, markupBps }: { stock?: OwnerStockRow; markupBps: number }) {
-  if (stock === undefined || !stock.costKnown) {
-    return <Pending />;
-  }
-
-  const withMarkup = (cost: bigint) => cost + (cost * BigInt(markupBps)) / 10_000n;
-
-  const min = withMarkup(stock.costMin);
-  const max = withMarkup(stock.costMax);
-
-  if (min === max) {
-    return <Text>{formatRupiah(min)}</Text>;
-  }
-
-  return (
-    <Text>
-      {formatRupiah(min)} – {formatRupiah(max)}
-    </Text>
-  );
 }
 
 // ProductDetailPage is the read-only detail route for a product (#83) — a PAGE, not a dialog,
@@ -267,8 +84,14 @@ export function ProductDetailPage() {
   // came from would make the two tabs disagree about what you had just asked. Info is deliberately
   // outside it: a SKU, a category and a picture are not facts about a building.
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
-  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100 });
+  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, reference: true });
   const warehouseName = warehouses.data?.teams.find((w) => w.id === warehouseId)?.name;
+
+  // The Batch and Stock history rows each NAME a warehouse, and they span several once the lens is
+  // open — so both need the same id→name lookup the note above uses. Resolved from the picker's own
+  // feed rather than by a second read: the list is already loaded to populate the dropdown.
+  const warehouseLabel = (id: bigint) =>
+    warehouses.data?.teams.find((w) => w.id === id)?.name ?? `#${id}`;
 
   const query = useProductDetail({ teamId, productId: id });
   // Its own entry, so an inventory or selling hiccup costs the stock figures and not the product's
@@ -703,267 +526,44 @@ export function ProductDetailPage() {
           </Grid>
         </Tabs.Content>
 
-        {/* PRICE — the batches GROUPED BY WHAT THEY COST. A product has no selling price (what a
-            buyer pays is set per order, on the shop that sells it), so the money it does have is what
-            its units cost us — and that is not one number. The same product arrives at different
-            prices, each delivery freezes its own, and every batch that froze the same cost is one
-            COST LAYER. Grouping by price rather than listing deliveries is what makes "what is my
-            stock worth, and at which prices" a question you can answer by looking.
-
-            FIFO still draws the oldest batch; this view is about value, not about order. The Batch
-            tab is the per-delivery list. */}
+        {/* PRICE, BATCH and STOCK HISTORY each live in their own file under components/ (#232).
+            They were inline while they were three empty tables with a note explaining why; now that
+            each one loads, pages and refreshes its own rows, each is a screen-sized thing of its own
+            and the page reads as what it is — a header, four tabs, and the record itself. */}
         <Tabs.Content value="price" flex="1" data-testid="pd-price-panel">
-          <Stack gap="section">
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Flex gap="card" align="flex-end" justify="space-between" wrap="wrap">
-                    <Stack gap="0.5">
-                      <Text fontWeight="medium">{t("products.detail.costHeading")}</Text>
-                      <Text fontSize="sm" color="fg.muted">
-                        {t("products.detail.costHelp")}
-                      </Text>
-                    </Stack>
-
-                    <WarehouseFilter
-                      value={warehouseId}
-                      onChange={setWarehouseId}
-                      testId="pd-price-warehouse-filter"
-                    />
-                  </Flex>
-
-                  <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
-
-                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-                    {/* The cheapest and dearest units currently held — the two ends of the table
-                        below, said once at the top. A RANGE rather than one number because it
-                        genuinely is one, and an average is exactly what hides the spread somebody
-                        opens this tab to see. */}
-                    <Stat label={t("products.table.priceRange")} testId="product-detail-cost">
-                      <CostRange stock={activityQuery.data?.stock} />
-                    </Stat>
-
-                    {/* The markup applies to whatever a unit cost us, and units cost different
-                        amounts — so what another team pays is a range too, derived from the same
-                        spread rather than from an average nobody is charged. */}
-                    <Stat
-                      label={t("products.detail.crossPrice")}
-                      hint={t("products.detail.crossPriceHint")}
-                      testId="product-detail-cross-price"
-                    >
-                      <CrossPrice
-                        stock={activityQuery.data?.stock}
-                        markupBps={product.crossMarkupBps}
-                      />
-                    </Stat>
-                  </SimpleGrid>
-
-                  {/* ⚠ PENDING for the same reason the Batch tab is: the layers themselves come from
-                      CostLayerList, which is warehouse-scoped and warehouse-roles-only.
-                      OwnerStockByIds answers the SPREAD above but not what sits between its ends. */}
-                  <Table.Root size="sm" data-testid="pd-price-table">
-                    <Table.Header>
-                      <Table.Row>
-                        <Table.ColumnHeader>
-                          {t("products.detail.layer.unitCost")}
-                        </Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">
-                          {t("products.detail.layer.batches")}
-                        </Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">
-                          {t("products.detail.layer.ready")}
-                        </Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">
-                          {t("products.detail.layer.value")}
-                        </Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">
-                          {t("products.detail.layer.crossPrice")}
-                        </Table.ColumnHeader>
-                      </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                      <Table.Row>
-                        <Table.Cell colSpan={5} color="fg.muted" data-testid="pd-price-empty">
-                          {t("products.detail.layerPending")}
-                        </Table.Cell>
-                      </Table.Row>
-                    </Table.Body>
-                  </Table.Root>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Stack gap="0.5">
-                    <Text fontWeight="medium">{t("products.detail.crossHeading")}</Text>
-                    <Text fontSize="sm" color="fg.muted">
-                      {t("products.detail.crossHelp")}
-                    </Text>
-                  </Stack>
-
-                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
-                    <Stat
-                      label={t("products.field.crossMarkup")}
-                      hint={t("products.detail.crossMarkupHint")}
-                      testId="product-detail-markup"
-                    >
-                      <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
-                        {formatMarkup(product.crossMarkupBps)}
-                      </Badge>
-                    </Stat>
-
-                    {/* Editable in place, exactly as it is on the list — locking is a one-bit
-                        decision and a dialog for it would be ceremony. An archived product is out of
-                        circulation anyway, so the switch is dead there. */}
-                    <Stat
-                      label={t("products.table.locked")}
-                      hint={t("products.detail.lockedHint")}
-                      testId="product-detail-locked"
-                    >
-                      <Switch.Root
-                        size="sm"
-                        checked={product.crossLocked}
-                        disabled={archived || setLocked.isPending}
-                        colorPalette="brand"
-                        data-testid={`pd-locked-${product.sku}`}
-                        onCheckedChange={(e) => toggleLocked(product, e.checked)}
-                      >
-                        <Switch.HiddenInput aria-label={t("products.table.locked")} />
-                        <Switch.Control />
-                      </Switch.Root>
-                    </Stat>
-                  </SimpleGrid>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          </Stack>
+          <PriceTab
+            teamId={teamId}
+            product={product}
+            stock={activityQuery.data?.stock}
+            archived={archived}
+            warehouseId={warehouseId}
+            warehouseName={warehouseName}
+            onWarehouseChange={setWarehouseId}
+            onToggleLocked={(locked) => toggleLocked(product, locked)}
+            lockPending={setLocked.isPending}
+          />
         </Tabs.Content>
 
-        {/* BATCH — one product's units from one delivery, each with its own frozen cost. This is where
-            "how much do I have, and where" is actually answered for a catalogue owner, because stock
-            is held per warehouse and a batch names which one.
-
-            ⚠ EMPTY, and deliberately so. Every batch read lives in inventory_service, is scoped to the
-            WAREHOUSE team holding the goods, and admits warehouse roles only — so a selling team
-            cannot ask "which deliveries are my product's units from" through any RPC that exists
-            today. The same gap already blanks the ready/ongoing figures on the product LIST (see
-            features/products/queries.ts). Naming it beats an empty table that reads as "no stock". */}
         <Tabs.Content value="batch" flex="1" data-testid="pd-batch-panel">
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Flex gap="card" align="flex-end" justify="space-between" wrap="wrap">
-                  <Stack gap="0.5">
-                    <Text fontWeight="medium">{t("products.detail.batchHeading")}</Text>
-                    <Text fontSize="sm" color="fg.muted">
-                      {t("products.detail.batchHelp")}
-                    </Text>
-                  </Stack>
-
-                  <WarehouseFilter
-                    value={warehouseId}
-                    onChange={setWarehouseId}
-                    testId="pd-batch-warehouse-filter"
-                  />
-                </Flex>
-
-                <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
-
-                <Table.Root size="sm" data-testid="pd-batch-table">
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader>{t("products.detail.batch.delivery")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("products.detail.batch.warehouse")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("products.detail.batch.arrivedOn")}</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">
-                        {t("products.detail.batch.unitCost")}
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">
-                        {t("products.detail.batch.ready")}
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">
-                        {t("products.detail.batch.value")}
-                      </Table.ColumnHeader>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    <Table.Row>
-                      <Table.Cell colSpan={6} color="fg.muted" data-testid="pd-batch-empty">
-                        {t("products.detail.batchPending")}
-                      </Table.Cell>
-                    </Table.Row>
-                  </Table.Body>
-                </Table.Root>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+          <BatchTab
+            teamId={teamId}
+            productId={product.id}
+            warehouseId={warehouseId}
+            warehouseName={warehouseName}
+            onWarehouseChange={setWarehouseId}
+            warehouseLabel={warehouseLabel}
+          />
         </Tabs.Content>
 
-        {/* STOCK HISTORY — every movement of this product: what arrived, what shipped, what was
-            counted, adjusted, damaged or found, newest first. The Batch tab says what the owner HAS;
-            this says how it got that way, which is the tab somebody opens when a number looks wrong.
-
-            The columns are deliberately NOT the warehouse's (#209). That table carries a Place — the
-            shelf a movement touched — because moving between two shelves is the warehouse's whole
-            job. A catalogue owner does not care which rack; they care which BUILDING, because stock
-            is held per warehouse and that is the unit their decisions are made in. So Place becomes
-            Warehouse, and a shelf-to-shelf move inside one building is a movement the owner has no
-            reason to see at all.
-
-            ⚠ EMPTY for the same reason the Batch tab is: StockHistory is scoped by warehouse_id and
-            admits warehouse roles only, so a selling team has no warehouse to name and no role to ask
-            with. */}
         <Tabs.Content value="history" flex="1" data-testid="pd-history-panel">
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Flex gap="card" align="flex-end" justify="space-between" wrap="wrap">
-                  <Stack gap="0.5">
-                    <Text fontWeight="medium">{t("products.detail.historyHeading")}</Text>
-                    <Text fontSize="sm" color="fg.muted">
-                      {t("products.detail.historyHelp")}
-                    </Text>
-                  </Stack>
-
-                  <WarehouseFilter
-                    value={warehouseId}
-                    onChange={setWarehouseId}
-                    testId="pd-history-warehouse-filter"
-                  />
-                </Flex>
-
-                <WarehouseNote warehouseId={warehouseId} warehouseName={warehouseName} />
-
-                <Table.Root size="sm" data-testid="pd-history-table">
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader>{t("products.detail.history.when")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("products.detail.history.what")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>
-                        {t("products.detail.batch.warehouse")}
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("products.detail.history.batch")}</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">
-                        {t("products.detail.history.change")}
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="end">
-                        {t("products.detail.history.after")}
-                      </Table.ColumnHeader>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    <Table.Row>
-                      <Table.Cell colSpan={6} color="fg.muted" data-testid="pd-history-empty">
-                        {t("products.detail.historyPending")}
-                      </Table.Cell>
-                    </Table.Row>
-                  </Table.Body>
-                </Table.Root>
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+          <HistoryTab
+            teamId={teamId}
+            productId={product.id}
+            warehouseId={warehouseId}
+            warehouseName={warehouseName}
+            onWarehouseChange={setWarehouseId}
+            warehouseLabel={warehouseLabel}
+          />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

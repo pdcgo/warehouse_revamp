@@ -242,6 +242,7 @@
   "productListItem": {
     "stock": "Stock {{n}}",
     "outOfStock": "Out of stock",
+    "ongoing": "On the way {{n}}",
     "teamFallback": "Team #{{id}}",
     "productFallback": "Product #{{id}}"
   },
@@ -251,7 +252,9 @@
     "selected": "{{n}} selected",
     "clear": "Clear",
     "noTeam": "Select a team to browse its catalogue.",
-    "noTeamAll": "Select a team to discover products."
+    "noTeamAll": "Select a team to discover products.",
+    "stockScope": "Stock is at the destination warehouse; on the way counts every warehouse.",
+    "ongoingScope": "On the way counts orders to every warehouse, not yet accepted."
   },
   "discover": {
     "title": "Discover Products",
@@ -324,7 +327,6 @@
       "lockedHint": "Locked keeps it out of other teams' discovery — yours only.",
       "batchHeading": "Deliveries",
       "batchHelp": "Every batch is one delivery of this product into one warehouse, and each froze the cost its units carry.",
-      "batchPending": "Awaiting the stock service — a selling team cannot read batches yet.",
       "batch": {
         "delivery": "Delivery",
         "warehouse": "Warehouse",
@@ -335,24 +337,23 @@
       },
       "historyHeading": "Every movement",
       "historyHelp": "What arrived, shipped, was counted, adjusted, damaged or found — newest first. A move between two shelves of one warehouse is the warehouse's business and is not listed here.",
-      "historyPending": "Awaiting the stock service — a selling team cannot read stock history yet.",
       "history": {
-        "when": "When",
-        "what": "What",
-        "batch": "Batch",
-        "change": "Change",
-        "after": "After"
+        "afterInWarehouse": "After, in that warehouse"
       },
       "showImage": "Show image {{n}}",
       "warehouseNote": "Every figure below is {{warehouse}} only — not your total.",
-      "layerPending": "Awaiting the stock service — a selling team cannot read cost layers yet.",
       "layer": {
         "unitCost": "Unit cost",
-        "batches": "Batches",
         "ready": "Ready",
         "value": "Value",
-        "crossPrice": "Cross-sell price"
-      }
+        "crossPrice": "Cross-sell price",
+        "unknown": "Unknown"
+      },
+      "layerEmpty": "No stock on a shelf, so nothing to price.",
+      "layerTotal": "Stock at known cost: {{value}}",
+      "batchEmpty": "No deliveries of this product yet.",
+      "batchTotal": "Ready stock at known cost: {{value}}",
+      "historyEmpty": "Nothing has moved yet."
     },
     "field": {
       "sku": "SKU",
@@ -543,7 +544,18 @@
       "ongoing": "Ongoing",
       "ongoingHint": "pcs in flight — ordered, not landed",
       "ongoingValue": "Ongoing value",
-      "ongoingValueHint": "what you've committed on them"
+      "ongoingValueHint": "what you've committed on them",
+      "inboundProducts": "Products waiting",
+      "inboundProductsHint": "different items to shelve",
+      "inboundUnits": "Pieces waiting",
+      "inboundUnitsHint": "to count at the door",
+      "inboundAmount": "Queue value",
+      "inboundAmountHint": "goods not yet counted in",
+      "oldestPending": "Oldest waiting",
+      "oldestDays_one": "{{count}} day",
+      "oldestDays_other": "{{count}} days",
+      "inboundRestocks": "Restocks waiting",
+      "inboundRestocksHint": "deliveries at the door"
     },
     "dateField": {
       "created": "Created",
@@ -553,7 +565,11 @@
     "inbound": {
       "title": "Incoming Restocks",
       "subtitle": "Deliveries on their way to this warehouse — accept one to count it onto the shelves.",
-      "empty": "Nothing is coming in to this warehouse yet."
+      "empty": "Nothing is coming in to this warehouse yet.",
+      "fromAll": "From any team",
+      "actorCreated": "Raised by",
+      "actorAccepted": "Counted by",
+      "actorAll": "Anyone"
     },
     "detail": {
       "title": "Restock Request",
@@ -573,7 +589,24 @@
       "arrived": "Arrived",
       "place": "Place",
       "rackUnknown": "Unknown rack",
-      "receivedTotal": "Received into stock"
+      "receivedTotal": "Received into stock",
+      "tab": {
+        "info": "Info",
+        "products": "Product",
+        "timeline": "Timeline"
+      },
+      "product": "Product",
+      "accepted": "Accepted"
+    },
+    "timeline": {
+      "created": "Request raised",
+      "accepted": "Delivery accepted",
+      "codFee": "COD fee paid at the door",
+      "cancelled": "Request cancelled",
+      "awaiting": "Waiting for the warehouse",
+      "noDate": "Date not recorded",
+      "edited": "Request edited",
+      "unknown": "Something happened"
     },
     "summary": {
       "totalProducts": "Total products",
@@ -708,13 +741,13 @@
     },
     "accept": {
       "title": "Accept Delivery",
-      "heading": "Accept Restock #{{id}}",
       "back": "Back to the Request",
       "warehouseOnly": "Only the warehouse a restock was sent to can accept it.",
       "notFound": "That restock request is not for this warehouse.",
       "action": "Accept Delivery",
       "codFee": "COD Fee",
       "freightTotal": "Freight Total",
+      "goodsPrice": "Price / pc",
       "hpp": "Cost / pc (HPP)",
       "perPiece": "{{price}} / pc",
       "putaway": "Put away to racks",
@@ -729,6 +762,7 @@
       "addPlacement": "Split to another shelf",
       "removePlacement": "Remove this place",
       "reportProblem": "Report a problem",
+      "noProblems": "Nothing broken or missing",
       "problems": "Problems — never enters stock",
       "problemBroken": "Broken",
       "problemLost": "Lost",
@@ -736,14 +770,22 @@
       "addProblem": "Add another",
       "removeProblem": "Remove this problem",
       "summary": {
-        "order": "Order",
+        "restock": "Restock",
+        "team": "Team",
+        "raisedBy": "Person",
+        "order": "Order & Shipment",
         "shipping": "Shipping",
         "freight": "Freight",
         "orderRef": "Order ID",
         "supplier": "Supplier",
         "ordered": "Ordered",
         "courier": "Courier",
-        "receipt": "AWB / Resi"
+        "receipt": "AWB / Resi",
+        "cost": "Value",
+        "productTotal": "Products",
+        "shippingTotal": "Shipping",
+        "shippingBreakdown": "{{shipping}} shipping + {{cod}} COD",
+        "grandTotal": "Total"
       },
       "confirm": {
         "title": "Accept This Delivery",
@@ -754,7 +796,9 @@
         "accepted": "Delivery accepted",
         "failed": "Could not accept the delivery"
       }
-    }
+    },
+    "createdByAll": "Anyone who raised it",
+    "acceptedByAll": "Anyone who accepted it"
   },
   "shops": {
     "title": "Shops",
@@ -1233,7 +1277,17 @@
     "moveReasonPlaceholder": "e.g. put away, shelf reorganised",
     "movePlacesRequiredError": "Choose both places — where the stock is now, and where it is going.",
     "moveSamePlaceError": "Pick two different places — a move has to go somewhere else.",
-    "movedToast": "Moved {{qty}} × {{sku}}"
+    "movedToast": "Moved {{qty}} × {{sku}}",
+    "movement": {
+      "when": "When",
+      "what": "What",
+      "change": "Change",
+      "by": "By",
+      "batch": "Batch",
+      "place": "Place",
+      "product": "Product",
+      "warehouse": "Warehouse"
+    }
   },
   "address": {
     "loading": "Loading…",

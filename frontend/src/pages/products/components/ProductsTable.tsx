@@ -8,6 +8,7 @@ import { rpcError } from "../../../api/clients";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
 import { ProductStatus } from "../../../gen/warehouse/product/v1/product_pb";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { RefreshOverlay } from "../../../components/RefreshOverlay";
 import { Pagination } from "../../../components/Pagination";
 import { ProductListItem } from "../../../components/ProductListItem";
 import { toaster } from "../../../components/Toaster";
@@ -166,6 +167,10 @@ export function ProductsTable({ mode, teamId, q, warehouseId, warehouseName }: P
   const products = query.data?.products ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
+  // Always-fresh: this list refetches on every mount, tab and page change. `listQuery` keeps the rows
+  // already on screen while it does, and RefreshOverlay says a newer answer is coming. `isPending` is
+  // excluded — a first load has nothing to keep and shows the spinner instead.
+  const refreshing = query.isFetching && !query.isPending;
 
   // Looked up by id rather than merged into the product: the two reads answer for the PAGE, and a
   // product they say nothing about has to stay undefined so its cells read "unknown", not "none".
@@ -249,208 +254,210 @@ export function ProductsTable({ mode, teamId, q, warehouseId, warehouseName }: P
   }
 
   return (
-    <Stack gap="section">
-      {error && (
-        <Text color="red.fg" data-testid="products-error">
-          {error}
-        </Text>
-      )}
+    <RefreshOverlay busy={refreshing}>
+      <Stack gap="section">
+        {error && (
+          <Text color="red.fg" data-testid="products-error">
+            {error}
+          </Text>
+        )}
 
-      {query.isPending ? (
-        <Spinner colorPalette="brand" />
-      ) : (
-        <Table.ScrollArea>
-          <Table.Root size="sm" data-testid="products-table">
-            <Table.Header>
-              <Table.Row>
-                <Table.ColumnHeader>{t("products.table.product")}</Table.ColumnHeader>
-                {/* What the units on hand cost us — a low-to-high range across the warehouses. */}
-                <Table.ColumnHeader textAlign="end">{scoped(t("products.table.priceRange"))}</Table.ColumnHeader>
-                {/* The stock trio, in the order a seller asks them: what can I sell, what of it is
-                    already spoken for, and what is coming. */}
-                <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ready"))}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">{t("products.table.reserved")}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ongoing"))}</Table.ColumnHeader>
-                {/* How long the oldest units have been sitting — the column that finds dead stock
-                    before it is written off. */}
-                <Table.ColumnHeader>{scoped(t("products.table.oldestBatch"))}</Table.ColumnHeader>
-                <Table.ColumnHeader>{t("products.table.lastOrder")}</Table.ColumnHeader>
-                <Table.ColumnHeader>{t("products.table.lastRestock")}</Table.ColumnHeader>
-                {/* What another team pays over our cost to sell this one, and whether it may at all. */}
-                <Table.ColumnHeader textAlign="end">{t("products.table.cross")}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="center">{t("products.table.locked")}</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">{t("products.table.actions")}</Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
+        {query.isPending ? (
+          <Spinner colorPalette="brand" />
+        ) : (
+          <Table.ScrollArea>
+            <Table.Root size="sm" data-testid="products-table">
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeader>{t("products.table.product")}</Table.ColumnHeader>
+                  {/* What the units on hand cost us — a low-to-high range across the warehouses. */}
+                  <Table.ColumnHeader textAlign="end">{scoped(t("products.table.priceRange"))}</Table.ColumnHeader>
+                  {/* The stock trio, in the order a seller asks them: what can I sell, what of it is
+                      already spoken for, and what is coming. */}
+                  <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ready"))}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("products.table.reserved")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{scoped(t("products.table.ongoing"))}</Table.ColumnHeader>
+                  {/* How long the oldest units have been sitting — the column that finds dead stock
+                      before it is written off. */}
+                  <Table.ColumnHeader>{scoped(t("products.table.oldestBatch"))}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("products.table.lastOrder")}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("products.table.lastRestock")}</Table.ColumnHeader>
+                  {/* What another team pays over our cost to sell this one, and whether it may at all. */}
+                  <Table.ColumnHeader textAlign="end">{t("products.table.cross")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="center">{t("products.table.locked")}</Table.ColumnHeader>
+                  <Table.ColumnHeader textAlign="end">{t("products.table.actions")}</Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
 
-            <Table.Body>
-              {products.map((product) => (
-                <Table.Row
-                  key={product.id.toString()}
-                  data-testid={`product-row-${product.sku}`}
-                  cursor={isArchived ? undefined : "pointer"}
-                  onClick={() => openRow(product)}
-                >
-                  <Table.Cell>
-                    {/* ONE cell, not image + SKU + name: a product is one thing, and this is the
-                        app's one way of drawing it (#128). The team badge is passed ONLY on the
-                        warehouse list, where the rows genuinely belong to other teams — on your own
-                        catalogue it would be your own name on every row. */}
-                    <Box data-testid={`open-product-${product.sku}`} minW="15rem">
-                      <ProductListItem
-                        product={
-                          isWarehouse
-                            ? product
-                            : {
-                                id: product.id,
-                                sku: product.sku,
-                                name: product.name,
-                                defaultImageUrl: product.defaultImageUrl,
-                                defaultImageThumbnailUrl: product.defaultImageThumbnailUrl,
-                              }
-                        }
+              <Table.Body>
+                {products.map((product) => (
+                  <Table.Row
+                    key={product.id.toString()}
+                    data-testid={`product-row-${product.sku}`}
+                    cursor={isArchived ? undefined : "pointer"}
+                    onClick={() => openRow(product)}
+                  >
+                    <Table.Cell>
+                      {/* ONE cell, not image + SKU + name: a product is one thing, and this is the
+                          app's one way of drawing it (#128). The team badge is passed ONLY on the
+                          warehouse list, where the rows genuinely belong to other teams — on your own
+                          catalogue it would be your own name on every row. */}
+                      <Box data-testid={`open-product-${product.sku}`} minW="15rem">
+                        <ProductListItem
+                          product={
+                            isWarehouse
+                              ? product
+                              : {
+                                  id: product.id,
+                                  sku: product.sku,
+                                  name: product.name,
+                                  defaultImageUrl: product.defaultImageUrl,
+                                  defaultImageThumbnailUrl: product.defaultImageThumbnailUrl,
+                                }
+                          }
+                        />
+                      </Box>
+                    </Table.Cell>
+
+                    <Table.Cell textAlign="end">
+                      {/* Only pass the spread when a cost is actually known — costMin/costMax are 0
+                          when no ready unit was ever costed, and 0..0 would read as "it was free". */}
+                      <PriceRangeCell
+                        min={stockOf(product)?.costKnown ? stockOf(product)?.costMin : undefined}
+                        max={stockOf(product)?.costKnown ? stockOf(product)?.costMax : undefined}
                       />
-                    </Box>
-                  </Table.Cell>
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">
+                      <StockCell qty={stockOf(product)?.readyQty} value={stockOf(product)?.readyValue} />
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">
+                      <CountCell qty={BigInt(product.reservedStock)} />
+                    </Table.Cell>
+                    <Table.Cell textAlign="end">
+                      <StockCell
+                        qty={stockOf(product)?.ongoingQty}
+                        value={stockOf(product)?.ongoingValueEst}
+                      />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <DateCell unix={stockOf(product)?.oldestBatchUnix} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <DateCell unix={activityOf(product)?.lastOrderUnix} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <DateCell unix={stockOf(product)?.lastRestockUnix} />
+                    </Table.Cell>
 
-                  <Table.Cell textAlign="end">
-                    {/* Only pass the spread when a cost is actually known — costMin/costMax are 0
-                        when no ready unit was ever costed, and 0..0 would read as "it was free". */}
-                    <PriceRangeCell
-                      min={stockOf(product)?.costKnown ? stockOf(product)?.costMin : undefined}
-                      max={stockOf(product)?.costKnown ? stockOf(product)?.costMax : undefined}
-                    />
-                  </Table.Cell>
-                  <Table.Cell textAlign="end">
-                    <StockCell qty={stockOf(product)?.readyQty} value={stockOf(product)?.readyValue} />
-                  </Table.Cell>
-                  <Table.Cell textAlign="end">
-                    <CountCell qty={BigInt(product.reservedStock)} />
-                  </Table.Cell>
-                  <Table.Cell textAlign="end">
-                    <StockCell
-                      qty={stockOf(product)?.ongoingQty}
-                      value={stockOf(product)?.ongoingValueEst}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <DateCell unix={stockOf(product)?.oldestBatchUnix} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <DateCell unix={activityOf(product)?.lastOrderUnix} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <DateCell unix={stockOf(product)?.lastRestockUnix} />
-                  </Table.Cell>
+                    <Table.Cell textAlign="end">
+                      {/* 0 is not "unset" — it is a decision to charge another team nothing, so it
+                          reads as a plain 0%, not a dash. */}
+                      <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
+                        {formatMarkup(product.crossMarkupBps)}
+                      </Badge>
+                    </Table.Cell>
 
-                  <Table.Cell textAlign="end">
-                    {/* 0 is not "unset" — it is a decision to charge another team nothing, so it
-                        reads as a plain 0%, not a dash. */}
-                    <Badge colorPalette={product.crossMarkupBps > 0 ? "brand" : "gray"}>
-                      {formatMarkup(product.crossMarkupBps)}
-                    </Badge>
-                  </Table.Cell>
+                    {/* LOCKED is edited HERE, in the row — deciding who may sell what is a pass down
+                        the whole catalogue, and making it a trip into each product's edit page would
+                        turn a two-minute review into forty. The click must not also open the row. */}
+                    <Table.Cell textAlign="center" onClick={(e) => e.stopPropagation()}>
+                      <Switch.Root
+                        size="sm"
+                        checked={product.crossLocked}
+                        // Only the owner may set this, and only on a live product: a warehouse does not
+                        // own these rows, and an archived one is already out of everybody's reach.
+                        disabled={mode !== "active"}
+                        data-testid={`locked-${product.sku}`}
+                        onCheckedChange={(e) => toggleLocked(product, e.checked)}
+                      >
+                        <Switch.HiddenInput aria-label={t("products.table.locked")} />
+                        <Switch.Control />
+                      </Switch.Root>
+                    </Table.Cell>
 
-                  {/* LOCKED is edited HERE, in the row — deciding who may sell what is a pass down
-                      the whole catalogue, and making it a trip into each product's edit page would
-                      turn a two-minute review into forty. The click must not also open the row. */}
-                  <Table.Cell textAlign="center" onClick={(e) => e.stopPropagation()}>
-                    <Switch.Root
-                      size="sm"
-                      checked={product.crossLocked}
-                      // Only the owner may set this, and only on a live product: a warehouse does not
-                      // own these rows, and an archived one is already out of everybody's reach.
-                      disabled={mode !== "active"}
-                      data-testid={`locked-${product.sku}`}
-                      onCheckedChange={(e) => toggleLocked(product, e.checked)}
-                    >
-                      <Switch.HiddenInput aria-label={t("products.table.locked")} />
-                      <Switch.Control />
-                    </Switch.Root>
-                  </Table.Cell>
+                    {/* Row-action clicks must not bubble to the row's navigate. */}
+                    <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                      <HStack justify="end" gap="1">
+                        {/* A warehouse HANDLES these products; it does not own them (#142). Editing or
+                            archiving somebody else's catalogue entry is not its call — and the writes
+                            are scoped to the OWNING team, so these would only ever be refused. */}
+                        {mode === "active" && (
+                          <>
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              aria-label={t("products.edit")}
+                              data-testid={`edit-${product.sku}`}
+                              onClick={() => navigate(`/products/${product.id}/edit`)}
+                            >
+                              <Icon as={Pencil} boxSize="4" />
+                            </IconButton>
 
-                  {/* Row-action clicks must not bubble to the row's navigate. */}
-                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                    <HStack justify="end" gap="1">
-                      {/* A warehouse HANDLES these products; it does not own them (#142). Editing or
-                          archiving somebody else's catalogue entry is not its call — and the writes
-                          are scoped to the OWNING team, so these would only ever be refused. */}
-                      {mode === "active" && (
-                        <>
+                            <ConfirmDialog
+                              title={t("products.archiveDialog.title")}
+                              message={t("products.archiveDialog.message", { sku: product.sku })}
+                              confirmLabel={t("products.archiveDialog.confirmLabel")}
+                              onConfirm={() => archive(product)}
+                              trigger={
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  colorPalette="red"
+                                  aria-label={t("products.archiveDialog.confirmLabel")}
+                                  data-testid={`delete-${product.sku}`}
+                                >
+                                  <Icon as={Archive} boxSize="4" />
+                                </IconButton>
+                              }
+                            />
+                          </>
+                        )}
+
+                        {isArchived && (
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            aria-label={t("products.edit")}
-                            data-testid={`edit-${product.sku}`}
-                            onClick={() => navigate(`/products/${product.id}/edit`)}
+                            aria-label={t("products.restore")}
+                            data-testid={`restore-${product.sku}`}
+                            onClick={() => restore(product)}
                           >
-                            <Icon as={Pencil} boxSize="4" />
+                            <Icon as={RotateCcw} boxSize="4" />
                           </IconButton>
+                        )}
+                      </HStack>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Root>
+          </Table.ScrollArea>
+        )}
 
-                          <ConfirmDialog
-                            title={t("products.archiveDialog.title")}
-                            message={t("products.archiveDialog.message", { sku: product.sku })}
-                            confirmLabel={t("products.archiveDialog.confirmLabel")}
-                            onConfirm={() => archive(product)}
-                            trigger={
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                colorPalette="red"
-                                aria-label={t("products.archiveDialog.confirmLabel")}
-                                data-testid={`delete-${product.sku}`}
-                              >
-                                <Icon as={Archive} boxSize="4" />
-                              </IconButton>
-                            }
-                          />
-                        </>
-                      )}
+        {!query.isPending && products.length === 0 && !error && (
+          <Text color="fg.muted" data-testid="products-empty">
+            {isArchived ? t("products.emptyArchived") : t("products.empty")}
+          </Text>
+        )}
 
-                      {isArchived && (
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          aria-label={t("products.restore")}
-                          data-testid={`restore-${product.sku}`}
-                          onClick={() => restore(product)}
-                        >
-                          <Icon as={RotateCcw} boxSize="4" />
-                        </IconButton>
-                      )}
-                    </HStack>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Table.ScrollArea>
-      )}
+        <Pagination
+          count={totalItems}
+          pageSize={pageSize}
+          page={page}
+          onPageChange={setPage}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          onPageSizeChange={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+        />
 
-      {!query.isPending && products.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="products-empty">
-          {isArchived ? t("products.emptyArchived") : t("products.empty")}
-        </Text>
-      )}
-
-      <Pagination
-        count={totalItems}
-        pageSize={pageSize}
-        page={page}
-        onPageChange={setPage}
-        pageSizeOptions={PAGE_SIZE_OPTIONS}
-        onPageSizeChange={(n) => {
-          setPageSize(n);
-          setPage(1);
-        }}
-      />
-
-      <RestoreProductDialog
-        product={conflict?.product ?? null}
-        reason={conflict?.reason ?? ""}
-        onClose={() => setConflict(null)}
-        onRestore={(sku) => restore(conflict!.product, sku)}
-      />
-    </Stack>
+        <RestoreProductDialog
+          product={conflict?.product ?? null}
+          reason={conflict?.reason ?? ""}
+          onClose={() => setConflict(null)}
+          onRestore={(sku) => restore(conflict!.product, sku)}
+        />
+      </Stack>
+    </RefreshOverlay>
   );
 }

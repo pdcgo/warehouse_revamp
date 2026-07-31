@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -235,7 +236,16 @@ func (s *Service) placeOrder(
 	// A publish failure does NOT fail the order. Revenue is downstream: a shop must be able to keep
 	// selling while the revenue service, or the broker, is down. It is logged loudly instead, because
 	// the alternative — swallowing it — is how a month-end report quietly goes wrong.
+	//
+	// EventId is DERIVED from the order, never a fresh UUID: a redelivery and a replay are the same
+	// logical fact and must collide, or a consumer counts the order twice. OccurredAtUnix is the
+	// order's own CreatedAt — the moment the order came into being — not time.Now() here, so a
+	// backfill run next month still files it in the day it happened
+	// (guidelines/event-guideline.md #1, #2).
 	_, publishErr := s.events(ctx, &sellingv1.OrderPlacedEvent{
+		EventId:        "order-placed:" + strconv.FormatUint(order.ID, 10),
+		OccurredAtUnix: order.CreatedAt.Unix(),
+
 		TeamId:       order.TeamID,
 		OrderId:      order.ID,
 		Revenue:      order.Total,

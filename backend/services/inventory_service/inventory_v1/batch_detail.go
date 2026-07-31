@@ -15,9 +15,10 @@ import (
 // batchRow is the resolved shape of a batch — its delivery/line joins plus the derived Ready — shared
 // by BatchList and BatchDetail so the two cannot disagree about what a batch looks like.
 type batchRow struct {
-	ID         uint64
-	DeliveryID uint64
-	ReceiptNo  string
+	ID          uint64
+	DeliveryID  uint64
+	WarehouseID uint64
+	ReceiptNo   string
 	ProductID  uint64
 	SKU        string
 	Name       string
@@ -43,7 +44,7 @@ const lostExpr = `COALESCE((SELECT SUM(du.quantity) FROM restock_damaged_units d
 // batchSelect is the projection over `stock_batches AS b` joined to its line and delivery. The caller
 // adds the WHERE (warehouse + product for the list, warehouse + id for the detail) and the paging.
 const batchSelect = `
-	b.id, b.delivery_id, r.receipt AS receipt_no,
+	b.id, b.delivery_id, b.warehouse_id, r.receipt AS receipt_no,
 	b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
 	b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
 	` + lostExpr + ` AS lost,
@@ -60,6 +61,7 @@ func batchRowToProto(r *batchRow) *inventoryv1.StockBatch {
 	out := &inventoryv1.StockBatch{
 		Id:             r.ID,
 		DeliveryId:     r.DeliveryID,
+		WarehouseId:    r.WarehouseID,
 		ReceiptNo:      r.ReceiptNo,
 		ProductId:      r.ProductID,
 		Sku:            r.SKU,

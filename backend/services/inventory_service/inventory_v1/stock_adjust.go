@@ -166,7 +166,7 @@ func (s *Service) StockAdjust(
 				return err
 			}
 
-			fifoErr := attributeRecountFIFO(tx, warehouseID, productID, rackID, delta)
+			fifoErr := attributeDeltaFIFO(tx, warehouseID, productID, rackID, delta)
 			if fifoErr != nil {
 				return fifoErr
 			}
@@ -246,10 +246,17 @@ func adjustShelfBatch(tx *gorm.DB, batchID uint64, rack *uint64, delta int64) er
 	return nil
 }
 
-// attributeRecountFIFO spreads a shelf recount's delta over the shelf's batches, oldest first (#211,
-// owner's Q1). A gain lands on the oldest batch; a loss is drawn down the batches in age order, the way
-// a pick would. A shelf with no batch rows (legacy stock) is left to the stock_levels recount alone.
-func attributeRecountFIFO(tx *gorm.DB, warehouseID, productID uint64, rack *uint64, delta int64) error {
+// attributeDeltaFIFO spreads a change in a shelf's on-hand over the batches sitting on it, oldest
+// first (#211, owner's Q1). A gain lands on the oldest batch; a loss is drawn down the batches in age
+// order. A shelf with no batch rows (legacy stock) is left to the stock_levels figure alone.
+//
+// Called by a recount, by a PICK and by the put-back that reverses one (#232). It was named for the
+// recount while that was its only caller, and its own comment said a loss is drawn "the way a pick
+// would" — which was true of the rule and not of the code: the pick never called it, so every draw
+// left `stock_shelf_batches` untouched and every batch kept its arrival quantity as Ready forever.
+// The warehouse's Prices and Batches tabs read that number, so both overstated stock by everything
+// ever picked, and `used` (arrived − damaged − ready) stayed at 0 for goods that had shipped.
+func attributeDeltaFIFO(tx *gorm.DB, warehouseID, productID uint64, rack *uint64, delta int64) error {
 	if delta == 0 {
 		return nil
 	}

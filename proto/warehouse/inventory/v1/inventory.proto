@@ -77,6 +77,13 @@ service InventoryService {
   // zeros rather than their numbers.
   rpc OwnerStockByIds(OwnerStockByIdsRequest) returns (OwnerStockByIdsResponse);
   rpc OwnerStockStat(OwnerStockStatRequest) returns (OwnerStockStatResponse);
+
+  // The owner's three ROW-level reads (#232), behind the product detail's Price, Batch and Stock
+  // history tabs. OwnerStockByIds above answers per-product aggregates; these answer what those
+  // aggregates are made of, under the same ownership join and the same warehouse lens.
+  rpc OwnerCostLayerList(OwnerCostLayerListRequest) returns (OwnerCostLayerListResponse);
+  rpc OwnerBatchList(OwnerBatchListRequest) returns (OwnerBatchListResponse);
+  rpc OwnerStockHistory(OwnerStockHistoryRequest) returns (OwnerStockHistoryResponse);
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -806,6 +813,11 @@ message StockBatch {
   // How this batch came to exist (#218): a normal restock delivery, or stock coming BACK as a return.
   // UNSPECIFIED reads as a restock (the default origin) until the projection sets it.
   BatchOrigin origin = 22;
+
+  // WHICH BUILDING holds it (#232). The warehouse's own lists never needed it — they are scoped to one
+  // warehouse, so every row's answer is the same. The OWNER's list spans every warehouse holding its
+  // goods, and there "which delivery" is only half a location.
+  uint64 warehouse_id = 23;
 }
 
 // Where a batch's units originated (#218) — a restock delivery, or a return.
@@ -1330,4 +1342,181 @@ message OwnerStockStatRequest {
 
 message OwnerStockStatResponse {
   OwnerStockPreview preview = 1;
+}
+
+// ── The owner's row-level reads (#232) ────────────────────────────────────────────────────────────
+//
+// Three lists behind the product detail's Price, Batch and Stock history tabs. Each mirrors a
+// warehouse-side read — CostLayerList, BatchList, StockHistory — with two differences that are the
+// whole point:
+//
+//  1. `team_id` is the SELLING team, and it both authorizes and filters. Ownership runs through
+//     stock_batches → restock_request_items → restock_requests.requesting_team_id, so another team's
+//     product id matches no rows rather than returning their numbers.
+//  2. A `warehouse_id` LENS instead of a warehouse scope. 0 = every building holding these goods,
+//     which is the reading an owner actually wants: the warehouse-side reads can only ever answer for
+//     the building the caller stands in.
+
+message OwnerCostLayerListFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // 0 = every warehouse. Set it and the layers describe one building's shelves.
+  uint64 warehouse_id = 2;
+}
+
+message OwnerCostLayerListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OwnerCostLayerListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OwnerCostLayerListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+enum OwnerCostLayerListDataType {
+  OWNER_COST_LAYER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  OWNER_COST_LAYER_LIST_DATA_TYPE_GENERAL = 1;
+  OWNER_COST_LAYER_LIST_DATA_TYPE_LAYER = 2;
+}
+
+message OwnerCostLayerListResponse {
+  // Reuses CostLayer — an owner's layer and a warehouse's layer are the same fact about the same
+  // units, and giving the owner its own near-identical message is how two screens start disagreeing
+  // about what a cost layer is. Keyed by 1-based position, dearest first, Unknown last.
+  repeated CostLayerListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  // Values the KNOWN-cost layers only (#74) — an unknown layer is worth "Unknown", never 0.
+  int64 total_value = 4;
+}
+
+message OwnerBatchListFilter {
+  uint64 product_id = 1;
+  // 0 = every warehouse.
+  uint64 warehouse_id = 2;
+}
+
+message OwnerBatchListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OwnerBatchListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OwnerBatchListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+enum OwnerBatchListDataType {
+  OWNER_BATCH_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  OWNER_BATCH_LIST_DATA_TYPE_GENERAL = 1;
+  OWNER_BATCH_LIST_DATA_TYPE_BATCH = 2;
+}
+
+message OwnerBatchListResponse {
+  // Reuses StockBatch, whose warehouse_id (#232) carries the building each delivery landed in.
+  repeated BatchListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+  // Over the whole filtered set, not the page. Known-cost batches only (#74).
+  int64 ready_value_total = 4;
+}
+
+// OwnerMovement is one line of the owner's ledger (#232).
+//
+// It is deliberately NOT StockMovement. That message answers for a SHELF — its `balance` is the rack's
+// running total and its `rack_id` is the point of the row — and an owner's lens has no racks in it: a
+// shelf-to-shelf move inside one building changes nothing they own, and a rack's running total printed
+// under a Warehouse column states a fact about a shelf as though it were about the building.
+message OwnerMovement {
+  uint64 id = 1;
+  // The ledger row this projects. Stable across a rebuild of the projection.
+  uint64 movement_id = 2;
+  uint64 product_id = 3;
+  uint64 warehouse_id = 4;
+  // 0 = a batch-less event — a shelf recount reconciles the whole shelf and names no batch, though its
+  // delta lands on the oldest batch underneath (FIFO). Those count as the owner's when the team owns
+  // any batch of that product in that warehouse.
+  uint64 batch_id = 5;
+  MovementKind kind = 6;
+  int64 delta = 7; // signed: + in, - out
+  // The owner's on-hand of THIS PRODUCT IN THIS WAREHOUSE after the movement — a running sum over the
+  // owner's own ledger, computed at read time rather than stored, so it can never drift from the rows
+  // it is made of.
+  int64 balance = 8;
+  string reason = 9;
+  string ref = 10;
+  uint64 actor_user_id = 11;
+  int64 created_at_unix = 12;
+}
+
+message OwnerStockHistoryFilter {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // 0 = every warehouse.
+  uint64 warehouse_id = 2;
+  MovementKind kind = 3 [(buf.validate.field).enum.defined_only = true];
+  int64 from_unix = 4;
+  int64 to_unix = 5;
+}
+
+message OwnerStockHistoryRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OwnerStockHistoryFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OwnerStockHistoryDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+enum OwnerStockHistoryDataType {
+  OWNER_STOCK_HISTORY_DATA_TYPE_UNSPECIFIED = 0;
+  OWNER_STOCK_HISTORY_DATA_TYPE_GENERAL = 1;
+  OWNER_STOCK_HISTORY_DATA_TYPE_MOVEMENT = 2;
+}
+
+message OwnerMovementMapItem {
+  map<uint64, OwnerMovement> map_data = 1;
+}
+
+message OwnerStockHistoryResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OwnerMovementMapItem movement = 2;
+  }
+}
+
+message OwnerStockHistoryResponse {
+  repeated OwnerStockHistoryResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

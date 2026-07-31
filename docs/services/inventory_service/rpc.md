@@ -67,6 +67,17 @@ the stock ledger can never diverge because the fulfil does both in **one transac
   `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
   warehouse's "incoming" view. Paginated, newest first. Lines are **preloaded** in one extra query
   keyed by request id, so a page costs 2 queries rather than N+1.
+  - **Every filter is server-side**, and that is forced by pagination rather than chosen: a
+    client-side filter narrows the loaded page only, while `total_items` goes on counting the
+    unfiltered set and the pager confidently offers pages that no longer exist.
+  - **The two lenses are mirror images, and each screen offers exactly one.** `warehouse_id` is the
+    BUYER's ("what is going to Jakarta") — meaningless to a warehouse, where it could only equal the
+    caller. `requesting_team_id` is the RECEIVER's ("what is coming from Bandung") — meaningless to a
+    seller for the same reason.
+  - ⚠ **A lens NARROWS the two-sided scope, it never replaces it.** The `requesting_team_id = ? OR
+    warehouse_id = ?` clause still applies, so a warehouse naming a selling team gets that team's
+    restocks *addressed to itself* — not that team's whole book. A filter written as a substitute for
+    the scope passes every ordinary test and hands one warehouse another's inbound queue.
 - **`RestockRequestDetail`** — one request in full, with its lines, for the detail page (#125). The
   same two-sided scope as List, and the scope **is** the `WHERE` clause: a request that is neither
   yours nor targeting you reads as **NotFound**, never PermissionDenied — a permission error would
@@ -98,6 +109,12 @@ the stock ledger can never diverge because the fulfil does both in **one transac
     shortfall remains on the record for whoever chases the supplier.
   - **A line counted `0` moves no stock at all** — no zero-quantity movement is appended. A ledger row
     saying nothing happened is worse than no row, because it reads as a receipt.
+  - **A COD acceptance writes TWO timeline events, fee first** (#155/#184). Paying the courier at the
+    door and counting the box in are two facts about two pockets: one says goods landed, the other says
+    the warehouse is out of pocket for goods it does not own and the requesting team now owes it. Folded
+    into the acceptance, the payment is invisible on the timeline of the team that has to settle it.
+    Both carry the same instant, so the ORDER comes from the insert order — Detail sorts `at ASC, id
+    ASC`. A fee of `0` writes no event, exactly as it posts no ledger entry.
 - **`RestockRequestUpdate`** — the REQUESTER edits its own request **while the warehouse has not
   accepted it** (#131). Until then nothing has physically happened, so there is nothing to protect and
   the request is freely editable — the warehouse it targets included. Once it is `fulfilled` the goods
@@ -184,8 +201,15 @@ sequenceDiagram
                 Note over H,DB: straight onto the named shelf —<br/>counting and shelving are ONE act
             end
         end
-        H->>DB: UPDATE restock_requests SET status='fulfilled'
+        H->>DB: UPDATE restock_requests SET status='fulfilled',<br/>cod_shipping_fee, accepted_by_user_id, accepted_at
         Note over H,DB: a SHORT count still fulfils — both<br/>asked and arrived stay on the line
+        opt cod_shipping_fee > 0 (#155)
+            H->>DB: INSERT restock_request_events (cod_fee)
+            Note over H,DB: written FIRST — the courier is paid at the door,<br/>THEN the box is counted in. Nothing at all when the<br/>fee is 0, which is most deliveries.
+            H->>DB: PostCODFee → settlement ledger (#184)
+        end
+        H->>DB: INSERT restock_request_events (accepted)
+        Note over H,DB: same instant as accepted_at — the timeline and<br/>the accepted-date filter name one second
         H->>DB: COMMIT
         DB-->>H: ok
         H-->>W: RestockRequest{status=fulfilled}
@@ -375,6 +399,44 @@ same rounding (down) — so the figure on screen is the one an order will actual
 
 ---
 
+## RestockInboundStat — the receiving warehouse's headline (owner, 2026-07-30)
+
+The mirror of `OwnerStockStat` below, and it exists **because it is not the same question**. The buyer
+asks *what have I committed that has not landed*; the warehouse asks *what work is still at my door*.
+
+```mermaid
+flowchart LR
+    subgraph "the same rows, read from two ends"
+      RR["restock_requests (status = pending)"]
+      RI[restock_request_items]
+      RI --> RR
+    end
+    RR -->|"requesting_team_id = team"| O["OwnerStockStat — money committed"]
+    RR -->|"warehouse_id = team"| I["RestockInboundStat — work waiting"]
+```
+
+Four figures over **pending restocks targeting this warehouse**, narrowed by the same
+`requesting_team_id` lens the list uses — a headline that ignored the filter under it would contradict
+the table it sits above.
+
+| Figure | What it is | Why not the obvious thing |
+| --- | --- | --- |
+| `restock_count` | `COUNT(*)` over the pending REQUESTS | Over requests, not the item join — a two-line delivery is **one** delivery. 3 deliveries of 400 pieces and 30 of 400 are the same stock and completely different amounts of door-opening. |
+| `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one SKU on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
+| `unit_count` | Σ `quantity` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
+| `amount` | Σ `total_price` | **Goods only.** `shipping_cost` is what the buying team paid to get them moving and `cod_shipping_fee` is 0 until someone accepts, so either would answer a question about somebody else's spending. |
+| `oldest_pending_unix` | `MIN(created_at)` over the REQUESTS | Over requests, not their lines — a line-less request still waits at the door, and a MIN over the item join would skip it. A count of 7 hides the box that has sat since Monday. |
+
+**PENDING is the whole meaning of it.** A fulfilled delivery has been counted and become stock; a
+cancelled one never arrives. Either leaking in produces a queue that never drains.
+
+`MIN`/`MAX` over no rows is **NULL, not 0** — the scan target is nullable, and an empty queue reports
+`0` (the RPC's "never"), which the UI renders as an em dash rather than "0 days".
+
+Its policy carries **warehouse roles only** — this is deliberately not one RPC serving both sides.
+`OwnerStockStat`'s policy has no warehouse roles at all, so the receiving crew would have got
+PermissionDenied from it; letting one RPC answer both is how two different numbers silently converge.
+
 ## OwnerStockByIds / OwnerStockStat — the catalogue owner's stock (the selling team's product list)
 
 Every other read in this service answers **for a warehouse**: the caller is the building, and
@@ -445,3 +507,68 @@ describing the search rather than the business.
 restates as that one building's** — which is the honest reading, because stock is held per warehouse
 and a total can never tell you whether *one* of them can fill an order. The UI says so out loud by
 appending the warehouse's name to each stock column header.
+
+## OwnerCostLayerList / OwnerBatchList / OwnerStockHistory — the owner's product DETAIL (#232)
+
+`OwnerStockByIds` above answers per-product aggregates. These three answer **what those aggregates are
+made of**, behind the selling team's product detail: its Price, Batch and Stock history tabs, which
+until now had never shown a row.
+
+They are not new questions — `CostLayerList`, `BatchList` and `StockHistory` have answered them for a
+warehouse all along. But every one of those is scoped to the **warehouse team** and admits **warehouse
+roles only**, so a selling team has no building to name and no role to ask with. The three owner reads
+are the same questions asked by the team that owns the goods:
+
+| | scope | warehouse | who may call |
+| --- | --- | --- | --- |
+| `CostLayerList` / `BatchList` / `StockHistory` | the warehouse team | **is** the scope | warehouse roles |
+| `OwnerCostLayerList` / `OwnerBatchList` / `OwnerStockHistory` | the **selling** team | a **lens** (0 = all) | selling roles |
+
+The warehouse becoming a *lens* rather than the scope is the substantive change. An owner's purchases
+are not a fact about a building — 200 units in Surabaya and 300 in Jakarta are one purchase history —
+so `warehouse_id` narrows the answer instead of defining it, and the Batch rows carry the building
+they landed in as a column.
+
+### The ledger the owner reads is a different table
+
+`OwnerStockHistory` reads **`stock_owner_movements`**, not `stock_movements`. The ledger answers for a
+SHELF: its `balance` is a rack's running total, its `rack_id` is the point of the row, and a
+shelf-to-shelf move is among its commonest events. None of those is a fact about what an owner holds.
+
+```mermaid
+flowchart TB
+    AM["appendMovement — the one choke point every ledger row passes through"]
+    AM --> SM[stock_movements — the shelf's ledger]
+    AM --> P{"project?"}
+    P -->|"kind = MOVE"| DROP["dropped — changes where stock sits, not what the owner has"]
+    P -->|"batch named"| CHAIN["owner = batch → restock line → requesting team"]
+    P -->|"no batch — a recount, every PICK"| PROD["owner = whoever owns batches of this product in this warehouse"]
+    CHAIN --> SOM[stock_owner_movements]
+    PROD --> SOM
+```
+
+Two rules, because a batch-less event cannot climb the chain at all. A movement that resolves to **no**
+owner is not projected — stock nobody restocked here has no owner to tell.
+
+### Why the balance is computed and not stored
+
+`OwnerMovement.balance` is the owner's on-hand of that product **in that building** after the event —
+a running `SUM(delta) OVER (PARTITION BY warehouse_id ORDER BY id)` over their own ledger.
+
+- **Derived, not stored.** Stored, it would be a number maintained by two writers on different shelves
+  of the same product with nothing serialising them: two concurrent receives would each read the same
+  "previous" balance and write the same "after". Derived, it cannot drift from the rows it is made of,
+  and rebuilding the projection reproduces every figure exactly.
+- **The window runs BEFORE the filters.** Kind and date narrow the result *outside* the subquery.
+  Summing after them would produce "the total of the adjustments I asked to see" — a number about the
+  filter rather than about the stock.
+- **`PARTITION BY warehouse_id`, always.** With the lens set it is a single partition and costs
+  nothing. With the lens open it is what keeps each row's balance a statement about ONE building,
+  rather than a total that adds together stock in cities which can never fill each other's orders.
+
+### This projection is meant to move
+
+Today `appendMovement` writes both tables in one transaction, so the owner's history can never be
+missing an event the shelf's ledger recorded. Later it becomes an **event consumer** (owner) — the
+rows and the read shape do not change when it does, which is the reason the owner's lens lives in its
+own table now rather than being fused into `stock_movements`.

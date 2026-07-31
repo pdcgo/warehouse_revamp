@@ -24,7 +24,8 @@ import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRo
 import { useTeam } from "../../features/team/TeamContext";
 import { Pagination } from "../../components/Pagination";
 import { ProductListItem } from "../../components/ProductListItem";
-import { PLACEMENT_KINDS, kindLabel } from "../../features/inventory/movementKind";
+import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
+import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -690,34 +691,16 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
 
   return (
     <Stack gap="card">
-      <Table.Root size="sm" data-testid={`${testId}-table`}>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>{t("racks.detail.when")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("racks.detail.what")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.change")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("racks.detail.after")}</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {movements.map((m) => (
-            <Table.Row key={m.id.toString()} data-testid={`${testId}-row-${m.id}`}>
-              <Table.Cell>{new Date(m.createdAt).toLocaleDateString()}</Table.Cell>
-              <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
-              <Table.Cell>#{m.productId.toString()}</Table.Cell>
-              {/* A ledger line IS a movement, so a sign is the honest rendering here — it says which
-                  way the count went, which is what the row is about. */}
-              <Table.Cell textAlign="end">
-                {m.delta > 0n ? "+" : ""}
-                {m.delta.toString()}
-              </Table.Cell>
-              <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
+      {/* The shared ledger (features/inventory/MovementTable): this shelf's history names the PRODUCT
+          that moved, since the rack is already the thing you are looking at. "On shelf after" stays
+          this page's wording — it is one shelf's count, not the warehouse's (#135). */}
+      <MovementTable
+        movements={movements}
+        testId={testId}
+        columns={["product"]}
+        afterLabel={t("racks.detail.after")}
+        emptyText={t("racks.detail.noHistory")}
+      />
 
       <Pagination
         count={totalItems}

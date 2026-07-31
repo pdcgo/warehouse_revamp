@@ -18,15 +18,25 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, PackageCheck, Printer, Receipt } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import {
+  RestockDamageType,
+  RestockRequestStatus,
+} from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
 import { useRackCodes } from "../../features/racks/queries";
 import { useRestockRequest } from "../../features/restock/queries";
 import { DetailField } from "../../features/restock/DetailField";
-import { deltaLabel } from "../../features/restock/counting";
+import { DamageCell } from "../../features/restock/DamageCell";
 import { lineTotal, rackLabel, unitPrice } from "../../features/restock/lines";
-import { askedQuantity, goodsTotal, receivedQuantity } from "../../features/restock/summary";
+import {
+  askedQuantity,
+  brokenQuantity,
+  damageReasons,
+  goodsTotal,
+  lostQuantity,
+  receivedQuantity,
+} from "../../features/restock/summary";
 import { RestockStatusBadge } from "../../components/RestockStatusBadge";
 import { ShippingBadge } from "../../components/ShippingBadge";
 import { formatUnixDate } from "../../lib/datetime";
@@ -48,9 +58,15 @@ function parseRequestId(raw: string | undefined): bigint {
 //
 // THE COMMERCIAL TERMS ARE GONE, and that is the substance of the split rather than a tidy-up. The
 // supplier, the payment type and the order reference are the buying team's relationship with its
-// own supplier — a warehouse neither acts on them nor, in the supplier's case, can even read them
-// (SupplierDetail is scoped to the requesting team, so asking returned NotFound and the field showed
-// "Supplier #7" — a number standing in for a fact this side was never entitled to).
+// own supplier, and a warehouse does not act on them.
+//
+// ⚠ The second half of that argument NO LONGER HOLDS, and the field is still absent by choice. This
+// used to add "nor can it even read them" — SupplierDetail is scoped to the requesting team, so
+// asking returned NotFound and the field showed "Supplier #7". SupplierByIds (2026-07-30, owner)
+// removed that barrier for the ACCEPT screen, where the crew is holding the supplier's carton and a
+// number instead of a name costs them the check they are there to make. THIS page is a record being
+// read after the fact, not a box being matched, so the reason to omit the supplier here is now
+// relevance rather than permission. Adding it back is a decision, not a bug fix.
 //
 // The LANDED COST stays, and the distinction is deliberate: purchase terms are somebody else's
 // business, but what a piece cost to get here is this warehouse's own — it is the basis of the cost
@@ -73,7 +89,11 @@ export function RestockWarehouseDetailPage() {
   const loading = query.isPending && id !== 0n;
 
   const error =
-    id === 0n ? t("restock.detail.invalidId") : query.isError ? rpcError(query.error) : "";
+    id === 0n
+      ? t("restock.detail.invalidId")
+      : query.isError
+        ? rpcError(query.error)
+        : "";
 
   const requestingTeamId = request?.requestingTeamId ?? 0n;
   const warehouseId = request?.warehouseId ?? 0n;
@@ -85,7 +105,10 @@ export function RestockWarehouseDetailPage() {
 
   // Who the goods are coming FROM — the column the buyer's page has no use for, since there it is
   // always the reader. TeamDetail is unscoped, so the name resolves for either side.
-  const requester = useTeamDetail({ teamId: requestingTeamId, enabled: requestingTeamId > 0n });
+  const requester = useTeamDetail({
+    teamId: requestingTeamId,
+    enabled: requestingTeamId > 0n,
+  });
 
   // Racks belong to the warehouse, so the codes resolve here and nowhere else. Asked for only once
   // there are placements to translate — before acceptance there is no place to resolve.
@@ -136,7 +159,8 @@ export function RestockWarehouseDetailPage() {
   }
 
   const isPending = request.status === RestockRequestStatus.PENDING;
-  const short = isFulfilled && receivedTotal < askedTotal ? askedTotal - receivedTotal : 0n;
+  const short =
+    isFulfilled && receivedTotal < askedTotal ? askedTotal - receivedTotal : 0n;
 
   return (
     <Stack gap="section" data-testid="restock-detail-page">
@@ -174,7 +198,9 @@ export function RestockWarehouseDetailPage() {
           <Button
             colorPalette="brand"
             data-testid="restock-detail-fulfil"
-            onClick={() => navigate(`/inventories/restock/${request.id}/accept`)}
+            onClick={() =>
+              navigate(`/inventories/restock/${request.id}/accept`)
+            }
           >
             <Icon as={PackageCheck} boxSize="4" />
             {t("restock.receive.title")}
@@ -187,7 +213,9 @@ export function RestockWarehouseDetailPage() {
           <Button
             variant="outline"
             data-testid="restock-detail-labels"
-            onClick={() => navigate(`/inventories/restock/${request.id}/labels`)}
+            onClick={() =>
+              navigate(`/inventories/restock/${request.id}/labels`)
+            }
           >
             <Icon as={Printer} boxSize="4" />
             {t("restock.labels.action")}
@@ -198,7 +226,9 @@ export function RestockWarehouseDetailPage() {
           <Button
             variant="outline"
             data-testid="restock-detail-receipt"
-            onClick={() => navigate(`/inventories/restock/${request.id}/receipt`)}
+            onClick={() =>
+              navigate(`/inventories/restock/${request.id}/receipt`)
+            }
           >
             <Icon as={Receipt} boxSize="4" />
             {t("restock.table.receipt")}
@@ -219,7 +249,9 @@ export function RestockWarehouseDetailPage() {
                 label={t("restock.table.from")}
                 value={
                   requester.data?.name ||
-                  t("restock.teamRef", { id: request.requestingTeamId.toString() })
+                  t("restock.teamRef", {
+                    id: request.requestingTeamId.toString(),
+                  })
                 }
                 testId="restock-detail-from"
               />
@@ -251,90 +283,148 @@ export function RestockWarehouseDetailPage() {
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("restock.form.note")}
             </Text>
-            <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="restock-detail-note">
+            <Text
+              fontSize="sm"
+              whiteSpace="pre-wrap"
+              data-testid="restock-detail-note"
+            >
               {request.note || "—"}
             </Text>
           </Stack>
         </Card.Body>
       </Card.Root>
 
-      <Card.Root>
+      {/* maxW="full" + a scrolling table: EIGHT columns here (the buyer's seven plus Place) do not
+          fit a laptop, and without both the card grows and the whole page scrolls sideways instead. */}
+      <Card.Root maxW="full" overflow="hidden">
         <Card.Body>
           <Stack gap="card">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("restock.form.products")}
             </Text>
 
-            <Table.Root size="sm" data-testid="restock-detail-items">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>{t("restock.detail.sku")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("restock.detail.name")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {isFulfilled ? t("restock.detail.asked") : t("restock.table.qty")}
-                  </Table.ColumnHeader>
-                  {isFulfilled && (
-                    <Table.ColumnHeader textAlign="end">
-                      {t("restock.detail.arrived")}
+            <Table.ScrollArea>
+              <Table.Root size="sm" data-testid="restock-detail-items">
+                <Table.Header>
+                  <Table.Row>
+                    <Table.ColumnHeader>
+                      {t("restock.detail.sku")}
                     </Table.ColumnHeader>
-                  )}
-                  {isFulfilled && (
-                    <Table.ColumnHeader>{t("restock.detail.place")}</Table.ColumnHeader>
-                  )}
-                  <Table.ColumnHeader textAlign="end">
-                    {t("restock.detail.unitPrice")}
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {t("restock.detail.lineTotal")}
-                  </Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {request.items.map((item) => {
-                  const delta = isFulfilled ? deltaLabel(t, item.quantity, item.receivedQuantity) : "";
+                    <Table.ColumnHeader>
+                      {t("restock.detail.name")}
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.detail.asked")}
+                    </Table.ColumnHeader>
+                    {/* ACCEPTED · LOST · BROKEN (owner) — the same three columns the buyer's Product tab
+                      carries, ALWAYS PRESENT for the same reason: gated on acceptance they were absent
+                      from every restock still waiting, which is most of them, so the table looked as
+                      though it had never gained them. An uncounted line reads "—" (not counted yet),
+                      never 0 (nothing arrived).
 
-                  return (
-                    <Table.Row
-                      key={item.id.toString()}
-                      data-testid={`restock-detail-item-${item.productId}`}
-                    >
-                      <Table.Cell>{item.sku}</Table.Cell>
-                      <Table.Cell>{item.name}</Table.Cell>
-                      <Table.Cell textAlign="end">{item.quantity.toString()}</Table.Cell>
-                      {isFulfilled && (
+                      The two pages must agree: this is the side that WROTE these numbers at the door,
+                      so a warehouse reading its own record must see exactly what the team it supplies
+                      is reading about that record. "Arrived" became "Accepted" for the same reason —
+                      the number is what became sellable stock, and broken units arrived too.
+
+                      PLACE stays gated, and the difference is real: an uncounted line has no shelf
+                      because nothing has been put anywhere, and an em dash there would invite the crew
+                      to wonder which shelf they had forgotten. */}
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.detail.accepted")}
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.accept.problemLost")}
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.accept.problemBroken")}
+                    </Table.ColumnHeader>
+                    {isFulfilled && (
+                      <Table.ColumnHeader>
+                        {t("restock.detail.place")}
+                      </Table.ColumnHeader>
+                    )}
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.detail.unitPrice")}
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader textAlign="end">
+                      {t("restock.detail.lineTotal")}
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {request.items.map((item) => {
+                    // Weights the number when the count came out other than the ask, either way. The
+                    // "short by n" badge that used to sit beside it is gone (owner) — see below.
+                    const differs = isFulfilled && item.receivedQuantity !== item.quantity;
+
+                    return (
+                      <Table.Row
+                        key={item.id.toString()}
+                        data-testid={`restock-detail-item-${item.productId}`}
+                      >
+                        <Table.Cell>{item.sku}</Table.Cell>
+                        <Table.Cell>{item.name}</Table.Cell>
+                        <Table.Cell textAlign="end">
+                          {item.quantity.toString()}
+                        </Table.Cell>
+                        {/* An em dash before the count, never the 0 the field holds — see the header. */}
                         <Table.Cell
                           textAlign="end"
+                          color={isFulfilled ? undefined : "fg.muted"}
                           data-testid={`restock-detail-received-${item.productId}`}
                         >
-                          <Flex align="center" justify="end" gap="2" wrap="wrap">
-                            <Text as="span" fontWeight={delta ? "semibold" : "normal"}>
+                          {/* NO "short by n" BADGE (owner), same as the buyer's tab: Asked · Accepted ·
+                              Lost · Broken across the row IS the discrepancy, itemised, and the badge
+                              could only restate the total while implying all of it was shortfall. The
+                              number stays bold when it differs from the ask. */}
+                          {isFulfilled ? (
+                            <Text
+                              as="span"
+                              fontWeight={differs ? "semibold" : "normal"}
+                            >
                               {item.receivedQuantity.toString()}
                             </Text>
-                            {delta && (
-                              <Badge
-                                colorPalette={
-                                  item.receivedQuantity < item.quantity ? "red" : "orange"
-                                }
-                                data-testid={`restock-detail-delta-${item.productId}`}
-                              >
-                                {delta}
-                              </Badge>
-                            )}
-                          </Flex>
+                          ) : (
+                            "—"
+                          )}
                         </Table.Cell>
-                      )}
-                      {isFulfilled && (
-                        <Table.Cell data-testid={`restock-detail-place-${item.productId}`}>
-                          {rackLabel(t, item, codes) || "—"}
+                        {/* The shared DamageCell, so the number and its reason read identically on both
+                          detail pages (features/restock/DamageCell). No status gate: an uncounted line
+                          has no damage rows, so its own zero-is-an-em-dash rule already says
+                          "not counted". */}
+                        <DamageCell
+                          quantity={lostQuantity(item)}
+                          reasons={damageReasons(item, RestockDamageType.LOST)}
+                          testId={`restock-detail-lost-${item.productId}`}
+                        />
+                        <DamageCell
+                          quantity={brokenQuantity(item)}
+                          reasons={damageReasons(
+                            item,
+                            RestockDamageType.BROKEN,
+                          )}
+                          testId={`restock-detail-broken-${item.productId}`}
+                        />
+                        {isFulfilled && (
+                          <Table.Cell
+                            data-testid={`restock-detail-place-${item.productId}`}
+                          >
+                            {rackLabel(t, item, codes) || "—"}
+                          </Table.Cell>
+                        )}
+                        <Table.Cell textAlign="end">
+                          {formatRupiah(unitPrice(item))}
                         </Table.Cell>
-                      )}
-                      <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
-                      <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
+                        <Table.Cell textAlign="end">
+                          {formatRupiah(lineTotal(item))}
+                        </Table.Cell>
+                      </Table.Row>
+                    );
+                  })}
+                </Table.Body>
+              </Table.Root>
+            </Table.ScrollArea>
 
             <Separator />
 
@@ -344,7 +434,11 @@ export function RestockWarehouseDetailPage() {
               {isFulfilled && (
                 <Text fontSize="sm" color="fg.muted">
                   {t("restock.detail.receivedTotal")}:{" "}
-                  <Text as="span" fontWeight="medium" data-testid="restock-detail-received-total">
+                  <Text
+                    as="span"
+                    fontWeight="medium"
+                    data-testid="restock-detail-received-total"
+                  >
                     {receivedTotal.toString()} / {askedTotal.toString()}
                   </Text>
                 </Text>
@@ -371,7 +465,11 @@ export function RestockWarehouseDetailPage() {
                   </Text>
                 </Text>
               )}
-              <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
+              <Text
+                fontSize="md"
+                fontWeight="semibold"
+                data-testid="restock-detail-total"
+              >
                 {t("restock.summary.grandTotal")}: {formatRupiah(grandTotal)}
               </Text>
             </Stack>

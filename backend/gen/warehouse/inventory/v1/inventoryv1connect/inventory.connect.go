@@ -96,6 +96,15 @@ const (
 	// InventoryServiceOwnerStockStatProcedure is the fully-qualified name of the InventoryService's
 	// OwnerStockStat RPC.
 	InventoryServiceOwnerStockStatProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockStat"
+	// InventoryServiceOwnerCostLayerListProcedure is the fully-qualified name of the InventoryService's
+	// OwnerCostLayerList RPC.
+	InventoryServiceOwnerCostLayerListProcedure = "/warehouse.inventory.v1.InventoryService/OwnerCostLayerList"
+	// InventoryServiceOwnerBatchListProcedure is the fully-qualified name of the InventoryService's
+	// OwnerBatchList RPC.
+	InventoryServiceOwnerBatchListProcedure = "/warehouse.inventory.v1.InventoryService/OwnerBatchList"
+	// InventoryServiceOwnerStockHistoryProcedure is the fully-qualified name of the InventoryService's
+	// OwnerStockHistory RPC.
+	InventoryServiceOwnerStockHistoryProcedure = "/warehouse.inventory.v1.InventoryService/OwnerStockHistory"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -148,6 +157,12 @@ type InventoryServiceClient interface {
 	// zeros rather than their numbers.
 	OwnerStockByIds(context.Context, *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error)
 	OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error)
+	// The owner's three ROW-level reads (#232), behind the product detail's Price, Batch and Stock
+	// history tabs. OwnerStockByIds above answers per-product aggregates; these answer what those
+	// aggregates are made of, under the same ownership join and the same warehouse lens.
+	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
+	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
+	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -287,6 +302,24 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
 			connect.WithClientOptions(opts...),
 		),
+		ownerCostLayerList: connect.NewClient[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse](
+			httpClient,
+			baseURL+InventoryServiceOwnerCostLayerListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("OwnerCostLayerList")),
+			connect.WithClientOptions(opts...),
+		),
+		ownerBatchList: connect.NewClient[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse](
+			httpClient,
+			baseURL+InventoryServiceOwnerBatchListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("OwnerBatchList")),
+			connect.WithClientOptions(opts...),
+		),
+		ownerStockHistory: connect.NewClient[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse](
+			httpClient,
+			baseURL+InventoryServiceOwnerStockHistoryProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockHistory")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -313,6 +346,9 @@ type inventoryServiceClient struct {
 	batchReceipt         *connect.Client[v1.BatchReceiptRequest, v1.BatchReceiptResponse]
 	ownerStockByIds      *connect.Client[v1.OwnerStockByIdsRequest, v1.OwnerStockByIdsResponse]
 	ownerStockStat       *connect.Client[v1.OwnerStockStatRequest, v1.OwnerStockStatResponse]
+	ownerCostLayerList   *connect.Client[v1.OwnerCostLayerListRequest, v1.OwnerCostLayerListResponse]
+	ownerBatchList       *connect.Client[v1.OwnerBatchListRequest, v1.OwnerBatchListResponse]
+	ownerStockHistory    *connect.Client[v1.OwnerStockHistoryRequest, v1.OwnerStockHistoryResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -420,6 +456,21 @@ func (c *inventoryServiceClient) OwnerStockStat(ctx context.Context, req *connec
 	return c.ownerStockStat.CallUnary(ctx, req)
 }
 
+// OwnerCostLayerList calls warehouse.inventory.v1.InventoryService.OwnerCostLayerList.
+func (c *inventoryServiceClient) OwnerCostLayerList(ctx context.Context, req *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error) {
+	return c.ownerCostLayerList.CallUnary(ctx, req)
+}
+
+// OwnerBatchList calls warehouse.inventory.v1.InventoryService.OwnerBatchList.
+func (c *inventoryServiceClient) OwnerBatchList(ctx context.Context, req *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error) {
+	return c.ownerBatchList.CallUnary(ctx, req)
+}
+
+// OwnerStockHistory calls warehouse.inventory.v1.InventoryService.OwnerStockHistory.
+func (c *inventoryServiceClient) OwnerStockHistory(ctx context.Context, req *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error) {
+	return c.ownerStockHistory.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -471,6 +522,12 @@ type InventoryServiceHandler interface {
 	// zeros rather than their numbers.
 	OwnerStockByIds(context.Context, *connect.Request[v1.OwnerStockByIdsRequest]) (*connect.Response[v1.OwnerStockByIdsResponse], error)
 	OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error)
+	// The owner's three ROW-level reads (#232), behind the product detail's Price, Batch and Stock
+	// history tabs. OwnerStockByIds above answers per-product aggregates; these answer what those
+	// aggregates are made of, under the same ownership join and the same warehouse lens.
+	OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error)
+	OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error)
+	OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -606,6 +663,24 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockStat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceOwnerCostLayerListHandler := connect.NewUnaryHandler(
+		InventoryServiceOwnerCostLayerListProcedure,
+		svc.OwnerCostLayerList,
+		connect.WithSchema(inventoryServiceMethods.ByName("OwnerCostLayerList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceOwnerBatchListHandler := connect.NewUnaryHandler(
+		InventoryServiceOwnerBatchListProcedure,
+		svc.OwnerBatchList,
+		connect.WithSchema(inventoryServiceMethods.ByName("OwnerBatchList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceOwnerStockHistoryHandler := connect.NewUnaryHandler(
+		InventoryServiceOwnerStockHistoryProcedure,
+		svc.OwnerStockHistory,
+		connect.WithSchema(inventoryServiceMethods.ByName("OwnerStockHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -650,6 +725,12 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceOwnerStockByIdsHandler.ServeHTTP(w, r)
 		case InventoryServiceOwnerStockStatProcedure:
 			inventoryServiceOwnerStockStatHandler.ServeHTTP(w, r)
+		case InventoryServiceOwnerCostLayerListProcedure:
+			inventoryServiceOwnerCostLayerListHandler.ServeHTTP(w, r)
+		case InventoryServiceOwnerBatchListProcedure:
+			inventoryServiceOwnerBatchListHandler.ServeHTTP(w, r)
+		case InventoryServiceOwnerStockHistoryProcedure:
+			inventoryServiceOwnerStockHistoryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -741,4 +822,16 @@ func (UnimplementedInventoryServiceHandler) OwnerStockByIds(context.Context, *co
 
 func (UnimplementedInventoryServiceHandler) OwnerStockStat(context.Context, *connect.Request[v1.OwnerStockStatRequest]) (*connect.Response[v1.OwnerStockStatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockStat is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) OwnerCostLayerList(context.Context, *connect.Request[v1.OwnerCostLayerListRequest]) (*connect.Response[v1.OwnerCostLayerListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerCostLayerList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) OwnerBatchList(context.Context, *connect.Request[v1.OwnerBatchListRequest]) (*connect.Response[v1.OwnerBatchListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerBatchList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) OwnerStockHistory(context.Context, *connect.Request[v1.OwnerStockHistoryRequest]) (*connect.Response[v1.OwnerStockHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.OwnerStockHistory is not implemented"))
 }

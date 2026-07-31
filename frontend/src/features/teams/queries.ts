@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { teamClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { teamListRowData, teamsFromList } from "./adapt";
 import { useInvalidateUsers } from "../users/queries";
@@ -23,13 +23,26 @@ interface TeamListArgs {
   pageSize: number;
   /** For a list that is only fetched in one mode of its screen (the users screen's team filter). */
   enabled?: boolean;
+  /**
+   * True when the caller is a PICKER FEED or a NAME LOOKUP rather than a list somebody works from —
+   * `TeamSelect`'s options, or the restock screens resolving a `From` column's team id to a name.
+   *
+   * This hook is the one place in the app where both callers exist, which is why the distinction is a
+   * flag here instead of a second hook. The rows are identical; what differs is what a stale one
+   * costs. On the Teams page it is a record being managed, so it is always fresh (`listQuery`, with
+   * the previous page kept on screen while the next loads). In a dropdown it is a LABEL, re-read on
+   * every mount and several times per screen, and a team named a minute ago is not a wrong answer —
+   * so those callers buy out of always-fresh explicitly (`referenceQuery`).
+   */
+  reference?: boolean;
 }
 
-export function useTeams({ teamType, page, pageSize, enabled = true }: TeamListArgs) {
+export function useTeams({ teamType, page, pageSize, enabled = true, reference = false }: TeamListArgs) {
   const type = teamType ?? TeamType.UNSPECIFIED;
 
   return useQuery({
     queryKey: key.teams(undefined, { teamType: type, page, pageSize }),
+    ...(reference ? referenceQuery : listQuery),
     enabled,
     queryFn: async () => {
       const res = await teamClient.teamList({

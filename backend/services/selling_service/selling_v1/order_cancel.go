@@ -3,6 +3,7 @@ package selling_v1
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -84,7 +85,15 @@ func (s *Service) OrderCancel(
 	//
 	// The row can be re-voided safely — RevenueVoid is idempotent and treats a missing row as success —
 	// so a lost publish is repairable rather than permanent.
+	//
+	// EventId is DERIVED from the order, not a fresh UUID, so a redelivery and a replay collide.
+	// OccurredAtUnix is the moment the transition was written — taken from the ORDER, which
+	// setOrderStatus updated in memory as well as in the row, rather than a second time.Now() here
+	// (guidelines/event-guideline.md #1, #2).
 	_, publishErr := s.events(ctx, &sellingv1.OrderCancelledEvent{
+		EventId:        "order-cancelled:" + strconv.FormatUint(order.ID, 10),
+		OccurredAtUnix: order.UpdatedAt.Unix(),
+
 		TeamId:  order.TeamID,
 		OrderId: order.ID,
 	})

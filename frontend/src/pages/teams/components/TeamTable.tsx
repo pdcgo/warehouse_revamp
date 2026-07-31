@@ -18,6 +18,7 @@ import type { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../../features/team/TeamContext";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { RefreshOverlay } from "../../../components/RefreshOverlay";
 import { TeamItem } from "../../../components/TeamItem";
 import { toaster } from "../../../components/Toaster";
 import { isGlobalAdmin } from "../../../lib/roles";
@@ -51,6 +52,10 @@ export function TeamTable({
 
   const teams = query.data?.teams ?? [];
   const loading = query.isPending;
+  // Always-fresh: this list refetches on every mount, tab and page change. `listQuery` keeps the rows
+  // already on screen while it does, and RefreshOverlay says a newer answer is coming. `isPending` is
+  // excluded — a first load has nothing to keep and shows the spinner instead.
+  const refreshing = query.isFetching && !query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
   const [dialog, setDialog] = useState<{ kind: "info" | "edit" | "delete"; team: Team } | null>(null);
@@ -73,157 +78,159 @@ export function TeamTable({
   }
 
   return (
-    <Stack gap="section">
-      {error && (
-        <Text color="red.fg" data-testid="teams-error">
-          {error}
-        </Text>
-      )}
+    <RefreshOverlay busy={refreshing}>
+      <Stack gap="section">
+        {error && (
+          <Text color="red.fg" data-testid="teams-error">
+            {error}
+          </Text>
+        )}
 
-      {loading ? (
-        <Spinner colorPalette="brand" />
-      ) : (
-        <Table.Root size="sm" data-testid="teams-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader>{t("teams.name")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("teams.code")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("teams.actions")}</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
+        {loading ? (
+          <Spinner colorPalette="brand" />
+        ) : (
+          <Table.Root size="sm" data-testid="teams-table">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader>{t("teams.name")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("teams.code")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("teams.actions")}</Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
 
-          <Table.Body>
-            {teams.map((team) => {
-              const isRoot = team.id === ROOT_TEAM_ID;
+            <Table.Body>
+              {teams.map((team) => {
+                const isRoot = team.id === ROOT_TEAM_ID;
 
-              return (
-                <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
-                  <Table.Cell>
-                    <Box
-                      cursor="pointer"
-                      data-testid={`open-team-${team.teamCode}`}
-                      onClick={() => navigate(`/teams/${team.id}`)}
-                    >
-                      <TeamItem
-                        team={{
-                          teamName: team.name,
-                          teamType: team.type,
-                          teamId: team.id,
-                          imageUrl: team.imageUrl,
-                        }}
-                      />
-                    </Box>
-                  </Table.Cell>
-                  <Table.Cell>{team.teamCode}</Table.Cell>
+                return (
+                  <Table.Row key={team.id.toString()} data-testid={`team-row-${team.teamCode}`}>
+                    <Table.Cell>
+                      <Box
+                        cursor="pointer"
+                        data-testid={`open-team-${team.teamCode}`}
+                        onClick={() => navigate(`/teams/${team.id}`)}
+                      >
+                        <TeamItem
+                          team={{
+                            teamName: team.name,
+                            teamType: team.type,
+                            teamId: team.id,
+                            imageUrl: team.imageUrl,
+                          }}
+                        />
+                      </Box>
+                    </Table.Cell>
+                    <Table.Cell>{team.teamCode}</Table.Cell>
 
-                  <Table.Cell textAlign="end">
-                    <Menu.Root>
-                      <Menu.Trigger asChild>
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          aria-label="Actions"
-                          data-testid={`row-actions-team-${team.teamCode}`}
-                        >
-                          <Icon as={MoreHorizontal} boxSize="4" />
-                        </IconButton>
-                      </Menu.Trigger>
+                    <Table.Cell textAlign="end">
+                      <Menu.Root>
+                        <Menu.Trigger asChild>
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Actions"
+                            data-testid={`row-actions-team-${team.teamCode}`}
+                          >
+                            <Icon as={MoreHorizontal} boxSize="4" />
+                          </IconButton>
+                        </Menu.Trigger>
 
-                      <Portal>
-                        <Menu.Positioner>
-                          <Menu.Content>
-                            <Menu.Item
-                              value="detail"
-                              data-testid={`detail-team-${team.teamCode}`}
-                              onClick={() => navigate(`/teams/${team.id}`)}
-                            >
-                              <Icon as={Eye} boxSize="4" />
-                              {t("teams.detailsAction")}
-                            </Menu.Item>
+                        <Portal>
+                          <Menu.Positioner>
+                            <Menu.Content>
+                              <Menu.Item
+                                value="detail"
+                                data-testid={`detail-team-${team.teamCode}`}
+                                onClick={() => navigate(`/teams/${team.id}`)}
+                              >
+                                <Icon as={Eye} boxSize="4" />
+                                {t("teams.detailsAction")}
+                              </Menu.Item>
 
-                            <Menu.Item
-                              value="info"
-                              data-testid={`info-team-${team.teamCode}`}
-                              onClick={() => setDialog({ kind: "info", team })}
-                            >
-                              <Icon as={Landmark} boxSize="4" />
-                              {t("teams.contactBank")}
-                            </Menu.Item>
+                              <Menu.Item
+                                value="info"
+                                data-testid={`info-team-${team.teamCode}`}
+                                onClick={() => setDialog({ kind: "info", team })}
+                              >
+                                <Icon as={Landmark} boxSize="4" />
+                                {t("teams.contactBank")}
+                              </Menu.Item>
 
-                            {admin && (
-                              <>
-                                <Menu.Item
-                                  value="edit"
-                                  data-testid={`edit-team-${team.teamCode}`}
-                                  onClick={() =>
-                                    editAsPage
-                                      ? navigate(`/teams/${team.id}/edit`)
-                                      : setDialog({ kind: "edit", team })
-                                  }
-                                >
-                                  <Icon as={Pencil} boxSize="4" />
-                                  {t("teams.edit")}
-                                </Menu.Item>
-
-                                {!isRoot && (
+                              {admin && (
+                                <>
                                   <Menu.Item
-                                    value="delete"
-                                    color="fg.error"
-                                    data-testid={`delete-team-${team.teamCode}`}
-                                    onClick={() => setDialog({ kind: "delete", team })}
+                                    value="edit"
+                                    data-testid={`edit-team-${team.teamCode}`}
+                                    onClick={() =>
+                                      editAsPage
+                                        ? navigate(`/teams/${team.id}/edit`)
+                                        : setDialog({ kind: "edit", team })
+                                    }
                                   >
-                                    <Icon as={Trash2} boxSize="4" />
-                                    {t("teams.delete")}
+                                    <Icon as={Pencil} boxSize="4" />
+                                    {t("teams.edit")}
                                   </Menu.Item>
-                                )}
-                              </>
-                            )}
-                          </Menu.Content>
-                        </Menu.Positioner>
-                      </Portal>
-                    </Menu.Root>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table.Root>
-      )}
 
-      {dialog?.kind === "info" && (
-        <TeamInfoDialog
-          key={dialog.team.id.toString()}
-          team={dialog.team}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
+                                  {!isRoot && (
+                                    <Menu.Item
+                                      value="delete"
+                                      color="fg.error"
+                                      data-testid={`delete-team-${team.teamCode}`}
+                                      onClick={() => setDialog({ kind: "delete", team })}
+                                    >
+                                      <Icon as={Trash2} boxSize="4" />
+                                      {t("teams.delete")}
+                                    </Menu.Item>
+                                  )}
+                                </>
+                              )}
+                            </Menu.Content>
+                          </Menu.Positioner>
+                        </Portal>
+                      </Menu.Root>
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table.Root>
+        )}
 
-      {dialog?.kind === "edit" && (
-        <EditTeamDialog
-          key={dialog.team.id.toString()}
-          team={dialog.team}
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-        />
-      )}
+        {dialog?.kind === "info" && (
+          <TeamInfoDialog
+            key={dialog.team.id.toString()}
+            team={dialog.team}
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+          />
+        )}
 
-      {dialog?.kind === "delete" && (
-        <ConfirmDialog
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          title={t("teams.deleteTeamTitle")}
-          message={t("teams.deleteTeamConfirm", { name: dialog.team.name })}
-          confirmLabel={t("teams.delete")}
-          onConfirm={() => remove(dialog.team)}
-        />
-      )}
-    </Stack>
+        {dialog?.kind === "edit" && (
+          <EditTeamDialog
+            key={dialog.team.id.toString()}
+            team={dialog.team}
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+          />
+        )}
+
+        {dialog?.kind === "delete" && (
+          <ConfirmDialog
+            open
+            onOpenChange={(o) => {
+              if (!o) setDialog(null);
+            }}
+            title={t("teams.deleteTeamTitle")}
+            message={t("teams.deleteTeamConfirm", { name: dialog.team.name })}
+            confirmLabel={t("teams.delete")}
+            onConfirm={() => remove(dialog.team)}
+          />
+        )}
+      </Stack>
+    </RefreshOverlay>
   );
 }

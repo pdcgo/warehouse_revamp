@@ -60,6 +60,14 @@ func (s *Service) RestockRequestCreate(
 			return createErr
 		}
 
+		// THE FIRST ENTRY IN ITS HISTORY (00019). `rr.CreatedAt` rather than a fresh time.Now(): the
+		// event must carry the same instant the row does, or the timeline and the created-date filter
+		// disagree about which second the restock was raised.
+		eventErr := recordRestockEvent(tx, rr.ID, restockEventCreated, rr.CreatedByUserID, rr.CreatedAt)
+		if eventErr != nil {
+			return eventErr
+		}
+
 		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the
 		// same transaction, because a request whose products the warehouse cannot see is a request
 		// nobody there can act on — the two facts have to land together or not at all.

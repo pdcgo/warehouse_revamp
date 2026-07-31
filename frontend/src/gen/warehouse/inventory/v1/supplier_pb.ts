@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/supplier.proto.
  */
 export const file_warehouse_inventory_v1_supplier: GenFile = /*@__PURE__*/
-  fileDesc("CiV3YXJlaG91c2UvaW52ZW50b3J5L3YxL3N1cHBsaWVyLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIqsBCghTdXBwbGllchIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBGNvZGUYAyABKAkSDAoEbmFtZRgEIAEoCRIPCgdjb250YWN0GAUgASgJEhAKCHByb3ZpbmNlGAYgASgJEgwKBGNpdHkYByABKAkSDwoHYWRkcmVzcxgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIPCgdkZWxldGVkGAogASgIIvoBChVTdXBwbGllckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoEY29kZRgCIAEoCUIJukgGcgQQARggEhgKBG5hbWUYAyABKAlCCrpIB3IFEAEYyAESGAoHY29udGFjdBgEIAEoCUIHukgEcgIYMhIZCghwcm92aW5jZRgFIAEoCUIHukgEcgIYZBIVCgRjaXR5GAYgASgJQge6SARyAhhkEhkKB2FkZHJlc3MYByABKAlCCLpIBXIDGPQDEh0KC2Rlc2NyaXB0aW9uGAggASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJMChZTdXBwbGllckNyZWF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciK+AgoTU3VwcGxpZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI6CgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdEZpbHRlchI8CgRzb3J0GAMgASgLMi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckxpc3RGaWx0ZXJTb3J0EkIKDGRhdGFfcmVxdWVzdBgEIAMoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOg6StRgKCggBAgMEBQYJCCIoChJTdXBwbGllckxpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZCLHAQoWU3VwcGxpZXJMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASOwoIc3VwcGxpZXIYAyABKA4yJy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyUm93U29ydEgAQgMKAXMisQEKElN1cHBsaWVyUm93TWFwSXRlbRJJCghtYXBfZGF0YRgBIAMoCzI3LndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpQCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEi8KBXZhbHVlGAIgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllcjoCOAEilwEKGFN1cHBsaWVyTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEj4KCHN1cHBsaWVyGAIgASgLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllclJvd01hcEl0ZW1IAEIDCgFkIpYBChRTdXBwbGllckxpc3RSZXNwb25zZRI/CgVpdGVtcxgBIAMoCzIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvImMKFVN1cHBsaWVyRGV0YWlsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgADoOkrUYCgoIAQIDBAUGCQgiTAoWU3VwcGxpZXJEZXRhaWxSZXNwb25zZRIyCghzdXBwbGllchgBIAEoCzIgLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXIiiwMKFVN1cHBsaWVyVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtzdXBwbGllcl9pZBgCIAEoBEIHukgEMgIgABIcCgRjb2RlGAMgASgJQgm6SAZyBBABGCBIAIgBARIdCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBSAGIAQESHQoHY29udGFjdBgFIAEoCUIHukgEcgIYMkgCiAEBEh4KCHByb3ZpbmNlGAYgASgJQge6SARyAhhkSAOIAQESGgoEY2l0eRgHIAEoCUIHukgEcgIYZEgEiAEBEh4KB2FkZHJlc3MYCCABKAlCCLpIBXIDGPQDSAWIAQESIgoLZGVzY3JpcHRpb24YCSABKAlCCLpIBXIDGPQDSAaIAQE6CpK1GAYKBAECAwRCBwoFX2NvZGVCBwoFX25hbWVCCgoIX2NvbnRhY3RCCwoJX3Byb3ZpbmNlQgcKBV9jaXR5QgoKCF9hZGRyZXNzQg4KDF9kZXNjcmlwdGlvbiJMChZTdXBwbGllclVwZGF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciJfChVTdXBwbGllckRlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiGAoWU3VwcGxpZXJEZWxldGVSZXNwb25zZSqKAQoUU3VwcGxpZXJMaXN0RGF0YVR5cGUSJwojU1VQUExJRVJfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9TVVBQTElFUl9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESJAogU1VQUExJRVJfTElTVF9EQVRBX1RZUEVfU1VQUExJRVIQAiqGAQoPU3VwcGxpZXJSb3dTb3J0EiEKHVNVUFBMSUVSX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASGAoUU1VQUExJRVJfUk9XX1NPUlRfSUQQARIaChZTVVBQTElFUl9ST1dfU09SVF9OQU1FEAISGgoWU1VQUExJRVJfUk9XX1NPUlRfQ09ERRADMsAECg9TdXBwbGllclNlcnZpY2USbwoOU3VwcGxpZXJDcmVhdGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQ3JlYXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJDcmVhdGVSZXNwb25zZRJpCgxTdXBwbGllckxpc3QSKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdFJlcXVlc3QaLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdFJlc3BvbnNlEm8KDlN1cHBsaWVyRGV0YWlsEi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRldGFpbFJlcXVlc3QaLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyRGV0YWlsUmVzcG9uc2USbwoOU3VwcGxpZXJVcGRhdGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyVXBkYXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJVcGRhdGVSZXNwb25zZRJvCg5TdXBwbGllckRlbGV0ZRItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZWxldGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRlbGV0ZVJlc3BvbnNlQlJaUGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvaW52ZW50b3J5L3YxO2ludmVudG9yeXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
+  fileDesc("CiV3YXJlaG91c2UvaW52ZW50b3J5L3YxL3N1cHBsaWVyLnByb3RvEhZ3YXJlaG91c2UuaW52ZW50b3J5LnYxIqsBCghTdXBwbGllchIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEgwKBGNvZGUYAyABKAkSDAoEbmFtZRgEIAEoCRIPCgdjb250YWN0GAUgASgJEhAKCHByb3ZpbmNlGAYgASgJEgwKBGNpdHkYByABKAkSDwoHYWRkcmVzcxgIIAEoCRITCgtkZXNjcmlwdGlvbhgJIAEoCRIPCgdkZWxldGVkGAogASgIIvoBChVTdXBwbGllckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoEY29kZRgCIAEoCUIJukgGcgQQARggEhgKBG5hbWUYAyABKAlCCrpIB3IFEAEYyAESGAoHY29udGFjdBgEIAEoCUIHukgEcgIYMhIZCghwcm92aW5jZRgFIAEoCUIHukgEcgIYZBIVCgRjaXR5GAYgASgJQge6SARyAhhkEhkKB2FkZHJlc3MYByABKAlCCLpIBXIDGPQDEh0KC2Rlc2NyaXB0aW9uGAggASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJMChZTdXBwbGllckNyZWF0ZVJlc3BvbnNlEjIKCHN1cHBsaWVyGAEgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllciK+AgoTU3VwcGxpZXJMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI6CgZmaWx0ZXIYAiABKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyTGlzdEZpbHRlchI8CgRzb3J0GAMgASgLMi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckxpc3RGaWx0ZXJTb3J0EkIKDGRhdGFfcmVxdWVzdBgEIAMoDjIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOg6StRgKCggBAgMEBQYJCCIoChJTdXBwbGllckxpc3RGaWx0ZXISEgoBcRgBIAEoCUIHukgEcgIYZCLHAQoWU3VwcGxpZXJMaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjMKB2dlbmVyYWwYAiABKA4yIC53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxTb3J0SAASOwoIc3VwcGxpZXIYAyABKA4yJy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyUm93U29ydEgAQgMKAXMisQEKElN1cHBsaWVyUm93TWFwSXRlbRJJCghtYXBfZGF0YRgBIAMoCzI3LndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpQCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEi8KBXZhbHVlGAIgASgLMiAud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllcjoCOAEilwEKGFN1cHBsaWVyTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEj4KCHN1cHBsaWVyGAIgASgLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllclJvd01hcEl0ZW1IAEIDCgFkIpYBChRTdXBwbGllckxpc3RSZXNwb25zZRI/CgVpdGVtcxgBIAMoCzIwLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIs4BChRTdXBwbGllckJ5SWRzUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCgZmaWx0ZXIYAiABKAsyKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQnlJZHNGaWx0ZXJCBrpIA8gBARJDCgxkYXRhX3JlcXVlc3QYAyADKA4yLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQnlJZHNEYXRhVHlwZToOkrUYCgoIAQIDBAUGCQgiNwoTU3VwcGxpZXJCeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAimAEKGVN1cHBsaWVyQnlJZHNSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI+CghzdXBwbGllchgCIAEoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJSb3dNYXBJdGVtSABCAwoBZCJdChlTdXBwbGllckJ5SWRzUmVzcG9uc2VMaXN0EkAKBWl0ZW1zGAEgAygLMjEud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckJ5SWRzUmVzcG9uc2VJdGVtIsEBChVTdXBwbGllckJ5SWRzUmVzcG9uc2USRwoFaXRlbXMYASADKAsyOC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQnlJZHNSZXNwb25zZS5JdGVtc0VudHJ5Gl8KCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEkAKBXZhbHVlGAIgASgLMjEud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckJ5SWRzUmVzcG9uc2VMaXN0OgI4ASJjChVTdXBwbGllckRldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkwKFlN1cHBsaWVyRGV0YWlsUmVzcG9uc2USMgoIc3VwcGxpZXIYASABKAsyIC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyIosDChVTdXBwbGllclVwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoLc3VwcGxpZXJfaWQYAiABKARCB7pIBDICIAASHAoEY29kZRgDIAEoCUIJukgGcgQQARggSACIAQESHQoEbmFtZRgEIAEoCUIKukgHcgUQARjIAUgBiAEBEh0KB2NvbnRhY3QYBSABKAlCB7pIBHICGDJIAogBARIeCghwcm92aW5jZRgGIAEoCUIHukgEcgIYZEgDiAEBEhoKBGNpdHkYByABKAlCB7pIBHICGGRIBIgBARIeCgdhZGRyZXNzGAggASgJQgi6SAVyAxj0A0gFiAEBEiIKC2Rlc2NyaXB0aW9uGAkgASgJQgi6SAVyAxj0A0gGiAEBOgqStRgGCgQBAgMEQgcKBV9jb2RlQgcKBV9uYW1lQgoKCF9jb250YWN0QgsKCV9wcm92aW5jZUIHCgVfY2l0eUIKCghfYWRkcmVzc0IOCgxfZGVzY3JpcHRpb24iTAoWU3VwcGxpZXJVcGRhdGVSZXNwb25zZRIyCghzdXBwbGllchgBIAEoCzIgLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXIiXwoVU3VwcGxpZXJEZWxldGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhwKC3N1cHBsaWVyX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgMEIhgKFlN1cHBsaWVyRGVsZXRlUmVzcG9uc2UqigEKFFN1cHBsaWVyTGlzdERhdGFUeXBlEicKI1NVUFBMSUVSX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIwofU1VQUExJRVJfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEiQKIFNVUFBMSUVSX0xJU1RfREFUQV9UWVBFX1NVUFBMSUVSEAIqhgEKD1N1cHBsaWVyUm93U29ydBIhCh1TVVBQTElFUl9ST1dfU09SVF9VTlNQRUNJRklFRBAAEhgKFFNVUFBMSUVSX1JPV19TT1JUX0lEEAESGgoWU1VQUExJRVJfUk9XX1NPUlRfTkFNRRACEhoKFlNVUFBMSUVSX1JPV19TT1JUX0NPREUQAyqRAQoVU3VwcGxpZXJCeUlkc0RhdGFUeXBlEikKJVNVUFBMSUVSX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIlCiFTVVBQTElFUl9CWV9JRFNfREFUQV9UWVBFX0dFTkVSQUwQARImCiJTVVBQTElFUl9CWV9JRFNfREFUQV9UWVBFX1NVUFBMSUVSEAIyrgUKD1N1cHBsaWVyU2VydmljZRJvCg5TdXBwbGllckNyZWF0ZRItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJDcmVhdGVSZXF1ZXN0Gi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckNyZWF0ZVJlc3BvbnNlEmkKDFN1cHBsaWVyTGlzdBIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0UmVxdWVzdBosLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJMaXN0UmVzcG9uc2USbAoNU3VwcGxpZXJCeUlkcxIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJCeUlkc1JlcXVlc3QaLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyQnlJZHNSZXNwb25zZRJvCg5TdXBwbGllckRldGFpbBItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZXRhaWxSZXF1ZXN0Gi4ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllckRldGFpbFJlc3BvbnNlEm8KDlN1cHBsaWVyVXBkYXRlEi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5TdXBwbGllclVwZGF0ZVJlcXVlc3QaLi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyVXBkYXRlUmVzcG9uc2USbwoOU3VwcGxpZXJEZWxldGUSLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN1cHBsaWVyRGVsZXRlUmVxdWVzdBouLndhcmVob3VzZS5pbnZlbnRvcnkudjEuU3VwcGxpZXJEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.inventory.v1.Supplier
@@ -313,6 +313,146 @@ export const SupplierListResponseSchema: GenMessage<SupplierListResponse> = /*@_
   messageDesc(file_warehouse_inventory_v1_supplier, 8);
 
 /**
+ * SupplierByIds resolves ids the caller ALREADY HOLDS into suppliers, whoever owns them.
+ *
+ * It is the ONLY supplier read not constrained to the caller's team, and that is the whole reason it
+ * exists. A restock names its supplier by id, and a WAREHOUSE accepting that delivery has to show it:
+ * the crew is matching a physical box against the record, and "Supplier #2" is a number standing in
+ * for the name printed on the carton in their hands. Every other read here stays team-scoped —
+ * SupplierDetail already grants warehouse roles and still returns NotFound cross-team, because its
+ * query filters by team.
+ *
+ * ⚠ THIS REVERSES AN EARLIER CALL, recorded so nobody re-derives it as a bug. #133/#125 removed the
+ * supplier from the warehouse's restock detail on the grounds that a buying team's vendor is its own
+ * commercial business and the warehouse "was never entitled to" it. The owner reversed that for the
+ * ACCEPT screen (2026-07-30): the person at the door is holding the supplier's carton, so withholding
+ * the name protects nothing and costs them the check they are there to make.
+ *
+ * The bound is the same one ProductByIds draws: a by-ids lookup is NOT a browse — the caller must
+ * already hold the id — and what comes back is a name, not terms, prices or payment details.
+ *
+ * @generated from message warehouse.inventory.v1.SupplierByIdsRequest
+ */
+export type SupplierByIdsRequest = Message<"warehouse.inventory.v1.SupplierByIdsRequest"> & {
+  /**
+   * The team the CALLER holds a role in — NOT the team whose suppliers come back. A warehouse asking
+   * about a selling team's supplier passes its own id, exactly as on every other scoped call.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.SupplierByIdsFilter filter = 2;
+   */
+  filter?: SupplierByIdsFilter;
+
+  /**
+   * Which slices to load per supplier. Empty defaults to the SUPPLIER (row) slice.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.SupplierByIdsDataType data_request = 3;
+   */
+  dataRequest: SupplierByIdsDataType[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierByIdsRequest.
+ * Use `create(SupplierByIdsRequestSchema)` to create a new message.
+ */
+export const SupplierByIdsRequestSchema: GenMessage<SupplierByIdsRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 9);
+
+/**
+ * SupplierByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
+ * top-level on the request. It does not page: the caller supplies the set, so the response can never
+ * exceed what was asked for, and max_items is what stops this becoming a bulk export.
+ *
+ * @generated from message warehouse.inventory.v1.SupplierByIdsFilter
+ */
+export type SupplierByIdsFilter = Message<"warehouse.inventory.v1.SupplierByIdsFilter"> & {
+  /**
+   * @generated from field: repeated uint64 ids = 1;
+   */
+  ids: bigint[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierByIdsFilter.
+ * Use `create(SupplierByIdsFilterSchema)` to create a new message.
+ */
+export const SupplierByIdsFilterSchema: GenMessage<SupplierByIdsFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 10);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierByIdsResponseItem
+ */
+export type SupplierByIdsResponseItem = Message<"warehouse.inventory.v1.SupplierByIdsResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.inventory.v1.SupplierByIdsResponseItem.d
+   */
+  d: {
+    /**
+     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
+     */
+    value: GeneralMapItem;
+    case: "general";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.SupplierRowMapItem supplier = 2;
+     */
+    value: SupplierRowMapItem;
+    case: "supplier";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierByIdsResponseItem.
+ * Use `create(SupplierByIdsResponseItemSchema)` to create a new message.
+ */
+export const SupplierByIdsResponseItemSchema: GenMessage<SupplierByIdsResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 11);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierByIdsResponseList
+ */
+export type SupplierByIdsResponseList = Message<"warehouse.inventory.v1.SupplierByIdsResponseList"> & {
+  /**
+   * @generated from field: repeated warehouse.inventory.v1.SupplierByIdsResponseItem items = 1;
+   */
+  items: SupplierByIdsResponseItem[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierByIdsResponseList.
+ * Use `create(SupplierByIdsResponseListSchema)` to create a new message.
+ */
+export const SupplierByIdsResponseListSchema: GenMessage<SupplierByIdsResponseList> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 12);
+
+/**
+ * @generated from message warehouse.inventory.v1.SupplierByIdsResponse
+ */
+export type SupplierByIdsResponse = Message<"warehouse.inventory.v1.SupplierByIdsResponse"> & {
+  /**
+   * Keyed by supplier id. An id that resolves to nothing is simply ABSENT rather than an error: a
+   * caller holding a restock that names a since-deleted supplier is asking a reasonable question, and
+   * failing the whole lookup would blank a delivery over one dead id. Soft-deleted suppliers ARE
+   * returned (a restock outlives its vendor record); Supplier.deleted is on the wire so a caller that
+   * cares can tell.
+   *
+   * @generated from field: map<uint64, warehouse.inventory.v1.SupplierByIdsResponseList> items = 1;
+   */
+  items: { [key: string]: SupplierByIdsResponseList };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.SupplierByIdsResponse.
+ * Use `create(SupplierByIdsResponseSchema)` to create a new message.
+ */
+export const SupplierByIdsResponseSchema: GenMessage<SupplierByIdsResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_supplier, 13);
+
+/**
  * @generated from message warehouse.inventory.v1.SupplierDetailRequest
  */
 export type SupplierDetailRequest = Message<"warehouse.inventory.v1.SupplierDetailRequest"> & {
@@ -332,7 +472,7 @@ export type SupplierDetailRequest = Message<"warehouse.inventory.v1.SupplierDeta
  * Use `create(SupplierDetailRequestSchema)` to create a new message.
  */
 export const SupplierDetailRequestSchema: GenMessage<SupplierDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 9);
+  messageDesc(file_warehouse_inventory_v1_supplier, 14);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDetailResponse
@@ -349,7 +489,7 @@ export type SupplierDetailResponse = Message<"warehouse.inventory.v1.SupplierDet
  * Use `create(SupplierDetailResponseSchema)` to create a new message.
  */
 export const SupplierDetailResponseSchema: GenMessage<SupplierDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 10);
+  messageDesc(file_warehouse_inventory_v1_supplier, 15);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierUpdateRequest
@@ -408,7 +548,7 @@ export type SupplierUpdateRequest = Message<"warehouse.inventory.v1.SupplierUpda
  * Use `create(SupplierUpdateRequestSchema)` to create a new message.
  */
 export const SupplierUpdateRequestSchema: GenMessage<SupplierUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 11);
+  messageDesc(file_warehouse_inventory_v1_supplier, 16);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierUpdateResponse
@@ -425,7 +565,7 @@ export type SupplierUpdateResponse = Message<"warehouse.inventory.v1.SupplierUpd
  * Use `create(SupplierUpdateResponseSchema)` to create a new message.
  */
 export const SupplierUpdateResponseSchema: GenMessage<SupplierUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 12);
+  messageDesc(file_warehouse_inventory_v1_supplier, 17);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDeleteRequest
@@ -447,7 +587,7 @@ export type SupplierDeleteRequest = Message<"warehouse.inventory.v1.SupplierDele
  * Use `create(SupplierDeleteRequestSchema)` to create a new message.
  */
 export const SupplierDeleteRequestSchema: GenMessage<SupplierDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 13);
+  messageDesc(file_warehouse_inventory_v1_supplier, 18);
 
 /**
  * @generated from message warehouse.inventory.v1.SupplierDeleteResponse
@@ -460,7 +600,7 @@ export type SupplierDeleteResponse = Message<"warehouse.inventory.v1.SupplierDel
  * Use `create(SupplierDeleteResponseSchema)` to create a new message.
  */
 export const SupplierDeleteResponseSchema: GenMessage<SupplierDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_supplier, 14);
+  messageDesc(file_warehouse_inventory_v1_supplier, 19);
 
 /**
  * @generated from enum warehouse.inventory.v1.SupplierListDataType
@@ -520,9 +660,37 @@ export const SupplierRowSortSchema: GenEnum<SupplierRowSort> = /*@__PURE__*/
   enumDesc(file_warehouse_inventory_v1_supplier, 1);
 
 /**
+ * @generated from enum warehouse.inventory.v1.SupplierByIdsDataType
+ */
+export enum SupplierByIdsDataType {
+  /**
+   * @generated from enum value: SUPPLIER_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPPLIER_BY_IDS_DATA_TYPE_GENERAL = 1;
+   */
+  GENERAL = 1,
+
+  /**
+   * @generated from enum value: SUPPLIER_BY_IDS_DATA_TYPE_SUPPLIER = 2;
+   */
+  SUPPLIER = 2,
+}
+
+/**
+ * Describes the enum warehouse.inventory.v1.SupplierByIdsDataType.
+ */
+export const SupplierByIdsDataTypeSchema: GenEnum<SupplierByIdsDataType> = /*@__PURE__*/
+  enumDesc(file_warehouse_inventory_v1_supplier, 2);
+
+/**
  * SupplierService owns `suppliers` — the vendors a team buys stock from (#103), managed under the
  * Inventory area. Every RPC is team-scoped: `team_id` carries (use_scope) and each query is
  * constrained to that team, so one team can never read or mutate another team's supplier by id.
+ *
+ * SupplierByIds is the ONE EXCEPTION, and it is deliberate — see its comment.
  *
  * @generated from service warehouse.inventory.v1.SupplierService
  */
@@ -542,6 +710,14 @@ export const SupplierService: GenService<{
     methodKind: "unary";
     input: typeof SupplierListRequestSchema;
     output: typeof SupplierListResponseSchema;
+  },
+  /**
+   * @generated from rpc warehouse.inventory.v1.SupplierService.SupplierByIds
+   */
+  supplierByIds: {
+    methodKind: "unary";
+    input: typeof SupplierByIdsRequestSchema;
+    output: typeof SupplierByIdsResponseSchema;
   },
   /**
    * @generated from rpc warehouse.inventory.v1.SupplierService.SupplierDetail

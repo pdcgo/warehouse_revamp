@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { NativeSelect } from "@chakra-ui/react";
+import { useMemo } from "react";
+import { Select, createListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rackClient, rpcError } from "../api/clients";
-import { racksFromList, rackListRowData } from "../features/racks/adapt";
-import type { Rack } from "../gen/warehouse/inventory/v1/rack_pb";
+import { useRacks } from "../features/racks/queries";
 
 /**
  * The value meaning "the not-yet-shelved pile" — stock that arrived before anyone put it away.
@@ -25,76 +23,89 @@ export interface RackSelectProps {
 
 // RackSelect is the shared place picker for a warehouse (#139) — the racks plus the unplaced pile.
 // Like SupplierSelect over a team's suppliers, a warehouse has a handful of racks, so it loads them
-// all once into a NativeSelect rather than paging or searching. It emits a plain string, so a caller
-// converts to whatever its own contract wants (StockAdjust wants a oneof) without this component
-// knowing about any one RPC.
+// all once rather than paging or searching. It emits a plain string, so a caller converts to whatever
+// its own contract wants (StockAdjust wants a oneof) without this component knowing about any one RPC.
 //
-// The option semantics are the whole point, and the two "empty-looking" options are NOT the same:
-//   - "Unplaced" is SELECTABLE — it is a legal answer (cf. PaymentTypeSelect's empty option).
-//   - the placeholder is DISABLED — "not answered yet" is not a value, and submitting it is the
-//     precise bug this picker exists to prevent.
+// Chakra's composable Select, not NativeSelect (owner) — the last shared picker to make the move,
+// after PaymentTypeSelect (#165). The reasoning there applies here unchanged: Select is already in
+// the bundle for every other picker, so there is no weight to earn, and a native dropdown does not
+// look or behave like the rest of the form around it. Beside a Chakra Input in the accept screen's
+// put-away panel, the native chrome was the odd one out.
+//
+// The option semantics are the whole point, and the two "empty-looking" states are NOT the same:
+//   - "Unplaced" is a SELECTABLE ITEM — it is a legal answer (cf. PaymentTypeSelect's "none").
+//   - "not answered yet" is the PLACEHOLDER — not a value, and submitting it is the precise bug this
+//     picker exists to prevent.
+// Under NativeSelect that second rule needed a `<option value="" disabled>` and eight lines defending
+// it. Select models it directly: an empty value array IS "nothing selected", so the hack is gone
+// while the semantics are identical.
 export const description =
-  "Place picker for a warehouse (Chakra NativeSelect over RackList): the racks plus a selectable \"Unplaced\" pile. Emits \"\" (unanswered) | \"unplaced\" | a rack id string; the unanswered placeholder is disabled on purpose.";
+  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile. Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
 
 export function RackSelect({ warehouseId, value, onChange, placeholder, disabled }: RackSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("racks.select.placeholder");
-  const [racks, setRacks] = useState<Rack[]>([]);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (warehouseId <= 0n) {
-      setRacks([]);
-      return;
-    }
+  // Read through the cache rather than fetching in an effect — see useRacks for why that mattered.
+  const query = useRacks({ warehouseId });
+  const racks = query.data ?? [];
+  const error = query.isError;
 
-    let alive = true;
-
-    // RackList scopes racks by `team_id` — a warehouse IS a team (one of type WAREHOUSE), and the
-    // handler matches it against the rack's `warehouse_id`. Deleted racks are filtered server-side,
-    // and the list comes back ordered by code, which is how someone walking the aisles reads it.
-    rackClient
-      .rackList({ teamId: warehouseId, dataRequest: rackListRowData(), page: { page: 1, limit: 200 } })
-      .then((res) => {
-        if (alive) setRacks(racksFromList(res.items, res.ids));
-      })
-      .catch((err) => {
-        if (alive) setError(rpcError(err));
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [warehouseId]);
+  const collection = useMemo(
+    () =>
+      createListCollection({
+        items: [
+          // Rendered even when the rack list failed to load: "unplaced" is answerable without it.
+          { label: t("racks.select.unplaced"), value: UNPLACED },
+          ...racks.map((rack) => ({
+            label: rack.name ? `${rack.code} — ${rack.name}` : rack.code,
+            value: rack.id.toString(),
+          })),
+        ],
+      }),
+    [racks, t],
+  );
 
   return (
-    <NativeSelect.Root disabled={disabled}>
-      <NativeSelect.Field
-        data-testid="rack-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {/* Disabled, unlike the selectable empty option on SupplierSelect / PaymentTypeSelect — and
-            for the same underlying reason, applied to a different question. There, "" meant "no
-            supplier" / "no payment type recorded": a VALUE, so it had to stay reachable or the field
-            became write-once (#131). Here "" means the count has no place yet, which is not a place —
-            "unplaced" is the option for that. A stock-take that silently corrected the wrong shelf
-            would be believed, so the answer is refused rather than guessed. This is the one
-            legitimate use of a disabled placeholder. */}
-        <option value="" disabled>
-          {error ? t("racks.select.unavailable") : resolvedPlaceholder}
-        </option>
+    <Select.Root
+      collection={collection}
+      disabled={disabled}
+      value={value === "" ? [] : [value]}
+      onValueChange={(e) => {
+        const picked = e.value[0];
+        // Guard the undefined case rather than emitting "": a Select that clears itself would put the
+        // field back to "unanswered", which is not something a person can mean by picking a shelf.
+        if (picked === undefined) return;
+        onChange(picked);
+      }}
+    >
+      <Select.HiddenSelect />
 
-        {/* Rendered even when the rack list failed to load: "unplaced" is answerable without it. */}
-        <option value={UNPLACED}>{t("racks.select.unplaced")}</option>
+      <Select.Control>
+        <Select.Trigger data-testid="rack-select">
+          <Select.ValueText
+            placeholder={error ? t("racks.select.unavailable") : resolvedPlaceholder}
+          />
+        </Select.Trigger>
+        <Select.IndicatorGroup>
+          <Select.Indicator />
+        </Select.IndicatorGroup>
+      </Select.Control>
 
-        {racks.map((rack) => (
-          <option key={rack.id.toString()} value={rack.id.toString()}>
-            {rack.name ? `${rack.code} — ${rack.name}` : rack.code}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+      {/* No Portal on purpose: this picker is used inside modal Dialogs (AdjustStockDialog,
+          MoveStockDialog), and a portalled listbox renders OUTSIDE the dialog where the modal makes
+          it inert/aria-hidden — invisible to the a11y tree and unclickable. Rendering inline keeps it
+          inside the dialog. (Same reasoning as ShopSelect and MarketplaceSelect.) */}
+      <Select.Positioner>
+        <Select.Content>
+          {collection.items.map((item) => (
+            <Select.Item item={item} key={item.value} data-testid={`rack-select-option-${item.value}`}>
+              <Select.ItemText>{item.label}</Select.ItemText>
+              <Select.ItemIndicator />
+            </Select.Item>
+          ))}
+        </Select.Content>
+      </Select.Positioner>
+    </Select.Root>
   );
 }

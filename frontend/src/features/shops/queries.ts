@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { shopClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { shopListRowData, shopsFromList } from "./adapt";
 
@@ -16,6 +16,7 @@ export function useShops(args: {
 
   return useQuery({
     queryKey: key.shops(teamId, { q, page, pageSize }),
+    ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await shopClient.shopList({
@@ -56,6 +57,7 @@ export function useShopOptions(args: { teamId: bigint }) {
 
   return useQuery({
     queryKey: key.shops(teamId, { options: true }),
+    ...referenceQuery,
     enabled: teamId > 0n,
     queryFn: async () => {
       const res = await shopClient.shopList({

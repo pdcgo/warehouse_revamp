@@ -5,7 +5,9 @@ import type { SupplierChannelType } from "../../gen/warehouse/inventory/v1/suppl
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import {
   channelsFromList,
+  suppliersFromByIds,
   suppliersFromList,
+  supplierByIdsRowData,
   supplierChannelRowData,
   supplierListRowData,
 } from "./adapt";
@@ -35,6 +37,35 @@ export function useSuppliers(args: {
         suppliers: suppliersFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
+    },
+  });
+}
+
+// Suppliers by id, for a caller that already HOLDS the ids — a restock naming its vendor.
+//
+// Distinct from useSupplier, and the difference is the point: SupplierDetail filters by the caller's
+// team, so a WAREHOUSE asking about the selling team's supplier gets NotFound and the screen shows
+// "Supplier #2". SupplierByIds does not filter by team, which is what lets the crew accepting a
+// delivery name the vendor printed on the carton in front of them.
+//
+// `teamId` here is the CALLER's team — the authorization scope — not the team whose suppliers come
+// back, so it stays in the query key: the same id can be answerable for one caller and refused for
+// another, and caching them together would leak one team's answer to the other.
+export function useSuppliersByIds(args: { teamId: bigint | undefined; supplierIds: bigint[] }) {
+  const { teamId } = args;
+  const supplierIds = [...new Set(args.supplierIds.filter((id) => id > 0n))].sort();
+
+  return useQuery({
+    queryKey: key.suppliers(teamId, { byIds: supplierIds.map(String).join(",") }),
+    enabled: teamId !== undefined && supplierIds.length > 0,
+    queryFn: async () => {
+      const res = await supplierClient.supplierByIds({
+        teamId: teamId!,
+        filter: { ids: supplierIds },
+        dataRequest: supplierByIdsRowData(),
+      });
+
+      return suppliersFromByIds(res);
     },
   });
 }

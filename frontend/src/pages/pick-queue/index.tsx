@@ -19,6 +19,7 @@ import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge } from "../../components/OrderStatusBadge";
 import { Pagination } from "../../components/Pagination";
+import { RefreshOverlay } from "../../components/RefreshOverlay";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePickQueue } from "../../features/picking/queries";
@@ -65,6 +66,10 @@ export function PickQueuePage() {
   const orders = query.data?.orders ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending && warehouseId !== undefined;
+  // The rows on screen are the PREVIOUS tab's while this is true — `listQuery` keeps them rather than
+  // blanking the table (the app is always-fresh, so a tab switch always refetches). `isPending` is
+  // excluded on purpose: a genuine first load has nothing to keep, and shows the spinner above.
+  const refreshing = query.isFetching && !query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
   function selectTab(value: string) {
@@ -112,68 +117,70 @@ export function PickQueuePage() {
         </Tabs.List>
 
         <Tabs.Content value={tab}>
-          <Stack gap="card">
-            {error && (
-              <Text color="red.fg" data-testid="pick-queue-error">
-                {error}
-              </Text>
-            )}
-
-            {loading ? (
-              <Spinner colorPalette="brand" />
-            ) : (
-              <Table.Root size="sm" data-testid="pick-queue-table">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>{t("picking.table.order")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("picking.table.customer")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {orders.map((order) => (
-                    <Table.Row
-                      key={String(order.id)}
-                      cursor="pointer"
-                      onClick={() => navigate(`/inventories/picking/${order.id}`)}
-                      data-testid={`pick-queue-row-${order.id}`}
-                    >
-                      <Table.Cell>#{String(order.id)}</Table.Cell>
-                      <Table.Cell>{order.customerName}</Table.Cell>
-                      <Table.Cell>
-                        <OrderStatusBadge status={order.status} />
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
-            )}
-
-            {!loading && orders.length === 0 && !error && (
-              <Flex align="center" gap="card" color="fg.muted" data-testid="pick-queue-empty">
-                <Icon as={PackageSearch} boxSize="4" />
-                <Text>
-                  {status === OrderStatus.UNSPECIFIED
-                    ? t("picking.empty")
-                    : t("picking.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
+          <RefreshOverlay busy={refreshing}>
+            <Stack gap="card">
+              {error && (
+                <Text color="red.fg" data-testid="pick-queue-error">
+                  {error}
                 </Text>
-              </Flex>
-            )}
+              )}
 
-            {!loading && (
-              <Pagination
-                count={totalItems}
-                pageSize={pageSize}
-                page={page}
-                onPageChange={setPage}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onPageSizeChange={(n) => {
-                  setPageSize(n);
-                  setPage(1);
-                }}
-              />
-            )}
-          </Stack>
+              {loading ? (
+                <Spinner colorPalette="brand" />
+              ) : (
+                <Table.Root size="sm" data-testid="pick-queue-table">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader>{t("picking.table.order")}</Table.ColumnHeader>
+                      <Table.ColumnHeader>{t("picking.table.customer")}</Table.ColumnHeader>
+                      <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {orders.map((order) => (
+                      <Table.Row
+                        key={String(order.id)}
+                        cursor="pointer"
+                        onClick={() => navigate(`/inventories/picking/${order.id}`)}
+                        data-testid={`pick-queue-row-${order.id}`}
+                      >
+                        <Table.Cell>#{String(order.id)}</Table.Cell>
+                        <Table.Cell>{order.customerName}</Table.Cell>
+                        <Table.Cell>
+                          <OrderStatusBadge status={order.status} />
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              )}
+
+              {!loading && orders.length === 0 && !error && (
+                <Flex align="center" gap="card" color="fg.muted" data-testid="pick-queue-empty">
+                  <Icon as={PackageSearch} boxSize="4" />
+                  <Text>
+                    {status === OrderStatus.UNSPECIFIED
+                      ? t("picking.empty")
+                      : t("picking.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
+                  </Text>
+                </Flex>
+              )}
+
+              {!loading && (
+                <Pagination
+                  count={totalItems}
+                  pageSize={pageSize}
+                  page={page}
+                  onPageChange={setPage}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  onPageSizeChange={(n) => {
+                    setPageSize(n);
+                    setPage(1);
+                  }}
+                />
+              )}
+            </Stack>
+          </RefreshOverlay>
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

@@ -30,6 +30,13 @@ func (s *Service) RestockRequestDetail(
 		// the screen that shows them; the LIST deliberately does not — see restock_request_list.go.
 		Preload("Items.Placements", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Items.Damaged", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		// THE HISTORY (00019), oldest first — this is the screen with a timeline on it, and the list is
+		// deliberately without one for the same reason it skips placements.
+		//
+		// Ordered by `at` and then `id`: `at` is the event's own moment (a backfilled row carries a date
+		// from months ago), and the id breaks the tie when two events share a second — an edit made in
+		// the same second as the create must still read second.
+		Preload("Events", func(db *gorm.DB) *gorm.DB { return db.Order("at ASC, id ASC") }).
 		Where("id = ? AND (requesting_team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
 		First(&rr).
 		Error

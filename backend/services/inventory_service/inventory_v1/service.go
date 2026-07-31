@@ -197,6 +197,14 @@ func appendMovement(
 		return nil, err
 	}
 
+	// And into the OWNER's lens (#232), in this same transaction. Here rather than at each call site
+	// because a ledger row that the owner's history never learned about is a number they cannot
+	// account for — and this is the one place every row passes through.
+	err = projectOwnerMovement(tx, &mv)
+	if err != nil {
+		return nil, err
+	}
+
 	return &mv, nil
 }
 

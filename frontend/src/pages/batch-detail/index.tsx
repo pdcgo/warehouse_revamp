@@ -28,7 +28,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { BatchOrigin } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { kindLabel } from "../../features/inventory/movementKind";
+import { MovementTable } from "../../features/inventory/MovementTable";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { Pagination } from "../../components/Pagination";
@@ -64,21 +64,6 @@ function formatDateUnix(unix: bigint): string {
 // A batch is flagged amber when it expires within 30 days — the "expiring soon" window the server uses.
 function isExpiringSoon(unix: bigint): boolean {
   return Number(unix) * 1000 <= Date.now() + 30 * 24 * 60 * 60 * 1000;
-}
-
-// A movement's RFC3339 timestamp → a human date + time, e.g. "25 Jul 2026, 14:30". Falls back to the
-// raw string if it doesn't parse, and "—" if empty.
-function formatDateTime(rfc3339: string): string {
-  if (!rfc3339) return "—";
-  const d = new Date(rfc3339);
-  if (Number.isNaN(d.getTime())) return rfc3339;
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 // A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.
@@ -434,38 +419,19 @@ export function BatchDetailPage() {
                   testId="batch-detail-date"
                 />
               </Flex>
-              <Table.Root striped data-testid="batch-detail-history-table">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>{t("batchDetail.when")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("batchDetail.what")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("batchDetail.place")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("batchDetail.change")}</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="end">{t("batchDetail.after")}</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {historyMovements.map((m) => (
-                    <Table.Row key={m.id.toString()}>
-                      <Table.Cell>{formatDateTime(m.createdAt)}</Table.Cell>
-                      <Table.Cell>{kindLabel(t, m.kind)}</Table.Cell>
-                      <Table.Cell>{placeLabel(m.rackId)}</Table.Cell>
-                      <Table.Cell
-                        textAlign="end"
-                        color={m.delta > 0n ? "green.fg" : m.delta < 0n ? "red.fg" : undefined}
-                      >
-                        {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}
-                      </Table.Cell>
-                      <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
-              {historyMovements.length === 0 ? (
-                <Text color="fg.muted" data-testid="batch-detail-history-empty">
-                  {t("batchDetail.noHistory")}
-                </Text>
-              ) : (
+              {/* The shared ledger (features/inventory/MovementTable). "Ready after" stays this page's
+                  wording: the balance here is the BATCH's ready units, which is not the same number as
+                  a shelf's count or a place's balance (#135). */}
+              <MovementTable
+                movements={historyMovements}
+                testId="batch-detail-history"
+                columns={["place"]}
+                rackLabel={placeLabel}
+                afterLabel={t("batchDetail.after")}
+                emptyText={t("batchDetail.noHistory")}
+                striped
+              />
+              {historyMovements.length === 0 ? null : (
                 <Pagination
                   page={historyPage}
                   pageSize={historyPageSize}

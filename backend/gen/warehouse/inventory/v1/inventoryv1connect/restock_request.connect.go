@@ -54,6 +54,9 @@ const (
 	// RestockRequestServiceRestockRequestLabelsProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockRequestLabels RPC.
 	RestockRequestServiceRestockRequestLabelsProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestLabels"
+	// RestockRequestServiceRestockInboundStatProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockInboundStat RPC.
+	RestockRequestServiceRestockInboundStatProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockInboundStat"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
@@ -74,6 +77,9 @@ type RestockRequestServiceClient interface {
 	// The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
 	// warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
+	// The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
+	// Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -130,6 +136,12 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestLabels")),
 			connect.WithClientOptions(opts...),
 		),
+		restockInboundStat: connect.NewClient[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockInboundStatProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockInboundStat")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -142,6 +154,7 @@ type restockRequestServiceClient struct {
 	restockRequestFulfill *connect.Client[v1.RestockRequestFulfillRequest, v1.RestockRequestFulfillResponse]
 	restockRequestCancel  *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
 	restockRequestLabels  *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
+	restockInboundStat    *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -179,6 +192,11 @@ func (c *restockRequestServiceClient) RestockRequestLabels(ctx context.Context, 
 	return c.restockRequestLabels.CallUnary(ctx, req)
 }
 
+// RestockInboundStat calls warehouse.inventory.v1.RestockRequestService.RestockInboundStat.
+func (c *restockRequestServiceClient) RestockInboundStat(ctx context.Context, req *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error) {
+	return c.restockInboundStat.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
@@ -197,6 +215,9 @@ type RestockRequestServiceHandler interface {
 	// The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
 	// warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
+	// The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
+	// Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -248,6 +269,12 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestLabels")),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockInboundStatHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockInboundStatProcedure,
+		svc.RestockInboundStat,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockInboundStat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RestockRequestServiceRestockRequestCreateProcedure:
@@ -264,6 +291,8 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestCancelHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestLabelsProcedure:
 			restockRequestServiceRestockRequestLabelsHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockInboundStatProcedure:
+			restockRequestServiceRestockInboundStatHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -299,4 +328,8 @@ func (UnimplementedRestockRequestServiceHandler) RestockRequestCancel(context.Co
 
 func (UnimplementedRestockRequestServiceHandler) RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestLabels is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockInboundStat is not implemented"))
 }

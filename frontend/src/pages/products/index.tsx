@@ -42,7 +42,7 @@ export function ProductsPage() {
   // say so. Stock is held per warehouse, so a total is only ever an answer to "everywhere".
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
   // Just for the labels — a cache hit on the list TeamSelect has already loaded.
-  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, enabled: !isWarehouse });
+  const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, enabled: !isWarehouse, reference: true });
   const warehouseName =
     warehouseId === 0n
       ? undefined

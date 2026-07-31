@@ -24,12 +24,19 @@ export interface UserSelectProps {
   // This is the "scope by team or all user" option (#56). The backend enforces the difference
   // too: UserList is role-gated and scoped; SearchUser is any authenticated caller.
   teamId?: bigint;
+  // Drop the picker's OWN border and corner rounding so it can sit INSIDE a bordered group — a type
+  // segment fused to it, the way DateRangePicker fuses its date-field segment to its trigger. Without
+  // it the group draws a box and the picker draws a second one inside it.
+  //
+  // The focus ring deliberately STAYS. It is the only thing that says which half of a fused control
+  // has the keyboard, and dropping it to tidy the seam would trade an a11y affordance for a hairline.
+  flush?: boolean;
 }
 
 // UserSelect is the shared user picker (#56): a Chakra Combobox whose options render with the
 // shared UserItem. Search is SERVER-side (min 2 characters) so it scales; it emits the selected
 // user id. Pass `teamId` to scope the search to one team's members, or omit it to search everyone.
-export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList).";
+export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList). Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
 
 export function UserSelect({
   value,
@@ -37,6 +44,7 @@ export function UserSelect({
   placeholder = "Search users by name or username",
   disabled,
   teamId,
+  flush,
 }: UserSelectProps) {
   const [input, setInput] = useState("");
 
@@ -74,7 +82,11 @@ export function UserSelect({
       data-testid="user-select"
     >
       <Combobox.Control>
-        <Combobox.Input placeholder={placeholder} />
+        <Combobox.Input
+          placeholder={placeholder}
+          borderWidth={flush ? "0" : undefined}
+          borderRadius={flush ? "0" : undefined}
+        />
         <Combobox.IndicatorGroup>
           <Combobox.ClearTrigger />
           <Combobox.Trigger />

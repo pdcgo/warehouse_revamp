@@ -1,12 +1,25 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Flex, Heading, Link, SimpleGrid, Stack, Text } from "@chakra-ui/react";
+import {
+  Button,
+  Card,
+  Collapsible,
+  Flex,
+  Heading,
+  Icon,
+  Link,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 // Each curated component exports its OWN description (a rule — see CLAUDE.md). The gallery reads
 // them here so it is documentation generated from the components themselves, not a parallel list
 // that can drift.
 import { PasswordInput, description as passwordInputDescription } from "../../components/PasswordInput";
 import { Pagination, description as paginationDescription } from "../../components/Pagination";
+import { RefreshOverlay, description as refreshOverlayDescription } from "../../components/RefreshOverlay";
 import { UserItem, description as userItemDescription } from "../../components/UserItem";
 import { TeamItem, description as teamItemDescription } from "../../components/TeamItem";
 import { ProductListItem, description as productListItemDescription } from "../../components/ProductListItem";
@@ -48,6 +61,12 @@ import { CurrencyInput, description as currencyInputDescription } from "../../co
 import { ExpenseKindSelect, expenseKindLabel, description as costKindSelectDescription } from "../../components/ExpenseKindSelect";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { RackSelect, UNPLACED, description as rackSelectDescription } from "../../components/RackSelect";
+import {
+  DamageTypeSelect,
+  damageTypeLabel,
+  description as damageTypeSelectDescription,
+} from "../../components/DamageTypeSelect";
+import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
   ProductSelect,
   description as productSelectDescription,
@@ -97,6 +116,37 @@ function PasswordDemo() {
 
   return (
     <PasswordInput value={value} placeholder="Password" onChange={(e) => setValue(e.target.value)} />
+  );
+}
+
+// The demo fakes a refetch that takes 1.2s, because the component's whole point is only visible while
+// one is in flight. It also demonstrates the 150ms delay: the "Fast refresh (80ms)" button finishes
+// before the overlay would appear, so nothing flickers — which is the behaviour, not a missing state.
+function RefreshOverlayDemo() {
+  const [busy, setBusy] = useState(false);
+
+  function refresh(ms: number) {
+    setBusy(true);
+    setTimeout(() => setBusy(false), ms);
+  }
+
+  return (
+    <Stack gap="2">
+      <Flex gap="2">
+        <Button onClick={() => refresh(1200)}>Slow refresh (1.2s)</Button>
+        <Button variant="outline" onClick={() => refresh(80)}>
+          Fast refresh (80ms)
+        </Button>
+      </Flex>
+
+      <RefreshOverlay busy={busy}>
+        <Stack gap="1">
+          <Text fontSize="sm">RR-1042 · Bandung · Pending</Text>
+          <Text fontSize="sm">RR-1041 · Jakarta · Pending</Text>
+          <Text fontSize="sm">RR-1038 · Bandung · Pending</Text>
+        </Stack>
+      </RefreshOverlay>
+    </Stack>
   );
 }
 
@@ -360,6 +410,20 @@ function SupplierSelectDemo() {
 // The demo reads the selected place back in words, because the three states this picker
 // distinguishes are exactly what is easy to get wrong: nothing chosen yet, the unplaced pile, and a
 // rack. Only the first of those blocks a stock-take.
+function DamageTypeSelectDemo() {
+  const { t } = useTranslation();
+  const [type, setType] = useState(RestockDamageType.BROKEN);
+
+  return (
+    <>
+      <DamageTypeSelect value={type} onChange={setType} />
+      <Text fontSize="xs" color="fg.muted">
+        {damageTypeLabel(t, type)} — never enters stock either way
+      </Text>
+    </>
+  );
+}
+
 function RackSelectDemo() {
   const [place, setPlace] = useState("");
   const { current } = useTeam();
@@ -500,9 +564,14 @@ function ProductPickerDemo() {
   const [all, setAll] = useState<PickedProduct[]>([]);
   const { current } = useTeam();
 
-  // Stock is per WAREHOUSE, so it can only be shown when the current team IS one — a selling team
-  // has no stock of its own to show.
-  const warehouseId = current?.teamType === TeamType.WAREHOUSE ? current.teamId : undefined;
+  // The stock figures answer for the CATALOGUE OWNER (OwnerStockByIds), so they appear for a SELLING
+  // team and not for a warehouse — the opposite of what this demo used to assume. A warehouse has its
+  // own screens for what it holds; "how much of MY product is out there" is not a question it asks.
+  //
+  // READY needs a destination warehouse to be about, and the gallery has nowhere to choose one, so it
+  // is left out here and only ONGOING shows — which needs no warehouse, being a fact about the
+  // purchase rather than a building. The restock form is where both appear together.
+  const selling = !!current && current.teamType !== TeamType.WAREHOUSE;
 
   const summary = (picked: PickedProduct[]) =>
     picked.length > 0 ? picked.map((p) => p.sku || `#${p.id}`).join(", ") : "(none)";
@@ -513,7 +582,6 @@ function ProductPickerDemo() {
           current team is deliberate: undefined would mean "all teams". */}
       <ProductPicker
         teamId={current?.teamId ?? 0n}
-        stockWarehouseId={warehouseId}
         value={scoped.map((p) => p.id)}
         onChange={setScoped}
         trigger={<Button variant="outline">Select products (this team)</Button>}
@@ -521,7 +589,9 @@ function ProductPickerDemo() {
       <Text fontSize="xs" color="fg.muted">
         This team: {summary(scoped)}
         {current ? "" : " — select a team to browse its catalogue"}
-        {warehouseId ? " · showing stock (this team is a warehouse)" : " · no stock (not a warehouse)"}
+        {selling
+          ? " · showing what is on the way (pass stockWarehouseId for ready stock too)"
+          : " · no stock figures (a warehouse does not own the goods)"}
       </Text>
 
       {/* `teamId` UNSET → products from every team. The current team still rides along inside the
@@ -577,6 +647,12 @@ const ENTRIES: Entry[] = [
     title: "Pagination",
     description: paginationDescription,
     render: () => <PaginationDemo />,
+  },
+  {
+    id: "refresh-overlay",
+    title: "RefreshOverlay",
+    description: refreshOverlayDescription,
+    render: () => <RefreshOverlayDemo />,
   },
   {
     id: "user-item",
@@ -856,6 +932,12 @@ const ENTRIES: Entry[] = [
     render: () => <RackSelectDemo />,
   },
   {
+    id: "damage-type-select",
+    title: "DamageTypeSelect",
+    description: damageTypeSelectDescription,
+    render: () => <DamageTypeSelectDemo />,
+  },
+  {
     id: "product-select",
     title: "ProductSelect",
     description: productSelectDescription,
@@ -929,60 +1011,226 @@ const ENTRIES: Entry[] = [
   },
 ];
 
+// The gallery is browsed with a QUESTION in hand — "is there already something for picking a
+// supplier / for a date window / for showing a product row" — so the entries are grouped by the
+// CONTEXT they serve, not by widget kind. A flat alphabet of 30-odd names answers "what is it
+// called"; nobody arrives knowing that.
+//
+// Groups list their entries BY ID, so a group can order its own members (the four date pickers read
+// simplest → widest) without disturbing the append-ordered ENTRIES array above. An id that matches
+// nothing is skipped, and an entry in no group still renders — under "Ungrouped", see SECTIONS. A
+// forgotten component must never silently vanish from the one page that promises to show them all.
+const GROUPS: { id: string; title: string; blurb: string; entryIds: string[] }[] = [
+  {
+    id: "fields",
+    title: "Form fields",
+    blurb: "The plain inputs — what a form is built from before any domain is involved.",
+    entryIds: ["password-input", "currency-input", "address-picker"],
+  },
+  {
+    id: "dates",
+    title: "Dates & time",
+    blurb: "One instant, or a window. Reach for the narrowest one that answers the question.",
+    entryIds: [
+      "date-picker",
+      "date-time-picker",
+      "date-range-picker",
+      "date-time-range-picker",
+      "range-calendar",
+    ],
+  },
+  {
+    id: "products",
+    title: "Products & catalogue",
+    blurb: "Choosing a product, and showing one back — as a row, a card, or a line summary.",
+    entryIds: [
+      "product-select",
+      "product-picker",
+      "product-list-item",
+      "product-card",
+      "product-lines-popover",
+      "category-select",
+    ],
+  },
+  {
+    id: "people",
+    title: "People & teams",
+    blurb: "Who is acting, and which team the action is scoped to.",
+    entryIds: ["user-select", "user-item", "team-select", "team-item", "team-type-select", "role-select"],
+  },
+  {
+    id: "buying",
+    title: "Buying & the warehouse",
+    blurb: "The inbound side: where goods come from, what was paid, and where they land.",
+    entryIds: [
+      "supplier-select",
+      "payment-type-select",
+      "expense-kind-select",
+      "restock-status-badge",
+      "rack-select",
+    ],
+  },
+  {
+    id: "selling",
+    title: "Selling & shipping",
+    blurb: "The outbound side: the channel a sale came through and the courier it left on.",
+    entryIds: [
+      "shop-select",
+      "marketplace-select",
+      "marketplace-badge",
+      "order-status-badge",
+      "shipping-select",
+      "shipping-badge",
+    ],
+  },
+  {
+    id: "chrome",
+    title: "Chrome & navigation",
+    blurb: "App furniture — not about any one domain.",
+    entryIds: ["pagination", "color-mode-toggle"],
+  },
+];
+
+interface Section {
+  id: string;
+  title: string;
+  blurb: string;
+  entryIds: string[];
+  entries: Entry[];
+}
+
+const BY_ID = new Map(ENTRIES.map((entry) => [entry.id, entry]));
+const GROUPED_IDS = new Set(GROUPS.flatMap((group) => group.entryIds));
+
+const SECTIONS: Section[] = GROUPS.map((group) => ({
+  ...group,
+  entries: group.entryIds.map((id) => BY_ID.get(id)).filter((entry): entry is Entry => !!entry),
+}));
+
+// The safety net: anything not placed in a group above still gets shown, labelled as such. This is
+// what keeps "every shared component is previewed" true even when somebody adds one and forgets the
+// group.
+const UNGROUPED = ENTRIES.filter((entry) => !GROUPED_IDS.has(entry.id));
+if (UNGROUPED.length > 0) {
+  SECTIONS.push({
+    id: "ungrouped",
+    title: "Ungrouped",
+    blurb: "Not yet placed in a context group — add its id to GROUPS in this file.",
+    entryIds: UNGROUPED.map((entry) => entry.id),
+    entries: UNGROUPED,
+  });
+}
+
+// One collapsible group in the left nav. Each group owns its own open state — collapsing "Dates &
+// time" while you work through the product pickers is a per-group act, not a mode the whole page is
+// in, so there is nothing to lift up.
+//
+// It starts OPEN: the nav's first job is to answer "does something for this already exist", and a
+// column of seven closed folders answers that with "open them and find out".
+function NavGroup({ section }: { section: Section }) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
+      <Collapsible.Trigger
+        w="full"
+        textAlign="start"
+        rounded="md"
+        px="2"
+        py="1"
+        _hover={{ bg: "bg.muted" }}
+      >
+        <Flex align="center" justify="space-between" gap="2">
+          <Text fontSize="xs" fontWeight="bold" color="fg" textTransform="uppercase" letterSpacing="wide">
+            {section.title}
+          </Text>
+          {/* The chevron IS the open state — hence a controlled Collapsible rather than a
+              `defaultOpen` one: a rotated single icon needs a CSS hook into the trigger's
+              data-state, while two icons just read the boolean we already have. */}
+          <Icon as={open ? ChevronDown : ChevronRight} boxSize="4" color="fg.muted" />
+        </Flex>
+      </Collapsible.Trigger>
+
+      <Collapsible.Content>
+        <Stack gap="0.5" pt="0.5">
+          {section.entries.map((entry) => (
+            <Link
+              key={entry.id}
+              href={`#${entry.id}`}
+              fontSize="sm"
+              color="fg.muted"
+              rounded="md"
+              px="2"
+              py="1.5"
+              _hover={{ bg: "brand.subtle", color: "brand.fg", textDecoration: "none" }}
+            >
+              {entry.title}
+            </Link>
+          ))}
+        </Stack>
+      </Collapsible.Content>
+    </Collapsible.Root>
+  );
+}
+
 // ComponentsPage is a live gallery of the app's reusable shared components (issue #34). A left list
-// navigates between them; each card is anchored so the link scrolls straight to it.
+// navigates between them, grouped by context and collapsible per group; each card is anchored so the
+// link scrolls straight to it.
 export function ComponentsPage() {
   return (
     <Flex gap="section" align="start" data-testid="components-page">
       <Stack
         as="nav"
-        gap="1"
-        w="180px"
+        gap="section"
+        w="200px"
         flexShrink={0}
         position="sticky"
         top="page"
+        // The list is taller than the viewport now that it carries group headings, and a sticky
+        // column that overflows puts its last entries permanently out of reach. It scrolls itself.
+        maxH="calc(100dvh - 2.5rem)"
+        overflowY="auto"
         display={{ base: "none", md: "flex" }}
       >
-        <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase" mb="1">
-          Components
-        </Text>
-        {ENTRIES.map((entry) => (
-          <Link
-            key={entry.id}
-            href={`#${entry.id}`}
-            fontSize="sm"
-            color="fg.muted"
-            rounded="md"
-            px="2"
-            py="1.5"
-            _hover={{ bg: "brand.subtle", color: "brand.fg", textDecoration: "none" }}
-          >
-            {entry.title}
-          </Link>
+        {SECTIONS.map((section) => (
+          <NavGroup key={section.id} section={section} />
         ))}
       </Stack>
 
       <Stack gap="section" flex="1" minW="0" maxW="2xl">
         <Stack gap="1">
-          <Heading size="md">Shared components</Heading>
-          <Text color="fg.muted">A live gallery of the app's reusable components.</Text>
+          <Heading size="lg">Shared components</Heading>
+          <Text color="fg.muted">
+            A live gallery of the app's reusable components, grouped by the context they serve.
+          </Text>
         </Stack>
 
-        {ENTRIES.map((entry) => (
-          <Card.Root key={entry.id} id={entry.id} scrollMarginTop="page">
-            <Card.Body>
-              <Stack gap="card">
-                <Stack gap="1">
-                  <Heading size="sm">{entry.title}</Heading>
-                  <Text fontSize="sm" color="fg.muted">
-                    {entry.description}
-                  </Text>
-                </Stack>
+        {SECTIONS.map((section) => (
+          <Stack key={section.id} gap="section" id={`group-${section.id}`} scrollMarginTop="page">
+            <Stack gap="1" borderTopWidth="1px" pt="card">
+              <Heading size="md">{section.title}</Heading>
+              <Text fontSize="sm" color="fg.muted">
+                {section.blurb}
+              </Text>
+            </Stack>
 
-                {entry.render()}
-              </Stack>
-            </Card.Body>
-          </Card.Root>
+            {section.entries.map((entry) => (
+              <Card.Root key={entry.id} id={entry.id} scrollMarginTop="page">
+                <Card.Body>
+                  <Stack gap="card">
+                    <Stack gap="1">
+                      <Heading size="sm">{entry.title}</Heading>
+                      <Text fontSize="sm" color="fg.muted">
+                        {entry.description}
+                      </Text>
+                    </Stack>
+
+                    {entry.render()}
+                  </Stack>
+                </Card.Body>
+              </Card.Root>
+            ))}
+          </Stack>
         ))}
       </Stack>
     </Flex>

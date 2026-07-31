@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { regionClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, referenceQuery } from "../../api/queryClient";
 
 // Region search, for the address picker (#176/#177's component sweep).
 //
@@ -16,6 +16,7 @@ export function useRegionSearch(args: { q: string; limit: number; minChars: numb
 
   return useQuery({
     queryKey: key.regions({ search: q, limit }),
+    ...referenceQuery,
     enabled: q.length >= minChars,
     queryFn: async () => {
       const res = await regionClient.regionSearch({ q, limit });

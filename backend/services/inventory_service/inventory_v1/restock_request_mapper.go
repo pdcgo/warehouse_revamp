@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -24,6 +25,35 @@ const (
 	restockPaymentShopeePay   = "shopee_pay"
 	restockPaymentBankAccount = "bank_account"
 )
+
+// What happened to a restock, as stored in `restock_request_events.kind` (00019). Text, not a DB
+// CHECK IN-list (cf. #80) — adding a kind is a constant here, never a migration.
+const (
+	restockEventCreated   = "created"
+	restockEventEdited    = "edited"
+	restockEventAccepted  = "accepted"
+	restockEventCancelled = "cancelled"
+	restockEventCODFee    = "cod_fee"
+)
+
+// Unknown text reads back as UNSPECIFIED rather than being dropped: an event this build does not know
+// still HAPPENED, and a timeline that silently omits it would be a shorter history than the truth.
+func restockEventKindFromText(text string) inventoryv1.RestockRequestEventKind {
+	switch text {
+	case restockEventCreated:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED
+	case restockEventEdited:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_EDITED
+	case restockEventAccepted:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED
+	case restockEventCancelled:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CANCELLED
+	case restockEventCODFee:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COD_FEE
+	default:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_UNSPECIFIED
+	}
+}
 
 // How a unit failed to become stock, as stored in `restock_damaged_units.damage_type` (#154). Mapped
 // here, not by a DB CHECK (cf. #80). Empty text (pre-2026-07-23 rows) reads back as UNSPECIFIED.
@@ -175,6 +205,20 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		Note:             r.Note,
 		CreatedByUserId:  r.CreatedByUserID,
 		AcceptedByUserId: r.AcceptedByUserID,
+
+		CancelledByUserId: r.CancelledByUserID,
+	}
+
+	// THE HISTORY, oldest first — empty unless the caller preloaded it, which only Detail does. An
+	// unloaded association is an empty slice here, and that is the correct wire value for the list:
+	// "this response does not carry the history", not "this restock has none".
+	for i := range r.Events {
+		out.Events = append(out.Events, &inventoryv1.RestockRequestEvent{
+			Id:          r.Events[i].ID,
+			Kind:        restockEventKindFromText(r.Events[i].Kind),
+			ActorUserId: r.Events[i].ActorUserID,
+			AtUnix:      r.Events[i].At.Unix(),
+		})
 	}
 
 	// A nil supplier is "none recorded" — the wire carries 0 rather than a null.
@@ -274,4 +318,28 @@ func placementToProto(p *inventory_service_models.RestockReceivedPlacement) *inv
 	}
 
 	return out
+}
+
+// recordRestockEvent appends one entry to a restock's history (00019).
+//
+// IN THE SAME TRANSACTION as the change it describes, always — that is the only reason it takes a
+// `tx` rather than the service's db. An event written outside the transaction can survive a rolled
+// back write, and a history claiming something that never happened is worse than no history.
+//
+// `at` is passed in rather than taken here so the event carries the SAME instant as the column the
+// handler stamps — two calls to time.Now() a microsecond apart would have the timeline and the
+// `accepted_at` filter disagreeing about which second a delivery landed.
+func recordRestockEvent(
+	tx *gorm.DB,
+	requestID uint64,
+	kind string,
+	actor uint64,
+	at time.Time,
+) error {
+	return tx.Create(&inventory_service_models.RestockRequestEvent{
+		RestockRequestID: requestID,
+		Kind:             kind,
+		ActorUserID:      actor,
+		At:               at,
+	}).Error
 }

@@ -24,7 +24,21 @@ export GRAPHIFY_CLAUDE_CLI_MODEL
 GRAPHIFY_VIZ_NODE_LIMIT   ?= 15000
 export GRAPHIFY_VIZ_NODE_LIMIT
 
-.PHONY: help graphify-full graphify-update graphify-label
+# `graphify tree` is a separate viz from the graph.html above: a D3 collapsible
+# tree whose hierarchy is the filesystem, not the communities. It only READS an
+# existing graph.json, so it needs no LLM and finishes in well under a second —
+# but it is only as fresh as the last graphify-update.
+#
+# Caveat: the emitted HTML loads D3 from https://d3js.org, so it renders blank
+# with no network. It is a local review tool, not something to hand off.
+GRAPHIFY_TREE_OUT          ?= graphify-out/GRAPH_TREE.html
+GRAPHIFY_TREE_LABEL        ?= warehouse_revamp
+# Wide directories are truncated to this many children, silently. Raise it if a
+# directory looks suspiciously short in the tree.
+GRAPHIFY_TREE_MAX_CHILDREN ?= 200
+
+.PHONY: help graphify-full graphify-update graphify-label graphify-tree
+
 .DEFAULT_GOAL := help
 
 help:
@@ -32,6 +46,7 @@ help:
 	@echo "  make graphify-full     Full re-analyze + semantic community naming (LLM via claude-cli; sequential/slow, uses subscription)"
 	@echo "  make graphify-update   Fast AST-only refresh, no LLM, keeps existing community names"
 	@echo "  make graphify-label    Re-name communities only (LLM via claude-cli; cheaper than a full pass)"
+	@echo "  make graphify-tree     Emit the D3 collapsible tree HTML from the current graph (no LLM, instant)"
 
 graphify-full:
 	@echo ">> graphify full pass (backend=$(GRAPHIFY_BACKEND), model=$(GRAPHIFY_CLAUDE_CLI_MODEL)); sequential — this can take a while"
@@ -44,3 +59,10 @@ graphify-update:
 graphify-label:
 	@echo ">> graphify community (re)naming (backend=$(GRAPHIFY_BACKEND), model=$(GRAPHIFY_CLAUDE_CLI_MODEL))"
 	$(GRAPHIFY) label . --backend $(GRAPHIFY_BACKEND)
+
+graphify-tree:
+	@echo ">> graphify collapsible tree -> $(GRAPHIFY_TREE_OUT)"
+	$(GRAPHIFY) tree \
+		--label "$(GRAPHIFY_TREE_LABEL)" \
+		--output "$(GRAPHIFY_TREE_OUT)" \
+		--max-children $(GRAPHIFY_TREE_MAX_CHILDREN)

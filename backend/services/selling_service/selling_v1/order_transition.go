@@ -2,6 +2,7 @@ package selling_v1
 
 import (
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -38,15 +39,22 @@ func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_m
 // setOrderStatus writes the new status (stamping updated_at) and mirrors it onto the in-memory row
 // so the caller can map the fresh state straight back to proto.
 func setOrderStatus(tx *gorm.DB, order *selling_service_models.Order, status string) error {
+	// The moment is taken ONCE and written to both the row and the in-memory model, so a caller that
+	// publishes an event about this transition can take the time from the ORDER rather than calling
+	// time.Now() again at the publish site. Two clocks for one fact would file a boundary transition in
+	// different days depending on who read it (guidelines/event-guideline.md #2).
+	now := time.Now()
+
 	err := tx.
 		Model(order).
-		Updates(withUpdatedAt(map[string]any{"status": status})).
+		Updates(map[string]any{"status": status, "updated_at": now}).
 		Error
 	if err != nil {
 		return err
 	}
 
 	order.Status = status
+	order.UpdatedAt = now
 
 	return nil
 }

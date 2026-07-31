@@ -348,6 +348,35 @@ func (s *Service) RestockRequestFulfill(
 			return statusErr
 		}
 
+		// WHAT WAS PAID AT THE DOOR, AS ITS OWN STEP (owner) — written FIRST, so the timeline reads
+		// "paid the courier, then counted the goods in". That is the order it physically happened: the
+		// fee is handed over before the box is open, and the acceptance is what the payment bought.
+		//
+		// Two steps rather than one because they are two claims about two different pockets. ACCEPTED
+		// says goods landed; this says the warehouse is out of pocket for goods it does not own, which
+		// is exactly the debt PostCODFee records below (#184). Folded into the acceptance, the payment
+		// is invisible on the requesting team's timeline — and that team is the one who has to settle it.
+		//
+		// It shares `acceptedAt` with the acceptance rather than taking its own time.Now(): both are the
+		// same act. The ORDER comes from the insert order — Detail sorts by `at ASC, id ASC`, so the row
+		// written first reads first when the second is the same.
+		//
+		// Nothing is written for a fee of 0, on the same reasoning that stops the ledger posting below:
+		// most deliveries are not COD, and a step saying "paid nothing" is a claim about a non-event.
+		if rr.CODShippingFee > 0 {
+			codEventErr := recordRestockEvent(tx, rr.ID, restockEventCODFee, actor, acceptedAt)
+			if codEventErr != nil {
+				return codEventErr
+			}
+		}
+
+		// The delivery's entry in the history (00019), carrying the SAME instant as `accepted_at` above
+		// — the timeline and the accepted-date filter must name the same second.
+		acceptEventErr := recordRestockEvent(tx, rr.ID, restockEventAccepted, actor, acceptedAt)
+		if acceptEventErr != nil {
+			return acceptEventErr
+		}
+
 		// THE OBLIGATION THE COD FEE CREATES (#184), in this same transaction.
 		//
 		// The warehouse has just paid the courier for goods it does not own, so the requesting team

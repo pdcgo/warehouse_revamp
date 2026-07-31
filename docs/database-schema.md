@@ -535,8 +535,24 @@ erDiagram
         timestamptz updated_at
     }
 
+    stock_owner_movements {
+        bigserial   id            PK
+        bigint      movement_id   FK "-> stock_movements(id) ON DELETE CASCADE"
+        bigint      owner_team_id "the SELLING team, derived from the restock; CHECK > 0"
+        bigint      warehouse_id  "opaque, no FK"
+        bigint      product_id    "opaque, no FK"
+        bigint      batch_id      FK "-> stock_batches(id); NULL = batch-less event, owner from the product"
+        smallint    kind          "MovementKind enum number; a shelf MOVE is never projected"
+        bigint      delta         "signed: + in, - out"
+        text        reason
+        text        ref
+        bigint      actor_user_id
+        timestamptz created_at    "the EVENT's time, copied from the movement; UNIQUE(movement_id, owner_team_id)"
+    }
+
     stock_batches ||--o{ stock_shelf_batches : "batch_id"
     restock_request_items ||--o| stock_batches : "restock_request_item_id (one batch per line)"
+    stock_movements ||--o{ stock_owner_movements : "movement_id (projected per owner)"
 
     suppliers ||--o{ supplier_channels : "supplier_id"
 
@@ -580,6 +596,7 @@ erDiagram
     }
 
     restock_requests ||--o{ restock_request_items : "restock_request_id"
+    restock_requests ||--o{ restock_request_events : "restock_request_id"
     suppliers ||--o{ restock_requests : "supplier_id (nullable)"
 
     restock_requests {
@@ -595,8 +612,22 @@ erDiagram
         bigint      cod_shipping_fee   "fee paid AT THE DOOR by the warehouse at acceptance (#155), CHECK >= 0"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
         text        note               "optional free text"
+        bigint      created_by_user_id "who RAISED it, opaque user_service id, no FK; 0 = not recorded"
+        bigint      accepted_by_user_id "who COUNTED it, opaque user_service id, no FK; 0 = not accepted yet"
+        bigint      cancelled_by_user_id "who CALLED IT OFF, opaque user_service id, no FK; 0 = not cancelled"
+        timestamptz accepted_at        "nullable: when the warehouse accepted; NULL = not accepted"
+        timestamptz cancelled_at       "nullable: when the requester called it off; NULL = not cancelled"
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    restock_request_events {
+        bigserial   id                 PK
+        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
+        text        kind               "created | edited | accepted | cancelled (mapper-guarded, #80)"
+        bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
+        timestamptz at                 "WHEN IT HAPPENED — not the insert time; the backfill carries old dates"
+        timestamptz created_at
     }
 
     restock_request_items {
@@ -652,6 +683,24 @@ erDiagram
   - It lives in **inventory_service** because this service already owns warehouse×product facts
     (`stock_levels` is keyed on exactly that pair) and owns the restock flow that writes it — so no
     cross-service write is needed to maintain it (HARD RULE 3).
+- **`stock_owner_movements`** — the CATALOGUE OWNER's ledger (#232): the same events as
+  `stock_movements`, projected into the lens of the selling team that owns the goods. It exists
+  because `stock_movements` answers for a *shelf* — its `balance` is a rack's running total and a
+  shelf-to-shelf move is one of its commonest rows — and none of that is a fact about what an owner
+  holds. Three things happen at projection time so they need not happen per request:
+  - **Ownership is resolved**, by the same climb every owner read makes
+    (`stock_batches → restock_request_items → restock_requests.requesting_team_id`).
+  - **A batch-less event** (a shelf recount, and every `PICK`, which is written with no batch) cannot
+    make that climb, so it is attributed to whoever owns batches of that product *in that warehouse*.
+    A movement that resolves to no owner is simply not projected.
+  - **A shelf `MOVE` is dropped**, which is also what keeps the running balance honest — projecting
+    one leg and not the other would corrupt every figure after it.
+
+  There is deliberately **no balance column**: the owner's on-hand after each event is a running
+  `SUM(delta) OVER (PARTITION BY warehouse_id ORDER BY id)` computed at read time, so it cannot drift
+  from the rows it is made of and a rebuilt projection produces identical figures. Written today
+  inside `appendMovement`'s transaction; it becomes an event consumer later, with no change to the
+  rows or to the read.
 - **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
   `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
   cache of the running on-hand, maintained inside each movement's transaction, with a
@@ -714,11 +763,57 @@ erDiagram
   still-pending one. `status` is the `RestockRequestStatus` enum **as text** (mapped in the handler,
   no `CHECK` IN-list, cf. #80). Both team ids are opaque — no FK; indexes on `requesting_team_id` and
   `warehouse_id` serve the two list views.
+- **Who handled it, and when** (00018): `created_by_user_id` is stamped from the caller's identity on
+  create, `accepted_by_user_id` + `accepted_at` at acceptance (the same actor the delivery's
+  `stock_batches.accepted_by` records, written in one transaction so a batch and its delivery can
+  never name two different people), and `cancelled_at` on cancel. The user ids are **opaque
+  user_service ids — no FK**, and names are resolved through `UserByIDs` at read time rather than
+  snapshotted: unlike a line's `sku`/`name` (which must keep reading as it was ordered), a person's
+  name is not part of what was agreed, so a renamed user should read with their current name
+  everywhere. **Nothing is backfilled** — a restock raised before 00018 keeps `0` / `NULL`, because
+  inventing an id would put a real person's name against work they may not have done.
+  The two timestamps are stored rather than derived from `updated_at`, which any later write moves,
+  and they are what the list's date-range filter ranges on (`RestockDateField`: created / accepted /
+  cancelled). Partial indexes `(requesting_team_id, accepted_at) WHERE accepted_at IS NOT NULL` and
+  the same for `cancelled_at` serve it — at any moment most restocks are neither, so skipping those
+  rows indexes the smaller half of the table.
+  > ⚠ **Restart a running API after applying 00018.** Postgres caches a prepared statement's result
+  > type, so a process that ran `SELECT *` on `restock_requests` before the `ALTER TABLE` fails every
+  > subsequent read with `cached plan must not change result type (SQLSTATE 0A000)` until it
+  > reconnects. It reads as a code bug and is a connection-lifetime one. **The same applies to 00019**,
+  > which adds `cancelled_by_user_id` to the same table.
+- **`restock_request_events` — the restock's own history** (00019), one **append-only** row per thing
+  that happened to it: `created`, `edited`, `accepted`, `cancelled` (text, mapper-guarded, cf. #80),
+  each with an `actor_user_id` and the moment it happened. Written **in the same transaction as the
+  change it describes**, carrying the *same instant* as the column that change stamps — an event that
+  could survive a rolled-back write, or that named a different second from `accepted_at`, would be a
+  history contradicting the row it belongs to.
+  - **Why a table and not `updated_at`/`updated_by`.** Editing a restock had to appear on the
+    timeline, and the two-column version can only remember the **most recent** edit — but a pending
+    restock is edited repeatedly (a quantity corrected, a courier added, a line dropped), so a request
+    edited five times would read identically to one edited once. That is the failure the column pair
+    cannot be fixed out of.
+  - **The columns are NOT superseded.** `created_by_user_id` and the three timestamps stay, because
+    the **list** filters and sorts on them and a filter cannot reach into a child table cheaply. The
+    columns answer *what is the current state*; the events answer *what happened, in order*. The
+    detail RPC preloads the events (ordered `at, id` — the id breaks a same-second tie); the list
+    deliberately does not, exactly as it skips a line's placements.
+  - **Backfilled from those columns** for every pre-existing restock, so an old request shows a
+    history rather than an empty timeline. `actor_user_id` comes across including `0` — carrying "not
+    recorded" forward honestly. **`edited` events cannot be backfilled and are not faked:** nothing
+    ever recorded an edit, so an old restock's history legitimately begins with what is known.
+  - No `UNIQUE (restock_request_id, kind)`: a restock legitimately has **many** edits, and the
+    one-of-each kinds are kept unique by the lifecycle rather than by the schema — as `status` is.
+- **Who called it off** (00019): `cancelled_by_user_id`, from the caller's identity like the two above.
+  00018 recorded *when* a cancellation happened but never *who*, so the timeline's cancelled step was
+  the one step that could not name a person. `0` on any row cancelled before 00019 — the same
+  "not recorded" the other actor ids carry.
 - A request carries **many priced lines** (#124), same shape as `orders`/`order_items`:
   `restock_request_items` snapshots each line's `sku`/`name` at request time (the product may live in
-  another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `price`
-  (whole rupiah **per unit**, `CHECK >= 0` — zero is legitimate for a transfer or a sample).
-  `ON DELETE CASCADE`.
+  another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `total_price`
+  (whole rupiah, **the LINE total, not per unit** — #140: people buying stock think in totals, so the
+  total is the stored truth and a per-unit figure is derived where one is needed. `CHECK >= 0`, since
+  zero is legitimate for a transfer or a sample). `ON DELETE CASCADE`.
 - **`quantity` is what was ASKED FOR; `received_quantity` is what ARRIVED** (#133), and the two are
   different facts, which is why both are stored. A request is a *promise*; the delivery is a *fact*,
   and they disagree often enough — 9 of the 10, one line that never turned up, occasionally 11 — that

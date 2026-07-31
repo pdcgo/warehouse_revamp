@@ -1,5 +1,7 @@
 import {
   type Supplier,
+  SupplierByIdsDataType,
+  type SupplierByIdsResponse,
   SupplierListDataType,
   type SupplierListResponseItem,
 } from "../../gen/warehouse/inventory/v1/supplier_pb";
@@ -23,6 +25,26 @@ export function suppliersFromList(items: SupplierListResponseItem[], ids: bigint
     if (it.d.case === "supplier") m = it.d.value.mapData;
   }
   return ids.map((id) => m[id.toString()]).filter((s): s is Supplier => !!s);
+}
+
+export const supplierByIdsRowData = (): SupplierByIdsDataType[] => [SupplierByIdsDataType.SUPPLIER];
+
+// A by-ids response is keyed PER ID, not one map across a page, so this flattens it to id → supplier.
+// An id the server had nothing for is simply missing from the map — that is the contract, and the
+// caller decides what "unknown" looks like rather than getting a fabricated blank.
+export function suppliersFromByIds(res: SupplierByIdsResponse): Map<string, Supplier> {
+  const out = new Map<string, Supplier>();
+
+  for (const [id, list] of Object.entries(res.items)) {
+    for (const item of list.items) {
+      if (item.d.case !== "supplier") continue;
+
+      const supplier = item.d.value.mapData[id];
+      if (supplier) out.set(id, supplier);
+    }
+  }
+
+  return out;
 }
 
 export function channelsFromList(

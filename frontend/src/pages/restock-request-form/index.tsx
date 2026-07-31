@@ -21,7 +21,8 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import { ArrowLeft, PackagePlus, Trash2 } from "lucide-react";
-import { restockClient, rpcError } from "../../api/clients";
+import { productClient, restockClient, rpcError } from "../../api/clients";
+import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { RestockPaymentType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -50,6 +51,15 @@ interface LineDraft {
   name: string;
   quantity: string;
   totalPrice: string;
+
+  // The COVER — display only, never sent. The restock line stores sku/name (what was ordered) and has
+  // no image field at all, so this is resolved rather than saved: it comes free from the picker when a
+  // product is chosen, and from ProductByIds when an existing request is re-opened to edit.
+  //
+  // Empty means "no picture", which renders as the placeholder — the same thing a product with no
+  // cover uploaded shows anyway, so an unresolved image degrades to the ordinary case.
+  imageUrl: string;
+  thumbnailUrl: string;
 }
 
 // Whole rupiah only: parse an input string to a non-negative int64, treating blank/invalid as 0.
@@ -142,6 +152,8 @@ export function RestockRequestFormPage() {
     name: p.name,
     quantity: "1",
     totalPrice: "0",
+    imageUrl: p.defaultImageUrl ?? "",
+    thumbnailUrl: p.defaultImageThumbnailUrl ?? "",
   });
 
   const [warehouseId, setWarehouseId] = useState<bigint>(0n);
@@ -213,8 +225,52 @@ export function RestockRequestFormPage() {
             name: item.name,
             quantity: String(item.quantity),
             totalPrice: String(item.totalPrice),
+            // No cover on a stored line — the restock item holds sku/name and nothing else. The lines
+            // render immediately without one and the covers arrive below, rather than holding the
+            // whole form back on a lookup that is decoration.
+            imageUrl: "",
+            thumbnailUrl: "",
           })),
         );
+        // The covers, in ONE call for every line (#138's ProductByIds) — never one per row. Fired
+        // without awaiting: the form above is already usable, and a picture arriving a moment later
+        // is not worth a spinner on the whole page.
+        //
+        // Best-effort throughout. It PATCHES by product id rather than rebuilding the lines, so a
+        // response landing after somebody has started typing cannot overwrite a quantity or a price —
+        // and a product that does not resolve simply keeps the placeholder it is already showing.
+        const productIds = [...new Set(request.items.map((i) => i.productId).filter((pid) => pid > 0n))];
+        if (productIds.length > 0) {
+          void (async () => {
+            try {
+              const found = await productClient.productByIds({
+                teamId,
+                filter: { ids: productIds },
+                dataRequest: productByIdsRowData(),
+              });
+
+              if (ignore) return;
+
+              const covers = new Map(
+                productsFromByIds(found).map((p) => [
+                  p.id.toString(),
+                  { imageUrl: p.defaultImageUrl, thumbnailUrl: p.defaultImageThumbnailUrl },
+                ]),
+              );
+
+              setLines((prev) =>
+                prev.map((l) => {
+                  const cover = covers.get(l.productId.toString());
+
+                  return cover ? { ...l, ...cover } : l;
+                }),
+              );
+            } catch {
+              // A cover is decoration; the placeholder is a correct rendering of "no picture".
+            }
+          })();
+        }
+
         setReceipt(request.receipt);
         setSupplierId(request.supplierId);
         setOrderRef(request.orderRef);
@@ -431,14 +487,27 @@ export function RestockRequestFormPage() {
                         fight that. Ticking a dozen in one dialog is the same job in one pass.
 
                         `stockWarehouseId` is the part that only works here: the picker shows what the
-                        DESTINATION warehouse already holds, which is the question being answered while
-                        choosing what to restock. Before a warehouse is chosen there is no such number,
-                        so it is omitted rather than guessed — undefined shows no badge, and no badge is
-                        honest where a wrong "out of stock" would not be.
+                        DESTINATION warehouse already holds — READY — which is the question being
+                        answered while choosing what to restock. Before a warehouse is chosen there is
+                        no such number, so it is omitted rather than guessed: undefined shows no badge,
+                        and no badge is honest where a wrong "out of stock" would not be. Beside it the
+                        picker shows ONGOING, what is already on order and not yet accepted, totalled
+                        across EVERY warehouse (owner) — the double-order guard, and a question about
+                        the purchase rather than the building, so it needs no destination.
 
-                        No `teamId` = browse EVERY team's catalogue, which is what the combobox's
-                        scope="all" did: a warehouse restocks goods it does not own. */}
+                        `teamId` scopes the browse to THE TEAM'S OWN CATALOGUE (owner). It used to be
+                        omitted, which discovers across every team — a selling team could put another
+                        team's product on its request. That is what the two numbers above cost:
+                        OwnerStockByIds establishes ownership through restock_requests.requesting_team_id,
+                        so another team's product comes back as zeros, and "0 ready, 0 ongoing" on screen
+                        reads as "we have none" when the truth is "not mine to know". Scoping the
+                        catalogue is what makes the badges honest, so the two land together.
+
+                        `?? 0n` is not defensive noise: undefined is the prop's "ALL teams", so a team
+                        that has not resolved yet would silently WIDEN the browse to everyone's
+                        catalogue — exactly what this change removes. 0n is the no-team state instead. */}
                     <ProductPicker
+                      teamId={teamId ?? 0n}
                       stockWarehouseId={warehouseId > 0n ? warehouseId : undefined}
                       value={pickedIds}
                       onChange={pickProducts}
@@ -467,7 +536,13 @@ export function RestockRequestFormPage() {
                         data-testid={`restock-line-${i}`}
                       >
                         <ProductListItem
-                          product={{ id: line.productId, sku: line.sku, name: line.name }}
+                          product={{
+                            id: line.productId,
+                            sku: line.sku,
+                            name: line.name,
+                            defaultImageUrl: line.imageUrl,
+                            defaultImageThumbnailUrl: line.thumbnailUrl,
+                          }}
                           action={
                             <Flex gap="card" align="end" justify="end" wrap="wrap">
                               <Field.Root w="20">
@@ -492,16 +567,12 @@ export function RestockRequestFormPage() {
                                 />
                               </Field.Root>
 
-                              <Text
-                                fontSize="sm"
-                                fontWeight="medium"
-                                minW="24"
-                                pb="1.5"
-                                textAlign="end"
-                                data-testid={`restock-line-total-${i}`}
-                              >
-                                {formatRupiah(lineTotal(line))}
-                              </Text>
+                              {/* No line total beside the input any more (owner): the price IS the
+                                  line total since #140, so this echoed the field a hand's width to
+                                  its left. It was worth showing back when a per-unit price was typed
+                                  and the total was derived — there was a multiplication to check.
+                                  Now there is no arithmetic between them, and repeating a number
+                                  reads as a second, differently-derived one. */}
 
                               {/* No "change product" beside it any more: swapping one product for
                                   another is picking, and picking is the dialog. Remove stays because

@@ -9,7 +9,18 @@ import {
   type ProductRowItem,
   ProductSchema,
 } from "../../gen/warehouse/product/v1/product_pb";
-import type { OwnerStockByIdsResponse } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import {
+  type CostLayer,
+  OwnerBatchListDataType,
+  type OwnerBatchListResponse,
+  OwnerCostLayerListDataType,
+  type OwnerCostLayerListResponse,
+  type OwnerMovement,
+  type OwnerStockByIdsResponse,
+  OwnerStockHistoryDataType,
+  type OwnerStockHistoryResponse,
+  type StockBatch,
+} from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { OrderProductActivityByIdsResponse } from "../../gen/warehouse/selling/v1/order_pb";
 
 // The guideline list/by-ids RPCs (guidelines/service-guideline.md) return per-id "slices" keyed by
@@ -144,6 +155,62 @@ export function activityFromByIds(res: OrderProductActivityByIdsResponse): Map<s
       if (!row) continue;
 
       out.set(id, { lastOrderUnix: row.lastOrderUnix, soldQty30d: row.soldQty30d });
+    }
+  }
+
+  return out;
+}
+
+// ── The owner's ROW-level reads (#232) ──────────────────────────────────────────────────────────
+//
+// Three lists keyed by id in the guideline envelope, read back in the order `ids` gives — the server
+// decided it (dearest layer first, newest delivery first, newest movement first) and re-sorting here
+// would silently answer a different question from the one the paging is over.
+
+// The data_request each of the three asks for. Fresh array per call — the field is mutable.
+export const ownerLayerData = (): OwnerCostLayerListDataType[] => [OwnerCostLayerListDataType.LAYER];
+export const ownerBatchData = (): OwnerBatchListDataType[] => [OwnerBatchListDataType.BATCH];
+export const ownerMovementData = (): OwnerStockHistoryDataType[] => [OwnerStockHistoryDataType.MOVEMENT];
+
+export function layersFromList(res: OwnerCostLayerListResponse): CostLayer[] {
+  const out: CostLayer[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "layer") continue;
+
+    for (const id of res.ids) {
+      const row = it.d.value.mapData[id.toString()];
+      if (row) out.push(row);
+    }
+  }
+
+  return out;
+}
+
+export function batchesFromList(res: OwnerBatchListResponse): StockBatch[] {
+  const out: StockBatch[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "batch") continue;
+
+    for (const id of res.ids) {
+      const row = it.d.value.mapData[id.toString()];
+      if (row) out.push(row);
+    }
+  }
+
+  return out;
+}
+
+export function movementsFromList(res: OwnerStockHistoryResponse): OwnerMovement[] {
+  const out: OwnerMovement[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "movement") continue;
+
+    for (const id of res.ids) {
+      const row = it.d.value.mapData[id.toString()];
+      if (row) out.push(row);
     }
   }
 

@@ -14,9 +14,16 @@ export interface ProductListItemProps {
     defaultImageUrl?: string;
     defaultImageThumbnailUrl?: string;
   };
-  /** Ready stock (on-hand). OPTIONAL — omit it and no stock is shown ("optional show"). It lives in
-   * inventory_service (StockList), not on Product, so the CALLER supplies it. */
+  /** READY stock — on a shelf now, sellable. OPTIONAL: omit it and no stock is shown ("optional
+   * show"). It lives in inventory_service (OwnerStockByIds), not on Product, so the CALLER supplies
+   * it — and the caller also decides WHICH warehouse it describes, since stock is held per building. */
   stock?: bigint;
+  /** ONGOING stock — ordered on restocks the warehouse has not accepted yet (#209's word for it).
+   *
+   * Shown only when it is > 0, unlike `stock`. The two follow OPPOSITE rules on purpose: a ready
+   * count of 0 is the case most worth seeing ("out of stock"), while nothing on the way is simply
+   * the normal state of most products, and a badge saying so on every row is noise. */
+  ongoing?: bigint;
   /** The owning team's name. Not on Product either — only `teamId` — so the caller resolves ids →
    * names in ONE batch call (e.g. TeamByIds) and passes it down. Falls back to "Team #<id>". */
   teamName?: string;
@@ -32,9 +39,16 @@ export interface ProductListItemProps {
 // of these, so resolving stock or team names per item would be an N+1. The caller batches those and
 // passes them in. Everything that renders "a product in a list" should use this.
 export const description =
-  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and an optional ready-stock badge.";
+  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and optional stock badges: READY (on a shelf now, shown even at 0, because out-of-stock is the case worth seeing) and ONGOING (on an unaccepted restock, shown only when there is some).";
 
-export function ProductListItem({ product, stock, teamName, action, size = "md" }: ProductListItemProps) {
+export function ProductListItem({
+  product,
+  stock,
+  ongoing,
+  teamName,
+  action,
+  size = "md",
+}: ProductListItemProps) {
   const { t } = useTranslation();
   const large = size === "lg";
 
@@ -59,6 +73,10 @@ export function ProductListItem({ product, stock, teamName, action, size = "md" 
   // `if (stock)` would hide the out-of-stock case, which is the one worth seeing.
   const showStock = stock !== undefined;
   const inStock = stock !== undefined && stock > 0n;
+
+  // `ongoing`, by contrast, is shown ONLY when there is some — see the prop's note. So the plain
+  // truthiness test that would be a bug above is exactly right here.
+  const showOngoing = ongoing !== undefined && ongoing > 0n;
 
   return (
     <HStack gap="card" w="full" data-testid={`product-list-item-${product.id ?? ""}`}>
@@ -87,6 +105,8 @@ export function ProductListItem({ product, stock, teamName, action, size = "md" 
         </HStack>
       </Stack>
 
+      {/* Ready first, then ongoing: what is here now is the number the decision rests on, and what
+          is coming only qualifies it. Read the other way round, a big ongoing count reads as stock. */}
       {showStock && (
         <Badge
           colorPalette={inStock ? "green" : "red"}
@@ -94,6 +114,17 @@ export function ProductListItem({ product, stock, teamName, action, size = "md" 
           data-testid={`product-list-item-stock-${product.id ?? ""}`}
         >
           {inStock ? t("productListItem.stock", { n: stock.toString() }) : t("productListItem.outOfStock")}
+        </Badge>
+      )}
+
+      {showOngoing && (
+        <Badge
+          colorPalette="blue"
+          variant="subtle"
+          flexShrink={0}
+          data-testid={`product-list-item-ongoing-${product.id ?? ""}`}
+        >
+          {t("productListItem.ongoing", { n: ongoing.toString() })}
         </Badge>
       )}
 

@@ -7,16 +7,17 @@ import {
   Button,
   Card,
   Flex,
+  Grid,
   Heading,
   Icon,
   IconButton,
   Input,
-  NativeSelect,
   Separator,
   SimpleGrid,
   Spacer,
   Spinner,
   Stack,
+  Stat,
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, History, LayoutGrid, Plus, Trash2, TriangleAlert } from "lucide-react";
@@ -26,6 +27,7 @@ import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restoc
 import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CurrencyInput } from "../../components/CurrencyInput";
+import { DamageTypeSelect } from "../../components/DamageTypeSelect";
 import { ProductListItem } from "../../components/ProductListItem";
 import { RackSelect, UNPLACED } from "../../components/RackSelect";
 import { ShippingBadge } from "../../components/ShippingBadge";
@@ -33,9 +35,19 @@ import { toaster } from "../../components/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { useRestockRequest, useFulfillRestockRequest } from "../../features/restock/queries";
+import { TeamItem } from "../../components/TeamItem";
+import { UserItem } from "../../components/UserItem";
+import {
+  useRestockRequest,
+  useRestockActors,
+  useFulfillRestockRequest,
+} from "../../features/restock/queries";
+import { useTeamDetail } from "../../features/teams/queries";
+import { useSuppliersByIds } from "../../features/suppliers/queries";
+import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
-import { deltaLabel, toReceived, toRupiah, unitHpp } from "../../features/restock/counting";
+import { goodsTotal } from "../../features/restock/summary";
+import { deltaLabel, toReceived, toRupiah, unitGoods, unitHpp } from "../../features/restock/counting";
 
 // One shelf a line's goods went to, and how many. `place` is RackSelect's value: "" (no shelf yet —
 // this is what blocks Accept), UNPLACED (the holding pile), or a rack id string.
@@ -45,10 +57,11 @@ interface PlacementDraft {
   quantity: string;
 }
 
-// One problem row: what failed to become stock, how many, and why (#154).
+// One problem row: what failed to become stock, how many, and why (#154). `type` is the ENUM, not a
+// "broken" | "lost" string — the picker emits it, so nothing here re-maps strings on the way out.
 interface ProblemDraft {
   key: string;
-  type: "broken" | "lost";
+  type: RestockDamageType;
   quantity: string;
   note: string;
 }
@@ -125,6 +138,42 @@ export function RestockAcceptPage() {
   });
   const places = placesQuery.data ?? [];
 
+  // The COVER IMAGE, batched. A RestockRequestItem carries the sku, the name and the quantity — it is
+  // a snapshot of what was asked for, not a copy of the catalogue — so ProductListItem was falling
+  // back to its package icon on every line. Someone matching a box against a screen recognises the
+  // picture before they read the SKU, so the accept screen is exactly where it should not be missing.
+  //
+  // ONE call for the whole delivery, per ProductListItem's contract: it is presentational and fetches
+  // nothing, so the caller resolves ids → products in a batch rather than N+1-ing per row.
+  //
+  // A warehouse reading a SELLING team's products is deliberate, not a leak — ProductByIds grants the
+  // warehouse roles for this exact case ("a person at a shelf must be able to read the label on a box
+  // sitting on it"), and `teamId` is the caller's own team, as on every other scoped call.
+  const productsQuery = useProductsByIds({
+    teamId,
+    productIds: (request?.items ?? []).map((i) => i.productId),
+  });
+  const products = productsQuery.data;
+
+  // WHO raised it — the team and the person. Two separate reads on top of the request, not folded
+  // into it: each degrades to a reference rather than blanking the card, and neither delays the
+  // counting UI, which is the only thing on this page anyone is waiting for.
+  const requestingTeamId = request?.requestingTeamId ?? 0n;
+  // TeamItem falls back to "Team #<id>" on its own while the name is in flight, so there is nothing
+  // to pre-resolve here.
+  const requester = useTeamDetail({ teamId: requestingTeamId, enabled: requestingTeamId > 0n });
+
+  const actorsQuery = useRestockActors(request ? [request.createdByUserId] : []);
+  const creator = actorsQuery.data?.get((request?.createdByUserId ?? 0n).toString());
+
+  // The VENDOR by name. This needs SupplierByIds specifically: SupplierDetail filters by the caller's
+  // team, so a warehouse asking about the buying team's supplier gets NotFound — which is how this
+  // field came to read "Supplier #2". A restock names exactly one supplier, so the array is a set of
+  // one; the hook batches because the shape is by-ids, not because this screen needs it to.
+  const supplierId = request?.supplierId ?? 0n;
+  const suppliersQuery = useSuppliersByIds({ teamId, supplierIds: [supplierId] });
+  const supplier = suppliersQuery.data?.get(supplierId.toString());
+
   // Seed once per request: one placement row prefilled with the ORDERED quantity and NO shelf — the
   // asked number offered back for confirmation, blocking Accept until a shelf is named.
   const seededFor = useRef<string>("");
@@ -148,6 +197,11 @@ export function RestockAcceptPage() {
   const items = useMemo(() => request?.items ?? [], [request]);
 
   const freight = (request?.shippingCost ?? 0n) + toRupiah(codFee);
+
+  // What the ORDER was worth, from the lines as raised. This is the asked-for value, not the
+  // received one: it is the figure on the invoice the courier is holding, which is the whole point
+  // of showing it while the box is being opened.
+  const productsTotal = goodsTotal(items);
 
   // Per-line arithmetic, in one place so the header, the pill and the payload cannot disagree.
   function lineState(item: RestockRequestItem) {
@@ -222,7 +276,10 @@ export function RestockAcceptPage() {
   function addProblem(itemKey: string) {
     setProblems((prev) => ({
       ...prev,
-      [itemKey]: [...(prev[itemKey] ?? []), { key: nextKey(), type: "broken", quantity: "1", note: "" }],
+      [itemKey]: [
+        ...(prev[itemKey] ?? []),
+        { key: nextKey(), type: RestockDamageType.BROKEN, quantity: "1", note: "" },
+      ],
     }));
   }
 
@@ -270,10 +327,7 @@ export function RestockAcceptPage() {
               .map((p) => ({
                 quantity: toReceived(p.quantity),
                 reason: p.note.trim(),
-                type:
-                  p.type === "lost"
-                    ? RestockDamageType.LOST
-                    : RestockDamageType.BROKEN,
+                type: p.type,
               })),
           };
         }),
@@ -353,15 +407,23 @@ export function RestockAcceptPage() {
   }
 
   return (
-    <Stack gap="section">
+    // NOT capped at the page level (owner): the width limit belongs to the delivery summary above,
+    // not to the counting below. The line cards want every pixel — three columns of put-away is the
+    // work, and squeezing it to keep a read-only header narrow would be the wrong trade.
+    <Stack gap="section" data-testid="restock-accept-page">
       {back}
 
       {/* The action header rides at the top of the scroll (#201): on a long delivery the Accept button
           and the reason it is disabled must stay in reach. */}
       <Box position="sticky" top="0" zIndex="1" bg="bg" borderBottomWidth="1px" borderColor="border" py="card">
         <Flex align="center" gap="card" wrap="wrap">
-          <Heading size="md">{t("restock.accept.heading", { id: request.id.toString() })}</Heading>
-          <Badge colorPalette="brand">{current.teamName}</Badge>
+          {/* The id lives in the first summary card now (owner), not in the heading. It was being
+              said twice, and of the two places the card is the right one: the heading is what you
+              are DOING, the card is the record you are doing it to. */}
+          {/* No team badge beside the title (owner). The accepting warehouse is already named twice
+              over — the team switcher in the sidebar and the breadcrumb — and a third copy in the
+              heading said nothing the person reading it did not already know. */}
+          <Heading size="md">{t("restock.accept.title")}</Heading>
           <Spacer />
 
           <Stack gap="0" textAlign="end" mr="1">
@@ -396,136 +458,293 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      {/* Delivery summary, grouped (#206): the order, the shipment, and the freight the courier took at
-          the door. Only the fields the model actually holds — a driver/receiver name and a shipped date
-          are on the mock but not yet in the schema, so they are left out rather than faked. */}
-      <Card.Root>
-        <Card.Body>
-          <Stack gap="card">
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
+      {/* The delivery summary is THREE CARDS, side by side (owner): WHO sent it · WHAT was ordered and
+          how it travelled · WHAT IT COST. One stacked card made those read as one undifferentiated
+          list of nine labels; as three they answer three questions, and the money one gets to be a
+          Stat rather than another row of small grey text.
+
+          The 7xl cap is HERE and nowhere else (owner): these are read-only blocks of short values,
+          and at full width on a wide monitor they string labels across a metre of screen with nothing
+          between them. The counting below keeps the full width — see the page root. */}
+      <SimpleGrid columns={{ base: 1, lg: 3 }} gap="card" maxW="7xl" alignItems="stretch">
+        {/* 1 — WHO. The team that raised the request and the person who did it. A warehouse counting
+            a delivery is settling somebody else's order, and "who do I ask about this?" is the first
+            question a short count produces. */}
+        <Card.Root>
+          <Card.Body>
+            <Stack gap="card">
+              {/* WHICH restock this is — the record's identity, moved off the heading (owner). It
+                  leads the card because it is the thing you quote back to whoever raised it. */}
+              <Stack gap="0.5">
+                <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
+                  {t("restock.accept.summary.restock")}
+                </Text>
+                <Text fontSize="lg" fontWeight="semibold" data-testid="accept-restock-id">
+                  #{request.id.toString()}
+                </Text>
+              </Stack>
+
+              <Separator />
+
+              {/* Through the SHARED components (#143/#42/#41), not a hand-rolled avatar and label:
+                  TeamItem colours the type badge per team type and UserItem carries the @username,
+                  and a re-implementation is how two screens start showing the same team differently. */}
+              <Stack gap="0.5" data-testid="accept-team">
+                <Text fontSize="xs" color="fg.subtle">
+                  {t("restock.accept.summary.team")}
+                </Text>
+                <TeamItem
+                  team={{
+                    teamId: requestingTeamId,
+                    teamName: requester.data?.name,
+                    teamType: requester.data?.type,
+                  }}
+                />
+              </Stack>
+
+              <Stack gap="0.5" data-testid="accept-created-by">
+                <Text fontSize="xs" color="fg.subtle">
+                  {t("restock.accept.summary.raisedBy")}
+                </Text>
+                {/* No name is an EM DASH, never a fabricated one: a restock raised before the actor
+                    columns existed carries 0 here, and inventing a person is worse than saying
+                    nothing. */}
+                {creator ? (
+                  <UserItem user={creator} />
+                ) : (
+                  <Text color="fg.muted">
+                    {request.createdByUserId === 0n
+                      ? "—"
+                      : t("restock.table.userRef", { id: request.createdByUserId.toString() })}
+                  </Text>
+                )}
+              </Stack>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+
+        {/* 2 — WHAT AND HOW IT TRAVELLED. The order it answers, when it was raised, and the shipment
+            to check the box against. Only the fields the model actually holds — a driver/receiver
+            name and a shipped date are on the mock but not in the schema, so they are left out
+            rather than faked. */}
+        <Card.Root>
+          <Card.Body>
+            <Stack gap="card">
+              <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
                 {t("restock.accept.summary.order")}
               </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
+
+              <SimpleGrid columns={2} gap="card">
                 <SummaryField label={t("restock.accept.summary.orderRef")} value={request.orderRef || "—"} />
                 <SummaryField
                   label={t("restock.accept.summary.supplier")}
-                  value={request.supplierId !== 0n ? `#${request.supplierId.toString()}` : "—"}
+                  testId="accept-supplier"
+                  // No supplier is legitimate (a transfer, a sample) and reads as an em dash. A SET
+                  // id that has not resolved yet falls back to the reference rather than a blank —
+                  // the id is a true thing to say while the name is in flight, and a supplier deleted
+                  // since the order still resolves, so the fallback is genuinely rare.
+                  value={
+                    supplierId === 0n
+                      ? "—"
+                      : (supplier?.name ??
+                        t("restock.detail.supplierRef", { id: supplierId.toString() }))
+                  }
                 />
-                <SummaryField label={t("restock.accept.summary.ordered")} value={formatDate(request.createdAtUnix) || "—"} />
-              </SimpleGrid>
-            </Box>
-
-            <Separator />
-
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
-                {t("restock.accept.summary.shipping")}
-              </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.summary.courier")}
-                  </Text>
-                  {request.shippingCode ? <ShippingBadge code={request.shippingCode} /> : <Text>—</Text>}
-                </Stack>
+                <SummaryField
+                  label={t("restock.accept.summary.ordered")}
+                  value={formatDate(request.createdAtUnix) || "—"}
+                />
                 <SummaryField
                   label={t("restock.accept.summary.receipt")}
                   value={request.receipt || "—"}
                   testId="accept-receipt"
                 />
               </SimpleGrid>
-            </Box>
 
-            <Separator />
-
-            <Box>
-              <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2">
-                {t("restock.accept.summary.freight")}
-              </Text>
-              <SimpleGrid columns={{ base: 2, md: 3 }} gap="card">
-                <SummaryField label={t("restock.form.shippingCost")} value={formatRupiah(request.shippingCost)} />
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.codFee")}
-                  </Text>
-                  <CurrencyInput value={codFee} data-testid="accept-cod-fee" onChange={setCodFee} />
-                </Stack>
-                <Stack gap="0.5">
-                  <Text fontSize="xs" color="fg.subtle">
-                    {t("restock.accept.freightTotal")}
-                  </Text>
-                  <Text fontWeight="medium" data-testid="accept-freight-total">
-                    {formatRupiah(freight)}
-                  </Text>
-                </Stack>
-              </SimpleGrid>
-            </Box>
-
-            {request.note && (
-              <Box borderTopWidth="1px" borderColor="border" pt="card">
+              <Stack gap="0.5">
                 <Text fontSize="xs" color="fg.subtle">
-                  {t("restock.form.note")}
+                  {t("restock.accept.summary.courier")}
                 </Text>
-                <Text data-testid="accept-note">{request.note}</Text>
-              </Box>
-            )}
-          </Stack>
-        </Card.Body>
-      </Card.Root>
+                {request.shippingCode ? (
+                  <Box>
+                    <ShippingBadge code={request.shippingCode} />
+                  </Box>
+                ) : (
+                  <Text>—</Text>
+                )}
+              </Stack>
+
+              {request.note && (
+                <Stack gap="0.5" borderTopWidth="1px" borderColor="border" pt="card">
+                  <Text fontSize="xs" color="fg.subtle">
+                    {t("restock.form.note")}
+                  </Text>
+                  <Text data-testid="accept-note">{request.note}</Text>
+                </Stack>
+              )}
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+
+        {/* 3 — WHAT IT COST, as Stats. These are the three numbers that decide whether the invoice in
+            the courier's hand matches the order, so they are figures to read at arm's length rather
+            than labelled rows. Shipping MOVES as the COD fee is typed below — freight is the recorded
+            shipping cost plus whatever the courier actually collected at the door. */}
+        <Card.Root>
+          <Card.Body>
+            <Stack gap="card">
+              <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
+                {t("restock.accept.summary.cost")}
+              </Text>
+
+              <Stat.Root size="sm">
+                <Stat.Label>{t("restock.accept.summary.productTotal")}</Stat.Label>
+                <Stat.ValueText data-testid="accept-product-total">
+                  {formatRupiah(productsTotal)}
+                </Stat.ValueText>
+              </Stat.Root>
+
+              <Stat.Root size="sm">
+                <Stat.Label>{t("restock.accept.summary.shippingTotal")}</Stat.Label>
+                <Stat.ValueText data-testid="accept-shipping-total">
+                  {formatRupiah(freight)}
+                </Stat.ValueText>
+                <Stat.HelpText>
+                  {t("restock.accept.summary.shippingBreakdown", {
+                    shipping: formatRupiah(request.shippingCost),
+                    cod: formatRupiah(toRupiah(codFee)),
+                  })}
+                </Stat.HelpText>
+              </Stat.Root>
+
+              <Separator />
+
+              <Stat.Root size="md">
+                <Stat.Label>{t("restock.accept.summary.grandTotal")}</Stat.Label>
+                <Stat.ValueText data-testid="accept-grand-total">
+                  {formatRupiah(productsTotal + freight)}
+                </Stat.ValueText>
+              </Stat.Root>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      </SimpleGrid>
+
+      {/* The COD fee lives OUTSIDE the summary cards (owner). Everything in them is a fact already
+          recorded on the request — read it, don't touch it. This is the one money figure the person
+          at the door TYPES: what the courier actually collected on handover. Inside a card it read as
+          another recorded row, when it is an input that moves the Shipping stat above and every HPP
+          below. */}
+      <Flex align="flex-end" gap="card" wrap="wrap">
+        <Stack gap="0.5">
+          <Text fontSize="xs" color="fg.subtle">
+            {t("restock.accept.codFee")}
+          </Text>
+          <CurrencyInput value={codFee} data-testid="accept-cod-fee" onChange={setCodFee} />
+        </Stack>
+      </Flex>
 
       {items.map((item) => {
         const st = lineState(item);
+        const goods = unitGoods(item.totalPrice, st.placed);
         const hpp = unitHpp(item.totalPrice, st.placed, freight, sellableTotal);
         const delta = deltaLabel(t, item.quantity, st.count);
         const recs = recommendations(item.productId);
         const problemRows = problems[st.key] ?? [];
+        const product = products?.get(item.productId.toString());
 
         return (
           <Card.Root key={st.key} data-testid={`accept-line-${item.productId}`}>
             <Card.Body>
-              <Stack gap="card">
-                {/* The product, through the shared component (#143). No stock badge — that means the
-                    warehouse total (#138), and nothing here has loaded one. */}
-                <ProductListItem
-                  product={{ id: item.productId, sku: item.sku, name: item.name }}
-                  action={
-                    <Stack gap="0" textAlign="end">
+              {/* THREE COLUMNS per line (owner): WHAT IT IS · WHERE IT GOES · WHAT WENT WRONG — the
+                  three questions asked at the door, side by side instead of stacked. A long delivery
+                  is then scanned DOWN one column ("has everything got a shelf?") rather than read
+                  card by card. Put-away gets the widest column because it is the one you type in.
+
+                  They collapse to a single column below xl: a rack picker, a quantity and a
+                  free-text note cannot share a row narrower than that without all three becoming
+                  unusable, and the phone case is a person standing at a pallet. */}
+              <Grid
+                templateColumns={{ base: "1fr", xl: "minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr)" }}
+                gap="card"
+                alignItems="stretch"
+              >
+                {/* 1 — WHAT IT IS. The product, what was asked for, and what a piece ends up costing.
+                    Read-only: nothing in this column is typed.
+
+                    `alignSelf="start"` while the grid stretches: the two PANELS beside it should be
+                    equal height, but this column has no panel, so stretching it only opened a bare
+                    gap between the SKU and the HPP that read as a rendering fault. */}
+                <Stack gap="2" alignSelf="start">
+                  {/* The product, through the shared component (#143). No stock badge — that means the
+                      warehouse total (#138), and nothing here has loaded one.
+
+                      The NAME and SKU come from the request line, not the catalogue: they are what was
+                      ordered, and a product renamed since should not silently retitle a delivery being
+                      counted against a paper invoice. Only the cover image is looked up. */}
+                  <ProductListItem
+                    product={{
+                      id: item.productId,
+                      sku: item.sku,
+                      name: item.name,
+                      defaultImageUrl: product?.defaultImageUrl,
+                      defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,
+                    }}
+                  />
+
+                  <Flex align="center" gap="2" wrap="wrap">
+                    <Text fontSize="xs" color="fg.subtle">
+                      {t("restock.accept.ordered", { n: item.quantity.toString() })}
+                    </Text>
+                    {delta && (
+                      <Badge
+                        colorPalette={st.count < item.quantity ? "orange" : "green"}
+                        data-testid={`accept-delta-${item.productId}`}
+                      >
+                        {delta}
+                      </Badge>
+                    )}
+                  </Flex>
+
+                  {/* TWO prices, not one (owner): the line's own price per piece, then the HPP with
+                      freight folded in. The gap between them IS what the delivery cost to get here,
+                      and it moves as the COD fee is typed — with only the HPP shown, that movement
+                      looked like the supplier's price changing. */}
+                  <Stack gap="1" borderTopWidth="1px" borderColor="border" pt="2">
+                    <Flex align="baseline" gap="2">
+                      <Text fontSize="xs" color="fg.muted">
+                        {t("restock.accept.goodsPrice")}
+                      </Text>
+                      <Spacer />
+                      <Text fontSize="sm" color="fg.muted" data-testid={`accept-goods-${item.productId}`}>
+                        {/* No unit price until something is shelved — "Rp 0" would read as free
+                            (#74), so an unplaced line shows a dash until it has a count to divide. */}
+                        {st.placed > 0n ? t("restock.accept.perPiece", { price: formatRupiah(goods) }) : "—"}
+                      </Text>
+                    </Flex>
+
+                    <Flex align="baseline" gap="2">
                       <Text fontSize="xs" color="fg.muted">
                         {t("restock.accept.hpp")}
                       </Text>
+                      <Spacer />
                       <Text fontWeight="medium" data-testid={`accept-hpp-${item.productId}`}>
-                        {/* No unit cost until something is shelved — "Rp 0" would read as free (#74),
-                            so an unplaced line shows a dash until it has a sellable count to divide. */}
                         {st.placed > 0n ? t("restock.accept.perPiece", { price: formatRupiah(hpp) }) : "—"}
                       </Text>
-                    </Stack>
-                  }
-                />
+                    </Flex>
+                  </Stack>
+                </Stack>
 
-                <Separator />
-
-                {/* PUT-AWAY is the whole line now (#206): what you shelve here + what you flag is the
-                    count. The balance pill turns from "{n} to place" to a settled total as every typed
-                    quantity gets a shelf. */}
-                <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card">
+                {/* 2 — WHERE IT GOES. What you shelve here plus what column 3 flags IS the count
+                    (#206). The balance pill turns from "{n} to place" to a settled total as every
+                    typed quantity gets a shelf. */}
+                <Box borderWidth="1px" borderColor="border" borderRadius="md" bg="bg.muted" p="card" h="full">
                   <Stack gap="card">
                     <Flex align="center" gap="2" wrap="wrap">
                       <Icon as={LayoutGrid} boxSize="4" color="brand.fg" />
                       <Text fontSize="sm" fontWeight="semibold">
                         {t("restock.accept.putaway")}
                       </Text>
-                      <Text fontSize="xs" color="fg.subtle">
-                        {t("restock.accept.ordered", { n: item.quantity.toString() })}
-                      </Text>
-                      {delta && (
-                        <Badge
-                          colorPalette={st.count < item.quantity ? "orange" : "green"}
-                          data-testid={`accept-delta-${item.productId}`}
-                        >
-                          {delta}
-                        </Badge>
-                      )}
                       <Spacer />
                       {st.blocking > 0n ? (
                         <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
@@ -563,8 +782,8 @@ export function RestockAcceptPage() {
                     )}
 
                     {st.rows.map((row) => (
-                      <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                        <Box flex="1" minW="48">
+                      <Flex key={row.key} align="center" gap="2">
+                        <Box flex="1" minW="0">
                           <RackSelect
                             warehouseId={teamId ?? 0n}
                             value={row.place}
@@ -574,7 +793,8 @@ export function RestockAcceptPage() {
                         <Input
                           type="number"
                           min="0"
-                          maxW="24"
+                          w="20"
+                          flexShrink={0}
                           value={row.quantity}
                           data-testid={`accept-placement-qty-${item.productId}-${row.key}`}
                           onChange={(e) => patchPlacement(st.key, row.key, { quantity: e.target.value })}
@@ -583,6 +803,7 @@ export function RestockAcceptPage() {
                           size="xs"
                           variant="ghost"
                           colorPalette="red"
+                          flexShrink={0}
                           aria-label={t("restock.accept.removePlacement")}
                           disabled={st.rows.length === 1}
                           onClick={() => removePlacement(st.key, row.key)}
@@ -605,22 +826,47 @@ export function RestockAcceptPage() {
                   </Stack>
                 </Box>
 
-                {/* Problems — broken or lost, never enter stock (#154). Collapsed until there is one to
-                    report: most deliveries have none. */}
+                {/* 3 — WHAT WENT WRONG. Broken or lost, never enters stock (#154). The column is
+                    ALWAYS THERE, even empty: it used to be a ghost button that appeared under the
+                    put-away box, which made reporting a loss feel like an unusual thing to do. A
+                    reserved column says the question is asked of every line — the answer is just
+                    "nothing" most of the time, so it stays visually quiet until it has a row. */}
                 {problemRows.length === 0 ? (
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    alignSelf="flex-start"
-                    data-testid={`accept-add-problem-${item.productId}`}
-                    onClick={() => addProblem(st.key)}
+                  <Flex
+                    borderWidth="1px"
+                    borderStyle="dashed"
+                    borderColor="border"
+                    borderRadius="md"
+                    p="card"
+                    h="full"
+                    align="center"
+                    justify="center"
+                    direction="column"
+                    gap="2"
                   >
-                    <Icon as={Plus} boxSize="4" />
-                    {t("restock.accept.reportProblem")}
-                  </Button>
+                    <Text fontSize="xs" color="fg.subtle" textAlign="center">
+                      {t("restock.accept.noProblems")}
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      data-testid={`accept-add-problem-${item.productId}`}
+                      onClick={() => addProblem(st.key)}
+                    >
+                      <Icon as={Plus} boxSize="4" />
+                      {t("restock.accept.reportProblem")}
+                    </Button>
+                  </Flex>
                 ) : (
-                  <Box borderWidth="1px" borderColor="orange.emphasized" borderRadius="md" bg="orange.subtle" p="card">
-                    <Stack gap="2">
+                  <Box
+                    borderWidth="1px"
+                    borderColor="orange.emphasized"
+                    borderRadius="md"
+                    bg="orange.subtle"
+                    p="card"
+                    h="full"
+                  >
+                    <Stack gap="card">
                       <Flex align="center" gap="2">
                         <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
                         <Text fontSize="sm" fontWeight="semibold" color="orange.fg">
@@ -628,49 +874,49 @@ export function RestockAcceptPage() {
                         </Text>
                       </Flex>
 
+                      {/* Two rows per problem, not one: in a third of the width, the kind, the count
+                          and "what happened?" cannot sit on one line and still be typeable. */}
                       {problemRows.map((row) => (
-                        <Flex key={row.key} align="center" gap="2" wrap="wrap">
-                          <NativeSelect.Root maxW="28" size="sm">
-                            <NativeSelect.Field
-                              value={row.type}
+                        <Stack key={row.key} gap="2">
+                          <Flex align="center" gap="2">
+                            <Box
+                              flex="1"
+                              minW="0"
                               data-testid={`accept-problem-type-${item.productId}-${row.key}`}
-                              onChange={(e) =>
-                                patchProblem(st.key, row.key, {
-                                  type: e.target.value as "broken" | "lost",
-                                })
-                              }
                             >
-                              <option value="broken">{t("restock.accept.problemBroken")}</option>
-                              <option value="lost">{t("restock.accept.problemLost")}</option>
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                          </NativeSelect.Root>
+                              <DamageTypeSelect
+                                value={row.type}
+                                onChange={(type) => patchProblem(st.key, row.key, { type })}
+                              />
+                            </Box>
+                            <Input
+                              type="number"
+                              min="1"
+                              w="20"
+                              flexShrink={0}
+                              value={row.quantity}
+                              data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
+                              onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
+                            />
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              colorPalette="red"
+                              flexShrink={0}
+                              aria-label={t("restock.accept.removeProblem")}
+                              onClick={() => removeProblem(st.key, row.key)}
+                            >
+                              <Icon as={Trash2} boxSize="4" />
+                            </IconButton>
+                          </Flex>
                           <Input
-                            type="number"
-                            min="1"
-                            maxW="20"
-                            value={row.quantity}
-                            data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
-                            onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
-                          />
-                          <Input
-                            flex="1"
-                            minW="40"
+                            bg="bg"
                             placeholder={t("restock.accept.problemNote")}
                             value={row.note}
                             data-testid={`accept-problem-note-${item.productId}-${row.key}`}
                             onChange={(e) => patchProblem(st.key, row.key, { note: e.target.value })}
                           />
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="red"
-                            aria-label={t("restock.accept.removeProblem")}
-                            onClick={() => removeProblem(st.key, row.key)}
-                          >
-                            <Icon as={Trash2} boxSize="4" />
-                          </IconButton>
-                        </Flex>
+                        </Stack>
                       ))}
 
                       <Button
@@ -686,7 +932,7 @@ export function RestockAcceptPage() {
                     </Stack>
                   </Box>
                 )}
-              </Stack>
+              </Grid>
             </Card.Body>
           </Card.Root>
         );

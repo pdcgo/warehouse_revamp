@@ -52,7 +52,7 @@ export function TeamSelect({
   //
   // `useTeams` already asks exactly this question, so this shares its cache rather than adding a
   // second copy of the same list.
-  const query = useTeams({ teamType, page: 1, pageSize: 200 });
+  const query = useTeams({ teamType, page: 1, pageSize: 200, reference: true });
   const teams = query.data?.teams;
 
   // ⚠ `filled` tracks whether the COLLECTION has the list, not whether the QUERY has finished, and

@@ -20,13 +20,12 @@ import {
 import { ArrowLeft } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { kindLabel } from "../../features/inventory/movementKind";
+import { MovementTable } from "../../features/inventory/MovementTable";
 import {
   useCostLayers,
   usePlacementList,
@@ -464,11 +463,12 @@ export function WarehouseProductPage() {
             </Flex>
             <MovementTable
               movements={filteredHistory}
-              t={t}
-              testId="wp-history-table"
-              kindLabel={kindLabel}
+              testId="wp-history"
+              columns={["by", "batch", "place"]}
               actorNames={actorNames}
               rackLabel={rackLabel}
+              afterLabel={t("warehouseProduct.after")}
+              emptyText={t("warehouseProduct.noMovements")}
             />
           </Stack>
         </Tabs.Content>
@@ -499,11 +499,12 @@ export function WarehouseProductPage() {
             </Flex>
             <MovementTable
               movements={filteredPlacementHistory}
-              t={t}
-              testId="wp-placement-history-table"
-              kindLabel={kindLabel}
+              testId="wp-placement-history"
+              columns={["by", "batch", "place"]}
               actorNames={actorNames}
               rackLabel={rackLabel}
+              afterLabel={t("warehouseProduct.after")}
+              emptyText={t("warehouseProduct.noMovements")}
             />
           </Stack>
         </Tabs.Content>
@@ -621,71 +622,5 @@ function FilterSelect({
         <NativeSelect.Indicator />
       </NativeSelect.Root>
     </Field.Root>
-  );
-}
-
-// The ledger, rendered. Shared by the two history tabs so a movement reads identically in both — the
-// only difference between them is which kinds the server was asked for. By (#209) resolves the actor's
-// name; Batch names the delivery its units came from ("—" for a batch-less shelf recount); Place is the
-// rack CODE, both resolved best-effort with an "#id" fallback.
-function MovementTable({
-  movements,
-  t,
-  testId,
-  kindLabel: label,
-  actorNames,
-  rackLabel,
-}: {
-  movements: StockMovement[];
-  t: ReturnType<typeof useTranslation>["t"];
-  testId: string;
-  kindLabel: (t: ReturnType<typeof useTranslation>["t"], kind: MovementKind) => string;
-  actorNames: Map<string, string>;
-  rackLabel: (rackId: bigint) => string;
-}) {
-  return (
-    <Stack gap="card">
-      <Table.Root size="sm" data-testid={testId}>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>{t("warehouseProduct.when")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("warehouseProduct.what")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("warehouseProduct.by")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("warehouseProduct.batch")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("warehouseProduct.place")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("warehouseProduct.change")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("warehouseProduct.after")}</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {movements.map((m) => (
-            <Table.Row key={m.id.toString()}>
-              <Table.Cell>{m.createdAt}</Table.Cell>
-              <Table.Cell>{label(t, m.kind)}</Table.Cell>
-              <Table.Cell>
-                {m.actorUserId > 0n
-                  ? actorNames.get(m.actorUserId.toString()) ?? `#${m.actorUserId}`
-                  : "—"}
-              </Table.Cell>
-              {/* A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211). */}
-              <Table.Cell>{m.batchId > 0n ? `#${m.batchId}` : "—"}</Table.Cell>
-              <Table.Cell>{rackLabel(m.rackId)}</Table.Cell>
-              {/* Signed, and shown as such: +9 and -9 are different events, and a bare 9 hides which. */}
-              <Table.Cell textAlign="end">
-                {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}
-              </Table.Cell>
-              {/* THIS PLACE's balance after the movement, not the warehouse total (#135). */}
-              <Table.Cell textAlign="end">{m.balance.toString()}</Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-
-      {movements.length === 0 && (
-        <Text color="fg.muted" data-testid={`${testId}-empty`}>
-          {t("warehouseProduct.noMovements")}
-        </Text>
-      )}
-    </Stack>
   );
 }

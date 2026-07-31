@@ -39,6 +39,9 @@ const (
 	// SupplierServiceSupplierListProcedure is the fully-qualified name of the SupplierService's
 	// SupplierList RPC.
 	SupplierServiceSupplierListProcedure = "/warehouse.inventory.v1.SupplierService/SupplierList"
+	// SupplierServiceSupplierByIdsProcedure is the fully-qualified name of the SupplierService's
+	// SupplierByIds RPC.
+	SupplierServiceSupplierByIdsProcedure = "/warehouse.inventory.v1.SupplierService/SupplierByIds"
 	// SupplierServiceSupplierDetailProcedure is the fully-qualified name of the SupplierService's
 	// SupplierDetail RPC.
 	SupplierServiceSupplierDetailProcedure = "/warehouse.inventory.v1.SupplierService/SupplierDetail"
@@ -54,6 +57,7 @@ const (
 type SupplierServiceClient interface {
 	SupplierCreate(context.Context, *connect.Request[v1.SupplierCreateRequest]) (*connect.Response[v1.SupplierCreateResponse], error)
 	SupplierList(context.Context, *connect.Request[v1.SupplierListRequest]) (*connect.Response[v1.SupplierListResponse], error)
+	SupplierByIds(context.Context, *connect.Request[v1.SupplierByIdsRequest]) (*connect.Response[v1.SupplierByIdsResponse], error)
 	SupplierDetail(context.Context, *connect.Request[v1.SupplierDetailRequest]) (*connect.Response[v1.SupplierDetailResponse], error)
 	SupplierUpdate(context.Context, *connect.Request[v1.SupplierUpdateRequest]) (*connect.Response[v1.SupplierUpdateResponse], error)
 	SupplierDelete(context.Context, *connect.Request[v1.SupplierDeleteRequest]) (*connect.Response[v1.SupplierDeleteResponse], error)
@@ -82,6 +86,12 @@ func NewSupplierServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(supplierServiceMethods.ByName("SupplierList")),
 			connect.WithClientOptions(opts...),
 		),
+		supplierByIds: connect.NewClient[v1.SupplierByIdsRequest, v1.SupplierByIdsResponse](
+			httpClient,
+			baseURL+SupplierServiceSupplierByIdsProcedure,
+			connect.WithSchema(supplierServiceMethods.ByName("SupplierByIds")),
+			connect.WithClientOptions(opts...),
+		),
 		supplierDetail: connect.NewClient[v1.SupplierDetailRequest, v1.SupplierDetailResponse](
 			httpClient,
 			baseURL+SupplierServiceSupplierDetailProcedure,
@@ -107,6 +117,7 @@ func NewSupplierServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type supplierServiceClient struct {
 	supplierCreate *connect.Client[v1.SupplierCreateRequest, v1.SupplierCreateResponse]
 	supplierList   *connect.Client[v1.SupplierListRequest, v1.SupplierListResponse]
+	supplierByIds  *connect.Client[v1.SupplierByIdsRequest, v1.SupplierByIdsResponse]
 	supplierDetail *connect.Client[v1.SupplierDetailRequest, v1.SupplierDetailResponse]
 	supplierUpdate *connect.Client[v1.SupplierUpdateRequest, v1.SupplierUpdateResponse]
 	supplierDelete *connect.Client[v1.SupplierDeleteRequest, v1.SupplierDeleteResponse]
@@ -120,6 +131,11 @@ func (c *supplierServiceClient) SupplierCreate(ctx context.Context, req *connect
 // SupplierList calls warehouse.inventory.v1.SupplierService.SupplierList.
 func (c *supplierServiceClient) SupplierList(ctx context.Context, req *connect.Request[v1.SupplierListRequest]) (*connect.Response[v1.SupplierListResponse], error) {
 	return c.supplierList.CallUnary(ctx, req)
+}
+
+// SupplierByIds calls warehouse.inventory.v1.SupplierService.SupplierByIds.
+func (c *supplierServiceClient) SupplierByIds(ctx context.Context, req *connect.Request[v1.SupplierByIdsRequest]) (*connect.Response[v1.SupplierByIdsResponse], error) {
+	return c.supplierByIds.CallUnary(ctx, req)
 }
 
 // SupplierDetail calls warehouse.inventory.v1.SupplierService.SupplierDetail.
@@ -142,6 +158,7 @@ func (c *supplierServiceClient) SupplierDelete(ctx context.Context, req *connect
 type SupplierServiceHandler interface {
 	SupplierCreate(context.Context, *connect.Request[v1.SupplierCreateRequest]) (*connect.Response[v1.SupplierCreateResponse], error)
 	SupplierList(context.Context, *connect.Request[v1.SupplierListRequest]) (*connect.Response[v1.SupplierListResponse], error)
+	SupplierByIds(context.Context, *connect.Request[v1.SupplierByIdsRequest]) (*connect.Response[v1.SupplierByIdsResponse], error)
 	SupplierDetail(context.Context, *connect.Request[v1.SupplierDetailRequest]) (*connect.Response[v1.SupplierDetailResponse], error)
 	SupplierUpdate(context.Context, *connect.Request[v1.SupplierUpdateRequest]) (*connect.Response[v1.SupplierUpdateResponse], error)
 	SupplierDelete(context.Context, *connect.Request[v1.SupplierDeleteRequest]) (*connect.Response[v1.SupplierDeleteResponse], error)
@@ -164,6 +181,12 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 		SupplierServiceSupplierListProcedure,
 		svc.SupplierList,
 		connect.WithSchema(supplierServiceMethods.ByName("SupplierList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	supplierServiceSupplierByIdsHandler := connect.NewUnaryHandler(
+		SupplierServiceSupplierByIdsProcedure,
+		svc.SupplierByIds,
+		connect.WithSchema(supplierServiceMethods.ByName("SupplierByIds")),
 		connect.WithHandlerOptions(opts...),
 	)
 	supplierServiceSupplierDetailHandler := connect.NewUnaryHandler(
@@ -190,6 +213,8 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 			supplierServiceSupplierCreateHandler.ServeHTTP(w, r)
 		case SupplierServiceSupplierListProcedure:
 			supplierServiceSupplierListHandler.ServeHTTP(w, r)
+		case SupplierServiceSupplierByIdsProcedure:
+			supplierServiceSupplierByIdsHandler.ServeHTTP(w, r)
 		case SupplierServiceSupplierDetailProcedure:
 			supplierServiceSupplierDetailHandler.ServeHTTP(w, r)
 		case SupplierServiceSupplierUpdateProcedure:
@@ -211,6 +236,10 @@ func (UnimplementedSupplierServiceHandler) SupplierCreate(context.Context, *conn
 
 func (UnimplementedSupplierServiceHandler) SupplierList(context.Context, *connect.Request[v1.SupplierListRequest]) (*connect.Response[v1.SupplierListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.SupplierService.SupplierList is not implemented"))
+}
+
+func (UnimplementedSupplierServiceHandler) SupplierByIds(context.Context, *connect.Request[v1.SupplierByIdsRequest]) (*connect.Response[v1.SupplierByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.SupplierService.SupplierByIds is not implemented"))
 }
 
 func (UnimplementedSupplierServiceHandler) SupplierDetail(context.Context, *connect.Request[v1.SupplierDetailRequest]) (*connect.Response[v1.SupplierDetailResponse], error) {

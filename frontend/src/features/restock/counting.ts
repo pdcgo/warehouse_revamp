@@ -61,6 +61,17 @@ export function deltaLabel(t: TFunction, asked: bigint, arrived: bigint): string
   return t("restock.receive.over", { n: (arrived - asked).toString() });
 }
 
+// What a unit cost BEFORE any freight — the line's own price, divided by what actually landed
+// sellable. Shown beside the HPP (owner) so the person typing the COD fee can see the two apart: this
+// is the number on the supplier's invoice, and the gap to the HPP is exactly what the delivery added.
+//
+// Same zero rule as unitHpp: no sellable units means the question has no answer, not that it was free.
+export function unitGoods(lineTotal: bigint, lineReceived: bigint): bigint {
+  if (lineReceived <= 0n) return 0n;
+
+  return lineTotal / lineReceived;
+}
+
 // HPP — what a unit of this line ACTUALLY cost, freight included (#155). Mirrors StockCost's SQL so
 // the figure on screen is the one the order will book:
 //

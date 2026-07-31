@@ -7,6 +7,7 @@
 package sellingv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/event_base/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -65,9 +66,19 @@ type OrderPlacedEvent struct {
 	// makes and for the same reason: these are FROZEN AT ORDER TIME. A product moved to another team
 	// next month must not rewrite who was owed for a sale that happened today, and a consumer that read
 	// the catalogue at consume time would do exactly that.
-	Lines         []*OrderPlacedLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Lines []*OrderPlacedLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
+	// The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+	// apart from the domain fields and read the same on every event in the system.
+	//
+	// event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+	// UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+	EventId string `protobuf:"bytes,98,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	// When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+	// time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+	// days depending on who read it.
+	OccurredAtUnix int64 `protobuf:"varint,99,opt,name=occurred_at_unix,json=occurredAtUnix,proto3" json:"occurred_at_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OrderPlacedEvent) Reset() {
@@ -154,6 +165,20 @@ func (x *OrderPlacedEvent) GetLines() []*OrderPlacedLine {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *OrderPlacedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OrderPlacedEvent) GetOccurredAtUnix() int64 {
+	if x != nil {
+		return x.OccurredAtUnix
+	}
+	return 0
 }
 
 // One line of a placed order, as settlement needs it (#186).
@@ -250,11 +275,21 @@ func (x *OrderPlacedLine) GetUnitCost() int64 {
 // the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,
 // and the figures being voided are already on the row.
 type OrderCancelledEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	OrderId       uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TeamId  uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	OrderId uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	// The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+	// apart from the domain fields and read the same on every event in the system.
+	//
+	// event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+	// UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+	EventId string `protobuf:"bytes,98,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	// When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+	// time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+	// days depending on who read it.
+	OccurredAtUnix int64 `protobuf:"varint,99,opt,name=occurred_at_unix,json=occurredAtUnix,proto3" json:"occurred_at_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OrderCancelledEvent) Reset() {
@@ -301,11 +336,25 @@ func (x *OrderCancelledEvent) GetOrderId() uint64 {
 	return 0
 }
 
+func (x *OrderCancelledEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OrderCancelledEvent) GetOccurredAtUnix() int64 {
+	if x != nil {
+		return x.OccurredAtUnix
+	}
+	return 0
+}
+
 var File_warehouse_selling_v1_events_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"\n" +
-	"!warehouse/selling/v1/events.proto\x12\x14warehouse.selling.v1\x1a#warehouse/event_base/v1/event.proto\"\xac\x02\n" +
+	"!warehouse/selling/v1/events.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a#warehouse/event_base/v1/event.proto\"\x83\x03\n" +
 	"\x10OrderPlacedEvent\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x18\n" +
@@ -315,17 +364,21 @@ const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"\n" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
 	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12;\n" +
-	"\x05lines\x18\b \x03(\v2%.warehouse.selling.v1.OrderPlacedLineR\x05lines:\x12\x8a\xb5\x18\x0e\n" +
+	"\x05lines\x18\b \x03(\v2%.warehouse.selling.v1.OrderPlacedLineR\x05lines\x12\"\n" +
+	"\bevent_id\x18b \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x121\n" +
+	"\x10occurred_at_unix\x18c \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x0eoccurredAtUnix:\x12\x8a\xb5\x18\x0e\n" +
 	"\forder-placed\"\x8f\x01\n" +
 	"\x0fOrderPlacedLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"`\n" +
+	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"\xb7\x01\n" +
 	"\x13OrderCancelledEvent\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\x04R\aorderId:\x15\x8a\xb5\x18\x11\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\"\n" +
+	"\bevent_id\x18b \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x121\n" +
+	"\x10occurred_at_unix\x18c \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x0eoccurredAtUnix:\x15\x8a\xb5\x18\x11\n" +
 	"\x0forder-cancelledBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (

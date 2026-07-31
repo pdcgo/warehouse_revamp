@@ -4,6 +4,7 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
 import { file_warehouse_event_base_v1_event } from "../../event_base/v1/event_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -11,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/events.proto.
  */
 export const file_warehouse_selling_v1_events: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIt8BChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSNAoFbGluZXMYCCADKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBsYWNlZExpbmU6Eoq1GA4KDG9yZGVyLXBsYWNlZCJiCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMiTwoTT3JkZXJDYW5jZWxsZWRFdmVudBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWRCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9zZWxsaW5nL3YxO3NlbGxpbmd2MWIGcHJvdG8z", [file_warehouse_event_base_v1_event]);
+  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIp0CChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSNAoFbGluZXMYCCADKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBsYWNlZExpbmUSGQoIZXZlbnRfaWQYYiABKAlCB7pIBHICEAESIQoQb2NjdXJyZWRfYXRfdW5peBhjIAEoA0IHukgEIgIgADoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyKNAQoTT3JkZXJDYW5jZWxsZWRFdmVudBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhkKCGV2ZW50X2lkGGIgASgJQge6SARyAhABEiEKEG9jY3VycmVkX2F0X3VuaXgYYyABKANCB7pIBCICIAA6FYq1GBEKD29yZGVyLWNhbmNlbGxlZEJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_event_base_v1_event]);
 
 /**
  * OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
@@ -96,6 +97,26 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
    * @generated from field: repeated warehouse.selling.v1.OrderPlacedLine lines = 8;
    */
   lines: OrderPlacedLine[];
+
+  /**
+   * The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+   * apart from the domain fields and read the same on every event in the system.
+   *
+   * event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+   * UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+   *
+   * @generated from field: string event_id = 98;
+   */
+  eventId: string;
+
+  /**
+   * When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+   * time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+   * days depending on who read it.
+   *
+   * @generated from field: int64 occurred_at_unix = 99;
+   */
+  occurredAtUnix: bigint;
 };
 
 /**
@@ -179,6 +200,26 @@ export type OrderCancelledEvent = Message<"warehouse.selling.v1.OrderCancelledEv
    * @generated from field: uint64 order_id = 2;
    */
   orderId: bigint;
+
+  /**
+   * The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+   * apart from the domain fields and read the same on every event in the system.
+   *
+   * event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+   * UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+   *
+   * @generated from field: string event_id = 98;
+   */
+  eventId: string;
+
+  /**
+   * When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+   * time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+   * days depending on who read it.
+   *
+   * @generated from field: int64 occurred_at_unix = 99;
+   */
+  occurredAtUnix: bigint;
 };
 
 /**

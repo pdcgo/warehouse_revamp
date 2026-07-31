@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package warehouse.selling.v1;
 
+import "buf/validate/validate.proto";
 import "warehouse/event_base/v1/event.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
@@ -55,6 +56,18 @@ message OrderPlacedEvent {
   // next month must not rewrite who was owed for a sale that happened today, and a consumer that read
   // the catalogue at consume time would do exactly that.
   repeated OrderPlacedLine lines = 8;
+
+  // The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+  // apart from the domain fields and read the same on every event in the system.
+  //
+  // event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+  // UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+  string event_id = 98 [(buf.validate.field).string.min_len = 1];
+
+  // When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+  // time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+  // days depending on who read it.
+  int64 occurred_at_unix = 99 [(buf.validate.field).int64.gt = 0];
 }
 
 // One line of a placed order, as settlement needs it (#186).
@@ -97,4 +110,16 @@ message OrderCancelledEvent {
 
   uint64 team_id = 1;
   uint64 order_id = 2;
+
+  // The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
+  // apart from the domain fields and read the same on every event in the system.
+  //
+  // event_id is the LOGICAL id and the dedup key — DERIVED from the row that caused it, never a fresh
+  // UUID, or a redelivery and a replay stop colliding and the bucket is counted twice.
+  string event_id = 98 [(buf.validate.field).string.min_len = 1];
+
+  // When the fact HAPPENED, from one authoritative clock — not the publish time and not the retry
+  // time. Consumers bucket by it, so two clocks for one fact would file a boundary row in different
+  // days depending on who read it.
+  int64 occurred_at_unix = 99 [(buf.validate.field).int64.gt = 0];
 }

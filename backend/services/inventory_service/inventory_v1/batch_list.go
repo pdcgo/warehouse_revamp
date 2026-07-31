@@ -171,7 +171,11 @@ func (s *Service) BatchList(
 			DeliveryId: r.DeliveryID,
 			ReceiptNo:  r.ReceiptNo,
 			ProductId:  r.ProductID,
-			Sku:        r.SKU,
+			// The scope, restated on the row (#232). Every row's answer is the same here, but a batch
+			// that says which building it is in is the same message the owner's list returns, and a
+			// field that is only populated by one of two callers is a field nobody can trust.
+			WarehouseId: warehouseID,
+			Sku:         r.SKU,
 			Name:       r.Name,
 			SupplierId: r.SupplierID,
 			UnitCost:   unitCost,
