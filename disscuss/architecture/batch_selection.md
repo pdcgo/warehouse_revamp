@@ -15,17 +15,24 @@ lands on — FIFO"* in one line. That line is a whole feature.
 
 | § | Decided |
 | --- | --- |
-| P1 | **A caller names a quantity, never a batch** — the system computes which batches are consumed, and it is a **rule in code, not a table** |
-| P2 | **Who chooses the batch differs per consumption** — `BROKEN` is named by the person holding it; everything else is computed |
+| P1 | **A caller names a quantity, never a batch** — the batch is decided by the picker's scan or by the system, never by the requester. It is a **rule in code, not a table** |
+| P2 | **Who chooses the batch differs per consumption** — only `LOST` and `RECOUNT` down are computed |
 | P3 | **Losses attribute PRO-RATA across the batches on the shelf, not FIFO** — cost-layer FIFO and loss attribution are two different rules |
+| P4 | **FIFO — `ORDER BY batch id`, nothing else.** `expires_on` does not enter selection: it is a human warning, and the "expiring" badge is its only control |
+| P5 | **Stock is FUNGIBLE across owners on a shelf** — the teams are divisions of one company, so a pick draws FIFO regardless of which division owns the batch |
+| P6 | **A pick is OBSERVED, not computed** — the picker scans the batch label, so FIFO is what the system *suggests* and the scan is what the ledger *records* |
 
 ## P2 · Who chooses the batch
 
 | Consumption | Batch chosen by | Why |
 | --- | --- | --- |
-| `ORDER` · `TRANSFER` | **the system** | nobody is looking at a shelf. The computation *is* the decision — nothing is guessed |
+| `ORDER` · a `TRANSFER`'s out-leg | **the picker's SCAN** (P6) | someone is standing at the shelf. What they scan is what left it |
+| `RECEIVE` · `MOVE` · a `TRANSFER`'s in-leg | **the caller** | the batch is already known — it is the delivery, or the thing being moved |
 | `BROKEN` | **the caller** | they are holding the box. A computed guess would overwrite an observed fact |
 | `LOST` · `RECOUNT` down | **the system**, pro-rata (P3) | nobody could have known. See the rendering rule below |
+
+⚠ **Only the last row is computed.** P6 moved picks from computed to observed, so the system now decides
+a batch in exactly the two cases where no human could have.
 
 ### ⚠ The rendering rule — a UI rule the schema cannot enforce
 
@@ -79,20 +86,135 @@ already groups them (P11), so the screen shows one action.
 loss — three shares of 0.5 round to 3 when the loss was 1.5. Largest remainder is the rule that always
 sums exactly, which is why it is named here rather than left to the implementer.
 
+## P4 · FIFO — one ordering, and `expires_on` does NOT enter it
+
+**`ORDER BY stock_batches.id`. Nothing else.** Not FEFO, not a tiebreak, not a special case for
+perishables.
+
+```mermaid
+flowchart TD
+  B1["batch 41 · arrived Jan · expires DEC"]
+  B2["batch 52 · arrived Feb · expires MAR"]
+  F["FIFO by id — the rule"] --> B1
+  F -.->|"52 expires first and is left behind"| W["a human must catch this"]
+  W --> BADGE["the 'expiring ≤ 30 days' badge — the ONLY control"]
+```
+
+### ⚠ The consequence, stated plainly: `expires_on` changes NO system behaviour
+
+It is a **human warning and nothing else**. It drives the "expiring ≤ 30 days" badge, and a person acts
+on it. The picker, the plan, the cost layers and the ledger all ignore it entirely.
+
+This has to be written down because the opposite is the natural assumption. Someone will eventually
+find `expires_on` in the schema and conclude the system *handles* expiry. **It does not — a person
+does.** Anything that relies on it being enforced is relying on something that was never built.
+
+| | |
+| --- | --- |
+| ✅ **expiry is OPTIONAL** (owner) | `expires_on` is nullable and set for perishables only. Most batches have none, so FEFO would be a second ordering built for a minority of the catalogue |
+| ✅ **and within that minority, the orders usually agree** | a supplier does not normally ship stock that expires sooner than what they shipped last month. FEFO only differs where they diverge — a minority of a minority |
+| ✅ **one ordering is one ordering** | batch id already carries the cost-layer order (P17's derivations, the daily projection). A second ordering means two rules that can disagree about which layer a pick consumed |
+| ⚠ **the accepted risk** | a later-arriving, sooner-expiring batch sits while fresher goods ship, and is written off as `BROKEN` when it lapses |
+| ⚠ **so the badge is load-bearing** | for the products that *do* carry an expiry, it is the entire control for a risk the selection rule deliberately does not manage |
+
+## P5 · Fungible — the teams are divisions, not separate businesses
+
+A pick takes whatever FIFO names, even when the batch belongs to a different division than the one
+whose order it is. Value settles between them afterwards.
+
+```mermaid
+flowchart LR
+  O["division 9's order — 3 units"] --> F["FIFO picks batch 41"]
+  F --> B["batch 41 belongs to division 7"]
+  B --> S["9 ships 7's goods · the ledger records batch 41"]
+  S --> V["value settles internally — one company, two divisions"]
+```
+
+**The objection to fungible was that it sells another party's goods without asking.** Between divisions
+of one company that objection does not apply — it is internal pooling, and the settlement is a transfer
+between cost centres rather than a sale.
+
+| | |
+| --- | --- |
+| ✅ **no new machinery** | the ledger already names the batch consumed and the batch names its owner, so *who owes whom* is derivable. Settlement reads what is already written |
+| ✅ **no phantom out-of-stock** | the alternative would let a picker stand at a shelf holding 50 units and be told the order cannot be filled |
+| ✅ **`StockPick` stays as it is** | owner-constrained picking would have required inventory_service to be told the **ordering team** — an input it does not take, crossing a service boundary it deliberately does not cross (P5 of the ledger doc) |
+| ✅ **P3 stands** | pro-rata loss attribution only makes sense over a shared pool. Fungible *is* a shared pool |
+
+⚠ **Revisit if a team is ever an outside party** — a consignor, a marketplace seller, anyone not inside
+the company. The technical design does not change; the *permission* to do it does.
+
+## P6 · The scan makes a pick observed — FIFO becomes a suggestion
+
+Batches carry a printed label and **the picker scans it at pick time** (owner). So the batch on a pick
+row is not a belief the system formed; it is what left the shelf.
+
+```mermaid
+flowchart LR
+  S["system SUGGESTS — take 3 from rack 12, the oldest is batch 41"]
+  S --> P["picker goes to the shelf"]
+  P --> SC["scans what they actually take — batch 52"]
+  SC --> L["ledger records batch 52 — the truth, not the suggestion"]
+```
+
+**This narrows P1 rather than replacing it.** A caller still names a quantity, never a batch — and the
+system still computes a plan. The plan is now a **recommendation to a person**, and the record comes
+from the scan.
+
+| Consumption | Batch decided by | |
+| --- | --- | --- |
+| `ORDER` · a `TRANSFER`'s out-leg | **the picker's scan** | both are someone standing at a shelf taking cartons |
+| `BROKEN` | the caller | unchanged — they are holding it |
+| `LOST` · `RECOUNT` down | **the system**, pro-rata (P3) | nobody scans a unit that is missing |
+
+✅ **Observed beats computed**, for the reason P2 already gave: in an append-only log a guess that turns
+out wrong is indistinguishable from a fact. Now only two kinds are guesses, and both are the ones where
+no observation was possible.
+
+### ⚠ The consequence: the plan leaves the transaction
+
+[stock_movement_log P7](stock_movement_log.md) locks the state rows, reads `old`, plans, and writes —
+all inside one database transaction. **A human scan cannot sit inside that.** P7's own rule forbids it:
+never hold a shelf's lock across anything slow, and a person walking to a rack is the slowest thing in
+the system.
+
+```mermaid
+flowchart TD
+  A["1 · SUGGEST — an unlocked read. No transaction"]
+  A --> B["2 · the picker walks, takes, SCANS"]
+  B --> C["3 · WRITE — lock, validate the scanned batches, append"]
+  C --> D{"does the scanned batch still have stock?"}
+  D -->|"yes"| OK["committed"]
+  D -->|"no — someone else drew it"| F["⚠ FAILS after the human already acted"]
+```
+
+⚠ **That last branch is new.** Under computed-FIFO the plan was made under the lock, so it could not go
+stale — P7 made a stale plan structurally impossible. With a scan in the middle, the goods are
+physically in the picker's hand and the write can still be refused.
+
+**It is not a reason to go back** — the scan is more truthful, and the failure is rare and visible. But
+the recovery ("you have them, the system says you cannot") is a screen someone has to design.
+
+> **PARKED (owner):** the label and scanning design — what is printed, when it is scanned, put-away and
+> counting — is **its own topic**. Only its effect on batch selection is recorded here.
+
+
 ---
 
 ## The core
 
-**A caller names a quantity, never a batch. The system computes which batches are consumed** (owner) —
-and those batch ids become permanent ledger rows (P3 of the ledger doc).
+**A caller names a quantity, never a batch** (owner) — and whichever way the batch is then decided,
+those batch ids become permanent ledger rows (P3 of the ledger doc).
 
 ```mermaid
 flowchart LR
   T["order · transfer · broken · lost — a QUANTITY"]
-  T --> P["the PLAN computes it — which batches, how much each"]
-  P --> L["N ledger rows, each naming its batch (P3)"]
-  L --> A["permanent: which batch was consumed is now history, not a guess"]
-  P -.->|"the rule is CODE, not a row"| X["no table needed"]
+  T --> D{"who decides the batch?"}
+  D -->|"a PICK — the picker SCANS (P6)"| L["N ledger rows, each naming its batch"]
+  D -->|"LOST · RECOUNT — the system, pro-rata (P3)"| L
+  D -->|"RECEIVE · MOVE · BROKEN — the caller already knows it"| L
+  L --> A["permanent: which batch was consumed is now history"]
+  D -.->|"the rule is CODE, not a row"| X["no table needed"]
 ```
 
 ⚠ **This is a RULE, not an entity.** The outcome is already recorded — a pick of 7 spanning 2 batches
@@ -109,27 +231,7 @@ lineage column I proposed is withdrawn.
 
 ## Critique — the rule is not one rule
 
-### 1. ⚠ FIFO by batch id is not FEFO, and `expires_on` already exists
-
-`stock_batches.expires_on` is in the schema today — *"perishables only, NULL means does not expire"*,
-driving the "expiring ≤ 30 days" badge.
-
-**A batch that arrived later can expire sooner.** Pick FIFO on perishables and the system ships the
-fresher goods and leaves the older ones to expire on the shelf — the exact loss the expiry date exists
-to prevent.
-
-```mermaid
-flowchart TD
-  B1["batch 41 · arrived Jan · expires DEC"]
-  B2["batch 52 · arrived Feb · expires MAR"]
-  F["FIFO by id"] --> B1
-  F -.->|"batch 52 expires first and is left behind"| W["written off in March"]
-  E["FEFO by expires_on"] --> B2
-  E --> G["nothing expires on the shelf"]
-```
-
-**→ Recommend: FEFO where `expires_on IS NOT NULL`, FIFO otherwise** — one rule with a documented
-tiebreak, not two systems. `ORDER BY expires_on NULLS LAST, id`.
+### 1. ✅ Settled — see P4
 
 ### 2. ✅ Settled — see P2 and P3. The argument that got there:
 
@@ -279,15 +381,118 @@ nobody knows whose it was.
 
 ---
 
+### 4. ⚠ Is stock FUNGIBLE across owners on a shelf? — the question P3 rests on
+
+One rack holds two teams' batches (#232). Team 9's customer orders 3 units of product P, and batch 41
+belongs to **team 7**:
+
+```mermaid
+flowchart TD
+  O["team 9's customer orders 3 of product P"]
+  O --> Q{"which batch does the picker take?"}
+  Q -->|"A · FUNGIBLE"| A1["batch 41 — FIFO. Team 7's goods ship on team 9's order"]
+  Q -->|"B · OWNER-CONSTRAINED"| B1["batch 52 — FIFO within team 9's own stock only"]
+  A1 --> A2["value settles between the teams afterwards"]
+  B1 --> B2["team 7's units are invisible to team 9"]
+```
+
+#### What each costs
+
+| | ✅ | ⚠ |
+| --- | --- | --- |
+| **A · fungible** | **the machinery already exists** — the ledger names the batch consumed, the batch names the owner, so *who owes whom* is derivable with no new table. Picking stays simple | team 7's goods are sold by team 9 without team 7 being asked |
+| **B · owner-constrained** | ownership is literal: your stock is yours | ⚠ **the picker sees a full shelf and the system says out of stock.** 50 units of P are there, none are team 9's, the order cannot be filled |
+
+⚠ **B also needs something inventory_service does not have.** It is told product ids, never owners — P5
+is explicit that ownership is climbed from the batch. Owner-constrained picking means `StockPick` must
+be told **the ordering team**, which is a new input crossing a service boundary.
+
+#### ✅ B *is* enforceable — batches carry a printed label (owner)
+
+I had argued B might be a bookkeeping fiction: two units of the same product from two deliveries look
+identical, so *"take from batch 52"* is unenforceable and the ledger would record a batch that is not
+the one that left the shelf.
+
+**That argument falls. Batches are labelled.** A picker can tell them apart, so an owner-constrained
+rule is a rule the warehouse can actually follow.
+
+⚠ **Which leaves exactly one thing deciding A vs B**, and it is not technical: *are these teams separate
+businesses, or divisions of one?* Pooling stock between divisions is ordinary. Selling another company's
+goods without asking is not.
+
+⚠ **And the label changes something bigger than this question — see §5.**
+
+#### It decides P3 too
+
+P3 apportions a loss across the owners on a shelf. **That only makes sense under A.** If a pick must
+draw the ordering team's own stock, so must a loss — P3 becomes *"pro-rata within the owner"*, and the
+whole multi-owner fairness argument evaporates because owners never share a pool.
+
+**→ Recommend A, fungible**, on three grounds: the settlement machinery already exists in the ledger, B
+creates a phantom out-of-stock that a warehouse person will not forgive, and B is only honest if batches
+are physically distinguishable.
+
+⚠ **But the real question underneath is not technical:** *are these teams separate businesses, or
+divisions of one?* Pooling stock between divisions is ordinary. Selling another company's goods without
+asking is not — and no schema decision can make that acceptable.
+
+### 5. ✅ Settled — see P6. The argument that got there:
+
+P1 says *"a caller names a quantity, never a batch — the system computes which batches are consumed."*
+**A printed label is the thing that can make that false**, and in the good direction.
+
+```mermaid
+flowchart TD
+  subgraph C["COMPUTED — P1 as written"]
+    C1["picker is told: take 3 of product P from rack 12"] --> C2["the system decides FIFO = batch 41"]
+    C2 --> C3["ledger records batch 41 — believed, not seen"]
+  end
+  subgraph O["OBSERVED — if the picker SCANS the label"]
+    O1["picker takes a carton and scans it"] --> O2["the label says batch 52"]
+    O2 --> O3["ledger records batch 52 — what actually left the shelf"]
+  end
+  C ==> O
+```
+
+**Observed beats computed every time**, for the same reason `BROKEN` takes its batch from the caller
+(P2): a guess that turns out wrong is indistinguishable from a fact once it is in an append-only log.
+
+⚠ **And it demotes FIFO from a rule to a SUGGESTION.** The system says *"the oldest is the one with this
+label"*; the picker takes what they take; the ledger records the truth either way. FIFO stops being
+something the system enforces and becomes something it recommends — which is all it could ever honestly
+have been, since the system was never at the shelf.
+
+#### But a label is not a scan
+
+```mermaid
+flowchart LR
+  L["a label EXISTS on the carton"] --> Q{"is it SCANNED at pick time?"}
+  Q -->|"yes"| OBS["batch selection is observed — P1 changes"]
+  Q -->|"no — the picker just reads it"| SUG["FIFO stays computed. The label only helps a human comply"]
+```
+
+**This is the question the label discussion turns on.** A printed label with no scan step is guidance;
+a scanned label is a fact. The schema is unchanged either way — `batch_id` is on the row regardless —
+but **who decides it** flips.
+
+#### What a label has to carry, and it depends on the answer above
+
+| | If scanned | If only read |
+| --- | --- | --- |
+| **batch id** | ✅ required — it is the key being reported | useful, but a human needs the *code*, not the id |
+| a human code | helpful | ✅ required — it is all they have |
+| **`expires_on`** | ✅ — and this is where P4's "the badge is the only control" stops being true | ✅ **the label is a better control than the badge**: it is at the shelf, where the decision happens |
+| product | for a mis-scan check | ✅ so a picker can tell they are at the right pile |
+| owner division | ⚠ **not needed** — P5 makes stock fungible, so the picker does not care whose it is | ⚠ same, and printing it invites a rule that no longer exists |
+
+✅ **The expiry line is the most useful thing here.** P4 accepted that a later-arriving, sooner-expiring
+batch can be left to lapse, with the "expiring ≤ 30 days" badge as the only control. **A printed expiry
+date is a second control, and a better one** — it is in the picker's hand at the moment of choosing,
+rather than on a screen somebody has to open.
+
+---
+
 ## Question
 
-1. **Rename to `batch_selection.md`?**
-2. **FEFO for perishables, or FIFO everywhere?** (§1) *I say FEFO where an expiry exists* — the column is
-   already there, and ignoring it guarantees avoidable write-offs.
-3. **Must a pick draw from the ordering team's own stock, or is stock fungible across owners on a
-   shelf?** (§3) This decides whether selection is an accounting rule or a physical constraint on
-   picking. ⚠ **P3 assumes fungible** — apportioning a loss across owners only makes sense if the
-   warehouse treats their units as interchangeable. If a pick must draw the customer's own team's stock,
-   the same logic says a loss should too, and P3 becomes "pro-rata within the owner", not across them.
-4. **Should an unknown-cost batch** (#74, `unit_cost IS NULL`) **be consumed LAST**, so the books stay
-   explainable for as long as possible? (§3)
+1. **Should an unknown-cost batch** (#74, `unit_cost IS NULL`) **be consumed LAST**, so the books stay
+   explainable for as long as possible?

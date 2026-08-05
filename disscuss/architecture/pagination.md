@@ -16,6 +16,41 @@ question. Governed by [service-guideline.md](../../guidelines/service-guideline.
 | § | Decided |
 | --- | --- |
 | P1 | **`PageFilter` is DEPRECATED.** `CommonPagination` is the one paginator. The refactor is its own piece of work |
+| P2 | **A ledger read does NOT report a total.** *"Movement 12 481 of 40 332"* is a number nobody uses — so `COUNT(*)` goes, and `PageInfo` becomes **`has_more`** for those RPCs |
+| P3 | **Ledger reads page by KEYSET**, and the cursor is a **`before_id` on each ledger RPC's own filter** — not on the shared paginator |
+
+## P2 · No total, so `has_more`
+
+`PageInfo` returns `current_page` / `total_page` / `total_items`, and every one of them needs the
+`COUNT(*)` that keyset exists to avoid. Dropping the total is not a cost — **it is the point.**
+
+```mermaid
+flowchart LR
+  K["fetch limit + 1 rows"] --> R["return limit of them"]
+  K --> H["the extra row existed? → has_more"]
+  H --> N["no COUNT, no total_page, no second query"]
+```
+
+`has_more` comes free from the page the query already ran.
+
+## P3 · The cursor lives on the DOMAIN filter
+
+`WHERE id < :cursor ORDER BY id DESC LIMIT n`, with `before_id` on `StockHistoryFilter`,
+`RackHistoryFilter` and the rest — **not** on `CommonPagination`.
+
+| | | Why not |
+| --- | --- | --- |
+| A · cursor on the shared paginator | one place, any list could opt in | a **guideline change**, and 37 governed RPCs gain a field they ignore |
+| **B · `before_id` on the domain filter** ✅ | no shared type changes, no guideline change. *"rows before id X"* **is** a filter | `page.page` is meaningless on those RPCs and must be documented as ignored |
+| C · a dedicated `LedgerPage` | cleanest contract | a **third** paginator |
+
+✅ **B is the only option independent of P1's refactor.** A and C put a cursor *into* the paginator
+layer, so both would have to be reconciled with the `PageFilter` → `CommonPagination` migration. A
+`before_id` on a domain filter is untouched by it — those RPCs swap paginators like every other RPC and
+their cursor never moves.
+
+⚠ **`page.page` becomes a field those four RPCs ignore.** That is the price, and it has to be written in
+the proto comment rather than left for a caller to discover by watching page 2 return page 1.
 
 ## P1 · One paginator — `CommonPagination`
 
@@ -39,7 +74,7 @@ Same two fields, so a migration is mechanical per RPC. **Not designed here** —
 
 ## Critique — what is still open
 
-### 1. ⚠ A page-number pager cannot page an append-only, newest-first list
+### 1. ✅ Settled — see P2 and P3. The argument that got there:
 
 Every ledger read pages with `OFFSET`
 ([stock_history.go:61](backend/services/inventory_service/inventory_v1/stock_history.go#L61),
@@ -68,7 +103,7 @@ believable. The reader sees the same pick twice and concludes the log is lying.
 **→ Recommend keyset for these reads** — `WHERE id < :cursor ORDER BY id DESC LIMIT n`. Stable, and
 O(page) instead of O(offset).
 
-### 2. ⚠ Where does the cursor live? — and it is ONE question with the total count
+### 2. ✅ Settled — see P3
 
 The cursor and the total count are the request half and the response half of the same decision.
 `PageInfo` returns `current_page` / `total_page` / `total_items` — a contract that **requires** the
@@ -95,9 +130,5 @@ return `limit`, report whether the extra row existed.
 
 ## Question
 
-1. **Is "movement 12,481 of 40,332" a number anyone uses?** If not — and at a shelf I do not think it is
-   — then losing the total is not a cost, it is the point. This decides §2.
-2. **Does the cursor go on the domain filter (B), or is it worth widening the shared paginator (A)?**
-   *I say B*, on blast radius alone.
-3. **Sequencing of the `PageFilter` → `CommonPagination` migration** — one sweep, or per service as each
+1. **Sequencing of the `PageFilter` → `CommonPagination` migration** — one sweep, or per service as each
    is touched? Not designed here.

@@ -12,7 +12,7 @@ state*. This one is about the log itself and the **event-grain** reads over it.
 | § | Decided |
 | --- | --- |
 | P1 | **The grain is `(rack, batch)`** — no `stock_places` table |
-| P1b | **ALL stock is PLACED — `rack_id` is NOT NULL.** No unplaced pile. A receiver names the racks at acceptance; the **not-yet-shelved remainder** goes to an ordinary rack named "staging" — no flag — and put-away is an ordinary `MOVE` |
+| P1b | **ALL stock is PLACED — `rack_id` is NOT NULL.** No unplaced pile, no staging: receiving lands directly on the shelf. **Strict about WHERE, silent about how much a rack holds** — capacity is a human judgement, not a model |
 | P2 | **One state table at that grain, carrying the `balance`** — `stock_levels` and `stock_shelf_batches` both fold into it. Every FK single-column, and only `rack_id` / `batch_id` can have one |
 | P3 | **The ledger records at the same grain**, one row per batch a change touches — so FIFO attribution stops happening off-ledger |
 | P4 | **`stock_levels` goes** — one snapshot, no coarser rollup |
@@ -35,6 +35,7 @@ state*. This one is about the log itself and the **event-grain** reads over it.
 | P20 | **The reconcile says what to DO** — a copy disagreeing with its source is REPAIRED; two sources disagreeing is an ALERT. `after_balance` is derived, so it rebuilds |
 | P21 | **Empty state rows are pruned** — `balance = 0` older than a grace period, and **strictly after** the reconcile, never before |
 | P22 | **`delta` is naturally signed**, independent of `kind` — and the sign guard is in the **write path**, not a `CHECK`, because a constraint would hardcode enum numbers that live in the proto |
+| P23 | **A transfer is THREE RPCs**, each with one scope — dispatch and cancel in the source, receive in the destination. **A refusal is not a cancel, it is a new transfer** |
 
 ## P1 · The grain is `(rack, batch)`
 
@@ -58,7 +59,7 @@ than a new table.
 
 | | |
 | --- | --- |
-| **the place is the RACK**, which already has an id | capacity and cycle-count schedules attach to `racks`. Nothing new is needed to address a shelf |
+| **the place is the RACK**, which already has an id | nothing new is needed to address a shelf. ⚠ **Capacity is deliberately NOT modelled** — see P1b |
 | **min/max and put-away targets are SLOTTING** | their own `product_slotting (warehouse, product, rack, …)` table when that day comes. Slotting is not stock, and the ledger must not depend on it |
 
 ## P1b · All stock is PLACED — `rack_id` is NOT NULL
@@ -72,71 +73,65 @@ This reverses #135's *unplaced pile*, and it deletes four separate special cases
 | "unplaced first" in the lock ordering rule | NULL is not comparable, so it needed a hand-written exception |
 | a nullable FK, and the `MATCH SIMPLE`/`MATCH FULL` trap that came with it | see P2 |
 
-### ⚠ Correcting myself: receiving does NOT land on staging
+### Receiving lands DIRECTLY on the rack — there is no staging (owner)
 
-I wrote *"receiving lands on the staging rack, then put-away moves it to a shelf."* **That is wrong, and
-the code already says so.**
+I proposed a staging rack twice: first as the place everything arrives, then as the home of a
+not-yet-shelved remainder. **Both are withdrawn. Goods go straight to the shelf they will live on, and
+the receiver records which.**
 
-`restock_received_placements` ([00013](backend/services/inventory_service/db_migrations/00013_restock_placements_and_damage.sql))
-holds **one row per (line, place)** with a quantity, and `RestockRequestFulfill` validates each rack
-against the accepting warehouse. **A receiver already says where the goods went, at acceptance.** Its own
-migration explains why: *"a delivery of 100 does not go on one shelf."*
+```mermaid
+flowchart LR
+  T["a delivery line — 100 units"] --> R["the receiver shelves them and names the racks"]
+  R --> S1["60 · shelf A"]
+  R --> S2["25 · shelf B"]
+  R --> S3["15 · shelf C"]
+  S1 --> D["done — RECEIVE rows, no second step"]
+  S2 --> D
+  S3 --> D
+```
+
+`restock_received_placements` already holds **one row per (line, place)** with a quantity
+([00013](backend/services/inventory_service/db_migrations/00013_restock_placements_and_damage.sql)), so
+the shape is there. What changes is that its `rack_id` stops being nullable.
+
+### ✅ What this deletes
+
+| Gone | Was |
+| --- | --- |
+| the **unplaced pile** in every form | `rack_id = NULL`, and the "staging" rack I invented to replace it |
+| `restock_received_placements.rack_id` nullable | *"NULL is the UNPLACED PILE — received, not shelved yet"* |
+| **put-away as its own operation** | #136 existed to place the unplaced. With nothing unplaced, there is nothing to place |
+| a per-warehouse hot row | staging would have been touched by every receive in the building |
+
+**Receiving IS placing.** One step, not two.
+
+### The point: STRICT about where, SILENT about how much fits (owner)
+
+I framed forced placement as a cost. **It is the intent.** Every unit having a known location at all
+times is what makes the warehouse manageable later — and the flexibility comes from the other half:
 
 ```mermaid
 flowchart TD
-  T["a delivery line — 100 units"]
-  T --> P1["60 to shelf A — named at acceptance"]
-  T --> P2["25 to shelf B — named at acceptance"]
-  T --> P3["15 not shelved yet"]
-  P1 --> S["on the shelves immediately"]
-  P2 --> S
-  P3 --> ST["STAGING — the remainder, and ONLY the remainder"]
-  ST -->|"put-away later — an ordinary MOVE"| S
+  S["the system"]
+  S --> W["WHERE something is — STRICT. Every unit, always, on a named rack"]
+  S --> C["whether a rack is FULL — SILENT. A person decides"]
+  W --> M["manageable: nothing is ever 'somewhere'"]
+  C --> F["flexible: no capacity model to fight when reality disagrees"]
 ```
-
-**So staging is not a stage everything passes through. It is the name of the portion not yet shelved.**
-
-### Why it still has to exist
-
-That remainder is real — the same migration calls it *"a real, workable place, not a missing answer: it
-is what a partial put-away looks like"* — and it was modelled as `rack_id = NULL`. P1b makes rack
-`NOT NULL`, so the state needs a name rather than an absence.
 
 | | |
 | --- | --- |
-| ✅ **the state is genuine** | a receiver puts most of a pallet away and leaves the rest on the floor. That is an ordinary afternoon, not an edge case |
-| ✅ **naming it removed four special cases** | the table above — none of which were about receiving at all, they were about `NULL` |
-| ⚠ **it is the renamed NULL, not a new concept** | which is precisely the claim: the *state* survives, the *absence* does not |
+| **rack capacity is NOT modelled** (owner) | a person looks at the shelf and decides. No `max_units`, no "rack full" error, nothing to keep in step with a warehouse that gets rearranged |
+| **so a wrong placement is not an error** | it is a `MOVE` later — the ordinary correction, on the ordinary path |
+| **and there is no limbo to hide in** | *"it is here, I do not know where yet"* cannot be recorded, which is precisely why the location is always known |
 
-⚠ **If put-away were always immediate, staging would be a row that exists to satisfy a `NOT NULL`** —
-ceremony, and exactly the smell P1b set out to remove. It earns its place only because partial put-away
-is real here. The placements table is the evidence that it is.
+⚠ **This corrects P1's speculation.** I wrote that *"capacity and cycle-count schedules attach to
+`racks`"* as a reason a rack needed identity. **Capacity is deliberately not modelled at all** — the
+rack's identity earns itself simply by being where stock is.
 
-✅ **Put-away stops being its own operation.** #136's "place the unplaced" becomes a plain `MOVE` between
-two racks — one code path instead of two, and it gets the ledger, the FIFO plan and the after-balance for
-free.
-
-### The staging rack is an ORDINARY rack named "staging" — no flag, no special case
-
-I had proposed `racks.is_staging BOOLEAN`, so that `RackDelete` could refuse it, `RackSelect` could hide
-it as a move destination, and a report could flag stock sitting there too long. **Withdrawn (owner).**
-
-The flag was only ever needed because of the three special behaviours I attached to it. Drop those and
-nothing needs to identify the rack at all:
-
-| I proposed | Why it is not needed |
-| --- | --- |
-| `RackDelete` refuses the staging rack | `RackDelete` already refuses **any** rack holding stock (#138). An empty one is safe to delete |
-| hide it as a MOVE destination | moving goods *back* to staging is not wrong, just unusual. The rule was invented, not observed |
-| a staleness report | a future report can match on the rack's code, when it exists. Not a schema concern today |
-
-✅ **And it removes a cross-service problem entirely.** A warehouse is a **team in `team_service`**, so
-"every warehouse gets a staging rack" would have needed either an event consumer or a lazy
-get-or-create just to keep a rack in step with another service's table. As an ordinary rack, whoever
-sets up the warehouse creates it alongside every other rack. No coupling, no machinery.
-
-**The rule that keeps this true: no code may branch on "is this the staging rack".** The moment a
-behaviour genuinely needs to know, that is when a flag earns its place — not before.
+⚠ **The one thing to watch is the receiving flow, not the schema.** A truck of 40 lines means 40
+placement decisions taken while the driver waits. If that ever feels slow, the answer is a faster
+screen — not a limbo state, which would trade a known location for a queue nobody empties.
 
 ## P2 · The state table
 
@@ -380,7 +375,7 @@ sequenceDiagram
         Note over H,S: a row must EXIST before FOR UPDATE can lock it
         H->>S: SELECT FOR UPDATE — the product's batches at this rack, ORDER BY batch_id
         S-->>H: old balance per batch
-        H->>H: PLAN under the lock — FIFO decides the batches
+        H->>H: PLAN under the lock — machine-decided kinds only
         alt the plan does not hold — old + changes < 0
             H-->>U: reject — nothing has been written
         else the plan holds
@@ -413,17 +408,17 @@ silently found nothing and reported a phantom "insufficient stock" for goods sit
 
 | Movement | The plan | Which rack |
 | --- | --- | --- |
-| `RECEIVE` | one batch — the delivery being received. No choice to make | **the racks the receiver named**, and staging for the remainder (P1b) |
-| `PICK` | the rack's batches for that product, **oldest-first**, until covered | wherever the stock is — staging included, if it holds the oldest |
+| `RECEIVE` | one batch — the delivery being received. No choice to make | **the racks the receiver named** — directly, no staging (P1b) |
+| `PICK` | ⚠ **the picker SCANS what they take** (batch_selection P6). FIFO is the suggestion, the scan is the record | wherever the stock is |
 | `MOVE` | the same batch at two racks — a `−qty` leg and a `+qty` leg | named by the caller. Put-away is this |
 | `TRANSFER` dispatch | the source rack's batches, oldest-first — a `TRANSFER_OUT` in A (P19) | A's shelves |
-| `TRANSFER` receipt | one new batch, minted in B (P12) | **the racks the receiver names**, staging for the remainder — a receipt is a receipt (P1b) |
+| `TRANSFER` receipt | one new batch, minted in B (P12) | **the racks B's receiver names** — a receipt is a receipt (P1b) |
 | `RETURN` | the exact batches the original pick took, reversed — the transaction carries `reverses_transaction_id` (P11) | the racks the pick drew from |
 | `RECOUNT` | `target − Σ old` at that rack, FIFO-distributed. Counting UP mints a batch (P10) | the rack being counted |
 | `LOST` · `BROKEN` | the named batches, drawn down — the delta is **always negative** (P17) | where the units were |
 | `LOST` · `BROKEN` | the named batches, drawn down — always negative | where the units were |
 
-**`TRANSFER_IN` lands on staging, not on a shelf** — P1b removed the unplaced pile that
+**`TRANSFER_IN` lands on named shelves** — P1b removed the unplaced pile that
 `stock_transfer.go` uses for both legs today, and goods arriving from another building are in exactly the
 same state as goods off a truck. Put-away is the same ordinary `MOVE` afterwards.
 
@@ -459,7 +454,7 @@ The rules, before the reasoning:
 | | Rule |
 | --- | --- |
 | 1 | Read `FOR UPDATE` first — fall back to an `ON CONFLICT DO UPDATE … RETURNING` upsert, **additive paths only** |
-| 2 | Plan **after** locking, and lock **only what the plan could touch** |
+| 2 | Plan **after** locking for machine-decided kinds; a PICK suggests, the human scans, then it writes (P6 of batch_selection) |
 | 3 | Lock racks **ascending by rack id** — independently of which way goods move |
 | 4 | **READ COMMITTED is a requirement.** No retry loop |
 
@@ -499,14 +494,34 @@ for keys a rejected plan never touched.
 ⚠ **A unique-index wait participates in deadlock detection**, so the fallback inserts obey hazard 3's
 ordering too: all reads ascending by rack, then all inserts ascending by rack — never interleaved.
 
-#### 2 · Plan AFTER locking — and lock only what the plan could touch
+#### 2 · Plan AFTER locking — except where a HUMAN decides
 
-A FIFO draw must read balances to decide, and an unlocked read is stale. Locking first removes the
-stale-plan branch entirely.
+A machine-decided draw reads balances to choose, and an unlocked read is stale. Locking first removes
+the stale-plan branch entirely.
 
-But the scope differs: a `PICK` must lock the product's whole batch set at that rack, a `RECEIVE` names
-its batch and locks one row. Locking the whole set on a receive would block a concurrent pick for no
-reason.
+The scope differs by kind: a draw must lock the product's whole batch set at that rack, a `RECEIVE`
+names its batch and locks one row. Locking the whole set on a receive would block a concurrent draw for
+no reason.
+
+⚠ **A PICK no longer works this way** — [batch_selection P6](batch_selection.md) makes it **observed**:
+the picker scans the batch label, so the batch is reported rather than computed. A human cannot stand
+inside the transaction, so the shape inverts:
+
+```mermaid
+flowchart TD
+  subgraph M["MACHINE-decided — RECEIVE · MOVE · TRANSFER · LOST · RECOUNT"]
+    M1["lock → plan → write, one transaction"] --> M2["a stale plan is impossible"]
+  end
+  subgraph H["HUMAN-decided — PICK, and a TRANSFER's out-leg"]
+    H1["suggest, unlocked"] --> H2["the picker walks and SCANS"]
+    H2 --> H3["lock → validate what was scanned → write"]
+    H3 --> H4["⚠ can be refused after the goods are in their hand"]
+  end
+```
+
+**So P7's rules split by who decides.** Everything else in this section — canonical lock ordering, the
+guarded upsert, READ COMMITTED, the accumulate-in-memory arithmetic — is unchanged for both. Only *when
+the batch is chosen* moves, and with it the guarantee that a plan cannot go stale.
 
 #### 3 · Deadlock across racks
 
@@ -678,7 +693,7 @@ flowchart TD
   R["a supplier delivery"] --> B1["batch · RESTOCK · frozen HPP"]
   O["goods back from an order"] --> B2["batch · ORDER"]
   F["a count finds goods nothing accounts for"] --> B3["batch · WAREHOUSE_ADJUSTMENT · unit_cost NULL"]
-  B1 --> P["placed on the racks the receiver names — staging only for the remainder"]
+  B1 --> P["placed on the racks the receiver names — directly"]
   B2 --> P
   B3 --> P
 ```
@@ -913,7 +928,7 @@ flowchart LR
 | `unit_cost` | **copied** from the source batch — goods do not get cheaper by moving |
 | FIFO order in B | by arrival **in B**, which is what B's pickers draw by |
 | the batch's origin | `inventory_transaction_id` → the `TRANSFER` transaction (P11), so the source is traceable |
-| the destination rack | B's **staging** rack — goods from another building are in the same state as goods off a truck |
+| the destination rack | **the racks B's receiver names** — a receipt is a receipt (P1b) |
 
 **This fixes a live gap:** transfers are batch-less today
 ([stock_transfer.go:45,56](backend/services/inventory_service/inventory_v1/stock_transfer.go#L45) passes
@@ -1211,7 +1226,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | **dispatch** | one transaction in **A** — `TRANSFER_OUT`, drawn FIFO from A's shelves | on the road. In **neither** warehouse |
 | **receipt** | one transaction in **B** — `TRANSFER_IN` onto the racks B's receiver names, minting B's batch (P12) | in B |
-| **cancel** | one transaction in **A** — a `TRANSFER_IN` back onto A's staging | back in A. It arrives like any other inbound, because that is what it is |
+| **cancel** | one transaction in **A** — a `TRANSFER_IN` onto the racks A's receiver names | back in A. It arrives like any other inbound, because that is what it is |
 
 ### ⚠ In transit, stock is in NO warehouse — and that is a carve-out of P1b
 
@@ -1436,6 +1451,142 @@ blocking the real row that follows it.
 
 ---
 
+## P23 · The transfer is THREE RPCs — sketched end-to-end
+
+The blocker, walked as screens. **It resolves into three RPCs, each with exactly one scope** — and the
+constraint that looked like an obstacle turns out to be the thing that gives the right answer.
+
+### Why "scope both warehouses" is not available, and should not be
+
+`ValidateDescriptors` refuses to boot on a second `use_scope` field —
+*"exactly one is allowed, or the scope silently depends on field order"*
+([policy.go:145](backend/pkgs/san_auth/policy.go#L145)). But it fails on **meaning** before it fails on
+implementation:
+
+| "scoped to both" would mean | |
+| --- | --- |
+| a role in **both** warehouses | only someone with roles in A *and* B could transfer. The whole point is that **two different people** act |
+| a role in **either** | someone in B could dispatch stock out of A — **privilege escalation** |
+
+**A single request has one actor, in one warehouse, at one moment.** The interceptor's rule is that fact
+written as a constraint.
+
+### The end-to-end
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor DA as dispatcher · warehouse A
+    participant SA as A's screens
+    participant SYS as inventory_service
+    participant SB as B's screens
+    actor RB as receiver · warehouse B
+
+    DA->>SA: "send 20 of product P to warehouse B"
+    SA->>SYS: TransferDispatch — scoped to from_warehouse_id
+    Note over SYS: stock_transfers row · state DISPATCHED<br/>A's transaction · TRANSFER_OUT, FIFO from A's shelves
+    SYS-->>SB: appears on "incoming transfers"
+    Note over SB,RB: for days, the goods are in NO warehouse
+    RB->>SB: "these arrived" — names the racks
+    SB->>SYS: TransferReceive — scoped to to_warehouse_id
+    Note over SYS: B's transaction · TRANSFER_IN onto named racks<br/>mints B's batch (P12) · state RECEIVED
+```
+
+### The three RPCs
+
+| RPC | `use_scope` | Who | When |
+| --- | --- | --- | --- |
+| `TransferDispatch` | `from_warehouse_id` | a manager in A | creates the document, writes A's `TRANSFER_OUT` |
+| `TransferReceive` | `to_warehouse_id` | a receiver in B | writes B's `TRANSFER_IN`, mints B's batch, names the racks |
+| `TransferCancel` | `from_warehouse_id` | A only | **only while `DISPATCHED`** |
+
+⚠ **`StockTransferRequest` is a leftover, not a gap.** One RPC was correct when both legs committed
+together. P19 made a transfer two events days apart, and the RPC never followed.
+
+### ⚠ A refusal is NOT a cancel — it is a new transfer
+
+Two things look alike and are not:
+
+```mermaid
+flowchart TD
+  Q{"the transfer is not going to complete"}
+  Q -->|"goods never reached B"| C["CANCEL — A's action. TRANSFER_IN back into A"]
+  Q -->|"goods ARE at B, and B will not keep them"| R["B RECEIVES them — that is the truth"]
+  R --> N["then B dispatches a NEW transfer back to A"]
+  C --> OK1["one document, closed"]
+  N --> OK2["two documents, both describing something that happened"]
+```
+
+**A cancellation would erase a journey that occurred.** The goods are on B's dock; the only truthful
+record is that they arrived and then went back. It also keeps stock out of the one state where the
+design lets it go invisible — a refusal modelled as "reject without receiving" leaves the row
+`DISPATCHED` forever, in no warehouse, on no shelf report.
+
+### The screens this implies
+
+| Screen | Warehouse | Needs |
+| --- | --- | --- |
+| **raise a transfer** | A | product, quantity, destination. **Not batches** — the plan computes those (P7) |
+| **outgoing** | A | what is on the road, how long it has been, and Cancel while `DISPATCHED` |
+| **incoming** ⚠ | B | **does not exist today.** A list scoped on `to_warehouse_id` — the screen the whole gap was hiding |
+| **receive** | B | name the racks, like any receipt (P1b). Not a confirm button |
+
+⚠ **Overdue is a screen concern, not only an alert.** P19 flags that a `DISPATCHED` transfer ages
+invisibly; "outgoing" is where a human sees it, and it needs the age on the row rather than buried in a
+report nobody opens.
+
+### 2. Lock SCOPE — the concern that survived two corrections
+
+I raised this twice as "staging is a per-warehouse singleton every receive touches". **P1b killed the
+premise outright — there is no staging rack, and a receipt spreads across the shelves it names.**
+
+What survives was never about staging: **the danger is how wide the lock is drawn, on any rack.**
+
+```mermaid
+flowchart TD
+  subgraph W["WIDE — lock the product's whole batch set at the rack"]
+    W1["receive batch 41 of product P"] --> WL["locks 41, 52, 63 — every batch of P on that rack"]
+    W2["receive batch 52 of product P"] -.->|"BLOCKED"| WL
+  end
+  subgraph N["NARROW — lock only the keys the plan names"]
+    N1["receive batch 41"] --> NL1["locks (rack, 41)"]
+    N2["receive batch 52"] --> NL2["locks (rack, 52) — no contention"]
+  end
+  W ==> N
+```
+
+P7 already states the rule — *"lock only what the plan could touch"* — and a **receive names its batch**,
+so it locks one row. Drawing it wide would serialise every receive of the same product in the warehouse,
+which is precisely the burst that happens when a truck arrives.
+
+⚠ **A DRAW cannot be narrow, and that is correct.** A put-away or a pick must read the product's whole
+batch set at that rack to choose FIFO, so it blocks concurrent receives *of that product, on that rack*
+for its duration. Short, and the right trade.
+
+**Worth measuring, not worth designing around yet.** With no staging rack there is no obvious hot spot
+left — contention is spread across whatever shelves a delivery actually lands on.
+
+### 3. ✅ Settled — there is no transfer transport fee (owner)
+
+I had raised an asymmetry: inbound freight is capitalised into `unit_cost`, so a transfer that costs
+money to run would make the same goods carry two different costs depending on the route they took.
+
+**The premise is false. There is no transfer fee anywhere in the system.**
+
+| | Carries money |
+| --- | --- |
+| a **restock** | `shipping_cost` ([00006](backend/services/inventory_service/db_migrations/00006_restock_request_order_ref_payment.sql)) and `cod_shipping_fee` ([00014](backend/services/inventory_service/db_migrations/00014_restock_cod_shipping_fee.sql)) |
+| a **transfer** | ❌ nothing — `StockTransferRequest` is from, to, product, quantity, reason ([inventory.proto:562-581](proto/warehouse/inventory/v1/inventory.proto#L562)) |
+
+So P12's copied `unit_cost` is exactly right: nothing was added to the goods on the journey, and the
+destination batch costs what the source batch cost.
+
+⚠ **The trigger that would reopen it:** the day a transfer carries a fee — a hired vehicle, a
+third-party courier between buildings — the question comes straight back, and **P12's "copy `unit_cost`"
+is the line where it lands.** Noted so it is recognised rather than rediscovered.
+
+---
+
 
 ## Critique — problems in the settled design
 
@@ -1448,12 +1599,14 @@ A fresh adversarial read after every decision was closed. **Five of the six are 
 | zero-balance rows accumulate forever | ✅ **P21** |
 | sign is not enforced per kind | ✅ **P22** |
 | transfer freight is not capitalised | ✅ **premise false** — there is no transfer fee. See §3 |
+| the transfer had no screen and no workable scope | ✅ **P23** — sketched end-to-end, three RPCs |
 
-One remains — plus §2, which is now only "measure later".
+**All six are settled.** §2 below is "measure later", not a question. §1 is kept because its *other*
+three findings are still unbuilt work, and because the reasoning is why P23 exists.
 
-### 1. ⚠ Four concepts were INVENTED here, and none of them has a screen
+### 1. ⚠ Three of the four invented concepts still have no screen
 
-*jobs → screens → API → data model.* The charge is not that the whole doc is model-first — half of it
+*jobs → screens → API → data model.* The charge was never that the whole doc is model-first — half of it
 legitimately is:
 
 ```mermaid
@@ -1465,17 +1618,18 @@ flowchart TD
     G4["these RE-DERIVE a model under four live history screens"]
   end
   subgraph BAD["INVENTED — no screen exists or was drawn"]
-    B1["P19 — a transfer lifecycle with three states"]
+    B1["P19 — the transfer · NOW SKETCHED as P23"]
     B2["P17 — LOST vs BROKEN as separate kinds"]
     B3["P11 — the transaction, as a thing a user causes"]
-    B4["P1b — staging as a place people put things"]
+    B4["P1b — receiving that must fully place its goods"]
   end
 ```
 
 **Refactoring a model under screens that exist is fine. Inventing four concepts that have none is what
-HARD RULE 6 forbids** — and each one below is a question a single sketch would have answered.
+HARD RULE 6 forbids.** P19 has since been walked — it became P23, and the walk found a blocker no schema
+review had. **The other three have not been walked, and the same is likely true of them.**
 
-#### ⚠⚠ P19 has an authorization gap, and it is a blocker
+#### ✅ P19 had an authorization gap — this is the walk that found it
 
 `StockTransferRequest` scopes on `from_warehouse_id` — *"you must have a role in the warehouse you are
 moving stock OUT of"* ([inventory.proto:573](proto/warehouse/inventory/v1/inventory.proto#L573)). P19
@@ -1494,8 +1648,10 @@ flowchart LR
 | *"receive this shipment"* | B acting on a document A created. Two warehouses, two scopes, one workflow |
 | *"refuse it"* | if B can cancel, a third scope question; if only A can, B is stuck with goods it rejected |
 
-**This is not a UI detail.** P19 assumes a two-party workflow and the authorization model is one-party
-per request. It cannot be built as specified.
+**This was not a UI detail.** P19 assumed a two-party workflow while the authorization model is
+one-party per request — it could not be built as specified. **[P23](#p23--the-transfer-is-three-rpcs--sketched-end-to-end)
+is the answer**, and it is the case for walking the other three: the gap was invisible to every schema
+review and obvious the moment somebody asked who was looking at the screen.
 
 #### ⚠ P3 · P11 · P17 together make one action produce many rows, and nothing absorbs it
 
@@ -1541,62 +1697,6 @@ and that is what determines the API's scope model. Skip them and the scope model
 per-request — which is exactly what happened. `StockTransferRequest` scopes on one warehouse because a
 transfer *looked* like one action by one person. Drawing the receiving screen makes it obvious it is two
 people in two buildings.
-
-**→ Recommend: sketch the transfer end-to-end before anything is built.** It is the one that fails
-outright, and it fails in the authorization model rather than the schema — the class of problem that
-only appears when you ask *who is looking at this screen*.
-
-### 2. Lock SCOPE, not staging — and the staging correction shrank this
-
-I had this as *"staging is a per-warehouse singleton every receive touches."* **P1b's correction removes
-most of it:** a receiver names the racks, so a receipt's rows spread across the shelves it names.
-Staging takes only the not-yet-shelved remainder.
-
-What survives is the general point, which was never really about staging: **the danger is how wide the
-lock is drawn, on any rack.**
-
-```mermaid
-flowchart TD
-  subgraph W["WIDE — lock the product's whole batch set at the rack"]
-    W1["receive batch 41 of product P"] --> WL["locks 41, 52, 63 — every batch of P on that rack"]
-    W2["receive batch 52 of product P"] -.->|"BLOCKED"| WL
-  end
-  subgraph N["NARROW — lock only the keys the plan names"]
-    N1["receive batch 41"] --> NL1["locks (rack, 41)"]
-    N2["receive batch 52"] --> NL2["locks (rack, 52) — no contention"]
-  end
-  W ==> N
-```
-
-P7 already states the rule — *"lock only what the plan could touch"* — and a **receive names its batch**,
-so it locks one row. Drawing it wide would serialise every receive of the same product in the warehouse,
-which is precisely the burst that happens when a truck arrives.
-
-⚠ **A DRAW cannot be narrow, and that is correct.** A put-away or a pick must read the product's whole
-batch set at that rack to choose FIFO, so it blocks concurrent receives *of that product, on that rack*
-for its duration. Short, and the right trade.
-
-**Worth measuring, not worth designing around yet** — and staging is now one rack among many rather than
-the obvious hot spot.
-
-### 3. ✅ Settled — there is no transfer transport fee (owner)
-
-I had raised an asymmetry: inbound freight is capitalised into `unit_cost`, so a transfer that costs
-money to run would make the same goods carry two different costs depending on the route they took.
-
-**The premise is false. There is no transfer fee anywhere in the system.**
-
-| | Carries money |
-| --- | --- |
-| a **restock** | `shipping_cost` ([00006](backend/services/inventory_service/db_migrations/00006_restock_request_order_ref_payment.sql)) and `cod_shipping_fee` ([00014](backend/services/inventory_service/db_migrations/00014_restock_cod_shipping_fee.sql)) |
-| a **transfer** | ❌ nothing — `StockTransferRequest` is from, to, product, quantity, reason ([inventory.proto:562-581](proto/warehouse/inventory/v1/inventory.proto#L562)) |
-
-So P12's copied `unit_cost` is exactly right: nothing was added to the goods on the journey, and the
-destination batch costs what the source batch cost.
-
-⚠ **The trigger that would reopen it:** the day a transfer carries a fee — a hired vehicle, a
-third-party courier between buildings — the question comes straight back, and **P12's "copy `unit_cost`"
-is the line where it lands.** Noted so it is recognised rather than rediscovered.
 
 ---
 
@@ -1652,7 +1752,7 @@ erDiagram
     RACK {
         bigserial id PK
         bigint warehouse_id "the building"
-        text code "one is an ordinary rack named staging — no flag (P1b)"
+        text code "a shelf. No staging, no special racks (P1b)"
         bool deleted "soft delete · refused while it holds stock (#138)"
     }
     STOCK_RACK_BATCH {
@@ -1771,14 +1871,19 @@ the daily projection splits its flow columns by it.
 | how these reads page — keyset, the cursor's home, the `PageFilter` → `CommonPagination` deprecation | [pagination.md](pagination.md) |
 | the projection itself — daily tables, the worker, dedup, the day boundary | [stat_event_processing.md](stat_event_processing.md) |
 
-⚠ **[stat_event_processing.md](stat_event_processing.md) is now stale against this doc** and needs two
-corrections before it is built from:
+⚠ **[stat_event_processing.md](stat_event_processing.md) is now stale against this doc** and needs
+**five** corrections before it is built from:
 
 1. **P13's event grain** — it specifies `StockMovedEvent` per movement, with
    `event_id = "stock-moved:<movement_id>"`. One event per transaction changes the message and the
    dedup key.
 2. **P6's balance grain** — it takes a day's closing from `balance` at `MAX(id)`, which is now the
    closing of one `(rack, batch)`. Its grain-3 daily row becomes a `SUM` of per-batch closings.
+3. **P17's kinds** — `ADJUST` became `RECOUNT` · `LOST` · `BROKEN`, so its daily flow columns split
+   three ways where it had one.
+4. **P19/P23's in-transit stock** — a transfer's legs are now days apart, so its grain-1 invariant
+   needs an in-transit term: `total = Σ warehouses + Σ transfers WHERE state = DISPATCHED`.
+5. **P16** — there is no `occurred_at`. Its day-boundary question keys off `created_at`.
 
 It also still links `guidelines/architectures/data_pipeline.md` as FINAL, which is deleted in the
 working tree.
@@ -1796,7 +1901,7 @@ Recorded rather than quietly edited, per RULE 8b.9.
 | **a database VIEW for the owner lens** | its justification was that a balance including both `MOVE` legs is "arithmetically wrong". **False** — both legs are the same batch, hence the same owner, and sum to zero. The filter is cosmetic. And `CREATE VIEW … SELECT m.*` freezes the column list at creation, so every ledger migration would need a `CREATE OR REPLACE` beside it |
 | **a guarded `UPDATE … RETURNING` per row, re-planning on 0 rows** | that branch only existed because it was not holding a lock. P7's lock makes a stale plan impossible, rejects an over-draw before the first write, and halves the round-trips |
 | **two composite FKs** — `(rack_id, warehouse_id) → racks` and `(batch_id, warehouse_id, product_id) → stock_batches` | the rack one duplicated a check five call sites already make with `rackExists`, and sat on a nullable column so it depended on `MATCH SIMPLE`. The batch one would have **forbidden transfers**, not caught a bug (P12). Both also cost a redundant unique index on the parent, maintained on every insert. Replaced by reconcile checks B, C and D (P15) |
-| **`racks.is_staging`** | it only existed to support three behaviours I had invented around it — `RackDelete` already refuses any rack holding stock, moving goods back to staging is not wrong, and a staleness report can match on the code. As an ordinary rack there is nothing to identify |
+| **`racks.is_staging`, then the staging rack itself** | the flag went first — it only supported behaviours I had invented. Then the rack went too (owner): receiving lands directly on the shelf, so there is no staging state to name. **Two rounds of removing something that only existed because I had put it there** |
 | **an unconditional `INSERT … ON CONFLICT DO NOTHING` before every lock** | it wrote on the common path where the row already exists. Read-first with an `ON CONFLICT DO UPDATE … RETURNING` fallback keeps the no-write path and still closes the concurrent-first-insert race (hazard 1) |
 | **"legacy stock" as the reason for a batch-less state** | P8's fresh start means every unit enters through the accept flow. The permanent case is a `FOUND` recount, which is a different argument with a different answer (P10) |
 | **`delivery_id` on the transaction** — *"the restock request or the order"* | the same untyped pointer just deleted from the ledger as `source_kind` / `source_id`, rebuilt one table higher: a bare id whose meaning depends on a sibling `kind`, with no FK possible. **The reference inverts** — each document carries its own typed, `UNIQUE` FK (P11) |
