@@ -66,6 +66,16 @@ Postgres through [backend/pkgs/san_testdb/](backend/pkgs/san_testdb/) — a per-
 that rolls back, so tests are isolated and need no cleanup (it *skips* when no DB is reachable).
 This is an **adaptation** of the reference project's scenario/seed harness, not an import of it.
 
+**Performance-audit each RPC once it's implemented.** (owner) A working RPC is not a finished
+one — measure its latency, its query count and its query plans before moving on. The procedure,
+the thresholds and the report template are the **`audit-rpc-performance` skill**; the probe is
+[backend/pkgs/san_perf/](backend/pkgs/san_perf/). **Only a HEAVY result gets written up** —
+`audits/services/<service_name>/performances/<RpcName>.md`, each finding carrying its own fix
+recommendation for later discussion. A fast RPC produces a one-line answer and no file, so
+`audits/` stays a list of problems rather than a log. The audit **never applies the fix** — the
+report is input to a discussion, and an index migration belongs to the owning service and the
+owner's decision (HARD RULE 3, HARD RULE 8).
+
 **Tests use a SEPARATE database — never the dev one.** All automated tests run against
 `warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
 instance (`:5433`), a different database, so a test run can never read or corrupt review data.
@@ -231,6 +241,54 @@ This is a collaborative design. When a decision is needed, put it in the relevan
 brainstorming doc as an option with its trade-offs and **ask** — do not quietly pick one and
 build on it.
 
+### 8b. How we discuss (owner)
+
+Applies to `plans/`, `disscuss/`, and replies in chat.
+
+1. **Write LESS markdown.** The owner previews these docs — a wall of prose is not reviewable.
+   Short sections, tight tables, no restating. Prefer a table or a list over a paragraph.
+2. **Always propose a recommendation.** Never lay out options and stop; say which one you would
+   pick, in a line or two. This does not override RULE 8 — recommend, then let the owner decide.
+3. **When the owner proposes a plan / architecture / idea, answer in this shape:**
+
+   ```
+   ## Critique
+   ### Recommendation
+   ## Question
+   ```
+
+   Critique names the weakness, Recommendation says what to do instead, Question is what you need
+   back. The owner answers and clarifies — that is the loop.
+4. **`disscuss/` is not final** (RULE 7b).
+5. **Do not lean on what this project already does.** Existing architecture, models and concepts are
+   a **reference for discussion, never a justification**. Analyse them freely for weakness,
+   trade-off and bug potential — "it is already built that way" is not an argument. This is RULE 1
+   turned inward.
+6. **When it is final it becomes a guideline** — moved to `guidelines/`, deleted from `disscuss/`
+   (RULE 7b).
+7. **Always visualise.** We discuss to DESIGN, so every design doc carries diagrams — grains, flows,
+   states, sequences, before/after. A picture is how the owner reads it. Mermaid, and it must parse
+   (RULE 3: `npm run lint:mermaid`).
+8. **Write the RESULTING DESIGN to the md, not just the argument.** A doc that is all critique and
+   questions leaves the owner nothing to preview. Every discussion doc carries a
+   **`## Proposed Design`** — the concrete outcome: tables, schema, components, flow. Critique says
+   what is wrong, Recommendation says what to do, Proposed Design says **what it IS**.
+9. **We are DIALECTIC — brainstorming together, not delivering verdicts.** The owner argues back and
+   so should you: hold a position, defend it with the warehouse and the trade-offs, and change it when
+   the counter-argument is better. Say "I think X because Y — what breaks?" rather than presenting a
+   finished answer. The doc records the *current state of the argument*, so **prune it as points get
+   settled** — a doc that only ever grows stops being previewable (RULE 8b.1).
+10. **Every critique carries its own recommendation, inline.** A problem stated without a proposed fix
+    beside it makes the owner scroll to a distant list and re-pair them. One `**→ Recommend:**` line
+    under each point — or a `→ Recommend` column when the critique is a table. The standalone
+    `## Recommendation` then holds only the CROSS-CUTTING decision, not a re-list.
+11. **What the owner has DECIDED goes under `# Proposal`, at the top — with its VISUALISATION, SPEC
+    and related detail.** Not a bare list of verdicts: each closed decision carries the diagram and the
+    concrete specification that makes it buildable, so the settled design can be read on its own without
+    mining the argument below it. Everything outside `# Proposal` is still open. Move an item up the
+    moment the owner closes it, and mark any sub-part still under discussion — "decided" must never
+    over-claim.
+
 ### 9. A list RPC over data that can grow MUST paginate
 
 Any RPC returning a `repeated` result whose size **grows with the data** takes a required
@@ -308,6 +366,33 @@ Not everything went through TanStack: `CategorySelect`, `SupplierSelect`, `RackS
 third question. The app is used with a scanner and a spreadsheet beside it, so focus is lost and
 regained constantly; a refetch per alt-tab is a request storm, and staleness is already handled by
 refetching whenever the screen actually asks something.
+
+### 11. A contradiction found in a design doc is RECORDED, not just fixed
+
+Every discussion doc carries a **`# Contradiction`** section. When a decision is found to contradict
+something already written, **fix it AND write it there** — with the example, the recommendation, and a
+diagram (RULE 8b.7: everything is visualised).
+
+```
+# Contradiction
+## <what contradicted what>
+   the EXAMPLE — the two statements, quoted, and which one was wrong
+   → RECOMMEND — what to do, and what stops it recurring
+   a mermaid diagram of the ripple
+```
+
+**Why this is a rule and not a habit.** A decision changes one paragraph and leaves five others
+asserting the old answer — and stale text in a settled section is *worse* than an open question,
+because it reads as authoritative. In practice one decision has repeatedly left several contradictions
+behind, and the same places keep going stale: **any table where every case appears together** is where
+they collect, because it is the only place a changed rule has to be restated N times.
+
+- **Fixing silently is not enough.** The next decision will ripple the same way, and the record is what
+  makes the pattern visible instead of feeling like bad luck each time.
+- **Group by CAUSE, not by symptom.** Seven stale rows from one decision is **one** contradiction with
+  seven sites — not seven entries.
+- **Re-examine after every decision that touches a shared table**, and say plainly what was found. "No
+  contradictions" is a real and useful answer; silence is not.
 
 ---
 

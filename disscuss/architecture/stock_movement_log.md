@@ -1896,6 +1896,100 @@ working tree.
 
 ---
 
+# Contradiction
+
+Per HARD RULE 11 — every contradiction found in this doc, grouped by **cause**, not by symptom.
+
+**They share one shape:** a decision changes one paragraph and leaves several others asserting the old
+answer. Stale text inside a settled section is worse than an open question, because it reads as
+authoritative.
+
+```mermaid
+flowchart LR
+  D["ONE decision"] --> P1["the section it was written in — updated"]
+  D -.->|"missed"| P2["a summary table"]
+  D -.->|"missed"| P3["another doc's cross-reference"]
+  D -.->|"missed"| P4["a diagram label"]
+  P2 --> S["all three still assert the OLD answer, and look settled"]
+  P3 --> S
+  P4 --> S
+```
+
+## 1 · The scan decision left seven stale rows — six in one table
+
+**Example.** [batch_selection P6](batch_selection.md) made a pick **observed** — the picker scans the
+label. The plan table still said:
+
+> | `TRANSFER` dispatch | the source rack's batches, **oldest-first** | A's shelves |
+> | `RECOUNT` | `target − Σ old` at that rack, **FIFO-distributed** |
+> | `LOST` · `BROKEN` | the named batches, drawn down | *(and the same row again, duplicated)* |
+
+Three separate wrongs: a transfer's out-leg is a draw from a shelf so it is **scanned**; a recount down
+is **pro-rata** (P3), not FIFO; and `LOST` and `BROKEN` are decided **oppositely** — one is the only
+consumption nobody could observe, the other is the one somebody is holding.
+
+**→ Recommend.** The column was headed *"The plan"*, which invited a mechanism. It is now **"Who decides
+the batch"** — a question with one answer per row, so a changed decision has an obvious place to land.
+
+```mermaid
+flowchart TD
+  S["P6 · a pick is now OBSERVED"]
+  S --> A["the section that argued it — updated"]
+  S -.->|"stale"| T["the plan-per-kind table — 6 rows"]
+  S -.->|"stale"| R["the read-sites table — StockAdjust row"]
+  S -.->|"stale"| P["the planner paragraph"]
+  T --> W["all still said FIFO decides every draw"]
+  R --> W
+  P --> W
+```
+
+## 2 · P12 arrived after a list that was read as closed
+
+**Example.** P10 listed three batch origins and I argued *from* the list:
+
+> *"The three sources are `RESTOCK`, `ORDER`, `WAREHOUSE_ADJUSTMENT`. **There is no `TRANSFER`** — so a
+> transfer does not mint a batch in the destination."*
+
+P12 then decided a transfer **does** mint one. The enum's membership was never evidence about what the
+warehouse does.
+
+**→ Recommend.** **Never argue from an enum's current membership.** A list of examples is not a
+constraint until somebody decides it is one.
+
+```mermaid
+flowchart LR
+  E["an enum with 3 values"] -->|"read as CLOSED"| C["'therefore a transfer cannot mint a batch'"]
+  C --> X["a design conclusion drawn from a list nobody had finished"]
+```
+
+## 3 · The staging rack survived its own removal, in six places
+
+**Example.** Staging was removed — receiving lands directly on the rack. Six places still named it: the
+P1b summary row, the `RECEIVE` and `TRANSFER receipt` plan rows, P12's diagram, P19's lifecycle table,
+and the `RACK` entity's comment in the structure diagram.
+
+**→ Recommend.** **When a concept is deleted, grep for its name before claiming it is gone.** A removed
+concept leaves more references than a changed one, because it was mentioned wherever it was *used* — not
+only where it was defined.
+
+```mermaid
+flowchart TD
+  R["remove the STAGING concept"] --> D["P1b — the section that defined it. Rewritten"]
+  R -.->|"6 sites still named it"| U["every place it was USED"]
+  U --> U1["2 plan-table rows"]
+  U --> U2["2 diagrams"]
+  U --> U3["a lifecycle table"]
+  U --> U4["an ER entity comment"]
+```
+
+## What the three have in common
+
+⚠ **The plan-per-kind table went stale all three times.** It is the only place where every movement kind
+appears together, so any rule that varies by kind must be restated there — which makes it the first
+place to check after any decision, and the one worth reading twice.
+
+---
+
 ## Withdrawn — arguments that did not survive
 
 Recorded rather than quietly edited, per RULE 8b.9.
