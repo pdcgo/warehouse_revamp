@@ -246,7 +246,12 @@ flowchart TD
 `attributeDeltaFIFO` stops being an after-the-fact reconciler and becomes the **planner** — it decides
 which rows to write *before* anything is written. The recount stops being a special path.
 
-**A caller must now choose batches for every draw.** That choice was always being made; it was made
+⚠ **But the planner is no longer one rule.** [batch_selection](batch_selection.md) splits it: a pick is
+the **picker's scan**, a loss is **pro-rata**, a receive and a move already know their batch. The thing
+that changes here is only that the decision happens **up front and on the record** — not that FIFO
+decides everything.
+
+**Something must choose batches for every draw**, and that choice was always being made. It was made
 after the fact, by a function the ledger never recorded.
 
 ### What has to change at the read sites
@@ -254,7 +259,7 @@ after the fact, by a function the ledger never recorded.
 | Read | today | becomes |
 | --- | --- | --- |
 | `StockPick` candidates | one row per shelf | one row per **shelf × batch** — FIFO becomes the candidate *ordering*, not a later correction |
-| `StockAdjust` recount | `SELECT on_hand … FOR UPDATE` | `SUM(balance)` over the product's batches at that rack, then FIFO-distribute |
+| `StockAdjust` recount | `SELECT on_hand … FOR UPDATE` | `SUM(balance)` over the product's batches at that rack, then **pro-rata** down / mint a batch up (batch_selection P3, P10) |
 | `ProductStockSummary` | `SUM` over racks | `SUM` over the `(warehouse, product)` index — same seek, more rows |
 | `ProductPlaces` / `PlacementList` | one row per shelf | `GROUP BY rack_id` |
 | `RackDelete` guard | `SUM(on_hand) WHERE rack_id = ?` | **unchanged** — still a direct seek |
@@ -406,27 +411,28 @@ silently found nothing and reported a phantom "insufficient stock" for goods sit
 
 ### The plan, per kind — the only thing that varies
 
-| Movement | The plan | Which rack |
+| Movement | Who decides the batch | Which rack |
 | --- | --- | --- |
-| `RECEIVE` | one batch — the delivery being received. No choice to make | **the racks the receiver named** — directly, no staging (P1b) |
+| `RECEIVE` | **the caller** — the batch is the delivery being received | the racks the receiver named — directly, no staging (P1b) |
 | `PICK` | ⚠ **the picker SCANS what they take** (batch_selection P6). FIFO is the suggestion, the scan is the record | wherever the stock is |
-| `MOVE` | the same batch at two racks — a `−qty` leg and a `+qty` leg | named by the caller. Put-away is this |
-| `TRANSFER` dispatch | the source rack's batches, oldest-first — a `TRANSFER_OUT` in A (P19) | A's shelves |
-| `TRANSFER` receipt | one new batch, minted in B (P12) | **the racks B's receiver names** — a receipt is a receipt (P1b) |
-| `RETURN` | the exact batches the original pick took, reversed — the transaction carries `reverses_transaction_id` (P11) | the racks the pick drew from |
-| `RECOUNT` | `target − Σ old` at that rack, FIFO-distributed. Counting UP mints a batch (P10) | the rack being counted |
-| `LOST` · `BROKEN` | the named batches, drawn down — the delta is **always negative** (P17) | where the units were |
-| `LOST` · `BROKEN` | the named batches, drawn down — always negative | where the units were |
+| `MOVE` | **the caller** — the same batch at two racks, a `−qty` leg and a `+qty` leg | named by the caller |
+| `TRANSFER` dispatch | ⚠ **the picker SCANS** — the out-leg is a draw from a shelf like any other (batch_selection P6) | A's shelves |
+| `TRANSFER` receipt | **the system mints one** in B (P12) | the racks B's receiver names |
+| `RETURN` | **the ledger** — the exact batches the original pick took, reversed. `reverses_transaction_id` (P11) | the racks the pick drew from |
+| `RECOUNT` **down** | **the system, PRO-RATA** across the rack's batches (batch_selection P3) | the rack being counted |
+| `RECOUNT` **up** | **the system mints a batch** — found goods have no delivery (P10) | the rack being counted |
+| `LOST` | **the system, PRO-RATA** — nobody knows whose units went (batch_selection P3) | where the units were |
+| `BROKEN` | **the caller names it** — they are holding the box (batch_selection P2) | where the units were |
 
-**`TRANSFER_IN` lands on named shelves** — P1b removed the unplaced pile that
-`stock_transfer.go` uses for both legs today, and goods arriving from another building are in exactly the
-same state as goods off a truck. Put-away is the same ordinary `MOVE` afterwards.
+⚠ **`LOST` and `BROKEN` are not a pair.** They look alike and are decided oppositely: one is the only
+consumption nobody could observe, the other is the one somebody is holding in their hands.
+
+**`TRANSFER_IN` lands on named shelves** — P1b removed the unplaced pile that `stock_transfer.go` uses
+for both legs today, and goods arriving from another building are in exactly the same state as goods off
+a truck.
 
 **And the two legs are days apart** (P19) — `TRANSFER_OUT` draws from A's shelves at dispatch,
 `TRANSFER_IN` mints B's batch at receipt. Between them the stock is in no warehouse at all.
-
-⚠ **A `RECOUNT` upward has no batch to land on** — see P10. It is the one plan step that cannot be
-written until that question is answered.
 
 ### Worked example
 
