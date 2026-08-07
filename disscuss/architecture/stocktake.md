@@ -1,20 +1,26 @@
 # Stocktake — counting a shelf, and what the count is allowed to do
 
+> ⚠ **GRAIN CHANGED — [ledger-splits-by-question](database/stock_design.md#ledger-splits-by-question) (owner, 2026-08-07).**
+> The ledger splits into a **placement** ledger (no `batch_id`) and a **batch** ledger (no `rack_id`), so
+> `(rack, batch)` is no longer a grain. **Rules below phrased in those terms are superseded** — see
+> [the-cross-product-grain-was-assumed-everywhere](database/stock_design.md#the-cross-product-grain-was-assumed-everywhere).
+> This doc is rewritten once the open sub-parts settle, not before.
+
 > ⚠ **`disscuss/` is NOT final.** Mid-argument. Do not build from this.
 
 ⏸ **This doc is no longer a blocker, and two of its decisions were overtaken** (owner, 2026-08-05). It
 was written to answer *"what event drains `lost_claimable`?"* —
-[a-find-is-the-only-drain](../../guidelines/architectures/database/stock_design.md#a-find-is-the-only-drain) settled that **a find
+[a-find-is-the-only-drain](database/stock_design.md#a-find-is-the-only-drain) settled that **a find
 drains it and nothing else does**, which rejects
 [coverage-drains-the-pool](#coverage-drains-the-pool), and
-[the-remainder-mints-at-last-price](../../guidelines/architectures/database/stock_design.md#the-remainder-mints-at-last-price)
+[the-remainder-mints-at-last-price](database/stock_design.md#the-remainder-mints-at-last-price)
 withdraws [a-surplus-line-fails-alone](#a-surplus-line-fails-alone). **The counting design itself stands
 untouched** — the sheet, blind entry, the watermark, post-per-rack.
 
 Siblings: [stock_movement_log.md](stock_movement_log.md) (the write protocol) ·
 [batch_selection.md](batch_selection.md) (a short count is **pro-rata**) ·
 [rack_selection.md](rack_selection.md) (*"a cycle count measures a shelf"*) ·
-[stock_design.md](../../guidelines/architectures/database/stock_design.md) (the tables — **final**).
+[stock_design.md](database/stock_design.md) (the tables — ⚠ **reopened, no longer final**).
 
 > Decisions here are **NAMED and LINKED** (HARD RULE 12).
 
@@ -100,7 +106,7 @@ stateDiagram-v2
 | --- | --- |
 | ✅ **the counter can produce it** | *"17 of this product on this shelf"* is a fact a person can establish |
 | ❌ **`(rack, batch)` is not** | it needs a label scan per carton — [batch_selection](batch_selection.md) already parks label design as its own topic |
-| the batch falls out | **pro-rata down** ([batch_selection P3](batch_selection.md)), **pool-walk up** ([found-recovers-a-loss](../../guidelines/architectures/database/stock_design.md)) — both already decided |
+| the batch falls out | **pro-rata down** ([batch_selection P3](batch_selection.md)), **pool-walk up** ([found-recovers-a-loss](database/stock_design.md)) — both already decided |
 
 → **Recommend `(rack, product)`.** A per-batch count would replace a *guessed* attribution with an
 *observed* one — genuinely better accounting, and the one thing that would unstack
@@ -200,10 +206,10 @@ flowchart LR
 ```
 
 ⚠ **Without this the design is broken in its commonest case.** A mislaid unit is found on a *different*
-shelf ([the-claim-pool](../../guidelines/architectures/database/stock_design.md#the-claim-pool)). If a short
+shelf ([the-claim-pool](database/stock_design.md#the-claim-pool)). If a short
 count fed no pool, that later find would have no loss to recover, would be **refused**, and the operator
 would be told to enter a restock for goods the company already owned — conjuring a cost layer, which is
-the exact failure [found-recovers-a-loss](../../guidelines/architectures/database/stock_design.md) exists
+the exact failure [found-recovers-a-loss](database/stock_design.md) exists
 to prevent.
 
 → **Recommend: absence fills the pool, whatever kind asserted it.** The `kind` stays the honest record of
@@ -212,7 +218,7 @@ what was claimed.
 ## coverage-drains-the-pool
 
 ❌ **REJECTED (owner, 2026-08-05).**
-[a-find-is-the-only-drain](../../guidelines/architectures/database/stock_design.md#a-find-is-the-only-drain) closed it: a claim is
+[a-find-is-the-only-drain](database/stock_design.md#a-find-is-the-only-drain) closed it: a claim is
 closed when `lost_claimable` reaches 0 and by nothing else. **A coverage write-off is an expiry, and there
 is no expiry.** ⚠ It also kept the reconcile an **equality**, which any write-off would reopen.
 
@@ -242,7 +248,7 @@ flowchart TD
 | a **warehouse-wide** count | drains everything — every shelf was visited |
 | a **one-product** count across **every rack in the building** | drains that product only. ✅ the cheap, useful case — but it must be every shelf, not every shelf the record links to the product |
 | a **three-rack cycle count** | ⚠ **drains nothing**, ever. Three racks are never the whole building |
-| ⚠ the write-off itself | has **no ledger row** — the units already left `balance` when the short was written. ❌ **This is what killed it.** The claim-pool check is now an **EQUALITY** ([the-claim-pool](../../guidelines/architectures/database/stock_design.md#the-claim-pool)), and a write-off is exactly the unrecorded decrement that would force it back to an inequality |
+| ⚠ the write-off itself | has **no ledger row** — the units already left `balance` when the short was written. ❌ **This is what killed it.** The claim-pool check is now an **EQUALITY** ([the-claim-pool](database/stock_design.md#the-claim-pool)), and a write-off is exactly the unrecorded decrement that would force it back to an inequality |
 
 → **Recommend the write-off be RECORDED on the sheet**, per product and quantity, so *"the count wrote
 off 14 units that had been claimable since March"* is readable by the admin who posted it and by finance
@@ -253,7 +259,7 @@ later. A counter silently going to zero is exactly the drift the reconcile exist
 ## a-surplus-line-fails-alone
 
 ❌ **WITHDRAWN (owner, 2026-08-05) — a surplus line no longer fails at all.**
-[the-remainder-mints-at-last-price](../../guidelines/architectures/database/stock_design.md#the-remainder-mints-at-last-price)
+[the-remainder-mints-at-last-price](database/stock_design.md#the-remainder-mints-at-last-price)
 removed the refusal entirely: the excess **mints a batch at the last known price**, in the same action.
 
 ```mermaid
@@ -274,7 +280,7 @@ receiving problem becomes invisible.
 
 ### ⚠ A mint needs an OWNER, and the counter must not be the one to pick it
 
-[the-owner-is-named-by-a-person](../../guidelines/architectures/database/stock_design.md#the-owner-is-named-by-a-person)
+[the-owner-is-named-by-a-person](database/stock_design.md#the-owner-is-named-by-a-person)
 makes the selling team **a request field a warehouse person picks from a select** — and it is chosen
 *before* anything is written, so it scopes the **claim pool** as well as owning the mint. That lands
 squarely on this doc's own division of labour — *"the counter's job is to MEASURE, not to reconcile"* —
@@ -310,7 +316,7 @@ whether its escape hatch survived the new context. Recorded in
 ## a-find-crosses-owners
 
 ❌ **WITHDRAWN (owner, 2026-08-05) — a find does NOT cross owners. The team is named.**
-[the-owner-is-named-by-a-person](../../guidelines/architectures/database/stock_design.md#the-owner-is-named-by-a-person):
+[the-owner-is-named-by-a-person](database/stock_design.md#the-owner-is-named-by-a-person):
 a warehouse person picks the selling team from a select before anything is written, and that choice scopes
 the pool.
 
@@ -345,7 +351,7 @@ number available. See [the contradiction](#fungible-to-a-pick-but-named-to-a-fin
 ## Proposed Design — the tables
 
 Three tables in `inventory_service`. **No change to the seven final ones** except the two counters already
-proposed in [the-claim-pool](../../guidelines/architectures/database/stock_design.md#the-claim-pool) — now **one** column,
+proposed in [the-claim-pool](database/stock_design.md#the-claim-pool) — now **one** column,
 `lost_claimable`.
 
 ```mermaid
@@ -433,7 +439,7 @@ record it.
 
 | Site | Says |
 | --- | --- |
-| [the-claim-pool](../../guidelines/architectures/database/stock_design.md#the-claim-pool) · [a-short-count-fills-the-pool](#a-short-count-fills-the-pool) | *"a mislaid unit is found on a **different** shelf"* — the pool exists because the record is wrong about where it is |
+| [the-claim-pool](database/stock_design.md#the-claim-pool) · [a-short-count-fills-the-pool](#a-short-count-fills-the-pool) | *"a mislaid unit is found on a **different** shelf"* — the pool exists because the record is wrong about where it is |
 | [coverage-drains-the-pool](#coverage-drains-the-pool) | *"H = every rack holding P, **or holding a P loss counter**"* — the racks the record says it is on |
 
 ```mermaid
@@ -481,7 +487,7 @@ flowchart TD
 ```
 
 ✅ **RESOLVED, and not the way this doc proposed.**
-[the-remainder-mints-at-last-price](../../guidelines/architectures/database/stock_design.md#the-remainder-mints-at-last-price)
+[the-remainder-mints-at-last-price](database/stock_design.md#the-remainder-mints-at-last-price)
 (owner) **removed the refusal entirely** instead of shrinking its blast radius. A rule that leaned on a
 screen was replaced by one that needs no screen at all — which is a better answer to *"the escape hatch
 does not exist here"* than inventing a second escape hatch.
@@ -538,7 +544,7 @@ else the flow touches.
 4. **Does a count also record BROKEN?** A counter finds 40 sellable and 3 damaged. → **Recommend
    `quarantine-is-a-rack`**: damaged stock is *moved to a quarantine shelf*, so a normal count compares
    against `balance` alone and never has to carry a second number per line. ✅ **`broken_claimable` has
-   since been dropped** ([the-claim-pool](../../guidelines/architectures/database/stock_design.md#the-claim-pool)), so a
+   since been dropped** ([the-claim-pool](database/stock_design.md#the-claim-pool)), so a
    **place** is now the only candidate for expressing damaged stock — which makes this question the one
    that decides whether quarantine gets designed at all.
 6. **Which service owns it?** `inventory_service` holds the stock tables today, so the sheet belongs

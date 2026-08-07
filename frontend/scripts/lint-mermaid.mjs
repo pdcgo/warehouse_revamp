@@ -22,7 +22,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..", "..");
 
 // Where prose lives. Generated output and dependencies are not ours to lint.
-const ROOTS = ["docs", "plans", "disscuss", "guidelines"];
+//
+// `audits` and `.claude` are here because the audit skills tell you to run this check on the report
+// you just wrote (HARD RULE 3) — and until they were listed, that check silently passed on every
+// audit report and every report TEMPLATE, which is the one file where a broken diagram is copied
+// forward into all the others.
+const ROOTS = ["docs", "plans", "disscuss", "guidelines", "audits", ".claude"];
 const EXTRA = ["CLAUDE.md", "README.md"];
 const SKIP = ["node_modules", ".git", "graphify-out", ".venv", "dist"];
 

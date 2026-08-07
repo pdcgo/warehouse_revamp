@@ -1,9 +1,34 @@
 # The Stock Movement Log — and the histories read from it
 
+> ⚠ **GRAIN CHANGED — [ledger-splits-by-question](database/stock_design.md#ledger-splits-by-question) (owner, 2026-08-07).**
+> The ledger splits into a **placement** ledger (no `batch_id`) and a **batch** ledger (no `rack_id`), so
+> `(rack, batch)` is no longer a grain. **Rules below phrased in those terms are superseded** — see
+> [the-cross-product-grain-was-assumed-everywhere](database/stock_design.md#the-cross-product-grain-was-assumed-everywhere).
+> This doc is rewritten once the open sub-parts settle, not before.
+
 > ⚠ **`disscuss/` is NOT final.** Mid-argument. Do not build from this.
 
-Sibling: [stat_event_processing.md](stat_event_processing.md) — that doc projects the log into *daily
-state*. This one is about the log itself and the **event-grain** reads over it.
+Siblings: [stat_event_processing.md](stat_event_processing.md) projects the log into *daily state* ·
+[batch_selection.md](batch_selection.md) decides **who** chooses a batch · [fifo.md](fifo.md) is **how**
+the machine walks the layers when it is the one choosing · [rack_selection.md](rack_selection.md) decides
+**which rack** — and answers whether the log splits in two. This one is about the log itself and the
+**event-grain** reads over it.
+
+⚠ **The SCHEMA has been REOPENED** and moved back to
+[database/stock_design.md](database/stock_design.md) — it is a `disscuss/` doc again, so **nothing about
+the stock schema is authoritative right now**. It is still the best statement of the shape and this doc
+should keep deferring to it; it just no longer settles anything. **This doc keeps the RULES**, and several
+of its decisions below are marked superseded where the schema work overturned them.
+
+⚠ **This doc DRIFTS from the schema in two places, and the schema doc is the later thinking.** It still diagrams a
+single `stock_movements` with a nullable `rack_id` — the ledger is
+[two tables sharing one sequence](database/stock_design.md#the-ledger-is-two-tables) —
+and it describes found goods by a rule that was
+[reversed](database/stock_design.md#the-claim-pool). Read this doc for the
+**argument**, never for the **shape**.
+
+⚠ **P7's rack scope is contradicted and pending** — see
+[rack_selection § Contradiction](rack_selection.md#the-rack-axis-was-never-chosen-so-each-doc-assumed-a-different-answer).
 
 # Proposal
 
@@ -21,9 +46,9 @@ state*. This one is about the log itself and the **event-grain** reads over it.
 | P7 | **Write protocol: lock the state rows, read `old`, accumulate in memory** — plus its four hazard rules, and **READ COMMITTED is required, with no retry loop** |
 | P8 | **Migration is a FRESH START** — new tables created empty, no backfill. Nothing is in production |
 | P9 | **Vocabulary: `balance` is THE word.** State carries `balance`, the log carries `after_balance`. `on_hand` and `qty` are retired |
-| P10 | **There is no unit without a batch.** Found goods are recorded by **creating a batch**, then placing it |
+| P10 | **There is no unit without a batch.** ⚠ *Was: "Found goods are recorded by **creating a batch**, then placing it."* **SUPERSEDED** — found goods RECOVER a recorded loss and rejoin the batches they were lost from ([found-recovers-a-loss](database/stock_design.md#found-recovers-a-loss)). Minting is the **refused** path: no prior loss means the goods *arrived*, so they enter by restock |
 | P11 | **An `inventory_transactions` table — for EVERY stock action, not just inbound.** Batches and movements both reference it. The **document** points at the transaction with a `UNIQUE` typed FK — a delivery is accepted exactly once — and the ledger's `source_kind` / `source_id` are deleted |
-| P12 | **A TRANSFER MINTS a new batch in the destination.** A batch never leaves the warehouse it was created in — so `warehouse_id` on the stock rows is a plain copy, not a second fact |
+| P12 | **A TRANSFER MINTS new batches in the destination** — one per source layer drawn ([mint-per-layer](fifo.md#mint-per-layer)). A batch never leaves the warehouse it was created in — so `warehouse_id` on the stock rows is a plain copy, not a second fact |
 | P12b | **Aggregates stay LIVE for now**, statistics become event-fed projections later — so the ledger optimises for a believable page, not for `GROUP BY` |
 | P13 | **One event per `inventory_transaction`, carrying its movement lines** — not one per ledger row. `event_id = "inventory-txn:<id>"` |
 | P14 | **Every lens coarser than `(rack, batch)` DERIVES its running balance** — anchor + walk, bounded by the page. Never a full-history window |
@@ -200,7 +225,7 @@ FK targets. Both go.
 product. A single writer makes that a code-bug risk rather than a data-path risk, and P15 is where it would show up.
 
 **`warehouse_id` is a copy in exactly the same way (P12).** A batch never leaves the warehouse it was
-created in — a transfer mints a new one — so the row's warehouse and the batch's are always the same
+created in — a transfer mints new ones — so the row's warehouse and the batch's are always the same
 number, and P15 checks both.
 
 
@@ -246,10 +271,10 @@ flowchart TD
 `attributeDeltaFIFO` stops being an after-the-fact reconciler and becomes the **planner** — it decides
 which rows to write *before* anything is written. The recount stops being a special path.
 
-⚠ **But the planner is no longer one rule.** [batch_selection](batch_selection.md) splits it: a pick is
-the **picker's scan**, a loss is **pro-rata**, a receive and a move already know their batch. The thing
-that changes here is only that the decision happens **up front and on the record** — not that FIFO
-decides everything.
+⚠ **But the planner is no longer one rule.** [batch_selection](batch_selection.md) splits it by kind: an
+order pick is the **picker's scan** (P6), a transfer's out-leg is **FIFO** (P7), a loss is **pro-rata**
+(P3), and a receive or a move already knows its batch. FIFO survives as *one* of four rules, not as the
+rule. The thing that changes here is only that the decision happens **up front and on the record**.
 
 **Something must choose batches for every draw**, and that choice was always being made. It was made
 after the fact, by a function the ledger never recorded.
@@ -279,6 +304,30 @@ over-pull one batch as long as the shelf's total covered it.
 
 ## P5 · The owner lens is a QUERY, not a ledger
 
+> ⚠ **PARTLY SUPERSEDED by [ownership-is-copied](database/stock_design.md#ownership-is-copied) (owner).**
+> `owner_team_id` is now **a real column on `inventory_transactions`, `stock_batches` and
+> `stock_rack_batches`**, `CHECK (owner_team_id > 0)` — and it is always a **SELLING** team, never the
+> **warehouse** team named by `warehouse_id`. Those are two different kinds of team: one handles the
+> goods and carries the access scope, the other owns them and carries the money.
+>
+> | This section says | Status |
+> | --- | --- |
+> | delete `stock_owner_movements` | ✅ **stands** — and is now paid for in full: the ledger carries that table's exact index |
+> | the owner lens is a **JOIN** | ❌ **reversed.** It is an index seek on `stock_movements` |
+> | ⚠ **do NOT copy it onto the LEDGER** | ❌ **REVERSED (owner).** `stock_movements` carries `owner_team_id`. I reported twice that this half survived — it does not |
+> | *"Copy immutable facts for the index. Join mutable ones"* | ✅ **the RULE stands** — this section just put `owner_team_id` in the wrong column of it |
+| *"a restock's requesting team can be corrected"* | ❌ **FALSE, and it was never tested.** See [ownership-is-frozen-at-mint](database/stock_design.md#ownership-is-frozen-at-mint) |
+>
+> ✅ **So nothing rewrites ledger rows.** The owner is frozen at mint, `owner_team_id` on a movement is an
+> **event fact**, and the ledger stays append-only in the strong sense. *(I first argued this was a
+> [P20](#p20--what-the-reconcile-does-when-a-check-fails) "copy repair" — **withdrawn**, it answered a
+> correction that never happens.)*
+>
+> **Why it had to change:** two reasons, and the second is the real one.
+> **1 ·** P11 dropped `restock_request_item_id`, severing `batch → restock → team` — the join had no
+> source left. **2 ·** the fact was never mutable in the first place, so *"join mutable ones"* never
+> applied to it. **The rule was right; the classification was wrong.**
+
 `stock_owner_movements` copies **every movement** to carry a fact that changes **once per delivery**.
 Ownership is batch-grained: a batch arrives on a restock, the team that raised it owns it, and no
 subsequent pick or move alters that.
@@ -307,7 +356,19 @@ It also takes `projectOwnerMovement` off the hottest write path — what
 [stat_event_processing §7](stat_event_processing.md) already recommended, and it settles that doc's §1b
 complaint about two event-grain logs.
 
-### ⚠ Do NOT copy `owner_team_id` onto the ledger
+### ~~⚠ Do NOT copy `owner_team_id` onto the ledger~~ — ❌ REVERSED (owner)
+
+> ❌ **The ledger DOES carry `owner_team_id`** — see
+> [ownership-is-copied](database/stock_design.md#ownership-is-copied).
+>
+> ⚠ **And the hazard below is not merely answered — its PREMISE is false.** The argument turns entirely on
+> `owner_team_id` being **mutable**, which this section asserts and never tests. It is not:
+> [ownership-is-frozen-at-mint](database/stock_design.md#ownership-is-frozen-at-mint) freezes it at
+> acceptance beside `unit_cost` and `arrived_qty`, and a change of hands is a **handover event**, not an
+> `UPDATE`. So the row below belongs in the ❌ column, not the ✅ one.
+>
+> *(I first defended the copy as a "copy repair" under [P20](#p20--what-the-reconcile-does-when-a-check-fails).
+> That is **withdrawn** — it answered a correction that never happens.)*
 
 Tempting, for the same reason `warehouse_id`/`product_id` are copied. **Don't** — the two differ on one
 property:
@@ -315,7 +376,7 @@ property:
 | | Mutable? | So |
 | --- | --- | --- |
 | `warehouse_id`, `product_id` | ❌ a batch is one product to one building, forever | **copy**, bound by composite FK |
-| `owner_team_id` | ✅ a restock's requesting team can be corrected | **join** |
+| `owner_team_id` | ❌ **NO — the premise is false.** *"A restock's requesting team can be corrected"* was asserted here and never tested. See [ownership-is-frozen-at-mint](database/stock_design.md#ownership-is-frozen-at-mint): the owner is frozen at mint like `unit_cost` and `arrived_qty`, and changing hands is a **handover event**, not an `UPDATE` | ⚠ **STORED**, on all three goods tables. With the fact immutable, the "join mutable ones" rule simply does not apply to it |
 
 Copying it re-creates the weakness [stat_event_processing §7](stat_event_processing.md) flagged —
 *"ownership pinned at write time … correct a restock's requesting team later and the projection is
@@ -323,6 +384,12 @@ silently wrong."* Joining fixes it for free: one `UPDATE` on one batch row and a
 correctly.
 
 **Copy immutable facts for the index. Join mutable ones.**
+
+⚠ **This conclusion is REVERSED for `owner_team_id`** — see
+[ownership-is-copied](database/stock_design.md#ownership-is-copied). The rule assumed a join path existed;
+[P11](#p11--inventory_transactions--the-event-a-batch-was-born-in) removed it in the same doc. A mutable
+fact with **no source to join to** must be stored, and the mutability is paid for by an `UPDATE` bounded
+to one delivery.
 
 ## P6 · `after_balance` — at `(rack, batch)` grain
 
@@ -416,11 +483,11 @@ silently found nothing and reported a phantom "insufficient stock" for goods sit
 | `RECEIVE` | **the caller** — the batch is the delivery being received | the racks the receiver named — directly, no staging (P1b) |
 | `PICK` | ⚠ **the picker SCANS what they take** (batch_selection P6). FIFO is the suggestion, the scan is the record | wherever the stock is |
 | `MOVE` | **the caller** — the same batch at two racks, a `−qty` leg and a `+qty` leg | named by the caller |
-| `TRANSFER` dispatch | ⚠ **the picker SCANS** — the out-leg is a draw from a shelf like any other (batch_selection P6) | A's shelves |
-| `TRANSFER` receipt | **the system mints one** in B (P12) | the racks B's receiver names |
+| `TRANSFER` dispatch | **the system, FIFO** — ⚠ *not* scanned: both ends are ours and B mints fresh batches (batch_selection P7) | A's shelves |
+| `TRANSFER` receipt | **the system mints ONE PER SOURCE LAYER** drawn at A (P12, [mint-per-layer](fifo.md#mint-per-layer)) | the racks B's receiver names |
 | `RETURN` | **the ledger** — the exact batches the original pick took, reversed. `reverses_transaction_id` (P11) | the racks the pick drew from |
 | `RECOUNT` **down** | **the system, PRO-RATA** across the rack's batches (batch_selection P3) | the rack being counted |
-| `RECOUNT` **up** | **the system mints a batch** — found goods have no delivery (P10) | the rack being counted |
+| `RECOUNT` **up** | ⚠ **the warehouse names the selling team, then the system credits back that team's unrecovered `LOST` rows — oldest first, at the price they were lost at** ([found-recovers-a-loss](database/stock_design.md#found-recovers-a-loss)). **No prior loss → REFUSED**, add by restock | the rack being counted |
 | `LOST` | **the system, PRO-RATA** — nobody knows whose units went (batch_selection P3) | where the units were |
 | `BROKEN` | **the caller names it** — they are holding the box (batch_selection P2) | where the units were |
 
@@ -432,7 +499,7 @@ for both legs today, and goods arriving from another building are in exactly the
 a truck.
 
 **And the two legs are days apart** (P19) — `TRANSFER_OUT` draws from A's shelves at dispatch,
-`TRANSFER_IN` mints B's batch at receipt. Between them the stock is in no warehouse at all.
+`TRANSFER_IN` mints B's batches at receipt. Between them the stock is in no warehouse at all.
 
 ### Worked example
 
@@ -460,7 +527,7 @@ The rules, before the reasoning:
 | | Rule |
 | --- | --- |
 | 1 | Read `FOR UPDATE` first — fall back to an `ON CONFLICT DO UPDATE … RETURNING` upsert, **additive paths only** |
-| 2 | Plan **after** locking for machine-decided kinds; a PICK suggests, the human scans, then it writes (P6 of batch_selection) |
+| 2 | Plan **after** locking for machine-decided kinds — which now includes a transfer's out-leg (P7). Only an **order pick** suggests, waits for the human's scan, then writes (P6) |
 | 3 | Lock racks **ascending by rack id** — independently of which way goods move |
 | 4 | **READ COMMITTED is a requirement.** No retry loop |
 
@@ -498,7 +565,7 @@ for keys a rejected plan never touched.
 | `RECEIVE` · `TRANSFER_IN` · the `+qty` leg of a `MOVE` · `RETURN` | `PICK` · `TRANSFER_OUT` · the `−qty` leg · a `RECOUNT` downward |
 
 ⚠ **A unique-index wait participates in deadlock detection**, so the fallback inserts obey hazard 3's
-ordering too: all reads ascending by rack, then all inserts ascending by rack — never interleaved.
+ordering too: all reads ascending by rack, then all inserts ascending by rack — F2never interleaved.
 
 #### 2 · Plan AFTER locking — except where a HUMAN decides
 
@@ -509,21 +576,24 @@ The scope differs by kind: a draw must lock the product's whole batch set at tha
 names its batch and locks one row. Locking the whole set on a receive would block a concurrent draw for
 no reason.
 
-⚠ **A PICK no longer works this way** — [batch_selection P6](batch_selection.md) makes it **observed**:
-the picker scans the batch label, so the batch is reported rather than computed. A human cannot stand
-inside the transaction, so the shape inverts:
+⚠ **An ORDER PICK no longer works this way** — [batch_selection P6](batch_selection.md) makes it
+**observed**: the picker scans the batch label, so the batch is reported rather than computed. A human
+cannot stand inside the transaction, so the shape inverts — **for that one kind only.**
 
 ```mermaid
 flowchart TD
-  subgraph M["MACHINE-decided — RECEIVE · MOVE · TRANSFER · LOST · RECOUNT"]
+  subgraph M["MACHINE-decided — RECEIVE · MOVE · TRANSFER both legs · LOST · RECOUNT"]
     M1["lock → plan → write, one transaction"] --> M2["a stale plan is impossible"]
   end
-  subgraph H["HUMAN-decided — PICK, and a TRANSFER's out-leg"]
+  subgraph H["HUMAN-decided — the ORDER pick, alone"]
     H1["suggest, unlocked"] --> H2["the picker walks and SCANS"]
     H2 --> H3["lock → validate what was scanned → write"]
     H3 --> H4["⚠ can be refused after the goods are in their hand"]
   end
 ```
+
+✅ **P7 put the transfer back on the machine side**, so the fragile shape covers exactly one kind rather
+than two.
 
 **So P7's rules split by who decides.** Everything else in this section — canonical lock ordering, the
 guarded upsert, READ COMMITTED, the accumulate-in-memory arithmetic — is unchanged for both. Only *when
@@ -722,19 +792,28 @@ found units silently inherit that layer's `unit_cost` — valuing goods nobody c
 they were never bought at. #74 is explicit that an unknown cost adds **nothing**, not a borrowed number.
 Under P10 the found units get their own layer, and it says outright that its cost is unknown.
 
-### Found goods are a RECEIVE in shape, a RECOUNT in meaning
+### ~~Found goods are a RECEIVE in shape~~ — ❌ they are the UNDOING of a LOSS
 
-The count goes up and a new cost layer appears — that is exactly what a receive does. But nothing
-physically arrived: the records were wrong.
+> ⚠ **SUPERSEDED by [found-recovers-a-loss](database/stock_design.md#found-recovers-a-loss) (owner).**
+> Found goods **create no cost layer**. They rejoin the batches they were lost from, at the price they
+> were lost at. A find with no prior loss is **refused** — the goods arrived, and an arrival is a restock.
 
-**Two different facts, on two different rows, and neither has to lie for the other:** the **movement
-kind** is `RECOUNT` (P17), because it describes what happened — a correction of the record. The
-**transaction kind** is `WAREHOUSE_ADJUSTMENT`, because it describes what the action was and where that
-cost layer came from.
+The **movement kind** is still `RECOUNT` ([P17](#p17--adjust-splits-into-recount--lost--broken)) — it
+describes a correction of the record — and the **transaction kind** is still `WAREHOUSE_ADJUSTMENT`.
 
-⚠ **The direction is asymmetric, and correctly so.** A count that finds *fewer* units draws down
-existing batches FIFO — nothing is created. Only an upward count mints a batch. You cannot lose units
-from a batch that does not exist, but you can find units that belong to no known batch.
+⚠ **What was wrong was the ASYMMETRY, and this section argued for it:**
+
+> *"A count that finds fewer units draws down existing batches FIFO — nothing is created. Only an upward
+> count mints a batch. You cannot lose units from a batch that does not exist, but **you can find units
+> that belong to no known batch**."*
+
+**That last clause is the error.** You cannot — not on a shelf in a running warehouse. Units on a shelf
+that belong to no known batch **did not appear by miscounting**; they arrived without paperwork, and the
+fix is the paperwork. Treating them as a mint is what would have produced a `unit_cost = NULL` layer for
+every counting slip in the building.
+
+✅ **So the two directions are symmetric after all** — both work off what the ledger already recorded. A
+count down consumes existing batches; a count up **restores** them.
 
 ⚠ **`TRANSFER` was a late addition, and how it got missed is worth keeping.** I read the first three as
 a closed list and argued *from* it that a transfer must not mint a batch. An enum's current membership
@@ -827,7 +906,7 @@ CREATE TABLE inventory_transactions (
     warehouse_id  BIGINT NOT NULL,
     kind          INT    NOT NULL,        -- RESTOCK · ORDER · WAREHOUSE_ADJUSTMENT
                                           -- TRANSFER · PICK · MOVE · RETURN
-    reverses_transaction_id BIGINT REFERENCES inventory_transactions (id),
+    reverses_transaction_id BIGINT REFERENCES inventory_transactions (id),  -- the UNDO link: a RETURN's PICK, a CANCEL's dispatch
     reason        TEXT   NOT NULL DEFAULT '',
     actor_user_id BIGINT NOT NULL DEFAULT 0,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -916,22 +995,28 @@ proves too easy to misread, the fix is a rename, not a convention.
 
 ---
 
-## P12 · A TRANSFER mints a new batch in the destination
+## P12 · A TRANSFER mints a new batch in the destination — one per source layer
 
 A batch belongs to **one** warehouse and never leaves it. Moving goods between buildings creates a new
 cost layer in the destination, linked to the one it came from.
 
 ```mermaid
 flowchart LR
-  A["batch 41 · warehouse A · 100 units · cost 5000"]
-  A -->|"TRANSFER_OUT −20 · a transaction in A"| T["at RECEIPT — P19"]
-  T -->|"TRANSFER_IN +20 · a transaction in B"| B["batch 88 · warehouse B · cost 5000 copied"]
-  B --> S["placed on B's STAGING rack, then put away (P1b)"]
+  A1["batch 41 · warehouse A · cost 5000"]
+  A2["batch 52 · warehouse A · cost 6000"]
+  A1 -->|"TRANSFER_OUT −20 · one transaction in A"| T["at RECEIPT — P19"]
+  A2 -->|"TRANSFER_OUT −5 · same transaction"| T
+  T -->|"TRANSFER_IN · a transaction in B"| B1["batch 88 · B · 20 units · cost 5000 copied"]
+  T -->|"one mint PER SOURCE LAYER — mint-per-layer"| B2["batch 89 · B · 5 units · cost 6000 copied"]
+  B1 --> S["placed directly on the racks B's receiver names — no staging (P1b)"]
+  B2 --> S
 ```
 
 | | |
 | --- | --- |
-| `unit_cost` | **copied** from the source batch — goods do not get cheaper by moving |
+| how many batches | **one per source layer** the FIFO draw touched ([mint-per-layer](fifo.md#mint-per-layer)) — usually 1, never more than A's shelf was fragmented |
+| `unit_cost` | **copied verbatim** from each source batch, `nil` included — goods do not get cheaper, or newly-priced, by moving |
+| `expires_on` | **copied verbatim** ([facts-travel](fifo.md#facts-travel)) — crossing a building must not switch off the expiring badge |
 | FIFO order in B | by arrival **in B**, which is what B's pickers draw by |
 | the batch's origin | `inventory_transaction_id` → the `TRANSFER` transaction (P11), so the source is traceable |
 | the destination rack | **the racks B's receiver names** — a receipt is a receipt (P1b) |
@@ -950,7 +1035,7 @@ distinction only existed under *same batch spans buildings*, and it dies with it
 | Consequence | |
 | --- | --- |
 | the `arrived_warehouse_id` rename | **not needed** — one meaning, one name |
-| the Batches tab | **unchanged** — `stock_batches WHERE warehouse_id = B` finds the transfer-minted batch, because it is B's |
+| the Batches tab | **unchanged** — `stock_batches WHERE warehouse_id = B` finds the transfer-minted batches, because they are B's |
 | P15 | now **also** compares `warehouse_id` against the batch. It was deliberately excluded on the grounds they could legitimately differ. They cannot |
 | the composite FK I proposed | would have been correct after all — but it stays dropped for the reasons in P2, and the reconcile covers it |
 
@@ -1112,12 +1197,18 @@ reasons — this promotes them to the thing the ledger is keyed on.
 
 | Kind | Sign | Means |
 | --- | --- | --- |
-| `RECOUNT` | **signed** | the record was wrong. Counting up mints a batch (P10) — that is where `FOUND` goes |
+| `RECOUNT` | **signed** | the record was wrong. Counting up **recovers a loss** ([found-recovers-a-loss](database/stock_design.md#found-recovers-a-loss)) — that is where `FOUND` goes, and it is refused if nothing was lost |
 | `LOST` | always **negative** | units are gone and nobody knows where |
 | `BROKEN` | always **negative** | units were destroyed. `DAMAGED` under the old name |
 
-⚠ **`FOUND` disappears as a separate concept** — it is a `RECOUNT` whose delta is positive, and P10
-already says what happens: a new batch with `unit_cost = NULL`.
+⚠ **`FOUND` disappears as a separate concept** — it is a `RECOUNT` whose delta is positive. ⚠ *Was: "and
+P10 already says what happens: a new batch with `unit_cost = NULL`."* **No longer** — see
+[found-recovers-a-loss](database/stock_design.md#found-recovers-a-loss): it rejoins the batches it was
+lost from, **at their price**, so a find produces no unknown-cost layer at all.
+
+✅ **And `FOUND` still needs no kind of its own.** It has a distinct *rule* now, but the ledger reads it
+as it always did — `kind = RECOUNT AND delta > 0` — which is exactly what the recovery arithmetic and
+[P17](#p17--adjust-splits-into-recount--lost--broken)'s new `found` term both count.
 
 ### ✅ Why this matters more than a reporting nicety
 
@@ -1142,11 +1233,16 @@ delivery earn" figure inherit five units of someone else's money.
 acceptance fact. Everything else is an aggregate over kinds:
 
 ```sql
-ready  = Σ stock_rack_batches.balance          -- for that batch
-used   = Σ |delta| WHERE kind = PICK
-broken = Σ |delta| WHERE kind = BROKEN
-lost   = Σ |delta| WHERE kind = LOST
--- and arrived = ready + used + broken + lost + damaged_at_acceptance  ← now a CHECKABLE invariant
+ready      = Σ stock_rack_batches.balance      -- for that batch
+in_transit = Σ stock_transit_batches.balance   -- transit-is-a-place
+used       = Σ |delta| WHERE kind = PICK
+broken     = Σ |delta| WHERE kind = BROKEN
+lost       = Σ |delta| WHERE kind = LOST
+lost_transit = Σ |delta| WHERE kind = LOST_IN_TRANSIT
+found      = Σ  delta  WHERE kind = RECOUNT AND delta > 0   -- found-recovers-a-loss
+
+-- the CHECKABLE invariant, with every place a unit can be:
+arrived + found = ready + in_transit + used + broken + lost + lost_transit + damaged_at_acceptance
 ```
 
 That last line is the payoff: the batch gets an invariant that closes, which is exactly what
@@ -1204,13 +1300,27 @@ CREATE TABLE stock_transfers (
     dispatched_at     TIMESTAMPTZ NOT NULL,
     received_at       TIMESTAMPTZ,            -- NULL while on the road
 
-    -- TWO stock actions, each in ONE warehouse (P11), each typed and UNIQUE (P11's document rule)
+    -- ⚠ SUPERSEDED — see below
     out_transaction_id BIGINT UNIQUE REFERENCES inventory_transactions (id),  -- in A · at DISPATCH
     in_transaction_id  BIGINT UNIQUE REFERENCES inventory_transactions (id),  -- in B · at RECEIPT
 
     CHECK (from_warehouse_id <> to_warehouse_id)
 );
 ```
+
+> ⚠ **The two transaction columns are SUPERSEDED by
+> [transitions-name-the-columns](database/stock_design.md#transitions-name-the-columns) (owner).** There
+> are **THREE PAIRS**, each named for the transition that wrote it — a transaction FK and its timestamp:
+> `dispatched_transaction_id` (`NOT NULL`) + `dispatched_at` · `accepted_transaction_id` + `accepted_at` ·
+> `cancelled_transaction_id` + `cancelled_at`.
+>
+> **Why:** *"two stock actions"* is wrong — this section's own lifecycle has **three** transitions, and
+> the cancel leg writes its transaction **in A**. Sharing `in_transaction_id` between acceptance and cancel
+> made one column mean two different warehouses, so B's "incoming" screen would silently pick up A's
+> cancel returns.
+>
+> ⚠ **`received_` became `accepted_`** — *accept* is already this system's word for taking goods in
+> (`stock_batches.accepted_at`), so the `state` enum is **`DISPATCHED · ACCEPTED · CANCELLED`**.
 
 ✅ **And this removes `inventory_transactions.related_transaction_id`.** I had added it to link a
 transfer's two sides before this document existed. The document is the proper home — P11's own rule is
@@ -1222,8 +1332,8 @@ the reverse.
 ```mermaid
 stateDiagram-v2
     [*] --> DISPATCHED: TRANSFER_OUT in A — stock leaves A entirely
-    DISPATCHED --> RECEIVED: TRANSFER_IN in B — mints B's batch onto named racks
-    DISPATCHED --> CANCELLED: TRANSFER_IN back into A — the goods came home
+    DISPATCHED --> RECEIVED: TRANSFER_IN in B — mints B's batches onto named racks
+    DISPATCHED --> CANCELLED: REVERSES the dispatch — same batches, same racks
     RECEIVED --> [*]
     CANCELLED --> [*]
 ```
@@ -1231,13 +1341,14 @@ stateDiagram-v2
 | Step | What is written | Where the goods are |
 | --- | --- | --- |
 | **dispatch** | one transaction in **A** — `TRANSFER_OUT`, drawn FIFO from A's shelves | on the road. In **neither** warehouse |
-| **receipt** | one transaction in **B** — `TRANSFER_IN` onto the racks B's receiver names, minting B's batch (P12) | in B |
-| **cancel** | one transaction in **A** — a `TRANSFER_IN` onto the racks A's receiver names | back in A. It arrives like any other inbound, because that is what it is |
+| **receipt** | one transaction in **B** — `TRANSFER_IN` onto the racks B's receiver names, minting B's batches — one per source layer (P12, [mint-per-layer](fifo.md#mint-per-layer)) | in B |
+| **cancel** | ⚠ **SUPERSEDED — one transaction in A that REVERSES the dispatch** (`reverses_transaction_id`), restoring the exact batches and racks it drew from. See [cancel-reverses-the-dispatch](database/stock_design.md#cancel-reverses-the-dispatch). *Was: "a `TRANSFER_IN` onto the racks A's receiver names… it arrives like any other inbound, because that is what it is."* **It is not** — nothing is named and nothing is minted | back in A, exactly where it was |
 
 ### ⚠ In transit, stock is in NO warehouse — and that is a carve-out of P1b
 
 P1b says every unit is on a rack. Units on a truck are on no rack, because **they are in no building**.
-The document holds them: `state = DISPATCHED` and the movements of `out_transaction_id` say how many.
+The document holds them: `state = DISPATCHED` and the movements of `dispatched_transaction_id` say how
+many.
 
 *(I had proposed an in-transit rack in the source, so the goods stayed on A's books. Two transaction
 columns rule it out — zeroing an in-transit rack at receipt is a movement in A, which would need a
@@ -1250,7 +1361,7 @@ place, and the transfer document is what holds it.
 flowchart LR
   A["warehouse A — racks"] -->|"TRANSFER_OUT at dispatch"| T["IN TRANSIT — held by the document"]
   T -->|"TRANSFER_IN at receipt"| B["warehouse B — the racks its receiver names"]
-  T -.->|"TRANSFER_IN on cancel"| A
+  T -.->|"cancel — reverses the dispatch"| A
 ```
 
 ### ⚠ Total stock is now three terms, not two
@@ -1271,9 +1382,16 @@ total = Σ warehouses  +  Σ transfers WHERE state = DISPATCHED
 as unexplained shrinkage every time a truck is on the road.
 
 ⚠ **And a dispatched transfer is a liability nothing ages.** Goods that left A and never arrived at B
-sit in `DISPATCHED` forever, in no warehouse, visible on no shelf report. **Recommend an alert on
-`state = DISPATCHED AND dispatched_at < now() - interval`** — this is the one state in the whole design
-where stock can be invisible rather than merely wrong.
+sit in `DISPATCHED` forever, in no warehouse, visible on no shelf report. ~~**Recommend an alert on
+`state = DISPATCHED AND dispatched_at < now() - interval`.**~~
+
+> ✅ **TOLERATED (owner) — no alert, no `expected_at`, no ageing rule.** The recommendation is withdrawn.
+>
+> ⚠ **And the premise it rested on is now false.** *"Visible on no shelf report"* was true when in-transit
+> stock had no state row. [transit-is-a-place](database/stock_design.md#transit-is-a-place) gives it one:
+> a stuck transfer holds a real, non-zero `stock_transit_batches` balance that
+> [P15](#p15--the-nightly-reconcile--four-checks)'s closure check reads. **It is no longer invisible — it
+> is just not chased**, which is a business call rather than a gap.
 
 ## P20 · What the reconcile DOES when a check fails
 
@@ -1495,7 +1613,7 @@ sequenceDiagram
     Note over SB,RB: for days, the goods are in NO warehouse
     RB->>SB: "these arrived" — names the racks
     SB->>SYS: TransferReceive — scoped to to_warehouse_id
-    Note over SYS: B's transaction · TRANSFER_IN onto named racks<br/>mints B's batch (P12) · state RECEIVED
+    Note over SYS: B's transaction · TRANSFER_IN onto named racks<br/>mints B's batches (P12) · state RECEIVED
 ```
 
 ### The three RPCs
@@ -1503,8 +1621,8 @@ sequenceDiagram
 | RPC | `use_scope` | Who | When |
 | --- | --- | --- | --- |
 | `TransferDispatch` | `from_warehouse_id` | a manager in A | creates the document, writes A's `TRANSFER_OUT` |
-| `TransferReceive` | `to_warehouse_id` | a receiver in B | writes B's `TRANSFER_IN`, mints B's batch, names the racks |
-| `TransferCancel` | `from_warehouse_id` | A only | **only while `DISPATCHED`** |
+| `TransferReceive` | `to_warehouse_id` | a receiver in B | writes B's `TRANSFER_IN`, mints B's batches (one per source layer), names the racks |
+| `TransferCancel` | `from_warehouse_id` | A only | **only while `DISPATCHED`** — and it takes **no racks and no batches**: it reverses the dispatch ([cancel-reverses-the-dispatch](database/stock_design.md#cancel-reverses-the-dispatch)). Its whole request is a transfer id |
 
 ⚠ **`StockTransferRequest` is a leftover, not a gap.** One RPC was correct when both legs committed
 together. P19 made a transfer two events days apart, and the RPC never followed.
@@ -1516,7 +1634,7 @@ Two things look alike and are not:
 ```mermaid
 flowchart TD
   Q{"the transfer is not going to complete"}
-  Q -->|"goods never reached B"| C["CANCEL — A's action. TRANSFER_IN back into A"]
+  Q -->|"goods never reached B"| C["CANCEL — A reverses its own dispatch"]
   Q -->|"goods ARE at B, and B will not keep them"| R["B RECEIVES them — that is the truth"]
   R --> N["then B dispatches a NEW transfer back to A"]
   C --> OK1["one document, closed"]
@@ -1537,9 +1655,9 @@ design lets it go invisible — a refusal modelled as "reject without receiving"
 | **incoming** ⚠ | B | **does not exist today.** A list scoped on `to_warehouse_id` — the screen the whole gap was hiding |
 | **receive** | B | name the racks, like any receipt (P1b). Not a confirm button |
 
-⚠ **Overdue is a screen concern, not only an alert.** P19 flags that a `DISPATCHED` transfer ages
-invisibly; "outgoing" is where a human sees it, and it needs the age on the row rather than buried in a
-report nobody opens.
+~~⚠ **Overdue is a screen concern, not only an alert.**~~ ✅ **Withdrawn — an overdue transfer is
+TOLERATED** (owner). The "outgoing" list still shows `dispatched_at`, so a human *can* see an old one; it
+simply is not flagged, chased or given a promised date.
 
 ### 2. Lock SCOPE — the concern that survived two corrections
 
@@ -1682,8 +1800,9 @@ nobody has specified, on a screen a person uses while holding a damaged box.
 #### ⚠ P1b contradicts a rule `RackSelect` was specifically built around
 
 CLAUDE.md records it: *`RackSelect` keeps "unplaced" selectable while its placeholder stays disabled,
-because a place is not an absence (#136/#139)*. **P1b deletes "unplaced."** Staging is an ordinary rack
-in the ordinary list, so that special case — and the tests around it — should go.
+because a place is not an absence (#136/#139)*. **P1b deletes "unplaced."** There is nothing for it to
+select — every rack is an ordinary rack in the ordinary list — so that special case, and the tests around
+it, should go.
 
 ### ⚠ This is not a frontend backlog
 
@@ -1742,7 +1861,7 @@ erDiagram
         bigserial id PK "the USER ACTION — every stock change belongs to one"
         bigint warehouse_id "ONE building — a TRANSFER is therefore TWO transactions"
         int kind "RESTOCK · ORDER · WAREHOUSE_ADJUSTMENT · TRANSFER · PICK · MOVE · RETURN"
-        bigint reverses_transaction_id FK "a RETURN points at its PICK · NULL otherwise"
+        bigint reverses_transaction_id FK "the UNDO link — a RETURN points at its PICK, a transfer CANCEL at its dispatch"
         text reason "WHY — one per action, not per row"
         bigint actor_user_id "WHO — one per action"
         timestamptz created_at "when we were told"
@@ -1775,7 +1894,7 @@ erDiagram
         bigint inventory_transaction_id FK "NOT NULL — the event it was born in (P11)"
         bigint warehouse_id "the ONE warehouse this layer lives in (P12)"
         bigint product_id "immutable — one delivery is one product"
-        bigint owner_team_id "MUTABLE — join it, never copy it (P5)"
+        bigint owner_team_id "THE OWNER · CHECK greater than 0, never unowned (ownership-is-copied)"
         bigint unit_cost "FROZEN HPP · NULL = UNKNOWN, never 0 (#74)"
         bigint arrived_qty "fixed at acceptance — ready, used, broken and lost are DERIVED (P17)"
         bigint damaged_qty "damage found AT ACCEPTANCE. Later damage is a BROKEN movement (P17)"
@@ -1804,7 +1923,7 @@ inventory_transactions (
   warehouse_id  BIGINT NOT NULL,           -- no FK by design
   kind          INT    NOT NULL,           -- RESTOCK · ORDER · WAREHOUSE_ADJUSTMENT
                                            -- PICK · MOVE · TRANSFER · RETURN
-  reverses_transaction_id BIGINT REFERENCES inventory_transactions (id),   -- a RETURN's PICK
+  reverses_transaction_id BIGINT REFERENCES inventory_transactions (id),   -- the UNDO link: a RETURN's PICK, a CANCEL's dispatch
   reason        TEXT   NOT NULL DEFAULT '',-- WHY — one per action
   actor_user_id BIGINT NOT NULL DEFAULT 0, -- WHO — one per action
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1861,7 +1980,7 @@ the daily projection splits its flow columns by it.
 | after-balance at `(rack, batch)` | read `after_balance` off the row (P6) |
 | after-balance, **any coarser lens** | anchor + walk, bounded by the page (P14). Never a full-history window |
 | closing balance for a DAY | `after_balance` at `MAX(id)` in that day's bucket — an index seek, no window, no sum |
-| the owner lens | a JOIN to `stock_batches.owner_team_id` — never a second table, never a copied column |
+| the owner lens | ❌ **no longer a join.** An index seek on `stock_movements (owner_team_id, product_id, warehouse_id, id DESC)` — the exact index the deleted `stock_owner_movements` carried ([ownership-is-copied](database/stock_design.md#ownership-is-copied)) |
 | reversals | a new transaction carrying `reverses_transaction_id`. Nothing is ever updated or deleted |
 | grouping | one user action is N ledger rows — group by `inventory_transaction_id`, never by row |
 | "corrections" | **not a concept.** A wrong count is fixed by counting (P11) |
@@ -1915,37 +2034,67 @@ flowchart LR
   P4 --> S
 ```
 
-## 1 · The scan decision left seven stale rows — six in one table
+## 1 · A topic SPLIT into a sub-doc left five stale sites in the parent
 
-**Example.** [batch_selection P6](batch_selection.md) made a pick **observed** — the picker scans the
-label. The plan table still said:
+**The cause is the split, not any one decision.** `batch_selection.md` was carved out of this doc, and
+four decisions closed *there* — P2, P3, P6, P10. Every place this doc still **summarised** batch
+selection went stale at once. The sub-doc has no way of knowing who summarised it.
 
-> | `TRANSFER` dispatch | the source rack's batches, **oldest-first** | A's shelves |
+**Example.** The plan-per-kind table said:
+
 > | `RECOUNT` | `target − Σ old` at that rack, **FIFO-distributed** |
-> | `LOST` · `BROKEN` | the named batches, drawn down | *(and the same row again, duplicated)* |
+> | `LOST` · `BROKEN` | the named batches, drawn down |
 
-Three separate wrongs: a transfer's out-leg is a draw from a shelf so it is **scanned**; a recount down
-is **pro-rata** (P3), not FIFO; and `LOST` and `BROKEN` are decided **oppositely** — one is the only
-consumption nobody could observe, the other is the one somebody is holding.
+Two separate wrongs, from separate decisions: a recount down is **pro-rata** (P3), not FIFO; and `LOST`
+and `BROKEN` are decided **oppositely** (P3 vs P2) — one is the only consumption nobody could observe,
+the other is the one somebody is holding.
 
-**→ Recommend.** The column was headed *"The plan"*, which invited a mechanism. It is now **"Who decides
-the batch"** — a question with one answer per row, so a changed decision has an obvious place to land.
+| Site | Stale because of |
+| --- | --- |
+| table · `RECOUNT` — one row, FIFO | P3, and P10 for the up case |
+| table · `LOST · BROKEN` — one row | P3 + P2 |
+| ⚠ *"a `RECOUNT` upward has no batch to land on"* — still posed as open | P10, which had answered it |
+| the planner paragraph — *"`attributeDeltaFIFO` becomes the planner"* | P3 (and P6, partly) |
+| read-sites table · `StockAdjust` — *"then FIFO-distribute"* | P3 + P10 |
+
+⚠ **A sixth site was recorded here and was NOT stale** — the `TRANSFER` dispatch row. See contradiction
+4: I broke a correct row while fixing the others.
+
+**→ Recommend. A parent must POINT at a sub-doc, or CITE it per row — never restate it bare.** This
+table earns its restatement (it is the only place every kind appears together), so every row now names
+its source — `batch_selection P2` / `P3` / `P6`, `P10`, `P11`, `P12`. That makes the table visibly
+*derived*, so a decision closing in the sibling has one obvious place to land. The column heading moved
+from *"The plan"* — which invited a mechanism — to **"Who decides the batch"**, a question with exactly
+one answer per row.
+
+⚠ **This predicts the next one:** [pagination.md](pagination.md) was split off the same way.
 
 ```mermaid
 flowchart TD
-  S["P6 · a pick is now OBSERVED"]
-  S --> A["the section that argued it — updated"]
-  S -.->|"stale"| T["the plan-per-kind table — 6 rows"]
-  S -.->|"stale"| R["the read-sites table — StockAdjust row"]
-  S -.->|"stale"| P["the planner paragraph"]
-  T --> W["all still said FIFO decides every draw"]
+  SP["batch_selection.md — split out of this doc"]
+  SP --> D2["P2 · BROKEN is caller-named"]
+  SP --> D3["P3 · losses are PRO-RATA"]
+  SP --> D6["P6 · a pick is OBSERVED"]
+  SP --> D10["P10 · a recount up MINTS"]
+  D2 -.-> T["the plan-per-kind table"]
+  D3 -.-> T
+  D10 -.-> T
+  D3 -.-> R["the read-sites table"]
+  D10 -.-> R
+  D6 -.-> P["the planner paragraph"]
+  D3 -.-> P
+  T --> W["5 sites still described a world where FIFO decides every draw"]
   R --> W
   P --> W
+  W --> F["FIX — every row cites its source decision"]
 ```
 
-## 2 · P12 arrived after a list that was read as closed
+**Not counted:** the table also carried the `LOST · BROKEN` row **twice**. That is a paste slip, not a
+contradiction — it was fixed in the same pass and the commit miscounted it as a seventh.
 
-**Example.** P10 listed three batch origins and I argued *from* the list:
+## 2 · An INCIDENTAL detail of the writing was read as part of the decision — twice
+
+**Example A — a list's membership.** P10 listed three batch origins and I argued *from* the list:
 
 > *"The three sources are `RESTOCK`, `ORDER`, `WAREHOUSE_ADJUSTMENT`. **There is no `TRANSFER`** — so a
 > transfer does not mint a batch in the destination."*
@@ -1953,40 +2102,151 @@ flowchart TD
 P12 then decided a transfer **does** mint one. The enum's membership was never evidence about what the
 warehouse does.
 
-**→ Recommend.** **Never argue from an enum's current membership.** A list of examples is not a
-constraint until somebody decides it is one.
+**Example B — a phrasing's cardinality.** P12 was written as *"mints **a** new batch"*, and the plan
+table as *"the system mints **one** in B"*. **P12 answered "mint or carry across?", never "how many?"** —
+but I then framed [fifo.md](fifo.md)'s Question 1 *from* that singular, presenting "one averaged batch"
+as the incumbent. The owner chose one per source layer, and the singular turned out to be **eleven stale
+sites**, none of which anyone had decided.
+
+**→ Recommend. Separate what was DECIDED from how it was WRITTEN.** A list's membership, a phrase's
+number, a diagram's arity — none of them are decisions until someone says so. When quoting a settled
+section as a premise, quote the **question it answered**, not the sentence it answered in.
 
 ```mermaid
 flowchart LR
-  E["an enum with 3 values"] -->|"read as CLOSED"| C["'therefore a transfer cannot mint a batch'"]
-  C --> X["a design conclusion drawn from a list nobody had finished"]
+  W["what was WRITTEN — 'the three sources', 'mints A batch'"]
+  D["what was DECIDED — a batch has an origin · a transfer mints rather than carries"]
+  W -->|"⚠ read as the decision"| C["'a transfer cannot mint' · 'B gets exactly one batch'"]
+  C --> X["conclusions nobody had agreed — 1 reversal, then 11 stale sites"]
+  D -.->|"the premise that was actually available"| OK["ask the open question instead"]
 ```
 
-## 3 · The staging rack survived its own removal, in six places
+## 3 · The staging rack survived its own removal — six places, then two more
 
 **Example.** Staging was removed — receiving lands directly on the rack. Six places still named it: the
 P1b summary row, the `RECEIVE` and `TRANSFER receipt` plan rows, P12's diagram, P19's lifecycle table,
 and the `RACK` entity's comment in the structure diagram.
 
-**→ Recommend.** **When a concept is deleted, grep for its name before claiming it is gone.** A removed
-concept leaves more references than a changed one, because it was mentioned wherever it was *used* — not
-only where it was defined.
+⚠ **And a later sweep found two MORE**, after "it is gone" had already been claimed:
+
+> P12's flow diagram — `"placed on B's STAGING rack, then put away (P1b)"` — **citing the very decision
+> that abolished it**, and the `RackSelect` note: *"Staging is an ordinary rack in the ordinary list."*
+
+**→ Recommend. Grep, and grep AGAIN after the fix — a removed concept is the one class of change where a
+mechanical sweep beats reading.** ⚠ Worse, both survivors sat next to a **correct citation of P1b**, so
+the sentence read as current and sourced. That is why eyeballing missed them twice: the surrounding text
+was right.
 
 ```mermaid
 flowchart TD
   R["remove the STAGING concept"] --> D["P1b — the section that defined it. Rewritten"]
-  R -.->|"6 sites still named it"| U["every place it was USED"]
+  R -.->|"6 sites found"| U["every place it was USED"]
   U --> U1["2 plan-table rows"]
   U --> U2["2 diagrams"]
   U --> U3["a lifecycle table"]
   U --> U4["an ER entity comment"]
+  R -.->|"⚠ 2 MORE, found only on a re-sweep"| V["P12's flow diagram · the RackSelect note"]
+  V --> V1["both cited P1b correctly in the same sentence — so they read as current"]
 ```
 
-## What the three have in common
+## 4 · Fixing a contradiction CREATED one — a decision was over-generalised
 
-⚠ **The plan-per-kind table went stale all three times.** It is the only place where every movement kind
-appears together, so any rule that varies by kind must be restated there — which makes it the first
+**Example.** Fixing contradiction 1, I read [batch_selection P6](batch_selection.md) — *"a pick is
+OBSERVED"* — and applied it to the `TRANSFER` dispatch row too, on the reasoning *"the out-leg is a draw
+from a shelf like any other"*:
+
+> | `TRANSFER` dispatch | ~~the source rack's batches, **oldest-first**~~ → ⚠ **the picker SCANS** |
+
+**The original row was RIGHT.** The owner: *"transfer is no need scan — its provisioned by fifo"*. P6 was
+about the **customer pick**, and I widened it to every draw from a shelf on a similarity I invented. The
+warehouse reason it does not extend is now P7: an order pick's batch leaves the company as COGS, a
+transfer's stays on our own books at both ends.
+
+**→ Recommend. A fix is a DECISION and takes the same care as one.** Specifically: **do not widen a
+decision to a case the owner did not name.** *"It is the same kind of thing"* is an argument, not a
+verdict — and it belongs in the Critique for the owner to answer, not in the Proposal as if it were
+settled. ⚠ This is the more dangerous class of contradiction: the others left old text standing, while
+this one wrote *new* text that had never been agreed.
+
+```mermaid
+flowchart TD
+  P6["P6 · an ORDER PICK is observed — what the owner decided"]
+  P6 -->|"correct"| A["the PICK row — scan"]
+  P6 -.->|"⚠ WIDENED by me, unasked"| B["the TRANSFER dispatch row — scan"]
+  B --> C["a correct row overwritten during a contradiction FIX"]
+  C --> D["owner: 'transfer is no need scan — provisioned by fifo'"]
+  D --> E["P7 — the boundary the widening had erased, now written down"]
+```
+
+## 5 · A decision DEPENDED on a path a sibling decision deleted — seven sites
+
+**Example.** [P5](#p5--the-owner-lens-is-a-query-not-a-ledger) built the owner lens on a join:
+
+> *"Copy immutable facts for the index. **Join mutable ones**."* — and `owner_team_id` was the mutable one.
+
+[P11](#p11--inventory_transactions--the-event-a-batch-was-born-in), **in this same doc**, then wrote
+`DROP COLUMN restock_request_item_id, DROP COLUMN delivery_id` — deleting `batch → restock → team`, the
+only path that join could read. Neither decision mentions the other. The column had **no source at all**,
+and a transfer-minted batch had no owner by any route.
+
+**Seven sites went stale from that one cause** — P5's flowchart, its SQL, its mutability table, its
+"do not copy" heading, P11's erDiagram, `Proposed Design`'s erDiagram, and the read contract.
+
+```mermaid
+flowchart TD
+  P5["P5 · owner lens = JOIN to the batch's team"] --> N["depends on batch → restock → team"]
+  P11["P11 · the batch's origin is a TRANSACTION"] -->|"drops restock_request_item_id"| X["⚠ the path is deleted"]
+  N --> X
+  X --> Z["the column had no source — unbuildable, and nobody noticed"]
+  Z --> F["owner: store it. ownership-is-copied"]
+```
+
+→ **RECOMMEND.** Fixed — [ownership-is-copied](database/stock_design.md#ownership-is-copied) stores
+`owner_team_id` on three tables and the transaction supplies it, so the deleted path is *replaced* rather than
+restored. **What stops it recurring: a decision that DELETES a column must name what read it.** P11 listed
+what it added and what it dropped, but not who depended on the drop.
+
+⚠ **This is the first contradiction found by ASSEMBLING the schema rather than reading it** — P5 and P11
+each read correctly on their own page, and only collided in a `CREATE TABLE` neither doc contains. That is
+the argument for [database/stock_design.md](database/stock_design.md) existing at all.
+
+## What they have in common — and where the FIFTH breaks the pattern
+
+⚠ **The plan-per-kind table was involved all four times** — three times going stale, once being wrongly
+"fixed". Only the first was a sub-doc split, so the table is not merely a victim of that. It is the only
+place where every movement kind appears together, so **any rule that varies by kind must be restated
+there N times**. That makes it structurally the most contradiction-prone paragraph in the doc: the first
 place to check after any decision, and the one worth reading twice.
+
+```mermaid
+flowchart LR
+  D1["1 · a sub-doc split — 4 decisions"] --> T["the plan-per-kind table"]
+  D2["2 · P12 mints on transfer"] --> T
+  D3["3 · staging removed"] --> T
+  D4["4 · a fix that over-generalised P6"] --> T
+  T --> Y["every rule that varies by kind is restated here — so every decision, and every FIX, can break it"]
+```
+
+⚠ **And N rows is exactly what makes it dangerous in both directions.** Restating a rule per kind is what
+keeps a stale row visible — and also what tempts a row to be filled in by analogy with the row above it,
+which is contradiction 4.
+
+### ⚠ Contradiction 5 does NOT fit this pattern — and that is the finding
+
+It never touched the plan-per-kind table. **1–4 were all a rule restated in several places, one copy going
+stale.** 5 is different in kind: **two decisions that were each internally consistent, where one deleted
+something the other depended on.** No text was stale — the text was fine on both pages.
+
+```mermaid
+flowchart TD
+  A["1–4 · ONE rule, restated N times → a copy goes stale"] --> AF["found by RE-READING the doc"]
+  B["5 · TWO rules, one deletes the other's dependency"] --> BF["invisible on both pages — found only by ASSEMBLING"]
+  BF --> C["⚠ re-reading cannot catch this class. A CREATE TABLE can"]
+```
+
+**→ So "check the plan-per-kind table after every decision" is necessary and NOT sufficient.** The second
+check is: **when a decision drops a column, grep for what read it.** P11 listed what it added and what it
+dropped, and never asked who was using the drop.
 
 ---
 

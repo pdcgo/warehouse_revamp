@@ -1,5 +1,11 @@
 # Batch Selection — how the system chooses which batch a consumption comes from
 
+> ⚠ **GRAIN CHANGED — [ledger-splits-by-question](database/stock_design.md#ledger-splits-by-question) (owner, 2026-08-07).**
+> The ledger splits into a **placement** ledger (no `batch_id`) and a **batch** ledger (no `rack_id`), so
+> `(rack, batch)` is no longer a grain. **Rules below phrased in those terms are superseded** — see
+> [the-cross-product-grain-was-assumed-everywhere](database/stock_design.md#the-cross-product-grain-was-assumed-everywhere).
+> This doc is rewritten once the open sub-parts settle, not before.
+
 > ⚠ **`disscuss/` is NOT final.** Mid-argument. Do not build from this.
 >
 > *Was `stock_provision.md`. Renamed: "provision" implies supplying stock **in**, and this is about
@@ -8,6 +14,9 @@
 
 Split out of [stock_movement_log.md](stock_movement_log.md). Its P7 says *"plan which batches the change
 lands on — FIFO"* in one line. That line is a whole feature.
+
+Siblings: [fifo.md](fifo.md) · [rack_selection.md](rack_selection.md) — the **rack** axis, which this doc
+never named, and which turned out to be undecided in three places.
 
 # Proposal
 
@@ -18,21 +27,24 @@ lands on — FIFO"* in one line. That line is a whole feature.
 | P1 | **A caller names a quantity, never a batch** — the batch is decided by the picker's scan or by the system, never by the requester. It is a **rule in code, not a table** |
 | P2 | **Who chooses the batch differs per consumption** — only `LOST` and `RECOUNT` down are computed |
 | P3 | **Losses attribute PRO-RATA across the batches on the shelf, not FIFO** — cost-layer FIFO and loss attribution are two different rules |
-| P4 | **FIFO — `ORDER BY batch id`, nothing else.** `expires_on` does not enter selection: it is a human warning, and the "expiring" badge is its only control |
+| P4 | **FIFO — `ORDER BY batch id`, nothing else.** `expires_on` does not enter selection: it is a human warning, and the "expiring" badge is its only control. *How* that walk runs is [fifo.md](fifo.md) |
 | P5 | **Stock is FUNGIBLE across owners on a shelf** — the teams are divisions of one company, so a pick draws FIFO regardless of which division owns the batch |
 | P6 | **A pick is OBSERVED, not computed** — the picker scans the batch label, so FIFO is what the system *suggests* and the scan is what the ledger *records* |
+| P7 | ⚠ **A `TRANSFER`'s out-leg is NOT scanned — it is provisioned by FIFO** (owner). P6 covers the customer pick only. The units stay inside the company and the destination mints a fresh batch anyway (ledger P12), so the attribution never leaves our own books |
 
 ## P2 · Who chooses the batch
 
 | Consumption | Batch chosen by | Why |
 | --- | --- | --- |
-| `ORDER` · a `TRANSFER`'s out-leg | **the picker's SCAN** (P6) | someone is standing at the shelf. What they scan is what left it |
+| `ORDER` | **the picker's SCAN** (P6) | someone is standing at the shelf. What they scan is what left it |
+| a `TRANSFER`'s **out-leg** | **the system**, FIFO (P7) | the units stay in the company and B mints a fresh batch — no scan is worth the step |
 | `RECEIVE` · `MOVE` · a `TRANSFER`'s in-leg | **the caller** | the batch is already known — it is the delivery, or the thing being moved |
 | `BROKEN` | **the caller** | they are holding the box. A computed guess would overwrite an observed fact |
 | `LOST` · `RECOUNT` down | **the system**, pro-rata (P3) | nobody could have known. See the rendering rule below |
 
-⚠ **Only the last row is computed.** P6 moved picks from computed to observed, so the system now decides
-a batch in exactly the two cases where no human could have.
+⚠ **Two rows are computed, and they compute DIFFERENTLY.** A transfer out-leg is **FIFO** — a deliberate
+draw, so the cost-layer convention applies. A loss is **pro-rata** — an unattributable discrepancy, where
+FIFO would systematically over-blame the oldest layer (P3). Same "the system decides", opposite rule.
 
 ### ⚠ The rendering rule — a UI rule the schema cannot enforce
 
@@ -163,20 +175,25 @@ from the scan.
 
 | Consumption | Batch decided by | |
 | --- | --- | --- |
-| `ORDER` · a `TRANSFER`'s out-leg | **the picker's scan** | both are someone standing at a shelf taking cartons |
+| `ORDER` | **the picker's scan** | the units leave the company — this is the one draw whose batch cannot be re-decided later |
+| a `TRANSFER`'s out-leg | **the system**, FIFO | ⚠ **not scanned** — see P7 |
 | `BROKEN` | the caller | unchanged — they are holding it |
 | `LOST` · `RECOUNT` down | **the system**, pro-rata (P3) | nobody scans a unit that is missing |
 
-✅ **Observed beats computed**, for the reason P2 already gave: in an append-only log a guess that turns
-out wrong is indistinguishable from a fact. Now only two kinds are guesses, and both are the ones where
-no observation was possible.
+✅ **Observed beats computed where an observation is worth its cost.** In an append-only log a guess that
+turns out wrong is indistinguishable from a fact — so the scan buys truth on the draw that books COGS.
+P7 declines to buy it on the draw that only moves value between our own buildings.
 
-### ⚠ The consequence: the plan leaves the transaction
+### ⚠ The consequence: the plan leaves the transaction — for an ORDER only
 
 [stock_movement_log P7](stock_movement_log.md) locks the state rows, reads `old`, plans, and writes —
 all inside one database transaction. **A human scan cannot sit inside that.** P7's own rule forbids it:
 never hold a shelf's lock across anything slow, and a person walking to a rack is the slowest thing in
 the system.
+
+✅ **P7 (this doc) shrinks this hazard to one kind.** A transfer dispatch is computed, so it plans *under*
+the lock like every other machine-decided draw and the stale-plan branch below cannot arise for it. Only
+the customer pick pays this price.
 
 ```mermaid
 flowchart TD
@@ -198,6 +215,37 @@ the recovery ("you have them, the system says you cannot") is a screen someone h
 > **PARKED (owner):** the label and scanning design — what is printed, when it is scanned, put-away and
 > counting — is **its own topic**. Only its effect on batch selection is recorded here.
 
+## P7 · A transfer's out-leg is FIFO, not scanned
+
+**The scan is not free** — it is a step a person performs per carton, and it buys one thing: an
+*observed* batch instead of a computed one. P7 asks where that is worth paying for, and the answer turns
+on **whether the attribution can ever be re-decided**.
+
+| | `ORDER` — scanned | `TRANSFER` out-leg — FIFO |
+| --- | --- | --- |
+| where the units go | **out of the company** | to another of our own buildings |
+| what the batch decides | which cost layer is booked as **COGS** | which layer at A is drawn, and what B's new batch costs |
+| the batch afterwards | gone with the goods | **consumed at A, a NEW one minted at B** (ledger P12) |
+| a wrong choice | money booked against the wrong layer, and the goods are with a customer | value shifts between layers **we still own on both sides** |
+
+```mermaid
+flowchart TD
+  Q{"can the attribution still be corrected from stock we hold?"}
+  Q -->|"NO — an ORDER. The goods left"| S["SCAN — buy the observation (P6)"]
+  Q -->|"YES — a TRANSFER. Both ends are ours"| F["FIFO — compute it (P7)"]
+  S --> S1["⚠ the plan must leave the transaction"]
+  F --> F1["✅ plans under the lock — no stale-plan branch"]
+```
+
+✅ **Total inventory value is identical either way.** FIFO at A cannot create or destroy value — it only
+chooses which layer at A is drawn down and therefore what cost rides to B. Both sides of that stay on
+our own books, which is exactly what an order pick cannot say.
+
+⚠ **What B mints is its own question — answered in [fifo.md](fifo.md).** FIFO can draw across several
+layers at different unit costs, so minting **one** batch in B would mean averaging them. `unit_cost` is
+`*int64` — whole rupiah, and `nil` for UNKNOWN — so that average **rounds**, and when one layer's cost is
+`nil` it **cannot be expressed at all**. [mint-per-layer](fifo.md#mint-per-layer) mints one batch per source layer instead.
+
 
 ---
 
@@ -210,7 +258,8 @@ those batch ids become permanent ledger rows (P3 of the ledger doc).
 flowchart LR
   T["order · transfer · broken · lost — a QUANTITY"]
   T --> D{"who decides the batch?"}
-  D -->|"a PICK — the picker SCANS (P6)"| L["N ledger rows, each naming its batch"]
+  D -->|"an ORDER pick — the picker SCANS (P6)"| L["N ledger rows, each naming its batch"]
+  D -->|"a TRANSFER out-leg — the system, FIFO (P7)"| L
   D -->|"LOST · RECOUNT — the system, pro-rata (P3)"| L
   D -->|"RECEIVE · MOVE · BROKEN — the caller already knows it"| L
   L --> A["permanent: which batch was consumed is now history"]

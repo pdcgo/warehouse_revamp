@@ -76,6 +76,17 @@ recommendation for later discussion. A fast RPC produces a one-line answer and n
 report is input to a discussion, and an index migration belongs to the owning service and the
 owner's decision (HARD RULE 3, HARD RULE 8).
 
+**Concurrency-audit each WRITE RPC too — fast is not the same as correct.** The people using this
+system work in pairs on one stock level, so two callers at the same second is the normal case. The
+procedure is the **`audit-sql` skill**; the harness is [backend/pkgs/san_race/](backend/pkgs/san_race/).
+Same rules as the performance audit: only an UNSAFE result is written up
+(`audits/services/<service_name>/concurrency/<RpcName>.md`), and it never applies the fix.
+
+> ⚠ A concurrency test **cannot** use `san_testdb.DB(t)` — that is one transaction, and two
+> goroutines inside one transaction never block on each other's locks, never deadlock, and never
+> lose an update. It uses `san_testdb.Pool` through `san_race.New`, and is build-tagged `raceaudit`
+> so a committing test never runs beside the rolling-back ones.
+
 **Tests use a SEPARATE database — never the dev one.** All automated tests run against
 `warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
 instance (`:5433`), a different database, so a test run can never read or corrupt review data.
@@ -393,6 +404,37 @@ they collect, because it is the only place a changed rule has to be restated N t
   seven sites — not seven entries.
 - **Re-examine after every decision that touches a shared table**, and say plainly what was found. "No
   contradictions" is a real and useful answer; silence is not.
+
+### 12. A decision is NAMED and LINKED, never numbered
+
+In `disscuss/`, `plans/` and `guidelines/`, every decision carries a **kebab-case name that says what it
+decided** — `mint-per-layer`, not `F2` — and **every reference to it is a markdown link to the section
+that defines it**, so the owner can click through and read it instead of scrolling to look it up. (owner)
+
+```markdown
+| [mint-per-layer](#mint-per-layer) | A transfer receipt mints ONE BATCH PER SOURCE LAYER in B |
+…later, in prose…
+⚠ [mint-per-layer](#mint-per-layer) removed the average, so a `nil` layer now stays `nil`.
+…and across docs…
+See [rack-order](fifo.md#rack-order) — the transfer out-leg has no rack rule yet.
+```
+
+An ordinal is a **label with no content**. It has to be looked up, it cannot be clicked, and it collides
+the moment two sibling docs both reach their seventh decision — **`P7` already means the ledger's write
+protocol in one doc and the transfer-FIFO rule in another**, which is why references had to be written
+"ledger P7" / "batch_selection P7" to stay unambiguous.
+
+- **The heading IS the name — alone, unpunctuated.** `## mint-per-layer`, so the anchor is exactly
+  `#mint-per-layer` and never has to be guessed. A decorated heading like ``## `mint-per-layer` · the
+  spec`` anchors to `#mint-per-layer--the-spec`, and that is how a link rots.
+- **A bare name is an incomplete reference.** Writing the name without the link is the same lookup cost
+  as a number, just friendlier — the link is the point.
+- **Name the VERDICT, not the topic.** `mint-per-layer` beats `batch-minting`: the reference should read
+  as a sentence — *"per `facts-travel`, `expires_on` copies verbatim"*.
+- ⚠ **If a decision REVERSES, rename it and grep every reference.** That is the price of a name carrying
+  its verdict, and it is the discipline HARD RULE 11 already requires.
+- **The decided list at the top links; it does not restate.** One row per decision, its name linked to
+  the section that holds the diagram and the spec (RULE 8b.11).
 
 ---
 

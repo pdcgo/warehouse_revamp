@@ -280,6 +280,32 @@ func connect() (*gorm.DB, error) {
 func DB(t *testing.T) *gorm.DB {
 	t.Helper()
 
+	tx := Pool(t).Begin()
+	if tx.Error != nil {
+		t.Fatalf("san_testdb: begin: %v", tx.Error)
+	}
+
+	t.Cleanup(func() {
+		tx.Rollback()
+	})
+
+	return tx
+}
+
+// Pool returns the shared *gorm.DB itself — the real connection pool, COMMITTING, with no
+// per-test transaction wrapped around it and therefore nothing rolled back at the end.
+//
+// Almost every test wants DB() instead. Pool exists for CONCURRENCY tests (`san_race`), which
+// CANNOT use DB(): two goroutines inside one transaction never block on each other's row locks,
+// so a lost update or a deadlock that is real in production is structurally invisible there — the
+// test passes and proves nothing. A concurrency test needs independent connections, which means
+// independent transactions, which means real commits.
+//
+// A test using Pool owns its own cleanup. `san_race.New` does that part; prefer it to calling
+// Pool directly.
+func Pool(t *testing.T) *gorm.DB {
+	t.Helper()
+
 	once.Do(func() {
 		shared, initErr = connect()
 	})
@@ -308,14 +334,5 @@ func DB(t *testing.T) *gorm.DB {
 			"database, and skipping it would run nothing while printing ok: %v", initErr)
 	}
 
-	tx := shared.Begin()
-	if tx.Error != nil {
-		t.Fatalf("san_testdb: begin: %v", tx.Error)
-	}
-
-	t.Cleanup(func() {
-		tx.Rollback()
-	})
-
-	return tx
+	return shared
 }
