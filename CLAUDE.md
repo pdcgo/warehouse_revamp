@@ -246,6 +246,48 @@ two folders.
 [guidelines/service-guideline.md](guidelines/service-guideline.md)) — do not rewrite anything in it
 without an explicit ask.
 
+### 7c. In `disscuss/`, the owner's doc is THEIRS — your response goes in `<name>_clarity.md` (owner)
+
+A plan doc in `disscuss/` is written by the owner. **Never edit it, never rewrite it, never "tidy"
+it, never append a section to it.** Not a heading, not a typo, not a broken diagram.
+
+**Every critique, complaint, question, warning, contradiction, risk and recommendation goes in a
+SEPARATE sibling file** named after the doc:
+
+```
+disscuss/architecture/mutation_and_ledger.md            ← the owner's plan. READ-ONLY to you.
+disscuss/architecture/mutation_and_ledger_clarity.md    ← everything you have to say about it.
+```
+
+- **`<filename>_clarity.md`** — same directory, same basename, `_clarity` suffix. One clarity file
+  per plan doc, never a shared one.
+- **When the owner updates the plan, RE-EXAMINE and UPDATE the clarity file.** It tracks the doc, so
+  a point the owner has since answered is **deleted** from clarity, not left standing with a
+  strikethrough. Clarity is the *current* open set, not a log.
+- **A question goes in the clarity file of the doc that can ANSWER it.** (owner) A template doc
+  cannot decide its implementer's column types, and an implementer's doc cannot decide the template's
+  shape. Before writing a question, ask *which doc's author settles this?* — and put it there.
+  Asking in the wrong file makes the owner answer it twice, or answer it somewhere it will not be
+  found. When a doc gains a downstream doc, **re-route** anything already misfiled and leave a one-line
+  pointer saying where it went.
+  ```
+  mutation_and_ledger.md   the TEMPLATE   → "should the log carry one change column or one per measure?"
+  stock_design.md          the INSTANCE   → "is valuation numeric or integer rupiah?"
+  ```
+- **A clarity file never becomes a guideline.** When the plan is final it moves to `guidelines/`
+  (RULE 7b) and the clarity file is **deleted with it** — its questions are answered by then, and a
+  surviving critique file would read as doubt about a settled doc.
+- **Something wrong in the owner's file is REPORTED, not fixed.** A mermaid diagram that fails
+  `npm run lint:mermaid` (RULE 3), a contradiction (RULE 11), a schema that can't work — all of it
+  is a clarity entry naming the line, never an edit to the plan.
+- The clarity file follows RULE 8b in full: short, visualised, every critique carrying its own
+  `**→ Recommend:**` inline.
+
+> This exists because the alternative was tried and failed. The owner deleted 14 discussion docs
+> (~8,300 lines) that had my argument, my critique and my decision-log braided into the design — the
+> plan was no longer previewable, and no longer the owner's. Separating the two files is what keeps
+> the plan readable as a plan.
+
 ### 8. Don't settle open questions unilaterally
 
 This is a collaborative design. When a decision is needed, put it in the relevant
@@ -269,8 +311,9 @@ Applies to `plans/`, `disscuss/`, and replies in chat.
    ```
 
    Critique names the weakness, Recommendation says what to do instead, Question is what you need
-   back. The owner answers and clarifies — that is the loop.
-4. **`disscuss/` is not final** (RULE 7b).
+   back. The owner answers and clarifies — that is the loop. **In `disscuss/` that shape is the
+   shape of the `_clarity.md` file** (RULE 7c) — it never goes in the owner's plan doc.
+4. **`disscuss/` is not final** (RULE 7b), and the owner's doc there is not yours to edit (RULE 7c).
 5. **Do not lean on what this project already does.** Existing architecture, models and concepts are
    a **reference for discussion, never a justification**. Analyse them freely for weakness,
    trade-off and bug potential — "it is already built that way" is not an argument. This is RULE 1
@@ -280,10 +323,11 @@ Applies to `plans/`, `disscuss/`, and replies in chat.
 7. **Always visualise.** We discuss to DESIGN, so every design doc carries diagrams — grains, flows,
    states, sequences, before/after. A picture is how the owner reads it. Mermaid, and it must parse
    (RULE 3: `npm run lint:mermaid`).
-8. **Write the RESULTING DESIGN to the md, not just the argument.** A doc that is all critique and
-   questions leaves the owner nothing to preview. Every discussion doc carries a
-   **`## Proposed Design`** — the concrete outcome: tables, schema, components, flow. Critique says
-   what is wrong, Recommendation says what to do, Proposed Design says **what it IS**.
+8. **Write the RESULTING DESIGN, not just the argument.** A response that is all critique and
+   questions leaves the owner nothing to preview. Carry a **`## Proposed Design`** — the concrete
+   outcome: tables, schema, components, flow. Critique says what is wrong, Recommendation says what
+   to do, Proposed Design says **what it IS**. In `disscuss/` this lives in the `_clarity.md`
+   (RULE 7c) as a proposal *for* the owner's doc — you never write it into the doc yourself.
 9. **We are DIALECTIC — brainstorming together, not delivering verdicts.** The owner argues back and
    so should you: hold a position, defend it with the warehouse and the trade-offs, and change it when
    the counter-argument is better. Say "I think X because Y — what breaks?" rather than presenting a
@@ -299,6 +343,9 @@ Applies to `plans/`, `disscuss/`, and replies in chat.
     mining the argument below it. Everything outside `# Proposal` is still open. Move an item up the
     moment the owner closes it, and mark any sub-part still under discussion — "decided" must never
     over-claim.
+    ⚠ **This applies to `plans/`, not to `disscuss/`.** In `disscuss/` the owner's own doc IS the
+    proposal (RULE 7c) — there is no decided/open split to maintain, and an empty heading there
+    means "not designed yet", not "open question".
 
 ### 9. A list RPC over data that can grow MUST paginate
 
@@ -383,6 +430,10 @@ refetching whenever the screen actually asks something.
 Every discussion doc carries a **`# Contradiction`** section. When a decision is found to contradict
 something already written, **fix it AND write it there** — with the example, the recommendation, and a
 diagram (RULE 8b.7: everything is visualised).
+
+⚠ **In `disscuss/`, `# Contradiction` lives in the `_clarity.md`, and nothing is fixed** (RULE 7c).
+A contradiction inside the owner's plan doc is reported — quote both lines, say which one you think
+is wrong, recommend — and the owner resolves it in their own file.
 
 ```
 # Contradiction

@@ -1,26 +1,31 @@
 # Mutation and Ledger Log Concept.
 
+## General Brief.
+Mutation and ledger is not `library` or `shared table`. its design architecture. this design help:
+1. ensure integrity of movement value in transaction.
+2. provide better `source of truth` data that statistic can be process it more ease.
+
+this is architectural design later that use in :
+1. [stock architecture design](./stock_design.md)
+
 ## Implementation Plan.
 This ledger design to accomodate :
 1. Stock Ledger.
-2. Order Revenue Ledger. 
+2. Order Revenue Ledger.
+3. Payment and Balance Ledger.
+
+
 
 ## What is mutation ?
 mutation is bussiness logic like `RestockCreateMutation`, `RestockAcceptMutation`
 
 ## Ledger
-There is 2 component about the ledger.
+There is 3 component about the ledger.
 1. state.
 2. ledger log.
 3. scope.
 
 Ledger is using for audit and source of truth of event processing.
-
-## State.
-State is keep the ledger state.
-
-## Log.
-Ledger Log is history record of state change.
 
 
 ## Flow Mutation and Ledger.
@@ -85,7 +90,9 @@ else
 end
 ```
 
-## Entity Relationship.
+## Entity Relationship Template.
+This is template how service need ledger design to be implemented. each table can contain additional column depend on service requirement. 
+
 ```mermaid
 erDiagram
 	lglog[ledger_logs] {
@@ -118,9 +125,28 @@ erDiagram
 	tx ||--|{ lglog : contain
 	st ||--|{ lglog : scope 
 ```
-## What is `transaction` Mean in Schema ?
 
-## What is `scope` in Erd ?
+## State.
+State is keep the ledger state. state is usefull to hold data the current condition.
+1. in stock case. its usefull for hold data:
+	- stock_balance
+	- stock_balance_valuation
+
+2. in case payment. its usefull for hold data:
+	- payable_balance
+	- receivable_balance
+
+## Scope
+why term scope exist. scope is use smallest grain to track ledger balance.
+1. for example, if we track stock balance scoped by `batch_id`, thats mean table have field `batch_id`
+2. scope is unique, and can be multiple fields.
+
+## Ledger Log.
+Ledger Log is history record of state change and this is **source of truth** state change. so service that implemented that design cannot change the `State` without log recorded in `Ledger Log`
+
+## What is `transaction` Mean in Schema ?.
+transaction is can be `InventoryTransaction` or `PaymentTransaction`
+
 
 # Statistic Design.
 
