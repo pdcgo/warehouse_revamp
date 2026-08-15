@@ -16,8 +16,8 @@ import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
 import type { Category } from "../../../gen/warehouse/category/v1/category_pb";
-import { toaster } from "../../../components/Toaster";
-import { CategorySelect } from "../../../components/CategorySelect";
+import { toaster } from "../../../components/feedback/Toaster";
+import { CategorySelect } from "../../../components/pickers/CategorySelect";
 import { useSaveCategory } from "../queries";
 
 // EditCategoryDialog renames and/or reparents a category. The parent picker excludes THIS node's own

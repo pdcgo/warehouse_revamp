@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card, Separator, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
 
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
-import { ShippingBadge } from "../../../components/ShippingBadge";
+import { ShippingBadge } from "../../../components/badges/ShippingBadge";
 import { AddressField, Field } from "../../../features/orders/components/OrderFields";
 import { formatRupiah } from "../../../lib/money";
 import { ReceiptCard } from "./ReceiptCard";

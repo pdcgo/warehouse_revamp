@@ -40,7 +40,7 @@ import {
   DateRangePicker,
   resolveRange,
   type DateRange,
-} from "../../components/DateRangePicker";
+} from "../../components/datetime/DateRangePicker";
 import { useTeam } from "../../features/team/TeamContext";
 import { directionCopy, directionPalette } from "../../features/settlement/direction";
 import {
@@ -49,9 +49,9 @@ import {
   useSettlementEntries,
   useSettlementPayments,
 } from "../../features/settlement/queries";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { CurrencyInput } from "../../components/CurrencyInput";
-import { Pagination } from "../../components/Pagination";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { Pagination } from "../../components/chrome/Pagination";
 
 const ENTRY_PAGE_SIZE = 50;
 const PAYMENT_PAGE_SIZE = 50;

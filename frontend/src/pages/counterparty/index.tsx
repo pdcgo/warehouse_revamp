@@ -17,7 +17,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import { SettlementSourceType } from "../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";

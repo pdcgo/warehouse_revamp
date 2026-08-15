@@ -25,18 +25,18 @@ import { ArrowLeft, History, LayoutGrid, Plus, Trash2, TriangleAlert } from "luc
 import { rpcError } from "../../api/clients";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { CurrencyInput } from "../../components/CurrencyInput";
-import { DamageTypeSelect } from "../../components/DamageTypeSelect";
-import { ProductListItem } from "../../components/ProductListItem";
-import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { ShippingBadge } from "../../components/ShippingBadge";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { DamageTypeSelect } from "../../components/pickers/DamageTypeSelect";
+import { ProductListItem } from "../../components/entity/ProductListItem";
+import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { TeamItem } from "../../components/TeamItem";
-import { UserItem } from "../../components/UserItem";
+import { TeamItem } from "../../components/entity/TeamItem";
+import { UserItem } from "../../components/entity/UserItem";
 import {
   useRestockRequest,
   useRestockActors,

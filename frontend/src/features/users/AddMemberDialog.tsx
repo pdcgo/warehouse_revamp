@@ -5,9 +5,9 @@ import { rpcError } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../team/TeamContext";
-import { toaster } from "../../components/Toaster";
-import { RoleSelect } from "../../components/RoleSelect";
-import { UserSelect } from "../../components/UserSelect";
+import { toaster } from "../../components/feedback/Toaster";
+import { RoleSelect } from "../../components/pickers/RoleSelect";
+import { UserSelect } from "../../components/pickers/UserSelect";
 import { rolesFor } from "../../lib/roles";
 import { useAddTeamMember } from "./queries";
 

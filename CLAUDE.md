@@ -441,7 +441,7 @@ So, three requirements on any list:
 
 1. **A paginated or filtered list spreads `listQuery`.** Not the raw option — the preset, so the
    reason travels with the setting and every list is findable by one name.
-2. **It wraps its table in [`RefreshOverlay`](frontend/src/components/RefreshOverlay.tsx)**, with
+2. **It wraps its table in [`RefreshOverlay`](frontend/src/components/feedback/RefreshOverlay.tsx)**, with
    `busy={query.isFetching && !query.isPending}`. Kept rows with no indicator are a screen that
    silently lies about how current it is. The overlay waits 150ms before showing, so a fast refetch
    never flickers — that delay is the component's job, not the caller's.
@@ -717,8 +717,8 @@ frontend/
       index.tsx       THE page component — one directory per SCREEN
       components/     used by THIS page and nothing else
     features/<domain>/  queries + anything shared by SEVERAL pages of one domain
-    components/       the design system (see below) — shared app-wide,
-                      each with its <Component>.stories.tsx beside it
+    components/<group>/ the design system (see below) — shared app-wide, grouped
+                      by KIND, each with its <Component>.stories.tsx beside it
     api/ lib/ i18n/ gen/ theme.ts router.tsx
 ```
 
@@ -747,9 +747,23 @@ folders while being curated gallery components — if a component exports a `des
 ### The design system
 
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
-`frontend/src/components/` holds 38 of them, every one with a **Storybook** story beside it
-(`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way to see what
-exists; `graphify query "what shared components exist for <the thing>"` works too.
+`frontend/src/components/` holds 38 of them, **grouped by kind**, every one with a **Storybook**
+story beside it (`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way
+to see what exists; `graphify query "what shared components exist for <the thing>"` works too.
+
+| `components/<group>/` | | |
+| --- | --- | --- |
+| `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
+| `datetime/` | 5 | the date/time family, which shares one unit convention (seconds, LOCAL, `0` = unset) |
+| `entity/` | 5 | show a product / a team / a person the same way everywhere |
+| `badges/` | 4 | a status or a kind, in its ONE standard colour |
+| `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
+| `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
+| `inputs/` | 2 | a typed value, formatted or masked |
+
+The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
+I find it?" have the same answer. A new component goes in the group it belongs to and its story's
+`title` is `Components/<Group>/<Name>` — if neither is obvious, the component is probably two things.
 
 This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
 The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
@@ -777,7 +791,7 @@ Two more UI rules:
   opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
   menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
-  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
+  reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
 - **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
   "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.

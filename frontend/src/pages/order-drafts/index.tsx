@@ -18,9 +18,9 @@ import {
 } from "@chakra-ui/react";
 import { Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { Pagination } from "../../components/Pagination";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { Pagination } from "../../components/chrome/Pagination";
+import { toaster } from "../../components/feedback/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
 import { draftGaps } from "../../features/orderDrafts/draftReadiness";
 import { useDeleteOrderDrafts, useOrderDrafts } from "../../features/orderDrafts/queries";

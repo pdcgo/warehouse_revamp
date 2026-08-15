@@ -5,10 +5,10 @@ import { UserMinus } from "lucide-react";
 import { rpcError, shopClient, userClient } from "../../../api/clients";
 import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { UserItem } from "../../../components/UserItem";
-import { UserSelect } from "../../../components/UserSelect";
-import { toaster } from "../../../components/Toaster";
+import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
+import { UserItem } from "../../../components/entity/UserItem";
+import { UserSelect } from "../../../components/pickers/UserSelect";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect (unscoped — grant anyone),

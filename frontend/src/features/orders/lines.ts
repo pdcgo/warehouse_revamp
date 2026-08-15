@@ -1,4 +1,4 @@
-import type { PickedProduct } from "../../components/ProductSelect";
+import type { PickedProduct } from "../../components/pickers/ProductSelect";
 
 // The order domain's line arithmetic — SHARED, because two screens compose order lines: the order
 // form (#90) and the draft detail (#196). It sat in `pages/order-create/` while only one of them

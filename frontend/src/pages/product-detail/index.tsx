@@ -23,8 +23,8 @@ import {
 import { Archive, ArrowLeft, Pencil, RotateCcw } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { toaster } from "../../components/feedback/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";

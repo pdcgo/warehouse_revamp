@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Card, Flex, SimpleGrid, Stack, Switch, Table, Text } from "@chakra-ui/react";
 
-import { Pagination } from "../../../components/Pagination";
-import { RefreshOverlay } from "../../../components/RefreshOverlay";
+import { Pagination } from "../../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import type { OwnerStockRow } from "../../../features/products/adapt";
 import { useOwnerCostLayers } from "../../../features/products/queries";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";

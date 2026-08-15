@@ -7,7 +7,7 @@ import { shopClient } from "../../../api/clients";
 import type { Shop } from "../../../gen/warehouse/selling/v1/selling_pb";
 import { shopListRowData, shopsFromList } from "../../../features/shops/adapt";
 import { useTeam } from "../../../features/team/TeamContext";
-import { MarketplaceBadge } from "../../../components/MarketplaceBadge";
+import { MarketplaceBadge } from "../../../components/badges/MarketplaceBadge";
 
 // ShopsSection is the SELLING-only part of a team detail page (#79): the team's marketplace shops
 // (name / code / marketplace), read-only, with a shortcut to the Shops management screen when you

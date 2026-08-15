@@ -27,16 +27,16 @@ import { RestockPaymentType } from "../../gen/warehouse/inventory/v1/restock_req
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveRestockRequest } from "../../features/restock/queries";
-import { TeamSelect } from "../../components/TeamSelect";
-import { ProductPicker } from "../../components/ProductPicker";
-import type { PickedProduct } from "../../components/ProductSelect";
-import { ProductListItem } from "../../components/ProductListItem";
-import { CurrencyInput } from "../../components/CurrencyInput";
-import { SupplierSelect } from "../../components/SupplierSelect";
-import { PaymentTypeSelect } from "../../components/PaymentTypeSelect";
-import { ShippingSelect } from "../../components/ShippingSelect";
+import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { ProductPicker } from "../../components/pickers/ProductPicker";
+import type { PickedProduct } from "../../components/pickers/ProductSelect";
+import { ProductListItem } from "../../components/entity/ProductListItem";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { SupplierSelect } from "../../components/pickers/SupplierSelect";
+import { PaymentTypeSelect } from "../../components/pickers/PaymentTypeSelect";
+import { ShippingSelect } from "../../components/pickers/ShippingSelect";
 import { formatRupiah } from "../../lib/money";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 
 // One editable restock line. product id/sku/name come from the picker (a snapshot — the product may
 // live in another team's catalogue); quantity and the line's TOTAL supplier price are typed (#140). The

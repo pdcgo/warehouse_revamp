@@ -12,7 +12,7 @@ import {
   RestockRequestStatus,
 } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
-import { UserItem } from "../../../components/UserItem";
+import { UserItem } from "../../../components/entity/UserItem";
 import { formatUnixDateTime } from "../../../lib/datetime";
 
 export interface TimelinePanelProps {

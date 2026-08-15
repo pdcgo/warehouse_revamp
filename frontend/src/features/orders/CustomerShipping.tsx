@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Field, Input, Stack, Text } from "@chakra-ui/react";
-import { ShippingSelect } from "../../components/ShippingSelect";
+import { ShippingSelect } from "../../components/pickers/ShippingSelect";
 
 export interface CustomerShippingProps {
   /** data-testid prefix — "order-create" on the form, "draft" on a draft. */

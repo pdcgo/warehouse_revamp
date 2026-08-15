@@ -12,8 +12,8 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
-import { toaster } from "../../../components/Toaster";
-import { CategorySelect } from "../../../components/CategorySelect";
+import { toaster } from "../../../components/feedback/Toaster";
+import { CategorySelect } from "../../../components/pickers/CategorySelect";
 import { useSaveCategory } from "../queries";
 
 // CreateCategoryDialog adds a category to the GLOBAL taxonomy. A parent of 0n makes it top-level;

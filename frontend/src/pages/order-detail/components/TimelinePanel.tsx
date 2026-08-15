@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import type { Order, OrderEvent } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderEventKind, OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
-import { UserItem } from "../../../components/UserItem";
+import { UserItem } from "../../../components/entity/UserItem";
 import { formatUnixDateTime } from "../../../lib/datetime";
 
 export interface TimelinePanelProps {

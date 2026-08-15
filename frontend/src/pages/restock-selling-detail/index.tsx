@@ -24,9 +24,9 @@ import {
   useRestockRequest,
 } from "../../features/restock/queries";
 import { askedQuantity, receivedQuantity } from "../../features/restock/summary";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { RestockStatusBadge } from "../../components/RestockStatusBadge";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { toaster } from "../../components/feedback/Toaster";
 import { InfoPanel } from "./components/InfoPanel";
 import { ProductsPanel } from "./components/ProductsPanel";
 import { TimelinePanel } from "./components/TimelinePanel";

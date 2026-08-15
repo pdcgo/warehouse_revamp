@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router-dom";
 
-import { Toaster } from "../src/components/Toaster";
+import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
@@ -129,9 +129,19 @@ const preview: Preview = {
   parameters: {
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     options: {
-      // Group the sidebar the way the code is laid out, so "is there already a component for this?"
-      // is answered by scrolling one list (CLAUDE.md's design-system rule).
-      storySort: { order: ["Components", "*"] },
+      // The sidebar groups mirror `src/components/<group>/` one-for-one, so "where does this live?"
+      // and "where do I find it?" have the same answer (CLAUDE.md's design-system rule).
+      //
+      // Ordered by how often the question gets asked, not alphabetically: Pickers is both the
+      // largest group and the one most likely to already contain what somebody is about to build,
+      // so it sits first. Chrome — the app furniture nobody reaches for twice — sits last.
+      storySort: {
+        order: [
+          "Components",
+          ["Pickers", "Date & Time", "Entity", "Badges", "Inputs", "Feedback", "Chrome"],
+          "*",
+        ],
+      },
     },
   },
 };

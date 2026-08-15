@@ -37,8 +37,8 @@ import {
   lostQuantity,
   receivedQuantity,
 } from "../../features/restock/summary";
-import { RestockStatusBadge } from "../../components/RestockStatusBadge";
-import { ShippingBadge } from "../../components/ShippingBadge";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 

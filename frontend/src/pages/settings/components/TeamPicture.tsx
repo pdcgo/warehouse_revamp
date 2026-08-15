@@ -5,7 +5,7 @@ import { documentClient, rpcError } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
 import { useTeam } from "../../../features/team/TeamContext";
 import { useTeamDetail, useUpdateTeam } from "../../../features/teams/queries";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { isTeamManager } from "../../../lib/roles";
 
 // TeamPicture shows the CURRENT team's picture and lets a team manager replace it.

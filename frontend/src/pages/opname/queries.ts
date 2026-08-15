@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { inventoryClient, productClient, rackClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
-import { UNPLACED } from "../../components/RackSelect";
+import { UNPLACED } from "../../components/pickers/RackSelect";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import type { StockOpnameLine } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";

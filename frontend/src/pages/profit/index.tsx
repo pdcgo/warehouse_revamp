@@ -17,7 +17,7 @@ import { Minus, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
-import { expenseKindLabel } from "../../components/ExpenseKindSelect";
+import { expenseKindLabel } from "../../components/pickers/ExpenseKindSelect";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { useProfit } from "./queries";

@@ -17,7 +17,7 @@ import { Pencil } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveUser } from "../../../features/users/queries";
 
 // EditUserDialog calls UpdateProfile when you are editing YOURSELF, and UpdateUser otherwise.

@@ -15,7 +15,7 @@ import { Power, PowerOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { useShippingChannels, useUpdateShipping } from "./queries";
 import { CreateShippingDialog } from "./components/CreateShippingDialog";
 import { EditShippingDialog } from "./components/EditShippingDialog";

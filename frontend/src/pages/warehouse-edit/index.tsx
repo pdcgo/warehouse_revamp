@@ -18,7 +18,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError, teamClient } from "../../api/clients";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { useSaveWarehouse } from "./queries";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./components/WeeklyHoursEditor";
 import type { WeekHours } from "./components/WeeklyHoursEditor";

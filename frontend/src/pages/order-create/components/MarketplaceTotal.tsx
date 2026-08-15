@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Field, Stack, Text } from "@chakra-ui/react";
-import { CurrencyInput } from "../../../components/CurrencyInput";
+import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 
 // WHAT THE ORDER SOLD FOR ON THE MARKETPLACE — its own card (owner), and the separation is the
 // point rather than tidiness.

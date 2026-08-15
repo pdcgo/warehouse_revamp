@@ -13,8 +13,8 @@ import {
 } from "@chakra-ui/react";
 import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { toaster } from "../../components/Toaster";
-import { useReceiveStock } from "../../features/inventory/queries";
+import { toaster } from "../../components/feedback/Toaster";
+import { useReceiveStock } from "./queries";
 
 // ReceiveStockDialog records incoming goods (a +quantity movement) for one product at a warehouse.
 export function ReceiveStockDialog({

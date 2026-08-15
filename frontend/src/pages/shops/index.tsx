@@ -20,10 +20,10 @@ import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { MarketplaceBadge } from "../../components/MarketplaceBadge";
-import { Pagination } from "../../components/Pagination";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { Pagination } from "../../components/chrome/Pagination";
+import { toaster } from "../../components/feedback/Toaster";
 import { useShops, useDeleteShop } from "../../features/shops/queries";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
 

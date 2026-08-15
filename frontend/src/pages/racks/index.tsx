@@ -20,9 +20,9 @@ import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDeleteRack, useRacks } from "./queries";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { Pagination } from "../../components/Pagination";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { Pagination } from "../../components/chrome/Pagination";
+import { toaster } from "../../components/feedback/Toaster";
 import { RackFormDialog } from "./components/RackFormDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];

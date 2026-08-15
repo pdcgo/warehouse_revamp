@@ -6,7 +6,7 @@ import { RouterProvider } from "react-router-dom";
 import { AuthProvider } from "./features/auth/AuthContext";
 import "./i18n/config";
 import { queryClient } from "./api/queryClient";
-import { Toaster } from "./components/Toaster";
+import { Toaster } from "./components/feedback/Toaster";
 import { router } from "./router";
 import { system } from "./theme";
 

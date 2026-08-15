@@ -4,7 +4,7 @@ import { Button, FileUpload, Flex, Icon, IconButton, Stack, Text } from "@chakra
 import { FileText, ImageIcon, Paperclip, X } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // What the order carries: a REFERENCE to the uploaded document, not the file. Matches
 // warehouse.selling.v1.OrderReceipt exactly.

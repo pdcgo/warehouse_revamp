@@ -16,7 +16,7 @@ import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
 import type { Shipping } from "../../../gen/warehouse/shipping/v1/shipping_pb";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useUpdateShipping } from "../queries";
 
 // EditShippingDialog renames a courier. `code` is immutable, so it is shown read-only and never

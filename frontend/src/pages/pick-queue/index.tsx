@@ -17,9 +17,9 @@ import { PackageSearch } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { OrderStatusBadge } from "../../components/OrderStatusBadge";
-import { Pagination } from "../../components/Pagination";
-import { RefreshOverlay } from "../../components/RefreshOverlay";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
+import { Pagination } from "../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePickQueue } from "../../features/picking/queries";

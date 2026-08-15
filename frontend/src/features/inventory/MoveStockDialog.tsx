@@ -16,9 +16,9 @@ import {
 import { rpcError } from "../../api/clients";
 import type { StockMoveRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { toaster } from "../../components/Toaster";
-import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { useMoveStock, useProductBatches, useProductPlaces } from "../../features/inventory/queries";
+import { toaster } from "../../components/feedback/Toaster";
+import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { useMoveStock, useProductBatches, useProductPlaces } from "./queries";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
 // AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the

@@ -31,13 +31,13 @@ import { useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import {
   ALL_DATES,
   DateRangePicker,
   resolveRange,
   type DateRange,
-} from "../../components/DateRangePicker";
+} from "../../components/datetime/DateRangePicker";
 
 const HISTORY_PAGE_SIZE = 20;
 const PLACEMENTS_PAGE_SIZE = 20;

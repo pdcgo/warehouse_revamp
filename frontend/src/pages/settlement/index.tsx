@@ -16,7 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import { useTeam } from "../../features/team/TeamContext";
 import { daysSince, directionCopy, directionPalette } from "../../features/settlement/direction";
 import { useSettlementPositions } from "../../features/settlement/queries";

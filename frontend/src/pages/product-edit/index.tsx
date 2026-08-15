@@ -24,10 +24,10 @@ import { productClient, rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveProduct } from "../../features/products/queries";
-import { CategorySelect } from "../../components/CategorySelect";
+import { CategorySelect } from "../../components/pickers/CategorySelect";
 import { formatMarkupValue, parseMarkupPercent } from "../../lib/markup";
 import { parseQuantity } from "../../lib/quantity";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { ProductImagesInput } from "./components/ProductImagesInput";
 import type { ProductImageValue } from "./components/ProductImagesInput";
 

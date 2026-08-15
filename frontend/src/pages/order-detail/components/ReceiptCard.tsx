@@ -5,7 +5,7 @@ import { ExternalLink, FileText, Image as ImageIcon } from "lucide-react";
 
 import { documentClient, rpcError } from "../../../api/clients";
 import type { Order } from "../../../gen/warehouse/selling/v1/order_pb";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // The shipping receipt attached to the order, when one was — the courier's slip or the marketplace's
 // PDF. Stays a CARD in the Info tab rather than becoming a Documents tab of its own (owner): an order

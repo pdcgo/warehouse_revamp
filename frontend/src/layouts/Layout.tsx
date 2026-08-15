@@ -30,7 +30,7 @@ import { useTeam } from "../features/team/TeamContext";
 import { LANGUAGES, useLanguage } from "../i18n/language";
 import type { Lang } from "../i18n/language";
 import { TeamSwitcher } from "./TeamSwitcher";
-import { Logo } from "../components/Logo";
+import { Logo } from "../components/chrome/Logo";
 import { useColorMode, setColorMode } from "../lib/colorMode";
 import type { ColorMode } from "../lib/colorMode";
 import { roleLabel } from "../lib/roles";
