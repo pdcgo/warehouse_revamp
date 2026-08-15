@@ -132,6 +132,13 @@ jobs:
         working-directory: frontend
         run: npm run lint:mermaid
 
+      # Every shared component's stories, run headlessly in the chromium installed above. This needs
+      # NO database and no servers — the Connect transport is stubbed in-process — so it goes before
+      # the e2e and fails in seconds when a component's behaviour changes.
+      - name: component stories
+        working-directory: frontend
+        run: npm run test:stories
+
       # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
       # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.
       - name: e2e

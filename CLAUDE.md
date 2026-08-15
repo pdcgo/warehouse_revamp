@@ -578,6 +578,9 @@ it once a real domain service replaces it.
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
 | E2E (starts both servers) | `cd frontend && npm run e2e` |
+| Component workbench (`:6006`) | `cd frontend && npm run storybook` |
+| Run every story's `play()` as a test | `cd frontend && npm run test:stories` |
+| Build the static Storybook | `cd frontend && npm run build-storybook` |
 | Check every mermaid diagram parses | `cd frontend && npm run lint:mermaid` |
 
 Both must run for the UI to reach the API. The server allows CORS from
@@ -699,21 +702,24 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 - **Backend** — Go 1.25, `connectrpc.com/connect`, h2c, plain `net/http` mux.
   Dev CLI: `urfave/cli/v3`. Migrations: `pressly/goose/v3` (Postgres via `pgx`).
 - **Frontend** — React 18, TypeScript, Vite, **Chakra UI v3**, react-router-dom v7,
-  `@connectrpc/connect-web`, Playwright for e2e.
+  `@connectrpc/connect-web`, Playwright for e2e, Storybook 10 + Vitest browser mode for components.
   Connect-ES v2 needs no separate service plugin: `protoc-gen-es` emits the service
   descriptor, and the client is `createClient(HelloService, transport)`.
 
 ### Frontend structure — `layouts/`, `pages/`, `features/` (owner, #199)
 
 ```
-frontend/src/
-  layouts/            the shell: Layout, the sidebar, nav, TeamSwitcher
-  pages/<page>/
-    index.tsx         THE page component — one directory per SCREEN
-    components/       used by THIS page and nothing else
-  features/<domain>/  queries + anything shared by SEVERAL pages of one domain
-  components/         the design system (see below) — shared app-wide
-  api/ lib/ i18n/ gen/ theme.ts router.tsx
+frontend/
+  .storybook/         the workbench: main/preview config, the stub transport, the fixtures
+  src/
+    layouts/          the shell: Layout, the sidebar, nav, TeamSwitcher
+    pages/<page>/
+      index.tsx       THE page component — one directory per SCREEN
+      components/     used by THIS page and nothing else
+    features/<domain>/  queries + anything shared by SEVERAL pages of one domain
+    components/       the design system (see below) — shared app-wide,
+                      each with its <Component>.stories.tsx beside it
+    api/ lib/ i18n/ gen/ theme.ts router.tsx
 ```
 
 **One directory per PAGE, named for the screen** — `pages/order-create/`, not
@@ -741,20 +747,20 @@ folders while being curated gallery components — if a component exports a `des
 ### The design system
 
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
-`frontend/src/components/` holds 29 of them, 26 previewed with their own description at
-[`/components`](frontend/src/pages/components-gallery/index.tsx) — that gallery is the fastest way to see what
-exists, and it is generated from the components themselves so it cannot drift. `graphify query "what
-shared components exist for <the thing>"` works too.
+`frontend/src/components/` holds 38 of them, every one with a **Storybook** story beside it
+(`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way to see what
+exists; `graphify query "what shared components exist for <the thing>"` works too.
 
 This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
 The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
 "unplaced" *selectable* while its placeholder stays disabled, because a place is not an absence
 (#136/#139); `SupplierSelect` and `ShippingSelect` had that exact bug and were fixed in #131;
-`ProductListItem`'s stock badge means the **warehouse** total, so a per-shelf number does not belong in
-it (#138). A fresh `<select>` gets none of that.
+`ProductListItem`'s stock badge is shown even at ZERO, because out-of-stock is the case worth seeing
+(#138). A fresh `<select>` gets none of that — and each of those rules is now a story that fails if
+somebody removes it.
 
 If nothing fits, prefer **extending the shared component over forking it** — and if you do add one,
-it needs an `export const description` and a gallery entry in the same change (see below).
+it needs an `export const description` and a story file in the same change (see below).
 
 **Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
 request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
@@ -779,11 +785,60 @@ Two more UI rules:
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
-- **Every curated shared component exports a `description`.** A reusable component previewed in
-  the [components gallery](frontend/src/pages/components-gallery/index.tsx) (`/components`) must
-  `export const description = "…"` alongside itself, and the gallery renders it — so the gallery
-  is living documentation generated from the components, not a parallel list that drifts. Adding a
-  new shared component to the gallery means adding its `description` in the same file.
+- **Every shared component has a STORY beside it, and the story is the documentation.** (owner)
+  `frontend/src/components/<Component>.stories.tsx`, in the same commit as the component. It carries
+  the states worth reviewing AND a `play()` function per behavioural rule — see *Storybook* below.
+  A component exporting `description` feeds it straight into the story's docs page
+  (`parameters.docs.description.component`), so the sentence lives once, in the component.
+
+  > This replaced a hand-written gallery page at `/components` — 1238 lines of JSX that rendered
+  > each component beside its `description`. It documented but never *checked*: every rule in those
+  > descriptions could be broken without anything failing, and the page had to be edited by hand for
+  > each new component. The stories cover the same ground and fail when a rule is broken.
+
+### Storybook — the component workbench, and the third test layer
+
+Every shared component is developed and documented in **Storybook 10**, and every story is also a
+**test**: Vitest renders it in a real Chromium and runs its `play()` as the test body. One
+definition is both the thing the owner reviews in the sidebar and the thing CI fails on.
+
+```sh
+cd frontend
+npm run storybook        # the workbench, on :6006
+npm run test:stories     # every story's play() headlessly — the one to run after a component change
+npm run build-storybook  # the static site (storybook-static/, gitignored)
+```
+
+**Where the layers sit.** This does not replace Playwright: `npm run e2e` drives the whole app
+against a real Go server and a real Postgres, while a story pins ONE component with the API stubbed.
+A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
+timeout in an order-flow spec.
+
+**The API is stubbed at the TRANSPORT**, not per hook — [.storybook/stubTransport.ts](frontend/.storybook/stubTransport.ts)
+is a `createRouterTransport` fake that replaces `src/transport.ts` at build time
+([stubTransportPlugin.ts](frontend/.storybook/stubTransportPlugin.ts)). That module has exactly ONE
+importer (`src/api/clients.ts`), so all ~106 client consumers are stubbed at a single seam and no
+component needs a Storybook-only prop. The component then runs its REAL query hook, adapter, loading
+and error states. Fixtures are [.storybook/fixtures.ts](frontend/.storybook/fixtures.ts), imported by
+the stories too, so a story asserts on the same values the stub served.
+
+- ⚠ **The swap is a `resolve.alias`, not a `resolveId` hook.** Storybook and the Vitest browser
+  runner pre-bundle `clients.ts` as an optimized dep, and that scan does not run project `resolveId`
+  hooks — it fails OPEN, serving the real transport, and the only symptom is pickers that never fill.
+- **An unstubbed method throws `unimplemented`**, which shows up as a visible error rather than an
+  empty dropdown that reads as a styling bug. Add the method to the router when a component needs it.
+- **`parameters: { signedIn: true }`** wraps a story in `AuthProvider` + `TeamProvider`. Opt-in, and
+  only `ProductPicker` needs it (it reads `useTeam()`, which throws outside the provider).
+
+**Things that will bite when writing a story:**
+
+| | |
+| --- | --- |
+| `Select.HiddenSelect` renders a native `<option>` per item | query by **role**, not text, or every `getByText` matches twice |
+| Popovers/listboxes animate in | `await waitFor(() => expect(el).toBeVisible())` before clicking — until then `pointer-events: none` rejects the click |
+| Some pickers portal, some deliberately do not | `screen` for portalled (TeamSelect, RoleSelect); `within(canvasElement)` for the inline ones (RackSelect, ShopSelect, MarketplaceSelect, CategorySelect — they must work inside modal Dialogs) |
+| A controlled input needs real state | a story pinning `value` to a constant re-renders the field back after every keystroke, so typing tests nothing. `userEvent.type(el, "…", { delay: 40 })` too — at machine speed a controlled input drops characters |
+| Module-level caches survive between stories | the shipping catalogue and the color-mode/token storage are reset in `preview.tsx`'s `beforeEach` |
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:
