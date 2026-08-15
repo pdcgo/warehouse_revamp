@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, redirect } from "react-router-dom";
 import { AuthGate, ProtectedRoute } from "./features/auth/AuthGate";
 import { LoginPage } from "./pages/login/index";
 import { Layout } from "./layouts/Layout";
@@ -111,6 +111,9 @@ const RevenuePage = lazy(() =>
 );
 const ProfitPage = lazy(() =>
   import("./pages/profit").then((m) => ({ default: m.ProfitPage })),
+);
+const DailyStatementPage = lazy(() =>
+  import("./pages/daily-statement").then((m) => ({ default: m.DailyStatementPage })),
 );
 const PickQueuePage = lazy(() =>
   import("./pages/pick-queue").then((m) => ({ default: m.PickQueuePage })),
@@ -240,8 +243,29 @@ export const router = createBrowserRouter([
       // The two above, subtracted (#172) — the arithmetic happens on the client because neither
       // service may own a number derived from the other's data.
       { path: "profit", element: <ProfitPage /> },
+      { path: "statement", element: <DailyStatementPage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
+      // The WAREHOUSE's orders (#151) — the ones shipping FROM this building, and the screen where the
+      // crew records what it has done to each. Top-level and order-named, beside the selling team's
+      // orders rather than buried under inventories: an order is the work, not a kind of stock.
+      //
+      // Its OWN path rather than a team-type branch on /orders, because the two are different screens —
+      // /orders has shops, money and a New Order button that a warehouse team has none of. The detail
+      // route /orders/:orderId above is shared: the crew that shipped an order can open and read it.
+      { path: "warehouse-orders", element: <PickQueuePage /> },
+      { path: "warehouse-orders/:orderId", element: <PickOrderPage /> },
+      // Where these two used to live. A crew member with the old URL open — or bookmarked, or in
+      // history — gets the screen rather than React Router's "Unexpected Application Error!", which
+      // is what a removed route renders and reads as the app being broken.
+      //
+      // A LOADER redirect, not a <Navigate> element: this is a data router, so the redirect happens
+      // before anything mounts and never flashes a frame of the wrong page.
+      { path: "inventories/picking", loader: () => redirect("/warehouse-orders") },
+      {
+        path: "inventories/picking/:orderId",
+        loader: ({ params }) => redirect(`/warehouse-orders/${params.orderId}`),
+      },
       // Drafts get their OWN route, not a tab on /orders (#195). A draft is not an order, and a tab
       // would put not-orders inside the orders screen — the same concern that gave them their own
       // table rather than an ORDER_STATUS_DRAFT.
@@ -295,9 +319,6 @@ export const router = createBrowserRouter([
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
       // only, but the route is open and the server's policy is what actually decides.
-      // The crew's pick screens (#151). Static segment before the dynamic one.
-      { path: "inventories/picking", element: <PickQueuePage /> },
-      { path: "inventories/picking/:orderId", element: <PickOrderPage /> },
       { path: "inventories/racks", element: <RacksPage /> },
       // Every stock batch in the warehouse (#209) — cost layers, browsable by receipt and expiry.
       { path: "inventories/batches", element: <BatchesPage /> },

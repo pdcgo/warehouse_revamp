@@ -17,8 +17,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
       - uses: bufbuild/buf-setup-action@v1
         with:
@@ -42,8 +42,9 @@ jobs:
             exit 1
           fi
 
+      # From the REPO ROOT, not backend/ — the module is rooted here, so `./...` covers the server
+      # and the top-level tools/ together. Running it from backend/ would silently skip tools/san.
       - name: go build + vet
-        working-directory: backend
         run: |
           go build ./...
           go vet ./...
@@ -102,11 +103,11 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
+      # Repo root — same reason as go build: tools/san has its own tests.
       - name: go test
-        working-directory: backend
         run: go test ./...
 
       - uses: actions/setup-node@v4

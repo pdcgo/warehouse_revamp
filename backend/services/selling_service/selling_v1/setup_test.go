@@ -145,7 +145,21 @@ const testWarehouse uint64 = 900
 func placeOrder(t *testing.T, svc *selling_v1.Service, teamID, shopID uint64) uint64 {
 	t.Helper()
 
-	resp, err := svc.OrderCreate(context.Background(), connect.NewRequest(&sellingv1.OrderCreateRequest{
+	return placeOrderAs(t, svc, context.Background(), teamID, shopID)
+}
+
+// placeOrderAs is placeOrder with a caller — for the tests that care WHO did it (the history, 00011).
+// An anonymous context is a legitimate case here rather than an oversight: the event records actor 0,
+// "not recorded", exactly as every backfilled row does.
+func placeOrderAs(
+	t *testing.T,
+	svc *selling_v1.Service,
+	ctx context.Context,
+	teamID, shopID uint64,
+) uint64 {
+	t.Helper()
+
+	resp, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
 		TeamId: teamID, ShopId: shopID, WarehouseId: testWarehouse,
 		CustomerName: "Budi", Subtotal: 10000, Total: 10000,
 		Items: []*sellingv1.OrderItem{

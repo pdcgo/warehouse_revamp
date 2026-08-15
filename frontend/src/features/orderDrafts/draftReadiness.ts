@@ -15,7 +15,16 @@ export interface DraftGap {
   key: string;
 }
 
-export function draftGaps(draft: OrderDraft): DraftGap[] {
+export interface DraftGapOptions {
+  /** How many mapped lines the chosen warehouse cannot fill right now.
+   *
+   * Only the DETAIL screen can answer this — it holds the lines, so it can read the warehouse's
+   * availability for them; the list deliberately fetches no lines at all. So it is an option rather
+   * than a field: absent means "not checked here", never "nothing is short". */
+  shortLines?: number;
+}
+
+export function draftGaps(draft: OrderDraft, opts: DraftGapOptions = {}): DraftGap[] {
   const gaps: DraftGap[] = [];
 
   if (draft.shopId === 0n) {
@@ -38,9 +47,20 @@ export function draftGaps(draft: OrderDraft): DraftGap[] {
     gaps.push({ key: "orderDrafts.unmappedLines" });
   }
 
+  // STOCK. Promote runs `placeOrder` — the same code path OrderCreate runs — so it DRAWS the goods
+  // out of the warehouse and refuses the draft when a line is short. Without this gap the shortfall
+  // is invisible until somebody presses Promote and reads a rejection, which is the state the order
+  // form already refuses to be in (`order-create-short`).
+  //
+  // A shortfall never blocks EDITING, only promoting: mapping a scraped line to a product the
+  // warehouse happens to be out of is correct work, and the draft is where it waits for a restock.
+  if ((opts.shortLines ?? 0) > 0) {
+    gaps.push({ key: "orderDrafts.missingStock" });
+  }
+
   return gaps;
 }
 
-export function isDraftReady(draft: OrderDraft): boolean {
-  return draftGaps(draft).length === 0;
+export function isDraftReady(draft: OrderDraft, opts: DraftGapOptions = {}): boolean {
+  return draftGaps(draft, opts).length === 0;
 }

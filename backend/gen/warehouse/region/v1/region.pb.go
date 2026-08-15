@@ -495,6 +495,118 @@ func (x *RegionSearchResponse) GetResults() []*RegionAncestry {
 	return nil
 }
 
+type RegionSearchByKodePosRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The postcode, or the start of one. PREFIX matched, so the list narrows as it is typed.
+	//
+	// At least 3 digits, and that floor is the difference between a suggestion and a lottery: one digit
+	// covers roughly a tenth of the country's 83.762 desa, and the twenty rows that come back would be
+	// an arbitrary slice of thousands. Three digits is a city-sized area, which is a list a person can
+	// actually read.
+	//
+	// Digits only — a kode pos has no other characters, and letting letters through would just be a
+	// guaranteed empty result set.
+	KodePos string `protobuf:"bytes,1,opt,name=kode_pos,json=kodePos,proto3" json:"kode_pos,omitempty"`
+	// Capped, never paged — same reasoning as RegionSearch (HARD RULE 9).
+	Limit         uint32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegionSearchByKodePosRequest) Reset() {
+	*x = RegionSearchByKodePosRequest{}
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegionSearchByKodePosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegionSearchByKodePosRequest) ProtoMessage() {}
+
+func (x *RegionSearchByKodePosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegionSearchByKodePosRequest.ProtoReflect.Descriptor instead.
+func (*RegionSearchByKodePosRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RegionSearchByKodePosRequest) GetKodePos() string {
+	if x != nil {
+		return x.KodePos
+	}
+	return ""
+}
+
+func (x *RegionSearchByKodePosRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type RegionSearchByKodePosResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Desa only — a kode pos belongs to a desa and nowhere else — each with its full ancestry, so a
+	// pick fills provinsi through desa in one go.
+	//
+	// ONE POSTCODE COVERS SEVERAL DESA, routinely. That is why this returns a list to choose from
+	// rather than an address to apply: picking for the person would silently put an order in the wrong
+	// kelurahan whenever the code was shared, and they would have no way to see it happen.
+	Results       []*RegionAncestry `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegionSearchByKodePosResponse) Reset() {
+	*x = RegionSearchByKodePosResponse{}
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegionSearchByKodePosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegionSearchByKodePosResponse) ProtoMessage() {}
+
+func (x *RegionSearchByKodePosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegionSearchByKodePosResponse.ProtoReflect.Descriptor instead.
+func (*RegionSearchByKodePosResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RegionSearchByKodePosResponse) GetResults() []*RegionAncestry {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
 type RegionResolveRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Any level's code — the ancestry is filled from provinsi down to this region.
@@ -505,7 +617,7 @@ type RegionResolveRequest struct {
 
 func (x *RegionResolveRequest) Reset() {
 	*x = RegionResolveRequest{}
-	mi := &file_warehouse_region_v1_region_proto_msgTypes[6]
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -517,7 +629,7 @@ func (x *RegionResolveRequest) String() string {
 func (*RegionResolveRequest) ProtoMessage() {}
 
 func (x *RegionResolveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_region_v1_region_proto_msgTypes[6]
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -530,7 +642,7 @@ func (x *RegionResolveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegionResolveRequest.ProtoReflect.Descriptor instead.
 func (*RegionResolveRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RegionResolveRequest) GetCode() string {
@@ -549,7 +661,7 @@ type RegionResolveResponse struct {
 
 func (x *RegionResolveResponse) Reset() {
 	*x = RegionResolveResponse{}
-	mi := &file_warehouse_region_v1_region_proto_msgTypes[7]
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -561,7 +673,7 @@ func (x *RegionResolveResponse) String() string {
 func (*RegionResolveResponse) ProtoMessage() {}
 
 func (x *RegionResolveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_region_v1_region_proto_msgTypes[7]
+	mi := &file_warehouse_region_v1_region_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -574,7 +686,7 @@ func (x *RegionResolveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegionResolveResponse.ProtoReflect.Descriptor instead.
 func (*RegionResolveResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_region_v1_region_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RegionResolveResponse) GetAncestry() *RegionAncestry {
@@ -618,6 +730,11 @@ const file_warehouse_region_v1_region_proto_rawDesc = "" +
 	"\x05level\x18\x02 \x01(\x0e2 .warehouse.region.v1.RegionLevelB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05level\x12\x1f\n" +
 	"\x05limit\x18\x03 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit:\x06\x92\xb5\x18\x02 \x01\"U\n" +
 	"\x14RegionSearchResponse\x12=\n" +
+	"\aresults\x18\x01 \x03(\v2#.warehouse.region.v1.RegionAncestryR\aresults\"w\n" +
+	"\x1cRegionSearchByKodePosRequest\x12.\n" +
+	"\bkode_pos\x18\x01 \x01(\tB\x13\xbaH\x10r\x0e\x10\x03\x18\x052\b^[0-9]+$R\akodePos\x12\x1f\n" +
+	"\x05limit\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit:\x06\x92\xb5\x18\x02 \x01\"^\n" +
+	"\x1dRegionSearchByKodePosResponse\x12=\n" +
 	"\aresults\x18\x01 \x03(\v2#.warehouse.region.v1.RegionAncestryR\aresults\"=\n" +
 	"\x14RegionResolveRequest\x12\x1d\n" +
 	"\x04code\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x14R\x04code:\x06\x92\xb5\x18\x02 \x01\"X\n" +
@@ -628,11 +745,12 @@ const file_warehouse_region_v1_region_proto_rawDesc = "" +
 	"\x15REGION_LEVEL_PROVINSI\x10\x01\x12\x1a\n" +
 	"\x16REGION_LEVEL_KABUPATEN\x10\x02\x12\x1a\n" +
 	"\x16REGION_LEVEL_KECAMATAN\x10\x03\x12\x15\n" +
-	"\x11REGION_LEVEL_DESA\x10\x042\xbb\x02\n" +
+	"\x11REGION_LEVEL_DESA\x10\x042\xbb\x03\n" +
 	"\rRegionService\x12]\n" +
 	"\n" +
 	"RegionList\x12&.warehouse.region.v1.RegionListRequest\x1a'.warehouse.region.v1.RegionListResponse\x12c\n" +
-	"\fRegionSearch\x12(.warehouse.region.v1.RegionSearchRequest\x1a).warehouse.region.v1.RegionSearchResponse\x12f\n" +
+	"\fRegionSearch\x12(.warehouse.region.v1.RegionSearchRequest\x1a).warehouse.region.v1.RegionSearchResponse\x12~\n" +
+	"\x15RegionSearchByKodePos\x121.warehouse.region.v1.RegionSearchByKodePosRequest\x1a2.warehouse.region.v1.RegionSearchByKodePosResponse\x12f\n" +
 	"\rRegionResolve\x12).warehouse.region.v1.RegionResolveRequest\x1a*.warehouse.region.v1.RegionResolveResponseBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/region/v1;regionv1b\x06proto3"
 
 var (
@@ -648,39 +766,44 @@ func file_warehouse_region_v1_region_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_region_v1_region_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_region_v1_region_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_warehouse_region_v1_region_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_warehouse_region_v1_region_proto_goTypes = []any{
-	(RegionLevel)(0),              // 0: warehouse.region.v1.RegionLevel
-	(*Region)(nil),                // 1: warehouse.region.v1.Region
-	(*RegionAncestry)(nil),        // 2: warehouse.region.v1.RegionAncestry
-	(*RegionListRequest)(nil),     // 3: warehouse.region.v1.RegionListRequest
-	(*RegionListResponse)(nil),    // 4: warehouse.region.v1.RegionListResponse
-	(*RegionSearchRequest)(nil),   // 5: warehouse.region.v1.RegionSearchRequest
-	(*RegionSearchResponse)(nil),  // 6: warehouse.region.v1.RegionSearchResponse
-	(*RegionResolveRequest)(nil),  // 7: warehouse.region.v1.RegionResolveRequest
-	(*RegionResolveResponse)(nil), // 8: warehouse.region.v1.RegionResolveResponse
-	(*v1.PageFilter)(nil),         // 9: warehouse.common.v1.PageFilter
-	(*v1.PageInfo)(nil),           // 10: warehouse.common.v1.PageInfo
+	(RegionLevel)(0),                      // 0: warehouse.region.v1.RegionLevel
+	(*Region)(nil),                        // 1: warehouse.region.v1.Region
+	(*RegionAncestry)(nil),                // 2: warehouse.region.v1.RegionAncestry
+	(*RegionListRequest)(nil),             // 3: warehouse.region.v1.RegionListRequest
+	(*RegionListResponse)(nil),            // 4: warehouse.region.v1.RegionListResponse
+	(*RegionSearchRequest)(nil),           // 5: warehouse.region.v1.RegionSearchRequest
+	(*RegionSearchResponse)(nil),          // 6: warehouse.region.v1.RegionSearchResponse
+	(*RegionSearchByKodePosRequest)(nil),  // 7: warehouse.region.v1.RegionSearchByKodePosRequest
+	(*RegionSearchByKodePosResponse)(nil), // 8: warehouse.region.v1.RegionSearchByKodePosResponse
+	(*RegionResolveRequest)(nil),          // 9: warehouse.region.v1.RegionResolveRequest
+	(*RegionResolveResponse)(nil),         // 10: warehouse.region.v1.RegionResolveResponse
+	(*v1.PageFilter)(nil),                 // 11: warehouse.common.v1.PageFilter
+	(*v1.PageInfo)(nil),                   // 12: warehouse.common.v1.PageInfo
 }
 var file_warehouse_region_v1_region_proto_depIdxs = []int32{
 	0,  // 0: warehouse.region.v1.Region.level:type_name -> warehouse.region.v1.RegionLevel
-	9,  // 1: warehouse.region.v1.RegionListRequest.page:type_name -> warehouse.common.v1.PageFilter
+	11, // 1: warehouse.region.v1.RegionListRequest.page:type_name -> warehouse.common.v1.PageFilter
 	1,  // 2: warehouse.region.v1.RegionListResponse.regions:type_name -> warehouse.region.v1.Region
-	10, // 3: warehouse.region.v1.RegionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	12, // 3: warehouse.region.v1.RegionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	0,  // 4: warehouse.region.v1.RegionSearchRequest.level:type_name -> warehouse.region.v1.RegionLevel
 	2,  // 5: warehouse.region.v1.RegionSearchResponse.results:type_name -> warehouse.region.v1.RegionAncestry
-	2,  // 6: warehouse.region.v1.RegionResolveResponse.ancestry:type_name -> warehouse.region.v1.RegionAncestry
-	3,  // 7: warehouse.region.v1.RegionService.RegionList:input_type -> warehouse.region.v1.RegionListRequest
-	5,  // 8: warehouse.region.v1.RegionService.RegionSearch:input_type -> warehouse.region.v1.RegionSearchRequest
-	7,  // 9: warehouse.region.v1.RegionService.RegionResolve:input_type -> warehouse.region.v1.RegionResolveRequest
-	4,  // 10: warehouse.region.v1.RegionService.RegionList:output_type -> warehouse.region.v1.RegionListResponse
-	6,  // 11: warehouse.region.v1.RegionService.RegionSearch:output_type -> warehouse.region.v1.RegionSearchResponse
-	8,  // 12: warehouse.region.v1.RegionService.RegionResolve:output_type -> warehouse.region.v1.RegionResolveResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	2,  // 6: warehouse.region.v1.RegionSearchByKodePosResponse.results:type_name -> warehouse.region.v1.RegionAncestry
+	2,  // 7: warehouse.region.v1.RegionResolveResponse.ancestry:type_name -> warehouse.region.v1.RegionAncestry
+	3,  // 8: warehouse.region.v1.RegionService.RegionList:input_type -> warehouse.region.v1.RegionListRequest
+	5,  // 9: warehouse.region.v1.RegionService.RegionSearch:input_type -> warehouse.region.v1.RegionSearchRequest
+	7,  // 10: warehouse.region.v1.RegionService.RegionSearchByKodePos:input_type -> warehouse.region.v1.RegionSearchByKodePosRequest
+	9,  // 11: warehouse.region.v1.RegionService.RegionResolve:input_type -> warehouse.region.v1.RegionResolveRequest
+	4,  // 12: warehouse.region.v1.RegionService.RegionList:output_type -> warehouse.region.v1.RegionListResponse
+	6,  // 13: warehouse.region.v1.RegionService.RegionSearch:output_type -> warehouse.region.v1.RegionSearchResponse
+	8,  // 14: warehouse.region.v1.RegionService.RegionSearchByKodePos:output_type -> warehouse.region.v1.RegionSearchByKodePosResponse
+	10, // 15: warehouse.region.v1.RegionService.RegionResolve:output_type -> warehouse.region.v1.RegionResolveResponse
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_region_v1_region_proto_init() }
@@ -694,7 +817,7 @@ func file_warehouse_region_v1_region_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_region_v1_region_proto_rawDesc), len(file_warehouse_region_v1_region_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

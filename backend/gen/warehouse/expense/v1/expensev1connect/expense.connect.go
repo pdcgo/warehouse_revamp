@@ -39,6 +39,9 @@ const (
 	// ExpenseServiceExpenseListProcedure is the fully-qualified name of the ExpenseService's
 	// ExpenseList RPC.
 	ExpenseServiceExpenseListProcedure = "/warehouse.expense.v1.ExpenseService/ExpenseList"
+	// ExpenseServiceExpenseDailyProcedure is the fully-qualified name of the ExpenseService's
+	// ExpenseDaily RPC.
+	ExpenseServiceExpenseDailyProcedure = "/warehouse.expense.v1.ExpenseService/ExpenseDaily"
 	// ExpenseServiceExpenseUpdateProcedure is the fully-qualified name of the ExpenseService's
 	// ExpenseUpdate RPC.
 	ExpenseServiceExpenseUpdateProcedure = "/warehouse.expense.v1.ExpenseService/ExpenseUpdate"
@@ -53,6 +56,8 @@ type ExpenseServiceClient interface {
 	ExpenseCreate(context.Context, *connect.Request[v1.ExpenseCreateRequest]) (*connect.Response[v1.ExpenseCreateResponse], error)
 	// A team's expenses for a PERIOD, with per-kind totals (#168).
 	ExpenseList(context.Context, *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error)
+	// The same costs, summed PER DAY — the expense half of the daily statement.
+	ExpenseDaily(context.Context, *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error)
 	// An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
 	ExpenseUpdate(context.Context, *connect.Request[v1.ExpenseUpdateRequest]) (*connect.Response[v1.ExpenseUpdateResponse], error)
 	// Stop an expense counting. Kept and visible, never deleted.
@@ -82,6 +87,12 @@ func NewExpenseServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(expenseServiceMethods.ByName("ExpenseList")),
 			connect.WithClientOptions(opts...),
 		),
+		expenseDaily: connect.NewClient[v1.ExpenseDailyRequest, v1.ExpenseDailyResponse](
+			httpClient,
+			baseURL+ExpenseServiceExpenseDailyProcedure,
+			connect.WithSchema(expenseServiceMethods.ByName("ExpenseDaily")),
+			connect.WithClientOptions(opts...),
+		),
 		expenseUpdate: connect.NewClient[v1.ExpenseUpdateRequest, v1.ExpenseUpdateResponse](
 			httpClient,
 			baseURL+ExpenseServiceExpenseUpdateProcedure,
@@ -101,6 +112,7 @@ func NewExpenseServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type expenseServiceClient struct {
 	expenseCreate *connect.Client[v1.ExpenseCreateRequest, v1.ExpenseCreateResponse]
 	expenseList   *connect.Client[v1.ExpenseListRequest, v1.ExpenseListResponse]
+	expenseDaily  *connect.Client[v1.ExpenseDailyRequest, v1.ExpenseDailyResponse]
 	expenseUpdate *connect.Client[v1.ExpenseUpdateRequest, v1.ExpenseUpdateResponse]
 	expenseVoid   *connect.Client[v1.ExpenseVoidRequest, v1.ExpenseVoidResponse]
 }
@@ -113,6 +125,11 @@ func (c *expenseServiceClient) ExpenseCreate(ctx context.Context, req *connect.R
 // ExpenseList calls warehouse.expense.v1.ExpenseService.ExpenseList.
 func (c *expenseServiceClient) ExpenseList(ctx context.Context, req *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error) {
 	return c.expenseList.CallUnary(ctx, req)
+}
+
+// ExpenseDaily calls warehouse.expense.v1.ExpenseService.ExpenseDaily.
+func (c *expenseServiceClient) ExpenseDaily(ctx context.Context, req *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error) {
+	return c.expenseDaily.CallUnary(ctx, req)
 }
 
 // ExpenseUpdate calls warehouse.expense.v1.ExpenseService.ExpenseUpdate.
@@ -131,6 +148,8 @@ type ExpenseServiceHandler interface {
 	ExpenseCreate(context.Context, *connect.Request[v1.ExpenseCreateRequest]) (*connect.Response[v1.ExpenseCreateResponse], error)
 	// A team's expenses for a PERIOD, with per-kind totals (#168).
 	ExpenseList(context.Context, *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error)
+	// The same costs, summed PER DAY — the expense half of the daily statement.
+	ExpenseDaily(context.Context, *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error)
 	// An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
 	ExpenseUpdate(context.Context, *connect.Request[v1.ExpenseUpdateRequest]) (*connect.Response[v1.ExpenseUpdateResponse], error)
 	// Stop an expense counting. Kept and visible, never deleted.
@@ -156,6 +175,12 @@ func NewExpenseServiceHandler(svc ExpenseServiceHandler, opts ...connect.Handler
 		connect.WithSchema(expenseServiceMethods.ByName("ExpenseList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	expenseServiceExpenseDailyHandler := connect.NewUnaryHandler(
+		ExpenseServiceExpenseDailyProcedure,
+		svc.ExpenseDaily,
+		connect.WithSchema(expenseServiceMethods.ByName("ExpenseDaily")),
+		connect.WithHandlerOptions(opts...),
+	)
 	expenseServiceExpenseUpdateHandler := connect.NewUnaryHandler(
 		ExpenseServiceExpenseUpdateProcedure,
 		svc.ExpenseUpdate,
@@ -174,6 +199,8 @@ func NewExpenseServiceHandler(svc ExpenseServiceHandler, opts ...connect.Handler
 			expenseServiceExpenseCreateHandler.ServeHTTP(w, r)
 		case ExpenseServiceExpenseListProcedure:
 			expenseServiceExpenseListHandler.ServeHTTP(w, r)
+		case ExpenseServiceExpenseDailyProcedure:
+			expenseServiceExpenseDailyHandler.ServeHTTP(w, r)
 		case ExpenseServiceExpenseUpdateProcedure:
 			expenseServiceExpenseUpdateHandler.ServeHTTP(w, r)
 		case ExpenseServiceExpenseVoidProcedure:
@@ -193,6 +220,10 @@ func (UnimplementedExpenseServiceHandler) ExpenseCreate(context.Context, *connec
 
 func (UnimplementedExpenseServiceHandler) ExpenseList(context.Context, *connect.Request[v1.ExpenseListRequest]) (*connect.Response[v1.ExpenseListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.expense.v1.ExpenseService.ExpenseList is not implemented"))
+}
+
+func (UnimplementedExpenseServiceHandler) ExpenseDaily(context.Context, *connect.Request[v1.ExpenseDailyRequest]) (*connect.Response[v1.ExpenseDailyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.expense.v1.ExpenseService.ExpenseDaily is not implemented"))
 }
 
 func (UnimplementedExpenseServiceHandler) ExpenseUpdate(context.Context, *connect.Request[v1.ExpenseUpdateRequest]) (*connect.Response[v1.ExpenseUpdateResponse], error) {

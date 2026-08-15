@@ -2,15 +2,75 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import {
+  publicUsersByIds,
   teamAccessFromList,
   teamAccessRowData,
+  userByIdsRowData,
   userListRowData,
   usersFromList,
 } from "./adapt";
 
 // The user screens' reads (#176) and writes (#177). Query hooks live beside the screens that use
 // them, per the convention in api/queryClient.ts.
+
+// WHO DID WHAT — the PEOPLE behind a set of actor ids, for any screen that shows a history.
+//
+// A record carries user IDS, not names: a person's name is not part of what happened, so it is read
+// live and never snapshotted onto the row. One `UserByIDs` turns a screen's actors into people.
+//
+// ⚠ IT LIVES IN THE USERS DOMAIN because it belongs to no ONE feature. It was written for the restock
+// timeline and the order timeline needs exactly the same thing — a second copy is how one screen ends
+// up falling back to "User #7" while the other falls back to a blank. (A third, older hand-rolled
+// version is still inline in features/inventory/queries.ts, building a name map rather than a user
+// map; it is left alone here rather than half-migrated.)
+//
+// It returns the WHOLE `PublicUser`, not a name string. A list may only need the name, but a timeline
+// renders `UserItem` — avatar, name, @username — and a helper that had already thrown the avatar away
+// would force a second read of the same people to get the picture back.
+//
+// It never throws: a lookup that fails must not take the screen down with it, and every caller falls
+// back to naming the id — the same rule an unresolved rack follows.
+export async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser>> {
+  const actors = new Map<string, PublicUser>();
+  const wanted = [...new Set(ids.filter((id) => id > 0n))];
+
+  if (wanted.length === 0) return actors;
+
+  try {
+    const users = publicUsersByIds(
+      await userClient.userByIDs({
+        filter: { ids: wanted },
+        dataRequest: userByIdsRowData(),
+      }),
+    );
+
+    for (const [id, u] of Object.entries(users)) {
+      actors.set(id, u);
+    }
+  } catch {
+    // Deliberately empty — see above.
+  }
+
+  return actors;
+}
+
+// The hook form: one history's people, resolved once.
+//
+// Keyed on the IDS, so the same people are resolved once no matter which record asks — an order and a
+// restock handled by the same person share the entry. No team in the key, and that is not the omission
+// the queryClient warns about: `UserByIDs` takes no `team_id` — a public user by id reads the same for
+// everyone — so there is no per-team answer to keep apart.
+export function useActors(userIds: bigint[]) {
+  const wanted = [...new Set(userIds.filter((id) => id > 0n))].sort();
+
+  return useQuery({
+    queryKey: key.users(undefined, { actors: wanted.join(",") }),
+    enabled: wanted.length > 0,
+    queryFn: () => fetchActors(wanted),
+  });
+}
 
 interface UserListArgs {
   /**

@@ -29,6 +29,8 @@ service ExpenseService {
   rpc ExpenseCreate(ExpenseCreateRequest) returns (ExpenseCreateResponse);
   // A team's expenses for a PERIOD, with per-kind totals (#168).
   rpc ExpenseList(ExpenseListRequest) returns (ExpenseListResponse);
+  // The same costs, summed PER DAY — the expense half of the daily statement.
+  rpc ExpenseDaily(ExpenseDailyRequest) returns (ExpenseDailyResponse);
 
   // An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).
   rpc ExpenseUpdate(ExpenseUpdateRequest) returns (ExpenseUpdateResponse);
@@ -62,6 +64,24 @@ enum ExpenseKind {
 
   // Everything else, so nothing is unrecordable while the set above is still small.
   EXPENSE_KIND_OTHER = 4;
+
+  // STOCK WRITTEN OFF — units a warehouse recorded as damaged or lost, valued at the batch's frozen
+  // unit cost. Posted by inventory_service, never typed by a person (#211).
+  //
+  // It was filed as OPERATIONAL until now, and that was the bug: shrinkage sat in the same bucket as
+  // rent and electricity, so "how much did we break this month" had no answer — which is precisely
+  // the question a warehouse's own P&L is made of. Rent is a decision somebody made. Broken stock is
+  // a thing that happened to the goods. Reading them as one number hides the only one you can act on.
+  //
+  // ⚠ Rows written BEFORE this kind existed stay OPERATIONAL. They are only identifiable by their
+  // free-text note, so a backfill would be a guess that could move a real rent row (owner, 2026-08-14).
+  // History is therefore mixed and the split is honest from here forward.
+  //
+  // ⚠ It does NOT yet distinguish BROKEN from LOST. `stock_batches` carries one `damaged_qty` and
+  // `MovementKind` has one `ADJUST`, so the DAMAGED/LOST distinction exists in the StockAdjust request
+  // and is discarded on write — see #227. When that lands this becomes two kinds, or gains a
+  // sub-reason. One combined figure now, split later, is additive rather than a rework (owner).
+  EXPENSE_KIND_STOCK_LOSS = 5;
 }
 
 // One expense. Money is whole rupiah as int64, like every other money field in this system.
@@ -260,6 +280,96 @@ message ExpenseListResponse {
   warehouse.common.v1.PageInfo page_info = 3;
   // The period's totals (whole filtered set, not the page) — an additive aggregate the UI needs.
   ExpenseTotals totals = 4;
+}
+
+// ── The DAILY STATEMENT's expense half ────────────────────────────────────────────────────────────
+//
+// The mirror of RevenueDaily, and deliberately the same shape: the statement screen puts the two
+// series side by side and subtracts them, so a difference in how they page, bound or bucket would land
+// on the reader as an unexplainable gap in one column.
+//
+// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
+// caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
+// where they are optional and a page carries the risk instead.
+//
+// ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
+// because it must build one to merge these days with revenue's.
+//
+// The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
+// A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
+// under the moment its order was placed. Payroll paid on the 5th for last month lands in last month
+// here, which is the whole reason `occurred_at` exists as a separate column from `created_at`.
+message ExpenseDailyFilter {
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+  string from = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string to = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  // One kind, or UNSPECIFIED for all of them — the same "any kind" convention ExpenseList uses (#170).
+  ExpenseKind kind = 3 [(buf.validate.field).enum.defined_only = true];
+  // One shop, or 0 for all of them.
+  uint64 shop_id = 4;
+}
+
+message ExpenseDailyRequest {
+  // Read: the managers ExpenseList admits — money out is not customer service's business — PLUS the
+  // WAREHOUSE roles, which ExpenseList does not carry.
+  //
+  // ⚠ THE DIFFERENCE IS DELIBERATE AND LOAD-BEARING. A warehouse's daily statement subtracts its own
+  // expenses from the fees it earned (owner, 2026-08-14), and a warehouse's expenses include every
+  // batch it has written off as damaged or lost (#211) — which is the largest number a warehouse
+  // manager actually controls. Without these two roles a WAREHOUSE_OWNER gets PermissionDenied on
+  // exactly half of their own statement, and the screen would report their fees as pure profit.
+  //
+  // ExpenseList keeps the narrower set only because no warehouse screen calls it yet. When a warehouse
+  // expense list exists it takes these roles too — the policies should differ because of what is built,
+  // never because one was forgotten.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+
+  ExpenseDailyFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+// One day's spending.
+message ExpenseDayItem {
+  // The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+  //
+  // No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
+  // There is no instant to convert and therefore no zone to get wrong.
+  string date = 1;
+
+  // How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
+  // this counts what the number is actually made of.
+  uint64 entries = 2;
+
+  // The day's spending, whole rupiah.
+  int64 total = 3;
+
+  // Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
+  // day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+  // and zero read identically, and building the empty ones would mean this message knowing the enum's
+  // members.
+  map<int32, int64> by_kind = 4;
+}
+
+message ExpenseDailyResponse {
+  // ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+  repeated ExpenseDayItem days = 1;
+
+  // The same totals ExpenseList reports, over the same period and the same filters. Sent rather than
+  // summed in the browser, so the statement's footer and the expense list's headline are one number.
+  ExpenseTotals totals = 2;
 }
 
 // ExpenseUpdate corrects an expense (#169).

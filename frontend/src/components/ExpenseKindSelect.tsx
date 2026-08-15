@@ -19,19 +19,33 @@ export function expenseKindLabel(t: TFunction, kind: ExpenseKind): string {
       return t("expenses.kind.operational");
     case ExpenseKind.OTHER:
       return t("expenses.kind.other");
+    case ExpenseKind.STOCK_LOSS:
+      return t("expenses.kind.stockLoss");
     default:
       return "";
   }
 }
 
-// The kinds that can be PICKED. UNSPECIFIED is excluded because it is not a kind of spending — the
-// contract refuses it on create, so offering it would be offering a choice the server rejects.
+// The kinds a PERSON may enter on the form. UNSPECIFIED is excluded because it is not a kind of
+// spending — the contract refuses it on create, so offering it would be offering a choice the server
+// rejects.
+//
+// ⚠ STOCK_LOSS IS EXCLUDED TOO, and for a different reason: it is not a decision anybody makes, it is
+// what inventory_service posts when a warehouse writes units off (#211). Offering it here would invite
+// a hand-typed loss beside the automatic ones, and then "how much did we break" would be answered by a
+// number that is partly a guess somebody typed. Recording a loss is done by adjusting the stock, which
+// is the only place the units and the batch's frozen cost are both known.
 export const COST_KINDS: ExpenseKind[] = [
   ExpenseKind.ADS,
   ExpenseKind.PAYROLL,
   ExpenseKind.OPERATIONAL,
   ExpenseKind.OTHER,
 ];
+
+// The kinds a FILTER may select. Everything the form offers, plus STOCK_LOSS — which is the whole
+// point of giving it its own kind: a warehouse manager asking "what did we break this month" filters
+// for it. Unreadable and unwritable are different permissions, so the two lists are different.
+export const COST_FILTER_KINDS: ExpenseKind[] = [...COST_KINDS, ExpenseKind.STOCK_LOSS];
 
 // The value used for "any kind" when this picker is a FILTER rather than a form field.
 const ANY = "any";
@@ -60,7 +74,7 @@ export interface ExpenseKindSelectProps {
 // Chakra's composable Select, matching PaymentTypeSelect after #165 — a native dropdown does not look
 // or behave like the form around it, and Select is already in the bundle.
 export const description =
-  'Cost-kind picker (Chakra Select). Emits a ExpenseKind. With `filter`, it also offers "any kind" for narrowing a list; without it, every option is a real kind because the contract refuses UNSPECIFIED on create.';
+  'Cost-kind picker (Chakra Select). Emits a ExpenseKind. With `filter`, it also offers "any kind" for narrowing a list AND the automatic STOCK_LOSS kind; without it, every option is a kind a person may actually enter — the contract refuses UNSPECIFIED on create, and STOCK_LOSS is posted by inventory_service when stock is written off, never typed.';
 
 export function ExpenseKindSelect({
   value,
@@ -75,7 +89,9 @@ export function ExpenseKindSelect({
   const anyLabel = placeholder ?? t("expenses.kind.any");
 
   const collection = useMemo(() => {
-    const kinds = COST_KINDS.map((kind) => ({
+    // A FILTER offers STOCK_LOSS, a FORM does not — see COST_FILTER_KINDS. Reading a kind and being
+    // able to type one are different permissions, and the automatic kind belongs only to the first.
+    const kinds = (filter ? COST_FILTER_KINDS : COST_KINDS).map((kind) => ({
       label: expenseKindLabel(t, kind),
       value: String(kind),
     }));

@@ -1244,10 +1244,34 @@ type ProductDiscoverRequest struct {
 	// Shares ProductListFilter with ProductList, but `status` is IGNORED here: discovery is always the
 	// live catalogue. Nobody browses another team's archive to find something to sell, and an archived
 	// product is precisely one its owner has taken out of circulation.
-	Filter        *ProductListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	Sort          *ProductListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
-	DataRequest   []ProductListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.product.v1.ProductListDataType" json:"data_request,omitempty"`
-	Page          *v1.CommonPagination   `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
+	Filter      *ProductListFilter     `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	Sort        *ProductListFilterSort `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
+	DataRequest []ProductListDataType  `protobuf:"varint,4,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.product.v1.ProductListDataType" json:"data_request,omitempty"`
+	Page        *v1.CommonPagination   `protobuf:"bytes,5,opt,name=page,proto3" json:"page,omitempty"`
+	// Leave out the CALLER'S OWN products, so this answers "what can I sell that is somebody else's"
+	// rather than "everything sellable". Set by a picker that offers *My products* and *Other teams'
+	// products* as separate tabs, where the two overlapping would mean the same row appearing twice
+	// with no way to tell which tab it belonged to.
+	//
+	// Server-side, and it has to be: the result is PAGINATED, so dropping own-team rows in the client
+	// would narrow the loaded page while `total_items` went on counting them — a pager offering page 4
+	// of a list that ends at page 3.
+	//
+	// A field on the REQUEST rather than in ProductListFilter, because that filter is shared with
+	// ProductList, where "everyone except me" describes an empty set.
+	ExcludeOwnTeam bool `protobuf:"varint,6,opt,name=exclude_own_team,json=excludeOwnTeam,proto3" json:"exclude_own_team,omitempty"`
+	// Only products owned by THIS team. 0 = every team, which is the default.
+	//
+	// The lens for "I know whose product I want" — cross-team discovery returns every sellable product
+	// in the system, and by the time there are a dozen selling teams a search box alone means scrolling
+	// somebody else's catalogue to find the one you meant.
+	//
+	// Server-side for the same reason `exclude_own_team` is: the result is paginated, and a filter
+	// applied after the page has loaded narrows the rows while the count keeps describing the whole set.
+	//
+	// Set alongside `exclude_own_team` it simply intersects — naming your OWN team while excluding it
+	// returns nothing, which is the honest answer to a contradictory ask rather than an error.
+	OwnerTeamId   uint64 `protobuf:"varint,7,opt,name=owner_team_id,json=ownerTeamId,proto3" json:"owner_team_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1315,6 +1339,20 @@ func (x *ProductDiscoverRequest) GetPage() *v1.CommonPagination {
 		return x.Page
 	}
 	return nil
+}
+
+func (x *ProductDiscoverRequest) GetExcludeOwnTeam() bool {
+	if x != nil {
+		return x.ExcludeOwnTeam
+	}
+	return false
+}
+
+func (x *ProductDiscoverRequest) GetOwnerTeamId() uint64 {
+	if x != nil {
+		return x.OwnerTeamId
+	}
+	return 0
 }
 
 type ProductDiscoverResponse struct {
@@ -2222,13 +2260,15 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x13ProductListResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xde\x02\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xac\x03\n" +
 	"\x16ProductDiscoverRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.product.v1.ProductListFilterR\x06filter\x12?\n" +
 	"\x04sort\x18\x03 \x01(\v2+.warehouse.product.v1.ProductListFilterSortR\x04sort\x12L\n" +
 	"\fdata_request\x18\x04 \x03(\x0e2).warehouse.product.v1.ProductListDataTypeR\vdataRequest\x12A\n" +
-	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\v\x92\xb5\x18\a\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12(\n" +
+	"\x10exclude_own_team\x18\x06 \x01(\bR\x0eexcludeOwnTeam\x12\"\n" +
+	"\rowner_team_id\x18\a \x01(\x04R\vownerTeamId:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"\xac\x01\n" +
 	"\x17ProductDiscoverResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +

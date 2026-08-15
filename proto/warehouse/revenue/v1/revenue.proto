@@ -28,6 +28,8 @@ service RevenueService {
   rpc RevenueRecord(RevenueRecordRequest) returns (RevenueRecordResponse);
   // What a team's orders were expected to make, newest first.
   rpc RevenueList(RevenueListRequest) returns (RevenueListResponse);
+  // The same money, summed PER DAY — the revenue half of the daily statement.
+  rpc RevenueDaily(RevenueDailyRequest) returns (RevenueDailyResponse);
   // Stop an order's row counting — it was cancelled (#164).
   rpc RevenueVoid(RevenueVoidRequest) returns (RevenueVoidResponse);
 }
@@ -215,6 +217,92 @@ message RevenueTotals {
   // Naming the number lets a reader judge how much of the total to trust, which is the only honest
   // option while some costs are unknown.
   uint64 unknown_cost_orders = 5;
+}
+
+// ── The DAILY STATEMENT's revenue half ────────────────────────────────────────────────────────────
+//
+// RevenueList already answers "what did this period make" and RevenueTotals sums it. What neither can
+// answer is "which DAYS made it" — and that is the question somebody asks the moment a month's margin
+// looks wrong, because a month is not a thing that goes wrong, a Tuesday is.
+//
+// ⚠ IT IS NOT PAGINATED, and that is deliberate rather than an oversight of HARD RULE 9. The rule
+// exists because a `repeated` whose size grows WITH THE DATA is a latent out-of-memory bug. This one
+// does not: its size is `to − from`, which the CALLER states and the server CAPS at 366 days
+// (InvalidArgument beyond that, and both bounds are required). Ten years of orders and one year of
+// orders return the same 366 rows. That is the same bargain `SearchUser`'s capped typeahead makes —
+// a hard bound satisfies the rule's intent without a cursor — and it is why `from`/`to` are required
+// here while they are optional on RevenueList, which pages instead.
+//
+// ⚠ THE SERIES IS SPARSE: a day with no orders is ABSENT, not a zero row. The client renders the date
+// spine, because it has to build one anyway — the statement subtracts this service's days from
+// expense_service's days, and two services each generating their own dense calendar is two copies of
+// the same arithmetic, free to disagree about what February contains.
+message RevenueDailyFilter {
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+  string from = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string to = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+}
+
+message RevenueDailyRequest {
+  // Read: the same managers RevenueList admits. A daily breakdown is strictly more detail about the
+  // same money, so it cannot be looser than the list it decomposes.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  RevenueDailyFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+// One day's expected money.
+//
+// There is no `data_request` slice oneof here, unlike the list shapes above, and that is on purpose:
+// the guideline's slice machinery exists so a caller can skip data that is EXPENSIVE to load. A day is
+// six integers and a date. A one-member oneof would be a shape whose second case nobody can name,
+// which is harder to read than not having one.
+message RevenueDayItem {
+  // The day this row sums, as YYYY-MM-DD.
+  //
+  // ⚠ BUCKETED IN UTC, from `created_at` — the same timezone the period filter already parses its
+  // bounds in. Consistency is the reason: the daily rows and the period total sit on one screen, and a
+  // series that bucketed in Asia/Jakarta while the total filtered in UTC would not add up to it. The
+  // business is UTC+7, so an order placed before 07:00 local lands on the previous day here. That is a
+  // real limitation, it predates this RPC, and fixing it means giving the whole service a timezone —
+  // which is the owner's call, not this message's.
+  string date = 1;
+
+  // How many LIVE orders the day holds. Voided rows (#164) are excluded from every figure below, so
+  // this counts what the money is actually made of.
+  uint64 orders = 2;
+
+  int64 revenue = 3;
+  int64 cogs = 4;
+  int64 shipping_cost = 5;
+  int64 expected_margin = 6;
+
+  // How many of the day's orders had an UNKNOWN cost (#74) — the day's margin reads as if those goods
+  // were free. Reported per day as well as per period, because a single bad Tuesday is invisible in a
+  // monthly count.
+  uint64 unknown_cost_orders = 7;
+}
+
+message RevenueDailyResponse {
+  // ASCENDING by date, and SPARSE — see the note on RevenueDailyFilter.
+  repeated RevenueDayItem days = 1;
+
+  // The same totals RevenueList reports, over the same period. Sent rather than left to the client to
+  // sum, so the statement's footer is the SERVER's answer: a footer summed in the browser would drift
+  // from the list screen's total the first time either rounding rule changed.
+  RevenueTotals totals = 2;
 }
 
 message RevenueVoidRequest {

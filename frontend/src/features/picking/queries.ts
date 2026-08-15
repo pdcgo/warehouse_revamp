@@ -5,8 +5,12 @@ import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { useInvalidateOrders } from "../orders/queries";
 import { useInvalidateStock } from "../inventory/queries";
 
-// The three moves a warehouse crew makes on an order, in the only order they may happen.
-export type FulfilmentStep = "pick" | "pack" | "ship";
+// The four moves a warehouse crew makes on an order, in the only order they may happen.
+//
+// CONFIRM IS ONE OF THEM (owner) — the building accepting the job, PLACED → CONFIRMED. It used to be
+// the selling team's click (#91) and is now the crew's first step, which is why it belongs in this
+// list rather than beside the seller's cancel.
+export type FulfilmentStep = "confirm" | "pick" | "pack" | "ship";
 
 // The ref inventory_service recorded this order's draw under (#149). selling_service builds the same
 // string; it is the handle that ties an order to the shelves its goods were taken from.
@@ -77,7 +81,7 @@ export function usePickOrder(args: { warehouseId: bigint | undefined; orderId: b
 
 // ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
 //
-// The crew advancing an order: CONFIRMED → PICKING → PACKED → SHIPPED.
+// The crew advancing an order: PLACED → CONFIRMED → PICKING → PACKED → SHIPPED.
 //
 // ⚠ PICKING IS WHAT MOVES STOCK (#151). So this is the third cross-domain write in the app, alongside
 // accepting a restock and adjusting a shelf: the goods leave the racks they were sitting on, which
@@ -107,6 +111,9 @@ export function useAdvanceOrderFulfilment() {
       const req = { teamId: vars.warehouseId, orderId: vars.orderId };
 
       switch (vars.step) {
+        case "confirm":
+          await orderClient.orderConfirm(req);
+          break;
         case "pick":
           await orderClient.orderPick(req);
           break;

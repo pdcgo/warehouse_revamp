@@ -202,7 +202,7 @@ Two terminals, Ctrl-C each. The UI needs both.
 
 ```sh
 cd frontend && npm run e2e        # Playwright, starts its own servers on 8081/5175
-cd backend && go test ./...
+go test ./...                     # from the REPO ROOT — backend/ alone skips tools/
 ```
 
 ## Gotchas

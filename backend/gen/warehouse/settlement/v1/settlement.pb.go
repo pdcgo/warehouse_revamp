@@ -1348,6 +1348,336 @@ func (x *SettlementEntryListResponse) GetBalance() int64 {
 	return 0
 }
 
+// ── The DAILY STATEMENT's income half, for a WAREHOUSE ────────────────────────────────────────────
+//
+// A selling team's income is the margin on its orders (revenue_service). A WAREHOUSE has no orders and
+// therefore no revenue rows at all — what it earns is the FEES it charges the teams it fulfils for, and
+// those live here. Without this RPC a warehouse's daily statement would show margin 0 against real
+// expenses and report every single day as a pure loss (owner, 2026-08-14).
+//
+// ⚠ IT REPORTS THE LEDGER, NOT "INCOME" — the split is deliberate. Every source type is returned in
+// `by_source` and the caller decides which of them it is willing to call earnings, because they are not
+// the same kind of thing:
+//
+//	HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
+//	COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
+//	PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
+//	PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
+//
+// Summing all four and calling it income would double-count: the fee is earned when it is charged and
+// the payment that settles it would be counted again. Naming that judgement here would bake one screen's
+// opinion into the ledger's contract, so the enum is returned whole and the statement documents its
+// choice (it takes HANDLING_FEE).
+//
+// ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
+// which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
+// series are read side by side on one screen, and a cap that differed would let the statement load part
+// of a period and still look complete.
+//
+// ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
+type SettlementDailyFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+	From string `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To   string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	// One counterparty, or 0 for all of them. NOT the scope — `team_id` above is (§4.9).
+	CounterpartyId uint64 `protobuf:"varint,3,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SettlementDailyFilter) Reset() {
+	*x = SettlementDailyFilter{}
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementDailyFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementDailyFilter) ProtoMessage() {}
+
+func (x *SettlementDailyFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementDailyFilter.ProtoReflect.Descriptor instead.
+func (*SettlementDailyFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SettlementDailyFilter) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *SettlementDailyFilter) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+func (x *SettlementDailyFilter) GetCounterpartyId() uint64 {
+	if x != nil {
+		return x.CounterpartyId
+	}
+	return 0
+}
+
+type SettlementDailyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *SettlementDailyFilter `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementDailyRequest) Reset() {
+	*x = SettlementDailyRequest{}
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementDailyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementDailyRequest) ProtoMessage() {}
+
+func (x *SettlementDailyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementDailyRequest.ProtoReflect.Descriptor instead.
+func (*SettlementDailyRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SettlementDailyRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SettlementDailyRequest) GetFilter() *SettlementDailyFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+// One day of the ledger, from the scoped team's point of view.
+type SettlementDayItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The day this row sums, as YYYY-MM-DD.
+	//
+	// ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
+	// the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
+	// with the period bounds is why — see docs/services/revenue_service/rpc.md.
+	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	// How many entry legs the day holds, reversals included.
+	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
+	// ⚠ ONE SIGN CONVENTION (§4.11), unchanged here: from the scoped team's point of view a RECEIVABLE is
+	// POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
+	// it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
+	// A series that dropped them would show income the ledger has already taken back.
+	Net int64 `protobuf:"varint,3,opt,name=net,proto3" json:"net,omitempty"`
+	// Split by SettlementSourceType's enum number, so the caller can pick which sources it treats as
+	// earnings without a second call. A source with nothing that day is ABSENT rather than 0 — the same
+	// choice ExpenseDayItem.by_kind makes.
+	BySource      map[int32]int64 `protobuf:"bytes,4,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementDayItem) Reset() {
+	*x = SettlementDayItem{}
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementDayItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementDayItem) ProtoMessage() {}
+
+func (x *SettlementDayItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementDayItem.ProtoReflect.Descriptor instead.
+func (*SettlementDayItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SettlementDayItem) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *SettlementDayItem) GetEntries() uint64 {
+	if x != nil {
+		return x.Entries
+	}
+	return 0
+}
+
+func (x *SettlementDayItem) GetNet() int64 {
+	if x != nil {
+		return x.Net
+	}
+	return 0
+}
+
+func (x *SettlementDayItem) GetBySource() map[int32]int64 {
+	if x != nil {
+		return x.BySource
+	}
+	return nil
+}
+
+type SettlementDailyTotals struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Net           int64                  `protobuf:"varint,1,opt,name=net,proto3" json:"net,omitempty"`
+	BySource      map[int32]int64        `protobuf:"bytes,2,rep,name=by_source,json=bySource,proto3" json:"by_source,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementDailyTotals) Reset() {
+	*x = SettlementDailyTotals{}
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementDailyTotals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementDailyTotals) ProtoMessage() {}
+
+func (x *SettlementDailyTotals) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementDailyTotals.ProtoReflect.Descriptor instead.
+func (*SettlementDailyTotals) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SettlementDailyTotals) GetNet() int64 {
+	if x != nil {
+		return x.Net
+	}
+	return 0
+}
+
+func (x *SettlementDailyTotals) GetBySource() map[int32]int64 {
+	if x != nil {
+		return x.BySource
+	}
+	return nil
+}
+
+type SettlementDailyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ASCENDING by date, and SPARSE — see the note on SettlementDailyFilter.
+	Days []*SettlementDayItem `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
+	// The period's totals, over the same filter. Sent rather than summed in the browser, so the
+	// statement's footer is this service's answer and cannot drift from the days above it.
+	Totals        *SettlementDailyTotals `protobuf:"bytes,2,opt,name=totals,proto3" json:"totals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementDailyResponse) Reset() {
+	*x = SettlementDailyResponse{}
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementDailyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementDailyResponse) ProtoMessage() {}
+
+func (x *SettlementDailyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementDailyResponse.ProtoReflect.Descriptor instead.
+func (*SettlementDailyResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SettlementDailyResponse) GetDays() []*SettlementDayItem {
+	if x != nil {
+		return x.Days
+	}
+	return nil
+}
+
+func (x *SettlementDailyResponse) GetTotals() *SettlementDailyTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
 type SettlementPayment struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1375,7 +1705,7 @@ type SettlementPayment struct {
 
 func (x *SettlementPayment) Reset() {
 	*x = SettlementPayment{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[13]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1387,7 +1717,7 @@ func (x *SettlementPayment) String() string {
 func (*SettlementPayment) ProtoMessage() {}
 
 func (x *SettlementPayment) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[13]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1400,7 +1730,7 @@ func (x *SettlementPayment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPayment.ProtoReflect.Descriptor instead.
 func (*SettlementPayment) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SettlementPayment) GetId() uint64 {
@@ -1487,7 +1817,7 @@ type SettlementPaymentRecordRequest struct {
 
 func (x *SettlementPaymentRecordRequest) Reset() {
 	*x = SettlementPaymentRecordRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[14]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1499,7 +1829,7 @@ func (x *SettlementPaymentRecordRequest) String() string {
 func (*SettlementPaymentRecordRequest) ProtoMessage() {}
 
 func (x *SettlementPaymentRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[14]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1512,7 +1842,7 @@ func (x *SettlementPaymentRecordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentRecordRequest.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentRecordRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SettlementPaymentRecordRequest) GetTeamId() uint64 {
@@ -1552,7 +1882,7 @@ type SettlementPaymentRecordResponse struct {
 
 func (x *SettlementPaymentRecordResponse) Reset() {
 	*x = SettlementPaymentRecordResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[15]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1564,7 +1894,7 @@ func (x *SettlementPaymentRecordResponse) String() string {
 func (*SettlementPaymentRecordResponse) ProtoMessage() {}
 
 func (x *SettlementPaymentRecordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[15]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1577,7 +1907,7 @@ func (x *SettlementPaymentRecordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentRecordResponse.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentRecordResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SettlementPaymentRecordResponse) GetPayment() *SettlementPayment {
@@ -1599,7 +1929,7 @@ type SettlementPaymentConfirmRequest struct {
 
 func (x *SettlementPaymentConfirmRequest) Reset() {
 	*x = SettlementPaymentConfirmRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[16]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1611,7 +1941,7 @@ func (x *SettlementPaymentConfirmRequest) String() string {
 func (*SettlementPaymentConfirmRequest) ProtoMessage() {}
 
 func (x *SettlementPaymentConfirmRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[16]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1624,7 +1954,7 @@ func (x *SettlementPaymentConfirmRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentConfirmRequest.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentConfirmRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SettlementPaymentConfirmRequest) GetTeamId() uint64 {
@@ -1650,7 +1980,7 @@ type SettlementPaymentConfirmResponse struct {
 
 func (x *SettlementPaymentConfirmResponse) Reset() {
 	*x = SettlementPaymentConfirmResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[17]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1662,7 +1992,7 @@ func (x *SettlementPaymentConfirmResponse) String() string {
 func (*SettlementPaymentConfirmResponse) ProtoMessage() {}
 
 func (x *SettlementPaymentConfirmResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[17]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1675,7 +2005,7 @@ func (x *SettlementPaymentConfirmResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentConfirmResponse.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentConfirmResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SettlementPaymentConfirmResponse) GetPayment() *SettlementPayment {
@@ -1700,7 +2030,7 @@ type SettlementPaymentReverseRequest struct {
 
 func (x *SettlementPaymentReverseRequest) Reset() {
 	*x = SettlementPaymentReverseRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[18]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1712,7 +2042,7 @@ func (x *SettlementPaymentReverseRequest) String() string {
 func (*SettlementPaymentReverseRequest) ProtoMessage() {}
 
 func (x *SettlementPaymentReverseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[18]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1725,7 +2055,7 @@ func (x *SettlementPaymentReverseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentReverseRequest.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentReverseRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SettlementPaymentReverseRequest) GetTeamId() uint64 {
@@ -1758,7 +2088,7 @@ type SettlementPaymentReverseResponse struct {
 
 func (x *SettlementPaymentReverseResponse) Reset() {
 	*x = SettlementPaymentReverseResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[19]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1770,7 +2100,7 @@ func (x *SettlementPaymentReverseResponse) String() string {
 func (*SettlementPaymentReverseResponse) ProtoMessage() {}
 
 func (x *SettlementPaymentReverseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[19]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1783,7 +2113,7 @@ func (x *SettlementPaymentReverseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentReverseResponse.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentReverseResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SettlementPaymentReverseResponse) GetPayment() *SettlementPayment {
@@ -1805,7 +2135,7 @@ type SettlementPaymentListFilter struct {
 
 func (x *SettlementPaymentListFilter) Reset() {
 	*x = SettlementPaymentListFilter{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[20]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1817,7 +2147,7 @@ func (x *SettlementPaymentListFilter) String() string {
 func (*SettlementPaymentListFilter) ProtoMessage() {}
 
 func (x *SettlementPaymentListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[20]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1830,7 +2160,7 @@ func (x *SettlementPaymentListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentListFilter.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SettlementPaymentListFilter) GetCounterpartyId() uint64 {
@@ -1859,7 +2189,7 @@ type SettlementPaymentListRequest struct {
 
 func (x *SettlementPaymentListRequest) Reset() {
 	*x = SettlementPaymentListRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[21]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1871,7 +2201,7 @@ func (x *SettlementPaymentListRequest) String() string {
 func (*SettlementPaymentListRequest) ProtoMessage() {}
 
 func (x *SettlementPaymentListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[21]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1884,7 +2214,7 @@ func (x *SettlementPaymentListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentListRequest.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SettlementPaymentListRequest) GetTeamId() uint64 {
@@ -1924,7 +2254,7 @@ type SettlementPaymentMapItem struct {
 
 func (x *SettlementPaymentMapItem) Reset() {
 	*x = SettlementPaymentMapItem{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[22]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1936,7 +2266,7 @@ func (x *SettlementPaymentMapItem) String() string {
 func (*SettlementPaymentMapItem) ProtoMessage() {}
 
 func (x *SettlementPaymentMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[22]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1949,7 +2279,7 @@ func (x *SettlementPaymentMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentMapItem.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{22}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SettlementPaymentMapItem) GetMapData() map[uint64]*SettlementPayment {
@@ -1972,7 +2302,7 @@ type SettlementPaymentListResponseItem struct {
 
 func (x *SettlementPaymentListResponseItem) Reset() {
 	*x = SettlementPaymentListResponseItem{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[23]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1984,7 +2314,7 @@ func (x *SettlementPaymentListResponseItem) String() string {
 func (*SettlementPaymentListResponseItem) ProtoMessage() {}
 
 func (x *SettlementPaymentListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[23]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1997,7 +2327,7 @@ func (x *SettlementPaymentListResponseItem) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SettlementPaymentListResponseItem.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{23}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SettlementPaymentListResponseItem) GetD() isSettlementPaymentListResponseItem_D {
@@ -2052,7 +2382,7 @@ type SettlementPaymentListResponse struct {
 
 func (x *SettlementPaymentListResponse) Reset() {
 	*x = SettlementPaymentListResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[24]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2064,7 +2394,7 @@ func (x *SettlementPaymentListResponse) String() string {
 func (*SettlementPaymentListResponse) ProtoMessage() {}
 
 func (x *SettlementPaymentListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[24]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2077,7 +2407,7 @@ func (x *SettlementPaymentListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementPaymentListResponse.ProtoReflect.Descriptor instead.
 func (*SettlementPaymentListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{24}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SettlementPaymentListResponse) GetItems() []*SettlementPaymentListResponseItem {
@@ -2148,7 +2478,7 @@ type SettlementTerms struct {
 
 func (x *SettlementTerms) Reset() {
 	*x = SettlementTerms{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[25]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2160,7 +2490,7 @@ func (x *SettlementTerms) String() string {
 func (*SettlementTerms) ProtoMessage() {}
 
 func (x *SettlementTerms) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[25]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2173,7 +2503,7 @@ func (x *SettlementTerms) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTerms.ProtoReflect.Descriptor instead.
 func (*SettlementTerms) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{25}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SettlementTerms) GetTeamId() uint64 {
@@ -2222,7 +2552,7 @@ type SettlementTermsListRequest struct {
 
 func (x *SettlementTermsListRequest) Reset() {
 	*x = SettlementTermsListRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[26]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2234,7 +2564,7 @@ func (x *SettlementTermsListRequest) String() string {
 func (*SettlementTermsListRequest) ProtoMessage() {}
 
 func (x *SettlementTermsListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[26]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2247,7 +2577,7 @@ func (x *SettlementTermsListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsListRequest.ProtoReflect.Descriptor instead.
 func (*SettlementTermsListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{26}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SettlementTermsListRequest) GetTeamId() uint64 {
@@ -2282,7 +2612,7 @@ type SettlementTermsMapItem struct {
 
 func (x *SettlementTermsMapItem) Reset() {
 	*x = SettlementTermsMapItem{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[27]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2294,7 +2624,7 @@ func (x *SettlementTermsMapItem) String() string {
 func (*SettlementTermsMapItem) ProtoMessage() {}
 
 func (x *SettlementTermsMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[27]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2307,7 +2637,7 @@ func (x *SettlementTermsMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsMapItem.ProtoReflect.Descriptor instead.
 func (*SettlementTermsMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{27}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *SettlementTermsMapItem) GetMapData() map[uint64]*SettlementTerms {
@@ -2330,7 +2660,7 @@ type SettlementTermsListResponseItem struct {
 
 func (x *SettlementTermsListResponseItem) Reset() {
 	*x = SettlementTermsListResponseItem{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[28]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2342,7 +2672,7 @@ func (x *SettlementTermsListResponseItem) String() string {
 func (*SettlementTermsListResponseItem) ProtoMessage() {}
 
 func (x *SettlementTermsListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[28]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2355,7 +2685,7 @@ func (x *SettlementTermsListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsListResponseItem.ProtoReflect.Descriptor instead.
 func (*SettlementTermsListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{28}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SettlementTermsListResponseItem) GetD() isSettlementTermsListResponseItem_D {
@@ -2410,7 +2740,7 @@ type SettlementTermsListResponse struct {
 
 func (x *SettlementTermsListResponse) Reset() {
 	*x = SettlementTermsListResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[29]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2422,7 +2752,7 @@ func (x *SettlementTermsListResponse) String() string {
 func (*SettlementTermsListResponse) ProtoMessage() {}
 
 func (x *SettlementTermsListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[29]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2435,7 +2765,7 @@ func (x *SettlementTermsListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsListResponse.ProtoReflect.Descriptor instead.
 func (*SettlementTermsListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{29}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SettlementTermsListResponse) GetItems() []*SettlementTermsListResponseItem {
@@ -2474,7 +2804,7 @@ type SettlementTermsSetRequest struct {
 
 func (x *SettlementTermsSetRequest) Reset() {
 	*x = SettlementTermsSetRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[30]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2486,7 +2816,7 @@ func (x *SettlementTermsSetRequest) String() string {
 func (*SettlementTermsSetRequest) ProtoMessage() {}
 
 func (x *SettlementTermsSetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[30]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2499,7 +2829,7 @@ func (x *SettlementTermsSetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsSetRequest.ProtoReflect.Descriptor instead.
 func (*SettlementTermsSetRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{30}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *SettlementTermsSetRequest) GetTeamId() uint64 {
@@ -2546,7 +2876,7 @@ type SettlementTermsSetResponse struct {
 
 func (x *SettlementTermsSetResponse) Reset() {
 	*x = SettlementTermsSetResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[31]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2558,7 +2888,7 @@ func (x *SettlementTermsSetResponse) String() string {
 func (*SettlementTermsSetResponse) ProtoMessage() {}
 
 func (x *SettlementTermsSetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[31]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2571,7 +2901,7 @@ func (x *SettlementTermsSetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsSetResponse.ProtoReflect.Descriptor instead.
 func (*SettlementTermsSetResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{31}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *SettlementTermsSetResponse) GetTerms() *SettlementTerms {
@@ -2593,7 +2923,7 @@ type SettlementTermsDeleteRequest struct {
 
 func (x *SettlementTermsDeleteRequest) Reset() {
 	*x = SettlementTermsDeleteRequest{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[32]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2605,7 +2935,7 @@ func (x *SettlementTermsDeleteRequest) String() string {
 func (*SettlementTermsDeleteRequest) ProtoMessage() {}
 
 func (x *SettlementTermsDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[32]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2618,7 +2948,7 @@ func (x *SettlementTermsDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsDeleteRequest.ProtoReflect.Descriptor instead.
 func (*SettlementTermsDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{32}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SettlementTermsDeleteRequest) GetTeamId() uint64 {
@@ -2643,7 +2973,7 @@ type SettlementTermsDeleteResponse struct {
 
 func (x *SettlementTermsDeleteResponse) Reset() {
 	*x = SettlementTermsDeleteResponse{}
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[33]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2655,7 +2985,7 @@ func (x *SettlementTermsDeleteResponse) String() string {
 func (*SettlementTermsDeleteResponse) ProtoMessage() {}
 
 func (x *SettlementTermsDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[33]
+	mi := &file_warehouse_settlement_v1_settlement_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2668,7 +2998,7 @@ func (x *SettlementTermsDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementTermsDeleteResponse.ProtoReflect.Descriptor instead.
 func (*SettlementTermsDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{33}
+	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{38}
 }
 
 var File_warehouse_settlement_v1_settlement_proto protoreflect.FileDescriptor
@@ -2744,7 +3074,32 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.settlement.v1.SettlementEntryListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x18\n" +
-	"\abalance\x18\x04 \x01(\x03R\abalance\"\xff\x02\n" +
+	"\abalance\x18\x04 \x01(\x03R\abalance\"\xae\x01\n" +
+	"\x15SettlementDailyFilter\x127\n" +
+	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
+	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\x12'\n" +
+	"\x0fcounterparty_id\x18\x03 \x01(\x04R\x0ecounterpartyId\"\x9c\x01\n" +
+	"\x16SettlementDailyRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
+	"\x06filter\x18\x02 \x01(\v2..warehouse.settlement.v1.SettlementDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\f\x92\xb5\x18\b\n" +
+	"\x06\x01\x02\x03\x04\x06\t\"\xe7\x01\n" +
+	"\x11SettlementDayItem\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
+	"\aentries\x18\x02 \x01(\x04R\aentries\x12\x10\n" +
+	"\x03net\x18\x03 \x01(\x03R\x03net\x12U\n" +
+	"\tby_source\x18\x04 \x03(\v28.warehouse.settlement.v1.SettlementDayItem.BySourceEntryR\bbySource\x1a;\n" +
+	"\rBySourceEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xc1\x01\n" +
+	"\x15SettlementDailyTotals\x12\x10\n" +
+	"\x03net\x18\x01 \x01(\x03R\x03net\x12Y\n" +
+	"\tby_source\x18\x02 \x03(\v2<.warehouse.settlement.v1.SettlementDailyTotals.BySourceEntryR\bbySource\x1a;\n" +
+	"\rBySourceEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xa1\x01\n" +
+	"\x17SettlementDailyResponse\x12>\n" +
+	"\x04days\x18\x01 \x03(\v2*.warehouse.settlement.v1.SettlementDayItemR\x04days\x12F\n" +
+	"\x06totals\x18\x02 \x01(\v2..warehouse.settlement.v1.SettlementDailyTotalsR\x06totals\"\xff\x02\n" +
 	"\x11SettlementPayment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
@@ -2874,10 +3229,11 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x1bSettlementTermsListDataType\x12/\n" +
 	"+SETTLEMENT_TERMS_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'SETTLEMENT_TERMS_LIST_DATA_TYPE_GENERAL\x10\x01\x12)\n" +
-	"%SETTLEMENT_TERMS_LIST_DATA_TYPE_TERMS\x10\x022\xa2\x02\n" +
+	"%SETTLEMENT_TERMS_LIST_DATA_TYPE_TERMS\x10\x022\x98\x03\n" +
 	"\x11SettlementService\x12\x89\x01\n" +
 	"\x16SettlementPositionList\x126.warehouse.settlement.v1.SettlementPositionListRequest\x1a7.warehouse.settlement.v1.SettlementPositionListResponse\x12\x80\x01\n" +
-	"\x13SettlementEntryList\x123.warehouse.settlement.v1.SettlementEntryListRequest\x1a4.warehouse.settlement.v1.SettlementEntryListResponse2\xd6\x04\n" +
+	"\x13SettlementEntryList\x123.warehouse.settlement.v1.SettlementEntryListRequest\x1a4.warehouse.settlement.v1.SettlementEntryListResponse\x12t\n" +
+	"\x0fSettlementDaily\x12/.warehouse.settlement.v1.SettlementDailyRequest\x1a0.warehouse.settlement.v1.SettlementDailyResponse2\xd6\x04\n" +
 	"\x18SettlementPaymentService\x12\x8c\x01\n" +
 	"\x17SettlementPaymentRecord\x127.warehouse.settlement.v1.SettlementPaymentRecordRequest\x1a8.warehouse.settlement.v1.SettlementPaymentRecordResponse\x12\x8f\x01\n" +
 	"\x18SettlementPaymentConfirm\x128.warehouse.settlement.v1.SettlementPaymentConfirmRequest\x1a9.warehouse.settlement.v1.SettlementPaymentConfirmResponse\x12\x8f\x01\n" +
@@ -2901,7 +3257,7 @@ func file_warehouse_settlement_v1_settlement_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_settlement_v1_settlement_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_warehouse_settlement_v1_settlement_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_warehouse_settlement_v1_settlement_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_warehouse_settlement_v1_settlement_proto_goTypes = []any{
 	(SettlementSourceType)(0),                  // 0: warehouse.settlement.v1.SettlementSourceType
 	(SettlementPositionListDataType)(0),        // 1: warehouse.settlement.v1.SettlementPositionListDataType
@@ -2923,106 +3279,120 @@ var file_warehouse_settlement_v1_settlement_proto_goTypes = []any{
 	(*SettlementEntryMapItem)(nil),             // 17: warehouse.settlement.v1.SettlementEntryMapItem
 	(*SettlementEntryListResponseItem)(nil),    // 18: warehouse.settlement.v1.SettlementEntryListResponseItem
 	(*SettlementEntryListResponse)(nil),        // 19: warehouse.settlement.v1.SettlementEntryListResponse
-	(*SettlementPayment)(nil),                  // 20: warehouse.settlement.v1.SettlementPayment
-	(*SettlementPaymentRecordRequest)(nil),     // 21: warehouse.settlement.v1.SettlementPaymentRecordRequest
-	(*SettlementPaymentRecordResponse)(nil),    // 22: warehouse.settlement.v1.SettlementPaymentRecordResponse
-	(*SettlementPaymentConfirmRequest)(nil),    // 23: warehouse.settlement.v1.SettlementPaymentConfirmRequest
-	(*SettlementPaymentConfirmResponse)(nil),   // 24: warehouse.settlement.v1.SettlementPaymentConfirmResponse
-	(*SettlementPaymentReverseRequest)(nil),    // 25: warehouse.settlement.v1.SettlementPaymentReverseRequest
-	(*SettlementPaymentReverseResponse)(nil),   // 26: warehouse.settlement.v1.SettlementPaymentReverseResponse
-	(*SettlementPaymentListFilter)(nil),        // 27: warehouse.settlement.v1.SettlementPaymentListFilter
-	(*SettlementPaymentListRequest)(nil),       // 28: warehouse.settlement.v1.SettlementPaymentListRequest
-	(*SettlementPaymentMapItem)(nil),           // 29: warehouse.settlement.v1.SettlementPaymentMapItem
-	(*SettlementPaymentListResponseItem)(nil),  // 30: warehouse.settlement.v1.SettlementPaymentListResponseItem
-	(*SettlementPaymentListResponse)(nil),      // 31: warehouse.settlement.v1.SettlementPaymentListResponse
-	(*SettlementTerms)(nil),                    // 32: warehouse.settlement.v1.SettlementTerms
-	(*SettlementTermsListRequest)(nil),         // 33: warehouse.settlement.v1.SettlementTermsListRequest
-	(*SettlementTermsMapItem)(nil),             // 34: warehouse.settlement.v1.SettlementTermsMapItem
-	(*SettlementTermsListResponseItem)(nil),    // 35: warehouse.settlement.v1.SettlementTermsListResponseItem
-	(*SettlementTermsListResponse)(nil),        // 36: warehouse.settlement.v1.SettlementTermsListResponse
-	(*SettlementTermsSetRequest)(nil),          // 37: warehouse.settlement.v1.SettlementTermsSetRequest
-	(*SettlementTermsSetResponse)(nil),         // 38: warehouse.settlement.v1.SettlementTermsSetResponse
-	(*SettlementTermsDeleteRequest)(nil),       // 39: warehouse.settlement.v1.SettlementTermsDeleteRequest
-	(*SettlementTermsDeleteResponse)(nil),      // 40: warehouse.settlement.v1.SettlementTermsDeleteResponse
-	nil,                                        // 41: warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry
-	nil,                                        // 42: warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry
-	nil,                                        // 43: warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry
-	nil,                                        // 44: warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry
-	(v1.CommonSortType)(0),                     // 45: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),                        // 46: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),                // 47: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),                  // 48: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),                        // 49: warehouse.common.v1.PageInfo
+	(*SettlementDailyFilter)(nil),              // 20: warehouse.settlement.v1.SettlementDailyFilter
+	(*SettlementDailyRequest)(nil),             // 21: warehouse.settlement.v1.SettlementDailyRequest
+	(*SettlementDayItem)(nil),                  // 22: warehouse.settlement.v1.SettlementDayItem
+	(*SettlementDailyTotals)(nil),              // 23: warehouse.settlement.v1.SettlementDailyTotals
+	(*SettlementDailyResponse)(nil),            // 24: warehouse.settlement.v1.SettlementDailyResponse
+	(*SettlementPayment)(nil),                  // 25: warehouse.settlement.v1.SettlementPayment
+	(*SettlementPaymentRecordRequest)(nil),     // 26: warehouse.settlement.v1.SettlementPaymentRecordRequest
+	(*SettlementPaymentRecordResponse)(nil),    // 27: warehouse.settlement.v1.SettlementPaymentRecordResponse
+	(*SettlementPaymentConfirmRequest)(nil),    // 28: warehouse.settlement.v1.SettlementPaymentConfirmRequest
+	(*SettlementPaymentConfirmResponse)(nil),   // 29: warehouse.settlement.v1.SettlementPaymentConfirmResponse
+	(*SettlementPaymentReverseRequest)(nil),    // 30: warehouse.settlement.v1.SettlementPaymentReverseRequest
+	(*SettlementPaymentReverseResponse)(nil),   // 31: warehouse.settlement.v1.SettlementPaymentReverseResponse
+	(*SettlementPaymentListFilter)(nil),        // 32: warehouse.settlement.v1.SettlementPaymentListFilter
+	(*SettlementPaymentListRequest)(nil),       // 33: warehouse.settlement.v1.SettlementPaymentListRequest
+	(*SettlementPaymentMapItem)(nil),           // 34: warehouse.settlement.v1.SettlementPaymentMapItem
+	(*SettlementPaymentListResponseItem)(nil),  // 35: warehouse.settlement.v1.SettlementPaymentListResponseItem
+	(*SettlementPaymentListResponse)(nil),      // 36: warehouse.settlement.v1.SettlementPaymentListResponse
+	(*SettlementTerms)(nil),                    // 37: warehouse.settlement.v1.SettlementTerms
+	(*SettlementTermsListRequest)(nil),         // 38: warehouse.settlement.v1.SettlementTermsListRequest
+	(*SettlementTermsMapItem)(nil),             // 39: warehouse.settlement.v1.SettlementTermsMapItem
+	(*SettlementTermsListResponseItem)(nil),    // 40: warehouse.settlement.v1.SettlementTermsListResponseItem
+	(*SettlementTermsListResponse)(nil),        // 41: warehouse.settlement.v1.SettlementTermsListResponse
+	(*SettlementTermsSetRequest)(nil),          // 42: warehouse.settlement.v1.SettlementTermsSetRequest
+	(*SettlementTermsSetResponse)(nil),         // 43: warehouse.settlement.v1.SettlementTermsSetResponse
+	(*SettlementTermsDeleteRequest)(nil),       // 44: warehouse.settlement.v1.SettlementTermsDeleteRequest
+	(*SettlementTermsDeleteResponse)(nil),      // 45: warehouse.settlement.v1.SettlementTermsDeleteResponse
+	nil,                                        // 46: warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry
+	nil,                                        // 47: warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry
+	nil,                                        // 48: warehouse.settlement.v1.SettlementDayItem.BySourceEntry
+	nil,                                        // 49: warehouse.settlement.v1.SettlementDailyTotals.BySourceEntry
+	nil,                                        // 50: warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry
+	nil,                                        // 51: warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry
+	(v1.CommonSortType)(0),                     // 52: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),                        // 53: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),                // 54: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),                  // 55: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),                        // 56: warehouse.common.v1.PageInfo
 }
 var file_warehouse_settlement_v1_settlement_proto_depIdxs = []int32{
 	0,  // 0: warehouse.settlement.v1.SettlementEntry.source_type:type_name -> warehouse.settlement.v1.SettlementSourceType
-	45, // 1: warehouse.settlement.v1.SettlementPositionListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	46, // 2: warehouse.settlement.v1.SettlementPositionListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	52, // 1: warehouse.settlement.v1.SettlementPositionListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	53, // 2: warehouse.settlement.v1.SettlementPositionListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	2,  // 3: warehouse.settlement.v1.SettlementPositionListFilterSort.position:type_name -> warehouse.settlement.v1.SettlementPositionSort
 	9,  // 4: warehouse.settlement.v1.SettlementPositionListRequest.filter:type_name -> warehouse.settlement.v1.SettlementPositionListFilter
 	10, // 5: warehouse.settlement.v1.SettlementPositionListRequest.sort:type_name -> warehouse.settlement.v1.SettlementPositionListFilterSort
 	1,  // 6: warehouse.settlement.v1.SettlementPositionListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementPositionListDataType
-	47, // 7: warehouse.settlement.v1.SettlementPositionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	41, // 8: warehouse.settlement.v1.SettlementPositionMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry
-	48, // 9: warehouse.settlement.v1.SettlementPositionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	54, // 7: warehouse.settlement.v1.SettlementPositionListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	46, // 8: warehouse.settlement.v1.SettlementPositionMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry
+	55, // 9: warehouse.settlement.v1.SettlementPositionListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	12, // 10: warehouse.settlement.v1.SettlementPositionListResponseItem.position:type_name -> warehouse.settlement.v1.SettlementPositionMapItem
 	13, // 11: warehouse.settlement.v1.SettlementPositionListResponse.items:type_name -> warehouse.settlement.v1.SettlementPositionListResponseItem
-	49, // 12: warehouse.settlement.v1.SettlementPositionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	56, // 12: warehouse.settlement.v1.SettlementPositionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	15, // 13: warehouse.settlement.v1.SettlementEntryListRequest.filter:type_name -> warehouse.settlement.v1.SettlementEntryListFilter
 	3,  // 14: warehouse.settlement.v1.SettlementEntryListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementEntryListDataType
-	47, // 15: warehouse.settlement.v1.SettlementEntryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	42, // 16: warehouse.settlement.v1.SettlementEntryMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry
-	48, // 17: warehouse.settlement.v1.SettlementEntryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	54, // 15: warehouse.settlement.v1.SettlementEntryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	47, // 16: warehouse.settlement.v1.SettlementEntryMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry
+	55, // 17: warehouse.settlement.v1.SettlementEntryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	17, // 18: warehouse.settlement.v1.SettlementEntryListResponseItem.entry:type_name -> warehouse.settlement.v1.SettlementEntryMapItem
 	18, // 19: warehouse.settlement.v1.SettlementEntryListResponse.items:type_name -> warehouse.settlement.v1.SettlementEntryListResponseItem
-	49, // 20: warehouse.settlement.v1.SettlementEntryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	4,  // 21: warehouse.settlement.v1.SettlementPayment.status:type_name -> warehouse.settlement.v1.SettlementPaymentStatus
-	20, // 22: warehouse.settlement.v1.SettlementPaymentRecordResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
-	20, // 23: warehouse.settlement.v1.SettlementPaymentConfirmResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
-	20, // 24: warehouse.settlement.v1.SettlementPaymentReverseResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
-	27, // 25: warehouse.settlement.v1.SettlementPaymentListRequest.filter:type_name -> warehouse.settlement.v1.SettlementPaymentListFilter
-	5,  // 26: warehouse.settlement.v1.SettlementPaymentListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementPaymentListDataType
-	47, // 27: warehouse.settlement.v1.SettlementPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	43, // 28: warehouse.settlement.v1.SettlementPaymentMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry
-	48, // 29: warehouse.settlement.v1.SettlementPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	29, // 30: warehouse.settlement.v1.SettlementPaymentListResponseItem.payment:type_name -> warehouse.settlement.v1.SettlementPaymentMapItem
-	30, // 31: warehouse.settlement.v1.SettlementPaymentListResponse.items:type_name -> warehouse.settlement.v1.SettlementPaymentListResponseItem
-	49, // 32: warehouse.settlement.v1.SettlementPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	6,  // 33: warehouse.settlement.v1.SettlementTermsListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementTermsListDataType
-	47, // 34: warehouse.settlement.v1.SettlementTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	44, // 35: warehouse.settlement.v1.SettlementTermsMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry
-	48, // 36: warehouse.settlement.v1.SettlementTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	34, // 37: warehouse.settlement.v1.SettlementTermsListResponseItem.terms:type_name -> warehouse.settlement.v1.SettlementTermsMapItem
-	35, // 38: warehouse.settlement.v1.SettlementTermsListResponse.items:type_name -> warehouse.settlement.v1.SettlementTermsListResponseItem
-	49, // 39: warehouse.settlement.v1.SettlementTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	32, // 40: warehouse.settlement.v1.SettlementTermsSetResponse.terms:type_name -> warehouse.settlement.v1.SettlementTerms
-	8,  // 41: warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementPosition
-	7,  // 42: warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementEntry
-	20, // 43: warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementPayment
-	32, // 44: warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementTerms
-	11, // 45: warehouse.settlement.v1.SettlementService.SettlementPositionList:input_type -> warehouse.settlement.v1.SettlementPositionListRequest
-	16, // 46: warehouse.settlement.v1.SettlementService.SettlementEntryList:input_type -> warehouse.settlement.v1.SettlementEntryListRequest
-	21, // 47: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:input_type -> warehouse.settlement.v1.SettlementPaymentRecordRequest
-	23, // 48: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:input_type -> warehouse.settlement.v1.SettlementPaymentConfirmRequest
-	25, // 49: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:input_type -> warehouse.settlement.v1.SettlementPaymentReverseRequest
-	28, // 50: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:input_type -> warehouse.settlement.v1.SettlementPaymentListRequest
-	33, // 51: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:input_type -> warehouse.settlement.v1.SettlementTermsListRequest
-	37, // 52: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:input_type -> warehouse.settlement.v1.SettlementTermsSetRequest
-	39, // 53: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:input_type -> warehouse.settlement.v1.SettlementTermsDeleteRequest
-	14, // 54: warehouse.settlement.v1.SettlementService.SettlementPositionList:output_type -> warehouse.settlement.v1.SettlementPositionListResponse
-	19, // 55: warehouse.settlement.v1.SettlementService.SettlementEntryList:output_type -> warehouse.settlement.v1.SettlementEntryListResponse
-	22, // 56: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:output_type -> warehouse.settlement.v1.SettlementPaymentRecordResponse
-	24, // 57: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:output_type -> warehouse.settlement.v1.SettlementPaymentConfirmResponse
-	26, // 58: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:output_type -> warehouse.settlement.v1.SettlementPaymentReverseResponse
-	31, // 59: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:output_type -> warehouse.settlement.v1.SettlementPaymentListResponse
-	36, // 60: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:output_type -> warehouse.settlement.v1.SettlementTermsListResponse
-	38, // 61: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:output_type -> warehouse.settlement.v1.SettlementTermsSetResponse
-	40, // 62: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:output_type -> warehouse.settlement.v1.SettlementTermsDeleteResponse
-	54, // [54:63] is the sub-list for method output_type
-	45, // [45:54] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	56, // 20: warehouse.settlement.v1.SettlementEntryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	20, // 21: warehouse.settlement.v1.SettlementDailyRequest.filter:type_name -> warehouse.settlement.v1.SettlementDailyFilter
+	48, // 22: warehouse.settlement.v1.SettlementDayItem.by_source:type_name -> warehouse.settlement.v1.SettlementDayItem.BySourceEntry
+	49, // 23: warehouse.settlement.v1.SettlementDailyTotals.by_source:type_name -> warehouse.settlement.v1.SettlementDailyTotals.BySourceEntry
+	22, // 24: warehouse.settlement.v1.SettlementDailyResponse.days:type_name -> warehouse.settlement.v1.SettlementDayItem
+	23, // 25: warehouse.settlement.v1.SettlementDailyResponse.totals:type_name -> warehouse.settlement.v1.SettlementDailyTotals
+	4,  // 26: warehouse.settlement.v1.SettlementPayment.status:type_name -> warehouse.settlement.v1.SettlementPaymentStatus
+	25, // 27: warehouse.settlement.v1.SettlementPaymentRecordResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
+	25, // 28: warehouse.settlement.v1.SettlementPaymentConfirmResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
+	25, // 29: warehouse.settlement.v1.SettlementPaymentReverseResponse.payment:type_name -> warehouse.settlement.v1.SettlementPayment
+	32, // 30: warehouse.settlement.v1.SettlementPaymentListRequest.filter:type_name -> warehouse.settlement.v1.SettlementPaymentListFilter
+	5,  // 31: warehouse.settlement.v1.SettlementPaymentListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementPaymentListDataType
+	54, // 32: warehouse.settlement.v1.SettlementPaymentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	50, // 33: warehouse.settlement.v1.SettlementPaymentMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry
+	55, // 34: warehouse.settlement.v1.SettlementPaymentListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	34, // 35: warehouse.settlement.v1.SettlementPaymentListResponseItem.payment:type_name -> warehouse.settlement.v1.SettlementPaymentMapItem
+	35, // 36: warehouse.settlement.v1.SettlementPaymentListResponse.items:type_name -> warehouse.settlement.v1.SettlementPaymentListResponseItem
+	56, // 37: warehouse.settlement.v1.SettlementPaymentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	6,  // 38: warehouse.settlement.v1.SettlementTermsListRequest.data_request:type_name -> warehouse.settlement.v1.SettlementTermsListDataType
+	54, // 39: warehouse.settlement.v1.SettlementTermsListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	51, // 40: warehouse.settlement.v1.SettlementTermsMapItem.map_data:type_name -> warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry
+	55, // 41: warehouse.settlement.v1.SettlementTermsListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	39, // 42: warehouse.settlement.v1.SettlementTermsListResponseItem.terms:type_name -> warehouse.settlement.v1.SettlementTermsMapItem
+	40, // 43: warehouse.settlement.v1.SettlementTermsListResponse.items:type_name -> warehouse.settlement.v1.SettlementTermsListResponseItem
+	56, // 44: warehouse.settlement.v1.SettlementTermsListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	37, // 45: warehouse.settlement.v1.SettlementTermsSetResponse.terms:type_name -> warehouse.settlement.v1.SettlementTerms
+	8,  // 46: warehouse.settlement.v1.SettlementPositionMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementPosition
+	7,  // 47: warehouse.settlement.v1.SettlementEntryMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementEntry
+	25, // 48: warehouse.settlement.v1.SettlementPaymentMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementPayment
+	37, // 49: warehouse.settlement.v1.SettlementTermsMapItem.MapDataEntry.value:type_name -> warehouse.settlement.v1.SettlementTerms
+	11, // 50: warehouse.settlement.v1.SettlementService.SettlementPositionList:input_type -> warehouse.settlement.v1.SettlementPositionListRequest
+	16, // 51: warehouse.settlement.v1.SettlementService.SettlementEntryList:input_type -> warehouse.settlement.v1.SettlementEntryListRequest
+	21, // 52: warehouse.settlement.v1.SettlementService.SettlementDaily:input_type -> warehouse.settlement.v1.SettlementDailyRequest
+	26, // 53: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:input_type -> warehouse.settlement.v1.SettlementPaymentRecordRequest
+	28, // 54: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:input_type -> warehouse.settlement.v1.SettlementPaymentConfirmRequest
+	30, // 55: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:input_type -> warehouse.settlement.v1.SettlementPaymentReverseRequest
+	33, // 56: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:input_type -> warehouse.settlement.v1.SettlementPaymentListRequest
+	38, // 57: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:input_type -> warehouse.settlement.v1.SettlementTermsListRequest
+	42, // 58: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:input_type -> warehouse.settlement.v1.SettlementTermsSetRequest
+	44, // 59: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:input_type -> warehouse.settlement.v1.SettlementTermsDeleteRequest
+	14, // 60: warehouse.settlement.v1.SettlementService.SettlementPositionList:output_type -> warehouse.settlement.v1.SettlementPositionListResponse
+	19, // 61: warehouse.settlement.v1.SettlementService.SettlementEntryList:output_type -> warehouse.settlement.v1.SettlementEntryListResponse
+	24, // 62: warehouse.settlement.v1.SettlementService.SettlementDaily:output_type -> warehouse.settlement.v1.SettlementDailyResponse
+	27, // 63: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord:output_type -> warehouse.settlement.v1.SettlementPaymentRecordResponse
+	29, // 64: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm:output_type -> warehouse.settlement.v1.SettlementPaymentConfirmResponse
+	31, // 65: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse:output_type -> warehouse.settlement.v1.SettlementPaymentReverseResponse
+	36, // 66: warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList:output_type -> warehouse.settlement.v1.SettlementPaymentListResponse
+	41, // 67: warehouse.settlement.v1.SettlementTermsService.SettlementTermsList:output_type -> warehouse.settlement.v1.SettlementTermsListResponse
+	43, // 68: warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet:output_type -> warehouse.settlement.v1.SettlementTermsSetResponse
+	45, // 69: warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete:output_type -> warehouse.settlement.v1.SettlementTermsDeleteResponse
+	60, // [60:70] is the sub-list for method output_type
+	50, // [50:60] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_settlement_v1_settlement_proto_init() }
@@ -3042,23 +3412,23 @@ func file_warehouse_settlement_v1_settlement_proto_init() {
 		(*SettlementEntryListResponseItem_General)(nil),
 		(*SettlementEntryListResponseItem_Entry)(nil),
 	}
-	file_warehouse_settlement_v1_settlement_proto_msgTypes[23].OneofWrappers = []any{
+	file_warehouse_settlement_v1_settlement_proto_msgTypes[28].OneofWrappers = []any{
 		(*SettlementPaymentListResponseItem_General)(nil),
 		(*SettlementPaymentListResponseItem_Payment)(nil),
 	}
-	file_warehouse_settlement_v1_settlement_proto_msgTypes[25].OneofWrappers = []any{}
-	file_warehouse_settlement_v1_settlement_proto_msgTypes[28].OneofWrappers = []any{
+	file_warehouse_settlement_v1_settlement_proto_msgTypes[30].OneofWrappers = []any{}
+	file_warehouse_settlement_v1_settlement_proto_msgTypes[33].OneofWrappers = []any{
 		(*SettlementTermsListResponseItem_General)(nil),
 		(*SettlementTermsListResponseItem_Terms)(nil),
 	}
-	file_warehouse_settlement_v1_settlement_proto_msgTypes[30].OneofWrappers = []any{}
+	file_warehouse_settlement_v1_settlement_proto_msgTypes[35].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_settlement_v1_settlement_proto_rawDesc), len(file_warehouse_settlement_v1_settlement_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   38,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

@@ -36,7 +36,7 @@ func TestOrder_CancelConfirmed(t *testing.T) {
 	shopID := insertShop(t, db, 2, "Shop", "X2", "shopee")
 	id := placeOrder(t, svc, 2, shopID)
 
-	_, err := svc.OrderConfirm(ctx, connect.NewRequest(&sellingv1.OrderConfirmRequest{TeamId: 2, OrderId: id}))
+	_, err := svc.OrderConfirm(ctx, connect.NewRequest(&sellingv1.OrderConfirmRequest{TeamId: testWarehouse, OrderId: id}))
 	if err != nil {
 		t.Fatalf("confirm: %v", err)
 	}

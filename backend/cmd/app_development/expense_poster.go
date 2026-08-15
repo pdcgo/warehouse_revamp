@@ -30,7 +30,10 @@ func NewExpensePoster(expense *expense_v1.Service) inventory_v1.ExpensePoster {
 func (p *expensePoster) PostStockLoss(ctx context.Context, warehouseID uint64, amount int64, note string) error {
 	_, err := p.expense.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
 		TeamId:     warehouseID,
-		Kind:       expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL,
+		// STOCK_LOSS, not OPERATIONAL (owner, 2026-08-14). Shrinkage used to land in the same bucket as
+		// rent and electricity, which made "how much did we break this month" unanswerable — and that
+		// is the question a warehouse's own P&L is largely made of.
+		Kind:       expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS,
 		Amount:     amount,
 		OccurredAt: time.Now().Format("2006-01-02"),
 		Note:       note,

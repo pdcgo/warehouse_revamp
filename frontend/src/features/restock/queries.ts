@@ -1,52 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryClient, restockClient, userClient } from "../../api/clients";
+import { inventoryClient, restockClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
-import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
-import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { fetchActors, useActors } from "../users/queries";
 import type { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { restocksFromList, restockListRowData } from "./adapt";
 
 // The restock screens' reads (#176).
-
-// WHO DID WHAT — the PEOPLE behind a restock's user ids.
 //
-// A restock carries user IDS, not names — a person's name is not part of what was agreed, so it is
-// read live and never snapshotted onto the row. One `UserByIDs` call turns a screen's actors into
-// people, and it lives here because BOTH the list (a page of rows) and the detail (one row's
-// timeline) ask the same question of the same ids. Two copies of it is how one screen starts falling
-// back to "User #7" and the other to a blank.
-//
-// It returns the WHOLE `PublicUser`, not a name string. The list only needs the name, but the
-// timeline renders `UserItem` — avatar, name, @username — and a helper that had already thrown the
-// avatar away would force a second read of the same people to get the picture back.
-//
-// It never throws: a lookup that fails must not take the screen down with it, and every caller falls
-// back to naming the id — the same rule an unresolved rack follows.
-async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser>> {
-  const actors = new Map<string, PublicUser>();
-  const wanted = [...new Set(ids.filter((id) => id > 0n))];
-
-  if (wanted.length === 0) return actors;
-
-  try {
-    const users = publicUsersByIds(
-      await userClient.userByIDs({
-        filter: { ids: wanted },
-        dataRequest: userByIdsRowData(),
-      }),
-    );
-
-    for (const [id, u] of Object.entries(users)) {
-      actors.set(id, u);
-    }
-  } catch {
-    // Deliberately empty — see above.
-  }
-
-  return actors;
-}
+// WHO DID WHAT — `fetchActors` / `useActors` now live in the USERS domain (features/users/queries.ts).
+// They moved there when the order timeline needed the same lookup: resolving user ids to people is a
+// question about USERS, not about restocks, and the alternative was a second copy that would drift.
 
 export interface RestockListArgs {
   teamId: bigint | undefined;
@@ -256,13 +221,7 @@ export function useRestockRequest(args: { teamId: bigint | undefined; requestId:
 // `team_id` — a public user by id reads the same for everyone — so there is no per-team answer to
 // keep apart.
 export function useRestockActors(userIds: bigint[]) {
-  const wanted = [...new Set(userIds.filter((id) => id > 0n))].sort();
-
-  return useQuery({
-    queryKey: key.users(undefined, { actors: wanted.join(",") }),
-    enabled: wanted.length > 0,
-    queryFn: () => fetchActors(wanted),
-  });
+  return useActors(userIds);
 }
 
 // A restock's lifecycle is the reason this is broad.

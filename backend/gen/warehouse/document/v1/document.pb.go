@@ -33,6 +33,15 @@ const (
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_GENERAL         DocumentResourceType = 1 // private: any uploaded document (pdf/image)
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE DocumentResourceType = 2 // public: a user avatar image
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE   DocumentResourceType = 3 // public: a product catalogue image (gets a thumbnail)
+	// PRIVATE: the shipping receipt attached to an order — a photo of the courier's slip, or the PDF
+	// the marketplace prints (owner). Named rather than filed under GENERAL so the documents table
+	// says what the file IS: it is what makes "every receipt for this team" a query rather than a
+	// guess, and it is the hook any later retention rule hangs on.
+	//
+	// Private on purpose. A receipt names the buyer and where the parcel went, which is not something
+	// to serve from a URL that works for anyone who ever holds it — it is read through a short-lived
+	// signed URL by somebody who belongs to the team.
+	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT DocumentResourceType = 4
 )
 
 // Enum value maps for DocumentResourceType.
@@ -42,12 +51,14 @@ var (
 		1: "DOCUMENT_RESOURCE_TYPE_GENERAL",
 		2: "DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE",
 		3: "DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE",
+		4: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
 	}
 	DocumentResourceType_value = map[string]int32{
 		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":     0,
 		"DOCUMENT_RESOURCE_TYPE_GENERAL":         1,
 		"DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE": 2,
 		"DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE":   3,
+		"DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT":   4,
 	}
 )
 
@@ -587,12 +598,13 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\x16GetDownloadUrlResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12&\n" +
 	"\x0fexpires_at_unix\x18\x02 \x01(\x03R\rexpiresAtUnix\x12\x16\n" +
-	"\x06public\x18\x03 \x01(\bR\x06public*\xb8\x01\n" +
+	"\x06public\x18\x03 \x01(\bR\x06public*\xe2\x01\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
 	"&DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE\x10\x02\x12(\n" +
-	"$DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE\x10\x032\xd8\x02\n" +
+	"$DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE\x10\x03\x12(\n" +
+	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x042\xd8\x02\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
 	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +

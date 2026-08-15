@@ -206,6 +206,7 @@ erDiagram
     shops ||--o{ shop_users : "shop_id"
     shops ||--o{ orders : "shop_id"
     orders ||--o{ order_items : "order_id"
+    orders ||--o{ order_events : "order_id"
     order_drafts ||--o{ order_draft_items : "draft_id"
 
     shops {
@@ -231,7 +232,7 @@ erDiagram
         bigserial   id               PK
         bigint      team_id          "owning SELLING team, opaque, no FK"
         bigint      shop_id          FK "-> shops(id)"
-        text        status           "OrderStatus enum as text (placed/confirmed/cancelled); no CHECK"
+        text        status           "OrderStatus as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
         text        customer_name    "required"
         text        customer_phone
         text        provinsi_code    "frozen address snapshot: opaque region_service code, no FK"
@@ -248,7 +249,12 @@ erDiagram
         bigint      subtotal         "whole rupiah"
         bigint      shipping_cost
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
-        bigint      total
+        bigint      total              "subtotal + shipping_cost"
+        bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
+        text        note                "free text for the people handling the order; nothing reads it, '' = none"
+        text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
+        text        receipt_filename    "snapshot of what the receipt was called when attached"
+        text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -262,6 +268,15 @@ erDiagram
         int         quantity   ">= 1"
         bigint      unit_price "whole rupiah snapshot"
         bigint      unit_cost     "per-unit cost frozen at order time (#74); server-set, 0 = unknown"
+        timestamptz created_at
+    }
+
+    order_events {
+        bigserial   id            PK
+        bigint      order_id      FK "-> orders(id), ON DELETE CASCADE"
+        text        kind          "OrderEventKind as text (placed/confirmed/picking/packed/shipped/cancelled); no CHECK"
+        bigint      actor_user_id "who did it — opaque user_service id, no FK; 0 = not recorded"
+        timestamptz at            "WHEN IT HAPPENED — not when the row was written"
         timestamptz created_at
     }
 
@@ -320,6 +335,28 @@ erDiagram
   through the shop's team (the request carries the team_id, and the handler verifies the shop
   belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
   the grants when a shop is hard-deleted.
+- **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
+  read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
+  claim that something happened at a moment, and a mutable history is not a history.
+  - **The events and `orders.status` are BOTH kept, and neither derives the other.** The column says
+    where the order is NOW — which is what the list filters, sorts and counts on, and what a child
+    table cannot do cheaply — while the events say what happened, when, and *by whom*. The column has
+    never carried a person; the row is the only thing that can.
+  - **Written at ONE choke point.** Every transition passes through `setOrderStatus`, which stamps the
+    status and appends the event under the same timestamp, inside the same transaction. Placement
+    appends its own in `placeOrder`, so both doors into `orders` (the form and a promoted draft) open
+    the same history. A handler that had to remember the line would eventually not, and the gap is
+    invisible until somebody opens the order weeks later.
+  - **`actor_user_id = 0` means "not recorded"**, never "nobody" — every row the 00011 backfill wrote
+    is in that state, because the orders table never captured who did anything. The timeline renders
+    such a step with its date and no person rather than guessing.
+  - **A short history is honest, not missing data.** The backfill could write at most two events per
+    old order — `placed` from `created_at`, and its current status from `updated_at` — so an order that
+    shipped last month shows two steps, not six. The steps in between were never written down, and
+    inventing plausible ones would make every step untrustworthy rather than just those.
+  - **No `UNIQUE (order_id, kind)`.** The lifecycle keeps `confirmed` singular (only a placed order can
+    be confirmed), exactly as it is what keeps `status` honest — and a future kind that legitimately
+    repeats must not need a migration to be allowed.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
   as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
   **`margin = total − cogs − shipping_cost`** is computable from the order alone.
@@ -459,7 +496,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -478,7 +515,9 @@ erDiagram
   Team-scoped (`team_id` opaque, no FK). `status` goes `pending` → `active` on ConfirmUpload, which
   also moves `object_key` from the `incoming/` prefix to `assets/`. `public_url`/`thumbnail_url` are
   set only for public resource types (`profile_picture`, `product_image`); an image upload also gets
-  a generated thumbnail.
+  a generated thumbnail. `order_receipt` (an order's courier slip or the marketplace's PDF) is
+  **private** like `general` — it names a buyer and an address, so it is read through a short-lived
+  signed URL rather than a stable public one.
 
 ---
 

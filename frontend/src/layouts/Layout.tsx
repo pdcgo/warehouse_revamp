@@ -77,11 +77,16 @@ export function Layout() {
       ? location.pathname === "/"
       : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
+  // An item matches its own route, and any route it has CLAIMED without linking to (`alsoMatches`) —
+  // the drafts screen belongs to Orders that way.
+  const matchesItem = (item: MenuItem) =>
+    matchesPath(item.to) || (item.alsoMatches?.some(matchesPath) ?? false);
+
   // The active route is the item whose `to` is the LONGEST matching prefix — so on /products/discover
   // only "Discover Product" lights up, not "My Product" too, while a detail route like /products/123
   // still lights up its parent "My Product" (#119). One winner, never a whole sub-menu at once.
   const activeTo = flatItems
-    .filter((item) => matchesPath(item.to))
+    .filter(matchesItem)
     .sort((a, b) => b.to.length - a.to.length)[0]?.to;
 
   // The current page's label, derived from the active route — drives the top-bar breadcrumb/title.

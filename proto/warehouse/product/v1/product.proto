@@ -323,6 +323,32 @@ message ProductDiscoverRequest {
   ProductListFilterSort sort = 3;
   repeated ProductListDataType data_request = 4;
   warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+
+  // Leave out the CALLER'S OWN products, so this answers "what can I sell that is somebody else's"
+  // rather than "everything sellable". Set by a picker that offers *My products* and *Other teams'
+  // products* as separate tabs, where the two overlapping would mean the same row appearing twice
+  // with no way to tell which tab it belonged to.
+  //
+  // Server-side, and it has to be: the result is PAGINATED, so dropping own-team rows in the client
+  // would narrow the loaded page while `total_items` went on counting them — a pager offering page 4
+  // of a list that ends at page 3.
+  //
+  // A field on the REQUEST rather than in ProductListFilter, because that filter is shared with
+  // ProductList, where "everyone except me" describes an empty set.
+  bool exclude_own_team = 6;
+
+  // Only products owned by THIS team. 0 = every team, which is the default.
+  //
+  // The lens for "I know whose product I want" — cross-team discovery returns every sellable product
+  // in the system, and by the time there are a dozen selling teams a search box alone means scrolling
+  // somebody else's catalogue to find the one you meant.
+  //
+  // Server-side for the same reason `exclude_own_team` is: the result is paginated, and a filter
+  // applied after the page has loaded narrows the rows while the count keeps describing the whole set.
+  //
+  // Set alongside `exclude_own_team` it simply intersects — naming your OWN team while excluding it
+  // returns nothing, which is the honest answer to a contradictory ask rather than an error.
+  uint64 owner_team_id = 7;
 }
 
 message ProductDiscoverResponse {

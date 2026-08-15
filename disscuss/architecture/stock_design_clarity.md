@@ -1,96 +1,143 @@
 # Clarity — `stock_design.md`
 
-Critique, questions and warnings about [stock_design.md](stock_design.md). That doc is yours; this
-one is mine. Re-examined whenever you update it — answered points are **deleted** here, not struck
-through, so this file is always the *current* open set.
+Critique, questions and warnings about [stock_design.md](stock_design.md). That doc is yours; this one
+is mine. Answered points are **deleted**, so this is always the current open set.
 
-> **Last pass:** `inventory_transactions.type` was added — that closes the "no way to tell what caused
-> a ledger entry" critique, deleted. The enum it lists, and the new `orders` table beside it, open the
-> two contradictions below.
+> **Full re-examination.** This file had grown to 4× the doc it tracks by appending on every save —
+> the thing `disscuss/` is supposed to avoid. Rewritten tight. Nothing dropped that is still open.
+>
+> **Closed since last pass:** `inventory_transactions.status` exists · `warehouse_transfer_teams` is
+> declared a query-side dictionary · deleted places mangle `code` so it can be reused · the Accept
+> participant is now named `Restock Accept Mutation`.
 
 ---
 
 # Contradiction
 
-## Stock declares a ledger, and then designs a schema without one
+## `float64` is a worse answer to division, not a better one
 
-Five statements, and they cannot all be true.
+> *"The reason valuation used `float64` is because later in cogs Price there is additional price that
+> calculate and divided by quantity."* — `## General Brief` item 2
 
-| where | says |
+The premise is right and it is the strongest reason to **drop** float. Division by quantity produces a
+non-terminating value, so **the remainder has to go somewhere.** Float does not solve that — it hides
+where, and picks a binary approximation you cannot audit. A 1,000 shipping fee over 3 units:
+
+| type | the three unit costs | × 3 |
+| --- | --- | --- |
+| `float64` | 333.33333333333331… | **999.99999999999989** ≠ 1000 |
+| `numeric(_,2)`, remainder to the last | 333.33 · 333.33 · 333.34 | **1000.00** ✅ |
+| `int64` rupiah, remainder to the last | 333 · 333 · 334 | **1000** ✅ |
+
+Float is *also* inexact here — it just fails at the 13th decimal instead of the 2nd, and it fails
+silently. **The 4-digit comparison rule fixes comparison and not the two things underneath it:**
+
+- **`SUM()` over `float8` is not deterministic in Postgres.** Addition is not associative in floating
+  point, and parallel aggregation accumulates partial sums in whatever order the workers finish. The
+  same reconcile query over the same unchanged rows can return two different totals on two runs — so
+  the value being compared is itself unstable, and a tolerance cannot fix an unstable input.
+- **Drift accumulates, a fixed epsilon does not.** 1e-4 is comfortable for a hundred movements and not
+  for ten million. The failure mode is that it holds for a year and then starts tripping, with no way
+  to tell when the error entered — and the tempting fix is to widen the epsilon.
+
+**→ `int64` rupiah.** Rupiah has no sub-unit in practice, so a fractional currency value is never a real
+quantity, and four digits of precision are being spent compensating for an error the type introduced.
+Integer division forces you to *state* where the remainder goes, which is auditable and reconciles to
+the bank. If sub-rupiah unit costs are genuinely needed (a screw at 33.3), scale the integer — store
+`unit_cost` in 1/100 rupiah, or store the line total and derive the unit.
+
+**If float stays, that is your call — but then write the weaker guarantee down.** `## Ledger Log.` says
+the log *is* the source of truth for state. With float it reproduces state *to within a tolerance*, so
+the doc should say: the tolerance is 1e-4, reconcile compares within it, and a difference below it is
+not evidence of a bug. Silence there is what makes a future discrepancy unarguable in both directions.
+
+⚠ **The same reasoning covers all eight money columns** — `valuation_balance`, `unit_price`,
+`stock_accepted_valuation`, `valuation_change`, `valuation_balance_after`, `restocks.total`,
+`restock_items.total`, and both fees. Quantity as `int` is already right.
+
+## In-transit goods have nowhere to be
+
+`warehouse_transfers` has dispatch and accept transactions, so goods are on a truck for hours or days.
+Accept guideline 1 says *"there is no unplaced goods."*
+
+| mid-transit, the ledger says | |
 | --- | --- |
-| [mutation_and_ledger.md](mutation_and_ledger.md) `## Ledger Log.` | *"cannot change the `State` without log recorded in `Ledger Log`"* |
-| `## Implementing The Ledger` (this doc) | state holds `stock_balance` / `valuation_balance`, the log holds their `change` / `after` |
-| `## Entity Relationship.` (this doc) | **no `ledger_state` table. No `ledger_logs` table.** The schema that would hold the above does not exist in it |
-| `## Flow Of Create Restock.` (this doc) | opens a transaction, inserts a restock row, closes it — no ledger write |
-| [mutation_and_ledger.md](mutation_and_ledger.md) stat flow | the event is *"restock_id **+ ledger log**"* — there is no ledger log to send |
+| decrement source at dispatch, increment destination at accept | stock exists **nowhere** for the whole journey |
+| move nothing until accept | source shows goods that are not on its shelves |
+| **an in-transit place** | ✅ every rule still holds |
 
-The ER diagram is the strongest site: `## Implementing The Ledger` is a *statement of intent*, and the
-schema right below it is where that intent either exists or does not.
+**→ The third — and the `rack` → `places` rename already paid for it.** Not every location is a rack; a
+truck is one more non-rack place. Dispatch and accept become two ordinary placement movements, both
+logged.
 
-**→ Recommend:** pick the fork, then make the ER diagram carry the answer.
+## The two ledgers must agree and nothing says so
+
+`sum(batches.stock_balance) == sum(product_placements.qty_balance)`, per product per warehouse. Two
+mutations, two grains, no constraint. Any operation that writes one and forgets the other drifts
+silently — no error, and reconcile has no rule to check.
+
+**→ State it, write both in one transaction (Accept already opens one), and check it nightly.** Both
+logs now carry `inventory_transaction_id`, so the per-event form is available:
+`sum(qty_change) == sum(stock_change)` for each transaction.
 
 ```mermaid
 flowchart TB
-  Q["does Create Restock move stock?"]
-  Q -->|yes| A["add stock_ledger_state and stock_ledger_logs<br/>to the ER, and the ledger write to the flow"]
-  Q -->|"no — only Accept moves it"| B["then the TEMPLATE is wrong"]
-  B --> C["mutation_and_ledger.md names its actor<br/>'Restock Create Mutation'<br/>and has it writing the ledger"]
-  C --> D["rename it 'Restock Accept Mutation'"]
-  B --> E["and this doc still needs a Flow Of Accept Restock,<br/>which is where the ledger tables appear"]
+  M["one stock movement"] --> B["batch ledger — which lot"]
+  M --> P["placement ledger — which shelf"]
+  B --> S["sum per product per warehouse"]
+  P --> S
+  S --> OK["must be equal — unstated, unchecked"]
 ```
 
-I lean **no — only Accept moves stock**: goods announced but not received are not on a shelf, and a
-warehouse that counts them is lying to itself. But then the template's worked example is the misleading
-one, and it is what every other service will copy.
+## A cancellation reuses the original transaction
 
-**Three changes now point that way without saying it:**
+*(Locking and the enclosing transaction are elided by the section's own note — nothing here is about
+those.)* The flow gets the hard half right: append-only compensation, both ledgers. But it does
+`update status` on the original and appends the reversal under it.
 
-| change | what it implies |
+- `sum(stock_change)` for that transaction becomes **zero** — "moved 100" and "moved 100, gave it back"
+  are indistinguishable, which is exactly the check above.
+- The transaction is typed `restock` while half its rows are a reversal. `return` and `adjustment` are
+  in the enum and go unused.
+- Nothing links a reversal to what it reverses.
+
+**→ Mint a new transaction typed `adjustment`, referencing the original, with `reverses_id` on the log
+rows.** `update status` still makes sense as a flag, not as the record of the movement.
+
+⚠ **Still unanswered, and not a locking question:** cancel a restock accept after 30 of its 100 units
+sold and `−100` drives the batch negative. **Refuse once the batch has been touched** — the alternative
+is a stocktake adjustment wearing a cancellation's name.
+
+## The transaction type list is missing two values that now have flows
+
+`type` is *"order, return, adjustment, transfer_in, transfer_out, broken, and lost"*. Two of this doc's
+own flows have no type in it:
+
+| flow | type it would use |
 | --- | --- |
-| `## Flow Of Accept Stock.` exists as its own section | Accept is a distinct operation, not a status flip |
-| `re \|o--o\| tx` — weakened from `\|\|--\|\|` | a restock can exist with **no** transaction, so the transaction is minted later |
-| Accept's actor is **`wusr`**, Create's is **`susr`** | *different people*: the selling team announces, the warehouse team receives |
+| `## Flow Of Create Restock.` / Accept — and `re \|o--o\| tx` says a restock points at a transaction | **`restock`** — none of the seven fit |
+| `## How We Moving Goods Between Placements.` | **`move`** — it is not a transfer, which is between *warehouses* |
 
-The third is the one I find most convincing, and it is a warehouse argument rather than a schema one —
-the person who says goods are coming is not the person who puts them on a shelf, so the count cannot
-move on the first one's say-so. It is still only implied: the fork is not resolved until a sentence
-says which mutation moves stock, and the template's `Restock Create Mutation` is renamed to match.
+**→ Add both.** That list is the most valuable line in the ERD: it reads as the complete inventory of
+things that move stock, so a gap in it is either a flow nobody typed or a flow nobody designed. It has
+now been the second on two occasions.
 
-## The transaction type list has no value for a restock
+## `orders` crosses a service boundary — and you already drew the fix
 
-`inventory_transactions.type` is *"order, return, adjustment, transfer_in, transfer_out, broken, and
-lost"*. Two lines below it, `re |o--o| tx` says a restock points at one. **A restock is none of those
-seven** — goods arriving from a supplier is not a transfer between warehouses, and it is not an
-adjustment.
+`ord |o--o| tx` is a real FK, but `order.go` lives in `selling_service/selling_service_models/` while
+these tables live in `inventory_service/`. HARD RULE 3: *"a model belongs to exactly one service … that
+is a contract question (an RPC)."*
 
-**→ Recommend:** add `restock` (and, once Accept exists, decide whether accept is a *second*
-transaction or the same one completing). Also — the list reads as the union of everything that ever
-moves stock, which makes it the most valuable line in the ER: it is a complete inventory of the
-mutations this design owes a flow to.
+**→ The placements ERD already shows the right pattern** — `tx[inventory_transactions]` drawn as a bare
+entity with a note that it is defined elsewhere. Do that for `orders`, or if this row is inventory's own
+record *about* an order (its columns suggest so), rename it — `orders` is selling's name for a different
+thing.
 
-## The ER crosses a service boundary
+## The template still says `Restock Create Mutation`
 
-`orders` appears as a table with `ord |o--o| tx` drawn to `inventory_transactions`. But **`order.go`
-lives in `selling_service/selling_service_models/`**, while the inventory tables live in
-`inventory_service/inventory_service_models/`. HARD RULE 3: *"A model belongs to exactly one service.
-If two services need the same data, that is a contract question (an RPC), not a reason to share a model
-package."* An FK between them is exactly the coupling that rule forbids.
-
-**→ Recommend:** if `orders` is drawn as *context* — showing where an `order`-type transaction comes
-from — mark it so, and drop the relation line. If it is a real FK, it is not implementable as drawn:
-carry `order_id` as a plain uint reference with no constraint, and treat resolving it as an RPC.
-
-```mermaid
-flowchart LR
-  subgraph "selling_service"
-    O["orders"]
-  end
-  subgraph "inventory_service"
-    T["inventory_transactions<br/>type = order"]
-  end
-  O -. "❌ FK across services — HARD RULE 3" .-> T
-  O == "✅ plain order_id + an RPC to resolve it" ==> T
-```
+This doc now names its participant **`Restock Accept Mutation`** and puts `StockMutation` in Accept, not
+Create. [mutation_and_ledger.md](mutation_and_ledger.md) line 37 still teaches the opposite lifecycle,
+and it is the doc every other service copies. **→ Rename it there.**
 
 ---
 
@@ -98,71 +145,46 @@ flowchart LR
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **The ER's tables and its relations do not yet agree with the design.** (a) **`restock_items` has no product, no quantity, no cost** — so a restock still cannot say *what* or *how many*, and there is nothing for a ledger change list to be built from. (b) **`batches` has only `id` and no relation** — yet `batch_id` is the declared smallest grain of the whole ledger, so the grain has no schema behind it. (c) **`re \|o--o\| tx` says the transaction is OPTIONAL, but `restocks.inventory_transaction_id` is a plain `uint`** — a non-nullable integer cannot express "none", so absence becomes `0`, a magic sentinel that joins to nothing and reads as a real id in every query that forgets to exclude it. (d) **`type` is an unconstrained `string`** — seven values written in a comment is a spec, not a constraint, so `"transfer_in"` and `"transfer-in"` both insert cleanly. | (a) `restock_items`: `product_id` (or `batch_id`), `qty`, `unit_cost`. Its `qty` × `unit_cost` **is** the ledger change list, so this is the table the whole design rests on. (b) Link `batches` to `warehouse_products` and give it what makes it a batch — supplier, cost, expiry, received-at. (c) Make the column **nullable** (`*uint`) and say when it is filled. If it is filled at Accept, that is the contradiction above answering itself in the schema — write it down rather than leaving it implied by a cardinality glyph. (d) A proto enum or a check constraint, so the seven values are enforced where they are stored. |
-| **2** | **The transaction is not the atomicity boundary.** (a) `upsert product` runs *before* `Open Transaction`, so a failed restock insert leaves an orphan `warehouse_products` row with nothing to clean it up — and it is an unguarded concurrent write. (b) There is **no commit/rollback branch**: the template has `alt Error Happen → rollback / else → commit`, this has an unconditional `Close Transaction`. | Move the upsert **inside** the transaction as `INSERT … ON CONFLICT DO UPDATE`, and draw the `alt`. Everything the request writes should commit or vanish together. |
-| **3** | **`inv->>pub` fires AFTER commit, outside the transaction.** Crash between `Close Transaction` and the publish and the event is gone permanently — the restock is real, the stat never hears of it, nothing detects the gap. This is [`mutation_and_ledger_clarity.md`](mutation_and_ledger_clarity.md) critique #7 in its first concrete instance, on the highest-volume write in the system. | A **transactional outbox**: write the event row in the same transaction, a relay publishes it. If you would rather not, say explicitly that midnight reconcile is the recovery path — but reconcile cannot rebuild what was never ledgered, so that only works after the contradiction above is resolved. |
-| **4** | **`stock valuation → float64`.** Binary float cannot represent `0.1`, so `sum(valuation_change)` and the stored balance drift apart. Quantity as `int` is right and closes half of this — valuation is the half that breaks the rule `## Ledger Log.` committed to. | **`numeric`**, or integer minor-units (rupiah has no sub-unit in practice, so `int64` rupiah is exact and fastest). Not float. |
-| **5** | **Can one batch sit in more than one rack?** If yes, `batch_id` is **not** the smallest grain for *quantity* — `(batch_id, rack_id)` is — and the ledger cannot answer "how many of this batch are on that shelf". That is what a person standing at the shelf during a stocktake is asking, so a count they cannot reconcile is a count they cannot trust. | If a batch can span racks, scope quantity at `(batch_id, rack_id)`. If a batch lives in exactly one rack by definition, **say that sentence** — it is load-bearing and currently only implied. |
-| **6** | **Quantity and valuation may not HAVE the same natural grain.** Quantity is physical and belongs where the goods are. Valuation is an accounting fact about the *batch* — it does not sit on a shelf. Scope both at `(batch_id, rack_id)` and valuation fragments across racks arbitrarily. Scope both at `batch_id` and per-rack quantity is lost (#5). | Be willing to split: **quantity scoped `(batch_id, rack_id)`, valuation scoped `batch_id`** — two `ledger_state` tables, each with its own log. Not against the template: the template is *per ledger*, and this is two ledgers. |
-| **7** | **If `rack_id` enters the scope, "unplaced" makes it NULLABLE — and that breaks uniqueness.** This system treats unplaced stock as a real state, not an absence (why `RackSelect` keeps "unplaced" selectable). A nullable `rack_id` hits Postgres `NULL != NULL`: the unique index stops constraining, duplicate state rows appear, and the upsert loses its conflict target. | Never NULL in a scope column. Use a **sentinel "unplaced" rack row** so every state row has a real `rack_id`. |
-| **8** | **The real problem with valuation is DIVISION, and the column type alone does not fix it.** Average cost is `total / qty`, non-terminating the moment qty is 3. Round the derived unit cost and `333.33 × 3 = 999.99` against a `1000.00` balance — `sum(change) != balance` returns by a different door whatever the type. | Round the **`change`**, never the derived unit cost, and give the remainder its own log row. Then replay reproduces state exactly. |
-| **9** | **`int` quantity needs its BASE UNIT stated.** "3" of what — pieces, grams, ml? If anything is ever sold by weight, the base unit is the difference between `int` working and `int` forcing a migration of every ledger row. | One line: *quantity is an integer count of the product's base unit, fixed per product.* |
-| **10** | **The per-measure shape is decided in the INSTANCE, but it is a TEMPLATE rule.** You answered it fully — one `change`/`after` pair per measure. [mutation_and_ledger.md](mutation_and_ledger.md) still shows a single pair and never mentions measures, so the next service invents its own. | Promote it into the template. Stock then reads as an instance of a stated rule. |
-
-```mermaid
-erDiagram
-  warehouse_products ||--|{ batches : "critique 1a — this line does not exist yet"
-  restocks ||--|{ restock_items : "critique 1b — this table does not exist yet"
-  batches ||--|{ stock_ledger_state : "the contradiction — neither does this"
-```
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant inv as "Inventory RPC"
-  participant db as "Database"
-  participant pub as "Pub/Sub"
-  participant st as "Stat"
-  Note over inv,pub: critique 3 — the gap the current flow leaves open
-  inv->>db: Close Transaction — restock COMMITTED
-  Note over inv: process dies here
-  inv--xpub: send event create restock
-  Note over st: the restock is real and the stat never hears of it
-```
-
-```mermaid
-flowchart TB
-  subgraph "critiques 5 and 6 — one grain cannot answer both questions"
-    Q["quantity — physical<br/>'how many on THIS shelf?'"]
-    V["valuation — accounting<br/>'what did this batch cost?'"]
-  end
-  Q --> QG["natural scope<br/>(batch_id, rack_id)"]
-  V --> VG["natural scope<br/>batch_id"]
-  QG --> S["one shared ledger_state row<br/>scoped batch_id<br/>❌ loses per-rack quantity"]
-  VG --> S
-  QG --> T["two ledgers, own scope each ✅"]
-  VG --> T
-```
+| **2** | **The COGS formula has a 10× ambiguity and no rounding rule.** `(ShippingFee + WarehouseOpsFee) / ProductQtyCount` — if `ProductQtyCount` is *this line's* quantity, every product absorbs the whole freight and a 3-line restock books it three times. Both readings are grammatical. And the division does not terminate, so `unit_price × quantity` never sums back to what was paid. | Write it `TotalRestockQty` and say so in words — a wrong reading here is silent, the numbers just come out multiples too high. Round the **change**, never the unit cost, and give the remainder its own log row. |
+| **2b** | **Apportioning freight by QUANTITY distorts cost.** 100 screws and 1 machine on one delivery each carry the same freight. Every downstream margin inherits it. | **By value** — `fee × (line total / goods total)`. Self-balancing, needs no weight data. If freight really tracks bulk, the honest basis is weight and that means a weight column. Whichever you pick *is* the definition of cost here. |
+| **3** | **The publish fires after the transaction closes — in all THREE flows now.** Create, Accept, and Move all `Send Event` after `Close Transaction`, so it is the only step in the system that can succeed or vanish independently of the writes it describes. Crash in between and the stock moved while the stat never hears: no error, no retry, nothing detects it. Three sites means it is the shared write path's default, not an oversight in one diagram. | **Transactional outbox** — event row written inside the transaction, a relay publishes after commit. The transaction already exists in all three, so this is one insert. Fix it once in the shared path and every flow after inherits it. |
+| **4** | **`places.is_deleted` can hide stock the ledger still counts.** Soft-delete a place holding 90 units and the shelf vanishes from every list while the 90 stays in the ledger — invisible, still in totals, unfindable by walking the warehouse. Mangling `code` on delete solves reuse, not this. | **Refuse the delete while any `product_placements` row under it is non-zero.** Goods must be moved off first, which is a real ledger movement and what should happen physically. |
+| **5** | **`placement_logs` cannot say which product moved.** It has `placement_id` (→ `places`, per the edge) and no `product_id`, but state is keyed `(place, product)`. So a row reads "place 4, tx 91, −12" and cannot be joined to the state row it explains. | **Point it at the state row, as the batch side does** — `batch_logs.batch_id` → `batches`. Use `product_placement_id` → `product_placements`, edge `pst \|\|--o{ pllog`. Restores the product without a column and makes both ledgers structurally identical. |
+| **6** | **`product_placements` does not declare its composite unique.** Item 4 says `(placement_id, product_id)` must be — `places` states its constraint inline, so this reads as an oversight. It is the ledger's `ON CONFLICT` target: without it two concurrent Accepts onto one shelf insert two rows and the balance splits in half, silently. | Declare it inline. This is the one constraint that cannot be added quietly later — once duplicates exist the migration that adds the index fails. |
+| **7** | **No `warehouse_transfer_items`, so Accept has nothing to verify against.** The transfer says where from, where to and which teams — never *what*. A short delivery is not a discrepancy, it is whatever the receiver types. | `transfer_id`, `batch_id`, **`qty_dispatched` and `qty_accepted`**. The difference *is* the discrepancy, visible without a join, and `adjustment` / `lost` already exist to absorb it. |
+| **8** | **`warehouse_transfers` details.** (a) **`dispath_…` is misspelled** — it becomes the struct field and the migration. (b) `accept_inventory_transaction_id` is non-nullable, but "dispatched, not yet arrived" is the normal state for the whole journey, so `0` stands in for "not yet". (c) `\|\|--\|{` says one-to-many where there are two distinct FKs. (d) `status` lists no values. | (a) `dispatch_…`. (b) `*uint`, null until received — that null **is** the in-transit state and is what an "awaiting receipt" screen filters on. (c) Two edges. (d) List them or use an enum. |
+| **9** | **Both logs are unattributable.** No `actor_id` on `batch_logs` or `placement_logs`. With two people working one shelf, "which of us wrote this" is the first question a wrong count raises. | Add it to both. |
+| **10** | **Three stored totals, no stated invariant** — `restock_items.total`, `restocks.total`, the two fees. Each is derivable from what is below it, so each can drift, and `restocks.total`'s scope is undefined (goods only, or goods + fees?). | Say what it includes, and assert the chain: `restocks.total` = `sum(items.total)` + fees = `sum(valuation_change)` across the batches minted. That catches #2 the day it happens. |
+| **11** | **Smaller schema points.** (a) `batches` carries `warehouse_id` + `product_id`, the pair `warehouse_products` declares unique — two sources for one relationship. (b) `bclog }\|--\|\| bch` is correct but its label still reads `"many of many"`. (c) `batch_logs.updated_at` — `placement_logs` correctly omits it, so the two disagree about whether a log row is mutable. (d) `warehouse_transfer_teams` has no composite unique and no edge. | (a) `warehouse_product_id`. (b) `"has many"`. (c) Drop it — that column is the difference between an audit trail and a table. (d) Unique on `(transfer_id, owner_team_id)`, and say it is written in the same transaction as the contents: a scoping dictionary that drifts is an authorization bug, not a display one. |
+| **12** | **Naming.** (a) `unit_price` is fixed at accept — its comment says so, but the comment stays in the doc while the name goes into the code, beside two columns that do move. (b) `place` is the verb this domain uses all day, and `places` is now a table. (c) `product_placements` / `placement_logs` do not pair the way `batches` / `batch_logs` do. | (a) `unit_cost_at_receipt`. (b) `locations` carries the same generality without colliding with the verb. (c) Pick one prefix. ⚠ The rename also reaches `RackSelect.tsx`, `features/racks/`, the `racks.select.unplaced` key and `rack.go` — a real cost to schedule, and a half-done rename leaves the UI saying "rack" while the ledger says "place". |
+| **13** | **Loose ends.** (a) Neither flow draws an `alt` for commit vs rollback. (b) Create does not draw the `recost` insert, though `recost \|\|--\|\| re` makes it mandatory. (c) The `warehouse_products` upsert is fine outside the transaction, but must be `ON CONFLICT DO NOTHING` or two concurrent restocks for one product fail on the unique index. (d) `int` quantity needs its base unit stated — "3" of what. | Each is a line. (c) is the one that produces a user-visible error today. |
+| **14** | **The per-measure rule lives in the instance, not the template.** You settled it here — one `change`/`after` pair per measure, twice over. [mutation_and_ledger.md](mutation_and_ledger.md) still shows a single pair and never mentions measures, so the next service invents its own shape. | Promote it. |
 
 ---
 
 # Question
 
-1. **Does Create Restock move stock, or only Accept?** (contradiction) The one I need most — it decides
-   whether this flow and this ER are missing the ledger, or the template's example is mislabelled.
-   I lean **only Accept**.
-2. **Can a batch occupy more than one rack?** (#5) Decides the scope, and the scope decides the tables.
-3. **One ledger for both measures, or two?** (#6) I recommend **two**.
-4. **Valuation type — `numeric`, or integer rupiah?** (#4) I recommend **integer rupiah (`int64`)**.
-5. **Outbox, or reconcile-as-recovery?** (#3) I recommend the **outbox**.
+1. **Where do in-transit goods live?** I recommend an in-transit place — it is the only option that keeps "no unplaced goods" true.
+2. **Is cancellation refused once the batch has been touched?** I recommend yes.
+3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
+4. **Valuation type — `numeric` or integer rupiah?** I recommend `int64` rupiah.
 
 ---
 
 # Awaiting
 
-- **`## Batch`** — one line, saying what a batch is **for** but not what it **is**. Three things written
-  there would **close** open points rather than add to them: whether a batch can be in more than one
-  rack (settles #5, #6); whether a batch is per receipt or per product-per-supplier-per-cost (decides
-  whether #8's rounding is one-time or recurring); and whether a batch can be **split or merged** — if
-  yes, the ledger needs that as an explicit movement, or balances change with no log entry.
-- **`## General Brief` item 2** — *"important thing component should be know in this design."* is a stub.
+- **`## How We Moving Goods Between Placements.`** — the transaction is opened and closed with the work
+  not yet between them, and `mut as Move Mutation` is declared but unused. One thing worth confirming
+  when you fill it in, because it is the first operation that touches only **one** ledger: a move is
+  **two placement entries under one transaction** (−20 at Place 1, +20 at Place 2) and **no batch entry
+  at all** — the lot did not change, only where it sits. That is correct, and the cross-ledger invariant
+  survives it: the placement side nets to zero, the batch side has no rows, and `0 == 0` holds. Worth
+  saying explicitly in the doc, because "some transactions write only one ledger" is exactly the sort of
+  exception that gets coded as a bug the first time someone asserts both must move.
+
+- **`## Batch`** — still one line, saying what a batch is *for* but not what it *is*. Two things would
+  close open points: whether a batch is per receipt or per product-per-supplier-per-cost (decides
+  whether #2's rounding is one-time or recurring), and whether a batch can be **split or merged** — if
+  yes, that is a ledger movement, not an edit.
+- **`batch_logs.reason`** is new and unconstrained. If it is for adjustments, it may want the same enum
+  treatment as `type`; if it is free text for a human, say so.

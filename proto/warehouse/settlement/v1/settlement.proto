@@ -52,6 +52,8 @@ service SettlementService {
   rpc SettlementPositionList(SettlementPositionListRequest) returns (SettlementPositionListResponse);
   // The counterparty detail's running history (#185).
   rpc SettlementEntryList(SettlementEntryListRequest) returns (SettlementEntryListResponse);
+  // What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+  rpc SettlementDaily(SettlementDailyRequest) returns (SettlementDailyResponse);
 }
 
 // Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
@@ -292,6 +294,100 @@ message SettlementEntryListResponse {
   warehouse.common.v1.PageInfo page_info = 3;
   // The pair's current balance, so the header needs no second call.
   int64 balance = 4;
+}
+
+// ── The DAILY STATEMENT's income half, for a WAREHOUSE ────────────────────────────────────────────
+//
+// A selling team's income is the margin on its orders (revenue_service). A WAREHOUSE has no orders and
+// therefore no revenue rows at all — what it earns is the FEES it charges the teams it fulfils for, and
+// those live here. Without this RPC a warehouse's daily statement would show margin 0 against real
+// expenses and report every single day as a pure loss (owner, 2026-08-14).
+//
+// ⚠ IT REPORTS THE LEDGER, NOT "INCOME" — the split is deliberate. Every source type is returned in
+// `by_source` and the caller decides which of them it is willing to call earnings, because they are not
+// the same kind of thing:
+//
+//   HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
+//   COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
+//   PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
+//   PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
+//
+// Summing all four and calling it income would double-count: the fee is earned when it is charged and
+// the payment that settles it would be counted again. Naming that judgement here would bake one screen's
+// opinion into the ledger's contract, so the enum is returned whole and the statement documents its
+// choice (it takes HANDLING_FEE).
+//
+// ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
+// which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
+// series are read side by side on one screen, and a cap that differed would let the statement load part
+// of a period and still look complete.
+//
+// ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
+message SettlementDailyFilter {
+  // THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+  string from = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string to = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  // One counterparty, or 0 for all of them. NOT the scope — `team_id` above is (§4.9).
+  uint64 counterparty_id = 3;
+}
+
+message SettlementDailyRequest {
+  // Read: the same roles SettlementEntryList admits, warehouse roles included — this is a WAREHOUSE's
+  // own income, so a policy that omitted them would hide a team's earnings from the people who run it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  SettlementDailyFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+// One day of the ledger, from the scoped team's point of view.
+message SettlementDayItem {
+  // The day this row sums, as YYYY-MM-DD.
+  //
+  // ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
+  // the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
+  // with the period bounds is why — see docs/services/revenue_service/rpc.md.
+  string date = 1;
+
+  // How many entry legs the day holds, reversals included.
+  uint64 entries = 2;
+
+  // ⚠ ONE SIGN CONVENTION (§4.11), unchanged here: from the scoped team's point of view a RECEIVABLE is
+  // POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
+  // it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
+  // A series that dropped them would show income the ledger has already taken back.
+  int64 net = 3;
+
+  // Split by SettlementSourceType's enum number, so the caller can pick which sources it treats as
+  // earnings without a second call. A source with nothing that day is ABSENT rather than 0 — the same
+  // choice ExpenseDayItem.by_kind makes.
+  map<int32, int64> by_source = 4;
+}
+
+message SettlementDailyTotals {
+  int64 net = 1;
+  map<int32, int64> by_source = 2;
+}
+
+message SettlementDailyResponse {
+  // ASCENDING by date, and SPARSE — see the note on SettlementDailyFilter.
+  repeated SettlementDayItem days = 1;
+  // The period's totals, over the same filter. Sent rather than summed in the browser, so the
+  // statement's footer is this service's answer and cannot drift from the days above it.
+  SettlementDailyTotals totals = 2;
 }
 
 // A claim that money moved, and whether the creditor has agreed it arrived (#188).

@@ -308,6 +308,84 @@ export function useProductPlaces(args: { warehouseId: bigint | undefined; produc
   });
 }
 
+// How many of each product a pick from THIS warehouse would find right now — what the order form
+// shows beside each line before it promises goods to a buyer.
+//
+// ⚠ `StockAvailability`, deliberately NOT `OwnerStockByIds`. The owner figure derives ownership from
+// the restock a unit arrived on, so stock that reached a shelf any other way (a direct receive, an
+// adjustment, a transfer) belongs to nobody and reads as 0 — while a pick would take it happily.
+// Gating a Create button on that number refuses orders the warehouse can plainly fill. The two answer
+// different questions and only one of them is the question this form is asking.
+//
+// A product with nothing comes back as a ZERO ROW, so `data` is complete for every id asked about.
+// UNKNOWN is the query not having answered at all (`data === undefined`) — no warehouse chosen, still
+// loading, or it failed — and a caller must never render that as a confident 0.
+//
+// NOT a `referenceQuery`. This is stock: the app's always-fresh default is the correctness property
+// here, not a cost to buy out.
+export function useStockAvailability(args: {
+  teamId: bigint | undefined;
+  warehouseId: bigint;
+  productIds: bigint[];
+}) {
+  const { teamId, warehouseId, productIds } = args;
+
+  // Deduplicated and sorted: the same set of ids in a different order is the same question, and two
+  // lines of the same product must not ask about it twice.
+  const ids = Array.from(new Set(productIds.filter((id) => id > 0n).map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.inventory(teamId, { availability: warehouseId.toString(), ids }),
+    // A warehouse is REQUIRED, not optional-with-a-total: stock is held per building, so "how many can
+    // we ship" has no answer until somebody says where from. Until then the form shows no figure
+    // rather than a total no single warehouse could actually fill.
+    enabled: teamId !== undefined && warehouseId > 0n && ids.length > 0,
+    queryFn: async () => {
+      const res = await inventoryClient.stockAvailability({
+        teamId: teamId!,
+        warehouseId,
+        productIds: ids.map((id) => BigInt(id)),
+      });
+
+      return new Map(res.items.map((it) => [it.productId.toString(), it.available]));
+    },
+  });
+}
+
+// The HPP — what each product COST at a warehouse — for a whole set of products at once.
+//
+// The same read `OrderCreate` uses to freeze `unit_cost` on every line (#74), so what the order form
+// shows before placing is what the order records after. A separate hook from `useStockAvailability`
+// rather than one call returning both: they answer different questions and fail independently, and a
+// cost read failing must not blank the stock figures beside it.
+//
+// ⚠ A cost of 0 means UNKNOWN — the warehouse has no restock history for that product — never "free".
+// Callers must show it as unknown rather than as a price, or an order books goods as if they cost
+// nothing.
+export function useStockCosts(args: {
+  teamId: bigint | undefined;
+  warehouseId: bigint;
+  productIds: bigint[];
+}) {
+  const { teamId, warehouseId, productIds } = args;
+
+  const ids = Array.from(new Set(productIds.filter((id) => id > 0n).map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.inventory(teamId, { costs: warehouseId.toString(), ids }),
+    enabled: teamId !== undefined && warehouseId > 0n && ids.length > 0,
+    queryFn: async () => {
+      const res = await inventoryClient.stockCost({
+        teamId: teamId!,
+        filter: { warehouseId, ids: ids.map((id) => BigInt(id)) },
+        dataRequest: stockCostRowData(),
+      });
+
+      return new Map(stockCostLines(res).map((line) => [line.productId.toString(), line.unitCost]));
+    },
+  });
+}
+
 // The batches (cost layers) of one product at a warehouse (#209/#210) — for the Move/Adjust dialogs'
 // batch pickers. Only batches that still hold something; a large first page since a picker needs the
 // whole (small) set, not a window.

@@ -28,6 +28,13 @@ func (s *Service) OrderDetail(
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
 		}).
+		// The history, oldest first — ordered by WHEN IT HAPPENED, with the id only as a tie-break for
+		// two events in the same instant. Not by id alone: the 00011 backfill inserts every order's
+		// 'placed' row before any later one, so insert order and event order genuinely differ there.
+		// This matches idx_order_events_order, so it is an index scan rather than a sort.
+		Preload("Events", func(db *gorm.DB) *gorm.DB {
+			return db.Order("at ASC, id ASC")
+		}).
 		Where("id = ? AND (team_id = ? OR warehouse_id = ?)",
 			req.Msg.GetOrderId(), req.Msg.GetTeamId(), req.Msg.GetTeamId()).
 		First(&order).

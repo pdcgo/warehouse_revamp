@@ -151,8 +151,9 @@ transaction is can be `InventoryTransaction` or `PaymentTransaction`
 # Statistic Design.
 
 ## General Guideline.
-1. **Statistic is streaming and reconcile every midnight + 1 hour**.
-2. **Statistic have plan to be covered :**
+1. we rely [event_library](./event_library.md) for processing event.
+2. **Statistic is streaming and reconcile every midnight + 1 hour**.
+3. **Statistic have plan to be covered :**
 	- Time Based Metric:
 		- daily
 		- monthly
@@ -162,7 +163,7 @@ transaction is can be `InventoryTransaction` or `PaymentTransaction`
 		- Product Grouped.
 		- User Grouped.
 
-3. **Complex Statistic can be heavy if we just rely on database query. For handle that we use event streaming and materialize table.**
+4. **Complex Statistic can be heavy if we just rely on database query. For handle that we use event streaming and materialize table.**
 	<br>Instead of :
 	```mermaid
 	sequenceDiagram
@@ -314,13 +315,3 @@ else Fails
 end
 
 ```
-
-## Pipeline Code Design.
-
-
-## HTTP Push Subscriber Flow.
-
-## Pull Subscriber Flow.
-
-## Stat Processing Pipeline.
-Before Explaining how we processing statistic. 

@@ -1017,6 +1017,296 @@ func (x *RevenueTotals) GetUnknownCostOrders() uint64 {
 	return 0
 }
 
+// ── The DAILY STATEMENT's revenue half ────────────────────────────────────────────────────────────
+//
+// RevenueList already answers "what did this period make" and RevenueTotals sums it. What neither can
+// answer is "which DAYS made it" — and that is the question somebody asks the moment a month's margin
+// looks wrong, because a month is not a thing that goes wrong, a Tuesday is.
+//
+// ⚠ IT IS NOT PAGINATED, and that is deliberate rather than an oversight of HARD RULE 9. The rule
+// exists because a `repeated` whose size grows WITH THE DATA is a latent out-of-memory bug. This one
+// does not: its size is `to − from`, which the CALLER states and the server CAPS at 366 days
+// (InvalidArgument beyond that, and both bounds are required). Ten years of orders and one year of
+// orders return the same 366 rows. That is the same bargain `SearchUser`'s capped typeahead makes —
+// a hard bound satisfies the rule's intent without a cursor — and it is why `from`/`to` are required
+// here while they are optional on RevenueList, which pages instead.
+//
+// ⚠ THE SERIES IS SPARSE: a day with no orders is ABSENT, not a zero row. The client renders the date
+// spine, because it has to build one anyway — the statement subtracts this service's days from
+// expense_service's days, and two services each generating their own dense calendar is two copies of
+// the same arithmetic, free to disagree about what February contains.
+type RevenueDailyFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+	From          string `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueDailyFilter) Reset() {
+	*x = RevenueDailyFilter{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueDailyFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueDailyFilter) ProtoMessage() {}
+
+func (x *RevenueDailyFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueDailyFilter.ProtoReflect.Descriptor instead.
+func (*RevenueDailyFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RevenueDailyFilter) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *RevenueDailyFilter) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type RevenueDailyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *RevenueDailyFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueDailyRequest) Reset() {
+	*x = RevenueDailyRequest{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueDailyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueDailyRequest) ProtoMessage() {}
+
+func (x *RevenueDailyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueDailyRequest.ProtoReflect.Descriptor instead.
+func (*RevenueDailyRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *RevenueDailyRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *RevenueDailyRequest) GetFilter() *RevenueDailyFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+// One day's expected money.
+//
+// There is no `data_request` slice oneof here, unlike the list shapes above, and that is on purpose:
+// the guideline's slice machinery exists so a caller can skip data that is EXPENSIVE to load. A day is
+// six integers and a date. A one-member oneof would be a shape whose second case nobody can name,
+// which is harder to read than not having one.
+type RevenueDayItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The day this row sums, as YYYY-MM-DD.
+	//
+	// ⚠ BUCKETED IN UTC, from `created_at` — the same timezone the period filter already parses its
+	// bounds in. Consistency is the reason: the daily rows and the period total sit on one screen, and a
+	// series that bucketed in Asia/Jakarta while the total filtered in UTC would not add up to it. The
+	// business is UTC+7, so an order placed before 07:00 local lands on the previous day here. That is a
+	// real limitation, it predates this RPC, and fixing it means giving the whole service a timezone —
+	// which is the owner's call, not this message's.
+	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	// How many LIVE orders the day holds. Voided rows (#164) are excluded from every figure below, so
+	// this counts what the money is actually made of.
+	Orders         uint64 `protobuf:"varint,2,opt,name=orders,proto3" json:"orders,omitempty"`
+	Revenue        int64  `protobuf:"varint,3,opt,name=revenue,proto3" json:"revenue,omitempty"`
+	Cogs           int64  `protobuf:"varint,4,opt,name=cogs,proto3" json:"cogs,omitempty"`
+	ShippingCost   int64  `protobuf:"varint,5,opt,name=shipping_cost,json=shippingCost,proto3" json:"shipping_cost,omitempty"`
+	ExpectedMargin int64  `protobuf:"varint,6,opt,name=expected_margin,json=expectedMargin,proto3" json:"expected_margin,omitempty"`
+	// How many of the day's orders had an UNKNOWN cost (#74) — the day's margin reads as if those goods
+	// were free. Reported per day as well as per period, because a single bad Tuesday is invisible in a
+	// monthly count.
+	UnknownCostOrders uint64 `protobuf:"varint,7,opt,name=unknown_cost_orders,json=unknownCostOrders,proto3" json:"unknown_cost_orders,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *RevenueDayItem) Reset() {
+	*x = RevenueDayItem{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueDayItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueDayItem) ProtoMessage() {}
+
+func (x *RevenueDayItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueDayItem.ProtoReflect.Descriptor instead.
+func (*RevenueDayItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *RevenueDayItem) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *RevenueDayItem) GetOrders() uint64 {
+	if x != nil {
+		return x.Orders
+	}
+	return 0
+}
+
+func (x *RevenueDayItem) GetRevenue() int64 {
+	if x != nil {
+		return x.Revenue
+	}
+	return 0
+}
+
+func (x *RevenueDayItem) GetCogs() int64 {
+	if x != nil {
+		return x.Cogs
+	}
+	return 0
+}
+
+func (x *RevenueDayItem) GetShippingCost() int64 {
+	if x != nil {
+		return x.ShippingCost
+	}
+	return 0
+}
+
+func (x *RevenueDayItem) GetExpectedMargin() int64 {
+	if x != nil {
+		return x.ExpectedMargin
+	}
+	return 0
+}
+
+func (x *RevenueDayItem) GetUnknownCostOrders() uint64 {
+	if x != nil {
+		return x.UnknownCostOrders
+	}
+	return 0
+}
+
+type RevenueDailyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ASCENDING by date, and SPARSE — see the note on RevenueDailyFilter.
+	Days []*RevenueDayItem `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
+	// The same totals RevenueList reports, over the same period. Sent rather than left to the client to
+	// sum, so the statement's footer is the SERVER's answer: a footer summed in the browser would drift
+	// from the list screen's total the first time either rounding rule changed.
+	Totals        *RevenueTotals `protobuf:"bytes,2,opt,name=totals,proto3" json:"totals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevenueDailyResponse) Reset() {
+	*x = RevenueDailyResponse{}
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevenueDailyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevenueDailyResponse) ProtoMessage() {}
+
+func (x *RevenueDailyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevenueDailyResponse.ProtoReflect.Descriptor instead.
+func (*RevenueDailyResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RevenueDailyResponse) GetDays() []*RevenueDayItem {
+	if x != nil {
+		return x.Days
+	}
+	return nil
+}
+
+func (x *RevenueDailyResponse) GetTotals() *RevenueTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
 type RevenueVoidRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -1027,7 +1317,7 @@ type RevenueVoidRequest struct {
 
 func (x *RevenueVoidRequest) Reset() {
 	*x = RevenueVoidRequest{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1039,7 +1329,7 @@ func (x *RevenueVoidRequest) String() string {
 func (*RevenueVoidRequest) ProtoMessage() {}
 
 func (x *RevenueVoidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[11]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1052,7 +1342,7 @@ func (x *RevenueVoidRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueVoidRequest.ProtoReflect.Descriptor instead.
 func (*RevenueVoidRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RevenueVoidRequest) GetTeamId() uint64 {
@@ -1081,7 +1371,7 @@ type RevenueVoidResponse struct {
 
 func (x *RevenueVoidResponse) Reset() {
 	*x = RevenueVoidResponse{}
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1093,7 +1383,7 @@ func (x *RevenueVoidResponse) String() string {
 func (*RevenueVoidResponse) ProtoMessage() {}
 
 func (x *RevenueVoidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[12]
+	mi := &file_warehouse_revenue_v1_revenue_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1106,7 +1396,7 @@ func (x *RevenueVoidResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevenueVoidResponse.ProtoReflect.Descriptor instead.
 func (*RevenueVoidResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_revenue_v1_revenue_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RevenueVoidResponse) GetRevenue() *OrderRevenue {
@@ -1195,7 +1485,26 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\x04cogs\x18\x02 \x01(\x03R\x04cogs\x12#\n" +
 	"\rshipping_cost\x18\x03 \x01(\x03R\fshippingCost\x12'\n" +
 	"\x0fexpected_margin\x18\x04 \x01(\x03R\x0eexpectedMargin\x12.\n" +
-	"\x13unknown_cost_orders\x18\x05 \x01(\x04R\x11unknownCostOrders\"k\n" +
+	"\x13unknown_cost_orders\x18\x05 \x01(\x04R\x11unknownCostOrders\"\x82\x01\n" +
+	"\x12RevenueDailyFilter\x127\n" +
+	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
+	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\"\x91\x01\n" +
+	"\x13RevenueDailyRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12H\n" +
+	"\x06filter\x18\x02 \x01(\v2(.warehouse.revenue.v1.RevenueDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"\xe8\x01\n" +
+	"\x0eRevenueDayItem\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12\x16\n" +
+	"\x06orders\x18\x02 \x01(\x04R\x06orders\x12\x18\n" +
+	"\arevenue\x18\x03 \x01(\x03R\arevenue\x12\x12\n" +
+	"\x04cogs\x18\x04 \x01(\x03R\x04cogs\x12#\n" +
+	"\rshipping_cost\x18\x05 \x01(\x03R\fshippingCost\x12'\n" +
+	"\x0fexpected_margin\x18\x06 \x01(\x03R\x0eexpectedMargin\x12.\n" +
+	"\x13unknown_cost_orders\x18\a \x01(\x04R\x11unknownCostOrders\"\x8d\x01\n" +
+	"\x14RevenueDailyResponse\x128\n" +
+	"\x04days\x18\x01 \x03(\v2$.warehouse.revenue.v1.RevenueDayItemR\x04days\x12;\n" +
+	"\x06totals\x18\x02 \x01(\v2#.warehouse.revenue.v1.RevenueTotalsR\x06totals\"k\n" +
 	"\x12RevenueVoidRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
@@ -1210,10 +1519,11 @@ const file_warehouse_revenue_v1_revenue_proto_rawDesc = "" +
 	"\x1cREVENUE_ROW_SORT_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bREVENUE_ROW_SORT_CREATED_AT\x10\x01\x12$\n" +
 	" REVENUE_ROW_SORT_EXPECTED_MARGIN\x10\x02\x12\x1c\n" +
-	"\x18REVENUE_ROW_SORT_REVENUE\x10\x032\xc2\x02\n" +
+	"\x18REVENUE_ROW_SORT_REVENUE\x10\x032\xa9\x03\n" +
 	"\x0eRevenueService\x12h\n" +
 	"\rRevenueRecord\x12*.warehouse.revenue.v1.RevenueRecordRequest\x1a+.warehouse.revenue.v1.RevenueRecordResponse\x12b\n" +
-	"\vRevenueList\x12(.warehouse.revenue.v1.RevenueListRequest\x1a).warehouse.revenue.v1.RevenueListResponse\x12b\n" +
+	"\vRevenueList\x12(.warehouse.revenue.v1.RevenueListRequest\x1a).warehouse.revenue.v1.RevenueListResponse\x12e\n" +
+	"\fRevenueDaily\x12).warehouse.revenue.v1.RevenueDailyRequest\x1a*.warehouse.revenue.v1.RevenueDailyResponse\x12b\n" +
 	"\vRevenueVoid\x12(.warehouse.revenue.v1.RevenueVoidRequest\x1a).warehouse.revenue.v1.RevenueVoidResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/revenue/v1;revenuev1b\x06proto3"
 
 var (
@@ -1229,7 +1539,7 @@ func file_warehouse_revenue_v1_revenue_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_revenue_v1_revenue_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_warehouse_revenue_v1_revenue_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_warehouse_revenue_v1_revenue_proto_goTypes = []any{
 	(RevenueListDataType)(0),        // 0: warehouse.revenue.v1.RevenueListDataType
 	(RevenueRowSort)(0),             // 1: warehouse.revenue.v1.RevenueRowSort
@@ -1244,43 +1554,52 @@ var file_warehouse_revenue_v1_revenue_proto_goTypes = []any{
 	(*RevenueListResponseItem)(nil), // 10: warehouse.revenue.v1.RevenueListResponseItem
 	(*RevenueListResponse)(nil),     // 11: warehouse.revenue.v1.RevenueListResponse
 	(*RevenueTotals)(nil),           // 12: warehouse.revenue.v1.RevenueTotals
-	(*RevenueVoidRequest)(nil),      // 13: warehouse.revenue.v1.RevenueVoidRequest
-	(*RevenueVoidResponse)(nil),     // 14: warehouse.revenue.v1.RevenueVoidResponse
-	nil,                             // 15: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
-	(v1.CommonSortType)(0),          // 16: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),             // 17: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),     // 18: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),       // 19: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),             // 20: warehouse.common.v1.PageInfo
+	(*RevenueDailyFilter)(nil),      // 13: warehouse.revenue.v1.RevenueDailyFilter
+	(*RevenueDailyRequest)(nil),     // 14: warehouse.revenue.v1.RevenueDailyRequest
+	(*RevenueDayItem)(nil),          // 15: warehouse.revenue.v1.RevenueDayItem
+	(*RevenueDailyResponse)(nil),    // 16: warehouse.revenue.v1.RevenueDailyResponse
+	(*RevenueVoidRequest)(nil),      // 17: warehouse.revenue.v1.RevenueVoidRequest
+	(*RevenueVoidResponse)(nil),     // 18: warehouse.revenue.v1.RevenueVoidResponse
+	nil,                             // 19: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
+	(v1.CommonSortType)(0),          // 20: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 21: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 22: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 23: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 24: warehouse.common.v1.PageInfo
 }
 var file_warehouse_revenue_v1_revenue_proto_depIdxs = []int32{
 	2,  // 0: warehouse.revenue.v1.RevenueRecordResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
-	16, // 1: warehouse.revenue.v1.RevenueListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	17, // 2: warehouse.revenue.v1.RevenueListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	20, // 1: warehouse.revenue.v1.RevenueListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	21, // 2: warehouse.revenue.v1.RevenueListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	1,  // 3: warehouse.revenue.v1.RevenueListFilterSort.revenue:type_name -> warehouse.revenue.v1.RevenueRowSort
 	5,  // 4: warehouse.revenue.v1.RevenueListRequest.filter:type_name -> warehouse.revenue.v1.RevenueListFilter
 	6,  // 5: warehouse.revenue.v1.RevenueListRequest.sort:type_name -> warehouse.revenue.v1.RevenueListFilterSort
 	0,  // 6: warehouse.revenue.v1.RevenueListRequest.data_request:type_name -> warehouse.revenue.v1.RevenueListDataType
-	18, // 7: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	15, // 8: warehouse.revenue.v1.RevenueRowMapItem.map_data:type_name -> warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
-	19, // 9: warehouse.revenue.v1.RevenueListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	22, // 7: warehouse.revenue.v1.RevenueListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	19, // 8: warehouse.revenue.v1.RevenueRowMapItem.map_data:type_name -> warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry
+	23, // 9: warehouse.revenue.v1.RevenueListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	9,  // 10: warehouse.revenue.v1.RevenueListResponseItem.revenue:type_name -> warehouse.revenue.v1.RevenueRowMapItem
 	10, // 11: warehouse.revenue.v1.RevenueListResponse.items:type_name -> warehouse.revenue.v1.RevenueListResponseItem
-	20, // 12: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	24, // 12: warehouse.revenue.v1.RevenueListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	12, // 13: warehouse.revenue.v1.RevenueListResponse.totals:type_name -> warehouse.revenue.v1.RevenueTotals
-	2,  // 14: warehouse.revenue.v1.RevenueVoidResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
-	8,  // 15: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry.value:type_name -> warehouse.revenue.v1.RevenueRowItem
-	3,  // 16: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
-	7,  // 17: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
-	13, // 18: warehouse.revenue.v1.RevenueService.RevenueVoid:input_type -> warehouse.revenue.v1.RevenueVoidRequest
-	4,  // 19: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
-	11, // 20: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
-	14, // 21: warehouse.revenue.v1.RevenueService.RevenueVoid:output_type -> warehouse.revenue.v1.RevenueVoidResponse
-	19, // [19:22] is the sub-list for method output_type
-	16, // [16:19] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	13, // 14: warehouse.revenue.v1.RevenueDailyRequest.filter:type_name -> warehouse.revenue.v1.RevenueDailyFilter
+	15, // 15: warehouse.revenue.v1.RevenueDailyResponse.days:type_name -> warehouse.revenue.v1.RevenueDayItem
+	12, // 16: warehouse.revenue.v1.RevenueDailyResponse.totals:type_name -> warehouse.revenue.v1.RevenueTotals
+	2,  // 17: warehouse.revenue.v1.RevenueVoidResponse.revenue:type_name -> warehouse.revenue.v1.OrderRevenue
+	8,  // 18: warehouse.revenue.v1.RevenueRowMapItem.MapDataEntry.value:type_name -> warehouse.revenue.v1.RevenueRowItem
+	3,  // 19: warehouse.revenue.v1.RevenueService.RevenueRecord:input_type -> warehouse.revenue.v1.RevenueRecordRequest
+	7,  // 20: warehouse.revenue.v1.RevenueService.RevenueList:input_type -> warehouse.revenue.v1.RevenueListRequest
+	14, // 21: warehouse.revenue.v1.RevenueService.RevenueDaily:input_type -> warehouse.revenue.v1.RevenueDailyRequest
+	17, // 22: warehouse.revenue.v1.RevenueService.RevenueVoid:input_type -> warehouse.revenue.v1.RevenueVoidRequest
+	4,  // 23: warehouse.revenue.v1.RevenueService.RevenueRecord:output_type -> warehouse.revenue.v1.RevenueRecordResponse
+	11, // 24: warehouse.revenue.v1.RevenueService.RevenueList:output_type -> warehouse.revenue.v1.RevenueListResponse
+	16, // 25: warehouse.revenue.v1.RevenueService.RevenueDaily:output_type -> warehouse.revenue.v1.RevenueDailyResponse
+	18, // 26: warehouse.revenue.v1.RevenueService.RevenueVoid:output_type -> warehouse.revenue.v1.RevenueVoidResponse
+	23, // [23:27] is the sub-list for method output_type
+	19, // [19:23] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_revenue_v1_revenue_proto_init() }
@@ -1302,7 +1621,7 @@ func file_warehouse_revenue_v1_revenue_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_revenue_v1_revenue_proto_rawDesc), len(file_warehouse_revenue_v1_revenue_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -6,10 +6,15 @@ An order is owned by a SELLING team but **fulfilled by a WAREHOUSE**, and the li
 exactly that line: the selling side decides *whether* an order stands, the warehouse side records
 *what has physically been done to it*.
 
+> ⚠ **CONFIRM MOVED** (owner). It was the selling team's click (#91) and is now the WAREHOUSE's first
+> step — the building accepting the job. The team that TYPED an order in has nothing left to decide
+> about it, so its confirm asserted nothing; the warehouse's means the goods are there and the work is
+> taken on. A PLACED order is therefore waiting on the **warehouse**, not on the seller.
+
 ```mermaid
 stateDiagram-v2
     [*] --> PLACED: OrderCreate (selling) — takes the stock (#149)
-    PLACED --> CONFIRMED: OrderConfirm (selling)
+    PLACED --> CONFIRMED: OrderConfirm (WAREHOUSE)
     CONFIRMED --> PICKING: OrderPick (WAREHOUSE)
     PICKING --> PACKED: OrderPack (WAREHOUSE)
     PACKED --> SHIPPED: OrderShip (WAREHOUSE)
@@ -34,8 +39,8 @@ stateDiagram-v2
 
 | Step | Scoped to | Because |
 | --- | --- | --- |
-| Create / Confirm / Cancel | the **selling team** | the team that owns the order decides whether it stands |
-| Pick / Pack / Ship | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
+| Create / Cancel | the **selling team** | the team that owns the order decides whether it stands |
+| **Confirm** / Pick / Pack / Ship | the **order's warehouse** (#72) | the crew doing the work holds no role in the selling team |
 
 **This asymmetry is the design, not an inconsistency.** Scoping the fulfilment steps to the selling
 team would deny every real caller — a picker is a member of the warehouse, not of the shop whose order
@@ -53,6 +58,46 @@ cannot pack what was never picked: a skipped state means somebody is guessing at
 The row is locked and the state re-checked **inside** the transaction, so two crew members hitting the
 same button at once cannot both see `CONFIRMED` and both advance it — the loser finds the state already
 moved.
+
+### Every move leaves a step — the order's history (`order_events`)
+
+The lifecycle above is drawn as states, but a state is a fact about *now*. Nothing in `orders` could
+say **when** an order was confirmed, **how long** it then sat before the crew picked it, or **who** did
+either — the row carries `status`, `created_at` and `updated_at`, and no actor at all. So each
+transition appends a row to `order_events`, and the detail page's **Timeline** tab reads those.
+
+**The append happens at the single choke point**, not in the handlers:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as OrderCancel (selling) / Confirm, Pick, Pack, Ship (warehouse)
+    participant S as setOrderStatus
+    participant O as orders
+    participant E as order_events
+
+    H->>S: (tx, order, newStatus, eventActor(ctx))
+    Note over S: one now := time.Now() for everything below
+    S->>O: UPDATE status, updated_at
+    S->>E: INSERT kind=newStatus, actor, at=now
+    S-->>H: order updated in memory too
+```
+
+- **One clock, one moment.** The status stamp, the event's `at` and the domain event a caller may
+  publish afterwards all read the same `now`. Two clock reads for one fact would file a midnight
+  transition on different days depending on who looked.
+- **`placeOrder` appends its own `placed` step**, so an order typed into the form and one promoted from
+  a draft start the same history — the two doors cannot differ.
+- **The actor is `eventActor(ctx)` — 0 when unidentifiable, and that never fails the call.** This is a
+  deliberate contrast with `draftAuthor`, which refuses the request outright: a draft is personal, so an
+  unidentifiable caller has no correct answer to receive, whereas an event is a byproduct and the
+  record-keeping must not be able to veto the work.
+- **`OrderDetail` is the only RPC that returns them**, preloaded ordered by `at` — never by `id`, since
+  the 00011 backfill inserted every order's `placed` row before any later one. `OrderList` stays a
+  summary: a page of 20 orders carrying 20 whole lifecycles is a list that grows with history.
+
+See [database-schema.md](../../database-schema.md) for the table, the backfill's honest two-event
+ceiling, and why the status column is kept beside the events rather than replaced by them.
 
 ### Picking does NOT move stock
 
@@ -77,6 +122,54 @@ would hide that rather than record it.
 > person.
 
 ---
+
+## The create form asks before it takes — `StockAvailability` (#90)
+
+`OrderCreate` draws the goods in the same transaction that writes the order, so **not enough stock is
+not a warning — it is a failed order**. Before this, the person typing found that out from a red error
+after filling in the customer, the address and every line.
+
+The form now reads `inventory.v1.InventoryService/StockAvailability` for the products on it, whenever a
+warehouse is chosen, and marks any line the warehouse cannot fill.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CS as CS person
+    participant UI as order-create
+    participant INV as inventory_service
+    participant SELL as selling_service
+
+    CS->>UI: pick a warehouse, pick products
+    UI->>INV: StockAvailability(team, warehouse, product_ids)
+    INV-->>UI: available per product — one row per id, zeros included
+    Note over UI: wanted is summed PER PRODUCT across lines,<br/>because the warehouse is drawn down once per order
+    alt a line asks for more than is there
+        UI-->>CS: line goes red, Create is disabled
+    else it fits
+        CS->>UI: Create
+        UI->>SELL: OrderCreate
+        SELL->>INV: StockPick (same transaction as the order write)
+        INV-->>SELL: taken, or insufficient
+        SELL-->>UI: the order, or the refusal
+    end
+```
+
+**The check is ADVISORY. `StockPick` remains the authority** — two people can place orders against one
+shelf in the same second, so anything read beforehand is already historical. The pre-check exists to
+stop somebody wasting five minutes of typing, not to guarantee the pick.
+
+### Why not `OwnerStockByIds`
+
+That RPC derives ownership from the restock a unit arrived on
+(`stock_shelf_batches → stock_batches → restock_request_items → restock_requests.requesting_team_id`).
+Stock that reached a shelf any other way — a direct receive, an adjustment, a transfer — belongs to
+nobody by that chain and reads as **0**, while a pick would take it happily.
+
+Gating a Create button on that number refuses orders the warehouse can plainly fill, which is a worse
+lie than showing nothing. `StockAvailability` reads the rows `pickOneLine` actually drains, and carries
+`StockPick`'s policy and scoping exactly — the selling team's roles, scoped to their own team, with the
+warehouse as an ordinary parameter.
 
 ## The pick screen's reads (#151)
 

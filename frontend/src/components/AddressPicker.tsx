@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Combobox,
   Field,
-  Input,
   Portal,
   Span,
   Spinner,
@@ -12,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { regionClient, rpcError } from "../api/clients";
-import { useRegionSearch } from "../features/region/queries";
+import { useRegionByKodePos } from "../features/region/queries";
 import { useDebounced } from "../lib/useDebounced";
 import type { Region, RegionAncestry } from "../gen/warehouse/region/v1/region_pb";
 
@@ -65,7 +64,11 @@ export interface AddressPickerProps {
 const LEVEL_LIMIT = 200;
 // A typeahead is capped, not paged: it can never return "everything" (HARD RULE 9).
 const SEARCH_LIMIT = 10;
-const SEARCH_MIN_CHARS = 2;
+// Three digits before we ask — the floor the proto enforces. One digit covers a tenth of the
+// country's desa, and twenty rows out of thousands is a lottery, not a suggestion.
+const SEARCH_MIN_DIGITS = 3;
+// An Indonesian kode pos is five digits, always.
+const KODE_POS_DIGITS = 5;
 const SEARCH_DEBOUNCE_MS = 250;
 
 // Module scope on purpose: useListCollection memoizes the collection on this reference, so an inline
@@ -100,11 +103,6 @@ function hitPath(a: RegionAncestry): string {
         : [];
 
   return above.filter(Boolean).join(", ");
-}
-
-function hitLabel(a: RegionAncestry): string {
-  const path = hitPath(a);
-  return path ? `${hitName(a)} — ${path}` : hitName(a);
 }
 
 interface LevelSelectProps {
@@ -241,62 +239,90 @@ function LevelSelect({
   );
 }
 
-// The fast path: type a village, get the whole address. RegionSearch returns each hit's full
-// ancestry, so picking one back-fills all four levels + kode pos with NO extra round-trip.
-function AddressSearch({
+// THE FAST PATH, AND IT IS THE KODE POS (owner). Type the postcode, get the addresses it covers;
+// picking one back-fills all four levels with NO extra round-trip.
+//
+// It replaced a search over region NAMES, and the reason is what people actually have in front of
+// them. A buyer's message carries five digits, copied correctly. It does not carry a spelling of
+// their kelurahan that matches the government's — hundreds of desa are called some variant of
+// "Sukamaju", and the person typing the order cannot tell which of ten identical-looking hits is the
+// right one. A postcode is unambiguous to type and narrows to a handful.
+//
+// ⚠ It is BOTH the search box and the field. The kode pos is part of the address, so this is not a
+// jump control that throws its input away (the way the old search was) — what is typed here IS
+// `value.kodePos`, and it stays editable whether or not a suggestion is ever picked: a kelurahan is
+// not strictly 1:1 with one postcode (§3), so the person typing gets the last word.
+function KodePosField({
+  value,
+  onChange,
   onPick,
   disabled,
 }: {
+  value: string;
+  onChange: (kodePos: string) => void;
   onPick: (ancestry: RegionAncestry) => void;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
-  const [input, setInput] = useState("");
+
+  // The text being typed. null = "not typing" → show the value prop, which is how a kode pos that
+  // arrived from picking a desa below still displays here. Same shape as LevelSelect.
+  const [typed, setTyped] = useState<string | null>(null);
 
   const { collection, set } = useListCollection<RegionAncestry>({
     initialItems: [],
-    itemToString: hitLabel,
-    itemToValue: (a) => a.desaCode || a.kecamatanCode || a.kabupatenCode || a.provinsiCode,
+    itemToString: (a) => a.kodePos,
+    itemToValue: (a) => a.desaCode,
   });
 
-  // Server-side, debounced, >= 2 characters (the proto rejects shorter). No client filter: the
-  // server already ranked these.
-  //
-  // Through the cache the same prefix is not asked twice — which matters most here: this is a
-  // four-level cascade somebody types their way down, so the same searches recur constantly, both
-  // from one person correcting a typo and from everybody entering an address in the same city.
-  const q = useDebounced(input.trim(), SEARCH_DEBOUNCE_MS);
-  const results = useRegionSearch({ q, limit: SEARCH_LIMIT, minChars: SEARCH_MIN_CHARS });
-  const loading = q.length >= SEARCH_MIN_CHARS && results.isPending;
+  // Server-side, debounced, >= 3 digits (the proto rejects shorter). No client filter: a prefix
+  // match is the server's answer, and re-filtering it here would only ever remove rows.
+  const q = useDebounced((typed ?? value).replace(/\D/g, ""), SEARCH_DEBOUNCE_MS);
+  const results = useRegionByKodePos({ kodePos: q, limit: SEARCH_LIMIT, minChars: SEARCH_MIN_DIGITS });
+  const loading = q.length >= SEARCH_MIN_DIGITS && results.isPending;
 
   useEffect(() => {
-    set(q.length >= SEARCH_MIN_CHARS ? (results.data ?? []) : []);
+    set(q.length >= SEARCH_MIN_DIGITS ? (results.data ?? []) : []);
   }, [q, results.data, set]);
-
 
   return (
     <Field.Root disabled={disabled}>
-      <Field.Label>{t("address.search.label")}</Field.Label>
+      <Field.Label>{t("address.kodePos")}</Field.Label>
 
-      {/* value stays [] and selectionBehavior clears the input: this is a JUMP control, not a value
-          display — the cascade below is what holds the address. Pinning value to [] also lets the
-          same hit be picked twice in a row (a real case after editing the cascade by hand). */}
+      {/* `value` stays [] and every keystroke writes through to the address: the input displays the
+          POSTCODE, never the chosen desa's label, so the selection is not what this control holds. */}
       <Combobox.Root
         collection={collection}
         disabled={disabled}
         value={[]}
-        selectionBehavior="clear"
+        inputValue={typed ?? value}
         onValueChange={(e) => {
           const hit = e.items[0];
-          if (hit) onPick(hit);
+          if (hit) {
+            // Back to the value prop — applying the hit sets the kode pos, and the typed prefix must
+            // not linger over the top of it (picking on "2377" fills in "23773").
+            setTyped(null);
+            onPick(hit);
+          }
         }}
-        onInputValueChange={(e) => setInput(e.inputValue)}
-        data-testid="address-search"
+        onInputValueChange={(e) => {
+          if (e.reason === "input-change") {
+            // Digits only. A kode pos has no other characters, and stripping here means the search,
+            // the stored value and what is on screen can never disagree about what was typed.
+            const digits = e.inputValue.replace(/\D/g, "").slice(0, KODE_POS_DIGITS);
+            setTyped(digits);
+            onChange(digits);
+            return;
+          }
+          setTyped(null);
+        }}
+        onOpenChange={(e) => {
+          if (!e.open) setTyped(null);
+        }}
+        data-testid="address-kodepos"
       >
         <Combobox.Control>
-          <Combobox.Input placeholder={t("address.search.placeholder")} />
-          {/* No ClearTrigger: it hides itself unless `value` is non-empty, and this box's value is
-              pinned to [] on purpose — so it would be permanently dead chrome. */}
+          <Combobox.Input inputMode="numeric" placeholder={t("address.kodePosPlaceholder")} />
           {loading && (
             <Combobox.IndicatorGroup>
               <Spinner size="xs" colorPalette="brand" />
@@ -308,32 +334,36 @@ function AddressSearch({
           <Combobox.Positioner>
             <Combobox.Content>
               <Combobox.Empty>
-                {input.trim().length < SEARCH_MIN_CHARS
-                  ? t("address.search.minChars", { min: SEARCH_MIN_CHARS })
+                {q.length < SEARCH_MIN_DIGITS
+                  ? t("address.kodePosMinDigits", { min: SEARCH_MIN_DIGITS })
                   : loading
                     ? t("address.loading")
-                    : t("address.search.noResults")}
+                    : t("address.kodePosNoResults")}
               </Combobox.Empty>
-              {collection.items.map((a) => {
-                const value = a.desaCode || a.kecamatanCode || a.kabupatenCode || a.provinsiCode;
-
-                return (
-                  <Combobox.Item item={a} key={value} data-testid={`address-search-option-${value}`}>
-                    <Stack gap="0">
-                      <Span fontWeight="medium">{hitName(a)}</Span>
-                      <Span fontSize="xs" color="fg.muted">
-                        {hitPath(a)}
-                      </Span>
-                    </Stack>
-                  </Combobox.Item>
-                );
-              })}
+              {collection.items.map((a) => (
+                <Combobox.Item
+                  item={a}
+                  key={a.desaCode}
+                  data-testid={`address-kodepos-option-${a.desaCode}`}
+                >
+                  <Stack gap="0">
+                    {/* The postcode leads: one code routinely covers several desa, so it is the
+                        column the eye scans while the name is what distinguishes the rows. */}
+                    <Span fontWeight="medium">
+                      {a.kodePos} — {hitName(a)}
+                    </Span>
+                    <Span fontSize="xs" color="fg.muted">
+                      {hitPath(a)}
+                    </Span>
+                  </Stack>
+                </Combobox.Item>
+              ))}
             </Combobox.Content>
           </Combobox.Positioner>
         </Portal>
       </Combobox.Root>
 
-      <Field.HelperText>{t("address.search.help")}</Field.HelperText>
+      <Field.HelperText>{t("address.kodePosHelp")}</Field.HelperText>
     </Field.Root>
   );
 }
@@ -342,12 +372,13 @@ function AddressSearch({
 // screen that takes an address (order customer, warehouse, shop, user profile) reuses, so they all
 // produce the same shape.
 //
-// Four cascading searchable Selects (provinsi → kabupaten/kota → kecamatan → desa/kelurahan), each
-// loading its level by parent_code as the one above resolves; a kode pos that auto-fills from the
-// desa but stays editable; and free text for the street. Above them sits the fast path: one search
-// box over RegionSearch that back-fills every level from a hit's ancestry.
+// The KODE POS on top — type the postcode and the addresses it covers are suggested, one pick
+// filling everything below (owner). Then four cascading searchable Selects (provinsi →
+// kabupaten/kota → kecamatan → desa/kelurahan), each loading its level by parent_code as the one
+// above resolves, and free text for the street. The two directions meet in the middle: the postcode
+// fills the cascade, and choosing a desa fills the postcode.
 export const description =
-  "Indonesian address entry (#117): four cascading searchable region Selects (provinsi → kabupaten/kota → kecamatan → desa/kelurahan) loaded level-by-level, an auto-filled but editable kode pos, and free-text street detail. A search box above back-fills all four from one hit. Controlled — emits an AddressValue (codes + names) a consumer can snapshot.";
+  "Indonesian address entry (#117): the kode pos on top doubles as the search — type a postcode and pick from the desa it covers, which back-fills every level. Below it four cascading searchable region Selects (provinsi → kabupaten/kota → kecamatan → desa/kelurahan) loaded level-by-level, and free-text street detail. Controlled — emits an AddressValue (codes + names) a consumer can snapshot.";
 
 export function AddressPicker({ value, onChange, disabled }: AddressPickerProps) {
   const { t } = useTranslation();
@@ -469,7 +500,17 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
 
   return (
     <Stack gap="field">
-      <AddressSearch onPick={applyHit} disabled={disabled} />
+      {/* THE KODE POS COMES FIRST, and that placement is the design (owner). It is now the way in:
+          five digits off the buyer's message fill the four levels below in one pick. Leaving it at
+          the bottom — where it sat when it was only an OUTPUT of choosing a desa — would hide the
+          fast path behind the slow one. It is still filled in by the cascade, so a person who has no
+          postcode simply works downwards and finds it filled when they arrive. */}
+      <KodePosField
+        value={value.kodePos}
+        onChange={(kodePos) => onChange({ ...value, kodePos })}
+        onPick={applyHit}
+        disabled={disabled}
+      />
 
       <LevelSelect
         label={t("address.provinsi")}
@@ -518,18 +559,6 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
         onPick={pickDesa}
         disabled={disabled}
       />
-
-      <Field.Root disabled={disabled}>
-        <Field.Label>{t("address.kodePos")}</Field.Label>
-        <Input
-          value={value.kodePos}
-          data-testid="address-kodepos"
-          inputMode="numeric"
-          placeholder={t("address.kodePosPlaceholder")}
-          onChange={(e) => onChange({ ...value, kodePos: e.target.value })}
-        />
-        <Field.HelperText>{t("address.kodePosHelp")}</Field.HelperText>
-      </Field.Root>
 
       <Field.Root disabled={disabled}>
         <Field.Label>{t("address.addressLine")}</Field.Label>

@@ -23,11 +23,31 @@ service InventoryService {
   rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);
   rpc StockReceive(StockReceiveRequest) returns (StockReceiveResponse);
   rpc StockAdjust(StockAdjustRequest) returns (StockAdjustResponse);
+  // A STOCK OPNAME — count a whole shelf in one act, and correct every line of it together.
+  rpc StockOpname(StockOpnameRequest) returns (StockOpnameResponse);
   rpc StockTransfer(StockTransferRequest) returns (StockTransferResponse);
   // Move stock between places INSIDE one warehouse: shelve what arrived, or re-organise a shelf (#136).
   rpc StockMove(StockMoveRequest) returns (StockMoveResponse);
   // Take stock out for an order (#69/#149) — the selling side's draw against a warehouse.
   rpc StockPick(StockPickRequest) returns (StockPickResponse);
+
+  // What a pick WOULD find — the read half of StockPick, so the order form can show what it is about
+  // to take before it takes it (#90).
+  //
+  // ⚠ NOT OwnerStockByIds, and the difference is the reason this exists. That one derives OWNERSHIP
+  // from the restock a unit arrived on, so stock that reached a shelf any other way — a direct
+  // receive, an adjustment, a transfer — belongs to nobody and reads as 0. A pick does not care: it
+  // drains `stock_levels` for the warehouse. Showing the ownership figure beside a Create button would
+  // block orders the warehouse can plainly fill, which is a worse lie than showing nothing.
+  rpc StockAvailability(StockAvailabilityRequest) returns (StockAvailabilityResponse);
+
+  // WHAT THIS WAREHOUSE CAN SELL — the paginated list behind the order form's product picker.
+  //
+  // The list is owned HERE rather than by the catalogue because the filter that defines it — "has
+  // stock in this building" — is a fact this service owns, and a filter has to be applied where the
+  // paging happens. Filtering a catalogue page after it loads would show two rows out of ten while
+  // the pager went on counting all ten.
+  rpc StockedProductList(StockedProductListRequest) returns (StockedProductListResponse);
   // Put a pick BACK: a cancelled order (#70), or an order that died after its stock was taken (#149).
   rpc StockReturn(StockReturnRequest) returns (StockReturnResponse);
   // What products COST this warehouse, for an order to freeze as its COGS (#74).
@@ -347,6 +367,122 @@ message StockAdjustResponse {
   StockLevel level = 2;
 }
 
+// ── STOCK OPNAME — counting a whole shelf ─────────────────────────────────────────────────────────
+//
+// `StockAdjust` with reason RECOUNT already corrects ONE product on one shelf. That is the posting; it
+// is not the job. Nobody walks to A-01-3 to count one product — they stand in front of the shelf and
+// count everything on it, and the useful fact at the end is *"A-01-3 was counted, and here is what was
+// wrong"*, not five unrelated corrections that happen to share a rack.
+//
+// So an opname is ONE ATOMIC ACT over a shelf. It reuses the recount mechanics per line — the delta
+// lands on the oldest batch (FIFO, owner's Q1) and a shortfall writes its value off (owner's Q4) — and
+// adds the two things a sweep needs that a single adjust cannot have: all-or-nothing, and a complete
+// picture of the variance.
+//
+// ⚠ ONLY THE LINES YOU SEND ARE COUNTED, AND THIS IS THE MOST DANGEROUS PART OF THE WHOLE FEATURE.
+// A product on the shelf that is absent from `lines` is treated as NOT COUNTED and is left completely
+// alone — never zeroed. The tempting alternative (a sweep means "everything else is gone") would turn
+// one forgotten row, one filtered screen or one lost page of a long shelf into a silent write-off of
+// real stock, and a stock-take is BELIEVED. Emptying a shelf must stay something you say explicitly, by
+// sending a line with `counted_qty = 0`.
+//
+// ⚠ A ZERO-VARIANCE LINE STILL WRITES A MOVEMENT. Counting a product and finding it exactly right is a
+// real observation and the evidence that the shelf was visited — `last_opname_unix` on the placement
+// and batch screens is read from the newest ADJUST on that (product, rack), so a correct count that
+// wrote nothing would leave the shelf looking permanently overdue. Counting is not the same as changing.
+message StockOpnameLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // The COUNTED figure — absolute, not a delta, exactly as `StockAdjustRequest.on_hand` is. A person at
+  // a shelf reports what they see; working out the difference is this system's job, and asking them for
+  // a signed correction instead is how a count becomes arithmetic somebody can get backwards.
+  int64 counted_qty = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+message StockOpnameRequest {
+  // ⚠ THE SAME ROLES `StockAdjust` TAKES, and that is deliberately NOT widened to WAREHOUSE_STAFF here.
+  //
+  // In practice the person walking the racks with a scanner is staff, so this is the one decision in
+  // this feature most likely to want changing. It is left alone because widening it is the same question
+  // for both RPCs — an opname is a recount in bulk, and letting staff post a hundred corrections in one
+  // call while a single correction needs a manager would be a strange place to draw a line. Decide it
+  // once, for both, rather than letting the bulk path quietly become the loose one.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 warehouse_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+
+  // WHERE was counted. A required oneof, the same shape and the same reasoning as `StockAdjust`'s
+  // (#139): a caller that simply forgot to say where would otherwise silently reconcile the unplaced
+  // pile while the racks hold the stock. Refuse, do not interpret.
+  StockPlace place = 2 [(buf.validate.field).required = true];
+
+  // Every product counted on that shelf. At least one — an opname of nothing is not an opname.
+  //
+  // Capped so one request cannot be unbounded (HARD RULE 9's concern, on a write path): a shelf holds
+  // tens of products, not hundreds, and a caller sending more than this has stopped describing a shelf.
+  repeated StockOpnameLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+  }];
+
+  // ⚠ ONE PRODUCT MAY APPEAR ONCE. Two lines for the same product are refused rather than merged or
+  // last-one-wins: they are two different claims about what is physically on one shelf, and this system
+  // cannot know which the counter meant. Refusing returns the question to the person who can answer it.
+
+  // Why, or what happened — the audit trail on every movement this writes. Free text and recommended:
+  // "monthly count", "after the leak". A variance is a question somebody will ask about in a month.
+  string note = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+// What one counted line turned out to be.
+message StockOpnameVariance {
+  uint64 product_id = 1;
+  // What the system believed was on the shelf before the count.
+  int64 expected_qty = 2;
+  // What the person actually found.
+  int64 counted_qty = 3;
+  // counted − expected. NEGATIVE is a shortfall (stock that is not there), positive a surplus.
+  int64 delta = 4;
+
+  // What the shortfall was WORTH, whole rupiah — `−delta × the oldest batch's unit cost` (owner's Q1
+  // picks the layer, Q4 makes it a value loss). 0 for a surplus, for an exact count, and for stock whose
+  // cost was never recorded.
+  int64 value_loss = 5;
+
+  // ⚠ Whether `value_loss` is the WHOLE story. A batch's `unit_cost` is nullable and nil means UNKNOWN,
+  // never 0 (#74) — so units drawn from a costless layer are written off in QUANTITY and priced at
+  // nothing. False says "this shortfall is worth more than the number beside it", which is a different
+  // statement from "this shortfall was worth nothing".
+  bool value_known = 6;
+}
+
+message StockOpnameResponse {
+  // One entry per counted line, in the order they were sent — INCLUDING the ones that matched, because
+  // "we counted eleven products and nine were right" is the sentence the person doing this wants, and a
+  // response holding only the problems cannot say how much was checked.
+  repeated StockOpnameVariance variances = 1;
+
+  // The shelf's headline, so the screen needs no second call and cannot disagree with the rows.
+  int64 counted_products = 2;
+  // How many of them differed from the system. The number that decides whether anybody has to care.
+  int64 variance_products = 3;
+  // The total value written off across every shortfall — what this count cost the business.
+  int64 total_value_loss = 4;
+  // Whether every shortfall could be priced. False when any line's cost layer was unknown, so the
+  // total above is a floor rather than the answer.
+  bool value_known = 5;
+}
+
 // One end of a move (#136): a shelf, or the not-yet-shelved pile. Both are real PLACES — "unplaced" is
 // where stock sits before anyone puts it away, not an absence.
 message StockPlace {
@@ -457,6 +593,117 @@ message StockPickResponse {
   // Every movement the pick produced — one per PLACE drawn, so a line satisfied from two shelves
   // yields two. This is what makes the drain auditable: it says exactly which shelves were emptied.
   repeated StockMovement movements = 1;
+}
+
+// ── What this warehouse can actually sell ─────────────────────────────────────────────────────────
+
+message StockedProductListFilter {
+  // The building. Required — "what is in stock" has no answer until somebody says where.
+  uint64 warehouse_id = 1 [(buf.validate.field).uint64.gt = 0];
+
+  // Narrow to these products, if given. 0 entries = no narrowing.
+  //
+  // This is how SEARCH survives an inventory-owned list: product names and SKUs live in the
+  // catalogue, which this service cannot see and must not join to (HARD RULE 3). So a caller with a
+  // search term resolves it against product_service first and passes the matching ids here — the
+  // paging still happens HERE, over the intersection, so the count stays true.
+  //
+  // ⚠ A caller doing that must say when its own resolve was capped. This service reports honestly on
+  // whatever set it is given; it cannot know the ids it was handed were the first N of many.
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    max_items: 500
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message StockedProductListRequest {
+  // Read: the SELLING side, scoped to the caller's own team — StockAvailability's policy exactly, and
+  // for the same reason. This answers "what could I put on an order from this warehouse", so anyone
+  // who could place that order may ask, and nobody else.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+  StockedProductListFilter filter = 2 [(buf.validate.field).required = true];
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message StockedProductListItem {
+  uint64 product_id = 1;
+  // What a pick would find, summed over every place in the warehouse. Always > 0 here.
+  int64 available = 2;
+}
+
+message StockedProductListResponse {
+  // Only products the warehouse actually HOLDS — `on_hand > 0`, and that is not a filter the caller
+  // can turn off. A product with nothing on the shelf is not something this warehouse can sell, and
+  // listing it only to have the order form refuse it later is a row that wastes somebody's click.
+  repeated StockedProductListItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── The READ half of StockPick ────────────────────────────────────────────────────────────────────
+
+message StockAvailabilityRequest {
+  // Read, and it carries StockPick's policy and StockPick's scoping EXACTLY — the selling team's
+  // people, scoped to their own team, with the warehouse as an ordinary parameter. That is not
+  // convenience: this answers "what would a pick from this warehouse find", so anything that could
+  // pick must be able to ask, and nothing that could not pick should be able to.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  // The SELLING team about to place the order — the caller must have a role here.
+  uint64 team_id = 1 [
+    (warehouse.role_base.v1.use_scope) = true,
+    (buf.validate.field).uint64.gt = 0
+  ];
+
+  // The warehouse the order would ship from. An ordinary parameter, exactly as on StockPick.
+  uint64 warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  repeated uint64 product_ids = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message StockAvailabilityItem {
+  uint64 product_id = 1;
+  // What a pick would find RIGHT NOW: this warehouse's on-hand for the product, summed across every
+  // place in it — unplaced and shelved alike, because pickOneLine drains all of them.
+  int64 available = 2;
+}
+
+message StockAvailabilityResponse {
+  // One entry per product ASKED ABOUT, including the ones with nothing — unlike the "absent means
+  // zero" convention elsewhere. A screen that is deciding whether it may promise goods to a buyer must
+  // not have to infer a zero from a gap, because the same gap is what a partial answer looks like.
+  repeated StockAvailabilityItem items = 1;
 }
 
 message StockReturnRequest {

@@ -572,3 +572,86 @@ Today `appendMovement` writes both tables in one transaction, so the owner's his
 missing an event the shelf's ledger recorded. Later it becomes an **event consumer** (owner) — the
 rows and the read shape do not change when it does, which is the reason the owner's lens lives in its
 own table now rather than being fused into `stock_movements`.
+
+---
+
+## A stock opname — counting a whole shelf (`StockOpname`)
+
+`StockAdjust` with reason `RECOUNT` has been able to correct **one product on one shelf** since #139.
+That is the posting, not the job. Nobody walks to A-01-3 to count one product: they stand at the shelf,
+count everything on it, and the useful fact afterwards is *"A-01-3 was counted, and here is what was
+wrong"* — not five unrelated corrections that happen to share a rack.
+
+`StockOpname` is that act. It reuses the recount mechanics per line and adds the two things a sweep
+needs: **all-or-nothing**, and **the whole picture of the variance**.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as warehouse crew
+    participant UI as "/inventories/opname?rack=163"
+    participant R as RackService
+    participant PS as product_service
+    participant I as inventory_service
+    participant E as expense_service
+
+    UI->>R: RackStock — what the system believes is on this shelf
+    R-->>UI: product ids + on-hand + unit cost
+    UI->>PS: ProductByIds — the labels, since a shelf holds OTHER teams' goods
+    PS-->>UI: sku + name
+    UI-->>P: the count sheet — expected beside an empty box
+
+    P->>UI: types what is actually there (blank = not counted)
+    UI->>I: StockOpname(place, lines, note)
+
+    rect rgb(240, 240, 240)
+        Note over I: ONE transaction — lines sorted by product id
+        loop each counted line
+            I->>I: SELECT on_hand FOR UPDATE — the lock that makes this safe
+            I->>I: set the shelf to the counted figure
+            I->>I: attribute the delta FIFO, oldest layer first — and price it
+            I->>I: append an ADJUST movement (batch-less "—")
+        end
+    end
+
+    I->>E: PostStockLoss — ONE write-off for the whole shelf, AFTER commit
+    I-->>UI: every line's variance + what the shortfall was worth
+```
+
+### The two rules that matter most
+
+| | |
+| --- | --- |
+| **Only the lines sent are counted** | A product on the shelf and absent from `lines` is left completely alone — **never zeroed**. The tempting reading ("a sweep means everything else is gone") would turn one forgotten row or one lost page into a silent write-off of real stock, and a stock-take is BELIEVED. Emptying a shelf is `counted_qty = 0`, said out loud. |
+| **A zero-variance line still writes a movement** | `last_opname_unix` is read from the newest `ADJUST` on that `(product, rack)`, so a correct count that wrote nothing would leave the shelf looking permanently overdue for the count somebody just did. Counting and changing are different things. |
+
+### What a shortfall is worth
+
+The delta lands on the batches on that shelf **oldest first** (owner's Q1), and the write-off is priced
+at **the layers the draw actually consumed** — not at "the oldest layer's cost" applied to everything.
+A shortfall spanning two deliveries at different prices is worth the sum of what it took from each.
+
+`value_known = false` says the figure is a **floor**: a batch's `unit_cost` is nullable and nil means
+UNKNOWN, never 0 (#74), so units drawn from a costless layer leave priced at nothing. The screen says
+"at least X" rather than showing a confident total.
+
+A **surplus is never valued**. Stock that turns up was not bought, and booking a negative expense for it
+would let a sloppy count read as income.
+
+### Concurrency
+
+Two people counting one shelf at the same second is the normal case here, not an edge case. Every line
+takes a `FOR UPDATE` row lock on `stock_levels`, and **the lines are sorted by product id before
+locking** — a deadlock guard, not tidiness: two requests locking `7 then 3` and `3 then 7` would have
+Postgres kill one of them, and the person would see a stock-take fail for no reason they could explain.
+
+Proved rather than asserted — see
+[audits/services/inventory_service/concurrency/lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md).
+
+### Not yet
+
+- **The unplaced pile cannot be counted here.** `RackStock` is a per-rack read and the pile has no rack
+  id. The screen says so rather than showing an empty shelf.
+- **A shelf larger than one screen** is flagged (`truncated`) rather than silently counted in part. The
+  uncounted rows are safe — the server never touches a product it was not sent — but the person would
+  otherwise believe they had finished.

@@ -43,6 +43,9 @@ const (
 	// SettlementServiceSettlementEntryListProcedure is the fully-qualified name of the
 	// SettlementService's SettlementEntryList RPC.
 	SettlementServiceSettlementEntryListProcedure = "/warehouse.settlement.v1.SettlementService/SettlementEntryList"
+	// SettlementServiceSettlementDailyProcedure is the fully-qualified name of the SettlementService's
+	// SettlementDaily RPC.
+	SettlementServiceSettlementDailyProcedure = "/warehouse.settlement.v1.SettlementService/SettlementDaily"
 	// SettlementPaymentServiceSettlementPaymentRecordProcedure is the fully-qualified name of the
 	// SettlementPaymentService's SettlementPaymentRecord RPC.
 	SettlementPaymentServiceSettlementPaymentRecordProcedure = "/warehouse.settlement.v1.SettlementPaymentService/SettlementPaymentRecord"
@@ -72,6 +75,8 @@ type SettlementServiceClient interface {
 	SettlementPositionList(context.Context, *connect.Request[v1.SettlementPositionListRequest]) (*connect.Response[v1.SettlementPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	SettlementEntryList(context.Context, *connect.Request[v1.SettlementEntryListRequest]) (*connect.Response[v1.SettlementEntryListResponse], error)
+	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+	SettlementDaily(context.Context, *connect.Request[v1.SettlementDailyRequest]) (*connect.Response[v1.SettlementDailyResponse], error)
 }
 
 // NewSettlementServiceClient constructs a client for the warehouse.settlement.v1.SettlementService
@@ -97,6 +102,12 @@ func NewSettlementServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(settlementServiceMethods.ByName("SettlementEntryList")),
 			connect.WithClientOptions(opts...),
 		),
+		settlementDaily: connect.NewClient[v1.SettlementDailyRequest, v1.SettlementDailyResponse](
+			httpClient,
+			baseURL+SettlementServiceSettlementDailyProcedure,
+			connect.WithSchema(settlementServiceMethods.ByName("SettlementDaily")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -104,6 +115,7 @@ func NewSettlementServiceClient(httpClient connect.HTTPClient, baseURL string, o
 type settlementServiceClient struct {
 	settlementPositionList *connect.Client[v1.SettlementPositionListRequest, v1.SettlementPositionListResponse]
 	settlementEntryList    *connect.Client[v1.SettlementEntryListRequest, v1.SettlementEntryListResponse]
+	settlementDaily        *connect.Client[v1.SettlementDailyRequest, v1.SettlementDailyResponse]
 }
 
 // SettlementPositionList calls warehouse.settlement.v1.SettlementService.SettlementPositionList.
@@ -116,6 +128,11 @@ func (c *settlementServiceClient) SettlementEntryList(ctx context.Context, req *
 	return c.settlementEntryList.CallUnary(ctx, req)
 }
 
+// SettlementDaily calls warehouse.settlement.v1.SettlementService.SettlementDaily.
+func (c *settlementServiceClient) SettlementDaily(ctx context.Context, req *connect.Request[v1.SettlementDailyRequest]) (*connect.Response[v1.SettlementDailyResponse], error) {
+	return c.settlementDaily.CallUnary(ctx, req)
+}
+
 // SettlementServiceHandler is an implementation of the warehouse.settlement.v1.SettlementService
 // service.
 type SettlementServiceHandler interface {
@@ -123,6 +140,8 @@ type SettlementServiceHandler interface {
 	SettlementPositionList(context.Context, *connect.Request[v1.SettlementPositionListRequest]) (*connect.Response[v1.SettlementPositionListResponse], error)
 	// The counterparty detail's running history (#185).
 	SettlementEntryList(context.Context, *connect.Request[v1.SettlementEntryListRequest]) (*connect.Response[v1.SettlementEntryListResponse], error)
+	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
+	SettlementDaily(context.Context, *connect.Request[v1.SettlementDailyRequest]) (*connect.Response[v1.SettlementDailyResponse], error)
 }
 
 // NewSettlementServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -144,12 +163,20 @@ func NewSettlementServiceHandler(svc SettlementServiceHandler, opts ...connect.H
 		connect.WithSchema(settlementServiceMethods.ByName("SettlementEntryList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	settlementServiceSettlementDailyHandler := connect.NewUnaryHandler(
+		SettlementServiceSettlementDailyProcedure,
+		svc.SettlementDaily,
+		connect.WithSchema(settlementServiceMethods.ByName("SettlementDaily")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.settlement.v1.SettlementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettlementServiceSettlementPositionListProcedure:
 			settlementServiceSettlementPositionListHandler.ServeHTTP(w, r)
 		case SettlementServiceSettlementEntryListProcedure:
 			settlementServiceSettlementEntryListHandler.ServeHTTP(w, r)
+		case SettlementServiceSettlementDailyProcedure:
+			settlementServiceSettlementDailyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -165,6 +192,10 @@ func (UnimplementedSettlementServiceHandler) SettlementPositionList(context.Cont
 
 func (UnimplementedSettlementServiceHandler) SettlementEntryList(context.Context, *connect.Request[v1.SettlementEntryListRequest]) (*connect.Response[v1.SettlementEntryListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementEntryList is not implemented"))
+}
+
+func (UnimplementedSettlementServiceHandler) SettlementDaily(context.Context, *connect.Request[v1.SettlementDailyRequest]) (*connect.Response[v1.SettlementDailyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementService.SettlementDaily is not implemented"))
 }
 
 // SettlementPaymentServiceClient is a client for the

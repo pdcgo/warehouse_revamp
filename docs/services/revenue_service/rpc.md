@@ -91,6 +91,91 @@ and it is synchronous where production is not. For those, run the emulator
 
 ---
 
+## The daily statement — `RevenueDaily` + `ExpenseDaily`
+
+`RevenueList` answers *"what did this period make"*. Nothing answered *"which **day** did it"* — and a
+month is not a thing that goes wrong. A Tuesday is.
+
+**The statement is assembled on the CLIENT**, from two independent services. Neither owns it, because
+neither holds the other's numbers (HARD RULE 3) — the same call the profit screen already made.
+
+> This RPC is the **selling team's** income half. A WAREHOUSE reads the same screen with
+> [`SettlementDaily`](../settlement_service/rpc.md#settlementdaily--a-warehouses-income-half-of-the-daily-statement)
+> in this one's place, because it has no orders and therefore no rows in this service at all. The
+> expenses half is shared.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as "/statement — DailyStatementPage"
+    participant R as revenue_service
+    participant E as expense_service
+
+    UI->>UI: DateRangePicker to from/to — refuse if unbounded or over 366 days
+
+    par one period, two services
+        UI->>R: RevenueDaily(team, from, to)
+        R->>R: GROUP BY (created_at AT TIME ZONE 'UTC')::date — live rows only
+        R-->>UI: SPARSE days + period totals
+    and
+        UI->>E: ExpenseDaily(team, from, to, kind)
+        E->>E: GROUP BY occurred_at, kind — live rows only
+        E-->>UI: SPARSE days + period totals
+    end
+
+    UI->>UI: daySpine(from,to) — build EVERY day in the range
+    UI->>UI: per day, margin − expenses, then a running total
+    UI->>UI: footer = the SERVERS' totals, never a re-sum of the rows
+```
+
+### The period IS the pagination
+
+Neither RPC takes a page cursor, and that does not breach HARD RULE 9. The rule guards a `repeated`
+whose length grows **with the data**. These grow with `to − from`, which the caller states:
+
+| | |
+| --- | --- |
+| Both bounds **required** | an open end is the unbounded read the rule is about |
+| Span **capped at 366 days** | `InvalidArgument` beyond it — refused, never clamped |
+| Result | ten years of orders and one year of orders return the same 366 rows |
+
+The same bargain `SearchUser`'s capped typeahead makes. The cap lives in **four** places that must agree:
+`maxPeriodDays` in revenue, expense and settlement, and `MAX_PERIOD_DAYS` in
+[frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts) — the client knows it so it can explain
+a refusal without spending a round trip on an error it could predict.
+
+### Sparse series, one calendar
+
+Both services **omit** days that hold nothing. The client builds the date spine, because it has to
+build one anyway to line the two series up — and a server that also emitted empty days would be a
+second calendar, free to disagree about what February contains.
+
+A quiet day is still **rendered**, dimmed. A missing row cannot tell a reader "nothing was sold" apart
+from "that day did not load".
+
+### The two halves bucket differently, on purpose
+
+| | Bucketed by | Why |
+| --- | --- | --- |
+| Revenue | `created_at`, cast **in UTC** | the moment the order was placed |
+| Expense | `occurred_at` (a DATE) | the day a person said the money **belongs** to — payroll paid on the 5th is last month's |
+
+> ⚠ **The revenue side is bucketed in UTC while the business is UTC+7.** An order placed before 07:00
+> local lands on the previous day in this series. It is deliberate *consistency*, not a fresh decision:
+> the period filter has always parsed its bounds as UTC midnight, so bucketing in Asia/Jakarta would
+> produce daily rows that do not add up to the period total sitting beside them on the same screen.
+> Fixing it properly means giving the service a timezone, which is an owner decision, not this RPC's.
+
+### The footer is the server's total, not the rows
+
+Both responses carry the period totals `RevenueList`/`ExpenseList` already report. The screen prints
+those rather than summing its own rows — so the statement's footer and the Revenue and Expenses screens
+are **one number**, not two that happen to match today. It also means the footer stays whole-period when
+"hide days with no activity" is filtering the table, which is the honest reading: hiding empty rows must
+not look like it changed the money.
+
+---
+
 ## A cancelled order is VOIDED, not left standing (#164)
 
 A row is written when the order is placed, and an order can be cancelled right up to SHIPPED (#150).

@@ -18,16 +18,21 @@ service OrderService {
   rpc OrderList(OrderListRequest) returns (OrderListResponse);
   rpc OrderDetail(OrderDetailRequest) returns (OrderDetailResponse);
 
-  // Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
-  // CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
-  // stock + money reversal once stock integration (#69) lands.
-  rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
+  // Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
+  // off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
+  // cancel with the stock + money reversal once stock integration (#69) lands.
   rpc OrderCancel(OrderCancelRequest) returns (OrderCancelResponse);
 
-  // The WAREHOUSE's side of an order (#150): the crew records what it has done.
+  // The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
+  // happens and one step at a time.
   //
-  // These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
-  // why that is the only scope that can work.
+  //   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+  //
+  // ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
+  // OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
+  // order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
+  // that can work.
+  rpc OrderConfirm(OrderConfirmRequest) returns (OrderConfirmResponse);
   rpc OrderPick(OrderPickRequest) returns (OrderPickResponse);
   rpc OrderPack(OrderPackRequest) returns (OrderPackResponse);
   rpc OrderShip(OrderShipRequest) returns (OrderShipResponse);
@@ -42,6 +47,18 @@ service OrderService {
   // orders.
   rpc OrderProductActivityByIds(OrderProductActivityByIdsRequest) returns (OrderProductActivityByIdsResponse);
   rpc OrderActivityStat(OrderActivityStatRequest) returns (OrderActivityStatResponse);
+
+  // ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
+  //
+  // The stat above the list, and it is a DIFFERENT question from OrderActivityStat above: that one
+  // describes a set of PRODUCTS ("when did each of these last sell"), this one describes the set of
+  // ORDERS the screen is showing ("what is waiting on somebody, and what has it been worth").
+  //
+  // Deliberately NOT folded into OrderList. A stat that rode on the list response would be recomputed
+  // on every page turn and every sort, for numbers that do not change when you turn a page — and it
+  // would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
+  // decide which tab to open.
+  rpc OrderStat(OrderStatRequest) returns (OrderStatResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -63,6 +80,40 @@ enum OrderStatus {
   ORDER_STATUS_PICKING = 4;
   ORDER_STATUS_PACKED = 5;
   ORDER_STATUS_SHIPPED = 6;
+}
+
+// WHAT HAPPENED TO AN ORDER — one kind per step of its life.
+//
+// Deliberately NOT the same enum as OrderStatus, though today they map one-to-one. A status is where
+// the order IS; an event is something that WAS DONE, and the two come apart the moment anything
+// happens that does not change the status — a note edited, a receipt attached, a courier corrected.
+// Reusing OrderStatus here would mean the first such event has nowhere to go.
+enum OrderEventKind {
+  ORDER_EVENT_KIND_UNSPECIFIED = 0;
+  // It was placed — typed in on the form, or promoted from a draft. Every order has exactly one,
+  // including the ones backfilled from `created_at`.
+  ORDER_EVENT_KIND_PLACED = 1;
+  // The selling team accepted it (#91).
+  ORDER_EVENT_KIND_CONFIRMED = 2;
+  // Called off, by either end, before the courier had it (#70/#150).
+  ORDER_EVENT_KIND_CANCELLED = 3;
+
+  // The warehouse's three (#150) — each an action a person starts and finishes.
+  ORDER_EVENT_KIND_PICKING = 4;
+  ORDER_EVENT_KIND_PACKED = 5;
+  ORDER_EVENT_KIND_SHIPPED = 6;
+}
+
+// One entry in an order's history — WHAT happened, WHO did it, WHEN.
+message OrderEvent {
+  uint64 id = 1;
+  OrderEventKind kind = 2;
+  // The opaque user_service id of whoever did it; 0 = not recorded. Resolved to a name through
+  // UserByIDs at read time, never snapshotted — a person's name is theirs to change.
+  uint64 actor_user_id = 3;
+  // WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
+  // moment its column recorded, which may be months before the row existed.
+  int64 at_unix = 4;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -121,6 +172,27 @@ message OrderAddress {
   string address_line = 10;
 }
 
+// The SHIPPING RECEIPT attached to an order (owner) — the courier's slip photographed, or the PDF
+// the marketplace prints. One per order.
+//
+// A REFERENCE, not the file: the bytes live in document_service, and this records which document
+// they are. The id is opaque (no FK across services, HARD RULE 3), and the two labels beside it are
+// a deliberate SNAPSHOT — an order can name its attachment, and say whether it is a picture or a
+// PDF, without calling another service to render a row.
+//
+// The document is PRIVATE, so viewing it is a DocumentService.GetDownloadUrl call scoped to the
+// team. Storing a URL here instead would either be a link that expires in the database, or a
+// permanently public one for a document that names a buyer and their address.
+message OrderReceipt {
+  // A document_service id. "" = no receipt, which is the ordinary state of a fresh order.
+  string document_id = 1 [(buf.validate.field).string.max_len = 64];
+  // What it was called when it was uploaded — the label a person recognises in a list.
+  string filename = 2 [(buf.validate.field).string.max_len = 255];
+  // image/jpeg, application/pdf, … Kept so the reader knows whether it can show the thing inline or
+  // must offer it as a download, without fetching the file to find out.
+  string mime_type = 3 [(buf.validate.field).string.max_len = 128];
+}
+
 message Order {
   uint64 id = 1;
   uint64 team_id = 2;
@@ -141,8 +213,31 @@ message Order {
   int64 shipping_cost = 10;
   int64 total = 11;
 
+  // What this order SOLD FOR on the marketplace — a NOTE, and nothing computes from it (owner).
+  //
+  // `total` remains `subtotal + shipping_cost`. This sits beside it recording what the storefront
+  // actually took: after the marketplace's vouchers, coin subsidies and promotions, what the buyer
+  // paid there is a different figure from what these lines add up to, and neither is a correction of
+  // the other. Stored rather than derived because nothing here CAN derive it — a person reads it off
+  // the storefront and types it in.
+  //
+  // 0 = not recorded, not "sold for nothing": an order taken over the phone has no marketplace figure.
+  //
+  // ⚠ Never add it to margin or revenue. `margin = total - cogs - shipping_cost` still holds, and
+  // folding this in would count the same sale twice.
+  int64 marketplace_total = 17;
+
   // The lines — populated by OrderDetail (OrderList returns a summary without them).
   repeated OrderItem items = 12;
+
+  // The order's HISTORY, oldest first — populated by OrderDetail only, exactly like `items`. A list
+  // returning every order's whole history would multiply its page size by the length of each life.
+  //
+  // ⚠ An order in `status: SHIPPED` does NOT necessarily carry six events. Everything placed before
+  // the events table existed was backfilled from the two moments the row actually recorded — when it
+  // was created, and when it last changed — so an old order's history is short because that is all
+  // that was ever known, not because the steps were skipped.
+  repeated OrderEvent events = 20;
 
   int64 created_at_unix = 13;
 
@@ -160,6 +255,25 @@ message Order {
   //
   // 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
   int64 cogs = 16;
+
+  // The shipping receipt attached to this order, if one was. Always present as a message; an order
+  // with no receipt carries an empty `document_id` rather than a nil field, so a client renders it
+  // without null-checking — the same convention `address` already follows.
+  OrderReceipt receipt = 19;
+
+  // A free-text NOTE about this order, written by whoever took it (owner).
+  //
+  // The one field on an order that the system never reads. It carries what the structured fields
+  // cannot: "buyer asks for it after 5pm", "wrap the glass one", "second attempt, first parcel came
+  // back". Those are instructions to a PERSON — the CS who rings back, the crew who packs it — and
+  // every attempt to turn that class of remark into an enum ends with a list nobody's actual case
+  // fits.
+  //
+  // ⚠ Nothing branches on it. It is not a status, not a tag, and not a place to encode a rule the
+  // system should be holding — the moment something reads it, that something needs a real field.
+  //
+  // "" = nothing was written down, which is the ordinary case.
+  string note = 18;
 
   // WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
   // here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
@@ -211,6 +325,25 @@ message OrderCreateRequest {
   int64 shipping_cost = 8 [(buf.validate.field).int64.gte = 0];
   int64 total = 9 [(buf.validate.field).int64.gte = 0];
 
+  // What it SOLD FOR on the marketplace — a note, stored and never computed from. Optional: 0 means
+  // nobody wrote it down. See Order.marketplace_total.
+  int64 marketplace_total = 13 [(buf.validate.field).int64.gte = 0];
+
+  // The shipping receipt, already uploaded to document_service by the client. Optional.
+  //
+  // NOT VERIFIED HERE, and that is a choice rather than an oversight: checking the id would make
+  // placing an order depend on document_service being up, for a label. A wrong id costs a receipt
+  // that will not open — never another team's file, because GetDownloadUrl is scoped to the caller's
+  // own team and refuses anything else.
+  OrderReceipt receipt = 15;
+
+  // A free-text note about the order, for the people who handle it. Optional; "" is the ordinary
+  // case. See Order.note — nothing in the system reads it.
+  //
+  // Capped at 2000 characters: long enough for the several sentences a difficult order really does
+  // need, short enough that the field cannot become a document store.
+  string note = 14 [(buf.validate.field).string.max_len = 2000];
+
   // At least one line; `id` on each is ignored.
   repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];
 
@@ -254,12 +387,45 @@ message OrderListRequest {
   warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
-// OrderListFilter carries the NON-scope filters (both server-side because the list is paginated).
+// OrderListFilter carries the NON-scope filters (all server-side because the list is paginated — a
+// client-side filter would narrow the loaded page only, and the count driving the pager would still
+// be the unfiltered total).
 message OrderListFilter {
   // Filter to ONE status; UNSPECIFIED (the default) means ALL of them (#151).
   OrderStatus status = 1 [(buf.validate.field).enum.defined_only = true];
   // Only orders carrying THIS product on one of their lines (#159). 0 = no filter.
   uint64 product_id = 2;
+
+  // ── The three below are MIRRORED on OrderStatFilter ──────────────────────────────────────────
+  //
+  // They narrow WHICH ORDERS EXIST for this screen, so the header's counts must be computed over the
+  // same set or the tabs would total a different population than the table shows. `status` is the one
+  // filter deliberately NOT mirrored, because it IS the tab.
+
+  // Free text over the customer's NAME, their PHONE, and — when the term is all digits — the ORDER
+  // ID. Case-insensitive, substring. "" = no filter.
+  //
+  // Those three and no more. A CS person looking an order up has one of them in front of them: the
+  // buyer said their name, the buyer rang from a number, or somebody quoted an order number. Widening
+  // it to the address or the line items would make the same term match orders for reasons the person
+  // searching cannot see, and every extra column is another one the query cannot use an index for.
+  string search = 3 [(buf.validate.field).string.max_len = 100];
+
+  // Only orders placed on THIS shop. 0 = no filter.
+  //
+  // A shop belongs to a SELLING team, so this is meaningful only when a selling team is asking. A
+  // warehouse reading its pick queue holds no shops; it simply leaves this at 0.
+  uint64 shop_id = 4;
+
+  // The window the order was PLACED in — `created_at`, inclusive on both ends, unix seconds.
+  // 0 on either side is an OPEN end, so {0,0} means every date.
+  //
+  // `created_at` because it is the only timestamp an order has that means anything to the person
+  // filtering. When fulfilment starts stamping its own (picked_at, shipped_at), this becomes a
+  // WHICH-timestamp choice and the field names here are what stop that being ambiguous — the shared
+  // DateRangePicker already carries a field segment for exactly that.
+  int64 created_from_unix = 5;
+  int64 created_to_unix = 6;
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -333,16 +499,31 @@ message OrderDetailResponse {
 // OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
 // managers and customer service.
 message OrderConfirmRequest {
+  // CONFIRM IS THE WAREHOUSE'S ACTION, NOT THE SELLING TEAM'S (owner). It is the FIRST of the four
+  // steps the crew works, not a selling-side acknowledgement that happens before them:
+  //
+  //   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+  //
+  // This reverses #91, which had the selling team confirm its own order. That never described a real
+  // moment: the team that TYPED the order in has nothing left to decide about it, so its "confirm" was
+  // a click that asserted nothing. The warehouse's confirm does mean something — the building has seen
+  // the order, has the goods, and accepts the job. Until it happens the order is waiting on somebody
+  // who has not looked at it yet, which is exactly what PLACED should say.
+  //
+  // Scoped and policed identically to OrderPick/OrderPack/OrderShip below — see OrderPickRequest for
+  // why the ORDER'S WAREHOUSE is the only scope that can work here. Staff are included for the same
+  // reason: the person who accepts the job is the person standing in the building.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
     ]
   };
 
+  // The WAREHOUSE accepting the order — not the team that placed it.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
@@ -559,4 +740,86 @@ message OrderActivityPreview {
 
 message OrderActivityStatResponse {
   OrderActivityPreview preview = 1;
+}
+
+// ── The order list's stat ─────────────────────────────────────────────────────────────────────────
+
+// OrderStatFilter mirrors OrderListFilter MINUS the status, and the omission is the point: this stat
+// GROUPS BY status, so filtering to one would leave every other tab's count at zero. The screen's tab
+// is a filter on the list, never on the stat.
+message OrderStatFilter {
+  // Only orders carrying THIS product on one of their lines, exactly as OrderListFilter means it.
+  // 0 = no filter.
+  uint64 product_id = 1;
+
+  // The mirror of OrderListFilter's search / shop / date window, and the mirroring is load-bearing
+  // rather than tidy: these narrow which orders exist for the screen, so a header computed without
+  // them would sit above a table describing a smaller set — "Placed 12" over four visible rows, with
+  // nothing on screen explaining the gap. The server shares ONE query builder between the two RPCs so
+  // they cannot drift.
+  //
+  // Each means exactly what it means on OrderListFilter; see there for why search covers those three
+  // columns and why the window is `created_at`.
+  string search = 2 [(buf.validate.field).string.max_len = 100];
+  uint64 shop_id = 3;
+  int64 created_from_unix = 4;
+  int64 created_to_unix = 5;
+}
+
+message OrderStatRequest {
+  // Read: BOTH SIDES, matching OrderListRequest exactly. The stat describes the same set of orders the
+  // list does, so anyone who may see the list may see its totals — a warehouse reading its pick queue
+  // included. Any narrower policy here would mean a screen whose table loads and whose header 403s.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OrderStatFilter filter = 2;
+}
+
+// OrderStatusCount is one status and what is sitting in it RIGHT NOW — the GROUPING half of the stat.
+//
+// It is a live census, not a window: an order counted here is an order in that state today. That is
+// what makes it the work queue, and it is why these numbers carry no date range while the preview's
+// do.
+message OrderStatusCount {
+  OrderStatus status = 1;
+  int64 count = 2;
+  // The sum of those orders' `total`, whole rupiah — what the buyers are paying for them.
+  int64 value = 3;
+}
+
+// OrderStatPreview is the MONEY half — a rolling 30-day window, which is what a person means by "how
+// is it going lately".
+//
+// CANCELLED orders are excluded from both figures, for the same reason OrderActivityPreview excludes
+// them: a cancelled order is not a sale, and counting one would let a team read revenue it never took.
+//
+// There is no average-order-value field, deliberately. It is `revenue_30d / orders_30d`, and a client
+// that divides the two numbers it is already displaying cannot disagree with the tiles beside it —
+// whereas a third number computed here could, the moment either definition moved.
+message OrderStatPreview {
+  int64 orders_30d = 1;
+  int64 revenue_30d = 2;
+}
+
+message OrderStatResponse {
+  OrderStatPreview preview = 1;
+  // One entry per status that HAS orders. A status with none is absent rather than a zero row — the
+  // caller knows the full enum and renders the gaps, and "nothing to say" travels lighter (the same
+  // convention OwnerStockByIds uses for a product with no stock).
+  repeated OrderStatusCount by_status = 2;
 }

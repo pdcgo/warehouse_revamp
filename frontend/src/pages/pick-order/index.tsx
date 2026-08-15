@@ -7,23 +7,27 @@ import {
   Flex,
   Heading,
   Icon,
+  SimpleGrid,
   Spacer,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { ArrowLeft, StickyNote, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../../components/OrderStatusBadge";
+import { ShippingBadge } from "../../components/ShippingBadge";
+import { AddressField, Field } from "../../features/orders/components/OrderFields";
 import { toaster } from "../../components/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePickOrder } from "../../features/picking/queries";
 import { useAdvanceOrderFulfilment } from "../../features/picking/queries";
+import type { FulfilmentStep } from "../../features/picking/queries";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -39,10 +43,15 @@ function parseOrderId(raw: string | undefined): bigint {
 // The one action available from each state, and nothing else. The crew's screen offers the NEXT STEP
 // rather than a set of buttons to choose between: at any moment there is exactly one thing that has
 // happened next, and a screen offering three invites recording the wrong one.
-const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string }>> = {
-  [OrderStatus.CONFIRMED]: { labelKey: "picking.action.startPicking", toastKey: "picking.toast.picking" },
-  [OrderStatus.PICKING]: { labelKey: "picking.action.markPacked", toastKey: "picking.toast.packed" },
-  [OrderStatus.PACKED]: { labelKey: "picking.action.markShipped", toastKey: "picking.toast.shipped" },
+//
+// CONFIRM is the first of them (owner): the building has seen the order and takes the job on. It was
+// the selling team's button until now (#91), which is why a warehouse opening a just-placed order used
+// to find a screen with nothing on it to press.
+const NEXT_STEP: Partial<Record<OrderStatus, { labelKey: string; toastKey: string; step: FulfilmentStep }>> = {
+  [OrderStatus.PLACED]: { labelKey: "picking.action.confirm", toastKey: "picking.toast.confirmed", step: "confirm" },
+  [OrderStatus.CONFIRMED]: { labelKey: "picking.action.startPicking", toastKey: "picking.toast.picking", step: "pick" },
+  [OrderStatus.PICKING]: { labelKey: "picking.action.markPacked", toastKey: "picking.toast.packed", step: "pack" },
+  [OrderStatus.PACKED]: { labelKey: "picking.action.markShipped", toastKey: "picking.toast.shipped", step: "ship" },
 };
 
 // PickOrderPage — one order, its lines, and WHICH SHELF to walk to for each (#151).
@@ -82,16 +91,10 @@ export function PickOrderPage() {
 
     try {
       // The step, and the stock it moves, invalidated together by the hook (#177).
-      await advanceMutation.mutateAsync({
-        warehouseId,
-        orderId,
-        step:
-          order.status === OrderStatus.CONFIRMED
-            ? "pick"
-            : order.status === OrderStatus.PICKING
-              ? "pack"
-              : "ship",
-      });
+      // The step is read off NEXT_STEP rather than re-derived from the status here. The two used to be
+      // separate ladders — a label table and a chain of ternaries — and adding a fourth state to one
+      // and not the other is how a button ends up firing the previous step's RPC.
+      await advanceMutation.mutateAsync({ warehouseId, orderId, step: step.step });
       toaster.create({ type: "success", title: t(step.toastKey) });
     } catch (err) {
       toaster.create({
@@ -129,7 +132,7 @@ export function PickOrderPage() {
       size="xs"
       variant="ghost"
       alignSelf="flex-start"
-      onClick={() => navigate("/inventories/picking")}
+      onClick={() => navigate("/warehouse-orders")}
       data-testid="pick-order-back"
     >
       <Icon as={ArrowLeft} boxSize="4" />
@@ -184,16 +187,57 @@ export function PickOrderPage() {
         )}
       </Flex>
 
+      {/* WHERE IT IS GOING — the block this screen was missing entirely (owner).
+          It used to show the customer's NAME and nothing else, while the order carried a phone, a frozen
+          address and a courier. Those are not the seller's private business: the crew writes them on the
+          parcel and hands it over, so a screen without them sends somebody back to ask the seller for
+          what the order already knows.
+
+          Money is deliberately still absent. A picker does not price the goods, and the margin on the
+          lines is a manager's number (#78) — the pick list needs what to fetch and where to send it. */}
       <Card.Root>
         <Card.Body>
           <Stack gap="card">
-            <Text fontSize="sm" color="fg.muted" textTransform="uppercase">
-              {t("picking.detail.customer")}
+            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+              {t("orders.customerAndShipping")}
             </Text>
-            <Text data-testid="pick-order-customer">{order.customerName}</Text>
+            <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+              <Field label={t("orders.customer")} value={order.customerName} />
+              <Field label={t("orders.phone")} value={order.customerPhone} />
+              <AddressField label={t("orders.address")} address={order.address} />
+              <Field
+                label={t("orders.shipping")}
+                value={<ShippingBadge code={order.shippingCode} />}
+              />
+            </SimpleGrid>
           </Stack>
         </Card.Body>
       </Card.Root>
+
+      {/* THE NOTE, and only when there is one. Its whole purpose is an instruction to the person who
+          handles the order — "wrap the glass one", "second attempt, first parcel came back" — and that
+          person is standing on THIS screen. It was readable only from the seller's detail page, which is
+          the one seat that never packs anything.
+
+          Above the pick list on purpose: an instruction about how to pack has to be read before the
+          walking starts, not found underneath it. `pre-wrap` because it was typed as lines. */}
+      {order.note !== "" && (
+        <Card.Root borderColor="orange.emphasized" borderWidth="1px">
+          <Card.Body>
+            <Stack gap="card">
+              <Flex align="center" gap="2">
+                <Icon as={StickyNote} boxSize="4" color="orange.fg" />
+                <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+                  {t("orders.note")}
+                </Text>
+              </Flex>
+              <Text fontSize="sm" whiteSpace="pre-wrap" data-testid="pick-order-note">
+                {order.note}
+              </Text>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      )}
 
       <Card.Root>
         <Card.Body>

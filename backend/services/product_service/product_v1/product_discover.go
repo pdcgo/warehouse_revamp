@@ -31,6 +31,19 @@ func (s *Service) ProductDiscover(
 		Model(&product_service_models.Product{}).
 		Where("deleted = ? AND cross_locked = ?", false, false)
 
+	// "Somebody else's catalogue", for a caller showing own and other-team products as separate tabs.
+	// Applied HERE rather than in the client because the result is paginated: filtering after the page
+	// is loaded narrows what is shown while the count keeps describing the unfiltered set.
+	if req.Msg.GetExcludeOwnTeam() {
+		query = query.Where("team_id <> ?", req.Msg.GetTeamId())
+	}
+
+	// One team's catalogue, when the caller already knows whose product it wants. Same reasoning as
+	// above: after the page is loaded is too late for a filter that the pager's count must also see.
+	if owner := req.Msg.GetOwnerTeamId(); owner != 0 {
+		query = query.Where("team_id = ?", owner)
+	}
+
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)

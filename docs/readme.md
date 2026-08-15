@@ -15,10 +15,14 @@ A single repository holding three sides of one system, plus the design record:
 ```
 proto/       the API contract — one buf module; one `buf generate` emits both sides
 backend/     Go server (Connect RPC over net/http), one directory per service
+tools/san/   the operations CLI — top-level, because it is a tool of the repo, not of the server
 frontend/    React + TypeScript (Vite) + Chakra UI v3, a Connect-ES client
 plans/       the design discussion — one brainstorming doc per service
 docs/         human-facing docs (this file, the schema, per-service RPC flows)
 ```
+
+The Go module is rooted at the repository, so `backend/` and `tools/` are one module — run
+`go build|vet|test ./...` from the root, not from `backend/`.
 
 The contract is the source of truth. A change to a `.proto` regenerates the Go server stubs and the
 TypeScript client together, so there is no publish step in the middle of the design loop.
@@ -90,6 +94,18 @@ cd frontend && npm install && npm run dev  # the UI on :5174 (talks to :8080)
 Both servers must run for the UI to reach the API. More commands (lint, generate, test, e2e,
 migrations) are in the [top-level guide](../CLAUDE.md#commands).
 
+### Tools
+
+Two CLIs, deliberately separate. `cmd/tool` is the **developer's** tool — it owns the schema and the
+fixtures (migrations, seeds, test databases). [`tools/san`](tools/san.md) is the **operator's** tool
+— it acts on real data through the services, and it can be pointed at production behind a typed
+confirmation. It sits at the repo root rather than under `backend/`, because it is a tool of the
+repository, not a part of the server.
+
+```sh
+go run ./tools/san user reset-password --username ani   # from the repo root
+```
+
 ### Testing
 
 Test in priority order — unit → integration → e2e. Backend unit tests run against a **separate**
@@ -146,4 +162,5 @@ doc, not the other way round.
 
 The database schema is mirrored for humans in [database-schema.md](database-schema.md) (one mermaid
 `erDiagram` per service, kept in step with the migrations), and non-trivial cross-service RPC flows
-are documented under [services/](services/).
+are documented under [services/](services/). The operations CLI is documented in
+[tools/san.md](tools/san.md), which is updated in the same commit as any change to it.

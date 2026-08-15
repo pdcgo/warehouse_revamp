@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSLeAQoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSDgoGdm9pZGVkGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyL5AQoURXhwZW5zZUNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOwoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgDEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEi3wEKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgDEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIOCgZ2b2lkZWQYCSABKAgSFwoPY3JlYXRlZF9hdF91bml4GAogASgDIrEBChFFeHBlbnNlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd0l0ZW06AjgBIpIBChdFeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB2V4cGVuc2UYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93TWFwSXRlbUgAQgMKAWQixwEKE0V4cGVuc2VMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIpYCChRFeHBlbnNlVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAEjsKBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZEIKukgHggEEEAEgABIXCgZhbW91bnQYBCABKANCB7pIBCICIAASOAoLb2NjdXJyZWRfYXQYBSABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEg8KB3Nob3BfaWQYBiABKAQSFgoEbm90ZRgHIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQiTQoVRXhwZW5zZVVwZGF0ZVJlc3BvbnNlEjQKB2V4cGVuc2UYASABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUmVjb3JkIlsKEkV4cGVuc2VWb2lkUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgMEIksKE0V4cGVuc2VWb2lkUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQqkQEKC0V4cGVuc2VLaW5kEhwKGEVYUEVOU0VfS0lORF9VTlNQRUNJRklFRBAAEhQKEEVYUEVOU0VfS0lORF9BRFMQARIYChRFWFBFTlNFX0tJTkRfUEFZUk9MTBACEhwKGEVYUEVOU0VfS0lORF9PUEVSQVRJT05BTBADEhYKEkVYUEVOU0VfS0lORF9PVEhFUhAEKoUBChNFeHBlbnNlTGlzdERhdGFUeXBlEiYKIkVYUEVOU0VfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIiCh5FWFBFTlNFX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIiCh5FWFBFTlNFX0xJU1RfREFUQV9UWVBFX0VYUEVOU0UQAiqSAQoORXhwZW5zZVJvd1NvcnQSIAocRVhQRU5TRV9ST1dfU09SVF9VTlNQRUNJRklFRBAAEiAKHEVYUEVOU0VfUk9XX1NPUlRfT0NDVVJSRURfQVQQARIbChdFWFBFTlNFX1JPV19TT1JUX0FNT1VOVBACEh8KG0VYUEVOU0VfUk9XX1NPUlRfQ1JFQVRFRF9BVBADMqwDCg5FeHBlbnNlU2VydmljZRJoCg1FeHBlbnNlQ3JlYXRlEioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlcXVlc3QaKy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQ3JlYXRlUmVzcG9uc2USYgoLRXhwZW5zZUxpc3QSKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlcXVlc3QaKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlEmgKDUV4cGVuc2VVcGRhdGUSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVXBkYXRlUmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VVcGRhdGVSZXNwb25zZRJiCgtFeHBlbnNlVm9pZBIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVxdWVzdBopLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9leHBlbnNlL3YxO2V4cGVuc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSLeAQoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoAxITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSDgoGdm9pZGVkGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyL5AQoURXhwZW5zZUNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESOwoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgDIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgDEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEi3wEKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgDEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIOCgZ2b2lkZWQYCSABKAgSFwoPY3JlYXRlZF9hdF91bml4GAogASgDIrEBChFFeHBlbnNlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd0l0ZW06AjgBIpIBChdFeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB2V4cGVuc2UYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93TWFwSXRlbUgAQgMKAWQixwEKE0V4cGVuc2VMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIsQBChJFeHBlbnNlRGFpbHlGaWx0ZXISMQoEZnJvbRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSLwoCdG8YAiABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEjkKBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZEIIukgFggECEAESDwoHc2hvcF9pZBgEIAEoBCKDAQoTRXhwZW5zZURhaWx5UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJACgZmaWx0ZXIYAiABKAsyKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlGaWx0ZXJCBrpIA8gBAToMkrUYCAoGAQIDBAYJIrABCg5FeHBlbnNlRGF5SXRlbRIMCgRkYXRlGAEgASgJEg8KB2VudHJpZXMYAiABKAQSDQoFdG90YWwYAyABKAMSQQoHYnlfa2luZBgEIAMoCzIwLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYXlJdGVtLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEifwoURXhwZW5zZURhaWx5UmVzcG9uc2USMgoEZGF5cxgBIAMoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYXlJdGVtEjMKBnRvdGFscxgCIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMilgIKFEV4cGVuc2VVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCmV4cGVuc2VfaWQYAiABKARCB7pIBDICIAASOwoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgq6SAeCAQQQASAAEhcKBmFtb3VudBgEIAEoA0IHukgEIgIgABI4CgtvY2N1cnJlZF9hdBgFIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgGIAEoBBIWCgRub3RlGAcgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCJNChVFeHBlbnNlVXBkYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiWwoSRXhwZW5zZVZvaWRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCmV4cGVuc2VfaWQYAiABKARCB7pIBDICIAA6CpK1GAYKBAECAwQiSwoTRXhwZW5zZVZvaWRSZXNwb25zZRI0CgdleHBlbnNlGAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzKTBAoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmIKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZRJlCgxFeHBlbnNlRGFpbHkSKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXF1ZXN0Gioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURhaWx5UmVzcG9uc2USaAoNRXhwZW5zZVVwZGF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VVcGRhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVVwZGF0ZVJlc3BvbnNlEmIKC0V4cGVuc2VWb2lkEigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVZvaWRSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVZvaWRSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One expense. Money is whole rupiah as int64, like every other money field in this system.
@@ -469,6 +469,160 @@ export const ExpenseListResponseSchema: GenMessage<ExpenseListResponse> = /*@__P
   messageDesc(file_warehouse_expense_v1_expense, 10);
 
 /**
+ * ── The DAILY STATEMENT's expense half ────────────────────────────────────────────────────────────
+ *
+ * The mirror of RevenueDaily, and deliberately the same shape: the statement screen puts the two
+ * series side by side and subtracts them, so a difference in how they page, bound or bucket would land
+ * on the reader as an unexplainable gap in one column.
+ *
+ * ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
+ * caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
+ * where they are optional and a page carries the risk instead.
+ *
+ * ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
+ * because it must build one to merge these days with revenue's.
+ *
+ * The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
+ * A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
+ * under the moment its order was placed. Payroll paid on the 5th for last month lands in last month
+ * here, which is the whole reason `occurred_at` exists as a separate column from `created_at`.
+ *
+ * @generated from message warehouse.expense.v1.ExpenseDailyFilter
+ */
+export type ExpenseDailyFilter = Message<"warehouse.expense.v1.ExpenseDailyFilter"> & {
+  /**
+   * THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+   *
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+
+  /**
+   * One kind, or UNSPECIFIED for all of them — the same "any kind" convention ExpenseList uses (#170).
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseKind kind = 3;
+   */
+  kind: ExpenseKind;
+
+  /**
+   * One shop, or 0 for all of them.
+   *
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseDailyFilter.
+ * Use `create(ExpenseDailyFilterSchema)` to create a new message.
+ */
+export const ExpenseDailyFilterSchema: GenMessage<ExpenseDailyFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 11);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpenseDailyRequest
+ */
+export type ExpenseDailyRequest = Message<"warehouse.expense.v1.ExpenseDailyRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.expense.v1.ExpenseDailyFilter filter = 2;
+   */
+  filter?: ExpenseDailyFilter;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseDailyRequest.
+ * Use `create(ExpenseDailyRequestSchema)` to create a new message.
+ */
+export const ExpenseDailyRequestSchema: GenMessage<ExpenseDailyRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 12);
+
+/**
+ * One day's spending.
+ *
+ * @generated from message warehouse.expense.v1.ExpenseDayItem
+ */
+export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
+  /**
+   * The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+   *
+   * No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
+   * There is no instant to convert and therefore no zone to get wrong.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
+   * this counts what the number is actually made of.
+   *
+   * @generated from field: uint64 entries = 2;
+   */
+  entries: bigint;
+
+  /**
+   * The day's spending, whole rupiah.
+   *
+   * @generated from field: int64 total = 3;
+   */
+  total: bigint;
+
+  /**
+   * Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
+   * day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+   * and zero read identically, and building the empty ones would mean this message knowing the enum's
+   * members.
+   *
+   * @generated from field: map<int32, int64> by_kind = 4;
+   */
+  byKind: { [key: number]: bigint };
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseDayItem.
+ * Use `create(ExpenseDayItemSchema)` to create a new message.
+ */
+export const ExpenseDayItemSchema: GenMessage<ExpenseDayItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 13);
+
+/**
+ * @generated from message warehouse.expense.v1.ExpenseDailyResponse
+ */
+export type ExpenseDailyResponse = Message<"warehouse.expense.v1.ExpenseDailyResponse"> & {
+  /**
+   * ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+   *
+   * @generated from field: repeated warehouse.expense.v1.ExpenseDayItem days = 1;
+   */
+  days: ExpenseDayItem[];
+
+  /**
+   * The same totals ExpenseList reports, over the same period and the same filters. Sent rather than
+   * summed in the browser, so the statement's footer and the expense list's headline are one number.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseTotals totals = 2;
+   */
+  totals?: ExpenseTotals;
+};
+
+/**
+ * Describes the message warehouse.expense.v1.ExpenseDailyResponse.
+ * Use `create(ExpenseDailyResponseSchema)` to create a new message.
+ */
+export const ExpenseDailyResponseSchema: GenMessage<ExpenseDailyResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_expense_v1_expense, 14);
+
+/**
  * ExpenseUpdate corrects an expense (#169).
  *
  * It exists because of the one fact that separates this service from revenue_service: a revenue row is
@@ -524,7 +678,7 @@ export type ExpenseUpdateRequest = Message<"warehouse.expense.v1.ExpenseUpdateRe
  * Use `create(ExpenseUpdateRequestSchema)` to create a new message.
  */
 export const ExpenseUpdateRequestSchema: GenMessage<ExpenseUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 11);
+  messageDesc(file_warehouse_expense_v1_expense, 15);
 
 /**
  * @generated from message warehouse.expense.v1.ExpenseUpdateResponse
@@ -541,7 +695,7 @@ export type ExpenseUpdateResponse = Message<"warehouse.expense.v1.ExpenseUpdateR
  * Use `create(ExpenseUpdateResponseSchema)` to create a new message.
  */
 export const ExpenseUpdateResponseSchema: GenMessage<ExpenseUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 12);
+  messageDesc(file_warehouse_expense_v1_expense, 16);
 
 /**
  * ExpenseVoid stops an expense counting (#169) — it was entered by mistake.
@@ -574,7 +728,7 @@ export type ExpenseVoidRequest = Message<"warehouse.expense.v1.ExpenseVoidReques
  * Use `create(ExpenseVoidRequestSchema)` to create a new message.
  */
 export const ExpenseVoidRequestSchema: GenMessage<ExpenseVoidRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 13);
+  messageDesc(file_warehouse_expense_v1_expense, 17);
 
 /**
  * @generated from message warehouse.expense.v1.ExpenseVoidResponse
@@ -591,7 +745,7 @@ export type ExpenseVoidResponse = Message<"warehouse.expense.v1.ExpenseVoidRespo
  * Use `create(ExpenseVoidResponseSchema)` to create a new message.
  */
 export const ExpenseVoidResponseSchema: GenMessage<ExpenseVoidResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_expense_v1_expense, 14);
+  messageDesc(file_warehouse_expense_v1_expense, 18);
 
 /**
  * What KIND of spending. A proto enum rather than a team-managed category table (owner, §2.3): every
@@ -642,6 +796,28 @@ export enum ExpenseKind {
    * @generated from enum value: EXPENSE_KIND_OTHER = 4;
    */
   OTHER = 4,
+
+  /**
+   * STOCK WRITTEN OFF — units a warehouse recorded as damaged or lost, valued at the batch's frozen
+   * unit cost. Posted by inventory_service, never typed by a person (#211).
+   *
+   * It was filed as OPERATIONAL until now, and that was the bug: shrinkage sat in the same bucket as
+   * rent and electricity, so "how much did we break this month" had no answer — which is precisely
+   * the question a warehouse's own P&L is made of. Rent is a decision somebody made. Broken stock is
+   * a thing that happened to the goods. Reading them as one number hides the only one you can act on.
+   *
+   * ⚠ Rows written BEFORE this kind existed stay OPERATIONAL. They are only identifiable by their
+   * free-text note, so a backfill would be a guess that could move a real rent row (owner, 2026-08-14).
+   * History is therefore mixed and the split is honest from here forward.
+   *
+   * ⚠ It does NOT yet distinguish BROKEN from LOST. `stock_batches` carries one `damaged_qty` and
+   * `MovementKind` has one `ADJUST`, so the DAMAGED/LOST distinction exists in the StockAdjust request
+   * and is discarded on write — see #227. When that lands this becomes two kinds, or gains a
+   * sub-reason. One combined figure now, split later, is additive rather than a rework (owner).
+   *
+   * @generated from enum value: EXPENSE_KIND_STOCK_LOSS = 5;
+   */
+  STOCK_LOSS = 5,
 }
 
 /**
@@ -756,6 +932,16 @@ export const ExpenseService: GenService<{
     methodKind: "unary";
     input: typeof ExpenseListRequestSchema;
     output: typeof ExpenseListResponseSchema;
+  },
+  /**
+   * The same costs, summed PER DAY — the expense half of the daily statement.
+   *
+   * @generated from rpc warehouse.expense.v1.ExpenseService.ExpenseDaily
+   */
+  expenseDaily: {
+    methodKind: "unary";
+    input: typeof ExpenseDailyRequestSchema;
+    output: typeof ExpenseDailyResponseSchema;
   },
   /**
    * An expense is TYPED BY A PERSON, so it is mistypeable — and therefore correctable (#169).

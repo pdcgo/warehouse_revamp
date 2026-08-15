@@ -55,7 +55,7 @@ func (s *Service) OrderCancel(
 			return errShippedCannotCancel
 		}
 
-		statusErr := setOrderStatus(tx, &order, orderStatusCancelled)
+		statusErr := setOrderStatus(tx, &order, orderStatusCancelled, eventActor(ctx))
 		if statusErr != nil {
 			return statusErr
 		}

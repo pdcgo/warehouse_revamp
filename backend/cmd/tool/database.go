@@ -3,109 +3,33 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // postgres driver
-	"github.com/manifoldco/promptui"
+
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbtarget"
 )
 
+// Which database to act on — and the production confirmation in front of it — lives in
+// san_dbtarget, because tools/san needs exactly the same choice and the same guard. This file is
+// only what is specific to this CLI: opening a database/sql handle on the chosen DSN.
 const (
-	targetLocal      = "Database Local"
-	targetProduction = "Database Production"
+	targetLocal      = san_dbtarget.Local
+	targetProduction = san_dbtarget.Production
 )
 
-func getEnv(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return fallback
-	}
-
-	return value
-}
-
-// localDSN is assembled from env with dev-friendly defaults, so a fresh checkout can
-// migrate a local Postgres without configuring anything.
+// localDSN is the docker-compose database, assembled from env with dev defaults.
 func localDSN() string {
-	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		getEnv("POSTGRES_HOST", "localhost"),
-		getEnv("POSTGRES_PORT", "5433"), // docker-compose maps us to 5433 — 5432 is taken
-
-		getEnv("POSTGRES_USER", "user"),
-		getEnv("POSTGRES_PASSWORD", "password"),
-		getEnv("POSTGRES_DB", "postgres"),
-	)
-}
-
-// productionDSN has NO default on purpose — production must be configured explicitly.
-func productionDSN() (string, error) {
-	dsn := os.Getenv("PRODUCTION_DATABASE_URL")
-	if dsn == "" {
-		return "", errors.New("PRODUCTION_DATABASE_URL is not set")
-	}
-
-	return dsn, nil
-}
-
-// confirmProduction makes the operator type the word. A destructive migration (down, reset)
-// against production must not be one arrow-key away from a local one.
-func confirmProduction() error {
-	prompt := promptui.Prompt{
-		Label: `You are about to migrate PRODUCTION. Type "production" to continue`,
-	}
-
-	answer, err := prompt.Run()
-	if err != nil {
-		return errors.New("aborted")
-	}
-
-	if strings.TrimSpace(answer) != "production" {
-		return errors.New("aborted — confirmation did not match")
-	}
-
-	return nil
+	return san_dbtarget.LocalDSN()
 }
 
 // resolveDatabase asks which database to act on (Local / Production), then connects.
 // An explicit --dsn (or DATABASE_URL) bypasses the prompt entirely — that is the
 // non-interactive path for CI and scripts.
 func resolveDatabase(ctx context.Context, dsnFlag string) (*sql.DB, string, error) {
-	dsn := dsnFlag
-	label := "explicit --dsn"
-
-	if dsn == "" {
-		targets := []string{targetLocal, targetProduction}
-
-		prompt := promptui.Select{
-			Label: "Database",
-			Items: targets,
-		}
-
-		index, _, err := prompt.Run()
-		if err != nil {
-			return nil, "", errors.New("no database selected (use --dsn to run non-interactively)")
-		}
-
-		label = targets[index]
-
-		switch label {
-		case targetLocal:
-			dsn = localDSN()
-
-		case targetProduction:
-			err = confirmProduction()
-			if err != nil {
-				return nil, "", err
-			}
-
-			dsn, err = productionDSN()
-			if err != nil {
-				return nil, "", err
-			}
-		}
+	dsn, label, err := san_dbtarget.Resolve(dsnFlag)
+	if err != nil {
+		return nil, "", err
 	}
 
 	db, err := sql.Open("pgx", dsn)

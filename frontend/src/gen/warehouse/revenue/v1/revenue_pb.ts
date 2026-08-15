@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/revenue/v1/revenue.proto.
  */
 export const file_warehouse_revenue_v1_revenue: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSLJAQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEg4KBnZvaWRlZBgKIAEoCCLBAQoUUmV2ZW51ZVJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAASGAoHcmV2ZW51ZRgDIAEoA0IHukgEIgIoABIVCgRjb2dzGAQgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYBSABKANCB7pIBCICKAASEgoKY29zdF9rbm93bhgGIAEoCDoLkrUYBwoFAQIDBAUiTAoVUmV2ZW51ZVJlY29yZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUiPwoRUmV2ZW51ZUxpc3RGaWx0ZXISFQoEZnJvbRgBIAEoCUIHukgEcgIYChITCgJ0bxgCIAEoCUIHukgEcgIYCiLCAQoVUmV2ZW51ZUxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3CgdyZXZlbnVlGAMgASgOMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd1NvcnRIAEIDCgFzIrACChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToKkrUYBgoEAQIDBCLLAQoOUmV2ZW51ZVJvd0l0ZW0SCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIQCghvcmRlcl9pZBgDIAEoBBIPCgdyZXZlbnVlGAQgASgDEgwKBGNvZ3MYBSABKAMSFQoNc2hpcHBpbmdfY29zdBgGIAEoAxIXCg9leHBlY3RlZF9tYXJnaW4YByABKAMSEgoKY29zdF9rbm93bhgIIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCSABKAMSDgoGdm9pZGVkGAogASgIIrEBChFSZXZlbnVlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd0l0ZW06AjgBIpIBChdSZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB3JldmVudWUYAiABKAsyJy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlUm93TWFwSXRlbUgAQgMKAWQixwEKE1JldmVudWVMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlVG90YWxzInsKDVJldmVudWVUb3RhbHMSDwoHcmV2ZW51ZRgBIAEoAxIMCgRjb2dzGAIgASgDEhUKDXNoaXBwaW5nX2Nvc3QYAyABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAQgASgDEhsKE3Vua25vd25fY29zdF9vcmRlcnMYBSABKAQiWgoSUmV2ZW51ZVZvaWRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJKChNSZXZlbnVlVm9pZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUqhQEKE1JldmVudWVMaXN0RGF0YVR5cGUSJgoiUkVWRU5VRV9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfUkVWRU5VRRACKpcBCg5SZXZlbnVlUm93U29ydBIgChxSRVZFTlVFX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASHwobUkVWRU5VRV9ST1dfU09SVF9DUkVBVEVEX0FUEAESJAogUkVWRU5VRV9ST1dfU09SVF9FWFBFQ1RFRF9NQVJHSU4QAhIcChhSRVZFTlVFX1JPV19TT1JUX1JFVkVOVUUQAzLCAgoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZRJiCgtSZXZlbnVlVm9pZBIoLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVxdWVzdBopLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVWb2lkUmVzcG9uc2VCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZXZlbnVlL3YxO3JldmVudWV2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvcmV2ZW51ZS92MS9yZXZlbnVlLnByb3RvEhR3YXJlaG91c2UucmV2ZW51ZS52MSLJAQoMT3JkZXJSZXZlbnVlEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSEAoIb3JkZXJfaWQYAyABKAQSDwoHcmV2ZW51ZRgEIAEoAxIMCgRjb2dzGAUgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBiABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAcgASgDEhIKCmNvc3Rfa25vd24YCCABKAgSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEg4KBnZvaWRlZBgKIAEoCCLBAQoUUmV2ZW51ZVJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAASGAoHcmV2ZW51ZRgDIAEoA0IHukgEIgIoABIVCgRjb2dzGAQgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYBSABKANCB7pIBCICKAASEgoKY29zdF9rbm93bhgGIAEoCDoLkrUYBwoFAQIDBAUiTAoVUmV2ZW51ZVJlY29yZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUiPwoRUmV2ZW51ZUxpc3RGaWx0ZXISFQoEZnJvbRgBIAEoCUIHukgEcgIYChITCgJ0bxgCIAEoCUIHukgEcgIYCiLCAQoVUmV2ZW51ZUxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3CgdyZXZlbnVlGAMgASgOMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd1NvcnRIAEIDCgFzIrACChJSZXZlbnVlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToKkrUYBgoEAQIDBCLLAQoOUmV2ZW51ZVJvd0l0ZW0SCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIQCghvcmRlcl9pZBgDIAEoBBIPCgdyZXZlbnVlGAQgASgDEgwKBGNvZ3MYBSABKAMSFQoNc2hpcHBpbmdfY29zdBgGIAEoAxIXCg9leHBlY3RlZF9tYXJnaW4YByABKAMSEgoKY29zdF9rbm93bhgIIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCSABKAMSDgoGdm9pZGVkGAogASgIIrEBChFSZXZlbnVlUm93TWFwSXRlbRJGCghtYXBfZGF0YRgBIAMoCzI0LndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpUCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjMKBXZhbHVlGAIgASgLMiQud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJvd0l0ZW06AjgBIpIBChdSZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjoKB3JldmVudWUYAiABKAsyJy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlUm93TWFwSXRlbUgAQgMKAWQixwEKE1JldmVudWVMaXN0UmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIzCgZ0b3RhbHMYBCABKAsyIy53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlVG90YWxzInsKDVJldmVudWVUb3RhbHMSDwoHcmV2ZW51ZRgBIAEoAxIMCgRjb2dzGAIgASgDEhUKDXNoaXBwaW5nX2Nvc3QYAyABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAQgASgDEhsKE3Vua25vd25fY29zdF9vcmRlcnMYBSABKAQieAoSUmV2ZW51ZURhaWx5RmlsdGVyEjEKBGZyb20YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEi8KAnRvGAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JCKBAQoTUmV2ZW51ZURhaWx5UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJACgZmaWx0ZXIYAiABKAsyKC53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlRGFpbHlGaWx0ZXJCBrpIA8gBAToKkrUYBgoEAQIDBCKaAQoOUmV2ZW51ZURheUl0ZW0SDAoEZGF0ZRgBIAEoCRIOCgZvcmRlcnMYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSFwoPZXhwZWN0ZWRfbWFyZ2luGAYgASgDEhsKE3Vua25vd25fY29zdF9vcmRlcnMYByABKAQifwoUUmV2ZW51ZURhaWx5UmVzcG9uc2USMgoEZGF5cxgBIAMoCzIkLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVEYXlJdGVtEjMKBnRvdGFscxgCIAEoCzIjLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVUb3RhbHMiWgoSUmV2ZW51ZVZvaWRSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJKChNSZXZlbnVlVm9pZFJlc3BvbnNlEjMKB3JldmVudWUYASABKAsyIi53YXJlaG91c2UucmV2ZW51ZS52MS5PcmRlclJldmVudWUqhQEKE1JldmVudWVMaXN0RGF0YVR5cGUSJgoiUkVWRU5VRV9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEiIKHlJFVkVOVUVfTElTVF9EQVRBX1RZUEVfUkVWRU5VRRACKpcBCg5SZXZlbnVlUm93U29ydBIgChxSRVZFTlVFX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASHwobUkVWRU5VRV9ST1dfU09SVF9DUkVBVEVEX0FUEAESJAogUkVWRU5VRV9ST1dfU09SVF9FWFBFQ1RFRF9NQVJHSU4QAhIcChhSRVZFTlVFX1JPV19TT1JUX1JFVkVOVUUQAzKpAwoOUmV2ZW51ZVNlcnZpY2USaAoNUmV2ZW51ZVJlY29yZBIqLndhcmVob3VzZS5yZXZlbnVlLnYxLlJldmVudWVSZWNvcmRSZXF1ZXN0Gisud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZVJlY29yZFJlc3BvbnNlEmIKC1JldmVudWVMaXN0Eigud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZUxpc3RSZXNwb25zZRJlCgxSZXZlbnVlRGFpbHkSKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlRGFpbHlSZXF1ZXN0Gioud2FyZWhvdXNlLnJldmVudWUudjEuUmV2ZW51ZURhaWx5UmVzcG9uc2USYgoLUmV2ZW51ZVZvaWQSKC53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlVm9pZFJlcXVlc3QaKS53YXJlaG91c2UucmV2ZW51ZS52MS5SZXZlbnVlVm9pZFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvcmV2ZW51ZS92MTtyZXZlbnVldjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * What one order was expected to make.
@@ -470,6 +470,169 @@ export const RevenueTotalsSchema: GenMessage<RevenueTotals> = /*@__PURE__*/
   messageDesc(file_warehouse_revenue_v1_revenue, 10);
 
 /**
+ * ── The DAILY STATEMENT's revenue half ────────────────────────────────────────────────────────────
+ *
+ * RevenueList already answers "what did this period make" and RevenueTotals sums it. What neither can
+ * answer is "which DAYS made it" — and that is the question somebody asks the moment a month's margin
+ * looks wrong, because a month is not a thing that goes wrong, a Tuesday is.
+ *
+ * ⚠ IT IS NOT PAGINATED, and that is deliberate rather than an oversight of HARD RULE 9. The rule
+ * exists because a `repeated` whose size grows WITH THE DATA is a latent out-of-memory bug. This one
+ * does not: its size is `to − from`, which the CALLER states and the server CAPS at 366 days
+ * (InvalidArgument beyond that, and both bounds are required). Ten years of orders and one year of
+ * orders return the same 366 rows. That is the same bargain `SearchUser`'s capped typeahead makes —
+ * a hard bound satisfies the rule's intent without a cursor — and it is why `from`/`to` are required
+ * here while they are optional on RevenueList, which pages instead.
+ *
+ * ⚠ THE SERIES IS SPARSE: a day with no orders is ABSENT, not a zero row. The client renders the date
+ * spine, because it has to build one anyway — the statement subtracts this service's days from
+ * expense_service's days, and two services each generating their own dense calendar is two copies of
+ * the same arithmetic, free to disagree about what February contains.
+ *
+ * @generated from message warehouse.revenue.v1.RevenueDailyFilter
+ */
+export type RevenueDailyFilter = Message<"warehouse.revenue.v1.RevenueDailyFilter"> & {
+  /**
+   * THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+   *
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueDailyFilter.
+ * Use `create(RevenueDailyFilterSchema)` to create a new message.
+ */
+export const RevenueDailyFilterSchema: GenMessage<RevenueDailyFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 11);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueDailyRequest
+ */
+export type RevenueDailyRequest = Message<"warehouse.revenue.v1.RevenueDailyRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.revenue.v1.RevenueDailyFilter filter = 2;
+   */
+  filter?: RevenueDailyFilter;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueDailyRequest.
+ * Use `create(RevenueDailyRequestSchema)` to create a new message.
+ */
+export const RevenueDailyRequestSchema: GenMessage<RevenueDailyRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 12);
+
+/**
+ * One day's expected money.
+ *
+ * There is no `data_request` slice oneof here, unlike the list shapes above, and that is on purpose:
+ * the guideline's slice machinery exists so a caller can skip data that is EXPENSIVE to load. A day is
+ * six integers and a date. A one-member oneof would be a shape whose second case nobody can name,
+ * which is harder to read than not having one.
+ *
+ * @generated from message warehouse.revenue.v1.RevenueDayItem
+ */
+export type RevenueDayItem = Message<"warehouse.revenue.v1.RevenueDayItem"> & {
+  /**
+   * The day this row sums, as YYYY-MM-DD.
+   *
+   * ⚠ BUCKETED IN UTC, from `created_at` — the same timezone the period filter already parses its
+   * bounds in. Consistency is the reason: the daily rows and the period total sit on one screen, and a
+   * series that bucketed in Asia/Jakarta while the total filtered in UTC would not add up to it. The
+   * business is UTC+7, so an order placed before 07:00 local lands on the previous day here. That is a
+   * real limitation, it predates this RPC, and fixing it means giving the whole service a timezone —
+   * which is the owner's call, not this message's.
+   *
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * How many LIVE orders the day holds. Voided rows (#164) are excluded from every figure below, so
+   * this counts what the money is actually made of.
+   *
+   * @generated from field: uint64 orders = 2;
+   */
+  orders: bigint;
+
+  /**
+   * @generated from field: int64 revenue = 3;
+   */
+  revenue: bigint;
+
+  /**
+   * @generated from field: int64 cogs = 4;
+   */
+  cogs: bigint;
+
+  /**
+   * @generated from field: int64 shipping_cost = 5;
+   */
+  shippingCost: bigint;
+
+  /**
+   * @generated from field: int64 expected_margin = 6;
+   */
+  expectedMargin: bigint;
+
+  /**
+   * How many of the day's orders had an UNKNOWN cost (#74) — the day's margin reads as if those goods
+   * were free. Reported per day as well as per period, because a single bad Tuesday is invisible in a
+   * monthly count.
+   *
+   * @generated from field: uint64 unknown_cost_orders = 7;
+   */
+  unknownCostOrders: bigint;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueDayItem.
+ * Use `create(RevenueDayItemSchema)` to create a new message.
+ */
+export const RevenueDayItemSchema: GenMessage<RevenueDayItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 13);
+
+/**
+ * @generated from message warehouse.revenue.v1.RevenueDailyResponse
+ */
+export type RevenueDailyResponse = Message<"warehouse.revenue.v1.RevenueDailyResponse"> & {
+  /**
+   * ASCENDING by date, and SPARSE — see the note on RevenueDailyFilter.
+   *
+   * @generated from field: repeated warehouse.revenue.v1.RevenueDayItem days = 1;
+   */
+  days: RevenueDayItem[];
+
+  /**
+   * The same totals RevenueList reports, over the same period. Sent rather than left to the client to
+   * sum, so the statement's footer is the SERVER's answer: a footer summed in the browser would drift
+   * from the list screen's total the first time either rounding rule changed.
+   *
+   * @generated from field: warehouse.revenue.v1.RevenueTotals totals = 2;
+   */
+  totals?: RevenueTotals;
+};
+
+/**
+ * Describes the message warehouse.revenue.v1.RevenueDailyResponse.
+ * Use `create(RevenueDailyResponseSchema)` to create a new message.
+ */
+export const RevenueDailyResponseSchema: GenMessage<RevenueDailyResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_revenue_v1_revenue, 14);
+
+/**
  * @generated from message warehouse.revenue.v1.RevenueVoidRequest
  */
 export type RevenueVoidRequest = Message<"warehouse.revenue.v1.RevenueVoidRequest"> & {
@@ -489,7 +652,7 @@ export type RevenueVoidRequest = Message<"warehouse.revenue.v1.RevenueVoidReques
  * Use `create(RevenueVoidRequestSchema)` to create a new message.
  */
 export const RevenueVoidRequestSchema: GenMessage<RevenueVoidRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 11);
+  messageDesc(file_warehouse_revenue_v1_revenue, 15);
 
 /**
  * @generated from message warehouse.revenue.v1.RevenueVoidResponse
@@ -510,7 +673,7 @@ export type RevenueVoidResponse = Message<"warehouse.revenue.v1.RevenueVoidRespo
  * Use `create(RevenueVoidResponseSchema)` to create a new message.
  */
 export const RevenueVoidResponseSchema: GenMessage<RevenueVoidResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_revenue_v1_revenue, 12);
+  messageDesc(file_warehouse_revenue_v1_revenue, 16);
 
 /**
  * RevenueListDataType selects which slices the response carries per revenue row.
@@ -613,6 +776,16 @@ export const RevenueService: GenService<{
     methodKind: "unary";
     input: typeof RevenueListRequestSchema;
     output: typeof RevenueListResponseSchema;
+  },
+  /**
+   * The same money, summed PER DAY — the revenue half of the daily statement.
+   *
+   * @generated from rpc warehouse.revenue.v1.RevenueService.RevenueDaily
+   */
+  revenueDaily: {
+    methodKind: "unary";
+    input: typeof RevenueDailyRequestSchema;
+    output: typeof RevenueDailyResponseSchema;
   },
   /**
    * Stop an order's row counting — it was cancelled (#164).

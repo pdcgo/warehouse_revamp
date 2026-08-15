@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/region/v1/region.proto.
  */
 export const file_warehouse_region_v1_region: GenFile = /*@__PURE__*/
-  fileDesc("CiB3YXJlaG91c2UvcmVnaW9uL3YxL3JlZ2lvbi5wcm90bxITd2FyZWhvdXNlLnJlZ2lvbi52MSJ8CgZSZWdpb24SDAoEY29kZRgBIAEoCRITCgtwYXJlbnRfY29kZRgCIAEoCRIvCgVsZXZlbBgDIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWwSDAoEbmFtZRgEIAEoCRIQCghrb2RlX3BvcxgFIAEoCSLWAQoOUmVnaW9uQW5jZXN0cnkSFQoNcHJvdmluc2lfY29kZRgBIAEoCRIVCg1wcm92aW5zaV9uYW1lGAIgASgJEhYKDmthYnVwYXRlbl9jb2RlGAMgASgJEhYKDmthYnVwYXRlbl9uYW1lGAQgASgJEhYKDmtlY2FtYXRhbl9jb2RlGAUgASgJEhYKDmtlY2FtYXRhbl9uYW1lGAYgASgJEhEKCWRlc2FfY29kZRgHIAEoCRIRCglkZXNhX25hbWUYCCABKAkSEAoIa29kZV9wb3MYCSABKAkicAoRUmVnaW9uTGlzdFJlcXVlc3QSHAoLcGFyZW50X2NvZGUYASABKAlCB7pIBHICGBQSNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEidAoSUmVnaW9uTGlzdFJlc3BvbnNlEiwKB3JlZ2lvbnMYASADKAsyGy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbhIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIogBChNSZWdpb25TZWFyY2hSZXF1ZXN0EhQKAXEYASABKAlCCbpIBnIEEAIYZBI5CgVsZXZlbBgCIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWxCCLpIBYIBAhABEhgKBWxpbWl0GAMgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJMChRSZWdpb25TZWFyY2hSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSI3ChRSZWdpb25SZXNvbHZlUmVxdWVzdBIXCgRjb2RlGAEgASgJQgm6SAZyBBABGBQ6BpK1GAIgASJOChVSZWdpb25SZXNvbHZlUmVzcG9uc2USNQoIYW5jZXN0cnkYASABKAsyIy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkFuY2VzdHJ5KpUBCgtSZWdpb25MZXZlbBIcChhSRUdJT05fTEVWRUxfVU5TUEVDSUZJRUQQABIZChVSRUdJT05fTEVWRUxfUFJPVklOU0kQARIaChZSRUdJT05fTEVWRUxfS0FCVVBBVEVOEAISGgoWUkVHSU9OX0xFVkVMX0tFQ0FNQVRBThADEhUKEVJFR0lPTl9MRVZFTF9ERVNBEAQyuwIKDVJlZ2lvblNlcnZpY2USXQoKUmVnaW9uTGlzdBImLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGlzdFJlcXVlc3QaJy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkxpc3RSZXNwb25zZRJjCgxSZWdpb25TZWFyY2gSKC53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlcXVlc3QaKS53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlc3BvbnNlEmYKDVJlZ2lvblJlc29sdmUSKS53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblJlc29sdmVSZXF1ZXN0Gioud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25SZXNvbHZlUmVzcG9uc2VCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9yZWdpb24vdjE7cmVnaW9udjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiB3YXJlaG91c2UvcmVnaW9uL3YxL3JlZ2lvbi5wcm90bxITd2FyZWhvdXNlLnJlZ2lvbi52MSJ8CgZSZWdpb24SDAoEY29kZRgBIAEoCRITCgtwYXJlbnRfY29kZRgCIAEoCRIvCgVsZXZlbBgDIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWwSDAoEbmFtZRgEIAEoCRIQCghrb2RlX3BvcxgFIAEoCSLWAQoOUmVnaW9uQW5jZXN0cnkSFQoNcHJvdmluc2lfY29kZRgBIAEoCRIVCg1wcm92aW5zaV9uYW1lGAIgASgJEhYKDmthYnVwYXRlbl9jb2RlGAMgASgJEhYKDmthYnVwYXRlbl9uYW1lGAQgASgJEhYKDmtlY2FtYXRhbl9jb2RlGAUgASgJEhYKDmtlY2FtYXRhbl9uYW1lGAYgASgJEhEKCWRlc2FfY29kZRgHIAEoCRIRCglkZXNhX25hbWUYCCABKAkSEAoIa29kZV9wb3MYCSABKAkicAoRUmVnaW9uTGlzdFJlcXVlc3QSHAoLcGFyZW50X2NvZGUYASABKAlCB7pIBHICGBQSNQoEcGFnZRgCIAEoCzIfLndhcmVob3VzZS5jb21tb24udjEuUGFnZUZpbHRlckIGukgDyAEBOgaStRgCIAEidAoSUmVnaW9uTGlzdFJlc3BvbnNlEiwKB3JlZ2lvbnMYASADKAsyGy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbhIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIogBChNSZWdpb25TZWFyY2hSZXF1ZXN0EhQKAXEYASABKAlCCbpIBnIEEAIYZBI5CgVsZXZlbBgCIAEoDjIgLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGV2ZWxCCLpIBYIBAhABEhgKBWxpbWl0GAMgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJMChRSZWdpb25TZWFyY2hSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSJnChxSZWdpb25TZWFyY2hCeUtvZGVQb3NSZXF1ZXN0EiUKCGtvZGVfcG9zGAEgASgJQhO6SBByDhADGAUyCF5bMC05XSskEhgKBWxpbWl0GAIgASgNQgm6SAYqBBgUKAE6BpK1GAIgASJVCh1SZWdpb25TZWFyY2hCeUtvZGVQb3NSZXNwb25zZRI0CgdyZXN1bHRzGAEgAygLMiMud2FyZWhvdXNlLnJlZ2lvbi52MS5SZWdpb25BbmNlc3RyeSI3ChRSZWdpb25SZXNvbHZlUmVxdWVzdBIXCgRjb2RlGAEgASgJQgm6SAZyBBABGBQ6BpK1GAIgASJOChVSZWdpb25SZXNvbHZlUmVzcG9uc2USNQoIYW5jZXN0cnkYASABKAsyIy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkFuY2VzdHJ5KpUBCgtSZWdpb25MZXZlbBIcChhSRUdJT05fTEVWRUxfVU5TUEVDSUZJRUQQABIZChVSRUdJT05fTEVWRUxfUFJPVklOU0kQARIaChZSRUdJT05fTEVWRUxfS0FCVVBBVEVOEAISGgoWUkVHSU9OX0xFVkVMX0tFQ0FNQVRBThADEhUKEVJFR0lPTl9MRVZFTF9ERVNBEAQyuwMKDVJlZ2lvblNlcnZpY2USXQoKUmVnaW9uTGlzdBImLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uTGlzdFJlcXVlc3QaJy53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvbkxpc3RSZXNwb25zZRJjCgxSZWdpb25TZWFyY2gSKC53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlcXVlc3QaKS53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblNlYXJjaFJlc3BvbnNlEn4KFVJlZ2lvblNlYXJjaEJ5S29kZVBvcxIxLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoQnlLb2RlUG9zUmVxdWVzdBoyLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uU2VhcmNoQnlLb2RlUG9zUmVzcG9uc2USZgoNUmVnaW9uUmVzb2x2ZRIpLndhcmVob3VzZS5yZWdpb24udjEuUmVnaW9uUmVzb2x2ZVJlcXVlc3QaKi53YXJlaG91c2UucmVnaW9uLnYxLlJlZ2lvblJlc29sdmVSZXNwb25zZUJMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3JlZ2lvbi92MTtyZWdpb252MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One administrative region.
@@ -233,6 +233,64 @@ export const RegionSearchResponseSchema: GenMessage<RegionSearchResponse> = /*@_
   messageDesc(file_warehouse_region_v1_region, 5);
 
 /**
+ * @generated from message warehouse.region.v1.RegionSearchByKodePosRequest
+ */
+export type RegionSearchByKodePosRequest = Message<"warehouse.region.v1.RegionSearchByKodePosRequest"> & {
+  /**
+   * The postcode, or the start of one. PREFIX matched, so the list narrows as it is typed.
+   *
+   * At least 3 digits, and that floor is the difference between a suggestion and a lottery: one digit
+   * covers roughly a tenth of the country's 83.762 desa, and the twenty rows that come back would be
+   * an arbitrary slice of thousands. Three digits is a city-sized area, which is a list a person can
+   * actually read.
+   *
+   * Digits only — a kode pos has no other characters, and letting letters through would just be a
+   * guaranteed empty result set.
+   *
+   * @generated from field: string kode_pos = 1;
+   */
+  kodePos: string;
+
+  /**
+   * Capped, never paged — same reasoning as RegionSearch (HARD RULE 9).
+   *
+   * @generated from field: uint32 limit = 2;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message warehouse.region.v1.RegionSearchByKodePosRequest.
+ * Use `create(RegionSearchByKodePosRequestSchema)` to create a new message.
+ */
+export const RegionSearchByKodePosRequestSchema: GenMessage<RegionSearchByKodePosRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_region_v1_region, 6);
+
+/**
+ * @generated from message warehouse.region.v1.RegionSearchByKodePosResponse
+ */
+export type RegionSearchByKodePosResponse = Message<"warehouse.region.v1.RegionSearchByKodePosResponse"> & {
+  /**
+   * Desa only — a kode pos belongs to a desa and nowhere else — each with its full ancestry, so a
+   * pick fills provinsi through desa in one go.
+   *
+   * ONE POSTCODE COVERS SEVERAL DESA, routinely. That is why this returns a list to choose from
+   * rather than an address to apply: picking for the person would silently put an order in the wrong
+   * kelurahan whenever the code was shared, and they would have no way to see it happen.
+   *
+   * @generated from field: repeated warehouse.region.v1.RegionAncestry results = 1;
+   */
+  results: RegionAncestry[];
+};
+
+/**
+ * Describes the message warehouse.region.v1.RegionSearchByKodePosResponse.
+ * Use `create(RegionSearchByKodePosResponseSchema)` to create a new message.
+ */
+export const RegionSearchByKodePosResponseSchema: GenMessage<RegionSearchByKodePosResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_region_v1_region, 7);
+
+/**
  * @generated from message warehouse.region.v1.RegionResolveRequest
  */
 export type RegionResolveRequest = Message<"warehouse.region.v1.RegionResolveRequest"> & {
@@ -249,7 +307,7 @@ export type RegionResolveRequest = Message<"warehouse.region.v1.RegionResolveReq
  * Use `create(RegionResolveRequestSchema)` to create a new message.
  */
 export const RegionResolveRequestSchema: GenMessage<RegionResolveRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_region_v1_region, 6);
+  messageDesc(file_warehouse_region_v1_region, 8);
 
 /**
  * @generated from message warehouse.region.v1.RegionResolveResponse
@@ -266,7 +324,7 @@ export type RegionResolveResponse = Message<"warehouse.region.v1.RegionResolveRe
  * Use `create(RegionResolveResponseSchema)` to create a new message.
  */
 export const RegionResolveResponseSchema: GenMessage<RegionResolveResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_region_v1_region, 7);
+  messageDesc(file_warehouse_region_v1_region, 9);
 
 /**
  * The four administrative tiers. The numbers are the `level` column verbatim (1..4), a structure
@@ -342,6 +400,24 @@ export const RegionService: GenService<{
     methodKind: "unary";
     input: typeof RegionSearchRequestSchema;
     output: typeof RegionSearchResponseSchema;
+  },
+  /**
+   * THE PICKER'S FAST PATH: a kode pos in, the addresses it covers out (owner).
+   *
+   * A postcode is the one part of an address a buyer quotes correctly. Names are not: "Sukamaju"
+   * names hundreds of desa, people spell their own kelurahan three different ways, and a search over
+   * 83.762 names asks the person entering the order to disambiguate a list they cannot check. A kode
+   * pos is five digits copied off a message — unambiguous to type, and it names a handful of desa.
+   *
+   * Capped like RegionSearch, and returning the same RegionAncestry, so one pick back-fills all four
+   * levels with no second round-trip.
+   *
+   * @generated from rpc warehouse.region.v1.RegionService.RegionSearchByKodePos
+   */
+  regionSearchByKodePos: {
+    methodKind: "unary";
+    input: typeof RegionSearchByKodePosRequestSchema;
+    output: typeof RegionSearchByKodePosResponseSchema;
   },
   /**
    * The full ancestry of one code — hydrate a saved address, or back-fill the picker.

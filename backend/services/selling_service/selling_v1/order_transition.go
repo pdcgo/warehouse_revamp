@@ -36,11 +36,26 @@ func loadScopedOrder(tx *gorm.DB, teamID, orderID uint64, dst *selling_service_m
 		Error
 }
 
-// setOrderStatus writes the new status (stamping updated_at) and mirrors it onto the in-memory row
-// so the caller can map the fresh state straight back to proto.
-func setOrderStatus(tx *gorm.DB, order *selling_service_models.Order, status string) error {
-	// The moment is taken ONCE and written to both the row and the in-memory model, so a caller that
-	// publishes an event about this transition can take the time from the ORDER rather than calling
+// setOrderStatus writes the new status (stamping updated_at), RECORDS THE TRANSITION on the order's
+// history, and mirrors both onto the in-memory row so the caller can map the fresh state straight back
+// to proto.
+//
+// The history write lives HERE, at the single choke point every transition already passes through,
+// rather than in the five handlers that call it. A handler that forgot the line would leave a gap in a
+// timeline nothing else can reconstruct — the row keeps only its current status — and that gap is
+// invisible until somebody opens the order weeks later and finds a step missing.
+//
+// `actor` is the caller (eventActor), 0 when unidentifiable. It is a parameter rather than read from a
+// context in here because this function has no ctx and should not grow one for a field: the handler
+// knows who is asking.
+func setOrderStatus(
+	tx *gorm.DB,
+	order *selling_service_models.Order,
+	status string,
+	actor uint64,
+) error {
+	// The moment is taken ONCE and written to the row, the in-memory model AND the event, so a caller
+	// that publishes an event about this transition can take the time from the ORDER rather than calling
 	// time.Now() again at the publish site. Two clocks for one fact would file a boundary transition in
 	// different days depending on who read it (guidelines/event-guideline.md #2).
 	now := time.Now()
@@ -49,6 +64,13 @@ func setOrderStatus(tx *gorm.DB, order *selling_service_models.Order, status str
 		Model(order).
 		Updates(map[string]any{"status": status, "updated_at": now}).
 		Error
+	if err != nil {
+		return err
+	}
+
+	// The kind IS the status moved into — see the orderEvent* constants for why the two vocabularies
+	// are written down separately despite being equal today.
+	err = recordOrderEvent(tx, order.ID, status, actor, now)
 	if err != nil {
 		return err
 	}

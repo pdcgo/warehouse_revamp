@@ -179,6 +179,20 @@ func teamTotals(
 	s *Service,
 	msg *revenuev1.RevenueListRequest,
 ) (*revenuev1.RevenueTotals, error) {
+	return periodTotals(ctx, s, msg.GetTeamId(), msg.GetFilter().GetFrom(), msg.GetFilter().GetTo())
+}
+
+// periodTotals sums one team's LIVE revenue rows over a period.
+//
+// Shared by RevenueList's footer and RevenueDaily's, and that sharing is the point rather than a tidy-up:
+// the daily screen shows a series and a total together, and a total computed by a second copy of this
+// query is a number free to stop agreeing with the days above it.
+func periodTotals(
+	ctx context.Context,
+	s *Service,
+	teamID uint64,
+	from, to string,
+) (*revenuev1.RevenueTotals, error) {
 	var agg totalsRow
 
 	query := s.db.
@@ -188,7 +202,7 @@ func teamTotals(
 	// The SAME period the list used (#171). If these two ever disagree, the headline figure describes a
 	// different set of rows than the table beneath it — which is the failure this filter exists to
 	// prevent, so it must not be reintroduced by computing the two separately.
-	query, err := withPeriod(query, msg.GetFilter().GetFrom(), msg.GetFilter().GetTo())
+	query, err := withPeriod(query, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +218,7 @@ func teamTotals(
 				// silently overstates margin. Naming the number is the only honest option.
 				"COUNT(*) FILTER (WHERE NOT cost_known) AS unknown_cost_orders",
 		).
-		Where("team_id = ? AND voided_at IS NULL", msg.GetTeamId()).
+		Where("team_id = ? AND voided_at IS NULL", teamID).
 		Scan(&agg).
 		Error
 	if err != nil {

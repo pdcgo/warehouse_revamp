@@ -176,3 +176,58 @@ public RPC — the same principle as settlement's `PostEntry`.
    `StockEventList` (+ moved-only), `BatchDetail`/`BatchPlacementList`/`BatchEventList`,
    `DeliveryReceipt` — one unit test each; then the six-tab screen + batch list/detail/receipt.
 4. **#210 `MoveStock`**, **#211 `AdjustStock`** (with the expense write-off), then **returns re-entry**.
+
+---
+
+# Contradiction
+
+## Q4 says a recount's shortfall is valued — the shipped `StockAdjust` says it is not
+
+Found while building `StockOpname` (2026-08-14). **Reported, not silently reconciled** — the two sides
+disagree and only the owner can say which one is the decision.
+
+**The two statements, quoted:**
+
+> **Q4 (this doc, resolved 2026-07-23):** "A LOST/DAMAGED adjust writes off the frozen cost
+> (`qty × unit_cost`) as a value loss to `expense_service` … **A RECOUNT loss values at the oldest
+> batch's cost (Q1).**"
+
+> **`stock_adjust_expense_test.go`, shipped and green:** `// FOUND writes off nothing (it is a gain),
+> and a RECOUNT is batch-agnostic value-wise.` — asserting `len(expense.posted) == 1` after a recount
+> that lost 10 units.
+
+The handler matches the test: `postLoss` is only ever set inside the `batchReason` branch, so a
+`RECOUNT` writes off **nothing** no matter how much stock it finds missing.
+
+**Which one I think is wrong: the code.** A shelf counted 10 units short has lost real value, and the
+warehouse's own daily statement (built 2026-08-14) now leads on exactly that number — its P&L is *fees
+earned − (expenses + stock loss)*. A recount that silently books no loss makes the biggest controllable
+cost in a warehouse invisible in the one place it is supposed to appear.
+
+**→ Recommend:** bring `StockAdjust`'s RECOUNT in line with Q4 — value the shortfall off the FIFO layers
+the draw consumes, exactly as `StockOpname` now does, and update that test's assertion and its comment.
+It is a four-line change (`attributeDeltaFIFOValued` already returns the number). Until then the two
+paths disagree and **which RPC you used decides whether the money moved**, which is the worst kind of
+inconsistency: invisible, and only in the accounts.
+
+⚠ **`StockOpname` follows Q4, not the code** — deliberately, because Q4 is the owner's decision and the
+statement depends on it. That is the divergence this entry exists to surface rather than bury.
+
+```mermaid
+flowchart TD
+    C["a shelf counts 10 short"]
+    C --> A["StockAdjust RECOUNT<br/>(shipped)"]
+    C --> O["StockOpname<br/>(new)"]
+    A --> AN["stock corrected<br/>NO value written off"]
+    O --> ON["stock corrected<br/>value written off (Q4)"]
+    AN --> S["the warehouse's daily statement"]
+    ON --> S
+    S --> W["the same physical loss reads as<br/>two different numbers"]
+```
+
+### What stops it recurring
+
+The decision lives in this doc and the behaviour lives in a test comment, and neither points at the
+other. **A resolved Q that a handler deliberately does not implement should say so at the handler** —
+one line in `stock_adjust.go` naming Q4 and why it is deferred would have made this visible the first
+time somebody read the file, instead of on the day a second RPC had to choose a side.

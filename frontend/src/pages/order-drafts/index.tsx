@@ -24,15 +24,21 @@ import { toaster } from "../../components/Toaster";
 import { useTeam } from "../../features/team/TeamContext";
 import { draftGaps } from "../../features/orderDrafts/draftReadiness";
 import { useDeleteOrderDrafts, useOrderDrafts } from "../../features/orderDrafts/queries";
+import { NO_ORDER_FILTERS, useOrderStat } from "../../features/orders/queries";
+import { summariseOrderStat } from "../../features/orders/stat";
+import { ORDER_STATUS_TABS, orderTab } from "../../features/orders/statusTabs";
+import { DRAFTS_TAB, OrderTabs } from "../../features/orders/OrderTabs";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // OrderDraftsPage lists the CALLER'S OWN drafts (#195) — incomplete orders pushed in by a
-// third-party app, waiting for somebody here to finish them.
+// third-party app or saved from the order form, waiting for somebody here to finish them.
 //
-// ⚠ ITS OWN ROUTE, not a tab on the orders list. Drafts are not orders, and the UI says so the same
-// way the schema does: a tab would put not-orders inside the orders screen, which is the concern the
-// separate table was built around.
+// REACHED FROM THE ORDERS TAB STRIP (owner), no longer from a sidebar item of its own. It keeps its
+// own route — deep links, the draft detail's Back, and the order form's redirect all point here, and
+// this screen's selection and bulk delete are nothing the orders table has. What changed is the WAY
+// IN: the person looking for a half-finished order goes to Orders, so that is where the door is.
+// Drafts are still not orders; the strip puts them beside the statuses, not among them.
 //
 // The screen has two jobs, and the second is easy to under-build: opening a draft to finish it, and
 // PRUNING. Nothing expires, and an app pushing continuously fills this list far faster than a person
@@ -51,6 +57,25 @@ export function OrderDraftsPage() {
 
   const query = useOrderDrafts({ teamId, page, pageSize });
   const remove = useDeleteOrderDrafts();
+
+  // The counts on the STATUS tabs of the strip above. The same query the orders list runs, with the
+  // same key and no filters — so arriving here from that screen reuses its answer rather than asking
+  // again, and the two strips can never show different numbers.
+  const statQuery = useOrderStat({ teamId, filters: NO_ORDER_FILTERS });
+  const stat = summariseOrderStat(statQuery.data);
+
+  function statusCount(value: string): number {
+    const item = orderTab(value);
+
+    if (item.value === "all") {
+      return ORDER_STATUS_TABS.reduce(
+        (sum, other) => (other.value === "all" ? sum : sum + stat.count(other.status)),
+        0,
+      );
+    }
+
+    return stat.count(item.status);
+  }
 
   const drafts = query.data?.drafts ?? [];
   const totalItems = query.data?.totalItems ?? 0;
@@ -127,8 +152,12 @@ export function OrderDraftsPage() {
 
   return (
     <Stack gap="section">
+      {/* The ORDERS heading, not this screen's own (owner). Drafts is a tab of that screen now, and a
+          tab that changed the page title would read as having navigated somewhere else — which is the
+          one thing a tab must not do. What the tab is showing is said by the strip below and by the
+          intro under it. */}
       <Flex align="center" gap="card">
-        <Heading size="md">{t("orderDrafts.title")}</Heading>
+        <Heading size="md">{t("orders.title")}</Heading>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
@@ -146,6 +175,20 @@ export function OrderDraftsPage() {
           </Button>
         )}
       </Flex>
+
+      {/* The same strip as the orders list, with Drafts active. Selecting a STATUS goes back to that
+          list and lands on the tab that was clicked — `?status=` carries it, so the trip is one click
+          rather than "go back, then pick the tab again". */}
+      <OrderTabs
+        value={DRAFTS_TAB}
+        count={statusCount}
+        draftCount={totalItems}
+        onSelect={(value) => {
+          if (value !== DRAFTS_TAB) {
+            void navigate(`/orders?status=${value}`);
+          }
+        }}
+      />
 
       <Text color="fg.muted" fontSize="sm">
         {t("orderDrafts.intro")}

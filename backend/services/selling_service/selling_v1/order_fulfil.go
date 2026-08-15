@@ -64,7 +64,7 @@ func (s *Service) advance(
 			return errWrongStateForStep
 		}
 
-		return setOrderStatus(tx, &order, to)
+		return setOrderStatus(tx, &order, to, eventActor(ctx))
 	})
 	if err != nil {
 		return nil, mapOrderErr(err)

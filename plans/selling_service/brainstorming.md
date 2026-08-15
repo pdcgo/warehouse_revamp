@@ -36,10 +36,10 @@
 >   (#68), then the create form (#90): customer + shop + shipping + dynamic product lines, subtotal
 >   auto-summed, total = subtotal + shipping. Two new shared pickers — `ShopSelect` (bounded
 >   NativeSelect over the team's shops) and `ProductSelect` (searchable Combobox over the catalogue).
->   **Design finding:** a product has **no catalogue price** (sku/name/category/images only), so the
->   order line's `unit_price` is **typed by the CS person** — which is right anyway, since the
->   buyer-paid price on a marketplace varies by shop/promo and the order FREEZES whatever was agreed.
->   If a default/list price is ever wanted, it belongs on the product (a new field), not invented here.
+>   ~~**Design finding:** a product has no catalogue price, so the order line's `unit_price` is typed
+>   by the CS person.~~ **SUPERSEDED** by [order-is-a-withdrawal](#order-is-a-withdrawal) — the line
+>   is priced at the warehouse's HPP and the buyer-paid figure is one number per order
+>   ([revenue-is-marketplace-total](#revenue-is-marketplace-total)).
 > - Still **open** and need the owner: §3.6 (which warehouse fulfils — needs §1) and the whole
 >   revenue side (#32 / §3.7 downstream).
 > - **§6 DRAFT ORDERS (#162) — SETTLED (owner, 2026-07-22).** A draft is **an order half-typed**, and
@@ -53,6 +53,10 @@
 >   `(source, external_id)`** and **fills blanks only**, so a background re-scrape can never destroy
 >   someone's work. **No expiry**, own page at `/order-drafts`. Decomposed into seven sub-issues
 >   (§6.11).
+> - **§7 ORDER MONEY — SETTLED (owner, 2026-08-14).**
+>   [order-is-a-withdrawal](#order-is-a-withdrawal) · [revenue-is-marketplace-total](#revenue-is-marketplace-total) ·
+>   [marketplace-total-has-presence](#marketplace-total-has-presence) ·
+>   [promote-sums-scraped-price](#promote-sums-scraped-price). Two questions still open in §7.
 
 ---
 
@@ -682,3 +686,146 @@ form, which is no longer what happens):
    only the fields that changed**, which is forced by §6.5 rather than an optimisation: every field
    sent is marked touched, so a save-everything form would freeze the whole draft against the app
    the first time anybody pressed Save.
+
+---
+
+## 7. What an order's MONEY means — ✅ DECIDED (owner, 2026-08-14)
+
+The question that opened this: the order form and `OrderDraftPromote` disagreed about `unit_price`.
+The form sends the warehouse's HPP; promote copies the draft's scraped marketplace price. Two doors
+into revenue, two different meanings for one column.
+
+### order-is-a-withdrawal
+
+**An order is a WITHDRAWAL of goods, priced at cost — not a record of a sale.** `unit_price` is the
+warehouse's HPP on every path, server-stamped, never typed. `subtotal` and `total` are therefore the
+**cost value of the goods that left the building**, and margin cannot be derived from them.
+
+> The agent argued the opposite (make the price typed, margin per line) and was **wrong on the
+> evidence** — see [order-money-was-argued-from-half-the-system](#order-money-was-argued-from-half-the-system).
+> Two things already built say this design was the intent:
+> `settlement` bills each owning team from `OrderPlacedLine.unit_cost`, not from `order.total`
+> ([order_fees.go](../../backend/services/settlement_service/settlement_v1/order_fees.go)) — the
+> inter-team charge never read `total` at all. And a marketplace's payout is an **order-level**
+> number: vouchers, coin subsidies and platform fees do not decompose per line, so a per-line
+> buyer-paid price is a fiction the first time a voucher lands.
+
+### revenue-is-marketplace-total
+
+**`marketplace_total` stops being a note and becomes THE revenue figure.**
+
+| | before | after |
+| --- | --- | --- |
+| `OrderPlacedEvent.revenue` | `order.total` (= COGS) | `order.marketplace_total` |
+| expected margin | `total − cogs − shipping` → **always 0** | `marketplace_total − cogs − shipping` |
+| `marketplace_total` | a note, "never add to margin or revenue" | the sale |
+
+```mermaid
+flowchart TB
+  subgraph goods["the goods leave — priced at COST"]
+    A["order.unit_price := HPP"] --> B["subtotal / total<br/>= value of stock withdrawn"]
+    A --> C["unit_cost := HPP"] --> D["cogs"]
+    C --> E["settlement bills the owning team"]
+  end
+
+  subgraph sale["the sale — ONE number per order"]
+    F["marketplace_total<br/>what the storefront paid out"]
+  end
+
+  F --> G["revenue"]
+  D --> G
+  G --> H["margin = marketplace_total − cogs − shipping_cost"]
+```
+
+### marketplace-total-has-presence
+
+`marketplace_total` is currently optional and defaults to `0`. The moment revenue reads it, an order
+placed without one books **revenue 0 and a margin of −cogs** — a confident loss, not a blank.
+
+**→ Recommend:** make it `optional int64` in `OrderCreateRequest` so PRESENCE is expressible, and
+carry a `revenue_known` flag on `OrderPlacedEvent` beside the `cost_known` that already exists. A
+revenue row with unknown revenue is EXCLUDED from margin totals rather than counted as a loss. `0`
+stays a legal value — a free sample, a replacement shipment — which is exactly why a sentinel will
+not do.
+
+### promote-sums-scraped-price
+
+The draft's per-line price stays editable (owner) and is the **marketplace** price. On promote it
+does not become `unit_price` — it is summed into the order's `marketplace_total`:
+
+```
+order.unit_price[i]   := HPP(warehouse, product[i])          ← from the warehouse, as the form does
+order.marketplace_total := Σ(qty × draft.unit_price) + draft.shipping_cost   ⚠ see the open question
+```
+
+### The ripple — every screen that shows an order's "Total"
+
+`total` now means *cost of goods withdrawn*. Anywhere it is labelled as what a buyer pays is now a
+lie, and these are the sites:
+
+| Site | Says today | Must say |
+| --- | --- | --- |
+| `order.proto` `marketplace_total` doc | "Never add it to margin or revenue" | it IS the revenue |
+| `order.proto` order-stat `total` | "what the buyers are paying for them" | value of goods withdrawn |
+| orders list / order detail "Total" | reads as the sale | cost, with the sale shown beside it |
+| order form totals card | `MarketplaceTotal` is a side-note card | the revenue line, in the totals |
+| draft detail totals card | "Subtotal" = the scraped money | "Marketplace total" |
+| this doc's own decision log | "`unit_price` is typed by the CS person" (#90) | struck through — done |
+
+### Open — needs the owner
+
+1. **Does `marketplace_total` INCLUDE the shipping the buyer paid?** The margin formula subtracts our
+   `shipping_cost`, so the two must be on the same footing. Most marketplace payouts do include it,
+   which would make the formula correct as written — but this is a business fact, not a design choice.
+2. **Is `marketplace_total` REQUIRED on the order form?** It is now the one number that decides the
+   month's margin. Requiring it adds friction to taking an order by phone; leaving it optional means
+   the margin report is only as complete as people's habits.
+
+---
+
+# Contradiction
+
+## order-money-was-argued-from-half-the-system
+
+Two statements, both written by the agent, three messages apart:
+
+> *"I think the draft is right (a sale's price is what the marketplace charged, not what the goods
+> cost us) and the form is the odd one."*
+
+> *"World A is recoverable, World B is not. … I don't recommend it."*
+
+Both were wrong, and for the same reason: the argument was built from `selling_service` and
+`revenue_service` alone. `settlement_service` — which is the service that actually charges one team
+for another's goods — was never read. It bills from `OrderPlacedLine.unit_cost`, so the "the order is
+priced at cost" model was **already implemented**, and the recommendation was to unpick a design
+whose other half had shipped.
+
+**→ RECOMMEND:** before recommending a change to what a FIELD MEANS, enumerate its consumers and read
+each one. `graphify affected "Order.unit_price"` and a grep for the event type are two minutes of
+work that would have inverted the conclusion. A money field's meaning lives in its consumers, not in
+the service that writes it — and this system has three of them.
+
+```mermaid
+flowchart LR
+  O["order placed"] --> R["revenue_service<br/>READ: total, cogs"]
+  O --> S["settlement_service<br/>READ: line unit_cost"]
+  O --> U["the UI<br/>READ: total"]
+
+  R -.->|"was read"| X["the recommendation"]
+  U -.->|"was read"| X
+  S -.->|"NEVER READ — and it<br/>held the answer"| X
+```
+
+## marketplace_total's proto doc now contradicts its own use
+
+[order.proto](../../proto/warehouse/selling/v1/order.proto) still carries, on the field itself:
+
+> *"⚠ Never add it to margin or revenue. `margin = total − cogs − shipping_cost` still holds"*
+
+[revenue-is-marketplace-total](#revenue-is-marketplace-total) reverses exactly this. The comment is
+authoritative-looking text in a settled place, which HARD RULE 11 names as worse than an open
+question — a reader has no way to tell it is stale.
+
+**→ RECOMMEND:** the proto comment is rewritten in the SAME commit as the event change, never after.
+The five sites in the ripple table above are one contradiction with five faces, not five findings —
+they all descend from `total` changing meaning.

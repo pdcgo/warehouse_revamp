@@ -16,7 +16,47 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/order.proto.
  */
 export const file_warehouse_selling_v1_order: GenFile = /*@__PURE__*/
-  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEisQEKCU9yZGVySXRlbRIKCgJpZBgBIAEoBBIbCgpwcm9kdWN0X2lkGAIgASgEQge6SAQyAiAAEhYKA3NrdRgDIAEoCUIJukgGcgQQARhAEhgKBG5hbWUYBCABKAlCCrpIB3IFEAEYyAESGQoIcXVhbnRpdHkYBSABKA1CB7pIBCoCKAESGwoKdW5pdF9wcmljZRgGIAEoA0IHukgEIgIoABIRCgl1bml0X2Nvc3QYByABKAMi6gEKDE9yZGVyQWRkcmVzcxIVCg1wcm92aW5zaV9jb2RlGAEgASgJEhUKDXByb3ZpbnNpX25hbWUYAiABKAkSFgoOa2FidXBhdGVuX2NvZGUYAyABKAkSFgoOa2FidXBhdGVuX25hbWUYBCABKAkSFgoOa2VjYW1hdGFuX2NvZGUYBSABKAkSFgoOa2VjYW1hdGFuX25hbWUYBiABKAkSEQoJZGVzYV9jb2RlGAcgASgJEhEKCWRlc2FfbmFtZRgIIAEoCRIQCghrb2RlX3BvcxgJIAEoCRIUCgxhZGRyZXNzX2xpbmUYCiABKAkioAMKBU9yZGVyEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIxCgZzdGF0dXMYBCABKA4yIS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclN0YXR1cxIVCg1jdXN0b21lcl9uYW1lGAUgASgJEhYKDmN1c3RvbWVyX3Bob25lGAYgASgJEhUKDXNoaXBwaW5nX2NvZGUYCCABKAkSEAoIc3VidG90YWwYCSABKAMSFQoNc2hpcHBpbmdfY29zdBgKIAEoAxINCgV0b3RhbBgLIAEoAxIuCgVpdGVtcxgMIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbRIXCg9jcmVhdGVkX2F0X3VuaXgYDSABKAMSMwoHYWRkcmVzcxgOIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzcxIMCgRjb2dzGBAgASgDEhQKDHdhcmVob3VzZV9pZBgPIAEoBEoECAcQCFIQY3VzdG9tZXJfYWRkcmVzcyK2AwoST3JkZXJDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3Nob3BfaWQYAiABKARCB7pIBDICIAASHQoMd2FyZWhvdXNlX2lkGAwgASgEQge6SAQyAiAAEiEKDWN1c3RvbWVyX25hbWUYAyABKAlCCrpIB3IFEAEYyAESHwoOY3VzdG9tZXJfcGhvbmUYBCABKAlCB7pIBHICGCgSHgoNc2hpcHBpbmdfY29kZRgGIAEoCUIHukgEcgIYKBIZCghzdWJ0b3RhbBgHIAEoA0IHukgEIgIoABIeCg1zaGlwcGluZ19jb3N0GAggASgDQge6SAQiAigAEhYKBXRvdGFsGAkgASgDQge6SAQiAigAEjgKBWl0ZW1zGAogAygLMh8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJJdGVtQgi6SAWSAQIIARIzCgdhZGRyZXNzGAsgASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBZGRyZXNzOguStRgHCgUBAgMEBUoECAUQBlIQY3VzdG9tZXJfYWRkcmVzcyJBChNPcmRlckNyZWF0ZVJlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIirAIKEE9yZGVyTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNQoGZmlsdGVyGAIgASgLMiUud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0RmlsdGVyEjcKBHNvcnQYAyABKAsyKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RGaWx0ZXJTb3J0Ej0KDGRhdGFfcmVxdWVzdBgEIAMoDjInLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgiYgoPT3JkZXJMaXN0RmlsdGVyEjsKBnN0YXR1cxgBIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU3RhdHVzQgi6SAWCAQIQARISCgpwcm9kdWN0X2lkGAIgASgEIrwBChNPcmRlckxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABIzCgVvcmRlchgDIAEoDjIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUm93U29ydEgAQgMKAXMipAEKD09yZGVyUm93TWFwSXRlbRJECghtYXBfZGF0YRgBIAMoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaSwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIqCgV2YWx1ZRgCIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyOgI4ASKMAQoVT3JkZXJMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASNgoFb3JkZXIYAiABKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJvd01hcEl0ZW1IAEIDCgFkIo4BChFPcmRlckxpc3RSZXNwb25zZRI6CgVpdGVtcxgBIAMoCzIrLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJdChJPcmRlckRldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkEKE09yZGVyRGV0YWlsUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJbChNPcmRlckNvbmZpcm1SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgMEBSJCChRPcmRlckNvbmZpcm1SZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIloKEk9yZGVyQ2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQQoTT3JkZXJDYW5jZWxSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIlgKEE9yZGVyUGlja1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIj8KEU9yZGVyUGlja1Jlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWAoQT3JkZXJQYWNrUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgiPwoRT3JkZXJQYWNrUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJYChBPcmRlclNoaXBSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCI/ChFPcmRlclNoaXBSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIkkKGE9yZGVyUHJvZHVjdEFjdGl2aXR5SXRlbRIXCg9sYXN0X29yZGVyX3VuaXgYASABKAMSFAoMc29sZF9xdHlfMzBkGAIgASgDIs8BChtPcmRlclByb2R1Y3RBY3Rpdml0eU1hcEl0ZW0SUAoIbWFwX2RhdGEYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eU1hcEl0ZW0uTWFwRGF0YUVudHJ5Gl4KDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSPQoFdmFsdWUYAiABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eUl0ZW06AjgBIksKH09yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNGaWx0ZXISKAoLcHJvZHVjdF9pZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAi5gEKIE9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEk0KBmZpbHRlchgCIAEoCzI1LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNGaWx0ZXJCBrpIA8gBARJICgxkYXRhX3JlcXVlc3QYAyADKA4yMi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eURhdGFUeXBlOguStRgHCgUBAgMEBSJzCiVPcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VJdGVtEkUKCGFjdGl2aXR5GAEgASgLMjEud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlNYXBJdGVtSABCAwoBZCJzCiVPcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VMaXN0EkoKBWl0ZW1zGAEgAygLMjsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlSXRlbSLhAQohT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlElEKBWl0ZW1zGAEgAygLMkIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaaQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSSgoFdmFsdWUYAiABKAsyOy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VMaXN0OgI4ASJFChhPcmRlckFjdGl2aXR5U3RhdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAE6C5K1GAcKBQECAwQFIkMKFE9yZGVyQWN0aXZpdHlQcmV2aWV3EhcKD2xhc3Rfb3JkZXJfdW5peBgBIAEoAxISCgpvcmRlcnNfMzBkGAIgASgDIlgKGU9yZGVyQWN0aXZpdHlTdGF0UmVzcG9uc2USOwoHcHJldmlldxgBIAEoCzIqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWN0aXZpdHlQcmV2aWV3KskBCgtPcmRlclN0YXR1cxIcChhPUkRFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNPUkRFUl9TVEFUVVNfUExBQ0VEEAESGgoWT1JERVJfU1RBVFVTX0NPTkZJUk1FRBACEhoKFk9SREVSX1NUQVRVU19DQU5DRUxMRUQQAxIYChRPUkRFUl9TVEFUVVNfUElDS0lORxAEEhcKE09SREVSX1NUQVRVU19QQUNLRUQQBRIYChRPUkRFUl9TVEFUVVNfU0hJUFBFRBAGKnsKEU9yZGVyTGlzdERhdGFUeXBlEiQKIE9SREVSX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIAocT1JERVJfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEh4KGk9SREVSX0xJU1RfREFUQV9UWVBFX09SREVSEAIqXwoMT3JkZXJSb3dTb3J0Eh4KGk9SREVSX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASFQoRT1JERVJfUk9XX1NPUlRfSUQQARIYChRPUkRFUl9ST1dfU09SVF9UT1RBTBACKn8KHE9yZGVyUHJvZHVjdEFjdGl2aXR5RGF0YVR5cGUSMAosT1JERVJfUFJPRFVDVF9BQ1RJVklUWV9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABItCilPUkRFUl9QUk9EVUNUX0FDVElWSVRZX0RBVEFfVFlQRV9BQ1RJVklUWRABMp4ICgxPcmRlclNlcnZpY2USYgoLT3JkZXJDcmVhdGUSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZVJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNyZWF0ZVJlc3BvbnNlElwKCU9yZGVyTGlzdBImLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdFJlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RSZXNwb25zZRJiCgtPcmRlckRldGFpbBIoLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRGV0YWlsUmVxdWVzdBopLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRGV0YWlsUmVzcG9uc2USZQoMT3JkZXJDb25maXJtEikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDb25maXJtUmVxdWVzdBoqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQ29uZmlybVJlc3BvbnNlEmIKC09yZGVyQ2FuY2VsEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXNwb25zZRJcCglPcmRlclBpY2sSJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBpY2tSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQaWNrUmVzcG9uc2USXAoJT3JkZXJQYWNrEiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQYWNrUmVxdWVzdBonLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUGFja1Jlc3BvbnNlElwKCU9yZGVyU2hpcBImLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU2hpcFJlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclNoaXBSZXNwb25zZRKMAQoZT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkcxI2LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNSZXF1ZXN0Gjcud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlEnQKEU9yZGVyQWN0aXZpdHlTdGF0Ei4ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBY3Rpdml0eVN0YXRSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJBY3Rpdml0eVN0YXRSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
+  fileDesc("CiB3YXJlaG91c2Uvc2VsbGluZy92MS9vcmRlci5wcm90bxIUd2FyZWhvdXNlLnNlbGxpbmcudjEidAoKT3JkZXJFdmVudBIKCgJpZBgBIAEoBBIyCgRraW5kGAIgASgOMiQud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJFdmVudEtpbmQSFQoNYWN0b3JfdXNlcl9pZBgDIAEoBBIPCgdhdF91bml4GAQgASgDIrEBCglPcmRlckl0ZW0SCgoCaWQYASABKAQSGwoKcHJvZHVjdF9pZBgCIAEoBEIHukgEMgIgABIWCgNza3UYAyABKAlCCbpIBnIEEAEYQBIYCgRuYW1lGAQgASgJQgq6SAdyBRABGMgBEhkKCHF1YW50aXR5GAUgASgNQge6SAQqAigBEhsKCnVuaXRfcHJpY2UYBiABKANCB7pIBCICKAASEQoJdW5pdF9jb3N0GAcgASgDIuoBCgxPcmRlckFkZHJlc3MSFQoNcHJvdmluc2lfY29kZRgBIAEoCRIVCg1wcm92aW5zaV9uYW1lGAIgASgJEhYKDmthYnVwYXRlbl9jb2RlGAMgASgJEhYKDmthYnVwYXRlbl9uYW1lGAQgASgJEhYKDmtlY2FtYXRhbl9jb2RlGAUgASgJEhYKDmtlY2FtYXRhbl9uYW1lGAYgASgJEhEKCWRlc2FfY29kZRgHIAEoCRIRCglkZXNhX25hbWUYCCABKAkSEAoIa29kZV9wb3MYCSABKAkSFAoMYWRkcmVzc19saW5lGAogASgJImUKDE9yZGVyUmVjZWlwdBIcCgtkb2N1bWVudF9pZBgBIAEoCUIHukgEcgIYQBIaCghmaWxlbmFtZRgCIAEoCUIIukgFcgMY/wESGwoJbWltZV90eXBlGAMgASgJQgi6SAVyAxiAASKwBAoFT3JkZXISCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIPCgdzaG9wX2lkGAMgASgEEjEKBnN0YXR1cxgEIAEoDjIhLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU3RhdHVzEhUKDWN1c3RvbWVyX25hbWUYBSABKAkSFgoOY3VzdG9tZXJfcGhvbmUYBiABKAkSFQoNc2hpcHBpbmdfY29kZRgIIAEoCRIQCghzdWJ0b3RhbBgJIAEoAxIVCg1zaGlwcGluZ19jb3N0GAogASgDEg0KBXRvdGFsGAsgASgDEhkKEW1hcmtldHBsYWNlX3RvdGFsGBEgASgDEi4KBWl0ZW1zGAwgAygLMh8ud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJJdGVtEjAKBmV2ZW50cxgUIAMoCzIgLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyRXZlbnQSFwoPY3JlYXRlZF9hdF91bml4GA0gASgDEjMKB2FkZHJlc3MYDiABKAsyIi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckFkZHJlc3MSDAoEY29ncxgQIAEoAxIzCgdyZWNlaXB0GBMgASgLMiIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJSZWNlaXB0EgwKBG5vdGUYEiABKAkSFAoMd2FyZWhvdXNlX2lkGA8gASgESgQIBxAIUhBjdXN0b21lcl9hZGRyZXNzIqcEChJPcmRlckNyZWF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHc2hvcF9pZBgCIAEoBEIHukgEMgIgABIdCgx3YXJlaG91c2VfaWQYDCABKARCB7pIBDICIAASIQoNY3VzdG9tZXJfbmFtZRgDIAEoCUIKukgHcgUQARjIARIfCg5jdXN0b21lcl9waG9uZRgEIAEoCUIHukgEcgIYKBIeCg1zaGlwcGluZ19jb2RlGAYgASgJQge6SARyAhgoEhkKCHN1YnRvdGFsGAcgASgDQge6SAQiAigAEh4KDXNoaXBwaW5nX2Nvc3QYCCABKANCB7pIBCICKAASFgoFdG90YWwYCSABKANCB7pIBCICKAASIgoRbWFya2V0cGxhY2VfdG90YWwYDSABKANCB7pIBCICKAASMwoHcmVjZWlwdBgPIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUmVjZWlwdBIWCgRub3RlGA4gASgJQgi6SAVyAxjQDxI4CgVpdGVtcxgKIAMoCzIfLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVySXRlbUIIukgFkgECCAESMwoHYWRkcmVzcxgLIAEoCzIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWRkcmVzczoLkrUYBwoFAQIDBAVKBAgFEAZSEGN1c3RvbWVyX2FkZHJlc3MiQQoTT3JkZXJDcmVhdGVSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIqwCChBPcmRlckxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjUKBmZpbHRlchgCIAEoCzIlLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdEZpbHRlchI3CgRzb3J0GAMgASgLMikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0RmlsdGVyU29ydBI9CgxkYXRhX3JlcXVlc3QYBCADKA4yJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIsABCg9PcmRlckxpc3RGaWx0ZXISOwoGc3RhdHVzGAEgASgOMiEud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTdGF0dXNCCLpIBYIBAhABEhIKCnByb2R1Y3RfaWQYAiABKAQSFwoGc2VhcmNoGAMgASgJQge6SARyAhhkEg8KB3Nob3BfaWQYBCABKAQSGQoRY3JlYXRlZF9mcm9tX3VuaXgYBSABKAMSFwoPY3JlYXRlZF90b191bml4GAYgASgDIrwBChNPcmRlckxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABIzCgVvcmRlchgDIAEoDjIiLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUm93U29ydEgAQgMKAXMipAEKD09yZGVyUm93TWFwSXRlbRJECghtYXBfZGF0YRgBIAMoCzIyLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaSwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIqCgV2YWx1ZRgCIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyOgI4ASKMAQoVT3JkZXJMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASNgoFb3JkZXIYAiABKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclJvd01hcEl0ZW1IAEIDCgFkIo4BChFPcmRlckxpc3RSZXNwb25zZRI6CgVpdGVtcxgBIAMoCzIrLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyJdChJPcmRlckRldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIkEKE09yZGVyRGV0YWlsUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJbChNPcmRlckNvbmZpcm1SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCJCChRPcmRlckNvbmZpcm1SZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIloKEk9yZGVyQ2FuY2VsUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIDBAUiQQoTT3JkZXJDYW5jZWxSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIlgKEE9yZGVyUGlja1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIIj8KEU9yZGVyUGlja1Jlc3BvbnNlEioKBW9yZGVyGAEgASgLMhsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXIiWAoQT3JkZXJQYWNrUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIZCghvcmRlcl9pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgiPwoRT3JkZXJQYWNrUmVzcG9uc2USKgoFb3JkZXIYASABKAsyGy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlciJYChBPcmRlclNoaXBSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAOguStRgHCgUBAgYJCCI/ChFPcmRlclNoaXBSZXNwb25zZRIqCgVvcmRlchgBIAEoCzIbLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyIkkKGE9yZGVyUHJvZHVjdEFjdGl2aXR5SXRlbRIXCg9sYXN0X29yZGVyX3VuaXgYASABKAMSFAoMc29sZF9xdHlfMzBkGAIgASgDIs8BChtPcmRlclByb2R1Y3RBY3Rpdml0eU1hcEl0ZW0SUAoIbWFwX2RhdGEYASADKAsyPi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eU1hcEl0ZW0uTWFwRGF0YUVudHJ5Gl4KDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSPQoFdmFsdWUYAiABKAsyLi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eUl0ZW06AjgBIksKH09yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNGaWx0ZXISKAoLcHJvZHVjdF9pZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAi5gEKIE9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEk0KBmZpbHRlchgCIAEoCzI1LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNGaWx0ZXJCBrpIA8gBARJICgxkYXRhX3JlcXVlc3QYAyADKA4yMi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eURhdGFUeXBlOguStRgHCgUBAgMEBSJzCiVPcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VJdGVtEkUKCGFjdGl2aXR5GAEgASgLMjEud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlNYXBJdGVtSABCAwoBZCJzCiVPcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VMaXN0EkoKBWl0ZW1zGAEgAygLMjsud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlSXRlbSLhAQohT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlElEKBWl0ZW1zGAEgAygLMkIud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQcm9kdWN0QWN0aXZpdHlCeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaaQoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSSgoFdmFsdWUYAiABKAsyOy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVzcG9uc2VMaXN0OgI4ASJFChhPcmRlckFjdGl2aXR5U3RhdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAE6C5K1GAcKBQECAwQFIkMKFE9yZGVyQWN0aXZpdHlQcmV2aWV3EhcKD2xhc3Rfb3JkZXJfdW5peBgBIAEoAxISCgpvcmRlcnNfMzBkGAIgASgDIlgKGU9yZGVyQWN0aXZpdHlTdGF0UmVzcG9uc2USOwoHcHJldmlldxgBIAEoCzIqLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWN0aXZpdHlQcmV2aWV3IoMBCg9PcmRlclN0YXRGaWx0ZXISEgoKcHJvZHVjdF9pZBgBIAEoBBIXCgZzZWFyY2gYAiABKAlCB7pIBHICGGQSDwoHc2hvcF9pZBgDIAEoBBIZChFjcmVhdGVkX2Zyb21fdW5peBgEIAEoAxIXCg9jcmVhdGVkX3RvX3VuaXgYBSABKAMidwoQT3JkZXJTdGF0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI1CgZmaWx0ZXIYAiABKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclN0YXRGaWx0ZXI6DpK1GAoKCAECAwQFBgkIImMKEE9yZGVyU3RhdHVzQ291bnQSMQoGc3RhdHVzGAEgASgOMiEud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTdGF0dXMSDQoFY291bnQYAiABKAMSDQoFdmFsdWUYAyABKAMiOwoQT3JkZXJTdGF0UHJldmlldxISCgpvcmRlcnNfMzBkGAEgASgDEhMKC3JldmVudWVfMzBkGAIgASgDIocBChFPcmRlclN0YXRSZXNwb25zZRI3CgdwcmV2aWV3GAEgASgLMiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTdGF0UHJldmlldxI5CglieV9zdGF0dXMYAiADKAsyJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclN0YXR1c0NvdW50KskBCgtPcmRlclN0YXR1cxIcChhPUkRFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNPUkRFUl9TVEFUVVNfUExBQ0VEEAESGgoWT1JERVJfU1RBVFVTX0NPTkZJUk1FRBACEhoKFk9SREVSX1NUQVRVU19DQU5DRUxMRUQQAxIYChRPUkRFUl9TVEFUVVNfUElDS0lORxAEEhcKE09SREVSX1NUQVRVU19QQUNLRUQQBRIYChRPUkRFUl9TVEFUVVNfU0hJUFBFRBAGKugBCg5PcmRlckV2ZW50S2luZBIgChxPUkRFUl9FVkVOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGwoXT1JERVJfRVZFTlRfS0lORF9QTEFDRUQQARIeChpPUkRFUl9FVkVOVF9LSU5EX0NPTkZJUk1FRBACEh4KGk9SREVSX0VWRU5UX0tJTkRfQ0FOQ0VMTEVEEAMSHAoYT1JERVJfRVZFTlRfS0lORF9QSUNLSU5HEAQSGwoXT1JERVJfRVZFTlRfS0lORF9QQUNLRUQQBRIcChhPUkRFUl9FVkVOVF9LSU5EX1NISVBQRUQQBip7ChFPcmRlckxpc3REYXRhVHlwZRIkCiBPUkRFUl9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiAKHE9SREVSX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIeChpPUkRFUl9MSVNUX0RBVEFfVFlQRV9PUkRFUhACKl8KDE9yZGVyUm93U29ydBIeChpPUkRFUl9ST1dfU09SVF9VTlNQRUNJRklFRBAAEhUKEU9SREVSX1JPV19TT1JUX0lEEAESGAoUT1JERVJfUk9XX1NPUlRfVE9UQUwQAip/ChxPcmRlclByb2R1Y3RBY3Rpdml0eURhdGFUeXBlEjAKLE9SREVSX1BST0RVQ1RfQUNUSVZJVFlfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASLQopT1JERVJfUFJPRFVDVF9BQ1RJVklUWV9EQVRBX1RZUEVfQUNUSVZJVFkQATL8CAoMT3JkZXJTZXJ2aWNlEmIKC09yZGVyQ3JlYXRlEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDcmVhdGVSZXNwb25zZRJcCglPcmRlckxpc3QSJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckxpc3RSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJMaXN0UmVzcG9uc2USYgoLT3JkZXJEZXRhaWwSKC53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlcXVlc3QaKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckRldGFpbFJlc3BvbnNlEmIKC09yZGVyQ2FuY2VsEigud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXF1ZXN0Gikud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDYW5jZWxSZXNwb25zZRJlCgxPcmRlckNvbmZpcm0SKS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlckNvbmZpcm1SZXF1ZXN0Gioud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJDb25maXJtUmVzcG9uc2USXAoJT3JkZXJQaWNrEiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJQaWNrUmVxdWVzdBonLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUGlja1Jlc3BvbnNlElwKCU9yZGVyUGFjaxImLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUGFja1JlcXVlc3QaJy53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBhY2tSZXNwb25zZRJcCglPcmRlclNoaXASJi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclNoaXBSZXF1ZXN0Gicud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTaGlwUmVzcG9uc2USjAEKGU9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHMSNi53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclByb2R1Y3RBY3Rpdml0eUJ5SWRzUmVxdWVzdBo3LndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyUHJvZHVjdEFjdGl2aXR5QnlJZHNSZXNwb25zZRJ0ChFPcmRlckFjdGl2aXR5U3RhdBIuLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWN0aXZpdHlTdGF0UmVxdWVzdBovLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyQWN0aXZpdHlTdGF0UmVzcG9uc2USXAoJT3JkZXJTdGF0EiYud2FyZWhvdXNlLnNlbGxpbmcudjEuT3JkZXJTdGF0UmVxdWVzdBonLndhcmVob3VzZS5zZWxsaW5nLnYxLk9yZGVyU3RhdFJlc3BvbnNlQk5aTGdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2VsbGluZy92MTtzZWxsaW5ndjFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
+
+/**
+ * One entry in an order's history — WHAT happened, WHO did it, WHEN.
+ *
+ * @generated from message warehouse.selling.v1.OrderEvent
+ */
+export type OrderEvent = Message<"warehouse.selling.v1.OrderEvent"> & {
+  /**
+   * @generated from field: uint64 id = 1;
+   */
+  id: bigint;
+
+  /**
+   * @generated from field: warehouse.selling.v1.OrderEventKind kind = 2;
+   */
+  kind: OrderEventKind;
+
+  /**
+   * The opaque user_service id of whoever did it; 0 = not recorded. Resolved to a name through
+   * UserByIDs at read time, never snapshotted — a person's name is theirs to change.
+   *
+   * @generated from field: uint64 actor_user_id = 3;
+   */
+  actorUserId: bigint;
+
+  /**
+   * WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
+   * moment its column recorded, which may be months before the row existed.
+   *
+   * @generated from field: int64 at_unix = 4;
+   */
+  atUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderEvent.
+ * Use `create(OrderEventSchema)` to create a new message.
+ */
+export const OrderEventSchema: GenMessage<OrderEvent> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 0);
 
 /**
  * OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -78,7 +118,7 @@ export type OrderItem = Message<"warehouse.selling.v1.OrderItem"> & {
  * Use `create(OrderItemSchema)` to create a new message.
  */
 export const OrderItemSchema: GenMessage<OrderItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 0);
+  messageDesc(file_warehouse_selling_v1_order, 1);
 
 /**
  * A customer's delivery address, FROZEN onto the order (#118).
@@ -156,7 +196,53 @@ export type OrderAddress = Message<"warehouse.selling.v1.OrderAddress"> & {
  * Use `create(OrderAddressSchema)` to create a new message.
  */
 export const OrderAddressSchema: GenMessage<OrderAddress> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 1);
+  messageDesc(file_warehouse_selling_v1_order, 2);
+
+/**
+ * The SHIPPING RECEIPT attached to an order (owner) — the courier's slip photographed, or the PDF
+ * the marketplace prints. One per order.
+ *
+ * A REFERENCE, not the file: the bytes live in document_service, and this records which document
+ * they are. The id is opaque (no FK across services, HARD RULE 3), and the two labels beside it are
+ * a deliberate SNAPSHOT — an order can name its attachment, and say whether it is a picture or a
+ * PDF, without calling another service to render a row.
+ *
+ * The document is PRIVATE, so viewing it is a DocumentService.GetDownloadUrl call scoped to the
+ * team. Storing a URL here instead would either be a link that expires in the database, or a
+ * permanently public one for a document that names a buyer and their address.
+ *
+ * @generated from message warehouse.selling.v1.OrderReceipt
+ */
+export type OrderReceipt = Message<"warehouse.selling.v1.OrderReceipt"> & {
+  /**
+   * A document_service id. "" = no receipt, which is the ordinary state of a fresh order.
+   *
+   * @generated from field: string document_id = 1;
+   */
+  documentId: string;
+
+  /**
+   * What it was called when it was uploaded — the label a person recognises in a list.
+   *
+   * @generated from field: string filename = 2;
+   */
+  filename: string;
+
+  /**
+   * image/jpeg, application/pdf, … Kept so the reader knows whether it can show the thing inline or
+   * must offer it as a download, without fetching the file to find out.
+   *
+   * @generated from field: string mime_type = 3;
+   */
+  mimeType: string;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderReceipt.
+ * Use `create(OrderReceiptSchema)` to create a new message.
+ */
+export const OrderReceiptSchema: GenMessage<OrderReceipt> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 3);
 
 /**
  * @generated from message warehouse.selling.v1.Order
@@ -218,11 +304,42 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   total: bigint;
 
   /**
+   * What this order SOLD FOR on the marketplace — a NOTE, and nothing computes from it (owner).
+   *
+   * `total` remains `subtotal + shipping_cost`. This sits beside it recording what the storefront
+   * actually took: after the marketplace's vouchers, coin subsidies and promotions, what the buyer
+   * paid there is a different figure from what these lines add up to, and neither is a correction of
+   * the other. Stored rather than derived because nothing here CAN derive it — a person reads it off
+   * the storefront and types it in.
+   *
+   * 0 = not recorded, not "sold for nothing": an order taken over the phone has no marketplace figure.
+   *
+   * ⚠ Never add it to margin or revenue. `margin = total - cogs - shipping_cost` still holds, and
+   * folding this in would count the same sale twice.
+   *
+   * @generated from field: int64 marketplace_total = 17;
+   */
+  marketplaceTotal: bigint;
+
+  /**
    * The lines — populated by OrderDetail (OrderList returns a summary without them).
    *
    * @generated from field: repeated warehouse.selling.v1.OrderItem items = 12;
    */
   items: OrderItem[];
+
+  /**
+   * The order's HISTORY, oldest first — populated by OrderDetail only, exactly like `items`. A list
+   * returning every order's whole history would multiply its page size by the length of each life.
+   *
+   * ⚠ An order in `status: SHIPPED` does NOT necessarily carry six events. Everything placed before
+   * the events table existed was backfilled from the two moments the row actually recorded — when it
+   * was created, and when it last changed — so an old order's history is short because that is all
+   * that was ever known, not because the steps were skipped.
+   *
+   * @generated from field: repeated warehouse.selling.v1.OrderEvent events = 20;
+   */
+  events: OrderEvent[];
 
   /**
    * @generated from field: int64 created_at_unix = 13;
@@ -253,6 +370,33 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   cogs: bigint;
 
   /**
+   * The shipping receipt attached to this order, if one was. Always present as a message; an order
+   * with no receipt carries an empty `document_id` rather than a nil field, so a client renders it
+   * without null-checking — the same convention `address` already follows.
+   *
+   * @generated from field: warehouse.selling.v1.OrderReceipt receipt = 19;
+   */
+  receipt?: OrderReceipt;
+
+  /**
+   * A free-text NOTE about this order, written by whoever took it (owner).
+   *
+   * The one field on an order that the system never reads. It carries what the structured fields
+   * cannot: "buyer asks for it after 5pm", "wrap the glass one", "second attempt, first parcel came
+   * back". Those are instructions to a PERSON — the CS who rings back, the crew who packs it — and
+   * every attempt to turn that class of remark into an enum ends with a list nobody's actual case
+   * fits.
+   *
+   * ⚠ Nothing branches on it. It is not a status, not a tag, and not a place to encode a rule the
+   * system should be holding — the moment something reads it, that something needs a real field.
+   *
+   * "" = nothing was written down, which is the ordinary case.
+   *
+   * @generated from field: string note = 18;
+   */
+  note: string;
+
+  /**
    * WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
    * here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
    *
@@ -273,7 +417,7 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
  * Use `create(OrderSchema)` to create a new message.
  */
 export const OrderSchema: GenMessage<Order> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 2);
+  messageDesc(file_warehouse_selling_v1_order, 4);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCreateRequest
@@ -330,6 +474,37 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
   total: bigint;
 
   /**
+   * What it SOLD FOR on the marketplace — a note, stored and never computed from. Optional: 0 means
+   * nobody wrote it down. See Order.marketplace_total.
+   *
+   * @generated from field: int64 marketplace_total = 13;
+   */
+  marketplaceTotal: bigint;
+
+  /**
+   * The shipping receipt, already uploaded to document_service by the client. Optional.
+   *
+   * NOT VERIFIED HERE, and that is a choice rather than an oversight: checking the id would make
+   * placing an order depend on document_service being up, for a label. A wrong id costs a receipt
+   * that will not open — never another team's file, because GetDownloadUrl is scoped to the caller's
+   * own team and refuses anything else.
+   *
+   * @generated from field: warehouse.selling.v1.OrderReceipt receipt = 15;
+   */
+  receipt?: OrderReceipt;
+
+  /**
+   * A free-text note about the order, for the people who handle it. Optional; "" is the ordinary
+   * case. See Order.note — nothing in the system reads it.
+   *
+   * Capped at 2000 characters: long enough for the several sentences a difficult order really does
+   * need, short enough that the field cannot become a document store.
+   *
+   * @generated from field: string note = 14;
+   */
+  note: string;
+
+  /**
    * At least one line; `id` on each is ignored.
    *
    * @generated from field: repeated warehouse.selling.v1.OrderItem items = 10;
@@ -351,7 +526,7 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
  * Use `create(OrderCreateRequestSchema)` to create a new message.
  */
 export const OrderCreateRequestSchema: GenMessage<OrderCreateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 3);
+  messageDesc(file_warehouse_selling_v1_order, 5);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCreateResponse
@@ -368,7 +543,7 @@ export type OrderCreateResponse = Message<"warehouse.selling.v1.OrderCreateRespo
  * Use `create(OrderCreateResponseSchema)` to create a new message.
  */
 export const OrderCreateResponseSchema: GenMessage<OrderCreateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 4);
+  messageDesc(file_warehouse_selling_v1_order, 6);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListRequest
@@ -405,10 +580,12 @@ export type OrderListRequest = Message<"warehouse.selling.v1.OrderListRequest"> 
  * Use `create(OrderListRequestSchema)` to create a new message.
  */
 export const OrderListRequestSchema: GenMessage<OrderListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 5);
+  messageDesc(file_warehouse_selling_v1_order, 7);
 
 /**
- * OrderListFilter carries the NON-scope filters (both server-side because the list is paginated).
+ * OrderListFilter carries the NON-scope filters (all server-side because the list is paginated — a
+ * client-side filter would narrow the loaded page only, and the count driving the pager would still
+ * be the unfiltered total).
  *
  * @generated from message warehouse.selling.v1.OrderListFilter
  */
@@ -426,6 +603,47 @@ export type OrderListFilter = Message<"warehouse.selling.v1.OrderListFilter"> & 
    * @generated from field: uint64 product_id = 2;
    */
   productId: bigint;
+
+  /**
+   * Free text over the customer's NAME, their PHONE, and — when the term is all digits — the ORDER
+   * ID. Case-insensitive, substring. "" = no filter.
+   *
+   * Those three and no more. A CS person looking an order up has one of them in front of them: the
+   * buyer said their name, the buyer rang from a number, or somebody quoted an order number. Widening
+   * it to the address or the line items would make the same term match orders for reasons the person
+   * searching cannot see, and every extra column is another one the query cannot use an index for.
+   *
+   * @generated from field: string search = 3;
+   */
+  search: string;
+
+  /**
+   * Only orders placed on THIS shop. 0 = no filter.
+   *
+   * A shop belongs to a SELLING team, so this is meaningful only when a selling team is asking. A
+   * warehouse reading its pick queue holds no shops; it simply leaves this at 0.
+   *
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
+
+  /**
+   * The window the order was PLACED in — `created_at`, inclusive on both ends, unix seconds.
+   * 0 on either side is an OPEN end, so {0,0} means every date.
+   *
+   * `created_at` because it is the only timestamp an order has that means anything to the person
+   * filtering. When fulfilment starts stamping its own (picked_at, shipped_at), this becomes a
+   * WHICH-timestamp choice and the field names here are what stop that being ambiguous — the shared
+   * DateRangePicker already carries a field segment for exactly that.
+   *
+   * @generated from field: int64 created_from_unix = 5;
+   */
+  createdFromUnix: bigint;
+
+  /**
+   * @generated from field: int64 created_to_unix = 6;
+   */
+  createdToUnix: bigint;
 };
 
 /**
@@ -433,7 +651,7 @@ export type OrderListFilter = Message<"warehouse.selling.v1.OrderListFilter"> & 
  * Use `create(OrderListFilterSchema)` to create a new message.
  */
 export const OrderListFilterSchema: GenMessage<OrderListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 6);
+  messageDesc(file_warehouse_selling_v1_order, 8);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListFilterSort
@@ -467,7 +685,7 @@ export type OrderListFilterSort = Message<"warehouse.selling.v1.OrderListFilterS
  * Use `create(OrderListFilterSortSchema)` to create a new message.
  */
 export const OrderListFilterSortSchema: GenMessage<OrderListFilterSort> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 7);
+  messageDesc(file_warehouse_selling_v1_order, 9);
 
 /**
  * The ORDER slice reuses the Order message directly (a list summary leaves items empty).
@@ -486,7 +704,7 @@ export type OrderRowMapItem = Message<"warehouse.selling.v1.OrderRowMapItem"> & 
  * Use `create(OrderRowMapItemSchema)` to create a new message.
  */
 export const OrderRowMapItemSchema: GenMessage<OrderRowMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 8);
+  messageDesc(file_warehouse_selling_v1_order, 10);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListResponseItem
@@ -515,7 +733,7 @@ export type OrderListResponseItem = Message<"warehouse.selling.v1.OrderListRespo
  * Use `create(OrderListResponseItemSchema)` to create a new message.
  */
 export const OrderListResponseItemSchema: GenMessage<OrderListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 9);
+  messageDesc(file_warehouse_selling_v1_order, 11);
 
 /**
  * @generated from message warehouse.selling.v1.OrderListResponse
@@ -542,7 +760,7 @@ export type OrderListResponse = Message<"warehouse.selling.v1.OrderListResponse"
  * Use `create(OrderListResponseSchema)` to create a new message.
  */
 export const OrderListResponseSchema: GenMessage<OrderListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 10);
+  messageDesc(file_warehouse_selling_v1_order, 12);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDetailRequest
@@ -564,7 +782,7 @@ export type OrderDetailRequest = Message<"warehouse.selling.v1.OrderDetailReques
  * Use `create(OrderDetailRequestSchema)` to create a new message.
  */
 export const OrderDetailRequestSchema: GenMessage<OrderDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 11);
+  messageDesc(file_warehouse_selling_v1_order, 13);
 
 /**
  * @generated from message warehouse.selling.v1.OrderDetailResponse
@@ -581,7 +799,7 @@ export type OrderDetailResponse = Message<"warehouse.selling.v1.OrderDetailRespo
  * Use `create(OrderDetailResponseSchema)` to create a new message.
  */
 export const OrderDetailResponseSchema: GenMessage<OrderDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 12);
+  messageDesc(file_warehouse_selling_v1_order, 14);
 
 /**
  * OrderConfirm moves a PLACED order to CONFIRMED. Same audience as OrderCreate — the selling team's
@@ -591,6 +809,8 @@ export const OrderDetailResponseSchema: GenMessage<OrderDetailResponse> = /*@__P
  */
 export type OrderConfirmRequest = Message<"warehouse.selling.v1.OrderConfirmRequest"> & {
   /**
+   * The WAREHOUSE accepting the order — not the team that placed it.
+   *
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
@@ -606,7 +826,7 @@ export type OrderConfirmRequest = Message<"warehouse.selling.v1.OrderConfirmRequ
  * Use `create(OrderConfirmRequestSchema)` to create a new message.
  */
 export const OrderConfirmRequestSchema: GenMessage<OrderConfirmRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 13);
+  messageDesc(file_warehouse_selling_v1_order, 15);
 
 /**
  * @generated from message warehouse.selling.v1.OrderConfirmResponse
@@ -623,7 +843,7 @@ export type OrderConfirmResponse = Message<"warehouse.selling.v1.OrderConfirmRes
  * Use `create(OrderConfirmResponseSchema)` to create a new message.
  */
 export const OrderConfirmResponseSchema: GenMessage<OrderConfirmResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 14);
+  messageDesc(file_warehouse_selling_v1_order, 16);
 
 /**
  * OrderCancel moves a PLACED or CONFIRMED order to CANCELLED (terminal). Cancelling an already
@@ -648,7 +868,7 @@ export type OrderCancelRequest = Message<"warehouse.selling.v1.OrderCancelReques
  * Use `create(OrderCancelRequestSchema)` to create a new message.
  */
 export const OrderCancelRequestSchema: GenMessage<OrderCancelRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 15);
+  messageDesc(file_warehouse_selling_v1_order, 17);
 
 /**
  * @generated from message warehouse.selling.v1.OrderCancelResponse
@@ -665,7 +885,7 @@ export type OrderCancelResponse = Message<"warehouse.selling.v1.OrderCancelRespo
  * Use `create(OrderCancelResponseSchema)` to create a new message.
  */
 export const OrderCancelResponseSchema: GenMessage<OrderCancelResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 16);
+  messageDesc(file_warehouse_selling_v1_order, 18);
 
 /**
  * @generated from message warehouse.selling.v1.OrderPickRequest
@@ -689,7 +909,7 @@ export type OrderPickRequest = Message<"warehouse.selling.v1.OrderPickRequest"> 
  * Use `create(OrderPickRequestSchema)` to create a new message.
  */
 export const OrderPickRequestSchema: GenMessage<OrderPickRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 17);
+  messageDesc(file_warehouse_selling_v1_order, 19);
 
 /**
  * @generated from message warehouse.selling.v1.OrderPickResponse
@@ -706,7 +926,7 @@ export type OrderPickResponse = Message<"warehouse.selling.v1.OrderPickResponse"
  * Use `create(OrderPickResponseSchema)` to create a new message.
  */
 export const OrderPickResponseSchema: GenMessage<OrderPickResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 18);
+  messageDesc(file_warehouse_selling_v1_order, 20);
 
 /**
  * @generated from message warehouse.selling.v1.OrderPackRequest
@@ -728,7 +948,7 @@ export type OrderPackRequest = Message<"warehouse.selling.v1.OrderPackRequest"> 
  * Use `create(OrderPackRequestSchema)` to create a new message.
  */
 export const OrderPackRequestSchema: GenMessage<OrderPackRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 19);
+  messageDesc(file_warehouse_selling_v1_order, 21);
 
 /**
  * @generated from message warehouse.selling.v1.OrderPackResponse
@@ -745,7 +965,7 @@ export type OrderPackResponse = Message<"warehouse.selling.v1.OrderPackResponse"
  * Use `create(OrderPackResponseSchema)` to create a new message.
  */
 export const OrderPackResponseSchema: GenMessage<OrderPackResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 20);
+  messageDesc(file_warehouse_selling_v1_order, 22);
 
 /**
  * @generated from message warehouse.selling.v1.OrderShipRequest
@@ -767,7 +987,7 @@ export type OrderShipRequest = Message<"warehouse.selling.v1.OrderShipRequest"> 
  * Use `create(OrderShipRequestSchema)` to create a new message.
  */
 export const OrderShipRequestSchema: GenMessage<OrderShipRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 21);
+  messageDesc(file_warehouse_selling_v1_order, 23);
 
 /**
  * @generated from message warehouse.selling.v1.OrderShipResponse
@@ -784,7 +1004,7 @@ export type OrderShipResponse = Message<"warehouse.selling.v1.OrderShipResponse"
  * Use `create(OrderShipResponseSchema)` to create a new message.
  */
 export const OrderShipResponseSchema: GenMessage<OrderShipResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 22);
+  messageDesc(file_warehouse_selling_v1_order, 24);
 
 /**
  * OrderProductActivityItem is what one product has been doing on this team's orders.
@@ -817,7 +1037,7 @@ export type OrderProductActivityItem = Message<"warehouse.selling.v1.OrderProduc
  * Use `create(OrderProductActivityItemSchema)` to create a new message.
  */
 export const OrderProductActivityItemSchema: GenMessage<OrderProductActivityItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 23);
+  messageDesc(file_warehouse_selling_v1_order, 25);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityMapItem
@@ -834,7 +1054,7 @@ export type OrderProductActivityMapItem = Message<"warehouse.selling.v1.OrderPro
  * Use `create(OrderProductActivityMapItemSchema)` to create a new message.
  */
 export const OrderProductActivityMapItemSchema: GenMessage<OrderProductActivityMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 24);
+  messageDesc(file_warehouse_selling_v1_order, 26);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityByIdsFilter
@@ -854,7 +1074,7 @@ export type OrderProductActivityByIdsFilter = Message<"warehouse.selling.v1.Orde
  * Use `create(OrderProductActivityByIdsFilterSchema)` to create a new message.
  */
 export const OrderProductActivityByIdsFilterSchema: GenMessage<OrderProductActivityByIdsFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 25);
+  messageDesc(file_warehouse_selling_v1_order, 27);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityByIdsRequest
@@ -881,7 +1101,7 @@ export type OrderProductActivityByIdsRequest = Message<"warehouse.selling.v1.Ord
  * Use `create(OrderProductActivityByIdsRequestSchema)` to create a new message.
  */
 export const OrderProductActivityByIdsRequestSchema: GenMessage<OrderProductActivityByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 26);
+  messageDesc(file_warehouse_selling_v1_order, 28);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityByIdsResponseItem
@@ -904,7 +1124,7 @@ export type OrderProductActivityByIdsResponseItem = Message<"warehouse.selling.v
  * Use `create(OrderProductActivityByIdsResponseItemSchema)` to create a new message.
  */
 export const OrderProductActivityByIdsResponseItemSchema: GenMessage<OrderProductActivityByIdsResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 27);
+  messageDesc(file_warehouse_selling_v1_order, 29);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityByIdsResponseList
@@ -921,7 +1141,7 @@ export type OrderProductActivityByIdsResponseList = Message<"warehouse.selling.v
  * Use `create(OrderProductActivityByIdsResponseListSchema)` to create a new message.
  */
 export const OrderProductActivityByIdsResponseListSchema: GenMessage<OrderProductActivityByIdsResponseList> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 28);
+  messageDesc(file_warehouse_selling_v1_order, 30);
 
 /**
  * @generated from message warehouse.selling.v1.OrderProductActivityByIdsResponse
@@ -940,7 +1160,7 @@ export type OrderProductActivityByIdsResponse = Message<"warehouse.selling.v1.Or
  * Use `create(OrderProductActivityByIdsResponseSchema)` to create a new message.
  */
 export const OrderProductActivityByIdsResponseSchema: GenMessage<OrderProductActivityByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 29);
+  messageDesc(file_warehouse_selling_v1_order, 31);
 
 /**
  * @generated from message warehouse.selling.v1.OrderActivityStatRequest
@@ -957,7 +1177,7 @@ export type OrderActivityStatRequest = Message<"warehouse.selling.v1.OrderActivi
  * Use `create(OrderActivityStatRequestSchema)` to create a new message.
  */
 export const OrderActivityStatRequestSchema: GenMessage<OrderActivityStatRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 30);
+  messageDesc(file_warehouse_selling_v1_order, 32);
 
 /**
  * @generated from message warehouse.selling.v1.OrderActivityPreview
@@ -983,7 +1203,7 @@ export type OrderActivityPreview = Message<"warehouse.selling.v1.OrderActivityPr
  * Use `create(OrderActivityPreviewSchema)` to create a new message.
  */
 export const OrderActivityPreviewSchema: GenMessage<OrderActivityPreview> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 31);
+  messageDesc(file_warehouse_selling_v1_order, 33);
 
 /**
  * @generated from message warehouse.selling.v1.OrderActivityStatResponse
@@ -1000,7 +1220,175 @@ export type OrderActivityStatResponse = Message<"warehouse.selling.v1.OrderActiv
  * Use `create(OrderActivityStatResponseSchema)` to create a new message.
  */
 export const OrderActivityStatResponseSchema: GenMessage<OrderActivityStatResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_selling_v1_order, 32);
+  messageDesc(file_warehouse_selling_v1_order, 34);
+
+/**
+ * OrderStatFilter mirrors OrderListFilter MINUS the status, and the omission is the point: this stat
+ * GROUPS BY status, so filtering to one would leave every other tab's count at zero. The screen's tab
+ * is a filter on the list, never on the stat.
+ *
+ * @generated from message warehouse.selling.v1.OrderStatFilter
+ */
+export type OrderStatFilter = Message<"warehouse.selling.v1.OrderStatFilter"> & {
+  /**
+   * Only orders carrying THIS product on one of their lines, exactly as OrderListFilter means it.
+   * 0 = no filter.
+   *
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * The mirror of OrderListFilter's search / shop / date window, and the mirroring is load-bearing
+   * rather than tidy: these narrow which orders exist for the screen, so a header computed without
+   * them would sit above a table describing a smaller set — "Placed 12" over four visible rows, with
+   * nothing on screen explaining the gap. The server shares ONE query builder between the two RPCs so
+   * they cannot drift.
+   *
+   * Each means exactly what it means on OrderListFilter; see there for why search covers those three
+   * columns and why the window is `created_at`.
+   *
+   * @generated from field: string search = 2;
+   */
+  search: string;
+
+  /**
+   * @generated from field: uint64 shop_id = 3;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: int64 created_from_unix = 4;
+   */
+  createdFromUnix: bigint;
+
+  /**
+   * @generated from field: int64 created_to_unix = 5;
+   */
+  createdToUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderStatFilter.
+ * Use `create(OrderStatFilterSchema)` to create a new message.
+ */
+export const OrderStatFilterSchema: GenMessage<OrderStatFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 35);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderStatRequest
+ */
+export type OrderStatRequest = Message<"warehouse.selling.v1.OrderStatRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.selling.v1.OrderStatFilter filter = 2;
+   */
+  filter?: OrderStatFilter;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderStatRequest.
+ * Use `create(OrderStatRequestSchema)` to create a new message.
+ */
+export const OrderStatRequestSchema: GenMessage<OrderStatRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 36);
+
+/**
+ * OrderStatusCount is one status and what is sitting in it RIGHT NOW — the GROUPING half of the stat.
+ *
+ * It is a live census, not a window: an order counted here is an order in that state today. That is
+ * what makes it the work queue, and it is why these numbers carry no date range while the preview's
+ * do.
+ *
+ * @generated from message warehouse.selling.v1.OrderStatusCount
+ */
+export type OrderStatusCount = Message<"warehouse.selling.v1.OrderStatusCount"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.OrderStatus status = 1;
+   */
+  status: OrderStatus;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * The sum of those orders' `total`, whole rupiah — what the buyers are paying for them.
+   *
+   * @generated from field: int64 value = 3;
+   */
+  value: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderStatusCount.
+ * Use `create(OrderStatusCountSchema)` to create a new message.
+ */
+export const OrderStatusCountSchema: GenMessage<OrderStatusCount> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 37);
+
+/**
+ * OrderStatPreview is the MONEY half — a rolling 30-day window, which is what a person means by "how
+ * is it going lately".
+ *
+ * CANCELLED orders are excluded from both figures, for the same reason OrderActivityPreview excludes
+ * them: a cancelled order is not a sale, and counting one would let a team read revenue it never took.
+ *
+ * There is no average-order-value field, deliberately. It is `revenue_30d / orders_30d`, and a client
+ * that divides the two numbers it is already displaying cannot disagree with the tiles beside it —
+ * whereas a third number computed here could, the moment either definition moved.
+ *
+ * @generated from message warehouse.selling.v1.OrderStatPreview
+ */
+export type OrderStatPreview = Message<"warehouse.selling.v1.OrderStatPreview"> & {
+  /**
+   * @generated from field: int64 orders_30d = 1;
+   */
+  orders30d: bigint;
+
+  /**
+   * @generated from field: int64 revenue_30d = 2;
+   */
+  revenue30d: bigint;
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderStatPreview.
+ * Use `create(OrderStatPreviewSchema)` to create a new message.
+ */
+export const OrderStatPreviewSchema: GenMessage<OrderStatPreview> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 38);
+
+/**
+ * @generated from message warehouse.selling.v1.OrderStatResponse
+ */
+export type OrderStatResponse = Message<"warehouse.selling.v1.OrderStatResponse"> & {
+  /**
+   * @generated from field: warehouse.selling.v1.OrderStatPreview preview = 1;
+   */
+  preview?: OrderStatPreview;
+
+  /**
+   * One entry per status that HAS orders. A status with none is absent rather than a zero row — the
+   * caller knows the full enum and renders the gaps, and "nothing to say" travels lighter (the same
+   * convention OwnerStockByIds uses for a product with no stock).
+   *
+   * @generated from field: repeated warehouse.selling.v1.OrderStatusCount by_status = 2;
+   */
+  byStatus: OrderStatusCount[];
+};
+
+/**
+ * Describes the message warehouse.selling.v1.OrderStatResponse.
+ * Use `create(OrderStatResponseSchema)` to create a new message.
+ */
+export const OrderStatResponseSchema: GenMessage<OrderStatResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_selling_v1_order, 39);
 
 /**
  * Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -1061,6 +1449,68 @@ export const OrderStatusSchema: GenEnum<OrderStatus> = /*@__PURE__*/
   enumDesc(file_warehouse_selling_v1_order, 0);
 
 /**
+ * WHAT HAPPENED TO AN ORDER — one kind per step of its life.
+ *
+ * Deliberately NOT the same enum as OrderStatus, though today they map one-to-one. A status is where
+ * the order IS; an event is something that WAS DONE, and the two come apart the moment anything
+ * happens that does not change the status — a note edited, a receipt attached, a courier corrected.
+ * Reusing OrderStatus here would mean the first such event has nowhere to go.
+ *
+ * @generated from enum warehouse.selling.v1.OrderEventKind
+ */
+export enum OrderEventKind {
+  /**
+   * @generated from enum value: ORDER_EVENT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * It was placed — typed in on the form, or promoted from a draft. Every order has exactly one,
+   * including the ones backfilled from `created_at`.
+   *
+   * @generated from enum value: ORDER_EVENT_KIND_PLACED = 1;
+   */
+  PLACED = 1,
+
+  /**
+   * The selling team accepted it (#91).
+   *
+   * @generated from enum value: ORDER_EVENT_KIND_CONFIRMED = 2;
+   */
+  CONFIRMED = 2,
+
+  /**
+   * Called off, by either end, before the courier had it (#70/#150).
+   *
+   * @generated from enum value: ORDER_EVENT_KIND_CANCELLED = 3;
+   */
+  CANCELLED = 3,
+
+  /**
+   * The warehouse's three (#150) — each an action a person starts and finishes.
+   *
+   * @generated from enum value: ORDER_EVENT_KIND_PICKING = 4;
+   */
+  PICKING = 4,
+
+  /**
+   * @generated from enum value: ORDER_EVENT_KIND_PACKED = 5;
+   */
+  PACKED = 5,
+
+  /**
+   * @generated from enum value: ORDER_EVENT_KIND_SHIPPED = 6;
+   */
+  SHIPPED = 6,
+}
+
+/**
+ * Describes the enum warehouse.selling.v1.OrderEventKind.
+ */
+export const OrderEventKindSchema: GenEnum<OrderEventKind> = /*@__PURE__*/
+  enumDesc(file_warehouse_selling_v1_order, 1);
+
+/**
  * OrderListDataType selects which slices the response carries per order.
  *
  * @generated from enum warehouse.selling.v1.OrderListDataType
@@ -1086,7 +1536,7 @@ export enum OrderListDataType {
  * Describes the enum warehouse.selling.v1.OrderListDataType.
  */
 export const OrderListDataTypeSchema: GenEnum<OrderListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_order, 1);
+  enumDesc(file_warehouse_selling_v1_order, 2);
 
 /**
  * OrderRowSort is the sort selection paired with the ORDER slice.
@@ -1114,7 +1564,7 @@ export enum OrderRowSort {
  * Describes the enum warehouse.selling.v1.OrderRowSort.
  */
 export const OrderRowSortSchema: GenEnum<OrderRowSort> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_order, 2);
+  enumDesc(file_warehouse_selling_v1_order, 3);
 
 /**
  * @generated from enum warehouse.selling.v1.OrderProductActivityDataType
@@ -1135,7 +1585,7 @@ export enum OrderProductActivityDataType {
  * Describes the enum warehouse.selling.v1.OrderProductActivityDataType.
  */
 export const OrderProductActivityDataTypeSchema: GenEnum<OrderProductActivityDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_selling_v1_order, 3);
+  enumDesc(file_warehouse_selling_v1_order, 4);
 
 /**
  * OrderService owns `orders` + `order_items` — the SELLING side of an order (#67): who ordered, from
@@ -1171,9 +1621,27 @@ export const OrderService: GenService<{
     output: typeof OrderDetailResponseSchema;
   },
   /**
-   * Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
-   * CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
-   * stock + money reversal once stock integration (#69) lands.
+   * Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
+   * off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
+   * cancel with the stock + money reversal once stock integration (#69) lands.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderService.OrderCancel
+   */
+  orderCancel: {
+    methodKind: "unary";
+    input: typeof OrderCancelRequestSchema;
+    output: typeof OrderCancelResponseSchema;
+  },
+  /**
+   * The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
+   * happens and one step at a time.
+   *
+   *   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+   *
+   * ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
+   * OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
+   * order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
+   * that can work.
    *
    * @generated from rpc warehouse.selling.v1.OrderService.OrderConfirm
    */
@@ -1183,19 +1651,6 @@ export const OrderService: GenService<{
     output: typeof OrderConfirmResponseSchema;
   },
   /**
-   * @generated from rpc warehouse.selling.v1.OrderService.OrderCancel
-   */
-  orderCancel: {
-    methodKind: "unary";
-    input: typeof OrderCancelRequestSchema;
-    output: typeof OrderCancelResponseSchema;
-  },
-  /**
-   * The WAREHOUSE's side of an order (#150): the crew records what it has done.
-   *
-   * These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
-   * why that is the only scope that can work.
-   *
    * @generated from rpc warehouse.selling.v1.OrderService.OrderPick
    */
   orderPick: {
@@ -1243,6 +1698,25 @@ export const OrderService: GenService<{
     methodKind: "unary";
     input: typeof OrderActivityStatRequestSchema;
     output: typeof OrderActivityStatResponseSchema;
+  },
+  /**
+   * ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
+   *
+   * The stat above the list, and it is a DIFFERENT question from OrderActivityStat above: that one
+   * describes a set of PRODUCTS ("when did each of these last sell"), this one describes the set of
+   * ORDERS the screen is showing ("what is waiting on somebody, and what has it been worth").
+   *
+   * Deliberately NOT folded into OrderList. A stat that rode on the list response would be recomputed
+   * on every page turn and every sort, for numbers that do not change when you turn a page — and it
+   * would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
+   * decide which tab to open.
+   *
+   * @generated from rpc warehouse.selling.v1.OrderService.OrderStat
+   */
+  orderStat: {
+    methodKind: "unary";
+    input: typeof OrderStatRequestSchema;
+    output: typeof OrderStatResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_selling_v1_order, 0);

@@ -48,6 +48,23 @@ const (
 	ExpenseKind_EXPENSE_KIND_OPERATIONAL ExpenseKind = 3
 	// Everything else, so nothing is unrecordable while the set above is still small.
 	ExpenseKind_EXPENSE_KIND_OTHER ExpenseKind = 4
+	// STOCK WRITTEN OFF — units a warehouse recorded as damaged or lost, valued at the batch's frozen
+	// unit cost. Posted by inventory_service, never typed by a person (#211).
+	//
+	// It was filed as OPERATIONAL until now, and that was the bug: shrinkage sat in the same bucket as
+	// rent and electricity, so "how much did we break this month" had no answer — which is precisely
+	// the question a warehouse's own P&L is made of. Rent is a decision somebody made. Broken stock is
+	// a thing that happened to the goods. Reading them as one number hides the only one you can act on.
+	//
+	// ⚠ Rows written BEFORE this kind existed stay OPERATIONAL. They are only identifiable by their
+	// free-text note, so a backfill would be a guess that could move a real rent row (owner, 2026-08-14).
+	// History is therefore mixed and the split is honest from here forward.
+	//
+	// ⚠ It does NOT yet distinguish BROKEN from LOST. `stock_batches` carries one `damaged_qty` and
+	// `MovementKind` has one `ADJUST`, so the DAMAGED/LOST distinction exists in the StockAdjust request
+	// and is discarded on write — see #227. When that lands this becomes two kinds, or gains a
+	// sub-reason. One combined figure now, split later, is additive rather than a rework (owner).
+	ExpenseKind_EXPENSE_KIND_STOCK_LOSS ExpenseKind = 5
 )
 
 // Enum value maps for ExpenseKind.
@@ -58,6 +75,7 @@ var (
 		2: "EXPENSE_KIND_PAYROLL",
 		3: "EXPENSE_KIND_OPERATIONAL",
 		4: "EXPENSE_KIND_OTHER",
+		5: "EXPENSE_KIND_STOCK_LOSS",
 	}
 	ExpenseKind_value = map[string]int32{
 		"EXPENSE_KIND_UNSPECIFIED": 0,
@@ -65,6 +83,7 @@ var (
 		"EXPENSE_KIND_PAYROLL":     2,
 		"EXPENSE_KIND_OPERATIONAL": 3,
 		"EXPENSE_KIND_OTHER":       4,
+		"EXPENSE_KIND_STOCK_LOSS":  5,
 	}
 )
 
@@ -1083,6 +1102,281 @@ func (x *ExpenseListResponse) GetTotals() *ExpenseTotals {
 	return nil
 }
 
+// ── The DAILY STATEMENT's expense half ────────────────────────────────────────────────────────────
+//
+// The mirror of RevenueDaily, and deliberately the same shape: the statement screen puts the two
+// series side by side and subtracts them, so a difference in how they page, bound or bucket would land
+// on the reader as an unexplainable gap in one column.
+//
+// ⚠ NOT PAGINATED for the same reason (HARD RULE 9): the response size is `to − from`, which the
+// caller states and the server CAPS at 366 days. Both bounds are required here, unlike ExpenseList
+// where they are optional and a page carries the risk instead.
+//
+// ⚠ SPARSE: a day nobody spent anything on is ABSENT, not a zero row. The client owns the date spine
+// because it must build one to merge these days with revenue's.
+//
+// The one place it is NOT a mirror is bucketing, and that difference is the point of the field it uses.
+// A cost is filed under `occurred_at` — the day the person said it BELONGS to — while revenue is filed
+// under the moment its order was placed. Payroll paid on the 5th for last month lands in last month
+// here, which is the whole reason `occurred_at` exists as a separate column from `created_at`.
+type ExpenseDailyFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
+	From string `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To   string `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	// One kind, or UNSPECIFIED for all of them — the same "any kind" convention ExpenseList uses (#170).
+	Kind ExpenseKind `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
+	// One shop, or 0 for all of them.
+	ShopId        uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseDailyFilter) Reset() {
+	*x = ExpenseDailyFilter{}
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseDailyFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseDailyFilter) ProtoMessage() {}
+
+func (x *ExpenseDailyFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseDailyFilter.ProtoReflect.Descriptor instead.
+func (*ExpenseDailyFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ExpenseDailyFilter) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ExpenseDailyFilter) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+func (x *ExpenseDailyFilter) GetKind() ExpenseKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ExpenseKind_EXPENSE_KIND_UNSPECIFIED
+}
+
+func (x *ExpenseDailyFilter) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+type ExpenseDailyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *ExpenseDailyFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseDailyRequest) Reset() {
+	*x = ExpenseDailyRequest{}
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseDailyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseDailyRequest) ProtoMessage() {}
+
+func (x *ExpenseDailyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseDailyRequest.ProtoReflect.Descriptor instead.
+func (*ExpenseDailyRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ExpenseDailyRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ExpenseDailyRequest) GetFilter() *ExpenseDailyFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+// One day's spending.
+type ExpenseDayItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The day this row sums, as YYYY-MM-DD — from `occurred_at`, the day the money BELONGS to.
+	//
+	// No timezone caveat here, unlike RevenueDayItem: `occurred_at` is a DATE column, chosen by a person.
+	// There is no instant to convert and therefore no zone to get wrong.
+	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	// How many LIVE expense rows the day holds. Voided rows are excluded from `total` and `by_kind`, so
+	// this counts what the number is actually made of.
+	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
+	// The day's spending, whole rupiah.
+	Total int64 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	// Split by kind, so a day that jumped can be read without opening the list. A kind with nothing that
+	// day is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
+	// and zero read identically, and building the empty ones would mean this message knowing the enum's
+	// members.
+	ByKind        map[int32]int64 `protobuf:"bytes,4,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseDayItem) Reset() {
+	*x = ExpenseDayItem{}
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseDayItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseDayItem) ProtoMessage() {}
+
+func (x *ExpenseDayItem) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseDayItem.ProtoReflect.Descriptor instead.
+func (*ExpenseDayItem) Descriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ExpenseDayItem) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *ExpenseDayItem) GetEntries() uint64 {
+	if x != nil {
+		return x.Entries
+	}
+	return 0
+}
+
+func (x *ExpenseDayItem) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ExpenseDayItem) GetByKind() map[int32]int64 {
+	if x != nil {
+		return x.ByKind
+	}
+	return nil
+}
+
+type ExpenseDailyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ASCENDING by date, and SPARSE — see the note on ExpenseDailyFilter.
+	Days []*ExpenseDayItem `protobuf:"bytes,1,rep,name=days,proto3" json:"days,omitempty"`
+	// The same totals ExpenseList reports, over the same period and the same filters. Sent rather than
+	// summed in the browser, so the statement's footer and the expense list's headline are one number.
+	Totals        *ExpenseTotals `protobuf:"bytes,2,opt,name=totals,proto3" json:"totals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseDailyResponse) Reset() {
+	*x = ExpenseDailyResponse{}
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseDailyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseDailyResponse) ProtoMessage() {}
+
+func (x *ExpenseDailyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseDailyResponse.ProtoReflect.Descriptor instead.
+func (*ExpenseDailyResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ExpenseDailyResponse) GetDays() []*ExpenseDayItem {
+	if x != nil {
+		return x.Days
+	}
+	return nil
+}
+
+func (x *ExpenseDailyResponse) GetTotals() *ExpenseTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
 // ExpenseUpdate corrects an expense (#169).
 //
 // It exists because of the one fact that separates this service from revenue_service: a revenue row is
@@ -1108,7 +1402,7 @@ type ExpenseUpdateRequest struct {
 
 func (x *ExpenseUpdateRequest) Reset() {
 	*x = ExpenseUpdateRequest{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[11]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1120,7 +1414,7 @@ func (x *ExpenseUpdateRequest) String() string {
 func (*ExpenseUpdateRequest) ProtoMessage() {}
 
 func (x *ExpenseUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[11]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1133,7 +1427,7 @@ func (x *ExpenseUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseUpdateRequest.ProtoReflect.Descriptor instead.
 func (*ExpenseUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ExpenseUpdateRequest) GetTeamId() uint64 {
@@ -1194,7 +1488,7 @@ type ExpenseUpdateResponse struct {
 
 func (x *ExpenseUpdateResponse) Reset() {
 	*x = ExpenseUpdateResponse{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[12]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1206,7 +1500,7 @@ func (x *ExpenseUpdateResponse) String() string {
 func (*ExpenseUpdateResponse) ProtoMessage() {}
 
 func (x *ExpenseUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[12]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1219,7 +1513,7 @@ func (x *ExpenseUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseUpdateResponse.ProtoReflect.Descriptor instead.
 func (*ExpenseUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ExpenseUpdateResponse) GetExpense() *ExpenseRecord {
@@ -1249,7 +1543,7 @@ type ExpenseVoidRequest struct {
 
 func (x *ExpenseVoidRequest) Reset() {
 	*x = ExpenseVoidRequest{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[13]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1555,7 @@ func (x *ExpenseVoidRequest) String() string {
 func (*ExpenseVoidRequest) ProtoMessage() {}
 
 func (x *ExpenseVoidRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[13]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1568,7 @@ func (x *ExpenseVoidRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseVoidRequest.ProtoReflect.Descriptor instead.
 func (*ExpenseVoidRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ExpenseVoidRequest) GetTeamId() uint64 {
@@ -1300,7 +1594,7 @@ type ExpenseVoidResponse struct {
 
 func (x *ExpenseVoidResponse) Reset() {
 	*x = ExpenseVoidResponse{}
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[14]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1312,7 +1606,7 @@ func (x *ExpenseVoidResponse) String() string {
 func (*ExpenseVoidResponse) ProtoMessage() {}
 
 func (x *ExpenseVoidResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[14]
+	mi := &file_warehouse_expense_v1_expense_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1325,7 +1619,7 @@ func (x *ExpenseVoidResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseVoidResponse.ProtoReflect.Descriptor instead.
 func (*ExpenseVoidResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ExpenseVoidResponse) GetExpense() *ExpenseRecord {
@@ -1420,7 +1714,27 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.expense.v1.ExpenseListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12;\n" +
-	"\x06totals\x18\x04 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xd1\x02\n" +
+	"\x06totals\x18\x04 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xdc\x01\n" +
+	"\x12ExpenseDailyFilter\x127\n" +
+	"\x04from\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x04from\x123\n" +
+	"\x02to\x18\x02 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\x02to\x12?\n" +
+	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04kind\x12\x17\n" +
+	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\"\x93\x01\n" +
+	"\x13ExpenseDailyRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12H\n" +
+	"\x06filter\x18\x02 \x01(\v2(.warehouse.expense.v1.ExpenseDailyFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\f\x92\xb5\x18\b\n" +
+	"\x06\x01\x02\x03\x04\x06\t\"\xda\x01\n" +
+	"\x0eExpenseDayItem\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12\x18\n" +
+	"\aentries\x18\x02 \x01(\x04R\aentries\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\x12I\n" +
+	"\aby_kind\x18\x04 \x03(\v20.warehouse.expense.v1.ExpenseDayItem.ByKindEntryR\x06byKind\x1a9\n" +
+	"\vByKindEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x8d\x01\n" +
+	"\x14ExpenseDailyResponse\x128\n" +
+	"\x04days\x18\x01 \x03(\v2$.warehouse.expense.v1.ExpenseDayItemR\x04days\x12;\n" +
+	"\x06totals\x18\x02 \x01(\v2#.warehouse.expense.v1.ExpenseTotalsR\x06totals\"\xd1\x02\n" +
 	"\x14ExpenseUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
@@ -1443,13 +1757,14 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"T\n" +
 	"\x13ExpenseVoidResponse\x12=\n" +
-	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense*\x91\x01\n" +
+	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense*\xae\x01\n" +
 	"\vExpenseKind\x12\x1c\n" +
 	"\x18EXPENSE_KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10EXPENSE_KIND_ADS\x10\x01\x12\x18\n" +
 	"\x14EXPENSE_KIND_PAYROLL\x10\x02\x12\x1c\n" +
 	"\x18EXPENSE_KIND_OPERATIONAL\x10\x03\x12\x16\n" +
-	"\x12EXPENSE_KIND_OTHER\x10\x04*\x85\x01\n" +
+	"\x12EXPENSE_KIND_OTHER\x10\x04\x12\x1b\n" +
+	"\x17EXPENSE_KIND_STOCK_LOSS\x10\x05*\x85\x01\n" +
 	"\x13ExpenseListDataType\x12&\n" +
 	"\"EXPENSE_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eEXPENSE_LIST_DATA_TYPE_GENERAL\x10\x01\x12\"\n" +
@@ -1458,10 +1773,11 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x1cEXPENSE_ROW_SORT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cEXPENSE_ROW_SORT_OCCURRED_AT\x10\x01\x12\x1b\n" +
 	"\x17EXPENSE_ROW_SORT_AMOUNT\x10\x02\x12\x1f\n" +
-	"\x1bEXPENSE_ROW_SORT_CREATED_AT\x10\x032\xac\x03\n" +
+	"\x1bEXPENSE_ROW_SORT_CREATED_AT\x10\x032\x93\x04\n" +
 	"\x0eExpenseService\x12h\n" +
 	"\rExpenseCreate\x12*.warehouse.expense.v1.ExpenseCreateRequest\x1a+.warehouse.expense.v1.ExpenseCreateResponse\x12b\n" +
-	"\vExpenseList\x12(.warehouse.expense.v1.ExpenseListRequest\x1a).warehouse.expense.v1.ExpenseListResponse\x12h\n" +
+	"\vExpenseList\x12(.warehouse.expense.v1.ExpenseListRequest\x1a).warehouse.expense.v1.ExpenseListResponse\x12e\n" +
+	"\fExpenseDaily\x12).warehouse.expense.v1.ExpenseDailyRequest\x1a*.warehouse.expense.v1.ExpenseDailyResponse\x12h\n" +
 	"\rExpenseUpdate\x12*.warehouse.expense.v1.ExpenseUpdateRequest\x1a+.warehouse.expense.v1.ExpenseUpdateResponse\x12b\n" +
 	"\vExpenseVoid\x12(.warehouse.expense.v1.ExpenseVoidRequest\x1a).warehouse.expense.v1.ExpenseVoidResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1;expensev1b\x06proto3"
 
@@ -1478,7 +1794,7 @@ func file_warehouse_expense_v1_expense_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_expense_v1_expense_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(ExpenseKind)(0),                // 0: warehouse.expense.v1.ExpenseKind
 	(ExpenseListDataType)(0),        // 1: warehouse.expense.v1.ExpenseListDataType
@@ -1494,55 +1810,67 @@ var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(*ExpenseRowMapItem)(nil),       // 11: warehouse.expense.v1.ExpenseRowMapItem
 	(*ExpenseListResponseItem)(nil), // 12: warehouse.expense.v1.ExpenseListResponseItem
 	(*ExpenseListResponse)(nil),     // 13: warehouse.expense.v1.ExpenseListResponse
-	(*ExpenseUpdateRequest)(nil),    // 14: warehouse.expense.v1.ExpenseUpdateRequest
-	(*ExpenseUpdateResponse)(nil),   // 15: warehouse.expense.v1.ExpenseUpdateResponse
-	(*ExpenseVoidRequest)(nil),      // 16: warehouse.expense.v1.ExpenseVoidRequest
-	(*ExpenseVoidResponse)(nil),     // 17: warehouse.expense.v1.ExpenseVoidResponse
-	nil,                             // 18: warehouse.expense.v1.ExpenseTotals.ByKindEntry
-	nil,                             // 19: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	(v1.CommonSortType)(0),          // 20: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),             // 21: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),     // 22: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),       // 23: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),             // 24: warehouse.common.v1.PageInfo
+	(*ExpenseDailyFilter)(nil),      // 14: warehouse.expense.v1.ExpenseDailyFilter
+	(*ExpenseDailyRequest)(nil),     // 15: warehouse.expense.v1.ExpenseDailyRequest
+	(*ExpenseDayItem)(nil),          // 16: warehouse.expense.v1.ExpenseDayItem
+	(*ExpenseDailyResponse)(nil),    // 17: warehouse.expense.v1.ExpenseDailyResponse
+	(*ExpenseUpdateRequest)(nil),    // 18: warehouse.expense.v1.ExpenseUpdateRequest
+	(*ExpenseUpdateResponse)(nil),   // 19: warehouse.expense.v1.ExpenseUpdateResponse
+	(*ExpenseVoidRequest)(nil),      // 20: warehouse.expense.v1.ExpenseVoidRequest
+	(*ExpenseVoidResponse)(nil),     // 21: warehouse.expense.v1.ExpenseVoidResponse
+	nil,                             // 22: warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	nil,                             // 23: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	nil,                             // 24: warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	(v1.CommonSortType)(0),          // 25: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 26: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 27: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 28: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 29: warehouse.common.v1.PageInfo
 }
 var file_warehouse_expense_v1_expense_proto_depIdxs = []int32{
 	0,  // 0: warehouse.expense.v1.ExpenseRecord.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	0,  // 1: warehouse.expense.v1.ExpenseCreateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
 	3,  // 2: warehouse.expense.v1.ExpenseCreateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
 	0,  // 3: warehouse.expense.v1.ExpenseListFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	20, // 4: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	21, // 5: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	25, // 4: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	26, // 5: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	2,  // 6: warehouse.expense.v1.ExpenseListFilterSort.expense:type_name -> warehouse.expense.v1.ExpenseRowSort
 	6,  // 7: warehouse.expense.v1.ExpenseListRequest.filter:type_name -> warehouse.expense.v1.ExpenseListFilter
 	7,  // 8: warehouse.expense.v1.ExpenseListRequest.sort:type_name -> warehouse.expense.v1.ExpenseListFilterSort
 	1,  // 9: warehouse.expense.v1.ExpenseListRequest.data_request:type_name -> warehouse.expense.v1.ExpenseListDataType
-	22, // 10: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	18, // 11: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	27, // 10: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	22, // 11: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
 	0,  // 12: warehouse.expense.v1.ExpenseRowItem.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	19, // 13: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	23, // 14: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	23, // 13: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	28, // 14: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	11, // 15: warehouse.expense.v1.ExpenseListResponseItem.expense:type_name -> warehouse.expense.v1.ExpenseRowMapItem
 	12, // 16: warehouse.expense.v1.ExpenseListResponse.items:type_name -> warehouse.expense.v1.ExpenseListResponseItem
-	24, // 17: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	29, // 17: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	9,  // 18: warehouse.expense.v1.ExpenseListResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
-	0,  // 19: warehouse.expense.v1.ExpenseUpdateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	3,  // 20: warehouse.expense.v1.ExpenseUpdateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	3,  // 21: warehouse.expense.v1.ExpenseVoidResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	10, // 22: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
-	4,  // 23: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
-	8,  // 24: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
-	14, // 25: warehouse.expense.v1.ExpenseService.ExpenseUpdate:input_type -> warehouse.expense.v1.ExpenseUpdateRequest
-	16, // 26: warehouse.expense.v1.ExpenseService.ExpenseVoid:input_type -> warehouse.expense.v1.ExpenseVoidRequest
-	5,  // 27: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
-	13, // 28: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
-	15, // 29: warehouse.expense.v1.ExpenseService.ExpenseUpdate:output_type -> warehouse.expense.v1.ExpenseUpdateResponse
-	17, // 30: warehouse.expense.v1.ExpenseService.ExpenseVoid:output_type -> warehouse.expense.v1.ExpenseVoidResponse
-	27, // [27:31] is the sub-list for method output_type
-	23, // [23:27] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	0,  // 19: warehouse.expense.v1.ExpenseDailyFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	14, // 20: warehouse.expense.v1.ExpenseDailyRequest.filter:type_name -> warehouse.expense.v1.ExpenseDailyFilter
+	24, // 21: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	16, // 22: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
+	9,  // 23: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
+	0,  // 24: warehouse.expense.v1.ExpenseUpdateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	3,  // 25: warehouse.expense.v1.ExpenseUpdateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	3,  // 26: warehouse.expense.v1.ExpenseVoidResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	10, // 27: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
+	4,  // 28: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
+	8,  // 29: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
+	15, // 30: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
+	18, // 31: warehouse.expense.v1.ExpenseService.ExpenseUpdate:input_type -> warehouse.expense.v1.ExpenseUpdateRequest
+	20, // 32: warehouse.expense.v1.ExpenseService.ExpenseVoid:input_type -> warehouse.expense.v1.ExpenseVoidRequest
+	5,  // 33: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
+	13, // 34: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
+	17, // 35: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
+	19, // 36: warehouse.expense.v1.ExpenseService.ExpenseUpdate:output_type -> warehouse.expense.v1.ExpenseUpdateResponse
+	21, // 37: warehouse.expense.v1.ExpenseService.ExpenseVoid:output_type -> warehouse.expense.v1.ExpenseVoidResponse
+	33, // [33:38] is the sub-list for method output_type
+	28, // [28:33] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_expense_v1_expense_proto_init() }
@@ -1564,7 +1892,7 @@ func file_warehouse_expense_v1_expense_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_expense_v1_expense_proto_rawDesc), len(file_warehouse_expense_v1_expense_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   17,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

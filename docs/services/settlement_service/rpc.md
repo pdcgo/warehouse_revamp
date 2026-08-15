@@ -155,3 +155,98 @@ warehouse its money back.
 Only the **debtor's legs** are read. Both sides of every movement are stored, so reading every row
 for the order would find each fee twice and reverse it twice — refused as a duplicate, but by luck
 rather than by intent.
+
+---
+
+## `SettlementDaily` — a warehouse's income half of the daily statement
+
+A selling team earns the **margin on its orders**, and revenue_service holds one row per order. A
+warehouse has no orders at all — `order_revenues.team_id` is always the *selling* team — so pointing a
+warehouse at revenue_service returns nothing.
+
+What a warehouse earns is the **fees it charges the teams it fulfils for**, and those exist only here.
+Without this RPC its daily statement would put real expenses against a margin of zero and report every
+single day as a pure loss (owner, 2026-08-14).
+
+```mermaid
+flowchart LR
+    O["orders placed"] --> M["expected margin — selling"]
+    F["orders fulfilled"] --> H["handling fees charged — warehouse"]
+    M --> P["income − expenses = profit"]
+    H --> P
+    E["its own expenses — payroll, rent, stock written off"] --> P
+```
+
+### It reports the ledger — it does not decide what "income" means
+
+Every source type comes back in `by_source`, and the **caller** picks. The four are not the same kind of
+thing, and summing them would double-count:
+
+| source | what it is | the statement treats it as |
+| --- | --- | --- |
+| `HANDLING_FEE` | the warehouse fulfilled an order and is owed for the work | **income** |
+| `COD_FEE` | it paid a courier at the door for goods it does not own | shown, **not** income — a reimbursement |
+| `PRODUCT_FEE` | one selling team owes another for its product | not a warehouse's at all |
+| `PAYMENT` | a confirmed payment settling an existing balance | cash moving — already earned when charged |
+
+COD is the subtle one. The warehouse is genuinely owed it, so it gets its own column — but the cash that
+went out was never recorded as an expense, so counting the repayment as income would inflate the bottom
+line against nothing. The screen says so in a banner rather than silently dropping a number the reader
+can also see on the Liability screen.
+
+Naming that judgement inside the RPC would bake one screen's opinion into the ledger's contract, so it
+returns the enum whole.
+
+### Sign, reversals and the aggregate
+
+**One sign convention (§4.11), unchanged by aggregation:** from the scoped team's point of view a
+receivable is **positive** and a payable is **negative**. The two legs of one movement are exact
+negatives, so the same fee reads `+20.000` on the warehouse's series and `−20.000` on the selling team's.
+
+**Reversals are INCLUDED, never filtered.** A cancelled order's fee is undone by an equal-and-opposite leg
+and both stay. A plain `SUM` therefore nets the pair to zero, which is the honest figure — excluding
+reversals would report income the ledger has already taken back, which on a statement reads as a good day
+that never happened. The day still appears, with two entry legs and a net of zero.
+
+### The period IS the pagination
+
+No page cursor, and that does not breach HARD RULE 9 — the rule guards a `repeated` whose length grows
+**with the data**, and this one grows with `to − from`, which the caller states.
+
+| | |
+| --- | --- |
+| Both bounds **required** | an open end is the unbounded read the rule is about |
+| Span **capped at 366 days** | `InvalidArgument` beyond it — refused, never clamped |
+| Result | a ten-year-old ledger and a one-year-old ledger return the same 366 rows |
+
+The cap must equal revenue's and expense's. All three are read side by side, and a cap that differed would
+let the statement load part of a period and still look complete. It lives in **four** places:
+`maxPeriodDays` in settlement, revenue and expense, and `MAX_PERIOD_DAYS` in
+[frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts).
+
+### Sparse series, one calendar
+
+A day the ledger did not move is **absent**, not a zero row — the same contract the other two daily series
+follow. The client owns the date spine because it must build one to line three services up, and a server
+that also emitted empty days would be a second calendar free to disagree about what February contains.
+
+A quiet day is still **rendered**, dimmed. A missing row cannot tell a reader "nothing was charged" apart
+from "that day did not load".
+
+### Bucketing
+
+`created_at` is a `TIMESTAMPTZ`, cast with an explicit `AT TIME ZONE 'UTC'` — a bare `::date` converts
+using the session's TimeZone, which nothing sets. The upper bound is **half-open** (`< to + 1 day`) for
+the same reason revenue's is: `<= to` means `<= midnight` and would silently drop almost the whole final
+day of every period.
+
+> ⚠ The business is UTC+7, so an entry posted before 07:00 local lands on the previous day here. It is
+> deliberate *consistency* rather than a fresh decision — see
+> [revenue_service/rpc.md](../revenue_service/rpc.md) for the full note.
+
+### The totals are built in the fold, not by a second query
+
+The one place this differs from the revenue and expense handlers. They each had an existing period-totals
+query to reuse, and reusing it keeps their footer identical to their list screen's. There is no such query
+here, so a second one would be a second definition of the same sum — free to drift from the days above it,
+which is exactly the failure the other two reuse their query to avoid.

@@ -24,6 +24,17 @@ service RegionService {
   rpc RegionList(RegionListRequest) returns (RegionListResponse);
   // Typeahead over the name ("type your village"), capped.
   rpc RegionSearch(RegionSearchRequest) returns (RegionSearchResponse);
+
+  // THE PICKER'S FAST PATH: a kode pos in, the addresses it covers out (owner).
+  //
+  // A postcode is the one part of an address a buyer quotes correctly. Names are not: "Sukamaju"
+  // names hundreds of desa, people spell their own kelurahan three different ways, and a search over
+  // 83.762 names asks the person entering the order to disambiguate a list they cannot check. A kode
+  // pos is five digits copied off a message — unambiguous to type, and it names a handful of desa.
+  //
+  // Capped like RegionSearch, and returning the same RegionAncestry, so one pick back-fills all four
+  // levels with no second round-trip.
+  rpc RegionSearchByKodePos(RegionSearchByKodePosRequest) returns (RegionSearchByKodePosResponse);
   // The full ancestry of one code — hydrate a saved address, or back-fill the picker.
   rpc RegionResolve(RegionResolveRequest) returns (RegionResolveResponse);
 }
@@ -112,6 +123,41 @@ message RegionSearchResponse {
   // Each hit carries its full ancestry: 83.762 desa share a lot of names ("Sukamaju"), so a bare
   // name is ambiguous to show AND useless to back-fill from. This is what makes the picker's fast
   // path ("type your village") one round-trip.
+  repeated RegionAncestry results = 1;
+}
+
+message RegionSearchByKodePosRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The postcode, or the start of one. PREFIX matched, so the list narrows as it is typed.
+  //
+  // At least 3 digits, and that floor is the difference between a suggestion and a lottery: one digit
+  // covers roughly a tenth of the country's 83.762 desa, and the twenty rows that come back would be
+  // an arbitrary slice of thousands. Three digits is a city-sized area, which is a list a person can
+  // actually read.
+  //
+  // Digits only — a kode pos has no other characters, and letting letters through would just be a
+  // guaranteed empty result set.
+  string kode_pos = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 5
+    pattern: "^[0-9]+$"
+  }];
+
+  // Capped, never paged — same reasoning as RegionSearch (HARD RULE 9).
+  uint32 limit = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 20
+  }];
+}
+
+message RegionSearchByKodePosResponse {
+  // Desa only — a kode pos belongs to a desa and nowhere else — each with its full ancestry, so a
+  // pick fills provinsi through desa in one go.
+  //
+  // ONE POSTCODE COVERS SEVERAL DESA, routinely. That is why this returns a list to choose from
+  // rather than an address to apply: picking for the person would silently put an order in the wrong
+  // kelurahan whenever the code was shared, and they would have no way to see it happen.
   repeated RegionAncestry results = 1;
 }
 

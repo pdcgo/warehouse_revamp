@@ -100,6 +100,126 @@ func TestOrder_CreateWithoutAddress(t *testing.T) {
 	}
 }
 
+// The note is carried through VERBATIM and read back by OrderDetail — it is the one field on an
+// order that nothing in the system interprets, so the whole contract is "what was typed is what
+// comes back", newlines included. An order without one reads as "", never nil.
+func TestOrder_CreateWithNote(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+
+	shopID := insertShop(t, db, 2, "Shop", "S-NOTE", "shopee")
+
+	const note = "Kirim setelah jam 5 sore.\nBungkus yang kaca."
+
+	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Budi", Note: note,
+		Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate with a note: %v", err)
+	}
+
+	if created.Msg.GetOrder().GetNote() != note {
+		t.Fatalf("note on create = %q, want %q", created.Msg.GetOrder().GetNote(), note)
+	}
+
+	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("OrderDetail: %v", err)
+	}
+
+	if resp.Msg.GetOrder().GetNote() != note {
+		t.Fatalf("note on detail = %q, want %q", resp.Msg.GetOrder().GetNote(), note)
+	}
+
+	// No note is "" rather than anything else — every order predating the column is in that state.
+	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Tanpa Catatan", Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate without a note: %v", err)
+	}
+
+	if plain.Msg.GetOrder().GetNote() != "" {
+		t.Fatalf("note with none given = %q, want empty", plain.Msg.GetOrder().GetNote())
+	}
+}
+
+// The shipping receipt is a REFERENCE to a document_service document, snapshotted with its label —
+// so an order can be rendered without calling document_service, and the bytes stay where they are.
+// An order with none carries an empty receipt message rather than nil.
+func TestOrder_CreateWithReceipt(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+
+	shopID := insertShop(t, db, 2, "Shop", "S-RECEIPT", "shopee")
+
+	receipt := &sellingv1.OrderReceipt{
+		DocumentId: "doc-abc-123",
+		Filename:   "resi-jne.pdf",
+		MimeType:   "application/pdf",
+	}
+
+	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Budi", Receipt: receipt,
+		Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate with a receipt: %v", err)
+	}
+
+	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("OrderDetail: %v", err)
+	}
+
+	got := resp.Msg.GetOrder().GetReceipt()
+	if got.GetDocumentId() != receipt.GetDocumentId() ||
+		got.GetFilename() != receipt.GetFilename() ||
+		got.GetMimeType() != receipt.GetMimeType() {
+		t.Fatalf("receipt did not round-trip: %+v", got)
+	}
+
+	// No receipt is an EMPTY message, never nil — the same convention the address follows.
+	plain, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Tanpa Resi", Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate without a receipt: %v", err)
+	}
+
+	none := plain.Msg.GetOrder().GetReceipt()
+	if none == nil {
+		t.Fatal("receipt should be an empty message, not nil")
+	}
+
+	if none.GetDocumentId() != "" {
+		t.Fatalf("expected no receipt, got %+v", none)
+	}
+}
+
 func TestOrder_CreateShopNotInTeam(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)

@@ -27,6 +27,16 @@ enum DocumentResourceType {
   DOCUMENT_RESOURCE_TYPE_GENERAL = 1; // private: any uploaded document (pdf/image)
   DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE = 2; // public: a user avatar image
   DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE = 3; // public: a product catalogue image (gets a thumbnail)
+
+  // PRIVATE: the shipping receipt attached to an order — a photo of the courier's slip, or the PDF
+  // the marketplace prints (owner). Named rather than filed under GENERAL so the documents table
+  // says what the file IS: it is what makes "every receipt for this team" a query rather than a
+  // guess, and it is the hook any later retention rule hangs on.
+  //
+  // Private on purpose. A receipt names the buyer and where the parcel went, which is not something
+  // to serve from a URL that works for anyone who ever holds it — it is read through a short-lived
+  // signed URL by somebody who belongs to the team.
+  DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT = 4;
 }
 
 message Document {

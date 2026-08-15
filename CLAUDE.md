@@ -44,6 +44,7 @@ iface version (`warehouse.team.v1` → `team_v1`). **One file per RPC**, the con
 `service.go`, and a **unit test per RPC** beside it (`<rpc>_test.go`).
 
 ```
+tools/san/                   the OPERATIONS CLI — top-level, acts on real data (HARD RULE 3b)
 backend/
   cmd/app_development/       the dev server — wires services into the mux
   cmd/tool/                  the development CLI (HARD RULE 3)
@@ -162,6 +163,47 @@ default** — it reads `PRODUCTION_DATABASE_URL` and fails if unset.
 > Postgres is on **5433, not 5432** — another project on this machine already runs a Postgres
 > on 5432, and this system must not share its database.
 
+### 3b. `tools/san` is the OPERATIONS CLI — it drives services, never tables
+
+Two CLIs, two jobs. [backend/cmd/tool/](backend/cmd/tool/) owns the **schema and the fixtures**
+(migrate, seed, test databases). [tools/san/](tools/san/) owns the **actions an operator performs
+on real data** — the first being `user reset-password`.
+
+**It lives at the REPO ROOT, not under `backend/`** (owner). It is not a part of the server: it is
+the tool a human reaches for when something has to be done to a running system, and it should read
+that way in the tree. Run it from the root:
+
+```sh
+go run ./tools/san user reset-password --username ani        # prompts for the password, twice, hidden
+go run ./tools/san user reset-password --user-id 57 --dsn …  # non-interactive
+```
+
+> The Go module is rooted at the **repository** (`module github.com/pdcgo/warehouse_revamp`), which
+> is what lets a top-level tool import `backend/…` without a second module and a `replace`. Import
+> paths are unchanged by that — the packages still live under `backend/`, so
+> `github.com/pdcgo/warehouse_revamp/backend/pkgs/…` resolves exactly as before.
+>
+> ⚠ **`go build|vet|test ./...` belongs at the ROOT now.** Run from `backend/` it still works, but
+> it covers only the server subtree and silently skips `tools/`.
+
+- **A command calls the RPC handler, never a hand-written `UPDATE`.** Setting a password is a
+  hash *plus* a `last_password_reset` stamp (which kills the account's existing tokens) *plus* a
+  cache eviction. A second copy of that sequence is a copy that falls behind the first — which is
+  exactly what `cmd/tool seed root`'s raw UPDATE already is.
+- **It is wired with Google Wire** ([tools/san/wire.go](tools/san/wire.go)), same
+  rule as HARD RULE 4 — `go tool wire ./tools/san`. The **DSN is an injector parameter**, not a
+  provider: which database to act on is an operator's per-invocation choice.
+- **The Local/Production prompt is shared**, not copied —
+  [backend/pkgs/san_dbtarget/](backend/pkgs/san_dbtarget/) serves both CLIs, so the "type
+  `production` to continue" guard cannot exist in one and not the other.
+- **A handler called directly gets no validation interceptor**, so a command validates the request
+  with `protovalidate.Validate` before calling it. Never re-type the constraint as an `if`.
+- **Every change to the tool updates [docs/tools/san.md](docs/tools/san.md) in the same commit** —
+  a new command gets a row in its Commands table and its own section (flags, a mermaid sequence of
+  what the command actually does, and the errors it can return). A CLI whose commands are only
+  discoverable by reading `main.go` is a CLI nobody uses. Same rule as a schema change updating
+  `docs/database-schema.md`.
+
 The general service guideline lives in [plans/plan_service.md](plans/plan_service.md) — it is
 the owner's doc; treat it as authoritative and keep this section in sync with it.
 
@@ -184,7 +226,10 @@ exposes, then add one line to `service_api.go`'s `san_grpc.Register(mux, …)` c
 gRPC reflection come from the same call ([backend/pkgs/san_grpc/](backend/pkgs/san_grpc/)), so a
 service can't be served without also appearing in reflection, or vice-versa.
 
-CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`).
+CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`, `tools/san`).
+
+`tools/san` has its own composition root ([tools/san/wire.go](tools/san/wire.go),
+`go tool wire ./tools/san`) — see HARD RULE 3b.
 
 ### 5. Do not use `h2c` — it is deprecated
 
@@ -492,8 +537,10 @@ protocol in one doc and the transfer-FIFO rule in another**, which is why refere
 ## Layout
 
 ```
+go.mod       the Go module — rooted HERE, so backend/ and tools/ are one module (HARD RULE 3b)
 proto/       the API contract — ONE place, one buf module, one generate
 backend/     Go server (Connect RPC) — services/<service_name>/ (HARD RULE 2)
+tools/san/   the operations CLI — a tool of the repo, not of the server (HARD RULE 3b)
 frontend/    React + TypeScript (Vite), Connect RPC client
 plans/       design discussion — <service_name>/brainstorming.md (HARD RULE 4)
 ```
@@ -524,8 +571,9 @@ it once a real domain service replaces it.
 | Lint the contract | `cd proto && buf lint` |
 | Regenerate Go + TS | `cd proto && buf generate` |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
-| Build / vet / test Go | `cd backend && go build ./... && go vet ./... && go test ./...` |
+| Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
 | Migrations | `cd backend && go run ./cmd/tool migrate <cmd> --service <svc>` |
+| Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |

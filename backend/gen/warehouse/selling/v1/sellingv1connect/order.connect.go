@@ -41,12 +41,12 @@ const (
 	// OrderServiceOrderDetailProcedure is the fully-qualified name of the OrderService's OrderDetail
 	// RPC.
 	OrderServiceOrderDetailProcedure = "/warehouse.selling.v1.OrderService/OrderDetail"
-	// OrderServiceOrderConfirmProcedure is the fully-qualified name of the OrderService's OrderConfirm
-	// RPC.
-	OrderServiceOrderConfirmProcedure = "/warehouse.selling.v1.OrderService/OrderConfirm"
 	// OrderServiceOrderCancelProcedure is the fully-qualified name of the OrderService's OrderCancel
 	// RPC.
 	OrderServiceOrderCancelProcedure = "/warehouse.selling.v1.OrderService/OrderCancel"
+	// OrderServiceOrderConfirmProcedure is the fully-qualified name of the OrderService's OrderConfirm
+	// RPC.
+	OrderServiceOrderConfirmProcedure = "/warehouse.selling.v1.OrderService/OrderConfirm"
 	// OrderServiceOrderPickProcedure is the fully-qualified name of the OrderService's OrderPick RPC.
 	OrderServiceOrderPickProcedure = "/warehouse.selling.v1.OrderService/OrderPick"
 	// OrderServiceOrderPackProcedure is the fully-qualified name of the OrderService's OrderPack RPC.
@@ -59,6 +59,8 @@ const (
 	// OrderServiceOrderActivityStatProcedure is the fully-qualified name of the OrderService's
 	// OrderActivityStat RPC.
 	OrderServiceOrderActivityStatProcedure = "/warehouse.selling.v1.OrderService/OrderActivityStat"
+	// OrderServiceOrderStatProcedure is the fully-qualified name of the OrderService's OrderStat RPC.
+	OrderServiceOrderStatProcedure = "/warehouse.selling.v1.OrderService/OrderStat"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -66,15 +68,20 @@ type OrderServiceClient interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
 	OrderList(context.Context, *connect.Request[v1.OrderListRequest]) (*connect.Response[v1.OrderListResponse], error)
 	OrderDetail(context.Context, *connect.Request[v1.OrderDetailRequest]) (*connect.Response[v1.OrderDetailResponse], error)
-	// Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
-	// CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
-	// stock + money reversal once stock integration (#69) lands.
-	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
+	// Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
+	// off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
+	// cancel with the stock + money reversal once stock integration (#69) lands.
 	OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error)
-	// The WAREHOUSE's side of an order (#150): the crew records what it has done.
+	// The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
+	// happens and one step at a time.
 	//
-	// These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
-	// why that is the only scope that can work.
+	//	PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+	//
+	// ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
+	// OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
+	// order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
+	// that can work.
+	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
 	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
 	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
 	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
@@ -88,6 +95,17 @@ type OrderServiceClient interface {
 	// orders.
 	OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error)
 	OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error)
+	// ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
+	//
+	// The stat above the list, and it is a DIFFERENT question from OrderActivityStat above: that one
+	// describes a set of PRODUCTS ("when did each of these last sell"), this one describes the set of
+	// ORDERS the screen is showing ("what is waiting on somebody, and what has it been worth").
+	//
+	// Deliberately NOT folded into OrderList. A stat that rode on the list response would be recomputed
+	// on every page turn and every sort, for numbers that do not change when you turn a page — and it
+	// would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
+	// decide which tab to open.
+	OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -119,16 +137,16 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
 			connect.WithClientOptions(opts...),
 		),
-		orderConfirm: connect.NewClient[v1.OrderConfirmRequest, v1.OrderConfirmResponse](
-			httpClient,
-			baseURL+OrderServiceOrderConfirmProcedure,
-			connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
-			connect.WithClientOptions(opts...),
-		),
 		orderCancel: connect.NewClient[v1.OrderCancelRequest, v1.OrderCancelResponse](
 			httpClient,
 			baseURL+OrderServiceOrderCancelProcedure,
 			connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
+			connect.WithClientOptions(opts...),
+		),
+		orderConfirm: connect.NewClient[v1.OrderConfirmRequest, v1.OrderConfirmResponse](
+			httpClient,
+			baseURL+OrderServiceOrderConfirmProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
 			connect.WithClientOptions(opts...),
 		),
 		orderPick: connect.NewClient[v1.OrderPickRequest, v1.OrderPickResponse](
@@ -161,6 +179,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
 			connect.WithClientOptions(opts...),
 		),
+		orderStat: connect.NewClient[v1.OrderStatRequest, v1.OrderStatResponse](
+			httpClient,
+			baseURL+OrderServiceOrderStatProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -169,13 +193,14 @@ type orderServiceClient struct {
 	orderCreate               *connect.Client[v1.OrderCreateRequest, v1.OrderCreateResponse]
 	orderList                 *connect.Client[v1.OrderListRequest, v1.OrderListResponse]
 	orderDetail               *connect.Client[v1.OrderDetailRequest, v1.OrderDetailResponse]
-	orderConfirm              *connect.Client[v1.OrderConfirmRequest, v1.OrderConfirmResponse]
 	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
+	orderConfirm              *connect.Client[v1.OrderConfirmRequest, v1.OrderConfirmResponse]
 	orderPick                 *connect.Client[v1.OrderPickRequest, v1.OrderPickResponse]
 	orderPack                 *connect.Client[v1.OrderPackRequest, v1.OrderPackResponse]
 	orderShip                 *connect.Client[v1.OrderShipRequest, v1.OrderShipResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
+	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -193,14 +218,14 @@ func (c *orderServiceClient) OrderDetail(ctx context.Context, req *connect.Reque
 	return c.orderDetail.CallUnary(ctx, req)
 }
 
-// OrderConfirm calls warehouse.selling.v1.OrderService.OrderConfirm.
-func (c *orderServiceClient) OrderConfirm(ctx context.Context, req *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
-	return c.orderConfirm.CallUnary(ctx, req)
-}
-
 // OrderCancel calls warehouse.selling.v1.OrderService.OrderCancel.
 func (c *orderServiceClient) OrderCancel(ctx context.Context, req *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error) {
 	return c.orderCancel.CallUnary(ctx, req)
+}
+
+// OrderConfirm calls warehouse.selling.v1.OrderService.OrderConfirm.
+func (c *orderServiceClient) OrderConfirm(ctx context.Context, req *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
+	return c.orderConfirm.CallUnary(ctx, req)
 }
 
 // OrderPick calls warehouse.selling.v1.OrderService.OrderPick.
@@ -228,20 +253,30 @@ func (c *orderServiceClient) OrderActivityStat(ctx context.Context, req *connect
 	return c.orderActivityStat.CallUnary(ctx, req)
 }
 
+// OrderStat calls warehouse.selling.v1.OrderService.OrderStat.
+func (c *orderServiceClient) OrderStat(ctx context.Context, req *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error) {
+	return c.orderStat.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
 	OrderList(context.Context, *connect.Request[v1.OrderListRequest]) (*connect.Response[v1.OrderListResponse], error)
 	OrderDetail(context.Context, *connect.Request[v1.OrderDetailRequest]) (*connect.Response[v1.OrderDetailResponse], error)
-	// Selling-side status transitions (#91). Confirm: PLACED -> CONFIRMED. Cancel: PLACED or
-	// CONFIRMED -> CANCELLED (terminal). No inventory/revenue here — #70 extends cancel with the
-	// stock + money reversal once stock integration (#69) lands.
-	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
+	// Cancel: PLACED or CONFIRMED -> CANCELLED (terminal), and it stays SELLING-SIDE — calling an order
+	// off is the decision of the team whose customer it is. No inventory/revenue here — #70 extends
+	// cancel with the stock + money reversal once stock integration (#69) lands.
 	OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error)
-	// The WAREHOUSE's side of an order (#150): the crew records what it has done.
+	// The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
+	// happens and one step at a time.
 	//
-	// These three are scoped to the order's WAREHOUSE, not its selling team — see OrderPickRequest for
-	// why that is the only scope that can work.
+	//	PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
+	//
+	// ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
+	// OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
+	// order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
+	// that can work.
+	OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error)
 	OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error)
 	OrderPack(context.Context, *connect.Request[v1.OrderPackRequest]) (*connect.Response[v1.OrderPackResponse], error)
 	OrderShip(context.Context, *connect.Request[v1.OrderShipRequest]) (*connect.Response[v1.OrderShipResponse], error)
@@ -255,6 +290,17 @@ type OrderServiceHandler interface {
 	// orders.
 	OrderProductActivityByIds(context.Context, *connect.Request[v1.OrderProductActivityByIdsRequest]) (*connect.Response[v1.OrderProductActivityByIdsResponse], error)
 	OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error)
+	// ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
+	//
+	// The stat above the list, and it is a DIFFERENT question from OrderActivityStat above: that one
+	// describes a set of PRODUCTS ("when did each of these last sell"), this one describes the set of
+	// ORDERS the screen is showing ("what is waiting on somebody, and what has it been worth").
+	//
+	// Deliberately NOT folded into OrderList. A stat that rode on the list response would be recomputed
+	// on every page turn and every sort, for numbers that do not change when you turn a page — and it
+	// would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
+	// decide which tab to open.
+	OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -282,16 +328,16 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderDetail")),
 		connect.WithHandlerOptions(opts...),
 	)
-	orderServiceOrderConfirmHandler := connect.NewUnaryHandler(
-		OrderServiceOrderConfirmProcedure,
-		svc.OrderConfirm,
-		connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
-		connect.WithHandlerOptions(opts...),
-	)
 	orderServiceOrderCancelHandler := connect.NewUnaryHandler(
 		OrderServiceOrderCancelProcedure,
 		svc.OrderCancel,
 		connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderConfirmHandler := connect.NewUnaryHandler(
+		OrderServiceOrderConfirmProcedure,
+		svc.OrderConfirm,
+		connect.WithSchema(orderServiceMethods.ByName("OrderConfirm")),
 		connect.WithHandlerOptions(opts...),
 	)
 	orderServiceOrderPickHandler := connect.NewUnaryHandler(
@@ -324,6 +370,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderActivityStat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderStatHandler := connect.NewUnaryHandler(
+		OrderServiceOrderStatProcedure,
+		svc.OrderStat,
+		connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -332,10 +384,10 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderListHandler.ServeHTTP(w, r)
 		case OrderServiceOrderDetailProcedure:
 			orderServiceOrderDetailHandler.ServeHTTP(w, r)
-		case OrderServiceOrderConfirmProcedure:
-			orderServiceOrderConfirmHandler.ServeHTTP(w, r)
 		case OrderServiceOrderCancelProcedure:
 			orderServiceOrderCancelHandler.ServeHTTP(w, r)
+		case OrderServiceOrderConfirmProcedure:
+			orderServiceOrderConfirmHandler.ServeHTTP(w, r)
 		case OrderServiceOrderPickProcedure:
 			orderServiceOrderPickHandler.ServeHTTP(w, r)
 		case OrderServiceOrderPackProcedure:
@@ -346,6 +398,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderProductActivityByIdsHandler.ServeHTTP(w, r)
 		case OrderServiceOrderActivityStatProcedure:
 			orderServiceOrderActivityStatHandler.ServeHTTP(w, r)
+		case OrderServiceOrderStatProcedure:
+			orderServiceOrderStatHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -367,12 +421,12 @@ func (UnimplementedOrderServiceHandler) OrderDetail(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderDetail is not implemented"))
 }
 
-func (UnimplementedOrderServiceHandler) OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderConfirm is not implemented"))
-}
-
 func (UnimplementedOrderServiceHandler) OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCancel is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderConfirm(context.Context, *connect.Request[v1.OrderConfirmRequest]) (*connect.Response[v1.OrderConfirmResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderConfirm is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderPick(context.Context, *connect.Request[v1.OrderPickRequest]) (*connect.Response[v1.OrderPickResponse], error) {
@@ -393,4 +447,8 @@ func (UnimplementedOrderServiceHandler) OrderProductActivityByIds(context.Contex
 
 func (UnimplementedOrderServiceHandler) OrderActivityStat(context.Context, *connect.Request[v1.OrderActivityStatRequest]) (*connect.Response[v1.OrderActivityStatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderActivityStat is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderStat is not implemented"))
 }

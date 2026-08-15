@@ -102,14 +102,21 @@ func dsn() string {
 	return defaultDSN
 }
 
-// repoRoot walks up from this source file to the directory holding go.mod, so migration paths
-// resolve no matter which package's tests are running.
-func repoRoot() string {
+// backendRoot walks up from this source file to the directory that HOLDS services/, so migration
+// paths resolve no matter which package's tests are running.
+//
+// ⚠ It looks for services/, NOT for go.mod. It used to look for go.mod, and that broke the moment
+// the module was rooted at the repository instead of at backend/ (so tools/san could live at the
+// top level): every test using this package failed with "cannot find …/warehouse_revamp/services",
+// because the module root and the backend root had stopped being the same directory. The thing this
+// function actually needs is the directory the services live in — so that is what it looks for.
+func backendRoot() string {
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)
 
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+		info, err := os.Stat(filepath.Join(dir, "services"))
+		if err == nil && info.IsDir() {
 			return dir
 		}
 
@@ -239,7 +246,7 @@ func connect() (*gorm.DB, error) {
 
 	// Apply every service's migrations (idempotent — a no-op once current). Each service tracks
 	// its own <service>_version table, exactly like the real migrator.
-	root := repoRoot()
+	root := backendRoot()
 
 	err = goose.SetDialect("postgres")
 	if err != nil {

@@ -18,17 +18,20 @@ func (s *Service) OrderCreate(
 	req *connect.Request[sellingv1.OrderCreateRequest],
 ) (*connect.Response[sellingv1.OrderCreateResponse], error) {
 	order, err := s.placeOrder(ctx, &orderPlacement{
-		teamID:        req.Msg.GetTeamId(),
-		shopID:        req.Msg.GetShopId(),
-		warehouseID:   req.Msg.GetWarehouseId(),
-		customerName:  req.Msg.GetCustomerName(),
-		customerPhone: req.Msg.GetCustomerPhone(),
-		address:       req.Msg.GetAddress(),
-		shippingCode:  req.Msg.GetShippingCode(),
-		subtotal:      req.Msg.GetSubtotal(),
-		shippingCost:  req.Msg.GetShippingCost(),
-		total:         req.Msg.GetTotal(),
-		items:         req.Msg.GetItems(),
+		teamID:           req.Msg.GetTeamId(),
+		shopID:           req.Msg.GetShopId(),
+		warehouseID:      req.Msg.GetWarehouseId(),
+		customerName:     req.Msg.GetCustomerName(),
+		customerPhone:    req.Msg.GetCustomerPhone(),
+		address:          req.Msg.GetAddress(),
+		shippingCode:     req.Msg.GetShippingCode(),
+		note:             req.Msg.GetNote(),
+		receipt:          req.Msg.GetReceipt(),
+		subtotal:         req.Msg.GetSubtotal(),
+		shippingCost:     req.Msg.GetShippingCost(),
+		total:            req.Msg.GetTotal(),
+		marketplaceTotal: req.Msg.GetMarketplaceTotal(),
+		items:            req.Msg.GetItems(),
 	})
 	if err != nil {
 		return nil, err

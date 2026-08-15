@@ -67,6 +67,24 @@ export function useUpdateOrderDraft() {
   });
 }
 
+// Saving the order form's half-finished work as a draft (owner).
+//
+// PUSH, not a new "create draft" RPC. Push is create-or-update on (team_id, source, external_id), so
+// a second save from the same form updates the draft it already made rather than leaving a trail of
+// near-identical ones — which is exactly the property a Save button needs, and it already exists.
+//
+// The source is what says where a draft came from; a form-made one is "manual", and the drafts list
+// can already filter on it.
+export function usePushOrderDraft() {
+  const invalidate = useInvalidateOrderDrafts();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof orderDraftClient.orderDraftPush>[0]) =>
+      orderDraftClient.orderDraftPush(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // Bulk by design (#195): pruning is entirely manual — nothing expires — so the screen must be able
 // to clear a selection in one action rather than one row at a time.
 export function useDeleteOrderDrafts() {

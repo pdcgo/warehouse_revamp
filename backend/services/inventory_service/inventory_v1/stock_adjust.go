@@ -33,6 +33,16 @@ var errAdjustBatchArgs = errors.New("a damaged/lost/found adjust needs a batch a
 // NOTE (#211): a DAMAGED/LOST adjust is also meant to WRITE OFF the frozen cost of the lost units to
 // expense_service (owner's Q4). That value posting is a follow-up — this change lands the stock
 // mechanics; the loss value is a separate cross-service hook (mirroring settlement's PostCODFee).
+//
+// ⚠ A RECOUNT HERE WRITES OFF NOTHING, AND THAT CONTRADICTS Q4, which says "a RECOUNT loss values at
+// the oldest batch's cost". The behaviour below matches its test ("a RECOUNT is batch-agnostic
+// value-wise"); the decision says otherwise, and the two have never been reconciled.
+//
+// StockOpname — which IS a recount, in bulk — follows Q4 and values its shortfalls. So today the same
+// physical loss books money or does not depending on which RPC counted it. Recorded in full under
+// `# Contradiction` in plans/stock_service/brainstorming.md, with the recommendation to bring this
+// branch in line (`attributeDeltaFIFOValued` already returns the number it would need). Left alone
+// here because changing a shipped, tested money path is the owner's call (HARD RULE 8).
 func (s *Service) StockAdjust(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockAdjustRequest],
@@ -257,38 +267,79 @@ func adjustShelfBatch(tx *gorm.DB, batchID uint64, rack *uint64, delta int64) er
 // The warehouse's Prices and Batches tabs read that number, so both overstated stock by everything
 // ever picked, and `used` (arrived − damaged − ready) stayed at 0 for goods that had shipped.
 func attributeDeltaFIFO(tx *gorm.DB, warehouseID, productID uint64, rack *uint64, delta int64) error {
+	_, err := attributeDeltaFIFOValued(tx, warehouseID, productID, rack, delta)
+
+	return err
+}
+
+// fifoDraw is what a LOSS took out of the cost layers, in money.
+//
+// It exists because a shortfall found by counting is not only a quantity — the owner's Q4 makes it a
+// value written off — and the only honest price for it is what the layers the draw actually consumed
+// were worth.
+type fifoDraw struct {
+	// Whole rupiah consumed by a loss. 0 for a gain: stock that turns up is not a purchase.
+	Value int64
+
+	// ⚠ Whether `Value` is the WHOLE loss. A batch's `unit_cost` is nullable and nil means UNKNOWN,
+	// never 0 (#74), and a shelf can also hold legacy stock with no batch rows at all. Either way some
+	// units go out priced at nothing — so this false means "the loss is worth more than Value", which is
+	// a different claim from "the loss was worth nothing", and a caller must be able to tell them apart.
+	AllKnown bool
+}
+
+// attributeDeltaFIFOValued is attributeDeltaFIFO, and additionally reports what a loss was WORTH.
+//
+// The two are one function rather than two because the valuation must consume exactly the layers the
+// draw consumes. A second query that re-derived "the oldest batch's cost" would be a second definition
+// of FIFO order, free to drift — and it would also be wrong whenever a shortfall spans more than one
+// layer, pricing every missing unit at the oldest layer's cost when half of them came from a dearer one.
+func attributeDeltaFIFOValued(
+	tx *gorm.DB,
+	warehouseID, productID uint64,
+	rack *uint64,
+	delta int64,
+) (fifoDraw, error) {
+	// Nothing moved, so nothing was consumed and there is nothing left unpriced.
 	if delta == 0 {
-		return nil
+		return fifoDraw{AllKnown: true}, nil
 	}
 
 	type sbRow struct {
-		ID  uint64
-		Qty int64
+		ID       uint64
+		Qty      int64
+		UnitCost sql.NullInt64
 	}
 
 	var rows []sbRow
 
 	err := tx.Raw(`
-		SELECT sb.id, sb.qty
+		SELECT sb.id, sb.qty, b.unit_cost
 		FROM stock_shelf_batches sb
 		JOIN stock_batches b ON b.id = sb.batch_id
 		WHERE b.warehouse_id = ? AND b.product_id = ? AND sb.rack_id IS NOT DISTINCT FROM ?
 		ORDER BY b.id ASC`,
 		warehouseID, productID, rack).Scan(&rows).Error
 	if err != nil {
-		return err
+		return fifoDraw{}, err
 	}
 
 	if len(rows) == 0 {
-		return nil
+		// Legacy stock: a level with no cost layers under it. A gain needs no layer, but a loss here has
+		// gone out at a price nobody recorded — which the caller has to be told rather than shown as 0.
+		return fifoDraw{AllKnown: delta > 0}, nil
 	}
 
 	if delta > 0 {
-		return tx.Exec(`UPDATE stock_shelf_batches SET qty = qty + ?, updated_at = NOW() WHERE id = ?`,
+		err = tx.Exec(`UPDATE stock_shelf_batches SET qty = qty + ?, updated_at = NOW() WHERE id = ?`,
 			delta, rows[0].ID).Error
+
+		return fifoDraw{AllKnown: true}, err
 	}
 
-	// A loss: consume oldest-first until the shortfall is covered.
+	// A loss: consume oldest-first until the shortfall is covered, pricing each layer as it goes.
+	draw := fifoDraw{AllKnown: true}
+
 	remaining := -delta
 	for i := range rows {
 		if remaining == 0 {
@@ -306,11 +357,23 @@ func attributeDeltaFIFO(tx *gorm.DB, warehouseID, productID uint64, rack *uint64
 		upErr := tx.Exec(`UPDATE stock_shelf_batches SET qty = qty - ?, updated_at = NOW() WHERE id = ?`,
 			take, rows[i].ID).Error
 		if upErr != nil {
-			return upErr
+			return fifoDraw{}, upErr
+		}
+
+		if rows[i].UnitCost.Valid {
+			draw.Value += take * rows[i].UnitCost.Int64
+		} else {
+			draw.AllKnown = false
 		}
 
 		remaining -= take
 	}
 
-	return nil
+	// The layers did not cover the whole shortfall — the level believed more than the batches did. Those
+	// units leave unpriced, so the value reported is a floor.
+	if remaining > 0 {
+		draw.AllKnown = false
+	}
+
+	return draw, nil
 }

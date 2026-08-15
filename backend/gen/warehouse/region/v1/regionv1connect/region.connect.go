@@ -39,6 +39,9 @@ const (
 	// RegionServiceRegionSearchProcedure is the fully-qualified name of the RegionService's
 	// RegionSearch RPC.
 	RegionServiceRegionSearchProcedure = "/warehouse.region.v1.RegionService/RegionSearch"
+	// RegionServiceRegionSearchByKodePosProcedure is the fully-qualified name of the RegionService's
+	// RegionSearchByKodePos RPC.
+	RegionServiceRegionSearchByKodePosProcedure = "/warehouse.region.v1.RegionService/RegionSearchByKodePos"
 	// RegionServiceRegionResolveProcedure is the fully-qualified name of the RegionService's
 	// RegionResolve RPC.
 	RegionServiceRegionResolveProcedure = "/warehouse.region.v1.RegionService/RegionResolve"
@@ -50,6 +53,16 @@ type RegionServiceClient interface {
 	RegionList(context.Context, *connect.Request[v1.RegionListRequest]) (*connect.Response[v1.RegionListResponse], error)
 	// Typeahead over the name ("type your village"), capped.
 	RegionSearch(context.Context, *connect.Request[v1.RegionSearchRequest]) (*connect.Response[v1.RegionSearchResponse], error)
+	// THE PICKER'S FAST PATH: a kode pos in, the addresses it covers out (owner).
+	//
+	// A postcode is the one part of an address a buyer quotes correctly. Names are not: "Sukamaju"
+	// names hundreds of desa, people spell their own kelurahan three different ways, and a search over
+	// 83.762 names asks the person entering the order to disambiguate a list they cannot check. A kode
+	// pos is five digits copied off a message — unambiguous to type, and it names a handful of desa.
+	//
+	// Capped like RegionSearch, and returning the same RegionAncestry, so one pick back-fills all four
+	// levels with no second round-trip.
+	RegionSearchByKodePos(context.Context, *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error)
 	// The full ancestry of one code — hydrate a saved address, or back-fill the picker.
 	RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error)
 }
@@ -77,6 +90,12 @@ func NewRegionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(regionServiceMethods.ByName("RegionSearch")),
 			connect.WithClientOptions(opts...),
 		),
+		regionSearchByKodePos: connect.NewClient[v1.RegionSearchByKodePosRequest, v1.RegionSearchByKodePosResponse](
+			httpClient,
+			baseURL+RegionServiceRegionSearchByKodePosProcedure,
+			connect.WithSchema(regionServiceMethods.ByName("RegionSearchByKodePos")),
+			connect.WithClientOptions(opts...),
+		),
 		regionResolve: connect.NewClient[v1.RegionResolveRequest, v1.RegionResolveResponse](
 			httpClient,
 			baseURL+RegionServiceRegionResolveProcedure,
@@ -88,9 +107,10 @@ func NewRegionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // regionServiceClient implements RegionServiceClient.
 type regionServiceClient struct {
-	regionList    *connect.Client[v1.RegionListRequest, v1.RegionListResponse]
-	regionSearch  *connect.Client[v1.RegionSearchRequest, v1.RegionSearchResponse]
-	regionResolve *connect.Client[v1.RegionResolveRequest, v1.RegionResolveResponse]
+	regionList            *connect.Client[v1.RegionListRequest, v1.RegionListResponse]
+	regionSearch          *connect.Client[v1.RegionSearchRequest, v1.RegionSearchResponse]
+	regionSearchByKodePos *connect.Client[v1.RegionSearchByKodePosRequest, v1.RegionSearchByKodePosResponse]
+	regionResolve         *connect.Client[v1.RegionResolveRequest, v1.RegionResolveResponse]
 }
 
 // RegionList calls warehouse.region.v1.RegionService.RegionList.
@@ -101,6 +121,11 @@ func (c *regionServiceClient) RegionList(ctx context.Context, req *connect.Reque
 // RegionSearch calls warehouse.region.v1.RegionService.RegionSearch.
 func (c *regionServiceClient) RegionSearch(ctx context.Context, req *connect.Request[v1.RegionSearchRequest]) (*connect.Response[v1.RegionSearchResponse], error) {
 	return c.regionSearch.CallUnary(ctx, req)
+}
+
+// RegionSearchByKodePos calls warehouse.region.v1.RegionService.RegionSearchByKodePos.
+func (c *regionServiceClient) RegionSearchByKodePos(ctx context.Context, req *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error) {
+	return c.regionSearchByKodePos.CallUnary(ctx, req)
 }
 
 // RegionResolve calls warehouse.region.v1.RegionService.RegionResolve.
@@ -114,6 +139,16 @@ type RegionServiceHandler interface {
 	RegionList(context.Context, *connect.Request[v1.RegionListRequest]) (*connect.Response[v1.RegionListResponse], error)
 	// Typeahead over the name ("type your village"), capped.
 	RegionSearch(context.Context, *connect.Request[v1.RegionSearchRequest]) (*connect.Response[v1.RegionSearchResponse], error)
+	// THE PICKER'S FAST PATH: a kode pos in, the addresses it covers out (owner).
+	//
+	// A postcode is the one part of an address a buyer quotes correctly. Names are not: "Sukamaju"
+	// names hundreds of desa, people spell their own kelurahan three different ways, and a search over
+	// 83.762 names asks the person entering the order to disambiguate a list they cannot check. A kode
+	// pos is five digits copied off a message — unambiguous to type, and it names a handful of desa.
+	//
+	// Capped like RegionSearch, and returning the same RegionAncestry, so one pick back-fills all four
+	// levels with no second round-trip.
+	RegionSearchByKodePos(context.Context, *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error)
 	// The full ancestry of one code — hydrate a saved address, or back-fill the picker.
 	RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error)
 }
@@ -137,6 +172,12 @@ func NewRegionServiceHandler(svc RegionServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(regionServiceMethods.ByName("RegionSearch")),
 		connect.WithHandlerOptions(opts...),
 	)
+	regionServiceRegionSearchByKodePosHandler := connect.NewUnaryHandler(
+		RegionServiceRegionSearchByKodePosProcedure,
+		svc.RegionSearchByKodePos,
+		connect.WithSchema(regionServiceMethods.ByName("RegionSearchByKodePos")),
+		connect.WithHandlerOptions(opts...),
+	)
 	regionServiceRegionResolveHandler := connect.NewUnaryHandler(
 		RegionServiceRegionResolveProcedure,
 		svc.RegionResolve,
@@ -149,6 +190,8 @@ func NewRegionServiceHandler(svc RegionServiceHandler, opts ...connect.HandlerOp
 			regionServiceRegionListHandler.ServeHTTP(w, r)
 		case RegionServiceRegionSearchProcedure:
 			regionServiceRegionSearchHandler.ServeHTTP(w, r)
+		case RegionServiceRegionSearchByKodePosProcedure:
+			regionServiceRegionSearchByKodePosHandler.ServeHTTP(w, r)
 		case RegionServiceRegionResolveProcedure:
 			regionServiceRegionResolveHandler.ServeHTTP(w, r)
 		default:
@@ -166,6 +209,10 @@ func (UnimplementedRegionServiceHandler) RegionList(context.Context, *connect.Re
 
 func (UnimplementedRegionServiceHandler) RegionSearch(context.Context, *connect.Request[v1.RegionSearchRequest]) (*connect.Response[v1.RegionSearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.region.v1.RegionService.RegionSearch is not implemented"))
+}
+
+func (UnimplementedRegionServiceHandler) RegionSearchByKodePos(context.Context, *connect.Request[v1.RegionSearchByKodePosRequest]) (*connect.Response[v1.RegionSearchByKodePosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.region.v1.RegionService.RegionSearchByKodePos is not implemented"))
 }
 
 func (UnimplementedRegionServiceHandler) RegionResolve(context.Context, *connect.Request[v1.RegionResolveRequest]) (*connect.Response[v1.RegionResolveResponse], error) {

@@ -28,10 +28,18 @@ type orderPlacement struct {
 	customerPhone string
 	address       *sellingv1.OrderAddress
 	shippingCode  string
+	// What whoever took the order wrote down for the people who handle it. Never read by anything
+	// here; carried through verbatim. "" = nothing written down.
+	note string
+	// The shipping receipt already uploaded to document_service, if any. Recorded as given — the id
+	// is not verified, see OrderCreateRequest.receipt for why.
+	receipt *sellingv1.OrderReceipt
 
 	subtotal     int64
 	shippingCost int64
 	total        int64
+	// A NOTE of what the marketplace took, never a term of the sum (owner). 0 = not recorded.
+	marketplaceTotal int64
 
 	items []*sellingv1.OrderItem
 
@@ -154,10 +162,16 @@ func (s *Service) placeOrder(
 			KodePos:       address.GetKodePos(),
 			AddressLine:   address.GetAddressLine(),
 			ShippingCode:  p.shippingCode,
-			Subtotal:      p.subtotal,
-			ShippingCost:  p.shippingCost,
-			Total:         p.total,
-			Items:         orderItemModels(p.items),
+			Note:          p.note,
+			// Getters all the way down: a nil receipt is an order with none, not a crash.
+			ReceiptDocumentID: p.receipt.GetDocumentId(),
+			ReceiptFilename:   p.receipt.GetFilename(),
+			ReceiptMimeType:   p.receipt.GetMimeType(),
+			Subtotal:          p.subtotal,
+			ShippingCost:      p.shippingCost,
+			Total:             p.total,
+			MarketplaceTotal:  p.marketplaceTotal,
+			Items:             orderItemModels(p.items),
 		}
 
 		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
@@ -172,6 +186,18 @@ func (s *Service) placeOrder(
 		createErr := tx.Create(&order).Error
 		if createErr != nil {
 			return createErr
+		}
+
+		// THE FIRST EVENT ON ITS HISTORY (00011). Both doors into `orders` run this function, so a
+		// promoted draft gets the same opening step as a typed-in order — recorded here rather than in
+		// the two handlers precisely so they cannot differ.
+		//
+		// `order.CreatedAt` is the order's own moment, stamped by GORM on the insert above, not a fresh
+		// time.Now(): the event says when the order came into being, and the two must be the same
+		// instant or the timeline disagrees with the header beside it.
+		eventErr := recordOrderEvent(tx, order.ID, orderEventPlaced, eventActor(ctx), order.CreatedAt)
+		if eventErr != nil {
+			return eventErr
 		}
 
 		// Whatever the caller needs done atomically with the order. For promote (#194) this is the

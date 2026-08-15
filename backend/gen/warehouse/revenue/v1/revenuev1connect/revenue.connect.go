@@ -39,6 +39,9 @@ const (
 	// RevenueServiceRevenueListProcedure is the fully-qualified name of the RevenueService's
 	// RevenueList RPC.
 	RevenueServiceRevenueListProcedure = "/warehouse.revenue.v1.RevenueService/RevenueList"
+	// RevenueServiceRevenueDailyProcedure is the fully-qualified name of the RevenueService's
+	// RevenueDaily RPC.
+	RevenueServiceRevenueDailyProcedure = "/warehouse.revenue.v1.RevenueService/RevenueDaily"
 	// RevenueServiceRevenueVoidProcedure is the fully-qualified name of the RevenueService's
 	// RevenueVoid RPC.
 	RevenueServiceRevenueVoidProcedure = "/warehouse.revenue.v1.RevenueService/RevenueVoid"
@@ -50,6 +53,8 @@ type RevenueServiceClient interface {
 	RevenueRecord(context.Context, *connect.Request[v1.RevenueRecordRequest]) (*connect.Response[v1.RevenueRecordResponse], error)
 	// What a team's orders were expected to make, newest first.
 	RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error)
+	// The same money, summed PER DAY — the revenue half of the daily statement.
+	RevenueDaily(context.Context, *connect.Request[v1.RevenueDailyRequest]) (*connect.Response[v1.RevenueDailyResponse], error)
 	// Stop an order's row counting — it was cancelled (#164).
 	RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error)
 }
@@ -77,6 +82,12 @@ func NewRevenueServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(revenueServiceMethods.ByName("RevenueList")),
 			connect.WithClientOptions(opts...),
 		),
+		revenueDaily: connect.NewClient[v1.RevenueDailyRequest, v1.RevenueDailyResponse](
+			httpClient,
+			baseURL+RevenueServiceRevenueDailyProcedure,
+			connect.WithSchema(revenueServiceMethods.ByName("RevenueDaily")),
+			connect.WithClientOptions(opts...),
+		),
 		revenueVoid: connect.NewClient[v1.RevenueVoidRequest, v1.RevenueVoidResponse](
 			httpClient,
 			baseURL+RevenueServiceRevenueVoidProcedure,
@@ -90,6 +101,7 @@ func NewRevenueServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type revenueServiceClient struct {
 	revenueRecord *connect.Client[v1.RevenueRecordRequest, v1.RevenueRecordResponse]
 	revenueList   *connect.Client[v1.RevenueListRequest, v1.RevenueListResponse]
+	revenueDaily  *connect.Client[v1.RevenueDailyRequest, v1.RevenueDailyResponse]
 	revenueVoid   *connect.Client[v1.RevenueVoidRequest, v1.RevenueVoidResponse]
 }
 
@@ -103,6 +115,11 @@ func (c *revenueServiceClient) RevenueList(ctx context.Context, req *connect.Req
 	return c.revenueList.CallUnary(ctx, req)
 }
 
+// RevenueDaily calls warehouse.revenue.v1.RevenueService.RevenueDaily.
+func (c *revenueServiceClient) RevenueDaily(ctx context.Context, req *connect.Request[v1.RevenueDailyRequest]) (*connect.Response[v1.RevenueDailyResponse], error) {
+	return c.revenueDaily.CallUnary(ctx, req)
+}
+
 // RevenueVoid calls warehouse.revenue.v1.RevenueService.RevenueVoid.
 func (c *revenueServiceClient) RevenueVoid(ctx context.Context, req *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error) {
 	return c.revenueVoid.CallUnary(ctx, req)
@@ -114,6 +131,8 @@ type RevenueServiceHandler interface {
 	RevenueRecord(context.Context, *connect.Request[v1.RevenueRecordRequest]) (*connect.Response[v1.RevenueRecordResponse], error)
 	// What a team's orders were expected to make, newest first.
 	RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error)
+	// The same money, summed PER DAY — the revenue half of the daily statement.
+	RevenueDaily(context.Context, *connect.Request[v1.RevenueDailyRequest]) (*connect.Response[v1.RevenueDailyResponse], error)
 	// Stop an order's row counting — it was cancelled (#164).
 	RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error)
 }
@@ -137,6 +156,12 @@ func NewRevenueServiceHandler(svc RevenueServiceHandler, opts ...connect.Handler
 		connect.WithSchema(revenueServiceMethods.ByName("RevenueList")),
 		connect.WithHandlerOptions(opts...),
 	)
+	revenueServiceRevenueDailyHandler := connect.NewUnaryHandler(
+		RevenueServiceRevenueDailyProcedure,
+		svc.RevenueDaily,
+		connect.WithSchema(revenueServiceMethods.ByName("RevenueDaily")),
+		connect.WithHandlerOptions(opts...),
+	)
 	revenueServiceRevenueVoidHandler := connect.NewUnaryHandler(
 		RevenueServiceRevenueVoidProcedure,
 		svc.RevenueVoid,
@@ -149,6 +174,8 @@ func NewRevenueServiceHandler(svc RevenueServiceHandler, opts ...connect.Handler
 			revenueServiceRevenueRecordHandler.ServeHTTP(w, r)
 		case RevenueServiceRevenueListProcedure:
 			revenueServiceRevenueListHandler.ServeHTTP(w, r)
+		case RevenueServiceRevenueDailyProcedure:
+			revenueServiceRevenueDailyHandler.ServeHTTP(w, r)
 		case RevenueServiceRevenueVoidProcedure:
 			revenueServiceRevenueVoidHandler.ServeHTTP(w, r)
 		default:
@@ -166,6 +193,10 @@ func (UnimplementedRevenueServiceHandler) RevenueRecord(context.Context, *connec
 
 func (UnimplementedRevenueServiceHandler) RevenueList(context.Context, *connect.Request[v1.RevenueListRequest]) (*connect.Response[v1.RevenueListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.revenue.v1.RevenueService.RevenueList is not implemented"))
+}
+
+func (UnimplementedRevenueServiceHandler) RevenueDaily(context.Context, *connect.Request[v1.RevenueDailyRequest]) (*connect.Response[v1.RevenueDailyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.revenue.v1.RevenueService.RevenueDaily is not implemented"))
 }
 
 func (UnimplementedRevenueServiceHandler) RevenueVoid(context.Context, *connect.Request[v1.RevenueVoidRequest]) (*connect.Response[v1.RevenueVoidResponse], error) {

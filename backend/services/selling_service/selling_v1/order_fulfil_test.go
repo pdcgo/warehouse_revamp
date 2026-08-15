@@ -11,7 +11,10 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// confirmedOrder places an order and confirms it — the state the warehouse's work starts from.
+// confirmedOrder places an order and confirms it — the state the warehouse's PICKING starts from.
+//
+// The confirm is itself a WAREHOUSE call now (owner), so it passes testWarehouse like the three steps
+// after it. It used to pass the selling team 2, which is the scope OrderConfirm no longer accepts.
 func confirmedOrder(t *testing.T, svc *selling_v1.Service, shopID uint64) uint64 {
 	t.Helper()
 
@@ -25,7 +28,7 @@ func confirmedOrder(t *testing.T, svc *selling_v1.Service, shopID uint64) uint64
 	id := created.Msg.GetOrder().GetId()
 
 	_, err = svc.OrderConfirm(ctx, connect.NewRequest(&sellingv1.OrderConfirmRequest{
-		TeamId: 2, OrderId: id,
+		TeamId: testWarehouse, OrderId: id,
 	}))
 	if err != nil {
 		t.Fatalf("confirm: %v", err)

@@ -49,6 +49,8 @@ const (
 	resourceGeneral        = "general"
 	resourceProfilePicture = "profile_picture"
 	resourceProductImage   = "product_image"
+	// An order's shipping receipt — image or PDF, and PRIVATE (see isPublic below).
+	resourceOrderReceipt = "order_receipt"
 )
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
@@ -59,6 +61,8 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourceProfilePicture, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE:
 		return resourceProductImage, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT:
+		return resourceOrderReceipt, nil
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -72,6 +76,8 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE
 	case resourceProductImage:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE
+	case resourceOrderReceipt:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}
@@ -79,6 +85,9 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 
 // isPublic reports whether a resource type is served at a stable public URL (an <img src>) rather
 // than a short-lived signed one. Product images and avatars are shown inline, so they are public.
+//
+// An ORDER RECEIPT is NOT: it names a buyer and an address, so it is read through a signed URL by
+// somebody who belongs to the team, exactly as a GENERAL document is.
 func isPublic(text string) bool {
 	return text == resourceProfilePicture || text == resourceProductImage
 }

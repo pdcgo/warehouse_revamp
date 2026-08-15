@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Box,
   Button,
   Checkbox,
   CloseButton,
@@ -9,7 +10,9 @@ import {
   Input,
   Portal,
   Spinner,
+  SimpleGrid,
   Stack,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
@@ -26,10 +29,17 @@ import {
 import { useTeam } from "../features/team/TeamContext";
 import { Pagination } from "./Pagination";
 import { ProductListItem } from "./ProductListItem";
+import { TeamSelect } from "./TeamSelect";
 import type { PickedProduct } from "./ProductSelect";
 
 // PageFilter.limit is validated 1..200 — a dialog page stays small so the list never scrolls far.
 const PAGE_SIZE = 10;
+
+// How many catalogue matches a search resolves before it is handed to inventory as a narrowing.
+// Deliberately generous and deliberately FINITE: the request has a max_items, and a term matching more
+// than this cannot be answered exactly — so the dialog says the search was capped rather than quietly
+// answering about the first 200 products it happened to see.
+const SEARCH_RESOLVE_LIMIT = 200;
 
 // What this dialog emits for one product. ONE definition, used by both the page load and the seeded-id
 // resolve — they used to build the snapshot inline and separately, which is how the cover could reach
@@ -44,7 +54,33 @@ function pickedOf(p: Product): PickedProduct {
   };
 }
 
+// Which catalogue a tab shows. "own" is the team's own products (ProductList); "others" is every
+// OTHER team's sellable products (ProductDiscover with own-team rows excluded server-side).
+export type Catalog = "own" | "others";
+
 export interface ProductPickerProps {
+  /**
+   * Offer these catalogues as TABS. Two entries → a tab strip; one → that catalogue with no tabs;
+   * omitted → the original behaviour, driven by `teamId` alone.
+   *
+   * It exists because a selling team can put ANOTHER team's product on an order (cross-selling,
+   * #106) — but "mine" and "somebody else's" are different decisions with different consequences, so
+   * they are two tabs rather than one merged list where the only clue is a team badge.
+   */
+  catalogs?: Catalog[];
+  /**
+   * ONLY what the warehouse in `stockWarehouseId` actually holds, paged by inventory_service.
+   *
+   * An out-of-stock product is not something this warehouse can sell, so it never reaches the dialog
+   * (owner). Requires `stockWarehouseId`; the ready figure then comes from the same response the list
+   * was built from, so the badge cannot disagree with the row it sits on.
+   *
+   * ⚠ In this mode the catalogue TABS and the team filter do not apply: the paging lives in
+   * inventory, which knows what is on a shelf and nothing about whose catalogue a product is in. The
+   * owning team still shows as a badge on each row. Search survives by resolving the term against the
+   * catalogue first — capped, and the dialog says so when the cap bites.
+   */
+  stockedOnly?: boolean;
   /** Which catalogue to browse. SET → only that team's products (ProductList). UNSET → products
    * from ALL teams (ProductDiscover, authorized with the CURRENT team). A caller that means "this
    * team, none selected yet" passes 0n and gets the no-team state — undefined is "all teams", so
@@ -58,6 +94,21 @@ export interface ProductPickerProps {
    * holding the team's goods, because "have I already bought this?" is a question about the purchase,
    * not about a building. So it appears as soon as there is a catalogue, warehouse chosen or not. */
   stockWarehouseId?: bigint;
+  /**
+   * WHICH "ready" the badge means. Two callers, two different truths, and they are not
+   * interchangeable:
+   *
+   * - `"owned"` (default) — what this team OWNS at that warehouse, via `OwnerStockByIds`. The right
+   *   answer when you are BUYING: a restock asks "how much of mine is already there".
+   * - `"available"` — what a PICK would find there, via `StockAvailability`. The right answer when
+   *   you are SELLING: an order takes whatever is on the shelf, regardless of which restock brought
+   *   it in, so the ownership figure would show 0 for stock the order would happily draw.
+   *
+   * Getting this wrong is not cosmetic. An order screen showing the owned figure refuses goods the
+   * warehouse can plainly ship; a purchasing screen showing the available figure counts another
+   * team's stock as yours.
+   */
+  readyLens?: "owned" | "available";
   /** The ticked product ids. Re-seeds the draft every time the dialog opens. */
   value: bigint[];
   /** Applied on Confirm with the WHOLE ticked set. An empty array means "cleared" — a legitimate
@@ -73,11 +124,14 @@ export interface ProductPickerProps {
 // search — for picking several products at once. Ticks are DRAFT state: seeded from `value` on open,
 // applied by Confirm, discarded by Cancel/Esc/close.
 export const description =
-  "Multi-select product picker in a dialog (#110): searchable, paginated, one ProductListItem per row with a checkbox. `teamId` set browses that team's catalogue; unset discovers products across ALL teams. It also shows what you already have: READY stock at `stockWarehouseId`, and ONGOING — on order but not yet accepted — totalled across every warehouse, both read per page via OwnerStockByIds. Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot.";
+  "Multi-select product picker in a dialog (#110): searchable, paginated, one ProductListItem per row with a checkbox. `teamId` set browses that team's catalogue; unset discovers products across ALL teams. `catalogs={[\"own\",\"others\"]}` turns it into two TABS — My Products and Other Team Products — the second being cross-team discovery with own-team rows excluded server-side; ticks survive switching tabs. It also shows what you already have: READY stock at `stockWarehouseId`, and ONGOING — on order but not yet accepted — totalled across every warehouse. `readyLens` picks which READY it means: \"owned\" (default, OwnerStockByIds — what this team owns there, right when BUYING) or \"available\" (StockAvailability — what a pick would find, right when SELLING, since an order draws whatever is on the shelf). Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards. Emits each picked product's id + sku + name snapshot.";
 
 export function ProductPicker({
+  catalogs,
+  stockedOnly = false,
   teamId,
   stockWarehouseId,
+  readyLens = "owned",
   value,
   onChange,
   disabled,
@@ -106,6 +160,9 @@ export function ProductPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Whether the last search matched more products than it could resolve — surfaced, never swallowed.
+  const [searchCapped, setSearchCapped] = useState(false);
+
   // productId -> READY at `stockWarehouseId`. A MAP, not a lookup on the product: 0n is falsy, so
   // "has the id" is the only way to tell a real zero (→ "Out of stock") from unknown (→ no badge).
   const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
@@ -117,11 +174,26 @@ export function ProductPicker({
   // teamId -> name, for the row badge. Batched per page (TeamByIds), never per row.
   const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
 
-  // `teamId` IS the scope: set browses one catalogue, unset discovers across all teams. Discovery
-  // still needs a team on the request — ProductDiscover's team_id is an AUTHORIZATION scope
-  // (use_scope), not a filter, so it does not narrow the results; it only says who is asking.
-  const browseAll = teamId === undefined;
-  const scopeTeamId = browseAll ? (current?.teamId ?? 0n) : teamId;
+  // WHICH CATALOGUE the dialog is showing right now. With `catalogs` given, the caller has asked for
+  // tabs and this is the active one; without it, the old rule stands — `teamId` set browses that one
+  // catalogue, unset discovers across every team.
+  const [catalog, setCatalog] = useState<Catalog>(catalogs?.[0] ?? "own");
+
+  // "Others" is ProductDiscover with own-team rows excluded SERVER-SIDE. Dropping them here instead
+  // would narrow the loaded page while the pager kept counting them.
+  const useDiscover = catalogs ? catalog === "others" : teamId === undefined;
+  const excludeOwnTeam = catalogs !== undefined && catalog === "others";
+
+  // WHOSE catalogue, on the other-team tab. 0n = everybody's, the default.
+  //
+  // Only ever sent while discovering: on "My Products" the catalogue is already one team's, so a team
+  // filter there could only ever narrow it to itself or to nothing.
+  const [ownerTeamId, setOwnerTeamId] = useState<bigint>(0n);
+  const ownerFilter = useDiscover ? ownerTeamId : 0n;
+
+  // Discovery still needs a team on the request — ProductDiscover's team_id is an AUTHORIZATION scope
+  // (use_scope), not a filter, so it says who is asking rather than narrowing the results.
+  const scopeTeamId = teamId ?? current?.teamId ?? 0n;
 
   // No team to authorize with — degrade to the no-team state rather than calling with 0.
   const noTeam = scopeTeamId <= 0n;
@@ -242,23 +314,103 @@ export function ProductPicker({
 
     void (async () => {
       try {
-        const req = {
-          teamId: scopeTeamId,
-          filter: { q },
-          dataRequest: productListRowData(),
-          page: { page, limit: PAGE_SIZE },
-        };
-        const res = browseAll
-          ? await productClient.productDiscover(req)
-          : await productClient.productList(req);
+        let found: Product[];
+        let total: number;
+
+        if (stockedOnly) {
+          // ── THE WAREHOUSE IS THE LIST ────────────────────────────────────────────────────────
+          //
+          // Paging happens in inventory_service, over the products that warehouse actually HOLDS —
+          // out-of-stock products never reach this dialog at all (owner). Filtering them out of a
+          // catalogue page instead would show two rows out of ten while the pager counted all ten.
+          //
+          // A SEARCH still works, and this is the whole dance: names and SKUs live in the catalogue,
+          // which inventory cannot see, so the term is resolved to ids there first and passed in as a
+          // narrowing. Discover rather than List, so another team's product is findable too.
+          let productIds: bigint[] = [];
+
+          if (q !== "") {
+            const matched = await productClient.productDiscover({
+              teamId: scopeTeamId,
+              filter: { q },
+              dataRequest: productListRowData(),
+              page: { page: 1, limit: SEARCH_RESOLVE_LIMIT },
+            });
+
+            productIds = matched.ids;
+            setSearchCapped(Number(matched.pageInfo?.totalItems ?? 0n) > SEARCH_RESOLVE_LIMIT);
+
+            // Nothing in the catalogue matched, so nothing in the warehouse can. Said here rather
+            // than sent as an empty filter, which inventory would read as "no narrowing at all".
+            if (productIds.length === 0) {
+              if (!cancelled) {
+                setProducts([]);
+                setTotalItems(0);
+              }
+
+              return;
+            }
+          } else {
+            setSearchCapped(false);
+          }
+
+          const listed = await inventoryClient.stockedProductList({
+            teamId: scopeTeamId,
+            filter: { warehouseId: stockWarehouseId!, productIds },
+            page: { page, limit: PAGE_SIZE },
+          });
+
+          if (cancelled) {
+            return;
+          }
+
+          // The ready figure rides along with the list — it is the number the list was built from, so
+          // there is no second read to disagree with it.
+          setOnHand(new Map(listed.items.map((it) => [it.productId.toString(), it.available])));
+
+          // The NAMES and covers, for this page's ten ids. ProductByIds resolves whoever owns them,
+          // which is what lets a warehouse hold another team's goods and still show them properly.
+          const details =
+            listed.ids.length === 0
+              ? []
+              : productsFromByIds(
+                  await productClient.productByIds({
+                    teamId: scopeTeamId,
+                    filter: { ids: listed.ids },
+                    dataRequest: productByIdsRowData(),
+                  }),
+                );
+
+          // Back into the order inventory returned, which is the order the pager is built on — the
+          // by-ids response is a map and carries no order of its own.
+          const byId = new Map(details.map((p) => [p.id.toString(), p]));
+          found = listed.ids.map((id) => byId.get(id.toString())).filter((p): p is Product => !!p);
+          total = Number(listed.pageInfo?.totalItems ?? 0n);
+        } else {
+          const req = {
+            teamId: scopeTeamId,
+            filter: { q },
+            dataRequest: productListRowData(),
+            page: { page, limit: PAGE_SIZE },
+          };
+          const res = useDiscover
+            ? await productClient.productDiscover({ ...req, excludeOwnTeam, ownerTeamId: ownerFilter })
+            : await productClient.productList(req);
+
+          if (cancelled) {
+            return;
+          }
+
+          found = productsFromList(res.items, res.ids);
+          total = Number(res.pageInfo?.totalItems ?? 0n);
+        }
 
         if (cancelled) {
           return;
         }
 
-        const found = productsFromList(res.items, res.ids);
         setProducts(found);
-        setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
+        setTotalItems(total);
 
         // Every product we render is one we can now describe — remember it for Confirm.
         setKnown((prev) => {
@@ -284,7 +436,7 @@ export function ProductPicker({
     return () => {
       cancelled = true;
     };
-  }, [open, scopeTeamId, noTeam, browseAll, q, page]);
+  }, [open, scopeTeamId, noTeam, stockedOnly, stockWarehouseId, useDiscover, excludeOwnTeam, ownerFilter, q, page]);
 
   // READY and ONGOING for the products ON THIS PAGE (owner). Two reads, because they are two
   // different questions:
@@ -308,7 +460,10 @@ export function ProductPicker({
   // pulled that nobody looks at. The old code paged up to 1000 whole-warehouse stock rows on every
   // open and joined them client-side, which also meant the 1001st stocked product silently had no badge.
   useEffect(() => {
-    if (!open || noTeam || products.length === 0) {
+    // In stocked mode the READY figure arrived WITH the list, from the same query the list was built
+    // from. Reading it again here would be a second answer to a question already answered — and the
+    // two could disagree, which is worse than not asking twice.
+    if (!open || noTeam || products.length === 0 || stockedOnly) {
       return;
     }
 
@@ -331,10 +486,29 @@ export function ProductPicker({
           .then(ownerStockFromByIds)
           .catch(() => null);
 
-      const [readyRes, ongoingRes] = await Promise.all([
-        wantReady ? ask(stockWarehouseId) : Promise.resolve(null),
-        ask(0n),
-      ]);
+      // The AVAILABLE lens: what a pick would find, which is a different question from what the team
+      // owns — see `readyLens`. Same failure rule: it swallows its own error and simply shows no badge.
+      const askAvailable = (warehouseId: bigint) =>
+        inventoryClient
+          .stockAvailability({ teamId: scopeTeamId, warehouseId, productIds })
+          .then((res) => new Map(res.items.map((it) => [it.productId.toString(), it.available])))
+          .catch(() => null);
+
+      const readyAsk = () => {
+        if (!wantReady) {
+          return Promise.resolve(null);
+        }
+
+        return readyLens === "available"
+          ? askAvailable(stockWarehouseId)
+          : ask(stockWarehouseId).then((rows) =>
+              rows === null
+                ? null
+                : new Map(productIds.map((id) => [id.toString(), rows.get(id.toString())?.readyQty ?? 0n])),
+            );
+      };
+
+      const [readyRes, ongoingRes] = await Promise.all([readyAsk(), ask(0n)]);
 
       if (cancelled) {
         return;
@@ -352,14 +526,16 @@ export function ProductPicker({
         return new Map(productIds.map((id) => [id.toString(), rows.get(id.toString())?.[pick] ?? 0n]));
       };
 
-      setOnHand(spread(readyRes, "readyQty"));
+      // The ready map is already spread over the asked ids by whichever lens produced it; a null one
+      // is the read having failed, and stays empty so no badge is shown rather than a fabricated 0.
+      setOnHand(readyRes ?? new Map<string, bigint>());
       setOngoing(spread(ongoingRes, "ongoingQty"));
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [open, noTeam, scopeTeamId, stockWarehouseId, products]);
+  }, [open, noTeam, scopeTeamId, stockWarehouseId, readyLens, stockedOnly, products]);
 
   // The owning team's NAME for the row badge. Browsing all teams, a page's rows come from many teams,
   // so this resolves the page's ids in ONE batch and caches them for the component's life — paging
@@ -507,6 +683,51 @@ export function ProductPicker({
 
             <Dialog.Body>
               <Stack gap="card">
+                {/* MY PRODUCTS vs OTHER TEAMS' — two catalogues, two tabs (owner).
+                    The tab changes WHICH RPC runs, so the search and the pager below always describe
+                    the catalogue named above them. TICKS SURVIVE the switch: they are a set of ids,
+                    not a filter over the loaded page, so a product picked on one tab is still picked
+                    after crossing to the other and back — the same property that already makes them
+                    survive paging and searching. */}
+                {!stockedOnly && catalogs && catalogs.length > 1 && (
+                  <Tabs.Root
+                    value={catalog}
+                    onValueChange={(e) => {
+                      setCatalog(e.value as Catalog);
+                      // Page 1: page 4 of my catalogue is not page 4 of everyone else's, and landing
+                      // past the end of the new list reads as "there is nothing here".
+                      setPage(1);
+                    }}
+                  >
+                    <Tabs.List>
+                      {catalogs.map((c) => (
+                        <Tabs.Trigger key={c} value={c} data-testid={`product-picker-tab-${c}`}>
+                          {t(c === "own" ? "productPicker.tabOwn" : "productPicker.tabOthers")}
+                        </Tabs.Trigger>
+                      ))}
+                    </Tabs.List>
+                  </Tabs.Root>
+                )}
+
+                {/* THE FILTER ROW — two columns when both are here (owner).
+
+                    They are one decision taken two ways: narrow by WHO owns it, narrow by WHAT it is
+                    called. Stacked, the search sat a full control-height below the tabs and the team
+                    picker pushed the first product row off the visible part of the dialog. */}
+                {!stockedOnly && useDiscover && catalogs && catalogs.length > 1 ? (
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
+                    <Box data-testid="product-picker-team">
+                      <TeamSelect
+                        value={ownerTeamId}
+                        placeholder={t("productPicker.allTeams")}
+                        onChange={(id) => {
+                          setOwnerTeamId(id);
+                          // Page 1: page 3 of everyone's catalogue is not page 3 of one team's.
+                          setPage(1);
+                        }}
+                      />
+                    </Box>
+
                 <Input
                   placeholder={t("products.searchPlaceholder")}
                   value={input}
@@ -514,6 +735,25 @@ export function ProductPicker({
                   data-testid="product-picker-search"
                   onChange={(e) => setInput(e.target.value)}
                 />
+                  </SimpleGrid>
+                ) : (
+                <Input
+                  placeholder={t("products.searchPlaceholder")}
+                  value={input}
+                  disabled={noTeam}
+                  data-testid="product-picker-search"
+                  onChange={(e) => setInput(e.target.value)}
+                />
+                )}
+
+                {/* A search that matched more than it could resolve says so. The alternative is a
+                    dialog that quietly answers about the first 200 products it happened to see and
+                    looks, to the person searching, exactly like "we do not stock that". */}
+                {searchCapped && (
+                  <Text fontSize="xs" color="orange.fg" data-testid="product-picker-search-capped">
+                    {t("productPicker.searchCapped", { limit: SEARCH_RESOLVE_LIMIT })}
+                  </Text>
+                )}
 
                 {/* The badges carry TWO DIFFERENT SCOPES — ready is this warehouse, ongoing is every
                     warehouse — and side by side on one row they read as one number about one place.
@@ -545,7 +785,7 @@ export function ProductPicker({
 
                 {noTeam ? (
                   <Text color="fg.muted" data-testid="product-picker-no-team">
-                    {browseAll ? t("productPicker.noTeamAll") : t("productPicker.noTeam")}
+                    {useDiscover ? t("productPicker.noTeamAll") : t("productPicker.noTeam")}
                   </Text>
                 ) : (
                   <>

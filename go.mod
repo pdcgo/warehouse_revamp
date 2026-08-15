@@ -1,4 +1,10 @@
-module github.com/pdcgo/warehouse_revamp/backend
+// The module is rooted at the REPOSITORY, not at backend/ — so a top-level tool (tools/san) is a
+// package of this module rather than a second module needing its own go.mod and a replace.
+//
+// Import paths are unaffected by that choice: the packages still live under backend/, so
+// github.com/pdcgo/warehouse_revamp/backend/pkgs/... resolves exactly as it did when the module
+// itself was named …/backend.
+module github.com/pdcgo/warehouse_revamp
 
 go 1.25.8
 
