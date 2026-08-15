@@ -85,25 +85,23 @@ export const PrefilledValueShowsItsName: Story = {
   },
 };
 
-// ⚠ FINDING — picking a supplier LEAVES THE FIELD BLANK, and this story is where it shows.
+// ⚠ THE REGRESSION GUARD for a bug these stories found: picking a supplier used to leave the field
+// BLANK.
 //
-// The selection itself is correct: `onChange` fires with the right id, which is what the readout
-// below asserts. What breaks is the DISPLAY TEXT, and the cause is a mismatch between two props:
+// The selection was always correct — `onChange` fired with the right id — but the DISPLAY TEXT
+// vanished, because two props disagreed:
 //
 //   itemToString → `${name} (${code})`      e.g. "PT Sumber Makmur (SUP-A)"
-//   filter       → name.includes(q) || code.includes(q)
+//   filter       → name.includes(q) || code.includes(q)      ← never looked at the label
 //
 // On selection the combobox writes itemToString back into the input, which re-runs the filter with
 // the WHOLE label as the query. No supplier's name contains "PT Sumber Makmur (SUP-A)" and no code
-// does either, so the collection empties and the selected id no longer resolves to a label.
+// does either, so the collection emptied and the selected id no longer resolved to a label — a field
+// reading blank while a supplier was in fact selected, the same symptom as #131. TeamSelect escaped
+// it only by accident: its label is the bare name, which its filter does match.
 //
-// That is the same class of bug as #131, which this component's own comments are largely about — a
-// field that reads blank while a supplier is in fact selected. TeamSelect escapes it only by
-// accident: its itemToString is the bare name, which its filter does match.
-//
-// The story asserts what is TRUE today rather than encoding the bug as correct. A fix belongs in the
-// component (make the filter accept its own label, or make itemToString the bare name), and is the
-// owner's call — see the note in the summary.
+// The filter now matches `itemText` as well, so this story asserts BOTH halves: the value round-trips
+// AND the name is on screen. Asserting only the value is what let the bug exist in the first place.
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState(0n);
@@ -123,10 +121,11 @@ export const Interactive: Story = {
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
-    // The value round-trips correctly …
+    // The value round-trips …
     await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(suppliers[0]!.id.toString()));
-    // … while the input that should be showing its name is empty. Change this assertion when the
-    // component is fixed — it is a tripwire, not an endorsement.
-    await expect(canvas.getByRole("combobox")).toHaveValue("");
+    // … and the picked supplier is READABLE in the field, which is the half that used to break.
+    await waitFor(() =>
+      expect(canvas.getByRole("combobox")).toHaveValue(`${suppliers[0]!.name} (${suppliers[0]!.code})`),
+    );
   },
 };

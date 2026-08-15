@@ -48,13 +48,25 @@ export function SupplierSelect({
     initialItems: [],
     itemToString: (s) => (s.code ? `${s.name} (${s.code})` : s.name),
     itemToValue: (s) => s.id.toString(),
-    // Match on name OR code — the combobox's default matcher only sees itemToString, and while that
-    // happens to contain both today, spelling the rule out keeps it true if the label ever changes.
-    filter: (_itemText, filterText, supplier) => {
+    // Match the item's OWN LABEL first, then name or code separately.
+    //
+    // ⚠ `itemText` is not redundant, and leaving it out was a real bug: on SELECTION the combobox
+    // writes itemToString back into the input, which re-runs this filter with the WHOLE label as the
+    // query. "PT Sumber Makmur (SUP-A)" is contained in neither the name nor the code, so the
+    // collection emptied, the selected id no longer resolved to a label, and the field went BLANK
+    // while a supplier was in fact selected — the same symptom as #131, arrived at from the other
+    // direction. TeamSelect escapes it only by accident: its label is the bare name.
+    //
+    // Name and code stay because they are what a person TYPES — nobody types the bracketed form.
+    filter: (itemText, filterText, supplier) => {
       const q = filterText.trim().toLowerCase();
       if (!q) return true;
 
-      return supplier.name.toLowerCase().includes(q) || supplier.code.toLowerCase().includes(q);
+      return (
+        itemText.toLowerCase().includes(q) ||
+        supplier.name.toLowerCase().includes(q) ||
+        supplier.code.toLowerCase().includes(q)
+      );
     },
   });
 

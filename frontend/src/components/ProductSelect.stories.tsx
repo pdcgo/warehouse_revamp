@@ -136,5 +136,12 @@ export const Interactive: Story = {
     await userEvent.click(option);
 
     await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(products[0]!.name));
+
+    // The picked product must also stay READABLE in the field — the half that broke in
+    // SupplierSelect. This picker searches SERVER-side, so on selection the label is written back
+    // into the input and searched for; the guard is that the field still shows it afterwards.
+    await waitFor(() =>
+      expect(input).toHaveValue(`${products[0]!.sku} — ${products[0]!.name}`),
+    );
   },
 };
