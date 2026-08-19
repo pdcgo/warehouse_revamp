@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, FileUpload, Flex, Icon, IconButton, Stack, Text } from "@chakra-ui/react";
 import { FileText, ImageIcon, Paperclip, X } from "lucide-react";
-import { documentClient, rpcError } from "../../../api/clients";
-import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
-import { toaster } from "../../../components/feedback/Toaster";
+import { documentClient, rpcError } from "../../api/clients";
+import { DocumentResourceType } from "../../gen/warehouse/document/v1/document_pb";
+import { toaster } from "../feedback/Toaster";
 
 // What the order carries: a REFERENCE to the uploaded document, not the file. Matches
 // warehouse.selling.v1.OrderReceipt exactly.

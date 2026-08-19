@@ -78,6 +78,8 @@ func teamToProto(team *team_service_models.Team) *teamv1.Team {
 		Description: team.Description,
 		Deleted:     team.Deleted,
 		ImageUrl:    team.ImageURL,
+
+		PriorityProduct: team.PriorityProduct,
 	}
 }
 
@@ -93,6 +95,10 @@ func teamRowItem(t *team_service_models.Team) *teamv1.TeamRowItem {
 		Description: t.Description,
 		Deleted:     t.Deleted,
 		ImageUrl:    t.ImageURL,
+
+		// Carried on the row so a picker that lists priority teams can read the flag off the same
+		// response it already paged, rather than a second per-team lookup.
+		PriorityProduct: t.PriorityProduct,
 	}
 }
 

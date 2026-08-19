@@ -34,6 +34,20 @@ export function InfoPanel({ order, teamId }: { order: Order; teamId: bigint | un
                 label={t("orders.shipping")}
                 value={<ShippingBadge code={order.shippingCode} />}
               />
+              {/* The MARKETPLACE'S own id, and only when there is one — it is the name the buyer and
+                  the storefront's support use, so whoever is on the phone about this order needs it
+                  readable rather than hunted for. An order taken by phone has none, and a blank row
+                  saying so would be a field reporting the ordinary case. */}
+              {order.orderExternalRefId !== "" && (
+                <Field
+                  label={t("orders.orderExternalRefId")}
+                  value={
+                    <Text fontSize="sm" data-testid="order-detail-external-ref">
+                      {order.orderExternalRefId}
+                    </Text>
+                  }
+                />
+              )}
             </SimpleGrid>
           </Stack>
         </Card.Body>

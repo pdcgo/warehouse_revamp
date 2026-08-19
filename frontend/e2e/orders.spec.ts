@@ -17,6 +17,9 @@ const SHOP_NAME = `E2E Order Shop ${SUFFIX}`;
 const SKU = `OP${SUFFIX}`;
 const PRODUCT_NAME = `E2E Order Product ${SUFFIX}`;
 const CUSTOMER = `E2E Customer ${SUFFIX}`;
+// The marketplace's own id for the order — shaped like one a storefront actually issues, and made
+// unique per run so the search that finds it cannot match a leftover from an earlier one.
+const MARKETPLACE_REF = `250815MP${SUFFIX}`;
 // An order names the warehouse that ships it (#72), so this spec creates its own rather than
 // depending on warehouses.spec.ts having run first.
 const WH_CODE = `OWH${SUFFIX}`.slice(0, 10);
@@ -80,8 +83,9 @@ async function tickProduct(page: Page, sku: string) {
     .filter({ hasText: sku });
   await expect(row).toHaveCount(1);
 
-  // The row IS the checkbox's label, so the click goes to its control — the row's centre lands on the
-  // product's name, and a label click there is not what Chakra's hidden input listens to.
+  // The click goes to the CONTROL, never the row's centre. In the table layout the centre lands on the
+  // product's name — a cell, not a label — and in the list layout a label click there is not what
+  // Chakra's hidden input listens to. The control is the one target that works in both.
   await row.locator('[data-part="control"]').click();
 }
 
@@ -293,13 +297,21 @@ test("Create: the form shows what the warehouse holds and refuses to over-draw (
   await addProducts(page, [SKU]);
   await expect(page.getByTestId("order-line-qty-0")).toHaveValue("1");
 
-  // THE WAREHOUSE IS THE CATALOGUE: the dialog lists what this building holds, so the seeded product
-  // is there and its ready figure comes from the same query the list was built from.
+  // THE CATALOGUE IS THE CATALOGUE: the dialog browses every team's products (AllProductPicker), and
+  // the chosen warehouse's figures ride along as columns — so the seeded product is there and its
+  // READY column reads what that building can actually ship.
   await page.getByTestId("order-create-add-line").click();
   await expect(page.getByTestId("product-picker-list")).toContainText(SKU);
   await expect(page.getByTestId("product-picker-list")).toContainText("50");
-  // And the tick that produced the line on the page behind is still ticked.
-  await expect(page.getByTestId("product-picker-count")).toContainText("1");
+  // And the tick that produced the line on the page behind is still ticked — read off the ROW, since
+  // the dialog no longer states a count.
+  await expect(
+    page
+      .getByTestId("product-picker-list")
+      .locator('[data-testid^="product-picker-option-"]')
+      .filter({ hasText: SKU })
+      .locator('input[type="checkbox"]'),
+  ).toBeChecked();
 
   // A term that matches nothing in the catalogue finds nothing here either — the search is resolved
   // against the catalogue and handed to the warehouse as a narrowing.
@@ -375,7 +387,11 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("order-create-subtotal")).toHaveText("Rp 0");
 
   // What the storefront took is a NOTE: typed here, stored on the order, and added to NOTHING.
-  await page.getByTestId("order-create-marketplace-total").fill("58000");
+  await page.getByTestId("order-marketplace-total").fill("58000");
+
+  // The MARKETPLACE'S own id for this order — typed beside the shop that took it, because that pair
+  // is what lets anybody find this order again on the storefront.
+  await page.getByTestId("order-external-ref-id").fill(MARKETPLACE_REF);
 
   // THE SHIPPING RECEIPT (owner): the courier's slip or the marketplace's PDF, attached to the order.
   // The bytes go to document_service the moment the file is picked — two phases, straight to storage
@@ -408,6 +424,9 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("order-detail-total")).toContainText("Rp 0");
   // The marketplace note survived onto the order, beside the total and not inside it.
   await expect(page.getByTestId("order-detail-marketplace-total")).toContainText("Rp 58.000");
+  // …and so did the storefront's own id for it, verbatim — the whole point of the field is that the
+  // number a buyer quotes is readable on the order they are asking about.
+  await expect(page.getByTestId("order-detail-external-ref")).toHaveText(MARKETPLACE_REF);
 
   // The receipt travelled with the order: the detail names the file and offers to open it. The
   // document itself is PRIVATE, so there is no URL on the page to assert — the button fetches a

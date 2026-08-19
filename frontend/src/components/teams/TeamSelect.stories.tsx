@@ -8,7 +8,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamSelect, description } from "./TeamSelect";
 
 const meta = {
-  title: "Components/Pickers/TeamSelect",
+  title: "Components/Teams/TeamSelect",
   component: TeamSelect,
   parameters: {
     docs: { description: { component: description } },
@@ -86,6 +86,69 @@ export const PrefilledValueShowsItsName: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByDisplayValue(teams[2]!.name)).toBeInTheDocument();
+  },
+};
+
+// The selected team reads `name [Type]` (owner) — the name with its type badge beside it, on one
+// line. The input keeps the name underneath (the story above), so this asserts on what is actually
+// SHOWN.
+export const SelectedShowsNameAndTypeBadge: Story = {
+  args: { value: teams[2]!.id },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const shown = within(await canvas.findByTestId("team-select-selected"));
+
+    await expect(shown.getByText(teams[2]!.name)).toBeVisible();
+    // The type badge — the half a bare name loses.
+    await expect(shown.getByText("Selling")).toBeVisible();
+
+    // The input still HOLDS the name (Zag and screen readers need it) but must not PAINT it —
+    // otherwise the name shows twice, once under the overlay and once in it.
+    const input = canvas.getByRole("combobox");
+    await expect(input).toHaveValue(teams[2]!.name);
+    await expect(getComputedStyle(input).color).toBe("rgba(0, 0, 0, 0)");
+  },
+};
+
+// The badge is the part that must survive a narrow field: a clipped badge would read as a DIFFERENT
+// team type, while a clipped name is still recognisably the team. The overlay is `overflow: hidden`,
+// so "it renders" is not the same as "it is readable".
+export const LongTeamNameKeepsTheBadge: Story = {
+  args: { value: teams[2]!.id },
+  render: (args) => (
+    <div style={{ width: "180px" }}>
+      <TeamSelect {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const overlay = await canvas.findByTestId("team-select-selected");
+    const badge = within(overlay).getByText("Selling");
+
+    await waitFor(() => {
+      const box = badge.getBoundingClientRect();
+      const bounds = overlay.getBoundingClientRect();
+
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.right).toBeLessThanOrEqual(bounds.right + 1);
+    });
+  },
+};
+
+// The overlay covers the input, so it has to get OUT OF THE WAY the moment somebody searches —
+// otherwise the picker looks like a field that refuses to accept typing.
+export const SelectedCardHidesWhileSearching: Story = {
+  args: { value: teams[2]!.id },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTestId("team-select-selected")).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("combobox"));
+
+    await waitFor(() => expect(canvas.queryByTestId("team-select-selected")).toBeNull());
   },
 };
 

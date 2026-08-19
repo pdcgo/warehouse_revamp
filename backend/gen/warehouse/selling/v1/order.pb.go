@@ -773,9 +773,24 @@ type Order struct {
 	//
 	// This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
 	// says which warehouse to deduct FROM.
-	WarehouseId   uint64 `protobuf:"varint,15,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WarehouseId uint64 `protobuf:"varint,15,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// THE MARKETPLACE'S OWN ID for this order — what the storefront calls it, read off the screen and
+	// typed in beside the shop that took it (owner).
+	//
+	// It is the only name this order has that a BUYER, a courier's dashboard or the marketplace's own
+	// support can be asked about: our `id` means nothing to any of them. So it is stored verbatim and
+	// never parsed — every marketplace formats its reference differently, and any structure we imposed
+	// would be a rule that the next storefront breaks.
+	//
+	// "" = there is no marketplace reference, which is the ordinary state of an order taken over the
+	// phone. Not "unknown": an order that never had one never will.
+	//
+	// ⚠ NOT unique, and nothing joins on it. It is evidence of where an order came from, not a key —
+	// whether two orders may share one is an open question (see the migration), and enforcing it before
+	// that is decided would refuse legitimate re-entry.
+	OrderExternalRefId string `protobuf:"bytes,21,opt,name=order_external_ref_id,json=orderExternalRefId,proto3" json:"order_external_ref_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -941,6 +956,13 @@ func (x *Order) GetWarehouseId() uint64 {
 	return 0
 }
 
+func (x *Order) GetOrderExternalRefId() string {
+	if x != nil {
+		return x.OrderExternalRefId
+	}
+	return ""
+}
+
 type OrderCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -972,6 +994,12 @@ type OrderCreateRequest struct {
 	// Capped at 2000 characters: long enough for the several sentences a difficult order really does
 	// need, short enough that the field cannot become a document store.
 	Note string `protobuf:"bytes,14,opt,name=note,proto3" json:"note,omitempty"`
+	// The marketplace's own id for this order, as the person read it off the storefront. Optional; ""
+	// is the ordinary case for an order taken over the phone. See Order.order_external_ref_id.
+	//
+	// Capped at 128 to match OrderDraft.external_id — the two hold the same kind of thing, and a
+	// reference that fits in a draft must fit in the order that draft becomes.
+	OrderExternalRefId string `protobuf:"bytes,16,opt,name=order_external_ref_id,json=orderExternalRefId,proto3" json:"order_external_ref_id,omitempty"`
 	// At least one line; `id` on each is ignored.
 	Items []*OrderItem `protobuf:"bytes,10,rep,name=items,proto3" json:"items,omitempty"`
 	// The delivery address, snapshotted onto the order. Optional — exactly as the free text it
@@ -1092,6 +1120,13 @@ func (x *OrderCreateRequest) GetReceipt() *OrderReceipt {
 func (x *OrderCreateRequest) GetNote() string {
 	if x != nil {
 		return x.Note
+	}
+	return ""
+}
+
+func (x *OrderCreateRequest) GetOrderExternalRefId() string {
+	if x != nil {
+		return x.OrderExternalRefId
 	}
 	return ""
 }
@@ -3064,7 +3099,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xf1\x05\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xa4\x06\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -3085,7 +3120,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x04cogs\x18\x10 \x01(\x03R\x04cogs\x12<\n" +
 	"\areceipt\x18\x13 \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12\x12\n" +
 	"\x04note\x18\x12 \x01(\tR\x04note\x12!\n" +
-	"\fwarehouse_id\x18\x0f \x01(\x04R\vwarehouseIdJ\x04\b\a\x10\bR\x10customer_address\"\xbf\x05\n" +
+	"\fwarehouse_id\x18\x0f \x01(\x04R\vwarehouseId\x121\n" +
+	"\x15order_external_ref_id\x18\x15 \x01(\tR\x12orderExternalRefIdJ\x04\b\a\x10\bR\x10customer_address\"\xfc\x05\n" +
 	"\x12OrderCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
 	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12*\n" +
@@ -3099,7 +3135,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x05total\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x05total\x124\n" +
 	"\x11marketplace_total\x18\r \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10marketplaceTotal\x12<\n" +
 	"\areceipt\x18\x0f \x01(\v2\".warehouse.selling.v1.OrderReceiptR\areceipt\x12\x1c\n" +
-	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12?\n" +
+	"\x04note\x18\x0e \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x04note\x12;\n" +
+	"\x15order_external_ref_id\x18\x10 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x12orderExternalRefId\x12?\n" +
 	"\x05items\x18\n" +
 	" \x03(\v2\x1f.warehouse.selling.v1.OrderItemB\b\xbaH\x05\x92\x01\x02\b\x01R\x05items\x12<\n" +
 	"\aaddress\x18\v \x01(\v2\".warehouse.selling.v1.OrderAddressR\aaddress:\v\x92\xb5\x18\a\n" +

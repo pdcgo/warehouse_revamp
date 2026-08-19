@@ -40,6 +40,9 @@ type orderPlacement struct {
 	total        int64
 	// A NOTE of what the marketplace took, never a term of the sum (owner). 0 = not recorded.
 	marketplaceTotal int64
+	// The marketplace's own id for this order, verbatim. "" = there is none, which is the ordinary
+	// state of an order taken over the phone.
+	orderExternalRefID string
 
 	items []*sellingv1.OrderItem
 
@@ -171,7 +174,10 @@ func (s *Service) placeOrder(
 			ShippingCost:      p.shippingCost,
 			Total:             p.total,
 			MarketplaceTotal:  p.marketplaceTotal,
-			Items:             orderItemModels(p.items),
+			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
+			// shape, never parsed.
+			OrderExternalRefID: p.orderExternalRefID,
+			Items:              orderItemModels(p.items),
 		}
 
 		// Stamp each line's cost and total it onto the header (#74). Done here rather than in

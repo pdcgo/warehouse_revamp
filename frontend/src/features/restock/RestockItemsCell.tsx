@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Span, Stack } from "@chakra-ui/react";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { ProductLinesPopover } from "../../components/entity/ProductLinesPopover";
-import type { ProductLine } from "../../components/entity/ProductLinesPopover";
+import { ProductLinesPopover } from "../../components/products/ProductLinesPopover";
+import type { ProductLine } from "../../components/products/ProductLinesPopover";
 import { askedQuantity } from "./summary";
 
 // The "what is in this restock" cell, shared by the selling list and the warehouse list (#105/#133).

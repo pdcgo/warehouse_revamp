@@ -21,7 +21,7 @@ const filled: AddressValue = {
 };
 
 const meta = {
-  title: "Components/Pickers/AddressPicker",
+  title: "Components/Customers/AddressPicker",
   component: AddressPicker,
   parameters: {
     docs: { description: { component: description } },

@@ -50,7 +50,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { UserSelect } from "../../components/pickers/UserSelect";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatUnixDateTime } from "../../lib/datetime";

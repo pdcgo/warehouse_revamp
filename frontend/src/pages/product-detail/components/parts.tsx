@@ -1,7 +1,7 @@
 import { Box, HStack, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { TeamSelect } from "../../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../../components/teams/TeamSelect";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../../lib/datetime";
 

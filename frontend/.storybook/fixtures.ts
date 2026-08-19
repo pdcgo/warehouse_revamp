@@ -7,14 +7,32 @@
 // Ids are deliberately small and distinct per entity kind (teams 1x, shops 2x, suppliers 3x …) so a
 // failure that shows an id makes it obvious which fixture leaked into the wrong picker.
 
+import { ExpenseKind } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 
 // ── Teams ───────────────────────────────────────────────────────────────────────────────────────
+//
+// ⚠ APPEND, never reorder: several stories index this positionally (`teams[1]!.teamCode`), so a new
+// team at the front would silently re-point every one of them at a different row.
 export const teams = [
-  { id: 11n, type: TeamType.WAREHOUSE, name: "Gudang Pusat", teamCode: "WH-01", description: "", deleted: false, imageUrl: "" },
-  { id: 12n, type: TeamType.SELLING, name: "Toko Melati", teamCode: "SL-01", description: "", deleted: false, imageUrl: "" },
-  { id: 13n, type: TeamType.SELLING, name: "Toko Kenanga", teamCode: "SL-02", description: "", deleted: false, imageUrl: "" },
+  { id: 11n, type: TeamType.WAREHOUSE, name: "Gudang Pusat", teamCode: "WH-01", description: "", deleted: false, imageUrl: "", priorityProduct: false },
+  { id: 12n, type: TeamType.SELLING, name: "Toko Melati", teamCode: "SL-01", description: "", deleted: false, imageUrl: "", priorityProduct: false },
+  // THE PRIORITY TEAM. Root has granted team 13 the priority-product feature, so its WHOLE catalogue
+  // is priority — which is what makes the picker's three tabs a real partition in a story rather than
+  // two populated tabs and an empty one.
+  { id: 13n, type: TeamType.SELLING, name: "Toko Kenanga", teamCode: "SL-02", description: "", deleted: false, imageUrl: "", priorityProduct: true },
+  // A SECOND warehouse, and it earns its place: the order list is read from both ends, so telling
+  // "the orders this team placed" apart from "the orders shipping from this building" needs an order
+  // whose two sides point at different buildings. With one warehouse in the fixtures, every order
+  // shipped from it and the two readings were indistinguishable.
+  { id: 14n, type: TeamType.WAREHOUSE, name: "Gudang Cabang", teamCode: "WH-02", description: "", deleted: false, imageUrl: "", priorityProduct: false },
+  // THE BIG CATALOGUE'S OWNER — an ORDINARY selling team, deliberately, so its 44 products land on the
+  // picker's "Other Product" tab rather than on My or Priority. Other is the tab carrying the most
+  // chrome above the rows (tabs + team filter + search + notices + the tick count), so it is the worst
+  // case for the dialog's overflow — which is the case worth being able to look at. See `anggrek` below.
+  { id: 15n, type: TeamType.SELLING, name: "Toko Anggrek", teamCode: "SL-03", description: "", deleted: false, imageUrl: "", priorityProduct: false },
 ];
 
 // ── Shops ───────────────────────────────────────────────────────────────────────────────────────
@@ -22,6 +40,9 @@ export const shops = [
   { id: 21n, teamId: 12n, name: "Melati Official", shopCode: "MEL-SHP", marketplace: Marketplace.SHOPEE, description: "", deleted: false },
   { id: 22n, teamId: 12n, name: "Melati Store", shopCode: "MEL-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", deleted: false },
   { id: 23n, teamId: 12n, name: "Melati Grosir", shopCode: "MEL-LAZ", marketplace: Marketplace.LAZADA, description: "", deleted: false },
+  // Kenanga's storefront, so the OTHER selling team's orders can name a shop that exists rather than
+  // a dangling id. Appended for the same reason as the team above.
+  { id: 24n, teamId: 13n, name: "Kenanga Official", shopCode: "KEN-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", deleted: false },
 ];
 
 // ── Suppliers ───────────────────────────────────────────────────────────────────────────────────
@@ -61,6 +82,69 @@ export const publicUsers = users.map((u) => ({
   avatarUrl: u.avatarUrl,
 }));
 
+// ── A CATALOGUE BIG ENOUGH TO OVERFLOW A DIALOG ─────────────────────────────────────────────────
+//
+// 44 products for team 15, which exist for ONE reason: four products can never show what a picker
+// does when the warehouse actually has a catalogue. With these, the picker's "Other Product" tab
+// holds 45 rows — so page 1 is FULL (ten rows, the picker's page size) and the LAST page is SHORT
+// (five), which is the pair of states the dialog's height behaviour has to be judged against.
+//
+// They are ordinary in every way that matters to a story: no stock and no cost (both maps below are
+// keyed by id, and an absent id is a real answer), so nothing that reads a warehouse changes shape.
+//
+// Two are deliberately awkward rather than filler:
+//   - a name far longer than the product column, for the `lineClamp` on ProductListItem;
+//   - a name SHORTER than its SKU, so the two lines are not always the same width down the page.
+const ANGGREK_NAMES = [
+  "Minyak Goreng Sawit 2L",
+  "Tepung Terigu Serbaguna 1kg",
+  "Gula Merah Cetak 500g",
+  "Garam Beryodium Halus 250g",
+  "Kecap Manis Botol 600ml",
+  "Saus Sambal Botol 340ml",
+  "Susu Kental Manis Kaleng 370g",
+  "Kopi Robusta Bubuk 200g",
+  "Teh Hijau Celup 25s",
+  "Mie Instan Goreng Karton",
+  "Biskuit Kelapa Kaleng 700g",
+  "Sabun Mandi Batang 4 pcs",
+  "Deterjen Bubuk 800g",
+  "Pewangi Pakaian Refill 900ml",
+  "Sikat Gigi Dewasa Sedang",
+  "Pasta Gigi Mint 190g",
+  "Tisu Wajah Kotak 250 lembar",
+  "Popok Bayi Perekat M 40s",
+  "Air Mineral Galon 19L",
+  "Beras Premium Pulen Karung 10kg",
+  "Kacang Tanah Kupas 500g",
+  "Santan Kelapa Instan 200ml",
+];
+
+const anggrek = ANGGREK_NAMES.flatMap((name, i) =>
+  // Two pack sizes per name — the way a real catalogue grows, and it keeps 22 readable names from
+  // having to become 44 invented ones.
+  (["Satuan", "Karton"] as const).map((pack, j) => ({
+    id: BigInt(700 + i * 2 + j),
+    teamId: 15n,
+    sku: `SKU-ANG-${String(i * 2 + j + 1).padStart(3, "0")}`,
+    name: `${name} — ${pack}`,
+    description: "",
+    categoryId: 54n,
+    defaultImageUrl: "",
+    defaultImageThumbnailUrl: "",
+    deleted: false,
+    crossMarkupBps: 0,
+    crossLocked: false,
+    reservedStock: 0,
+  })),
+);
+
+// The two awkward rows, patched in rather than appended, so they sit in the MIDDLE of a page instead
+// of at the end of the list where nothing renders beside them.
+anggrek[4]!.name =
+  "Paket Sembako Lengkap Isi 12 Item — Beras, Minyak, Gula, Tepung, Kecap, Sarden, Kopi dan Teh";
+anggrek[9]!.name = "Lada Bubuk";
+
 // ── Products ────────────────────────────────────────────────────────────────────────────────────
 export const products = [
   {
@@ -78,6 +162,20 @@ export const products = [
     description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
     deleted: false, crossMarkupBps: 150, crossLocked: false, reservedStock: 0,
   },
+  // ⚠ APPENDED, like the teams above — several stories index this list positionally.
+  //
+  // It belongs to team 12, which is an ORDINARY other team (13 is the priority one). That is what
+  // makes the picker's three tabs provable as a PARTITION: without a non-priority other-team product,
+  // "Other" and "Priority" would be indistinguishable from "everyone else" and "everyone else".
+  {
+    id: 74n, teamId: 12n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg",
+    description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
+    deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
+  },
+  // ⚠ LAST, and that is load-bearing rather than tidiness. The stub filters this array in order, so
+  // the four named products above keep the first rows of every page-1 they appear on — a story that
+  // ticks product 74 on the "Other" tab would otherwise have to page to find it.
+  ...anggrek,
 ];
 
 // ── Courier catalogue ───────────────────────────────────────────────────────────────────────────
@@ -127,4 +225,168 @@ export const regions = [
     desaCode: "3273021002", desaName: "Pajajaran",
     kodePos: "40173",
   },
+];
+
+// ── What the warehouse holds, and what it cost ──────────────────────────────────────────────────
+//
+// Keyed by product id, and BOTH maps describe ONE building — the warehouse team (11). Stock and HPP
+// are facts about a warehouse, not about a product, so a second warehouse gets its own map rather
+// than another column here; that is the same reason the order form re-reads both when the warehouse
+// changes.
+//
+// Product 73 belongs to ANOTHER team (13) and is on this warehouse's shelf anyway. That is not an
+// inconsistency — it is cross-team selling, and having it in the fixtures is what keeps the "whose
+// goods are these" column honest in a story.
+export const warehouseStock: Record<string, bigint> = {
+  "71": 40n,
+  // DELIBERATELY SMALL. The order form's short-stock state is unreachable without a line the
+  // warehouse cannot fill, so one fixture product is kept scarce on purpose.
+  "72": 3n,
+  "73": 12n,
+};
+
+// HPP, in whole rupiah.
+//
+// ⚠ 0 means UNKNOWN — the warehouse has no restock history for that product — never "free". Product
+// 73 carries a 0 deliberately, so a story can pin that the form renders it as unknown rather than
+// booking goods at no cost.
+export const productCosts: Record<string, bigint> = {
+  "71": 18500n,
+  "72": 9000n,
+  "73": 0n,
+};
+
+// ── Time ────────────────────────────────────────────────────────────────────────────────────────
+//
+// An order carries a REAL timestamp, resolved against the clock the story runs on, because the list
+// filters on a date WINDOW and a relative range ("last 30 days") is live by design — it stores the
+// day count, not resolved dates. A frozen epoch would slide out of every window as the calendar
+// moved, and the filter stories would start failing on the date rather than on a change.
+const DAY = 86_400;
+
+export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 1000) - days * DAY);
+
+// ── Orders ──────────────────────────────────────────────────────────────────────────────────────
+//
+// AN ORDER HAS TWO SIDES, and the order list is read from both (#151):
+//
+//   `teamId`      the SELLING team that placed it — what its own list shows
+//   `warehouseId` the WAREHOUSE it ships from — what that building's crew picks from
+//
+// The set below is built so those two readings genuinely differ, because that difference IS the
+// difference between the two versions of the screen:
+//
+//   Toko Melati (12)   placed 101–109. All ship from Gudang Pusat (11) except 107 and 109, which
+//                      ship from Gudang Cabang (14) — Melati sees those two, Gudang Pusat does not.
+//   Toko Kenanga (13)  placed 110–111, both shipping from Gudang Pusat — so Gudang Pusat sees two
+//                      orders belonging to a team whose own list Melati can never see.
+//
+// Two rows carry a job of their own:
+//
+//   108 is 120 DAYS OLD, and every quick range in the date picker tops out at 90 — so it is the row
+//       that proves a date window narrowed anything at all.
+//   107 is the only CANCELLED one, and it ships from the OTHER warehouse, which leaves Gudang Pusat
+//       with an empty Cancelled tab — the one state that says "no orders in THIS status" rather than
+//       "no orders". The 30-day money excludes it either way: a cancelled order is not a sale.
+export const orders = [
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, shippingCode: "jne", createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, shippingCode: "sicepat", createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, shippingCode: "jne", createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, shippingCode: "sicepat", createdAtUnix: daysAgo(6) },
+  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCELLED, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdAtUnix: daysAgo(8) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, shippingCode: "jne", createdAtUnix: daysAgo(1) },
+
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(2) },
+  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
+];
+
+// ── Order drafts ────────────────────────────────────────────────────────────────────────────────
+//
+// Only the SELLING team has any, and that is not an omission: a draft is a half-typed order, and a
+// warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
+// list differ there too — a number for Melati, a zero for Gudang Pusat.
+export const orderDrafts = [
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1) },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(2) },
+];
+
+// ── The daily statement's money ─────────────────────────────────────────────────────────────────
+//
+// Three sparse day-series, one per service the statement subtracts:
+//
+//   revenueDays      what a SELLING team's orders were expected to make   (revenue_service)
+//   settlementDays   what a WAREHOUSE charged the teams it serves         (settlement_service)
+//   expenseDays      what either of them spent                           (expense_service)
+//
+// SPARSE ON PURPOSE, and dated RELATIVE to the clock the story runs on — both because that is what
+// the RPCs actually return. The screen owns the date spine (lib/period.ts), so the fixtures exist to
+// prove it fills the gaps: five days of activity inside a rolling 30-day window means 25 quiet rows,
+// and "the 14th was quiet" versus "the 14th did not load" is the distinction the spine is for.
+//
+// Each series carries `ago` rather than a date, and the stub resolves it — a fixture holding a frozen
+// `2026-08-14` would slide out of the default window the moment the calendar moved past it, and the
+// statement stories would then fail on the date rather than on a change to the screen.
+
+/** `days` ago as the LOCAL `yyyy-mm-dd` the Daily RPCs bucket on — the same day the picker resolves. */
+export const dayKey = (days: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// Toko Melati's orders, four days of them inside the last fortnight.
+//
+// Day 2 is the one carrying an UNKNOWN COST (#74): its margin is counted as if those goods were free,
+// which is the case the screen has to warn about rather than quietly include.
+export const revenueDays = [
+  { teamId: 12n, ago: 1, orders: 4n, revenue: 1_200_000n, cogs: 700_000n, shippingCost: 60_000n, expectedMargin: 440_000n, unknownCostOrders: 0n },
+  { teamId: 12n, ago: 2, orders: 3n, revenue: 900_000n, cogs: 520_000n, shippingCost: 45_000n, expectedMargin: 335_000n, unknownCostOrders: 1n },
+  { teamId: 12n, ago: 5, orders: 2n, revenue: 500_000n, cogs: 300_000n, shippingCost: 30_000n, expectedMargin: 170_000n, unknownCostOrders: 0n },
+  // OUTSIDE "last 7 days", inside "last 30" — this row and the payroll on day 12 are what a narrowed
+  // window is proved by.
+  { teamId: 12n, ago: 9, orders: 1n, revenue: 250_000n, cogs: 150_000n, shippingCost: 15_000n, expectedMargin: 85_000n, unknownCostOrders: 0n },
+
+  // ⚠ OUTSIDE THE 30-DAY WINDOW ENTIRELY, and that is their whole job: they are invisible to the daily
+  // view and land in two OTHER months, so a monthly rollup that quietly covered only the recent weeks
+  // would show the same money as the daily one and look correct. Kept well under a year ago so they are
+  // inside the 12-month window whatever day of the year the story runs on.
+  { teamId: 12n, ago: 45, orders: 5n, revenue: 1_500_000n, cogs: 900_000n, shippingCost: 70_000n, expectedMargin: 530_000n, unknownCostOrders: 0n },
+  { teamId: 12n, ago: 200, orders: 2n, revenue: 600_000n, cogs: 350_000n, shippingCost: 35_000n, expectedMargin: 215_000n, unknownCostOrders: 0n },
+];
+
+// Gudang Pusat's ledger, by source.
+//
+// ⚠ COD DWARFS THE HANDLING FEES, deliberately: a warehouse handles far more of the courier's cash
+// than it earns, so a screen that counted COD as income would report roughly three times the profit
+// it made. The statement excludes it and says why — this fixture is what makes that assertable.
+export const settlementDays = [
+  { teamId: 11n, ago: 1, handlingFee: 500_000n, codFee: 1_200_000n },
+  { teamId: 11n, ago: 3, handlingFee: 400_000n, codFee: 800_000n },
+  { teamId: 11n, ago: 8, handlingFee: 200_000n, codFee: 0n },
+];
+
+// What each team spent, one record per kind per day — so the stub derives both the day's total and
+// its entry count from this map alone, and narrowing by kind is exactly dropping the other keys.
+//
+// The SELLING team has no stock loss and the WAREHOUSE does, which is not a detail of the fixture but
+// of the system: inventory posts every write-off against the warehouse's own team (#211). It is what
+// makes the summary's "of which … stock written off" line appear on one statement and not the other.
+export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, bigint> }[] = [
+  { teamId: 12n, ago: 2, byKind: { [ExpenseKind.ADS]: 250_000n } },
+  { teamId: 12n, ago: 5, byKind: { [ExpenseKind.ADS]: 180_000n, [ExpenseKind.OPERATIONAL]: 320_000n } },
+  // NOTHING WAS SOLD THAT DAY, and payroll went out anyway — the row that proves a day can be a loss
+  // with no income series on it at all.
+  { teamId: 12n, ago: 12, byKind: { [ExpenseKind.PAYROLL]: 200_000n } },
+  // The spending half of the two out-of-window months above — a rollup has to carry both sides of the
+  // subtraction back, not just the income.
+  { teamId: 12n, ago: 45, byKind: { [ExpenseKind.OPERATIONAL]: 400_000n } },
+  { teamId: 12n, ago: 200, byKind: { [ExpenseKind.ADS]: 120_000n } },
+
+  { teamId: 11n, ago: 1, byKind: { [ExpenseKind.STOCK_LOSS]: 90_000n } },
+  { teamId: 11n, ago: 3, byKind: { [ExpenseKind.OPERATIONAL]: 500_000n, [ExpenseKind.STOCK_LOSS]: 40_000n } },
+  { teamId: 11n, ago: 8, byKind: { [ExpenseKind.PAYROLL]: 100_000n } },
 ];

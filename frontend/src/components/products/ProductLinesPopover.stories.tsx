@@ -10,7 +10,7 @@ const lines: ProductLine[] = [
 ];
 
 const meta = {
-  title: "Components/Entity/ProductLinesPopover",
+  title: "Components/Products/ProductLinesPopover",
   component: ProductLinesPopover,
   parameters: {
     docs: { description: { component: description } },

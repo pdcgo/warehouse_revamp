@@ -42,7 +42,7 @@ import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { UserSelect } from "../../components/pickers/UserSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useBlocker, useNavigate } from "react-router-dom";
+import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -16,31 +16,38 @@ import {
   IconButton,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { ArrowLeft, FileClock, PackagePlus } from "lucide-react";
+import { ArrowLeft, FileClock } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useCreateOrder } from "../../features/orders/queries";
-import { usePushOrderDraft, useUpdateOrderDraft } from "../../features/orderDrafts/queries";
+import {
+  useOrderDraft,
+  usePushOrderDraft,
+  useUpdateOrderDraft,
+} from "../../features/orderDrafts/queries";
 import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
-import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import {
+  MarketplaceInfoForm,
+  emptyMarketplaceInfo,
+} from "../../components/orders/MarketplaceInfoForm";
+import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { ProductPicker } from "../../components/pickers/ProductPicker";
-import type { PickedProduct } from "../../components/pickers/ProductSelect";
-import { AddressPicker, emptyAddress } from "../../components/pickers/AddressPicker";
-import type { AddressValue } from "../../components/pickers/AddressPicker";
+import { OrderItemCard } from "../../components/orders/OrderItemCard";
+import { ProductListExternal } from "../../components/products/ProductListExternal";
+import type { ExternalProduct } from "../../components/products/ProductListExternal";
+import type { PickedProduct } from "../../components/products/ProductSelect";
+import { emptyAddress } from "../../components/customers/AddressPicker";
+import type { AddressValue } from "../../components/customers/AddressPicker";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { OrderLineRow } from "../../features/orders/OrderLineRow";
-import { CustomerShipping } from "../../features/orders/CustomerShipping";
+import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { OrderTotals } from "../../features/orders/OrderTotals";
-import { MarketplaceTotal } from "./components/MarketplaceTotal";
-import { ReceiptUpload, emptyReceipt, hasReceipt } from "./components/ReceiptUpload";
-import type { ReceiptValue } from "./components/ReceiptUpload";
+import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
+import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
 import type { LineDraft } from "../../features/orders/lines";
 import {
   canSubmit,
@@ -64,6 +71,18 @@ function addressTouched(a: AddressValue): boolean {
 // must be as identifiable as the rest rather than borrowing an app's name or leaving it blank.
 const DRAFT_SOURCE = "manual";
 
+// `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
+// number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
+// answer for a mistyped link and for an absent parameter alike. `BigInt("x")` throws, so this cannot
+// be a bare cast.
+function parseDraftId(raw: string | null): bigint {
+  if (raw === null || !/^\d+$/.test(raw)) {
+    return 0n;
+  }
+
+  return BigInt(raw);
+}
+
 // OrderCreatePage is the selling-side "place an order" form (#90), a dedicated PAGE (like the product
 // editor) because it carries a dynamic list of lines.
 //
@@ -81,10 +100,42 @@ export function OrderCreatePage() {
 
   const teamId = current?.teamId;
 
+  // ── WHAT THE EXTENSION SENT ──────────────────────────────────────────────────────────────────────
+  //
+  // `/orders/new?draft=201` opens this form ALONGSIDE the draft a browser extension pushed in, so the
+  // person types the order while reading the marketplace's own words. Without the id the parameter is
+  // absent, the query never runs, and the form is exactly what it was — a hand-written order has no
+  // extension behind it and must not show a card claiming one.
+  //
+  // ⚠ IT IS READ-ONLY HERE, and nothing on it is copied into the form. The scraped text names no
+  // product of ours (`OrderDraftItem.product_id` is 0 until a person maps it), so there is nothing to
+  // prefill with — auto-picking a catalogue product by matching titles is exactly what the draft
+  // design refused, because a wrong guess is indistinguishable from a person's choice once it is in
+  // the form. Reading the lines and picking the products is the human act, and this card is the half
+  // being read from.
+  const [searchParams] = useSearchParams();
+  const externalDraftId = parseDraftId(searchParams.get("draft"));
+  const externalDraft = useOrderDraft({ teamId, draftId: externalDraftId });
+
+  const externalItems: ExternalProduct[] = useMemo(
+    () =>
+      (externalDraft.data?.items ?? []).map((item) => ({
+        id: item.id,
+        name: item.externalName,
+        price: item.unitPrice,
+        quantity: item.quantity,
+      })),
+    [externalDraft.data],
+  );
+
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
-  const [shopId, setShopId] = useState<bigint>(0n);
+  // The marketplace side of the order — WHICH storefront sold it, and what THAT storefront calls it.
+  // One piece of state because they are one fact: a shop with no reference cannot be looked up again,
+  // and a reference with no shop has nowhere to be looked up in.
+  const [marketplace, setMarketplace] = useState<MarketplaceInfoValue>(emptyMarketplaceInfo);
+  const shopId = marketplace.shopId;
 
   // Which warehouse fulfils this order (#72). REQUIRED: from #69 the order takes its stock out of this
   // warehouse the moment it is placed, so the form cannot submit without one.
@@ -105,9 +156,6 @@ export function OrderCreatePage() {
   // "deliver after 5pm", "wrap the glass one", "second attempt, the first parcel came back" are
   // instructions to a HUMAN, and no dropdown ever fits the case actually in front of them.
   const [note, setNote] = useState("");
-
-  // What the storefront actually took — a NOTE (owner), stored and never summed into anything.
-  const [marketplaceTotal, setMarketplaceTotal] = useState("0");
 
   // Starts EMPTY, not with a blank line. Lines arrive by picking products, so a placeholder row with
   // no product would be a row you cannot remove and cannot use — the same conclusion the restock form
@@ -206,10 +254,6 @@ export function OrderCreatePage() {
     setLines((prev) => prev.filter((l) => l.productId !== productId));
   }
 
-  // What the picker shows as ticked. Derived from the lines, never stored beside them — two copies of
-  // "which products are on this order" is how a tick and a row start disagreeing.
-  const pickedIds = useMemo(() => lines.map((l) => l.productId), [lines]);
-
   const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + lineTotal(l, costs), 0n),
     [lines, costs],
@@ -236,11 +280,12 @@ export function OrderCreatePage() {
     customerName.trim() !== "" ||
     customerPhone.trim() !== "" ||
     shopId > 0n ||
+    marketplace.orderExternalRefId.trim() !== "" ||
     shippingCode !== "" ||
     note.trim() !== "" ||
     hasReceipt(receipt) ||
     addressTouched(address) ||
-    toRupiah(marketplaceTotal) > 0n ||
+    toRupiah(marketplace.marketplaceTotal) > 0n ||
     lines.length > 0;
 
   // A half-typed order is real work — several lines, an address, a customer on the phone — and a
@@ -283,7 +328,10 @@ export function OrderCreatePage() {
         // omitted, so the request still states every term of the money it is placing.
         shippingCost: 0n,
         total,
-        marketplaceTotal: toRupiah(marketplaceTotal),
+        marketplaceTotal: toRupiah(marketplace.marketplaceTotal),
+        // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
+        // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
+        orderExternalRefId: marketplace.orderExternalRefId.trim(),
         items: lines.map((l) => ({
           id: 0n,
           productId: l.productId,
@@ -458,7 +506,7 @@ export function OrderCreatePage() {
                and the warehouse decides what the stock figures on the lines even mean.
             2. WHAT IS BEING SOLD — the lines. The subject of the order, and the part that grows.
             3. WHERE IT GOES, and BESIDE IT the parcel and the person — the address on the left
-               (owner), the shipping receipt and Customer & shipping stacked on the right.
+               (owner), the shipping receipt and the customer stacked on the right.
 
           The RIGHT column is the NOTE and what it all comes to (owner) — the two things that
           belong beside the order rather than inside it.
@@ -487,10 +535,14 @@ export function OrderCreatePage() {
             <Card.Root>
               <Card.Body>
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
-                  <Field.Root required>
-                    <Field.Label>{t("orders.shop")}</Field.Label>
-                    <ShopSelect teamId={teamId ?? 0n} value={shopId} onChange={setShopId} />
-                  </Field.Root>
+                  {/* The shop AND the marketplace's own order id, as one block — the storefront and
+                      its reference are the pair that says WHICH order this is. */}
+                  <MarketplaceInfoForm
+                    teamId={teamId ?? 0n}
+                    value={marketplace}
+                    onChange={setMarketplace}
+                    required
+                  />
 
                   {/* Which warehouse ships it (#72) — and therefore which building's shelves every
                       line below is measured against. Changing it re-reads all of them. */}
@@ -512,158 +564,70 @@ export function OrderCreatePage() {
 
           {/* ── WHAT IS BEING SOLD ────────────────────────── left column, right under the two above ── */}
           <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 2 }}>
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Flex align="center" gap="card" wrap="wrap">
-                    <Text fontWeight="medium">{t("orders.items")}</Text>
+            <Stack gap="section">
+              {/* ── WHAT THE EXTENSION SENT ── ABOVE the picker, and only when there is a draft ──
 
-                    {/* Picking is a DIALOG, as it is on a restock request (#165) — several products
-                        at once, searchable, with what the warehouse holds on every row. There is no
-                        per-line product control: swapping one product for another is untick, tick.
+                  ⚠ THE ORDER OF THESE TWO IS THE POINT (owner). This is the text being worked FROM
+                  and the picker below is the work — so the screen reads top to bottom: the
+                  marketplace's own words first, our catalogue second. Under the picker it would be a
+                  footnote to lines somebody had already chosen, which is the one position where it
+                  cannot help them choose.
 
-                        `readyLens="available"` is the load-bearing prop. The default lens answers
-                        "what do I own here", which is right when BUYING and wrong when selling — an
-                        order draws whatever is on the shelf, so the owned figure would show 0 for
-                        stock this order would happily take. */}
-                    <ProductPicker
-                      // THE WAREHOUSE IS THE CATALOGUE (owner). Only what this building actually holds
-                      // is offered — an out-of-stock product is not something it can sell, and listing
-                      // one only for the form to refuse it later wastes the click.
-                      //
-                      // This replaces the My/Other tabs: the paging now lives in inventory_service,
-                      // which knows what is on a shelf and nothing about whose catalogue a product
-                      // belongs to. Cross-team selling still works — another team's goods sitting in
-                      // this warehouse are in the list like any other, with their owner on the row.
-                      stockedOnly
-                      teamId={teamId ?? 0n}
-                      stockWarehouseId={warehouseId > 0n ? warehouseId : undefined}
-                      // NO WAREHOUSE, NO PICKING (owner). Every figure that makes a product pickable —
-                      // what is on the shelf, what it cost — is a fact about ONE BUILDING, so browsing
-                      // before naming one produces a list where nothing can be judged. Refusing the
-                      // dialog is kinder than opening it full of blanks.
-                      disabled={warehouseId <= 0n}
-                      value={pickedIds}
-                      onChange={pickProducts}
-                      trigger={
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          disabled={warehouseId <= 0n}
-                          data-testid="order-create-add-line"
-                        >
-                          <Icon as={PackagePlus} boxSize="4" />
-                          {t("orders.addLine")}
-                        </Button>
-                      }
-                    />
+                  It is its own card rather than a panel inside the items card, because that card is
+                  OUR data: a scraped title sharing its border is a scraped title that looks endorsed.
 
-                    {/* WHY it is disabled, beside the disabled thing. A greyed-out button with no
-                        explanation is the worst state a form can be in: the person cannot tell a
-                        broken screen from one waiting on them. */}
-                    {warehouseId <= 0n && (
-                      <Text fontSize="sm" color="orange.fg" data-testid="order-create-need-warehouse">
-                        {t("orders.pickWarehouseFirst")}
-                      </Text>
-                    )}
-                  </Flex>
+                  It renders NOTHING without `?draft=`, so a hand-written order is the form it always
+                  was — and the Stack collapses to a single child, leaving the grid untouched. */}
+              {externalItems.length > 0 && (
+                <ProductListExternal
+                  items={externalItems}
+                  source={externalDraft.data?.source}
+                  showTotal
+                />
+              )}
 
-                  {lines.length === 0 && (
-                    <Text fontSize="sm" color="fg.muted" data-testid="order-create-no-products">
-                      {t("orders.noProducts")}
-                    </Text>
-                  )}
-
-                  {/* A TABLE, not a stack of cards (owner). Lines are the same five facts repeated,
-                      so the quantities line up in a column, the money lines up in a column, and the
-                      HPP has somewhere to belong instead of floating between two inputs.
-
-                      It scrolls inside its own box: six columns on a phone would otherwise push the
-                      whole page sideways. */}
-                  {lines.length > 0 && (
-                    <Box overflowX="auto">
-                      <Table.Root size="sm" data-testid="order-lines-table">
-                        <Table.Header>
-                          <Table.Row>
-                            <Table.ColumnHeader>{t("orders.product")}</Table.ColumnHeader>
-                            <Table.ColumnHeader textAlign="end">{t("orders.inStock")}</Table.ColumnHeader>
-                            <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
-                            <Table.ColumnHeader textAlign="end">{t("orders.hpp")}</Table.ColumnHeader>
-                            <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
-                            <Table.ColumnHeader />
-                          </Table.Row>
-                        </Table.Header>
-
-                        <Table.Body>
-                          {lines.map((line, i) => (
-                            <OrderLineRow
-                              key={line.productId.toString()}
-                              index={i}
-                              line={line}
-                              stock={lineStock(line, stock)}
-                              costs={costs}
-                              onPatch={(patch) => patchLine(line.productId, patch)}
-                              onRemove={() => removeLine(line.productId)}
-                            />
-                          ))}
-                        </Table.Body>
-                      </Table.Root>
-                    </Box>
-                  )}
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+              {/* The picker and the lines table, as one card — `OrderItemCard`. The page keeps the
+                  STATE (the lines, and the reconciliation a ticked set needs) because the page is
+                  what submits it; the card owns the arrangement the two facts are read in. */}
+              <OrderItemCard
+                teamId={teamId ?? 0n}
+                warehouseId={warehouseId}
+                lines={lines}
+                stock={stock}
+                costs={costs}
+                onPick={pickProducts}
+                onPatch={patchLine}
+                onRemove={removeLine}
+              />
+            </Stack>
           </GridItem>
 
-          {/* ── WHERE IT GOES, WHAT WAS HANDED OVER, WHO IT IS FOR ── left column, two abreast ──
+          {/* ── WHO IT IS FOR, WHERE IT GOES, WHAT WAS HANDED OVER ───── ONE CARD (owner) ──
 
-                ┌ Delivery address ┐ ┌ Shipping receipt ───┐
-                │  (four rungs +   │ ├ Customer & shipping ┤
-                │   street)        │ └─────────────────────┘
-                └──────────────────┘
+                ┌ Customer ─────────┬ Address ──────────────┐
+                │  name, phone      │  four rungs + street  │
+                ├ Shipping receipt ─┤                       │
+                │  courier, code, slip                      │
+                └───────────────────┴───────────────────────┘
 
-              The receipt sits beside the address because both describe the PARCEL: what was handed
-              to the courier, going to that place. */}
+              All three are one answer, given by one person in one breath, so they are one card and
+              the page no longer arranges them — `CustomerInfoForm` owns the grid. What this page still
+              owns is the STATE: the receipt is a reference to a document already uploaded, and the
+              courier is a code, and both are submitted with the order. */}
           <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 3 }}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap="section" alignItems="start">
-              {/* NOT required: nothing here gates the Create button (#118). */}
-              <Card.Root>
-                <Card.Body>
-                  <Stack gap="card">
-                    <Text fontWeight="medium">{t("orders.deliveryAddress")}</Text>
-                    <AddressPicker value={address} onChange={setAddress} />
-                  </Stack>
-                </Card.Body>
-              </Card.Root>
-
-              {/* ONE CONTAINER for the second column (owner): the receipt, then the customer,
-                  stacked — so the column starts level with the address and grows down it instead of
-                  waiting for the address to end.
-
-                  Both of these are short cards and the address is a four-rung cascade, so any
-                  arrangement that gave them their own grid ROWS left a tall hole beside the address.
-                  Stacked, the two of them are roughly the address's height and the row closes. */}
-              <Stack gap="section">
-                <Card.Root>
-                  <Card.Body>
-                    <Stack gap="card">
-                      <Text fontWeight="medium">{t("orders.receipt")}</Text>
-                      <ReceiptUpload teamId={teamId ?? 0n} value={receipt} onChange={setReceipt} />
-                    </Stack>
-                  </Card.Body>
-                </Card.Root>
-
-                <CustomerShipping
-                  customerName={customerName}
-                  onCustomerNameChange={setCustomerName}
-                  customerPhone={customerPhone}
-                  onCustomerPhoneChange={setCustomerPhone}
-                  shippingCode={shippingCode}
-                  onShippingCodeChange={setShippingCode}
-                />
-              </Stack>
-            </SimpleGrid>
+            <CustomerInfoForm
+              customerName={customerName}
+              onCustomerNameChange={setCustomerName}
+              customerPhone={customerPhone}
+              onCustomerPhoneChange={setCustomerPhone}
+              address={address}
+              onAddressChange={setAddress}
+              teamId={teamId ?? 0n}
+              receipt={receipt}
+              onReceiptChange={setReceipt}
+              shippingCode={shippingCode}
+              onShippingCodeChange={setShippingCode}
+            />
           </GridItem>
 
           {/* ── WHAT IT COMES TO, AND ANYTHING ELSE ──────────────── right column, and it STICKS ──
@@ -690,7 +654,7 @@ export function OrderCreatePage() {
               <Card.Root>
                 <Card.Body>
                   <Stack gap="card">
-                    <Text fontWeight="medium">{t("orders.note")}</Text>
+                    <Heading as="h3" size="sm">{t("orders.note")}</Heading>
 
                     <Field.Root>
                       <Textarea
@@ -706,11 +670,6 @@ export function OrderCreatePage() {
                   </Stack>
                 </Card.Body>
               </Card.Root>
-
-              {/* What the storefront took — its OWN card (owner), between the note and the totals.
-                  It is a record of the sale, not a term of the sum, and standing outside the totals
-                  card is what says so without a paragraph of help text. */}
-              <MarketplaceTotal value={marketplaceTotal} onChange={setMarketplaceTotal} />
 
               {/* THE TWO EXITS, SIDE BY SIDE (owner) — equal columns, draft on the left.
 

@@ -69,9 +69,9 @@ export const listQuery = {
 // screen, and a stale courier name is a cosmetic problem where a stale stock count is not — so this is
 // the one place the always-fresh default is bought out, deliberately and by name.
 //
-// Only reaches TanStack-backed feeds. `CategorySelect`, `SupplierSelect`, `RackSelect`,
-// `ProductPicker` and the courier catalogue run their own `useEffect`/session caches and never saw
-// `staleTime` at all — see features/shipping/catalogue.ts.
+// Only reaches TanStack-backed feeds. `CategorySelect`, `SupplierSelect`, `RackSelect`, the four
+// product pickers (they share `ProductPickerShell`) and the courier catalogue run their own
+// `useEffect`/session caches and never saw `staleTime` at all — see features/shipping/catalogue.ts.
 export const referenceQuery = {
   staleTime: 5 * 60_000,
 } as const;

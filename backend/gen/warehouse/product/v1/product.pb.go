@@ -1271,9 +1271,33 @@ type ProductDiscoverRequest struct {
 	//
 	// Set alongside `exclude_own_team` it simply intersects — naming your OWN team while excluding it
 	// returns nothing, which is the honest answer to a contradictory ask rather than an error.
-	OwnerTeamId   uint64 `protobuf:"varint,7,opt,name=owner_team_id,json=ownerTeamId,proto3" json:"owner_team_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OwnerTeamId uint64 `protobuf:"varint,7,opt,name=owner_team_id,json=ownerTeamId,proto3" json:"owner_team_id,omitempty"`
+	// ── The PRIORITY partition ──────────────────────────────────────────────────────────────────
+	//
+	// Two lists of owning teams, one keeping and one dropping. They exist as a PAIR because the
+	// picker's *Priority Product* and *Other Product* tabs are two halves of one partition: priority is
+	// a flag on the TEAM (see warehouse.team.v1.Team.priority_product), so the caller reads the
+	// priority team ids once and then asks for the two complementary slices.
+	//
+	//	Priority tab   owner_team_ids         = [the priority teams]
+	//	Other tab      exclude_owner_team_ids = [the priority teams]
+	//
+	// ⚠ IDS RATHER THAN A `priority` BOOLEAN ON THIS REQUEST, and that is not indirection for its own
+	// sake. product_service does not own `teams` and must not join to it (HARD RULE 3 — services stay
+	// independent), so it cannot answer "whose owner has the feature". Handed a list of team ids it can
+	// answer perfectly, and it never has to learn what the list means. The flag stays in exactly one
+	// place, and the two services keep their own schemas.
+	//
+	// ⚠ AN EMPTY LIST IS NO NARROWING, on both. A caller whose priority set is genuinely empty must
+	// render nothing itself rather than sending `owner_team_ids: []` — which would return the whole
+	// catalogue and read, on the Priority tab, as "everything is priority".
+	//
+	// Both intersect with `owner_team_id` and `exclude_own_team` rather than overriding them; a
+	// contradictory ask returns nothing, which is the honest answer.
+	OwnerTeamIds        []uint64 `protobuf:"varint,8,rep,packed,name=owner_team_ids,json=ownerTeamIds,proto3" json:"owner_team_ids,omitempty"`
+	ExcludeOwnerTeamIds []uint64 `protobuf:"varint,9,rep,packed,name=exclude_owner_team_ids,json=excludeOwnerTeamIds,proto3" json:"exclude_owner_team_ids,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ProductDiscoverRequest) Reset() {
@@ -1353,6 +1377,20 @@ func (x *ProductDiscoverRequest) GetOwnerTeamId() uint64 {
 		return x.OwnerTeamId
 	}
 	return 0
+}
+
+func (x *ProductDiscoverRequest) GetOwnerTeamIds() []uint64 {
+	if x != nil {
+		return x.OwnerTeamIds
+	}
+	return nil
+}
+
+func (x *ProductDiscoverRequest) GetExcludeOwnerTeamIds() []uint64 {
+	if x != nil {
+		return x.ExcludeOwnerTeamIds
+	}
+	return nil
 }
 
 type ProductDiscoverResponse struct {
@@ -2260,7 +2298,7 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x13ProductListResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xac\x03\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xad\x04\n" +
 	"\x16ProductDiscoverRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12?\n" +
 	"\x06filter\x18\x02 \x01(\v2'.warehouse.product.v1.ProductListFilterR\x06filter\x12?\n" +
@@ -2268,7 +2306,9 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2).warehouse.product.v1.ProductListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page\x12(\n" +
 	"\x10exclude_own_team\x18\x06 \x01(\bR\x0eexcludeOwnTeam\x12\"\n" +
-	"\rowner_team_id\x18\a \x01(\x04R\vownerTeamId:\v\x92\xb5\x18\a\n" +
+	"\rowner_team_id\x18\a \x01(\x04R\vownerTeamId\x127\n" +
+	"\x0eowner_team_ids\x18\b \x03(\x04B\x11\xbaH\x0e\x92\x01\v\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\fownerTeamIds\x12F\n" +
+	"\x16exclude_owner_team_ids\x18\t \x03(\x04B\x11\xbaH\x0e\x92\x01\v\x10\xc8\x01\x18\x01\"\x042\x02 \x00R\x13excludeOwnerTeamIds:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x03\x04\x05\"\xac\x01\n" +
 	"\x17ProductDiscoverResponse\x12C\n" +
 	"\x05items\x18\x01 \x03(\v2-.warehouse.product.v1.ProductListResponseItemR\x05items\x12\x10\n" +

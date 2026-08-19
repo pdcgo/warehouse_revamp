@@ -28,7 +28,7 @@ import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_requ
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DamageTypeSelect } from "../../components/pickers/DamageTypeSelect";
-import { ProductListItem } from "../../components/entity/ProductListItem";
+import { ProductListItem } from "../../components/products/ProductListItem";
 import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { toaster } from "../../components/feedback/Toaster";

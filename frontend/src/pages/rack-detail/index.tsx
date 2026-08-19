@@ -23,7 +23,7 @@ import { productByIdsRowData, productsFromByIds } from "../../features/products/
 import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { Pagination } from "../../components/chrome/Pagination";
-import { ProductListItem } from "../../components/entity/ProductListItem";
+import { ProductListItem } from "../../components/products/ProductListItem";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";

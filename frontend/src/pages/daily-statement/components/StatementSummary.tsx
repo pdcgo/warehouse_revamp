@@ -8,37 +8,47 @@ import type { RevenueTotals } from "../../../gen/warehouse/revenue/v1/revenue_pb
 import type { SettlementDailyTotals } from "../../../gen/warehouse/settlement/v1/settlement_pb";
 import { SettlementSourceType } from "../../../gen/warehouse/settlement/v1/settlement_pb";
 import { formatRupiah } from "../../../lib/money";
+import type { PeriodGrain } from "../../../lib/period";
 import type { StatementMode } from "../queries";
 
 export interface StatementSummaryProps {
   mode: StatementMode;
+  /** Which unit the average below is per — the table's row grain, so the two agree. */
+  grain: PeriodGrain;
   /** The period's income: expected margin (selling) or handling fees (warehouse). */
   income: bigint;
   revenue: RevenueTotals | undefined;
   settlement: SettlementDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
-  /** How many days the period covers — the divisor for the per-day average. */
-  days: number;
+  /** How many BUCKETS the period covers — the divisor for the per-period average. */
+  buckets: number;
   loading: boolean;
 }
 
-// The period's arithmetic, above the day-by-day table.
+// The period's arithmetic, above the table.
 //
 // SHOWN AS ARITHMETIC — numbers with the operator between them, rather than a lone bottom line. A profit
 // figure whose inputs are not on the same screen is a number nobody can check, and here the inputs are
 // also the columns the table below is made of, so the header and the rows explain each other.
 //
-// Every figure is the SERVER's, over the whole period. Nothing here re-sums the rows.
+// Every figure is the SERVER's, over the whole period. Nothing here re-sums the rows — the ONE exception
+// is the average, which is a division of two server figures rather than a sum of the table.
 export function StatementSummary({
   mode,
+  grain,
   income,
   revenue,
   settlement,
   expenses,
-  days,
+  buckets,
   loading,
 }: StatementSummaryProps) {
   const { t } = useTranslation();
+
+  // "day" / "days" / "bulan" — the grain's noun, agreeing with a count. One helper rather than a
+  // singular and a plural key per grain: English needs the agreement, Indonesian does not, and this is
+  // the one shape that is right in both without the copy knowing which language it is in.
+  const unit = (count: number) => t(`statement.unit.${grain}`, { count });
 
   const spent = expenses?.total ?? 0n;
   const profit = income - spent;
@@ -46,14 +56,20 @@ export function StatementSummary({
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
   const codFees = settlement?.bySource[SettlementSourceType.COD_FEE] ?? 0n;
 
-  // A DAILY AVERAGE, because that is the number a daily statement is for: "we clear about 400.000 a day"
-  // is a sentence somebody can act on, where a period total is only comparable against another period of
-  // the same length. Divided by the days in the RANGE, not by the days that traded — a quiet Sunday is
-  // part of the week's average, not an absence from it.
+  // AN AVERAGE PER ROW, because that is the number a statement is for: "we clear about 400.000 a day" is
+  // a sentence somebody can act on, where a period total is only comparable against another period of
+  // the same length.
+  //
+  // ⚠ IT FOLLOWS THE GRAIN, and it has to: over twelve monthly rows the useful sentence is "about 9
+  // million a month", and a per-DAY figure sitting above a per-MONTH table is two different units in one
+  // header with nothing saying which is which.
+  //
+  // Divided by the buckets in the RANGE, not by the ones that traded — a quiet Sunday is part of the
+  // week's average, not an absence from it.
   //
   // BigInt division truncates toward zero, which is right here: this is a headline figure, and a rupiah
   // of rounding on an average of hundreds of thousands is invisible.
-  const perDay = days > 0 ? profit / BigInt(days) : 0n;
+  const perBucket = buckets > 0 ? profit / BigInt(buckets) : 0n;
 
   const money = (amount: bigint) => (loading ? "—" : formatRupiah(amount));
 
@@ -123,18 +139,20 @@ export function StatementSummary({
 
           <Stack gap="0">
             <Text fontSize="xs" color="fg.muted">
-              {t("statement.perDay")}
+              {t("statement.perUnit", { unit: unit(1) })}
             </Text>
+            {/* Still `statement-per-day` at every grain — it is one figure in one place, and giving it
+                three testids would only make every test that reads it branch on the grain. */}
             <Text
               fontSize="xl"
               fontWeight="medium"
-              color={!loading && perDay < 0n ? "red.fg" : undefined}
+              color={!loading && perBucket < 0n ? "red.fg" : undefined}
               data-testid="statement-per-day"
             >
-              {money(perDay)}
+              {money(perBucket)}
             </Text>
             <Text fontSize="xs" color="fg.muted">
-              {t("statement.perDaySource", { count: days })}
+              {t("statement.perUnitSource", { count: buckets, unit: unit(buckets) })}
             </Text>
           </Stack>
         </SimpleGrid>

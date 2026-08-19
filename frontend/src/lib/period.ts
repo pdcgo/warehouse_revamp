@@ -72,3 +72,47 @@ export function daySpine(from: string, to: string): string[] {
     new Date(start + i * 86_400_000).toISOString().slice(0, 10),
   );
 }
+
+// ── Grain ───────────────────────────────────────────────────────────────────────────────────────
+//
+// HOW COARSE A ROW IS. The statement is read at three resolutions, and they answer three different
+// questions rather than three sizes of the same one:
+//
+//   day     "which Tuesday went wrong"        — the question a month cannot answer
+//   month   "is this quarter better"          — the shape of a season
+//   year    "are we bigger than last year"    — the shape of the business
+//
+// ⚠ THE SERIES UNDERNEATH IS ALWAYS DAILY. The three Daily RPCs return one row per day and nothing
+// else, so a coarser grain is a ROLLUP the client does — which is also why the 366-day cap still
+// applies at every grain, and why a yearly view can currently only reach one year at a time. That is
+// a real limitation of the contract, not of this function.
+export type PeriodGrain = "day" | "month" | "year";
+
+// The bucket a `yyyy-mm-dd` belongs to — `2026-08-18`, `2026-08` or `2026`.
+//
+// A PREFIX, not a parse. These are calendar labels the RPCs produced and the RPCs will read back, so
+// slicing keeps them exactly as they came; going through a Date would add a timezone this string has
+// never had and can only be wrong about.
+export function bucketOf(date: string, grain: PeriodGrain): string {
+  if (grain === "year") return date.slice(0, 4);
+  if (grain === "month") return date.slice(0, 7);
+
+  return date;
+}
+
+// Every bucket in an inclusive range, ascending — the SPINE the statement lays its rows on.
+//
+// Built by walking the DAY spine and de-duplicating, rather than stepping month by month. Two reasons:
+// the span is capped at 366 days so the walk is trivially cheap, and a second calendar walk is a
+// second chance to disagree with the first about what February contains. There is exactly one date
+// walk in this file, and every grain is a view of it.
+export function bucketSpine(from: string, to: string, grain: PeriodGrain): string[] {
+  if (grain === "day") return daySpine(from, to);
+
+  const seen = new Set<string>();
+  for (const date of daySpine(from, to)) {
+    seen.add(bucketOf(date, grain));
+  }
+
+  return [...seen];
+}

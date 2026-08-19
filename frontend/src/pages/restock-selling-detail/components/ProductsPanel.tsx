@@ -17,7 +17,7 @@ import {
   receivedQuantity,
 } from "../../../features/restock/summary";
 import { useProductsByIds } from "../../../features/products/queries";
-import { ProductListItem } from "../../../components/entity/ProductListItem";
+import { ProductListItem } from "../../../components/products/ProductListItem";
 import { DamageCell } from "../../../features/restock/DamageCell";
 import { formatRupiah } from "../../../lib/money";
 

@@ -27,10 +27,10 @@ import { RestockPaymentType } from "../../gen/warehouse/inventory/v1/restock_req
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSaveRestockRequest } from "../../features/restock/queries";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
-import { ProductPicker } from "../../components/pickers/ProductPicker";
-import type { PickedProduct } from "../../components/pickers/ProductSelect";
-import { ProductListItem } from "../../components/entity/ProductListItem";
+import { TeamSelect } from "../../components/teams/TeamSelect";
+import { OwnProductPicker } from "../../components/products/OwnProductPicker";
+import type { PickedProduct } from "../../components/products/ProductSelect";
+import { ProductListItem } from "../../components/products/ProductListItem";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { SupplierSelect } from "../../components/pickers/SupplierSelect";
 import { PaymentTypeSelect } from "../../components/pickers/PaymentTypeSelect";
@@ -495,18 +495,23 @@ export function RestockRequestFormPage() {
                         across EVERY warehouse (owner) — the double-order guard, and a question about
                         the purchase rather than the building, so it needs no destination.
 
-                        `teamId` scopes the browse to THE TEAM'S OWN CATALOGUE (owner). It used to be
-                        omitted, which discovers across every team — a selling team could put another
-                        team's product on its request. That is what the two numbers above cost:
-                        OwnerStockByIds establishes ownership through restock_requests.requesting_team_id,
-                        so another team's product comes back as zeros, and "0 ready, 0 ongoing" on screen
-                        reads as "we have none" when the truth is "not mine to know". Scoping the
-                        catalogue is what makes the badges honest, so the two land together.
+                        THE OWN PICKER, and the CATALOGUE one rather than the stocked one — two
+                        separate choices, both deliberate:
 
-                        `?? 0n` is not defensive noise: undefined is the prop's "ALL teams", so a team
-                        that has not resolved yet would silently WIDEN the browse to everyone's
-                        catalogue — exactly what this change removes. 0n is the no-team state instead. */}
-                    <ProductPicker
+                        OWN, because a request may only carry the team's own products (owner). That is
+                        what the two numbers above cost: OwnerStockByIds establishes ownership through
+                        restock_requests.requesting_team_id, so another team's product comes back as
+                        zeros, and "0 ready, 0 ongoing" on screen reads as "we have none" when the
+                        truth is "not mine to know". Scoping the catalogue is what makes the badges
+                        honest, so the two go together.
+
+                        CATALOGUE, not stocked, because a restock is precisely the act of ordering
+                        something the warehouse does NOT have. A picker showing only what is on the
+                        shelf could never be used to restock an empty one.
+
+                        `?? 0n` is not defensive noise: 0n is the no-team state, which shows a message
+                        instead of calling with a team nobody has resolved yet. */}
+                    <OwnProductPicker
                       teamId={teamId ?? 0n}
                       stockWarehouseId={warehouseId > 0n ? warehouseId : undefined}
                       value={pickedIds}

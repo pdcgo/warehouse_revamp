@@ -6,7 +6,7 @@ import { Archive, Package } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { useProductStats } from "../../features/products/queries";
 import { ProductStats } from "./components/ProductStats";
 import { ProductsTable } from "./components/ProductsTable";

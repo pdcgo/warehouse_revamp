@@ -8,7 +8,7 @@ import { products } from "../../../.storybook/fixtures";
 import { ProductSelect, type PickedProduct, description } from "./ProductSelect";
 
 const meta = {
-  title: "Components/Pickers/ProductSelect",
+  title: "Components/Products/ProductSelect",
   component: ProductSelect,
   parameters: {
     docs: { description: { component: description } },

@@ -102,10 +102,16 @@ async function seed(page: Page, tag: string) {
 }
 
 // Searches for one product by SKU and toggles it, leaving the dialog OPEN — a caller ticks several
-// before confirming, which is the behaviour this whole issue is about. `expected` is the ticked count
-// AFTER the toggle: asserting it here means a click that silently failed to register is reported at
-// the row it happened on, rather than as an empty form three steps later.
-async function tick(page: Page, sku: string, expected: number) {
+// before confirming, which is the behaviour this whole issue is about.
+//
+// The toggle is verified ON THE ROW, so a click that silently failed to register is reported where it
+// happened rather than as an empty form three steps later. It used to read the dialog's ticked COUNT,
+// which said the same thing about the whole draft; that count is gone from the dialog, and the row's
+// own checkbox is the more direct claim anyway.
+//
+// `ticked` is the state EXPECTED AFTER the click — this toggles, so a row that was already ticked
+// comes back unticked, which is the untick half of the reconcile test below.
+async function tick(page: Page, sku: string, ticked = true) {
   await page.getByTestId("product-picker-search").fill(sku);
 
   // Each row's testid carries the product's ID, which this test has no way to know — so the row is
@@ -125,7 +131,12 @@ async function tick(page: Page, sku: string, expected: number) {
   // product's name, and a label click there is not what Chakra's hidden input listens to.
   await row.locator('[data-part="control"]').click();
 
-  await expect(page.getByTestId("product-picker-count")).toContainText(String(expected));
+  const box = row.locator('input[type="checkbox"]');
+  if (ticked) {
+    await expect(box).toBeChecked();
+  } else {
+    await expect(box).not.toBeChecked();
+  }
 }
 
 test("Restock requests page renders for root", async ({ page }) => {
@@ -152,8 +163,8 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await expect(page.getByTestId("submit-restock")).toBeDisabled();
 
   await page.getByTestId("restock-pick-products").click();
-  await tick(page, skuA, 1);
-  await tick(page, skuB, 2);
+  await tick(page, skuA);
+  await tick(page, skuB);
   await page.getByTestId("product-picker-confirm").click();
 
   // TWO lines from ONE dialog — the thing a per-line combobox could not do.
@@ -284,7 +295,7 @@ test("Restock create: reopening the picker keeps what was already typed (#165)",
 
   // One product, with a quantity typed against it.
   await page.getByTestId("restock-pick-products").click();
-  await tick(page, skuA, 1);
+  await tick(page, skuA);
   await page.getByTestId("product-picker-confirm").click();
   await page.getByTestId("restock-qty-0").fill("7");
   await page.getByTestId("restock-total-price-0").fill("70000");
@@ -292,7 +303,7 @@ test("Restock create: reopening the picker keeps what was already typed (#165)",
   // Reopen and add a SECOND product. The first is already ticked — the picker's ticks are derived
   // from the lines, so it opens showing what is on the form rather than a blank slate.
   await page.getByTestId("restock-pick-products").click();
-  await tick(page, skuB, 2);
+  await tick(page, skuB);
   await page.getByTestId("product-picker-confirm").click();
 
   await expect(page.getByTestId("restock-line-1")).toBeVisible();
@@ -305,7 +316,7 @@ test("Restock create: reopening the picker keeps what was already typed (#165)",
   // one that stayed keeps ITS numbers.
   await page.getByTestId("restock-qty-1").fill("3");
   await page.getByTestId("restock-pick-products").click();
-  await tick(page, skuA, 1); // already ticked → this unticks it, leaving one
+  await tick(page, skuA, false); // already ticked → this unticks it, leaving one
   await page.getByTestId("product-picker-confirm").click();
 
   await expect(page.getByTestId("restock-line-1")).toBeHidden();

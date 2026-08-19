@@ -29,6 +29,62 @@ export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
   return "children" in entry;
 }
 
+// ── Where am I? ─────────────────────────────────────────────────────────────────────────────────
+//
+// The route → menu matching lives HERE, beside the menu it matches against, because TWO components
+// ask the question: the SIDEBAR lights an item, and the TOP BAR's breadcrumb names it. Two copies of
+// a longest-prefix rule is a breadcrumb saying one screen while the sidebar highlights another — and
+// that disagreement would be invisible in review, because each half looks right on its own.
+
+// A group's children are routes too, so both answers below are computed over the FLAT list.
+export function flattenMenu(menu: MenuEntry[]): MenuItem[] {
+  return menu.flatMap((entry) => (isMenuGroup(entry) ? entry.children : [entry]));
+}
+
+// A true path-SEGMENT prefix test: "/products" matches "/products" and "/products/123" but NOT
+// "/products-x" (a bare startsWith would). "/" only ever matches itself.
+function matchesPath(to: string, pathname: string): boolean {
+  if (to === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+// An item matches its own route, and any route it has CLAIMED without linking to (`alsoMatches`).
+function matchesItem(item: MenuItem, pathname: string): boolean {
+  return (
+    matchesPath(item.to, pathname) ||
+    (item.alsoMatches?.some((claimed) => matchesPath(claimed, pathname)) ?? false)
+  );
+}
+
+// THE ACTIVE ROUTE IS THE LONGEST MATCHING PREFIX — so on /products/discover only "Discover Product"
+// lights up, not "My Product" too, while a detail route like /products/123 still lights its parent
+// "My Product" (#119). One winner, never a whole sub-menu at once.
+export function activeRoute(menu: MenuEntry[], pathname: string): string | undefined {
+  return flattenMenu(menu)
+    .filter((item) => matchesItem(item, pathname))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.to;
+}
+
+// The active item's label (an i18n key) — what the breadcrumb says you are looking at.
+export function activeLabel(menu: MenuEntry[], pathname: string): string {
+  const to = activeRoute(menu, pathname);
+
+  return flattenMenu(menu).find((item) => item.to === to)?.label ?? "";
+}
+
+// The group the active route lives in, if any — the one the sidebar must open so the highlighted
+// item is not hidden inside a shut drawer.
+export function owningGroupLabel(menu: MenuEntry[], activeTo: string | undefined): string | undefined {
+  const group = menu.find(
+    (entry) => isMenuGroup(entry) && entry.children.some((child) => child.to === activeTo),
+  );
+
+  return group && isMenuGroup(group) ? group.label : undefined;
+}
+
 const HOME: MenuItem = { to: "/", label: "nav.home", icon: House };
 const TEAMS: MenuItem = { to: "/teams", label: "nav.teams", icon: Building2 };
 const CATEGORIES: MenuItem = { to: "/categories", label: "nav.categories", icon: FolderTree };
@@ -261,4 +317,45 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   menu.push(PROFILE);
 
   return menu;
+}
+
+// ── The mobile bottom bar ───────────────────────────────────────────────────────────────────────
+//
+// THREE destinations plus "More", and the three are a DECISION, not the first three menu entries.
+// A bottom bar is the only navigation a thumb reaches without a second tap, so it holds the screens
+// a person returns to all day — the rest of the menu is one tap away in the More sheet, which is
+// where a reference screen (Categories, Shipping, Settings) belongs.
+//
+// ⚠ IT IS FILTERED AGAINST THE REAL MENU, never listed independently. A tab whose route the current
+// team's menu does not contain is a tab offering work this team does not do — and the role gates in
+// menuFor are exactly the kind of thing a hand-kept second list stops honouring.
+//
+// The LABEL is the bar's own, though: a selling team's "/products" is the group child "My Product",
+// and a tab that narrow reads as a different screen from the Products the sidebar shows.
+function bottomBarCandidates(teamType: TeamType | undefined): MenuItem[] {
+  switch (teamType) {
+    // A warehouse crew's day: the orders to pack, and the stock arriving to be counted.
+    case TeamType.WAREHOUSE:
+      return [
+        HOME,
+        WAREHOUSE_ORDERS,
+        { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
+      ];
+    // A selling team's: the orders they are taking, and the catalogue they take them from.
+    case TeamType.SELLING:
+      return [HOME, ORDERS, PRODUCTS];
+    // Root/admin oversee — the teams, and the stock those teams hold.
+    case TeamType.ROOT:
+    case TeamType.ADMIN:
+      return [HOME, TEAMS, INVENTORY];
+    default:
+      return [HOME];
+  }
+}
+
+// The bottom bar for the current team — at most three items, every one of them in this team's menu.
+export function bottomBarFor(teamType: TeamType | undefined, role: Role | undefined): MenuItem[] {
+  const routes = new Set(flattenMenu(menuFor(teamType, role)).map((item) => item.to));
+
+  return bottomBarCandidates(teamType).filter((item) => routes.has(item.to));
 }

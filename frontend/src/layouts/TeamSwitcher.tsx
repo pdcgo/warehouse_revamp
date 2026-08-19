@@ -73,7 +73,10 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
           data-testid="team-switcher"
           align="center"
           gap="2.5"
-          w="full"
+          // ⚠ COLLAPSED, IT MUST NOT STRETCH. Full width is right in a sidebar, where the switcher
+          // IS the row; in the mobile top bar the collapsed trigger sits beside the screen title and
+          // a `w="full"` chip pushes that title out of the header entirely.
+          w={collapsed ? "auto" : "full"}
           rounded="md"
           borderWidth="1px"
           borderColor="border"

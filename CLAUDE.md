@@ -712,7 +712,13 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 frontend/
   .storybook/         the workbench: main/preview config, the stub transport, the fixtures
   src/
-    layouts/          the shell: Layout, the sidebar, nav, TeamSwitcher
+    layouts/          the shell — TWO of them, and exactly one mounts (see below)
+      Layout.tsx      the picker: a breakpoint chooses desktop or mobile
+      shell.ts        the breakpoint + the page canvas — both shells read them
+      nav.ts          the menu, the "where am I" match, the bottom bar — SHARED
+      TeamSwitcher.tsx  shared: the sidebar's card, and the mobile top bar's chip
+      desktop/        DesktopLayout (sidebar + breadcrumb top bar), Sidebar
+      mobile/         MobileLayout (compact top bar), BottomNav, MenuSheet
     pages/<page>/
       index.tsx       THE page component — one directory per SCREEN
       components/     used by THIS page and nothing else
@@ -721,6 +727,23 @@ frontend/
                       by KIND, each with its <Component>.stories.tsx beside it
     api/ lib/ i18n/ gen/ theme.ts router.tsx
 ```
+
+**A phone gets a DIFFERENT SHELL, not the desktop one squeezed.** `Layout` reads one media query
+(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside a
+breadcrumb top bar — or `MobileLayout`: a compact top bar (team chip, screen name, notifications), and
+navigation moved to a **bottom tab bar** the thumb reaches, carrying this team's three destinations
+plus **More**, which opens the full menu as a full-screen sheet. There is no hamburger on a phone.
+
+- ⚠ **Exactly ONE shell mounts** — a JS breakpoint, never `hideFrom`/`hideBelow`. Hiding one with CSS
+  renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of
+  every `data-testid` the e2e reach for.
+- **Everything that THINKS is shared**: `nav.ts` builds the menu from the team's type and your role,
+  answers "where am I" (longest-prefix), and decides the bottom bar; `shell.ts` owns the breakpoint and
+  the grey page canvas. A rule living in one shell is a rule the other one breaks.
+- **The bottom bar's three tabs are a DECISION, filtered against the real menu** (`bottomBarFor`) — a
+  tab is never offered for a screen this team's menu does not contain.
+- Each shell is reviewed and tested directly in Storybook (`Layouts/Desktop/*`, `Layouts/Mobile/*`);
+  `Layout` itself has no story, because the runner has one fixed viewport.
 
 **One directory per PAGE, named for the screen** — `pages/order-create/`, not
 `pages/orders/new/`. Flat and route-descriptive, so every directory has exactly one `index.tsx` and
@@ -747,14 +770,14 @@ folders while being curated gallery components — if a component exports a `des
 ### The design system
 
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
-`frontend/src/components/` holds 38 of them, **grouped by kind**, every one with a **Storybook**
+`frontend/src/components/` holds 39 of them, **grouped by kind**, every one with a **Storybook**
 story beside it (`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way
 to see what exists; `graphify query "what shared components exist for <the thing>"` works too.
 
 | `components/<group>/` | | |
 | --- | --- | --- |
 | `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
-| `datetime/` | 5 | the date/time family, which shares one unit convention (seconds, LOCAL, `0` = unset) |
+| `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 5 | show a product / a team / a person the same way everywhere |
 | `badges/` | 4 | a status or a kind, in its ONE standard colour |
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |

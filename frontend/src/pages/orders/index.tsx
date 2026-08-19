@@ -24,7 +24,8 @@ import { summariseOrderStat } from "../../features/orders/stat";
 import { ORDER_STATUS_TABS, orderTab } from "../../features/orders/statusTabs";
 import { DRAFTS_TAB, OrderTabs } from "../../features/orders/OrderTabs";
 import { useOrderDrafts } from "../../features/orderDrafts/queries";
-import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
+import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
+import { OrderLineItem } from "../../components/orders/OrderLineItem";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
@@ -273,9 +274,11 @@ export function OrdersPage() {
                 <Table.Root size="sm" data-testid="orders-table">
                   <Table.Header>
                     <Table.Row>
+                      {/* No STATUS column any more: the badge is part of the order's identity block
+                          now, beside the number it belongs to. Two columns that both answered "which
+                          order is this" were a split the table did not need. */}
                       <Table.ColumnHeader>{t("orders.orderColumn")}</Table.ColumnHeader>
                       <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("orders.status")}</Table.ColumnHeader>
                       <Table.ColumnHeader textAlign="end">{t("orders.total")}</Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
@@ -293,14 +296,35 @@ export function OrdersPage() {
                         data-testid={`order-row-${o.id}`}
                         onClick={() => navigate(`/orders/${o.id}`)}
                       >
-                        <Table.Cell>
-                          <Box fontWeight="medium" data-testid={`open-order-${o.id}`}>
-                            #{o.id.toString()}
-                          </Box>
+                        {/* THE ORDER'S IDENTITY, from the shared component — its number, its status,
+                            and (once the contract carries them) its own ref and the courier's receipt
+                            code. The cell used to be a bare `#id` with the status two columns away.
+
+                            ⚠ `orderRefId` and `receiptCode` are not passed because nothing on the wire
+                            holds them yet: `Order` has no ref, `OrderReceipt` is the attached FILE and
+                            `shipping_code` is the courier. Both render as nothing until the proto
+                            gains them, so this row grows the two extra names without another edit
+                            here. */}
+                        <Table.Cell data-testid={`open-order-${o.id}`}>
+                          <OrderLineItem id={o.id} status={o.status} />
                         </Table.Cell>
-                        <Table.Cell>{o.customerName}</Table.Cell>
+                        {/* BOTH ENDS OF THE LIST GET THE SAME CUSTOMER CELL. This is one page read
+                            from two sides (#151), and who the parcel is for does not change with
+                            who is looking — the seller chases the buyer, the warehouse ships to
+                            them, and both read the phone off this row.
+
+                            The list returns the whole Order minus its items (OrderRowMapItem), so
+                            the phone is already on the wire — no extra call, no N+1.
+
+                            The ADDRESS is deliberately off. It is available here too, but it turns
+                            a one-line row into two across the whole page, and where the parcel goes
+                            is the shipping label's question, answered in full on the detail page. */}
                         <Table.Cell>
-                          <OrderStatusBadge status={o.status} />
+                          <CustomerLineItem
+                            name={o.customerName}
+                            phone={o.customerPhone}
+                            testId={o.id}
+                          />
                         </Table.Cell>
                         <Table.Cell textAlign="end">{formatRupiah(o.total)}</Table.Cell>
                       </Table.Row>

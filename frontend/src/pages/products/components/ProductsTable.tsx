@@ -10,7 +10,7 @@ import { ProductStatus } from "../../../gen/warehouse/product/v1/product_pb";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { Pagination } from "../../../components/chrome/Pagination";
-import { ProductListItem } from "../../../components/entity/ProductListItem";
+import { ProductListItem } from "../../../components/products/ProductListItem";
 import { toaster } from "../../../components/feedback/Toaster";
 import {
   useArchiveProduct,

@@ -27,6 +27,7 @@ erDiagram
         text        team_code   UK "required unique"
         text        description
         text        image_url   "compact team picture, empty if none"
+        boolean     priority_product "granted by ROOT — the team's WHOLE catalogue is priority"
         boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at
@@ -60,7 +61,26 @@ erDiagram
 - **`teams`** — one row per team (a warehouse *is* a team; see `plans/team_service/`). Root-ness is
   structural: `CHECK ((type = 'root') = (id = 1))` ties `id = 1` and `type = 'root'` together so the
   hardcoded root-team scope in the access interceptor can never drift from the data. Indexes:
-  `UNIQUE (team_code)`, and a partial `(type) WHERE deleted = FALSE`.
+  `UNIQUE (team_code)`, a partial `(type) WHERE deleted = FALSE`, and a partial
+  `(id) WHERE priority_product AND NOT deleted`.
+  - **`priority_product`** — the priority-product feature, granted by **ROOT**, applying to the team's
+    **whole catalogue**: every product it owns is a priority product to everybody discovering products.
+    It backs the product picker's *Priority Product* tab.
+
+    On the **team** rather than on each product, because the decision is about a team — one write,
+    and automatically true of everything the team adds later, with no backfill when a team is granted
+    the feature. In **`teams`** rather than `team_infos` for a policy reason, not a layout one:
+    `TeamInfoUpdate` is callable by `ROLE_TEAM_OWNER`, so a capability granted by root must not live
+    in a message a team owner can write, or a team could grant itself the feature.
+
+    ⚠ **`product_service` never reads this column** — it cannot, because `teams` belongs to
+    `team_service` and cross-service joins are forbidden (HARD RULE 3). The caller reads the priority
+    **team ids** from `TeamList(filter.priority_product_only)` and passes them to `ProductDiscover` as
+    `owner_team_ids` / `exclude_owner_team_ids`, so `product_service` filters by ids it was handed and
+    never learns what "priority" means. One flag, one owner, two independent schemas.
+
+    ⚠ **How root SETS it is not designed yet** (owner) — the column and the read path landed first, so
+    no RPC writes it today.
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
   real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
   services — no FK is possible across the service boundary.
@@ -251,6 +271,7 @@ erDiagram
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
         bigint      total              "subtotal + shipping_cost"
         bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
+        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none (a phone order). NOT unique — uniqueness is still open"
         text        note                "free text for the people handling the order; nothing reads it, '' = none"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"

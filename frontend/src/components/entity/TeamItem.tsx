@@ -3,7 +3,11 @@ import { Avatar, Badge, HStack, Stack, Text } from "@chakra-ui/react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 
 // Each team type gets its own colour so the type is readable at a glance.
-function typePalette(type: TeamType | undefined): string {
+//
+// Exported because TeamSelect draws the same type badge beside the SELECTED team without the rest
+// of the row (avatar, two lines) — a second copy of this switch is how the picker and the list start
+// disagreeing about what colour a warehouse is.
+export function typePalette(type: TeamType | undefined): string {
   switch (type) {
     case TeamType.WAREHOUSE:
       return "blue";
@@ -18,7 +22,7 @@ function typePalette(type: TeamType | undefined): string {
   }
 }
 
-function typeLabel(type: TeamType | undefined): string {
+export function typeLabel(type: TeamType | undefined): string {
   switch (type) {
     case TeamType.ROOT:
       return "Root";

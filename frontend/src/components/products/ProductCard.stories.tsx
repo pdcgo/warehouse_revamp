@@ -8,7 +8,7 @@ import { ProductCard, description } from "./ProductCard";
 const product = products[0]!;
 
 const meta = {
-  title: "Components/Entity/ProductCard",
+  title: "Components/Products/ProductCard",
   component: ProductCard,
   parameters: {
     docs: { description: { component: description } },

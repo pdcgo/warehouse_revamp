@@ -22,7 +22,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { TeamItem } from "../../components/entity/TeamItem";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { Pagination } from "../../components/chrome/Pagination";

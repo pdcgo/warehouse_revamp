@@ -174,9 +174,11 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		Total:        o.Total,
 		// A note, carried out as it was carried in — nothing here derives it and nothing may.
 		MarketplaceTotal: o.MarketplaceTotal,
-		Items:            items,
-		Events:           events,
-		CreatedAtUnix:    o.CreatedAt.Unix(),
+		// The storefront's own id for this order, verbatim in both directions.
+		OrderExternalRefId: o.OrderExternalRefID,
+		Items:              items,
+		Events:             events,
+		CreatedAtUnix:      o.CreatedAt.Unix(),
 	}
 }
 

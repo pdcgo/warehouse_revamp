@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
+import { Badge, Box, Combobox, Portal, Spinner, Text, useListCollection } from "@chakra-ui/react";
 import { useTeams } from "../../features/teams/queries";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { TeamItem } from "../entity/TeamItem";
+import { TeamItem, typeLabel, typePalette } from "../entity/TeamItem";
 
 export interface TeamSelectProps {
   value?: bigint;
@@ -17,9 +17,21 @@ export interface TeamSelectProps {
 
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
 // on team NAME or team CODE. Each option renders with TeamItem, so the picker looks like every other
-// place a team is shown. It fetches the team list itself and emits the selected team id. Pass the
-// optional teamType prop to restrict the list to one team type (filtered server-side by TeamList).
-export const description = "Searchable team picker (Chakra Combobox) — search by name or code, options render with TeamItem. Emits a team id. Optional teamType prop restricts it to one team type.";
+// place a team is shown. The SELECTED team keeps its type: the field reads `name [Selling]` — the
+// name with its type badge beside it — rather than collapsing to a bare name (owner). It fetches the
+// team list itself and emits the selected team id. Pass the optional teamType prop to restrict the
+// list to one team type (filtered server-side by TeamList).
+export const description = "Searchable team picker (Chakra Combobox) — search by name or code. Options render with TeamItem; the selected team shows as its name plus its type badge, so the picked team's type stays readable. Emits a team id. Optional teamType prop restricts it to one team type.";
+
+// A Team as TeamItem wants it — the option rows' shape, kept out of the JSX.
+function teamItemProps(team: Team) {
+  return {
+    teamName: team.name,
+    teamType: team.type,
+    teamId: team.id,
+    imageUrl: team.imageUrl,
+  };
+}
 
 export function TeamSelect({
   value,
@@ -76,6 +88,21 @@ export function TeamSelect({
 
   const loading = !filled;
 
+  // The selected team, read from the FETCHED list rather than from `collection.items` — the
+  // collection is what the filter narrows as somebody types, so a search that excludes the current
+  // team would otherwise blank the field it is sitting in.
+  const selected = value !== undefined ? teams?.find((team) => team.id === value) : undefined;
+
+  // The face of the control is `name [Type]` — the name plus its type badge on ONE line (owner),
+  // not the full two-line TeamItem the options use: a field has to stay a field, and a card with an
+  // avatar made this control half again as tall as every other filter beside it.
+  //
+  // A Zag combobox has to keep a real <input> — that is what search types into and what screen
+  // readers announce — so this is drawn OVER it, and only while the list is CLOSED. Open it and the
+  // plain input comes back, because covering the text somebody is typing is worse than a bare field.
+  const [open, setOpen] = useState(false);
+  const showSelected = selected !== undefined && !open;
+
   return (
     <Combobox.Root
       // Remounted once, the moment the team list lands — this is load-bearing, not a hack.
@@ -111,10 +138,52 @@ export function TeamSelect({
         }
       }}
       onInputValueChange={(e) => filter(e.inputValue)}
+      onOpenChange={(e) => setOpen(e.open)}
       data-testid="team-select"
     >
-      <Combobox.Control>
-        <Combobox.Input placeholder={placeholder} />
+      <Combobox.Control position="relative">
+        {/* Stock control height — the selected display is one line, so it fits a normal field. */}
+        <Combobox.Input
+          placeholder={placeholder}
+          // The name is HIDDEN, not removed: the input keeps its value for Zag and for assistive
+          // tech while the overlay draws the name and its badge. `caret-color` inherits
+          // `currentColor`, so the caret goes with it if the field is focused-but-closed (Escape).
+          color={showSelected ? "transparent" : undefined}
+        />
+
+        {showSelected && (
+          <Box
+            // NO background of its own — it sits on whatever the field sits on. An opaque strip
+            // would be right on a page and wrong inside a Dialog, where the panel is a different
+            // surface in dark mode; the input's text is hidden by its own `color` instead.
+            //
+            // `pointerEvents="none"` so a click lands on the input underneath and opens the list —
+            // this must not become a dead zone in the middle of its own control. It stops short of
+            // the indicators (insetEnd) so the ✕ and the chevron stay clickable.
+            position="absolute"
+            top="1px"
+            bottom="1px"
+            insetStart="1px"
+            insetEnd="16"
+            ps="3"
+            display="flex"
+            alignItems="center"
+            gap="2"
+            overflow="hidden"
+            pointerEvents="none"
+            data-testid="team-select-selected"
+          >
+            {/* The name gives up the room, not the badge: a clipped badge would read as a DIFFERENT
+                type, while a clipped name is still recognisably the team. */}
+            <Text lineClamp={1} minW="0">
+              {selected.name}
+            </Text>
+            <Badge colorPalette={typePalette(selected.type)} size="sm" flexShrink={0}>
+              {typeLabel(selected.type)}
+            </Badge>
+          </Box>
+        )}
+
         <Combobox.IndicatorGroup>
           <Combobox.ClearTrigger />
           <Combobox.Trigger />
@@ -137,14 +206,7 @@ export function TeamSelect({
                     key={team.id.toString()}
                     data-testid={`team-select-option-${team.teamCode}`}
                   >
-                    <TeamItem
-                      team={{
-                        teamName: team.name,
-                        teamType: team.type,
-                        teamId: team.id,
-                        imageUrl: team.imageUrl,
-                      }}
-                    />
+                    <TeamItem team={teamItemProps(team)} />
                     <Combobox.ItemIndicator />
                   </Combobox.Item>
                 ))}

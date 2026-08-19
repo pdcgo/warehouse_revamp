@@ -22,7 +22,7 @@ import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useWarehouseStock } from "../../features/inventory/queries";
-import { TeamSelect } from "../../components/pickers/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { Pagination } from "../../components/chrome/Pagination";
 import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
