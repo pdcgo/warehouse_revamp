@@ -543,10 +543,28 @@ backend/     Go server (Connect RPC) — services/<service_name>/ (HARD RULE 2)
 tools/san/   the operations CLI — a tool of the repo, not of the server (HARD RULE 3b)
 frontend/    React + TypeScript (Vite), Connect RPC client
 plans/       design discussion — <service_name>/brainstorming.md (HARD RULE 4)
+docs/faq/    the team FAQ — every question already asked, with its answer (see below)
 ```
 
 Generated code is committed (`backend/gen/`, `frontend/src/gen/`) but **never hand-edited** —
 regenerate instead.
+
+## The FAQ — record an answer once
+
+Several people build this and people join. The same questions get asked, answered in chat, and
+lost — and the second answer differs slightly from the first. [docs/faq/](docs/faq/) is where the
+answer goes instead.
+
+- **Answer a question that could be asked again → write it into `docs/faq/` the same day**, and add
+  its row to [docs/faq/readme.md](docs/faq/readme.md) in the same commit. The `faq-create` skill does
+  both.
+- **The FAQ explains and points — it is never a second source of truth.** The authority stays
+  `CLAUDE.md`, `guidelines/`, the code and the other `docs/`; an entry gives the short answer and
+  links there.
+- **"Not decided yet" is a valid entry** — say so and link the `plans/` doc. Never settle an open
+  design question in the FAQ (HARD RULE 8).
+- **When a rule changes, grep `docs/faq/` in the same commit.** A wrong FAQ entry is worse than a
+  missing one: it is confidently wrong and the reader has no reason to doubt it.
 
 ## The proto contract
 

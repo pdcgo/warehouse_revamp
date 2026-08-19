@@ -148,6 +148,40 @@ function holdsBigInt(value: unknown, depth = 0): boolean {
   return Object.values(value as Record<string, unknown>).some((v) => holdsBigInt(v, depth + 1));
 }
 
+// ── THE REAL CLIPBOARD IS NOT AVAILABLE TO THE TEST RUNNER ──────────────────────────────────────
+//
+// `navigator.clipboard.writeText` requires the document to be FOCUSED and the clipboard-write
+// permission. A headless Vitest browser reliably has neither, so every copy-to-clipboard component
+// (RefIdBadge, CopyText, CopyNumber) rejects with `NotAllowedError` — and because zag fires the write
+// from inside a state-machine action, nothing awaits that promise. It surfaces as an UNHANDLED
+// REJECTION, which Vitest reports separately from the tests and explicitly warns "might cause false
+// positive tests".
+//
+// So the runner gets a stub instead of the platform API. It does two jobs:
+//
+//  1. It RESOLVES, so the component reaches its copied state and the confirmation UI is testable at
+//     all — with the real API rejecting, the check-mark branch could never be exercised.
+//  2. It RECORDS the written value on `window.__copiedText`, which is what makes the rule worth
+//     testing testable: CopyNumber renders "Rp 1,5jt" and must copy `1500000`. Asserting on the
+//     rendered text proves nothing about what landed on the clipboard.
+//
+// It is reinstalled per story rather than once, so a value copied in one story cannot be read as
+// this story's.
+function stubClipboard() {
+  const stub = {
+    writeText: (text: string) => {
+      (window as unknown as { __copiedText?: string }).__copiedText = text;
+      return Promise.resolve();
+    },
+    readText: () => Promise.resolve((window as unknown as { __copiedText?: string }).__copiedText ?? ""),
+  };
+
+  (window as unknown as { __copiedText?: string }).__copiedText = undefined;
+  // `navigator.clipboard` is a read-only accessor, so assignment silently does nothing in some
+  // engines and throws in strict mode — it has to be redefined.
+  Object.defineProperty(navigator, "clipboard", { value: stub, configurable: true, writable: true });
+}
+
 const preview: Preview = {
   // Applied right-to-left, so `withSignedIn` runs INSIDE the Chakra/query providers it depends on.
   decorators: [withProviders, withSignedIn],
@@ -190,10 +224,14 @@ const preview: Preview = {
     // Same reasoning for the persisted color-mode override: a story that toggles the mode would
     // otherwise decide the mode for every story that runs after it.
     localStorage.removeItem("wh-color-mode");
+    // …and for the legacy sidebar's collapse preference, which is persisted on purpose (an operator
+    // sets it once) and would otherwise leave every later sidebar story rendering collapsed.
+    localStorage.removeItem("legacy-sidebar-collapsed");
     // …and for the auth token, so a `signedIn` story cannot leave the next one authenticated. The
     // selected team is sessionStorage, and is cleared with it.
     clearToken();
     sessionStorage.clear();
+    stubClipboard();
   },
   parameters: {
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
@@ -239,6 +277,44 @@ const preview: Preview = {
           // page is mounted inside it.
           "Layouts",
           "Pages",
+          // The adopted legacy UI (src/legacy/), kept as its OWN top-level section rather than
+          // merged into Components above. Two reasons: it is a staging area whose pieces are still
+          // being reconciled against the live design system, and a reviewer browsing for something
+          // to reuse needs to be able to tell instantly which of the two they are looking at. It
+          // sits last because the live design system is what a new screen should reach for first.
+          "Legacy",
+          [
+            "Components",
+            [
+              "Text",
+              "Cells",
+              "Display",
+              "Charts",
+              "Pickers",
+              "Date & Time",
+              "Badges",
+              "Inputs",
+              "Feedback",
+              // Same wildcard rule as above — an unlisted group lands silently at the bottom.
+              "*",
+            ],
+            "Layout",
+            "Pages",
+            "*",
+          ],
+          // The adopted WAREHOUSE-FLOOR UI (src/legacy_warehouse/) — a different app from the one
+          // above, and kept apart from it for the same reason `Legacy` is kept apart from
+          // `Components`: a reviewer must be able to tell at a glance whether they are looking at
+          // the selling-team screens or the screens somebody uses with a scanner in their hand.
+          // Scan leads its Components group because it is what the whole app is built around.
+          "LegacyWarehouse",
+          [
+            "Components",
+            ["Scan", "Badges", "Display", "*"],
+            "Layout",
+            "Pages",
+            "*",
+          ],
           "*",
         ],
       },

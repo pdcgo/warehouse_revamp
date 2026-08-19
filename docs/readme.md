@@ -6,6 +6,10 @@ before the API and the schema are derived from them.
 
 This document is the map. For the authoritative detail, follow the links.
 
+> **New to the team?** Start with the [FAQ](faq/) — [faq/getting-started.md](faq/getting-started.md)
+> covers the first day, and the rest is every question people have already had to ask. When you get
+> an answer that is not in there, add it.
+
 ---
 
 ## What it is
@@ -18,7 +22,7 @@ backend/     Go server (Connect RPC over net/http), one directory per service
 tools/san/   the operations CLI — top-level, because it is a tool of the repo, not of the server
 frontend/    React + TypeScript (Vite) + Chakra UI v3, a Connect-ES client
 plans/       the design discussion — one brainstorming doc per service
-docs/         human-facing docs (this file, the schema, per-service RPC flows)
+docs/         human-facing docs (this file, the FAQ, the schema, per-service RPC flows)
 ```
 
 The Go module is rooted at the repository, so `backend/` and `tools/` are one module — run

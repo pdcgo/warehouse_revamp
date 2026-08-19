@@ -185,3 +185,58 @@ export function formatRfc3339DateTime(rfc3339: string): string {
     minute: "2-digit",
   });
 }
+
+const RELATIVE_STEPS: Array<{ unit: Intl.RelativeTimeFormatUnit; seconds: number }> = [
+  { unit: "year", seconds: 31_536_000 },
+  { unit: "month", seconds: 2_592_000 },
+  { unit: "day", seconds: 86_400 },
+  { unit: "hour", seconds: 3_600 },
+  { unit: "minute", seconds: 60 },
+];
+
+/**
+ * unix seconds → a RELATIVE description of the time since ("3 hours ago", "in 2 days").
+ *
+ * This is for the recency question — "was this scanned just now or this morning?" — which an
+ * absolute timestamp answers only after the reader does arithmetic. It is deliberately coarse: the
+ * largest unit that fits, one number, no compound "1h 20m".
+ *
+ * ⚠ Relative time GOES STALE ON SCREEN. A component showing it must re-render on a timer (see
+ * `DateText`), or the row will still claim "a minute ago" twenty minutes later — which is worse
+ * than an absolute time, because it reads as fresh.
+ *
+ * Same "never" contract as the rest of this file: `0n` and below render as an em dash.
+ */
+export function formatUnixRelative(unix: bigint, now: Date = new Date()): string {
+  if (unix <= 0n) return "—";
+
+  const deltaSeconds = Number(unix) - Math.floor(now.getTime() / 1000);
+  const abs = Math.abs(deltaSeconds);
+
+  const fmt = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+  for (const { unit, seconds } of RELATIVE_STEPS) {
+    if (abs >= seconds) {
+      return fmt.format(Math.round(deltaSeconds / seconds), unit);
+    }
+  }
+
+  // Under a minute. "now" rather than "in 0 seconds".
+  return fmt.format(0, "second");
+}
+
+/**
+ * unix seconds → the CLOCK only ("14:30"), no date.
+ *
+ * Paired with {@link formatUnixDate} by `StackedDateText`, where the day is on one line and the
+ * time on the next — repeating the date on the second line would defeat the point of splitting it.
+ * Same "never" contract: `0n` and below render as an em dash.
+ */
+export function formatUnixTime(unix: bigint): string {
+  if (unix <= 0n) return "—";
+
+  return new Date(Number(unix) * 1000).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

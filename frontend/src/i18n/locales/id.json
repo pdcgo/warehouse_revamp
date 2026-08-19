@@ -129,7 +129,8 @@
     "cancel": "Batal",
     "confirm": "Konfirmasi",
     "searchPlaceholder": "Cari",
-    "clearFilters": "Hapus filter"
+    "clearFilters": "Hapus filter",
+    "showingRange": "Menampilkan {{from}}–{{to}} dari {{total}}"
   },
   "dateRange": {
     "all": "Semua tanggal",

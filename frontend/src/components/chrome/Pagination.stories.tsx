@@ -73,3 +73,31 @@ export const VisibleOnOnePageWhenItHasASizePicker: Story = {
     await expect(canvas.getByTestId("page-size")).toBeInTheDocument();
   },
 };
+
+// The RANGE line — "Showing 21–40 of 312". "Page 2 of 16" says where you are among PAGES; it does
+// not say how many records there are, which is usually the actual question.
+export const ShowingRange: Story = {
+  args: { count: 312, pageSize: 20, page: 2, showRange: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("page-range")).toHaveTextContent("21");
+    await expect(canvas.getByTestId("page-range")).toHaveTextContent("40");
+    await expect(canvas.getByTestId("page-range")).toHaveTextContent("312");
+  },
+};
+
+// The last page is CLAMPED to the total — it reads "301–312 of 312", never promising rows past the
+// end that a naive page × pageSize would claim.
+export const LastPageClampsToTheTotal: Story = {
+  args: { count: 312, pageSize: 20, page: 16, showRange: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const range = canvas.getByTestId("page-range");
+    await expect(range).toHaveTextContent("301");
+    await expect(range).toHaveTextContent("312");
+    // 16 × 20 = 320, which must NOT appear.
+    await expect(range).not.toHaveTextContent("320");
+  },
+};

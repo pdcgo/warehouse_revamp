@@ -129,7 +129,8 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "searchPlaceholder": "Search",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}"
   },
   "dateRange": {
     "all": "All dates",

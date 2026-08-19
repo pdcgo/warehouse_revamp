@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge, Box, Combobox, Portal, Spinner, Text, useListCollection } from "@chakra-ui/react";
 import { useTeams } from "../../features/teams/queries";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
@@ -13,6 +13,16 @@ export interface TeamSelectProps {
   // When set, the picker only shows teams of this type; the TeamList RPC filters server-side by it.
   // Omit it (the default) to show every team — the original behaviour.
   teamType?: TeamType;
+  /**
+   * Teams to LEAVE OUT of the list. The from/to case: a transfer's destination picker excludes the
+   * source, because a team cannot transfer to itself.
+   *
+   * ⚠ An exclusion that covers the CURRENT value CLEARS it — `onChange(0n)` fires once. Same
+   * contract as ShopSelect's `marketplace` filter, and for the same reason: silently keeping a value
+   * the list no longer offers leaves a field showing something the user cannot re-pick, and submits
+   * a combination the form has just declared invalid.
+   */
+  excludeTeamIds?: bigint[];
 }
 
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
@@ -21,7 +31,7 @@ export interface TeamSelectProps {
 // name with its type badge beside it — rather than collapsing to a bare name (owner). It fetches the
 // team list itself and emits the selected team id. Pass the optional teamType prop to restrict the
 // list to one team type (filtered server-side by TeamList).
-export const description = "Searchable team picker (Chakra Combobox) — search by name or code. Options render with TeamItem; the selected team shows as its name plus its type badge, so the picked team's type stays readable. Emits a team id. Optional teamType prop restricts it to one team type.";
+export const description = "Searchable team picker (Chakra Combobox) — search by name or code. Options render with TeamItem; the selected team shows as its name plus its type badge, so the picked team's type stays readable. Emits a team id. Optional teamType prop restricts it to one team type, and excludeTeamIds leaves teams out — an exclusion covering the current value clears it.";
 
 // A Team as TeamItem wants it — the option rows' shape, kept out of the JSX.
 function teamItemProps(team: Team) {
@@ -39,6 +49,7 @@ export function TeamSelect({
   placeholder = "Search team by name or code",
   disabled,
   teamType,
+  excludeTeamIds,
 }: TeamSelectProps) {
 
 
@@ -65,7 +76,19 @@ export function TeamSelect({
   // `useTeams` already asks exactly this question, so this shares its cache rather than adding a
   // second copy of the same list.
   const query = useTeams({ teamType, page: 1, pageSize: 200, reference: true });
-  const teams = query.data?.teams;
+
+  // Exclusion is applied to the FETCHED list rather than to the request: `useTeams` is a shared
+  // reference cache, and narrowing the query per caller would fragment it into one entry per
+  // exclusion set — a pair picker would then miss the cache on every change of its other half.
+  const excluded = excludeTeamIds?.length ? excludeTeamIds.map(String) : undefined;
+  const teams = useMemo(
+    () =>
+      excluded
+        ? query.data?.teams.filter((team) => !excluded.includes(team.id.toString()))
+        : query.data?.teams,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query.data?.teams, excluded?.join(",")],
+  );
 
   // ⚠ `filled` tracks whether the COLLECTION has the list, not whether the QUERY has finished, and
   // the difference is the whole point once there is a cache.
@@ -92,6 +115,17 @@ export function TeamSelect({
   // collection is what the filter narrows as somebody types, so a search that excludes the current
   // team would otherwise blank the field it is sitting in.
   const selected = value !== undefined ? teams?.find((team) => team.id === value) : undefined;
+
+  // An exclusion that covers the current value CLEARS it — see the prop docs. Guarded on `filled`
+  // so a value is never cleared merely because the list has not arrived yet, which would wipe an
+  // edit form the instant it mounted.
+  useEffect(() => {
+    if (!filled || value === undefined || value === 0n) return;
+    if (!excluded?.includes(value.toString())) return;
+
+    onChange?.(0n);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filled, value, excluded?.join(",")]);
 
   // The face of the control is `name [Type]` — the name plus its type badge on ONE line (owner),
   // not the full two-line TeamItem the options use: a field has to stay a field, and a card with an
