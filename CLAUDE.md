@@ -592,6 +592,7 @@ it once a real domain service replaces it.
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
 | Migrations | `cd backend && go run ./cmd/tool migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
+| Serve this checkout to a coding agent | `go run ./tools/san remote` — prints a per-run token; loopback by default |
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
