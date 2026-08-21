@@ -45,10 +45,10 @@ func acceptWithCOD(
 	reqID := created.Msg.GetRequest().GetId()
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId:         codWarehouse,
-		RequestId:      reqID,
-		CodShippingFee: codFee,
-		Lines:          allArrived(created.Msg.GetRequest()),
+		TeamId:    codWarehouse,
+		RequestId: reqID,
+		CostLines: codLines(codFee),
+		Lines:     allArrived(created.Msg.GetRequest()),
 	}))
 
 	return reqID, err
@@ -98,16 +98,15 @@ func TestRestockFulfil_TheCODFeeStillReachesCosting(t *testing.T) {
 		t.Fatalf("fulfil: %v", err)
 	}
 
-	var stored inventory_service_models.RestockRequest
+	var stored []inventory_service_models.RestockCostLine
 
-	err = db.Where("id = ?", reqID).Take(&stored).Error
+	err = db.Where("restock_request_id = ?", reqID).Find(&stored).Error
 	if err != nil {
-		t.Fatalf("read request: %v", err)
+		t.Fatalf("read cost lines: %v", err)
 	}
 
-	if stored.CODShippingFee != 25000 {
-		t.Fatalf("cod_shipping_fee = %d on the request, want 25000 — HPP reads this column",
-			stored.CODShippingFee)
+	if len(stored) != 1 || stored[0].Amount != 25000 {
+		t.Fatalf("cost lines = %+v, want one line of 25000 — HPP sums this table", stored)
 	}
 }
 
@@ -201,7 +200,7 @@ type txCapturingPoster struct {
 	onPost func(tx *gorm.DB)
 }
 
-func (p *txCapturingPoster) PostCODFee(
+func (p *txCapturingPoster) PostRestockOutlay(
 	_ context.Context,
 	tx *gorm.DB,
 	_, _, _ uint64,
@@ -209,6 +208,18 @@ func (p *txCapturingPoster) PostCODFee(
 ) error {
 	p.onPost(tx)
 
+	return nil
+}
+
+// The damage half of the interface. This fake exists to prove the OUTLAY posting joins the acceptance
+// transaction, so this method only has to satisfy the interface — the damage path has its own test.
+func (p *txCapturingPoster) PostStockDamage(
+	_ context.Context,
+	_ *gorm.DB,
+	_, _, _ uint64,
+	_ int64,
+	_ bool,
+) error {
 	return nil
 }
 
@@ -225,7 +236,7 @@ type realPoster struct {
 	settlement *settlement_v1.Service
 }
 
-func (p *realPoster) PostCODFee(
+func (p *realPoster) PostRestockOutlay(
 	ctx context.Context,
 	tx *gorm.DB,
 	sellingTeamID, warehouseID, restockRequestID uint64,
@@ -241,6 +252,32 @@ func (p *realPoster) PostCODFee(
 
 	// A movement already recorded is a normal answer — the acceptance must not fail over a debt that
 	// is already correctly on the books.
+	if errors.Is(err, settlement_v1.ErrAlreadyPosted) {
+		return nil
+	}
+
+	return err
+}
+
+// The damage half, against the real ledger — the same adapter the composition root wires, so this
+// end-to-end test exercises the direction rather than trusting a fake to have it right.
+func (p *realPoster) PostStockDamage(
+	ctx context.Context,
+	tx *gorm.DB,
+	ownerTeamID, warehouseID, movementID uint64,
+	amount int64,
+	reversal bool,
+) error {
+	_, err := p.settlement.PostEntry(ctx, tx, settlement_v1.Posting{
+		// ⚠ REVERSED against every other posting here: the WAREHOUSE owes the owner for goods it lost.
+		DebtorTeamID:   warehouseID,
+		CreditorTeamID: ownerTeamID,
+		Amount:         amount,
+		SourceType:     settlement_v1.SourceTypeStockDamage,
+		SourceID:       movementID,
+		Reversal:       reversal,
+	})
+
 	if errors.Is(err, settlement_v1.ErrAlreadyPosted) {
 		return nil
 	}

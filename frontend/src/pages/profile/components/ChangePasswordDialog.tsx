@@ -12,8 +12,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../../api/clients";
 import { isRemembered, setToken } from "../../../features/auth/tokenStorage";
-import { PasswordInput } from "../../../components/PasswordInput";
-import { toaster } from "../../../components/Toaster";
+import { PasswordInput } from "../../../components/inputs/PasswordInput";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // ChangePasswordDialog calls ResetPassword — the SELF-SERVE one, which has no user_id field.
 //

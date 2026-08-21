@@ -655,3 +655,92 @@ Proved rather than asserted — see
 - **A shelf larger than one screen** is flagged (`truncated`) rather than silently counted in part. The
   uncounted rows are safe — the server never touches a product it was not sent — but the person would
   otherwise believe they had finished.
+
+## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
+
+A `DAMAGED` / `LOST` adjust already wrote the units off the shelf and their frozen cost to expense.
+That answered *"what did our losses cost us"* and left the other question unanswered: the goods
+belonged to a **selling team**, and until now they were simply gone.
+
+```mermaid
+sequenceDiagram
+    participant W as Warehouse staff
+    participant I as StockAdjust
+    participant S as settlement_service
+    participant E as expense_service
+
+    W->>I: StockAdjust{DAMAGED, batch, qty}
+    Note over I: one transaction
+    I->>I: units off the shelf and off the batch
+    I->>I: read the batch's frozen cost AND its owner<br/>(batch → restock line → requesting team)
+    I->>S: PostStockDamage — the WAREHOUSE owes the OWNER
+    Note over I: commit
+    I->>E: PostStockLoss — the warehouse's own P&L, best-effort
+
+    opt the goods turn up
+        W->>I: StockAdjust{FOUND, batch, qty}
+        I->>S: PostStockDamage with reversal = true
+        Note over S: the reimbursement is given back —<br/>both entries stay in the history
+    end
+```
+
+### ⚠ The direction is the whole point
+
+Every other posting from this service has the **selling team owing the warehouse**. This one is
+reversed: the warehouse holds the goods, the selling team owns them (§Warehouse 4), so losing them is
+a **debt**, not a discount. Getting it backwards would bill the team whose stock was destroyed.
+
+### Two records of one event, and both are wanted
+
+| | answers |
+| --- | --- |
+| `EXPENSE_KIND_STOCK_WRITE_OFF` | *what did our losses cost us* — the warehouse's own P&L |
+| `SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE` | *who do we now have to pay* |
+
+Neither replaces the other. Dropping either loses a real question's answer.
+
+### The debt commits with the stock; the expense does not
+
+The settlement posting joins the adjust's **transaction**; the expense posting stays best-effort
+after it. Same distinction `SettlementPoster` already draws: an expense is a *derived* record and a
+dropped one is a gap a report can find, while an obligation that fails to commit leaves the owning
+team's goods gone with nothing recorded — the situation the ledger exists to prevent.
+
+### What is NOT charged here
+
+| | |
+| --- | --- |
+| **`FOUND`** | posts the same source type as a **reversal**, against its own movement — never by deleting the entry that charged it |
+| **`RECOUNT`** | names no batch, so it can point at no cost layer and no owner. (That `StockOpname` *does* value its shortfalls is a known recorded contradiction, untouched by this change.) |
+| **unknown cost** | `unit_cost` NULL is *"we do not know"*, not free (#74). Nothing is posted — a zero entry would consume the pair's idempotency key for that movement, so a later backfill could never post the real figure. |
+| **the warehouse's own goods** | a team cannot owe itself |
+| **damage at RECEIVING, and on returned orders** | **§Warehouse 6** — neither enters the warehouse's custody, and neither travels this RPC |
+
+### Idempotency
+
+`source_id` is the **adjust movement**. Every adjust writes exactly one, so a retried adjust is
+refused by the ledger's unique index, and a damage and its later find can never collide.
+
+### An opname shortfall reimburses too (owner, 2026-08-20)
+
+`StockOpname` is a recount in bulk, and §Warehouse 7 makes counting the shelf the warehouse's own job.
+A shortfall it finds is stock lost in the warehouse exactly as one filed as a `LOST` adjust is — so it
+posts the same `STOCK_DAMAGE` obligation.
+
+Before this, the same physical loss reimbursed the owner or did not **depending on which RPC noticed
+it**, which is the worst kind of inconsistency: invisible, and only in the accounts.
+
+| | |
+| --- | --- |
+| **one debt per owner, per line** | keyed on that line's movement, so `source_id` means the same thing it means for an adjust and a re-run is refused by the ledger rather than charging twice |
+| **⚠ a shortfall can span several owners** | a shelf holds whatever restocks filled it. 15 missing may take 10 units of team A's layer and 5 of team B's — at *their own* costs. `fifoDraw.ByOwner` carries the split rather than collapsing it; summing would pay the first team and leave the second with nothing |
+| **a surplus reimburses nobody** | and is not a reversal either — stock that turns up on a count was never established as lost, so there is no debt of its own to give back. Only a `FOUND` adjust against a specific batch reverses a specific reimbursement |
+| **unknown cost** | posts nothing, same as the adjust path (#74) |
+| **the warehouse's own goods** | a team cannot owe itself |
+
+The obligation joins the count's **transaction**; the expense stays best-effort after it — the same
+split the single-adjust path draws, and for the same reason.
+
+⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement. It is
+now the only one of the three paths out of step, on both axes. Recorded under `# Contradiction` in
+`plans/stock_service/brainstorming.md`; changing a shipped money path is the owner's call.

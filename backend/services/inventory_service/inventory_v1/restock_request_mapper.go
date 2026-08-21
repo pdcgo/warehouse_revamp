@@ -34,6 +34,9 @@ const (
 	restockEventAccepted  = "accepted"
 	restockEventCancelled = "cancelled"
 	restockEventCODFee    = "cod_fee"
+	// 00021: what the delivery cost the WAREHOUSE, superseding cod_fee now that a delivery can cost it
+	// more than the fee at the door.
+	restockEventCostRecorded = "cost_recorded"
 )
 
 // Unknown text reads back as UNSPECIFIED rather than being dropped: an event this build does not know
@@ -50,6 +53,8 @@ func restockEventKindFromText(text string) inventoryv1.RestockRequestEventKind {
 		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CANCELLED
 	case restockEventCODFee:
 		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COD_FEE
+	case restockEventCostRecorded:
+		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED
 	default:
 		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_UNSPECIFIED
 	}
@@ -61,6 +66,58 @@ const (
 	restockDamageBroken = "broken"
 	restockDamageLost   = "lost"
 )
+
+// What kind of outlay a cost line is, as stored in `restock_cost_lines.kind` (00021). Mapped here,
+// not by a DB CHECK IN-list (cf. #80) — this enum starts at two and is expected to grow.
+const (
+	restockCostCODShipping = "cod_shipping"
+	restockCostOther       = "other"
+)
+
+func restockCostKindToText(k inventoryv1.RestockCostKind) string {
+	switch k {
+	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING:
+		return restockCostCODShipping
+	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER:
+		return restockCostOther
+	default:
+		return ""
+	}
+}
+
+// restockCostLinesToProto carries a delivery's outlay to the wire, in the order it was typed.
+//
+// An unloaded association is an empty slice, which is the correct wire value for a list response:
+// "this response does not carry the lines", not "this delivery cost the warehouse nothing". Only the
+// reads that preload them say anything about them.
+func restockCostLinesToProto(lines []inventory_service_models.RestockCostLine) []*inventoryv1.RestockCostLine {
+	if len(lines) == 0 {
+		return nil
+	}
+
+	out := make([]*inventoryv1.RestockCostLine, 0, len(lines))
+	for i := range lines {
+		out = append(out, &inventoryv1.RestockCostLine{
+			Id:     lines[i].ID,
+			Kind:   restockCostKindFromText(lines[i].Kind),
+			Amount: lines[i].Amount,
+			Note:   lines[i].Note,
+		})
+	}
+
+	return out
+}
+
+func restockCostKindFromText(text string) inventoryv1.RestockCostKind {
+	switch text {
+	case restockCostCODShipping:
+		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING
+	case restockCostOther:
+		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER
+	default:
+		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED
+	}
+}
 
 func restockDamageTypeToText(t inventoryv1.RestockDamageType) string {
 	switch t {
@@ -130,6 +187,13 @@ var (
 	// #154: a line names each place once. Two rows for the same shelf is one placement written twice,
 	// and summing them is not the same as the person having meant it.
 	errRestockPlacementDuplicate = errors.New("a line may name each place only once")
+	// 00021: a cost line whose kind this build does not know. Refused rather than stored as text the
+	// mapper cannot read back — an unrecognised kind would still be charged to the requesting team
+	// while showing as "unspecified" on the screen that has to justify it.
+	errCostLineKind = errors.New("a cost line must name a known kind")
+	// 00021: OTHER is the escape hatch, and the note is what stops it being a black hole. An untyped
+	// amount with no words beside it is a number the team being charged cannot argue with.
+	errCostLineNote = errors.New("an 'other' cost line must say what it was for")
 )
 
 // restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
@@ -200,7 +264,7 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		OrderRef:         r.OrderRef,
 		Receipt:          r.Receipt,
 		ShippingCost:     r.ShippingCost,
-		CodShippingFee:   r.CODShippingFee,
+		CostLines:        restockCostLinesToProto(r.CostLines),
 		PaymentType:      restockPaymentFromText(r.PaymentType),
 		Note:             r.Note,
 		CreatedByUserId:  r.CreatedByUserID,

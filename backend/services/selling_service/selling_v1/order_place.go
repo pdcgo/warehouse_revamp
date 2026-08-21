@@ -3,6 +3,7 @@ package selling_v1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -40,6 +41,9 @@ type orderPlacement struct {
 	total        int64
 	// A NOTE of what the marketplace took, never a term of the sum (owner). 0 = not recorded.
 	marketplaceTotal int64
+	// The marketplace's own id for this order, verbatim. "" = there is none, which is the ordinary
+	// state of an order taken over the phone.
+	orderExternalRefID string
 
 	items []*sellingv1.OrderItem
 
@@ -130,6 +134,22 @@ func (s *Service) placeOrder(
 		return nil, dbError(err)
 	}
 
+	// CREDIT (#189). Every creditor this order would put in debt is checked BEFORE anything is
+	// written: the fulfilling warehouse, and each team whose goods it sells. Any one over its limit
+	// stops the order, naming itself so customer service can say why.
+	//
+	// Before the transaction, for the same reason the cost read is — it is a read, and holding the
+	// order's row lock across another service's call buys nothing. The staleness that allows is
+	// exactly the overshoot the `debt < limit` rule already permits — see CheckCredit.
+	block, err := s.credit.Check(ctx, p.teamID, s.orderCreditors(ctx, p.teamID, p.warehouseID, p.items))
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	if block != nil {
+		return nil, creditBlocked(block)
+	}
+
 	var (
 		order selling_service_models.Order
 		// Whether the stock draw was ATTEMPTED. See the compensation block below for why "attempted"
@@ -171,7 +191,10 @@ func (s *Service) placeOrder(
 			ShippingCost:      p.shippingCost,
 			Total:             p.total,
 			MarketplaceTotal:  p.marketplaceTotal,
-			Items:             orderItemModels(p.items),
+			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
+			// shape, never parsed.
+			OrderExternalRefID: p.orderExternalRefID,
+			Items:              orderItemModels(p.items),
 		}
 
 		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
@@ -373,4 +396,62 @@ func (s *Service) placedLines(
 	}
 
 	return lines
+}
+
+// orderCreditors is every team this order would put the buying team in debt to: the warehouse that
+// will fulfil it, plus each team owning a product on it.
+//
+// ⚠ AN UNRESOLVED OWNER RIDES AS 0 AND IS NOT CHECKED, deliberately. A catalogue that cannot answer
+// must not block a sale — the same call fails open after the commit too (see placedLines), where an
+// unresolved owner becomes "nobody to pay". Failing CLOSED here would mean a catalogue outage stops
+// every order in the system, which is a far worse outcome than one uncharged product fee that #187
+// is built to find.
+//
+// This resolves owners a second time rather than sharing placedLines' map, and that is not
+// duplication worth removing: the two calls have OPPOSITE failure semantics. This one runs before
+// anything is written and may refuse the order; that one runs after the commit and must never fail
+// it. Sharing a result would force one of those two rules onto the other.
+func (s *Service) orderCreditors(
+	ctx context.Context,
+	teamID, warehouseID uint64,
+	items []*sellingv1.OrderItem,
+) []uint64 {
+	creditors := []uint64{warehouseID}
+
+	ids := orderProductIDs(items)
+
+	if s.catalog == nil || len(ids) == 0 {
+		return creditors
+	}
+
+	owners, err := s.catalog.Snapshots(ctx, teamID, ids)
+	if err != nil {
+		slog.ErrorContext(ctx, "product owners could not be resolved for the credit check — "+
+			"the order proceeds and only the warehouse's limit was applied",
+			"team_id", teamID,
+			"error", err,
+		)
+
+		return creditors
+	}
+
+	for _, id := range ids {
+		creditors = append(creditors, owners[id].TeamID)
+	}
+
+	return creditors
+}
+
+// creditBlocked turns the refusal into the message the ORDER FORM shows (#189).
+//
+// FAILED_PRECONDITION, not PERMISSION_DENIED: the caller is allowed to place orders, and the state of
+// the world is what refuses. It is also not a retry — retrying changes nothing until somebody pays.
+//
+// The creditor, the debt and the limit all travel in the text because the person hitting this is
+// CUSTOMER SERVICE, who never sees the Liability screens and cannot go and look the numbers up.
+func creditBlocked(block *CreditBlock) error {
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
+		"credit limit reached with team %d: %d owed of a %d limit — settle before ordering again",
+		block.CreditorTeamID, block.Debt, block.Limit,
+	))
 }

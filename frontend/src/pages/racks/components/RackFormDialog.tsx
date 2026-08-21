@@ -15,7 +15,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../../api/clients";
 import type { Rack } from "../../../gen/warehouse/inventory/v1/rack_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveRack } from "../queries";
 
 // RackFormDialog creates OR edits a rack in the CURRENT team — and for racks the team IS the

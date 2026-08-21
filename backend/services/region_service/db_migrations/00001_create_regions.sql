@@ -10,7 +10,7 @@
 -- authenticated user reads the same regions (plan §4.4).
 --
 -- The ROWS are not loaded here. 91.599 of them arrive by COPY from the generated CSV seed:
---   cd backend && go run ./cmd/tool region load-seed
+--   go run ./tools/san region load-seed
 -- (see db_migrations/seed/README.md). Postgres runs in Docker and cannot read a host file, so a
 -- server-side COPY ... FROM '<path>' in this migration would not work; the client-side load matches
 -- how the category taxonomy is seeded from a file.

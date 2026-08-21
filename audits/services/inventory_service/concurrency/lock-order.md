@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-08-14, adding `StockOpname` |
+| Last swept | 2026-08-20, adding the SETTLEMENT tables (`StockAdjust`'s damage reimbursement) |
 
 ---
 
@@ -16,6 +16,8 @@ even though nothing is currently unsafe: its value is being here **before** the 
 
 ```
 restock_requests  →  restock_request_items  →  stock_levels  →  stock_shelf_batches
+                                                                        ↓
+                                        settlement_balances  →  settlement_entries
 ```
 
 A handler may enter part-way down (`StockPick` starts at `stock_levels`), but it must never take
@@ -25,10 +27,10 @@ them in a different relative order.
 
 | Handler | Locks, in order | Row order within the table |
 | --- | --- | --- |
-| `RestockRequestFulfill` | `restock_requests` → `restock_request_items` → `stock_levels` → `stock_shelf_batches` | items `ORDER BY id ASC` |
+| `RestockRequestFulfill` | `restock_requests` → `restock_request_items` → `stock_levels` → `stock_shelf_batches` → **settlement** | items `ORDER BY id ASC` |
 | `RestockRequestCancel` | `restock_requests` → `restock_request_items` | items `ORDER BY id ASC` |
 | `RestockRequestUpdate` | `restock_requests` → `restock_request_items` | items `ORDER BY id ASC` |
-| `StockAdjust` | `stock_levels` (one row) → `stock_shelf_batches` | single product — n/a |
+| `StockAdjust` | `stock_levels` (one row) → `stock_shelf_batches` → **settlement** (damage/lost/found only) | single product — n/a |
 | **`StockOpname`** | `stock_levels` (n rows) → `stock_shelf_batches` | **`ORDER BY product_id ASC`, sorted in the handler** |
 | `StockPick` | `stock_levels` (n rows) → `stock_shelf_batches` | `ORDER BY (rack_id IS NOT NULL), r.code` — drain order |
 | `StockReturn` | `stock_levels` → `stock_shelf_batches` | single product — n/a |
@@ -56,6 +58,23 @@ The same argument covers `StockOpname` vs `StockMove` (one product, two racks) a
 > also touched a second product, would give the two sets two shared rows and the cycle becomes
 > reachable. If either grows an axis, one order has to win — and the natural choice is
 > `(rack_id, product_id)` everywhere, since that is the order a person physically walks.
+
+## The settlement tables sit LAST, and only ever last
+
+Two handlers post an obligation inside their own transaction — `RestockRequestFulfill` (the restock
+outlay) and, since the damage reimbursement, `StockAdjust`. Both reach settlement **after** every
+inventory row they touch, which is what keeps the hierarchy a line rather than a cycle.
+
+- **Within settlement the order is settled there, not here.** `postBothLegs` writes the CREDITOR leg
+  then the DEBTOR leg, always — a fixed order chosen precisely so two concurrent postings for one pair
+  cannot deadlock. `moveBalance` is an `ON CONFLICT` upsert rather than lock-then-read, so a pair with
+  no row yet serialises in the database instead of losing one of two inserts.
+- **Two adjusts on different products of the same (owner, warehouse) pair** do contend on the same two
+  balance rows — but they take them last and in the same order, so one simply waits.
+- ⚠ **Nothing may take a settlement lock and then an inventory one.** That is the inversion this
+  section exists to forbid. `SettlementPaymentConfirm` locks `settlement_payments` → `settlement_balances`
+  and touches no inventory table, so it cannot close the cycle — and any future handler wanting both
+  must take inventory first.
 
 ## What is proved, and by what
 

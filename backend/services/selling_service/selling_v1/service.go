@@ -27,6 +27,9 @@ type Service struct {
 	// Where an OrderPlacedEvent goes (#153). selling_service does not know or care that
 	// revenue_service is listening — it announces what happened and is done.
 	events event_source.EventSender
+	// Whether this team may take on more debt, asked BEFORE an order is written (#189). An interface
+	// this service owns, so selling_service never imports settlement_service — see credit_checker.go.
+	credit CreditChecker
 	// Product LABELS, for promoting a draft (#194). A draft line stores only a product_id, and an
 	// order line freezes the sku and name — see product_catalog.go for why they cannot come from the
 	// request the way OrderCreate's do.
@@ -46,6 +49,7 @@ func NewService(
 	stock StockPicker,
 	events event_source.EventSender,
 	catalog ProductCatalog,
+	credit CreditChecker,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -54,7 +58,14 @@ func NewService(
 		events = event_source.EmptySender
 	}
 
-	return &Service{db: db, stock: stock, events: events, catalog: catalog}
+	// A nil checker would panic on the first order placed. Permissive is the right default for a run
+	// with no ledger wired up — placing an order must not depend on a downstream service existing —
+	// and it is NOT the production default: the composition root wires the real one.
+	if credit == nil {
+		credit = noCredit{}
+	}
+
+	return &Service{db: db, stock: stock, events: events, catalog: catalog, credit: credit}
 }
 
 var errShopMissing = errors.New("shop not found")

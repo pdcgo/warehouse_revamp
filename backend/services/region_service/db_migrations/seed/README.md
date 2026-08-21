@@ -9,7 +9,7 @@ desa. [#114](https://github.com/pdcgo/warehouse_revamp/issues/114)'s goose migra
 From `./backend`:
 
 ```sh
-go run ./cmd/tool region build-seed
+go run ./tools/san region build-seed
 ```
 
 That is the whole step — it downloads the two pinned dumps, converts them, checks the result, and
@@ -20,8 +20,8 @@ rewrites this file. Same SHAs in, same CSV out.
 The migration creates the empty `regions` table; the rows are loaded separately (#114):
 
 ```sh
-go run ./cmd/tool migrate up --service region_service   # the table
-go run ./cmd/tool region load-seed                      # the 91.599 rows (~5s)
+go run ./tools/san migrate up --service region_service   # the table
+go run ./tools/san region load-seed                      # the 91.599 rows (~5s)
 ```
 
 `load-seed` is an **idempotent upsert** on `code`, in one transaction — safe to re-run, and how an
@@ -31,7 +31,7 @@ sync would need a delete pass, worth building only when a bump actually drops on
 > **Why the rows are not in the migration.** Postgres runs in Docker and cannot read a host file, so
 > a server-side `COPY … FROM '<path>'` inside a `.sql` migration would not work. A Go goose migration
 > could `//go:embed` this CSV, but it would then have to be registered into *every* binary that runs
-> goose (`cmd/tool` **and** `pkgs/san_testdb`) — a footgun the moment someone forgets the blank
+> goose (`tools/san` **and** `pkgs/san_testdb`) — a footgun the moment someone forgets the blank
 > import. Loading reference data from a file through the tool is the same shape as
 > `seed categories`. **Provisional call — flagged for review on #114.**
 
@@ -50,7 +50,7 @@ kode wilayah key, so a kode pos **joins onto its desa row** rather than being na
 > **Pinned by commit SHA, never a branch.** `master` moves whenever the government revises the
 > wilayah (roughly yearly). An unpinned fetch would silently change the country under us. Bumping the
 > edition is a deliberate act: change the SHA constants in
-> [`cmd/tool/region_seed.go`](../../../../cmd/tool/region_seed.go) (or pass `--wilayah-sha` /
+> [`tools/san/region.go`](../../../../../tools/san/region.go) (or pass `--wilayah-sha` /
 > `--kodepos-sha`), re-run, and review the diff.
 
 > The #112 plan cites Kepmendagri "300.2.2-2430/2025"; what upstream actually ships is **2138/2025**,

@@ -89,7 +89,7 @@ func (s *Service) unitCosts(
 			       i.product_id AS product_id,
 			       -- HPP — WHAT THE GOODS COST TO GET HERE (#155, owner's formula):
 			       --
-			       --   additional = (shipping_cost + cod_shipping_fee) / sellable units on the request
+			       --   additional = (shipping_cost + what the warehouse laid out) / sellable units
 			       --   hpp        = (line total / line's sellable units) + additional
 			       --
 			       -- Freight is part of what a product costs, so an order's COGS carries it. Before
@@ -110,10 +110,18 @@ func (s *Service) unitCosts(
 			-- and applies to each of its lines. Spread by UNIT COUNT (owner): every unit carries the
 			-- same freight whichever line it sits on, which is what "all stock count" means.
 			LEFT JOIN LATERAL (
-			    -- SUM() returns NUMERIC, and bigint / numeric is a numeric — a decimal that will not
-			      -- scan into an int64 and would not have floored anyway. Cast the divisor back to
-			      -- BIGINT so this stays integer division, rounding down like every other figure here.
-			    SELECT (r.shipping_cost + r.cod_shipping_fee)
+			    -- ⚠ EVERY SUM() IS CAST BACK TO BIGINT. SUM() returns NUMERIC, and any arithmetic
+			      -- touching a numeric is a numeric — a decimal that will not scan into an int64 and
+			      -- would not have floored anyway. Both sums here need it: the divisor, and the
+			      -- warehouse's outlay in the dividend.
+			    --
+			    -- That outlay (00021) is a SEPARATE, scalar subquery: a request has many cost lines and
+			      -- many items, so joining both at once would multiply each by the other's row count.
+			    SELECT (r.shipping_cost + COALESCE((
+			               SELECT SUM(c.amount)::BIGINT
+			               FROM restock_cost_lines c
+			               WHERE c.restock_request_id = r.id
+			           ), 0))
 			           / NULLIF(SUM(x.received_quantity)::BIGINT, 0) AS additional
 			    FROM restock_request_items x
 			    WHERE x.restock_request_id = r.id

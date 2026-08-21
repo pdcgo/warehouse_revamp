@@ -7,9 +7,9 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrder, useCancelOrder } from "../../features/orders/queries";
 import { useActors } from "../../features/users/queries";
-import { OrderStatusBadge } from "../../components/OrderStatusBadge";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { toaster } from "../../components/Toaster";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { toaster } from "../../components/feedback/Toaster";
 import { InfoPanel } from "./components/InfoPanel";
 import { TimelinePanel } from "./components/TimelinePanel";
 

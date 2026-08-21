@@ -13,6 +13,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
+frontend/storybook-static/
 
 # local postgres data (docker-compose bind mount)
 development_data/
@@ -28,3 +29,6 @@ development_data/
 
 # audit-frontend-structure output (regenerated on every run)
 .claude/skills/audit-frontend-structure/last-report.md
+
+# san remote's persisted token (--persist-token) — a live credential, never committed
+.san/

@@ -65,8 +65,8 @@ func acceptAndReadAsSellingTeam(
 
 	_, err = svc.RestockRequestFulfill(ctxUser(tlReceiver), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: tlWarehouse, RequestId: reqID,
-		CodShippingFee: codFee,
-		Lines:          allArrived(created.Msg.GetRequest()),
+		CostLines: codLines(codFee),
+		Lines:     allArrived(created.Msg.GetRequest()),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -146,7 +146,7 @@ func TestRestockDetail_ACODFeeRecordsItsOwnStepBeforeTheAcceptance(t *testing.T)
 
 	want := []inventoryv1.RestockRequestEventKind{
 		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COD_FEE,
+		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED,
 		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED,
 	}
 
@@ -184,7 +184,7 @@ func TestRestockDetail_NoCODFeeWritesNoFeeStep(t *testing.T) {
 	req := acceptAndReadAsSellingTeam(t, svc, 0)
 
 	for _, e := range req.GetEvents() {
-		if e.GetKind() == inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COD_FEE {
+		if e.GetKind() == inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED {
 			t.Fatalf("a non-COD delivery wrote a fee step — timeline %v", kinds(req))
 		}
 	}

@@ -6,7 +6,7 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useShop } from "../../features/shops/queries";
-import { MarketplaceBadge } from "../../components/MarketplaceBadge";
+import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
 import { ShopUsersSection } from "./components/ShopUsersSection";
 

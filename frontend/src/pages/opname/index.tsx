@@ -21,10 +21,10 @@ import {
 import { ClipboardCheck, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { RefreshOverlay } from "../../components/RefreshOverlay";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { toaster } from "../../components/feedback/Toaster";
 import type { StockOpnameLine, StockOpnameResponse } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";

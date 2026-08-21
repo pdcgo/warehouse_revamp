@@ -15,8 +15,8 @@ import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
 import { useTeam } from "../team/TeamContext";
-import { MarketplaceSelect } from "../../components/MarketplaceSelect";
-import { toaster } from "../../components/Toaster";
+import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { toaster } from "../../components/feedback/Toaster";
 import { useSaveShop } from "./queries";
 
 // ShopFormDialog creates OR edits a shop in the CURRENT (selling) team. The team is the scope: it

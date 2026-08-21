@@ -14,9 +14,9 @@ import {
 import { rpcError } from "../../../api/clients";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { PasswordInput } from "../../../components/PasswordInput";
-import { RoleSelect } from "../../../components/RoleSelect";
-import { toaster } from "../../../components/Toaster";
+import { PasswordInput } from "../../../components/inputs/PasswordInput";
+import { RoleSelect } from "../../../components/pickers/RoleSelect";
+import { toaster } from "../../../components/feedback/Toaster";
 import { rolesFor } from "../../../lib/roles";
 import { useCreateUser } from "../../../features/users/queries";
 

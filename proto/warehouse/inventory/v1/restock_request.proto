@@ -120,7 +120,18 @@ enum RestockRequestEventKind {
   //
   // Only written when the fee is > 0. Most deliveries are not COD, and a step saying "paid nothing at
   // the door" is a claim about an event that did not occur.
+  //
+  // ⚠ SUPERSEDED BY COST_RECORDED (00021), and kept because history is not rewritten: rows written
+  // when a delivery could only cost the warehouse a COD fee still read as what they were. Nothing is
+  // written under it any more.
   RESTOCK_REQUEST_EVENT_KIND_COD_FEE = 5;
+  // The warehouse recorded what this delivery cost IT (00021) — the fee at the door, and anything else
+  // it paid to get the goods in. Same step as COD_FEE above and same reasoning, widened to the kinds
+  // that had nowhere to go while the fee was a single column.
+  //
+  // Written only when there is at least one cost line: most deliveries cost the warehouse nothing, and
+  // a step saying "paid nothing" is a claim about an event that did not occur.
+  RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED = 6;
 }
 
 // One entry in a restock's history — WHAT happened, WHO did it, WHEN.
@@ -168,12 +179,21 @@ message RestockRequest {
   // What the shipment itself cost, whole rupiah (#127). The goods' cost is per line (item.price);
   // this is the freight on top, and it is what the summary adds to the products' total.
   int64 shipping_cost = 16;
-  // The courier's fee collected ON DELIVERY (#155), paid by the WAREHOUSE and entered when it accepts.
-  // The requesting team cannot know it in advance, which is why it is not on create or update.
+  // was `int64 cod_shipping_fee` — the COD fee is now ONE KIND of cost line (see cost_lines below).
+  // It was never the only thing a warehouse pays to get a delivery in, and a scalar column could
+  // only ever hold the one it was named after.
+  reserved 19;
+  reserved "cod_shipping_fee";
+
+  // WHAT THE WAREHOUSE LAID OUT to receive this delivery, entered when it accepts.
   //
-  // Summed with shipping_cost and spread across the units that arrived sellable — getting the goods
-  // here is part of what they cost, so both feed the HPP that becomes an order's COGS.
-  int64 cod_shipping_fee = 19;
+  // Distinct from shipping_cost above, and the difference is WHO IS OUT OF POCKET: shipping_cost is
+  // the requesting team's own freight, typed on create. These are the accepting warehouse's — money
+  // it spends on goods it does not own, which is why they do two things at once (see cost_lines on
+  // the fulfill request).
+  //
+  // Empty is the ordinary case: most deliveries cost the warehouse nothing at the door.
+  repeated RestockCostLine cost_lines = 26;
   // How it was paid for (#127).
   RestockPaymentType payment_type = 17;
   // A free-text note about this restock (#127).
@@ -575,11 +595,60 @@ message RestockRequestFulfillRequest {
   // drifts — so an incomplete count is refused rather than interpreted.
   repeated RestockRequestReceivedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
 
-  // What the courier charged AT THE DOOR (#155). Entered here rather than on the request because the
-  // warehouse is the side that pays it, and it only exists once the goods actually turn up.
+  // was `int64 cod_shipping_fee` — see cost_lines.
+  reserved 4;
+  reserved "cod_shipping_fee";
+
+  // WHAT THIS DELIVERY COST THE WAREHOUSE, one line per outlay. Entered here rather than on the
+  // request because the warehouse is the side that pays these, and none of them exist until the
+  // goods actually turn up.
   //
-  // 0 is the ordinary case — most deliveries are not COD.
-  int64 cod_shipping_fee = 4 [(buf.validate.field).int64.gte = 0];
+  // Each line does TWO things, and that is the point of collecting them here:
+  //   1. it joins shipping_cost in the freight spread across the units that arrived sellable, so it
+  //      reaches the HPP that becomes an order's COGS — what it cost to get the goods here;
+  //   2. it raises what the requesting team owes this warehouse, because the warehouse is out of
+  //      pocket for goods it does not own.
+  // The same rupiah answers both questions; neither reading may drop it.
+  //
+  // Empty is the ordinary case — most deliveries cost the warehouse nothing.
+  repeated RestockCostLine cost_lines = 5;
+}
+
+// What kind of outlay a RestockCostLine is. APPEND ONLY, like every enum here.
+//
+// Deliberately SHORT (owner): the two that exist today, with OTHER as the escape hatch. A kind is a
+// one-line, non-breaking addition, so starting narrow costs nothing — while a long speculative list
+// costs a dropdown nobody can read and buckets nobody fills.
+enum RestockCostKind {
+  RESTOCK_COST_KIND_UNSPECIFIED = 0;
+  // Paid to the courier AT THE DOOR (#155) — the fee that had its own column until cost lines
+  // existed. The requesting team cannot know it in advance, which is why it is typed at acceptance.
+  RESTOCK_COST_KIND_COD_SHIPPING = 1;
+  // Anything else the warehouse paid to get this delivery in. Requires a note — an untyped amount
+  // with no words beside it is a number the team being charged cannot argue with.
+  RESTOCK_COST_KIND_OTHER = 2;
+}
+
+// RestockCostLine — one thing the accepting warehouse paid for this delivery.
+//
+// IMMUTABLE once the delivery is accepted, because the debt it creates is frozen with it: editing a
+// line after the fact would silently rewrite what another team owes.
+message RestockCostLine {
+  // Set on read, ignored on write.
+  uint64 id = 1;
+
+  RestockCostKind kind = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Whole rupiah, and it must be POSITIVE. A line of zero is not a cost, it is a claim that nothing
+  // happened — and it would post a debt of nothing to the requesting team.
+  int64 amount = 3 [(buf.validate.field).int64.gt = 0];
+
+  // WHY. Optional for COD_SHIPPING, where the kind already says it; the handler REQUIRES it for
+  // OTHER, which is a constraint on the pair of fields and so cannot be expressed here.
+  string note = 4 [(buf.validate.field).string.max_len = 200];
 }
 
 // One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,

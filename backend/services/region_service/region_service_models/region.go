@@ -5,7 +5,7 @@ package region_service_models
 //
 // This is GLOBAL reference data: unlike almost every other model in this system there is no team_id,
 // because regions are the same for everyone (plan §4.4). The rows are loaded from the generated CSV
-// seed (`go run ./cmd/tool region load-seed`), not typed in.
+// seed (`go run ./tools/san region load-seed`), not typed in.
 type Region struct {
 	// The dotted kode wilayah ('11.01.01.2001') — the government's key, and the primary key here.
 	Code string `gorm:"primaryKey"`

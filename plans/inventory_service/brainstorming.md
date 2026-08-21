@@ -753,7 +753,7 @@ flow (§1) and is not built.
     `TestRestockRequestList_FilterByStatus` counted 6 rows where it seeded 3, and the cause was
     COMMITTED rows left in `warehouse_test` by an e2e run — `san_testdb` rolls back its own transaction
     and can do nothing about data another process committed. The tell is a count that is a multiple of
-    what the test seeded; the fix is `go run ./cmd/tool db reset-test`. Worth reaching for before
+    what the test seeded; the fix is `go run ./tools/san db reset-test`. Worth reaching for before
     debugging a filter that "suddenly" over-returns.
 
 - **2026-07-30** — **The accept line is THREE COLUMNS, and the COD fee sits outside the summary card**

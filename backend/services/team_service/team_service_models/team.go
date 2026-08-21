@@ -13,8 +13,17 @@ type Team struct {
 	Description string
 	ImageURL    string
 	Deleted     bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+
+	// THE PRIORITY-PRODUCT FEATURE (owner), granted by ROOT and applying to the team's WHOLE
+	// catalogue — every product it owns is a priority product to everybody browsing.
+	//
+	// ⚠ NOT writable through TeamInfoUpdate: that message is callable by ROLE_TEAM_OWNER, and a
+	// capability granted by root must not be settable by the team it is granted to. See the migration
+	// 00007_team_priority_product.sql for the whole reasoning.
+	PriorityProduct bool
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (Team) TableName() string {

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { documentClient, rpcError, userClient } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 
 interface ProfilePictureProps {
   avatarUrl?: string;

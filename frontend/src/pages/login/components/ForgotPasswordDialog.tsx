@@ -13,8 +13,8 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { authClient, rpcError } from "../../../api/clients";
-import { PasswordInput } from "../../../components/PasswordInput";
-import { toaster } from "../../../components/Toaster";
+import { PasswordInput } from "../../../components/inputs/PasswordInput";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // ForgotPasswordDialog drives the public OTP recovery flow, both steps of which are on
 // AuthService and require no token (you can't log in — that's the point):

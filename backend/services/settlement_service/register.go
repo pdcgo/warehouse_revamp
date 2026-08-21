@@ -13,11 +13,11 @@ import (
 // NewRegister mounts settlement_service's Connect handlers under the shared interceptor chain and
 // reports them for reflection.
 //
-// ONLY the read surface today (#185). SettlementPaymentService and SettlementTermsService are
-// declared in the same proto and are deliberately NOT mounted until #188 and #189 implement them —
-// that is the whole reason the contract is three services rather than one. Mounting a service means
-// serving every one of its RPCs, so a single service would have forced stubs returning Unimplemented
-// to be reachable, and reflection would advertise a contract this build cannot honour.
+// TWO of the contract's three services today: the read surface (#185) and the terms surface (#189).
+// SettlementPaymentService is declared in the same proto and is deliberately NOT mounted until #188
+// implements it — that is the whole reason the contract is three services rather than one. Mounting a
+// service means serving every one of its RPCs, so a single service would have forced stubs returning
+// Unimplemented to be reachable, and reflection would advertise a contract this build cannot honour.
 //
 // ⚠ THE LEDGER'S WRITE PATH HAS NO WIRE SURFACE AT ALL, and that is not an omission. `PostEntry` is a
 // domain function called in-process, because nothing outside this system may assert that one team
@@ -29,9 +29,13 @@ func NewRegister(
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(settlementv1connect.NewSettlementServiceHandler(settlement, opts))
+		mux.Handle(settlementv1connect.NewSettlementTermsServiceHandler(settlement, opts))
+		mux.Handle(settlementv1connect.NewSettlementPaymentServiceHandler(settlement, opts))
 
 		return san_grpc.ServiceReflectNames{
 			settlementv1connect.SettlementServiceName,
+			settlementv1connect.SettlementTermsServiceName,
+			settlementv1connect.SettlementPaymentServiceName,
 		}
 	}
 }

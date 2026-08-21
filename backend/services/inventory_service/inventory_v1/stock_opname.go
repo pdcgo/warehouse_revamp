@@ -94,7 +94,8 @@ func (s *Service) StockOpname(
 		}
 
 		for _, line := range lines {
-			variance, lineErr := countOne(tx, warehouseID, line.productID, rackID, line.counted, req.Msg.GetNote(), actor)
+			variance, lineErr := s.countOne(ctx, tx, warehouseID, line.productID, rackID, line.counted,
+				req.Msg.GetNote(), actor)
 			if lineErr != nil {
 				return lineErr
 			}
@@ -184,7 +185,8 @@ func opnameLines(raw []*inventoryv1.StockOpnameLine) ([]countedLine, error) {
 // It is deliberately the same sequence `StockAdjust`'s RECOUNT branch performs — lock, diff, set,
 // attribute FIFO, append the movement — because an opname line IS a recount. The difference is only
 // that this one also prices the shortfall and hands the numbers back rather than throwing them away.
-func countOne(
+func (s *Service) countOne(
+	ctx context.Context,
 	tx *gorm.DB,
 	warehouseID, productID uint64,
 	rackID *uint64,
@@ -234,10 +236,41 @@ func countOne(
 
 	// Batch-less on purpose: a shelf count is a statement about the SHELF, so Stock History shows "—"
 	// for the batch even though the units underneath were attributed FIFO. Same as a single recount.
-	_, err = appendMovement(tx, warehouseID, productID, rackID, nil, delta, counted,
+	mv, err := appendMovement(tx, warehouseID, productID, rackID, nil, delta, counted,
 		inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST, note, "", actor)
 	if err != nil {
 		return nil, err
+	}
+
+	// THE WAREHOUSE OWES WHOEVER OWNED THE MISSING UNITS (business_level §Warehouse 5 and 7, owner,
+	// 2026-08-20). A shortfall found by counting a shelf is stock lost in the warehouse exactly as one
+	// filed as a LOST adjust is — before this, the same physical loss reimbursed the owner or not
+	// depending on which RPC noticed it.
+	//
+	// ⚠ ONE DEBT PER OWNER PER LINE, keyed on THIS line's movement. A shelf's layers can belong to
+	// several teams, so one shortfall can owe two of them different amounts; and keying on the movement
+	// keeps `source_id` meaning the same thing it means for an adjust, so a re-run is refused by the
+	// ledger rather than charging twice.
+	//
+	// Inside the transaction, unlike the expense that the caller posts afterwards — the same split the
+	// single-adjust path draws. An expense is derived and a dropped one is a gap a report finds; an
+	// obligation that fails to commit leaves the owner's goods gone with nothing recorded.
+	//
+	// A SURPLUS REIMBURSES NOBODY, and is not a reversal either: stock that turns up on a count was
+	// never established as lost, so there is no debt of its own to give back. Only a FOUND adjust
+	// against a specific batch reverses a specific reimbursement.
+	if delta < 0 {
+		for _, ownerTeamID := range sortedOwners(draw.ByOwner) {
+			amount := draw.ByOwner[ownerTeamID]
+			if amount <= 0 || ownerTeamID == warehouseID {
+				continue
+			}
+
+			postErr := s.settlement.PostStockDamage(ctx, tx, ownerTeamID, warehouseID, mv.ID, amount, false)
+			if postErr != nil {
+				return nil, postErr
+			}
+		}
 	}
 
 	// A SURPLUS IS NOT VALUED. Stock that turns up is not a purchase — nothing was spent to acquire it,
@@ -272,4 +305,21 @@ func opnameLossNote(msg *inventoryv1.StockOpnameRequest) string {
 	}
 
 	return fmt.Sprintf("stock opname (%s)", place)
+}
+
+// sortedOwners is the map's keys in a fixed order.
+//
+// It changes no outcome — each owner's debt is its own posting with its own idempotency key — but it
+// makes two runs of the same count produce entries in the same order, which matters the moment
+// somebody is comparing two of them by eye. Sorting the keys is also the only way to iterate a Go map
+// deterministically at all.
+func sortedOwners(byOwner map[uint64]int64) []uint64 {
+	owners := make([]uint64, 0, len(byOwner))
+	for owner := range byOwner {
+		owners = append(owners, owner)
+	}
+
+	sort.Slice(owners, func(i, j int) bool { return owners[i] < owners[j] })
+
+	return owners
 }

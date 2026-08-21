@@ -24,19 +24,20 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { AddressPicker, emptyAddress } from "../../components/AddressPicker";
-import type { AddressValue } from "../../components/AddressPicker";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { CurrencyInput } from "../../components/CurrencyInput";
-import { ProductSelect } from "../../components/ProductSelect";
-import type { PickedProduct } from "../../components/ProductSelect";
-import { ShopSelect } from "../../components/ShopSelect";
-import { TeamSelect } from "../../components/TeamSelect";
-import { toaster } from "../../components/Toaster";
+import { emptyAddress } from "../../components/customers/AddressPicker";
+import type { AddressValue } from "../../components/customers/AddressPicker";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { ProductSelect } from "../../components/products/ProductSelect";
+import type { PickedProduct } from "../../components/products/ProductSelect";
+import { ShippingSelect } from "../../components/pickers/ShippingSelect";
+import { ShopSelect } from "../../components/pickers/ShopSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
+import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { CustomerShipping } from "../../features/orders/CustomerShipping";
+import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { OrderLineRow } from "../../features/orders/OrderLineRow";
 import { OrderTotals } from "../../features/orders/OrderTotals";
 import { lineStock, toQty, toRupiah } from "../../features/orders/lines";
@@ -464,7 +465,7 @@ export function OrderDraftDetailPage() {
           <Card.Root>
             <Card.Body>
               <Stack gap="card">
-                <Text fontWeight="medium">{t("orderDrafts.mapLines")}</Text>
+                <Heading as="h3" size="sm">{t("orderDrafts.mapLines")}</Heading>
                 <Text fontSize="sm" color="fg.muted">
                   {t("orderDrafts.mapLinesHelp")}
                 </Text>
@@ -586,30 +587,43 @@ export function OrderDraftDetailPage() {
           </Card.Root>
         </GridItem>
 
-        {/* ── WHERE IT GOES, AND WHO IT IS FOR ─────────────── two abreast, as on the form ──
-            The form puts the shipping RECEIPT beside the address; a draft has none — nothing has been
-            handed to a courier yet — so the customer card takes that side on its own. */}
+        {/* ── WHO IT IS FOR, AND HOW IT TRAVELS ─────────────── stacked, as on the form ──
+            The customer and the address are ONE two-column card (owner), the same one the create form
+            mounts. What the form puts under it is a shipping RECEIPT; a draft has none — nothing has
+            been handed to a courier yet — so only the courier itself follows. */}
         <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 3 }}>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap="section" alignItems="start">
-            <Card.Root>
-              <Card.Body>
-                <Stack gap="card">
-                  <Text fontWeight="medium">{t("orders.deliveryAddress")}</Text>
-                  <AddressPicker value={address} onChange={setAddress} />
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-
-            <CustomerShipping
+          <Stack gap="section">
+            <CustomerInfoForm
               idPrefix="draft"
               customerName={customerName}
               onCustomerNameChange={setCustomerName}
               customerPhone={customerPhone}
               onCustomerPhoneChange={setCustomerPhone}
-              shippingCode={shippingCode}
-              onShippingCodeChange={setShippingCode}
+              address={address}
+              onAddressChange={setAddress}
             />
-          </SimpleGrid>
+
+            {/* THE COURIER, ON ITS OWN — it left the customer card (owner), and a draft has no
+                shipping-receipt card to take it: nothing has been handed over yet, so there is no
+                tracking number and no slip to sit beside.
+
+                It still has to be here. A scraped draft arrives carrying the marketplace's chosen
+                courier, the field is editable before promotion, and the save sends it — a card that
+                simply stopped rendering it would silently drop a value the screen still writes.
+
+                A narrow card for one narrow control: full width, a lone combobox would stretch to the
+                width of the lines table above it and read as a search bar. */}
+            <Card.Root maxW={{ md: "sm" }}>
+              <Card.Body>
+                <Stack gap="card">
+                  <Heading as="h3" size="sm">{t("orders.shipping")}</Heading>
+                  <Field.Root>
+                    <ShippingSelect value={shippingCode} onChange={setShippingCode} />
+                  </Field.Root>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          </Stack>
         </GridItem>
 
         {/* ── WHAT IT COMES TO, AND THE TWO EXITS ──────────────── right column, and it STICKS ──

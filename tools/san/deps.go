@@ -22,7 +22,7 @@ import (
 type DatabaseDSN string
 
 // NewDatabase opens the chosen Postgres. GORM reads and writes rows; goose owns the schema, and
-// this tool never migrates — that is cmd/tool's job.
+// this graph never migrates — `san migrate` drives goose on its own handle, not through GORM.
 func NewDatabase(dsn DatabaseDSN) (*gorm.DB, error) {
 	return gorm.Open(postgres.Open(string(dsn)), &gorm.Config{
 		TranslateError: true,

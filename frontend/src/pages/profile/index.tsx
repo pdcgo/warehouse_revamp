@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../api/clients";
 import { publicUsersByIds, userByIdsRowData } from "../../features/users/adapt";
 import { useAuth } from "../../features/auth/AuthContext";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { ProfilePicture } from "./components/ProfilePicture";
 

@@ -431,4 +431,3 @@ func TestStockOpname_CannotCountAnotherWarehousesShelf(t *testing.T) {
 		t.Fatalf("got %v, want NotFound", code)
 	}
 }
-

@@ -20,14 +20,14 @@ import { BatchDateField, BatchExpiryFilter } from "../../gen/warehouse/inventory
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useWarehouseBatches } from "../../features/inventory/queries";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import {
   ALL_DATES,
   DateRangePicker,
   isAllDates,
   resolveRange,
   type DateRange,
-} from "../../components/DateRangePicker";
+} from "../../components/datetime/DateRangePicker";
 import { formatRupiah } from "../../lib/money";
 
 const PAGE_SIZE = 20;

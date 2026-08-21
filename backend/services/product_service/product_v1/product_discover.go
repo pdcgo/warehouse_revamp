@@ -44,6 +44,25 @@ func (s *Service) ProductDiscover(
 		query = query.Where("team_id = ?", owner)
 	}
 
+	// ── The PRIORITY partition ────────────────────────────────────────────────────────────────────
+	//
+	// Two complementary narrowings over the OWNING team, backing the picker's *Priority Product* and
+	// *Other Product* tabs. Priority is a flag on the TEAM (warehouse.team.v1.Team.priority_product),
+	// which this service does not own and must not join to (HARD RULE 3) — so the caller resolves the
+	// priority team ids against team_service and hands them here as a plain list. This service filters
+	// by ids and never learns what the list means.
+	//
+	// ⚠ EMPTY MEANS NO NARROWING on both, exactly as `owner_team_id = 0` does. A caller whose priority
+	// set is genuinely empty must render nothing itself — sending an empty list here returns the whole
+	// catalogue, which on a Priority tab would read as "everything is priority".
+	if ids := req.Msg.GetOwnerTeamIds(); len(ids) > 0 {
+		query = query.Where("team_id IN ?", ids)
+	}
+
+	if ids := req.Msg.GetExcludeOwnerTeamIds(); len(ids) > 0 {
+		query = query.Where("team_id NOT IN ?", ids)
+	}
+
 	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
 		pattern := "%" + escapeLike(q) + "%"
 		query = query.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)

@@ -107,16 +107,5 @@ func (s *Service) SettlementPositionList(
 	}), nil
 }
 
-// awaitingConfirmation counts, per counterparty, the payments THEY have recorded that THIS team has
-// not yet confirmed.
-//
-// A creditor must learn a payment is waiting without hunting for it — a payment nobody notices is a
-// debt that stays open for no reason. Answered inside the query the screen already makes rather than
-// by a second RPC, so the badge and the rows cannot disagree.
-//
-// The payments table arrives with #188. Until then this is honestly empty rather than absent: the
-// screen renders a badge of zero, which is the truth today, and the day payments land this is the one
-// function that has to learn about them.
-func (s *Service) awaitingConfirmation(_ context.Context, _ uint64) (map[uint64]uint32, error) {
-	return map[uint64]uint32{}, nil
-}
+// awaitingConfirmation lives in awaiting_confirmation.go — it grew a real query when payments landed
+// (#188).

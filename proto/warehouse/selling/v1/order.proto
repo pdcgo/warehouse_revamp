@@ -285,6 +285,22 @@ message Order {
   // This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
   // says which warehouse to deduct FROM.
   uint64 warehouse_id = 15;
+
+  // THE MARKETPLACE'S OWN ID for this order — what the storefront calls it, read off the screen and
+  // typed in beside the shop that took it (owner).
+  //
+  // It is the only name this order has that a BUYER, a courier's dashboard or the marketplace's own
+  // support can be asked about: our `id` means nothing to any of them. So it is stored verbatim and
+  // never parsed — every marketplace formats its reference differently, and any structure we imposed
+  // would be a rule that the next storefront breaks.
+  //
+  // "" = there is no marketplace reference, which is the ordinary state of an order taken over the
+  // phone. Not "unknown": an order that never had one never will.
+  //
+  // ⚠ NOT unique, and nothing joins on it. It is evidence of where an order came from, not a key —
+  // whether two orders may share one is an open question (see the migration), and enforcing it before
+  // that is decided would refuse legitimate re-entry.
+  string order_external_ref_id = 21;
 }
 
 message OrderCreateRequest {
@@ -343,6 +359,13 @@ message OrderCreateRequest {
   // Capped at 2000 characters: long enough for the several sentences a difficult order really does
   // need, short enough that the field cannot become a document store.
   string note = 14 [(buf.validate.field).string.max_len = 2000];
+
+  // The marketplace's own id for this order, as the person read it off the storefront. Optional; ""
+  // is the ordinary case for an order taken over the phone. See Order.order_external_ref_id.
+  //
+  // Capped at 128 to match OrderDraft.external_id — the two hold the same kind of thing, and a
+  // reference that fits in a draft must fit in the order that draft becomes.
+  string order_external_ref_id = 16 [(buf.validate.field).string.max_len = 128];
 
   // At least one line; `id` on each is ignored.
   repeated OrderItem items = 10 [(buf.validate.field).repeated.min_items = 1];

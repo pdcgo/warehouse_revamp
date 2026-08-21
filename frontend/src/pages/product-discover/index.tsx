@@ -5,8 +5,8 @@ import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDiscoverProducts } from "../../features/products/queries";
-import { Pagination } from "../../components/Pagination";
-import { ProductCard } from "../../components/ProductCard";
+import { Pagination } from "../../components/chrome/Pagination";
+import { ProductCard } from "../../components/products/ProductCard";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 

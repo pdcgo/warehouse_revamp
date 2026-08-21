@@ -219,7 +219,7 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
 		Lines: allArrived(created.Msg.GetRequest()),
 		// The fee the courier took at the door — known only now, and only to the warehouse.
-		CodShippingFee: 5000,
+		CostLines: codLines(5000),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)

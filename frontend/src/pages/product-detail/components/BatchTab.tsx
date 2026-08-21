@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, Flex, Stack, Table, Text } from "@chakra-ui/react";
 
-import { Pagination } from "../../../components/Pagination";
-import { RefreshOverlay } from "../../../components/RefreshOverlay";
+import { Pagination } from "../../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { useOwnerBatches } from "../../../features/products/queries";
 import { formatUnixDate } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";

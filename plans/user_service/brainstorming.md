@@ -54,7 +54,7 @@
 | | Where |
 | --- | --- |
 | `users`, `user_team_roles` tables + root seed | `db_migrations/00001..00003` |
-| Root account that **cannot log in** until a password is set | `cmd/tool seed root --password X` |
+| Root account that **cannot log in** until a password is set | `san seed root --password X` |
 | **`Login`** — bcrypt, no account enumeration, suspension check | `login.go` |
 | **`Logout`** — evicts cached roles (token stays valid until expiry) | `logout.go` |
 | **`CheckAccess`** — validates, renews (bounded), re-reads suspension | `check_access.go` |
@@ -147,7 +147,7 @@ team 1 (no role there).
 | --- | --- |
 | `UserChangePhoneNumber` | **Deferred** — pulls in Twilio. `UpdateProfile` covers the field itself. |
 | `TeamSynclegacy` | **Dropped on purpose** — legacy migration, and the only streaming RPC. |
-| **The dev seed** approved in team_service §3.2 | `cmd/tool seed` has only `root`. The all-teams dev fixture is not written. |
+| **The dev seed** approved in team_service §3.2 | `san seed` has only `root`. The all-teams dev fixture is not written. |
 | **DB-backed handler tests** | Only `access_interceptors` is unit-tested (20 tests). The handlers are covered by 15 e2e tests, not by tests of their own. |
 
 **`user_service` is functionally complete.** Every RPC in the source's surface is either ported,

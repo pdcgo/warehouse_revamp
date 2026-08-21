@@ -17,7 +17,7 @@ import {
 import { TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { useRevenue } from "./queries";

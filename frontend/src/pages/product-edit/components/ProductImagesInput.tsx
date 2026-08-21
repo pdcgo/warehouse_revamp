@@ -4,7 +4,7 @@ import { Badge, Box, Button, FileUpload, Icon, IconButton, Image, SimpleGrid, St
 import { ImagePlus, X } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
 import { DocumentResourceType } from "../../../gen/warehouse/document/v1/document_pb";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 
 // One product image, as the product RPCs carry it: the full public URL plus its (best-effort)
 // thumbnail. Both come from the two-phase document_service upload.

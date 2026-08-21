@@ -250,3 +250,242 @@ The one place this differs from the revenue and expense handlers. They each had 
 query to reuse, and reusing it keeps their footer identical to their list screen's. There is no such query
 here, so a second one would be a second definition of the same sum — free to drift from the days above it,
 which is exactly the failure the other two reuse their query to avoid.
+
+## The rates and limits themselves — `SettlementTermsService` (#189)
+
+Until this landed, `settlement_terms` was a table only the fee code READ. Nothing could write it, so
+every handling fee was 0, every product markup was 0, and every credit limit was unlimited —
+permanently. Three RPCs close that.
+
+| RPC | |
+| --- | --- |
+| `SettlementTermsList` | what the scoped team charges each debtor — the **creditor's own books**, never what it is charged |
+| `SettlementTermsSet` | upsert one pair's rate and limit |
+| `SettlementTermsDelete` | remove a pair's row entirely |
+
+**The scope is the CREDITOR.** `team_id` is the team that WROTE these rows. A debtor asking what it
+is charged is asking about somebody else's configuration and gets its own empty list.
+
+**`counterparty_id = 0` is the DEFAULT row**, not a missing value — the rate applying to every team
+without an override. That is the whole override mechanism, and it is why the list orders by
+`counterparty_id ASC`: the default leads because it is the first thing anyone needs to read.
+
+### ⚠ Absent is unlimited, `0` is no credit at all
+
+The one place in this service where a wrong zero inverts the meaning.
+
+| `credit_limit` | means |
+| --- | --- |
+| no terms row | **unlimited** |
+| row, `NULL` | **unlimited** |
+| row, `0` | **no credit at all** — blocks the very first order |
+
+So the limit is a pointer end to end and is never read through a zero-defaulting getter.
+`SettlementTermsSet` passes `req.Msg.CreditLimit` straight to SQL rather than `GetCreditLimit()`,
+because the getter flattens absent and zero to the same `0` — which would grant infinite credit to a
+team somebody had just frozen.
+
+`Set` is an UPSERT: "set the rate" is one act whether or not a row exists, and a create that failed
+on the second edit would make the screen's Save button work exactly once. It writes `credit_limit`
+unconditionally, NULL included — omitting the field is how a caller lifts a limit, so COALESCE-ing to
+the stored value would make a limit permanent once set.
+
+`Delete` removes the whole row, dropping that debtor back to the creditor's default. Deleting terms
+that do not exist SUCCEEDS: the caller asked for a state, that state holds either way, and a retry
+after a timeout must not fail because the first attempt worked.
+
+**A rate change never rewrites history.** Terms decide what FUTURE postings charge; entries already
+written are immutable facts about money that moved.
+
+## The credit check — a pre-order gate, not a ledger guard (#189)
+
+A limit only matters if something enforces it. `CheckCredit` is a **domain function**, called by
+selling_service through an interface it owns, before an order writes anything.
+
+```mermaid
+sequenceDiagram
+    participant CS as Customer service
+    participant O as selling_service
+    participant C as creditChecker
+    participant S as settlement_service
+
+    CS->>O: OrderCreate
+    O->>O: resolve unit costs, resolve product owners
+    O->>C: Check(team, [warehouse, ...owners])
+    C->>S: CheckCredit
+    S->>S: limits per creditor — specific row, else default
+    S->>S: current debt per creditor, from the debtor's side
+    alt every creditor allows
+        S-->>O: nil
+        O->>O: take stock, write the order, commit, publish
+    else one creditor is at its limit
+        S-->>O: CreditBlock — creditor, debt, limit
+        O-->>CS: FAILED_PRECONDITION, naming the creditor and both numbers
+    end
+```
+
+### The rule is `debt < limit`, on CURRENT debt
+
+Exposure can reach the limit plus one order's fees, and the **next** order is blocked. Friendlier
+than a hard ceiling — a person is cut off next time rather than rejected mid-order for an amount they
+cannot see — and it agrees with the eventual-consistency window rather than fighting it. The design
+already accepts that an order may commit before its fees post, so a check reading a slightly stale
+balance overshoots by about one order, which is exactly what this rule permits.
+
+### Every creditor, independently — and the blocker is NAMED
+
+An order draws on the fulfilling warehouse **and** each team whose goods it sells. Any one over its
+limit stops the whole order. A check that only ever asked about the warehouse would pass every "is it
+blocked" test while letting a frozen product owner's stock ship forever.
+
+The refusal carries the creditor, the debt and the limit in its message, because the person hitting
+it is **customer service** — who never sees the Liability screens and cannot look the numbers up.
+It is `FAILED_PRECONDITION`, not `PERMISSION_DENIED`: the caller is allowed to place orders, and the
+state of the world is what refuses.
+
+### Where it sits in the order, and why
+
+- **Before the transaction**, for the same reason the cost read is — it is a read, and holding the
+  order's row lock across another service's call buys nothing and closes no window.
+- **Before the stock draw.** A blocked order must not have taken stock it then gives back: a
+  compensating return is a real movement in the warehouse's ledger, and one caused by a refusal the
+  system could have made first is noise nobody can explain.
+- **Never inside `PostEntry`.** The ledger records what happened and must never decline to record it.
+  The fees of an order that slipped through still post truthfully; the *next* order is stopped.
+
+### What fails open, and what does not
+
+| | |
+| --- | --- |
+| the catalogue cannot resolve product owners | **fails OPEN** — logged, and only the warehouse's limit is applied. An outage there must not stop every order in the system; the uncharged product fee is what the reconciliation report is built to find |
+| the **check itself** errors | **fails CLOSED** — the order is refused. We cannot say whether the team is over its limit, and allowing it would make an outage the way past every credit limit at once |
+| no checker wired at all | permissive (`noCredit`), and deliberately not the production default — the composition root wires the real one |
+
+## Settling a debt — `SettlementPaymentService` (#188)
+
+Until this landed a balance could only **grow**: fees posted, and nothing in the system could ever
+bring one back to zero.
+
+Settlement is **two-phase**. The payer records; the creditor confirms; **only the confirm posts.**
+
+```mermaid
+sequenceDiagram
+    participant P as Payer team
+    participant S as settlement_service
+    participant C as Creditor team
+
+    P->>S: SettlementPaymentRecord — amount, note
+    Note over S: status = recorded. NO ledger effect.
+    S-->>C: appears in the badge and the awaiting_my_confirmation list
+
+    C->>S: SettlementPaymentConfirm
+    Note over S: lock FOR UPDATE, demand status = recorded
+    S->>S: status = confirmed AND PostEntry — one transaction
+    Note over S: the debt is settled
+
+    opt confirmed in error
+        C->>S: SettlementPaymentReverse — reason required
+        Note over S: demand status = confirmed
+        S->>S: status = reversed AND a COMPENSATING entry
+        Note over S: the debt is back, and both entries stay
+    end
+```
+
+### Why recording posts nothing
+
+One side asserting a transfer is not evidence that it landed. A ledger that moved on a claim would
+let any team write off its own debt by typing a number. Only the creditor can see the money arrive —
+which is also why counterparties are **teams only**: an external party has no account and could never
+confirm.
+
+### The scope asymmetry IS the design
+
+| RPC | `team_id` must be | |
+| --- | --- | --- |
+| `Record` | the **payer** | you may only assert a movement of your own money |
+| `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
+| `Reverse` | the **creditor** | whoever confirmed is who un-confirms |
+
+The scope is in the `WHERE` of the lookup, not a check after loading, so somebody else's payment
+reads as **NOT FOUND** rather than forbidden — a caller must not be able to probe payment ids to
+learn who owes whom.
+
+### ⚠ Confirm locks the row, and the status change posts with it
+
+Confirm is a check-then-act on money: read the status, decide it is `recorded`, post an entry that
+settles a debt. Two managers clicking Confirm in the same second is an ordinary event here.
+
+- **`FOR UPDATE`** — without it both reads see `recorded`, both post, and the debt is paid off twice.
+  The ledger's unique index would catch the second posting, but as `ErrAlreadyPosted` from inside a
+  transaction, which is a worse way to learn it.
+- **One transaction** — a payment marked confirmed whose entry never landed is a debt the books still
+  show and the screen says is settled.
+
+Proven, not asserted: `payment_confirm_race_test.go` (`-tags raceaudit`) runs 8 concurrent confirms —
+exactly one succeeds and the balance lands on 0 — and races Confirm against Reverse.
+
+### ⚠ A payment moves value the OPPOSITE way to a fee
+
+`paymentPosting` puts the **payer** in the `CreditorTeamID` field. That is not a mistake: paying
+reduces the payer's payable, so their balance moves **up** toward zero while the team that was paid
+moves **down**. Writing the teams the "natural" way round would settle the debt backwards —
+arithmetically consistent, completely wrong, and invisible until somebody reads a screen.
+
+`reversal` distinguishes the confirmation from its undoing inside the ledger's idempotency key
+`(source_type, source_id, counterparty, reversal)` — which is what lets one payment be posted once
+and un-posted once, and neither of them twice.
+
+### Reversal is compensation, never an edit
+
+The confirmation stays in the ledger and an equal-and-opposite entry joins it, so the balance nets
+back and the history shows the payment was agreed and then withdrawn. `confirmed_at` and
+`confirmed_by` **survive** — when it was agreed, and by whom, are facts, and clearing them would
+erase who to ask about it.
+
+The `reason` is required by the contract and stored. Reversing says a person got it wrong, and the
+next reader deserves better than two entries that cancel out for no stated reason.
+
+> ⚠ **The stored `reversal_reason` has no getter on the wire yet.** `SettlementPayment` carries no
+> reason field, so the column is written and cannot be read back. Worth a proto field before the
+> screens land — until then the reason is recoverable only from the database.
+
+### The badge — `awaiting_my_confirmation`
+
+A payment nobody notices is a debt that stays open for no reason. `SettlementPositionList` answers
+the count inside the query it already makes, so the badge and the rows cannot disagree, and
+`SettlementPaymentList` lists the same set.
+
+It means `recorded` payments where **this team is the creditor** — never the ones it recorded itself,
+which are waiting on somebody else. Counting both sides would show every payer a permanent
+notification for work that is not theirs.
+
+## The fifth obligation — stock the warehouse broke or lost (`STOCK_DAMAGE`)
+
+`SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE`, posted from `inventory_service`'s `StockAdjust` through
+`SettlementPoster.PostStockDamage`. `source_id` is the **adjust movement**.
+
+⚠ **It is the only obligation in this service where the WAREHOUSE is the debtor.** Every other one —
+COD/restock outlay, handling fee, product fee — has the selling team owing the warehouse. Here the
+warehouse holds goods it does not own (business_level §Warehouse 4), so breaking them is a debt to
+the owner rather than a cost it absorbs alone.
+
+| | |
+| --- | --- |
+| debtor | the **warehouse** |
+| creditor | the **owning team**, resolved batch → restock line → requesting team |
+| amount | qty × the batch's **frozen** unit cost |
+| reversal | `true` when the goods are **FOUND** again |
+
+The `Reversal` flag rather than a swap of the two teams: the swap would produce the right arithmetic
+with the wrong idempotency key, so a find and its damage would not read as one story.
+
+**It does not replace the write-off.** `expense_service` records the same event as the warehouse's own
+P&L (`EXPENSE_KIND_STOCK_WRITE_OFF`); this records who it now owes. One answers *"what did our losses
+cost us"*, the other *"who do we have to pay"*.
+
+**Nothing is posted for an unknown cost** — the same Q10 rule the product fee follows: `unit_cost`
+NULL means *we do not know*, not free, and a zero entry would consume the idempotency key so the real
+figure could never be posted later. The reconciliation report (#187) is what names those.
+
+The full flow, with what is and is not charged, is in
+[inventory_service/rpc.md](../inventory_service/rpc.md).

@@ -6,6 +6,10 @@ before the API and the schema are derived from them.
 
 This document is the map. For the authoritative detail, follow the links.
 
+> **New to the team?** Start with the [FAQ](faq/) — [faq/getting-started.md](faq/getting-started.md)
+> covers the first day, and the rest is every question people have already had to ask. When you get
+> an answer that is not in there, add it.
+
 ---
 
 ## What it is
@@ -18,7 +22,7 @@ backend/     Go server (Connect RPC over net/http), one directory per service
 tools/san/   the operations CLI — top-level, because it is a tool of the repo, not of the server
 frontend/    React + TypeScript (Vite) + Chakra UI v3, a Connect-ES client
 plans/       the design discussion — one brainstorming doc per service
-docs/         human-facing docs (this file, the schema, per-service RPC flows)
+docs/         human-facing docs (this file, the FAQ, the schema, per-service RPC flows)
 ```
 
 The Go module is rooted at the repository, so `backend/` and `tools/` are one module — run
@@ -86,7 +90,7 @@ Prerequisites: Go, Node, and Docker (for Postgres). All commands assume the repo
 
 ```sh
 docker compose up -d                      # Postgres on :5433 (and Redis on :6380)
-cd backend && go run ./cmd/tool migrate up # apply migrations (prompts for db + service)
+go run ./tools/san migrate up # apply migrations (prompts for db + service)
 cd backend && go run ./cmd/app_development # the API on :8080
 cd frontend && npm install && npm run dev  # the UI on :5174 (talks to :8080)
 ```
@@ -96,14 +100,16 @@ migrations) are in the [top-level guide](../CLAUDE.md#commands).
 
 ### Tools
 
-Two CLIs, deliberately separate. `cmd/tool` is the **developer's** tool — it owns the schema and the
-fixtures (migrations, seeds, test databases). [`tools/san`](tools/san.md) is the **operator's** tool
-— it acts on real data through the services, and it can be pointed at production behind a typed
-confirmation. It sits at the repo root rather than under `backend/`, because it is a tool of the
-repository, not a part of the server.
+**One CLI:** [`tools/san`](tools/san.md). It owns the schema and the fixtures (`migrate`, `seed`,
+`db`, `region`), the actions on real data through the services (`user reset-password`), and serving
+the checkout to a coding agent (`remote`, `remote mcp`). It can be pointed at production behind a
+typed confirmation. It sits at the repo root rather than under `backend/`, because it is a tool of
+the repository, not a part of the server — and it finds the checkout itself, so it runs from any
+directory inside it.
 
 ```sh
-go run ./tools/san user reset-password --username ani   # from the repo root
+go run ./tools/san migrate up-all                       # every service, fresh database
+go run ./tools/san user reset-password --username ani
 ```
 
 ### Testing

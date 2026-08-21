@@ -38,6 +38,16 @@ func (s *Service) TeamList(
 		query = query.Where("type = ?", text)
 	}
 
+	// WHICH TEAMS CARRY THE PRIORITY-PRODUCT FEATURE. The product picker asks this once, then narrows
+	// a ProductDiscover by the ids that come back — which is how the *Priority Product* tab works
+	// without product_service ever joining to `teams` (HARD RULE 3).
+	//
+	// One-way: there is no "everything except priority" here, because nobody browses teams that way.
+	// The complement is taken on the PRODUCT side, by `exclude_owner_team_ids`, from the same id list.
+	if req.Msg.GetFilter().GetPriorityProductOnly() {
+		query = query.Where("priority_product = ?", true)
+	}
+
 	var total int64
 
 	err := query.Count(&total).Error

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Avatar, Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { TeamItem } from "../components/TeamItem";
+import { TeamItem } from "../components/entity/TeamItem";
 import { useTeam } from "../features/team/TeamContext";
 
 // Each team type carries a colour so the current scope's avatar fallback is recognisable at a glance.
@@ -73,7 +73,10 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
           data-testid="team-switcher"
           align="center"
           gap="2.5"
-          w="full"
+          // ⚠ COLLAPSED, IT MUST NOT STRETCH. Full width is right in a sidebar, where the switcher
+          // IS the row; in the mobile top bar the collapsed trigger sits beside the screen title and
+          // a `w="full"` chip pushes that title out of the header entirely.
+          w={collapsed ? "auto" : "full"}
           rounded="md"
           borderWidth="1px"
           borderColor="border"

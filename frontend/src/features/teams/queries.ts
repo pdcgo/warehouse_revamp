@@ -59,6 +59,41 @@ export function useTeams({ teamType, page, pageSize, enabled = true, reference =
   });
 }
 
+// WHICH TEAMS CARRY THE PRIORITY-PRODUCT FEATURE — the ids, and nothing else.
+//
+// Root grants the feature to a TEAM, and it makes that team's whole catalogue priority (owner). The
+// product picker's *Priority Product* tab is built from these ids: it asks team_service who is
+// priority, then narrows a ProductDiscover by the answer. product_service is never told what the list
+// MEANS — which is what lets the flag live in exactly one service without a cross-service join
+// (HARD RULE 3).
+//
+// `referenceQuery`, not `listQuery`: this is read to LABEL a browse, several times per screen, and a
+// team granted the feature a minute ago is not a wrong answer. A stale stock count would be; a stale
+// capability list is not.
+//
+// ONE LARGE PAGE rather than a pager. The set is small by construction — the feature is for "a few
+// selling teams" — and the caller needs the WHOLE list to build a filter, not a window of it: half
+// the ids would silently produce a Priority tab missing teams and an Other tab showing them.
+export function usePriorityTeamIds() {
+  return useQuery({
+    queryKey: key.teams(undefined, { priority: true }),
+    ...referenceQuery,
+    queryFn: async () => {
+      const res = await teamClient.teamList({
+        filter: { priorityProductOnly: true },
+        dataRequest: teamListRowData(),
+        page: { page: 1, limit: PRIORITY_TEAM_LIMIT },
+      });
+
+      return res.ids;
+    },
+  });
+}
+
+// PageFilter.limit is validated 1..200, and `ProductDiscover.owner_team_ids` accepts at most 200 —
+// the two ceilings agree, which is not a coincidence: this list is fed straight into that field.
+const PRIORITY_TEAM_LIMIT = 200;
+
 // One team — the detail page's read, and the contact/bank dialog's.
 //
 // Both go through THIS hook rather than each fetching for itself, because TeamDetail is the only

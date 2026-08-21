@@ -15,8 +15,8 @@ import {
 import { KeyRound } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
-import { PasswordInput } from "../../../components/PasswordInput";
-import { toaster } from "../../../components/Toaster";
+import { PasswordInput } from "../../../components/inputs/PasswordInput";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useAdminResetPassword } from "../../../features/users/queries";
 
 // AdminResetPasswordDialog calls AdminResetPassword — a DIFFERENT RPC from the self-serve

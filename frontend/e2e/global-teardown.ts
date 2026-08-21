@@ -16,7 +16,7 @@ export default function globalTeardown(): void {
   // A run that never began owns nothing and must remove nothing.
   if (!holdsRunLock()) return;
 
-  execSync(`go run ./cmd/tool db drop-test --dsn "${ADMIN_DSN}"`, {
+  execSync(`go run ../tools/san db drop-test --admin-dsn "${ADMIN_DSN}"`, {
     cwd: "../backend",
     stdio: "inherit",
     env: { ...process.env },

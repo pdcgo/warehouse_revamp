@@ -13,9 +13,9 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { useUserTeams } from "../../features/users/queries";
-import { UserItem } from "../../components/UserItem";
-import { TeamItem } from "../../components/TeamItem";
-import { Pagination } from "../../components/Pagination";
+import { UserItem } from "../../components/entity/UserItem";
+import { TeamItem } from "../../components/entity/TeamItem";
+import { Pagination } from "../../components/chrome/Pagination";
 
 const TEAM_PAGE_SIZE = 20;
 

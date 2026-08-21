@@ -42,6 +42,17 @@ type Order struct {
 	// A shipping_service courier code (opaque).
 	ShippingCode string
 
+	// THE MARKETPLACE'S OWN ID for this order (owner) — read off the storefront and typed in beside
+	// the shop that took it. The only name this order has that a buyer, a payout report or the
+	// marketplace's support can be asked about; `ID` above means nothing to any of them.
+	//
+	// Stored verbatim, never parsed. "" = no marketplace reference, the ordinary state of an order
+	// taken over the phone.
+	//
+	// ⚠ NOT unique and nothing joins on it — whether two orders may share one is still open. It is
+	// evidence of where an order came from, not a key.
+	OrderExternalRefID string
+
 	// Frozen money, whole rupiah.
 	Subtotal int64
 	// The goods' cost for the whole order, frozen at order time (#74) — the sum of every line's

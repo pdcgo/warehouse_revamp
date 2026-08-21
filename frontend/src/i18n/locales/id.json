@@ -26,9 +26,10 @@
     "expenses": "Biaya",
     "profit": "Laba",
     "orderDrafts": "Draf Pesanan",
-    "statement": "Laporan Harian",
+    "statement": "Laporan",
     "settlement": "Kewajiban",
-    "picking": "Pengambilan"
+    "picking": "Pengambilan",
+    "more": "Lainnya"
   },
   "menu": {
     "theme": "Tema",
@@ -40,7 +41,8 @@
   "shell": {
     "openMenu": "Buka menu",
     "search": "Cari…",
-    "notifications": "Notifikasi"
+    "notifications": "Notifikasi",
+    "menu": "Menu"
   },
   "liability": {
     "title": "Kewajiban",
@@ -120,12 +122,16 @@
     "recordNote": "Catatan",
     "recordNoteOptional": "(opsional)",
     "recordNoteHelp": "Petunjuk untuk orang yang mengonfirmasi — buku besar mencatat penyebab bertipe, bukan catatan ini.",
-    "recordSubmit": "Buat Pembayaran"
+    "recordSubmit": "Buat Pembayaran",
+    "causeRestockOutlay": "Biaya penerimaan · restock #{{id}}"
   },
   "common": {
     "perPage": "Per halaman",
     "cancel": "Batal",
-    "confirm": "Konfirmasi"
+    "confirm": "Konfirmasi",
+    "searchPlaceholder": "Cari",
+    "clearFilters": "Hapus filter",
+    "showingRange": "Menampilkan {{from}}–{{to}} dari {{total}}"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -237,6 +243,24 @@
       "lost": "Hilang"
     }
   },
+  "customerLineItem": {
+    "missing": "Tanpa pelanggan"
+  },
+  "orderLineItem": {
+    "unsaved": "Belum disimpan"
+  },
+  "productListExternal": {
+    "title": "Produk Dari Aplikasi",
+    "caption": "Dikirim oleh ekstensi eksternal",
+    "captionFrom": "Dikirim oleh ekstensi eksternal — {{source}}",
+    "empty": "Aplikasi tidak mengirim produk.",
+    "noName": "(aplikasi tidak membaca nama)",
+    "qty": "× {{n}}",
+    "qtyUnknown": "Jumlah tidak terbaca",
+    "priceUnknown": "Harga tidak terbaca",
+    "total": "Total",
+    "totalPartial": "Sebagian"
+  },
   "productListItem": {
     "stock": "Stok {{n}}",
     "outOfStock": "Stok habis",
@@ -247,16 +271,17 @@
   "productPicker": {
     "trigger": "Pilih produk",
     "title": "Pilih Produk",
-    "selected": "{{n}} dipilih",
     "clear": "Kosongkan",
     "noTeam": "Pilih tim untuk menjelajahi katalognya.",
     "noTeamAll": "Pilih tim untuk menemukan produk.",
-    "stockScope": "Stok dihitung di gudang tujuan; dalam perjalanan dihitung dari semua gudang.",
-    "ongoingScope": "Dalam perjalanan dihitung dari pesanan ke semua gudang yang belum diterima.",
-    "tabOwn": "Produk Saya",
-    "tabOthers": "Produk Tim Lain",
     "allTeams": "Semua tim",
-    "searchCapped": "Lebih dari {{limit}} produk cocok — yang ditampilkan hanya yang ada stoknya dari {{limit}} pertama. Ketik lebih spesifik."
+    "searchCapped": "Lebih dari {{limit}} produk cocok — yang ditampilkan hanya yang ada stoknya dari {{limit}} pertama. Ketik lebih spesifik.",
+    "colProduct": "Produk",
+    "colOngoing": "Dalam perjalanan",
+    "colReady": "Stok siap",
+    "tabOwn": "Produk Saya",
+    "tabPriority": "Produk Prioritas",
+    "tabOther": "Produk Lain"
   },
   "discover": {
     "title": "Temukan Produk",
@@ -422,6 +447,7 @@
     "address": "Alamat",
     "qty": "Jumlah",
     "items": "Item",
+    "itemsHelp": "Barang yang dijual. Setiap baris diukur terhadap gudang yang dipilih di atas — stok dan HPP-nya, bukan milik katalog.",
     "backToOrders": "Kembali ke Pesanan",
     "cancelOrder": "Batalkan Pesanan",
     "teamFallback": "Tim #{{id}}",
@@ -435,6 +461,12 @@
     "deliveryAddress": "Alamat pengiriman",
     "customerName": "Nama pelanggan",
     "shop": "Toko",
+    "marketplace": "Marketplace",
+    "marketplaceAll": "Semua marketplace",
+    "marketplaceHelp": "Mempersempit daftar toko di bawah.",
+    "orderExternalRefId": "ID pesanan marketplace",
+    "orderExternalRefIdPlaceholder": "mis. 250815ABCD1234",
+    "orderExternalRefIdHelp": "ID pesanan ini di tokonya. Kosongkan jika bukan dari marketplace.",
     "warehouse": "Gudang",
     "warehouseHelp": "Gudang yang mengirim pesanan ini. Stoknya diambil dari sini saat pesanan dibuat.",
     "addLine": "Tambah baris",
@@ -450,9 +482,14 @@
     "cancelMessage": "Batalkan pesanan #{{id}}? Tindakan ini tidak dapat dibatalkan.",
     "cancel": "Batal",
     "customerAndShipping": "Pelanggan & pengiriman",
+    "customerInfo": "Informasi Pelanggan",
+    "customerInfoHelp": "Paket ini untuk siapa, dikirim ke mana, dan apa yang diserahkan ke kurir.",
     "saveAsDraft": "Simpan sebagai Draf",
     "draftSaved": "Tersimpan sebagai draf",
-    "receipt": "Resi pengiriman",
+    "receipt": "Resi Pengiriman",
+    "receiptCode": "Nomor Resi",
+    "receiptCodePlaceholder": "mis. JP2026081500471183",
+    "receiptCodeHelp": "Nomor pelacakan kurir, persis seperti tertera di resi.",
     "receiptAttach": "Lampirkan resi",
     "receiptReplace": "Ganti resi",
     "receiptRemove": "Hapus resi",
@@ -605,7 +642,8 @@
     "sourceHandlingFee": "Biaya penanganan, pesanan",
     "sourceProductFee": "Biaya produk, pesanan",
     "sourcePayment": "Pembayaran",
-    "sourceUnknown": "Tidak diketahui"
+    "sourceUnknown": "Tidak diketahui",
+    "sourceRestockOutlay": "Biaya penerimaan, restock"
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -691,7 +729,8 @@
       "awaiting": "Menunggu gudang",
       "noDate": "Tanggal tidak tercatat",
       "edited": "Permintaan diubah",
-      "unknown": "Ada perubahan"
+      "unknown": "Ada perubahan",
+      "costRecorded": "Biaya penerimaan dicatat"
     },
     "summary": {
       "totalProducts": "Total produk",
@@ -869,7 +908,7 @@
         "cost": "Nilai",
         "productTotal": "Produk",
         "shippingTotal": "Pengiriman",
-        "shippingBreakdown": "{{shipping}} ongkir + {{cod}} COD",
+        "shippingBreakdown": "{{shipping}} ongkir + {{outlay}} pengeluaran gudang",
         "grandTotal": "Total"
       },
       "confirm": {
@@ -883,7 +922,21 @@
       }
     },
     "createdByAll": "Siapa saja yang membuat",
-    "acceptedByAll": "Siapa saja yang menerima"
+    "acceptedByAll": "Siapa saja yang menerima",
+    "cost": {
+      "title": "Biaya yang dikeluarkan gudang untuk kiriman ini",
+      "hint": "Yang Anda bayar untuk memasukkan barang ini. Dibagi ke unit yang datang dan ditagihkan ke tim peminta.",
+      "add": "Tambah biaya",
+      "remove": "Hapus biaya ini",
+      "note": "Untuk apa",
+      "noteRequired": "Sebutkan biaya ini untuk apa.",
+      "kind": {
+        "codShipping": "Biaya COD di tempat",
+        "other": "Lainnya",
+        "unknown": "Biaya"
+      },
+      "total": "Pengeluaran gudang"
+    }
   },
   "shops": {
     "title": "Toko",
@@ -1757,11 +1810,11 @@
     "breakdown": "Rincian biaya"
   },
   "statement": {
-    "title": "Laporan Harian",
-    "selectTeam": "Pilih tim untuk melihat laporan hariannya.",
+    "title": "Laporan",
+    "selectTeam": "Pilih tim untuk melihat laporannya.",
     "expectedNotice": "Angka ini adalah PERKIRAAN, bukan uang yang sudah cair — belum ada pencairan marketplace yang dicocokkan.",
-    "rangeUnbounded": "Pilih tanggal mulai dan tanggal akhir — laporan harian membutuhkan keduanya.",
-    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan harian maksimal {{max}} hari.",
+    "rangeUnbounded": "Pilih tanggal mulai dan tanggal akhir — laporan membutuhkan keduanya.",
+    "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan maksimal {{max}} hari.",
     "expectedMargin": "Perkiraan margin",
     "marginSource": "Dari pesanan pada periode ini",
     "feesEarned": "Fee diterima",
@@ -1772,15 +1825,11 @@
     "ofWhichStockLoss": "termasuk {{amount}} stok yang dihapusbukukan",
     "profit": "Laba",
     "loss": "Periode ini pengeluaran melebihi pemasukan.",
-    "perDay": "Per hari",
-    "perDaySource": "Rata-rata dari {{count}} hari",
     "unknownCost": "{{count}} pesanan dengan biaya tidak diketahui dihitung sebagai laba penuh — semua angka di sini lebih tinggi dari seharusnya sebesar biaya barang tersebut.",
-    "unknownCostDay": "{{count}} pesanan hari ini biayanya tidak diketahui",
-    "hideQuiet": "Sembunyikan hari tanpa aktivitas",
-    "dayCount": "Menampilkan {{shown}} dari {{total}} hari",
-    "empty": "Tidak ada hari untuk periode ini.",
+    "hideQuiet": "Sembunyikan {{unit}} tanpa aktivitas",
+    "dayCount": "Menampilkan {{shown}} dari {{total}} {{unit}}",
+    "empty": "Tidak ada data untuk periode ini.",
     "table": {
-      "date": "Tanggal",
       "orders": "Pesanan",
       "revenue": "Pemasukan",
       "cogs": "HPP",
@@ -1793,7 +1842,67 @@
       "expenses": "Biaya",
       "profit": "Laba",
       "running": "Kumulatif",
-      "total": "Total periode"
+      "total": "Total periode",
+      "bucket": {
+        "day": "Tanggal",
+        "month": "Bulan",
+        "year": "Tahun"
+      }
+    },
+    "grainCapped": "Data di balik layar ini mencakup maksimal {{max}} hari, jadi tampilan tahunan hanya bisa menampilkan tahun ini — bukan tahun lalu di sebelahnya.",
+    "unit": {
+      "day": "hari",
+      "day_other": "hari",
+      "month": "bulan",
+      "month_other": "bulan",
+      "year": "tahun",
+      "year_other": "tahun"
+    },
+    "perUnit": "Per {{unit}}",
+    "perUnitSource": "Rata-rata dari {{count}} {{unit}}",
+    "unknownCostRow": "{{count}} pesanan pada {{unit}} ini biayanya tidak diketahui"
+  },
+  "balance": {
+    "title": "Neraca",
+    "compare": "Bandingkan",
+    "rangeMeaning": "Dua titik waktu, bukan satu periode: neraca ini per {{to}}, dibandingkan dengan {{from}}. Tidak ada angka di halaman ini yang dijumlahkan sepanjang rentang.",
+    "showGaps": "Tampilkan yang belum tercatat",
+    "mockNotice": "Rancangan tampilan — semua angka di halaman ini diketik manual di berkas contoh. Tidak ada yang dibaca dari layanan.",
+    "section": {
+      "assets": "Aset",
+      "liabilities": "Kewajiban",
+      "equity": "Ekuitas"
+    },
+    "total": {
+      "assets": "Total aset",
+      "liabilities": "Total kewajiban",
+      "equity": "Total ekuitas"
+    },
+    "colLine": "Pos",
+    "colChange": "Perubahan",
+    "notTracked": "belum tercatat",
+    "checkAssetsCaption": "Yang dimiliki",
+    "checkLiabilitiesCaption": "Yang harus dibayar ke pihak lain",
+    "checkEquityCaption": "Sisanya — bagian pemilik",
+    "ties": "Neraca seimbang — aset sama dengan kewajiban ditambah ekuitas.",
+    "doesNotTie": "Neraca ini tidak seimbang. Aset selisih {{amount}} terhadap kewajiban ditambah ekuitas — selisihnya ditulis di sini, bukan diselipkan ke salah satu pos.",
+    "gapSummary": "{{untracked}} dari {{total}} pos tidak punya sumber di sistem ini. {{amount}} dari posisi {{position}} harus diketik manual.",
+    "profitTies": "Laba periode ini, {{amount}}, sama dengan layar Profit — satu angka yang menyambung kedua laporan.",
+    "profitMismatch": "Laba periode ini {{sheet}} di sini dan {{statement}} di layar Profit. Salah satu laporan keliru.",
+    "equityNote": "Ekuitas adalah sisa: {{amount}} adalah yang tersisa setelah kewajiban, bukan uang yang siap dipakai.",
+    "line": {
+      "cash": "Kas & bank",
+      "inventory": "Stok di gudang",
+      "goodsInTransit": "Stok dalam perjalanan",
+      "receivable": "Piutang",
+      "deposits": "Deposit & dibayar di muka",
+      "payable": "Utang ke rekanan",
+      "supplierPayable": "Utang ke supplier",
+      "accrued": "Biaya terutang",
+      "capital": "Modal",
+      "retained": "Laba ditahan",
+      "profit": "Laba periode ini",
+      "drawings": "Prive"
     }
   },
   "expenses": {
@@ -1872,5 +1981,11 @@
       "value": "Nilai berisiko",
       "writtenOff": "Dihapusbukukan"
     }
+  },
+  "periodGrain": {
+    "label": "Kelompokkan per",
+    "day": "Harian",
+    "month": "Bulanan",
+    "year": "Tahunan"
   }
 }

@@ -770,9 +770,21 @@ type Team struct {
 	Info *TeamInfo `protobuf:"bytes,7,opt,name=info,proto3" json:"info,omitempty"`
 	// A compact team picture (like a user avatar). Empty when the team has no picture. Set via
 	// TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
-	ImageUrl      string `protobuf:"bytes,8,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ImageUrl string `protobuf:"bytes,8,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	// THE PRIORITY-PRODUCT FEATURE (owner). Set by ROOT, and it applies to the team's WHOLE catalogue:
+	// every product this team owns is a priority product to everybody browsing.
+	//
+	// A flag on the TEAM rather than on the product, and deliberately not a per-viewer curation — so
+	// every selling team discovering products sees the same priority set. It is what backs the product
+	// picker's *Priority Product* tab.
+	//
+	// ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
+	// that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+	// team could grant itself the feature. How root sets it is not designed yet — the column and the
+	// read path land first.
+	PriorityProduct bool `protobuf:"varint,9,opt,name=priority_product,json=priorityProduct,proto3" json:"priority_product,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Team) Reset() {
@@ -859,6 +871,13 @@ func (x *Team) GetImageUrl() string {
 		return x.ImageUrl
 	}
 	return ""
+}
+
+func (x *Team) GetPriorityProduct() bool {
+	if x != nil {
+		return x.PriorityProduct
+	}
+	return false
 }
 
 type TeamCreateRequest struct {
@@ -1173,11 +1192,19 @@ func (*TeamDeleteResponse) Descriptor() ([]byte, []int) {
 // TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
 // so there is no team_id here at all.
 type TeamListFilter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Q             string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
-	TeamType      TeamType               `protobuf:"varint,2,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Q        string                 `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
+	TeamType TeamType               `protobuf:"varint,2,opt,name=team_type,json=teamType,proto3,enum=warehouse.team.v1.TeamType" json:"team_type,omitempty"`
+	// Only teams that carry the priority-product feature (see Team.priority_product). false = no
+	// narrowing, which is the default.
+	//
+	// This is how the product picker resolves its *Priority Product* tab: it asks team_service WHICH
+	// TEAMS are priority, then narrows a product query by those ids. product_service is never told
+	// what "priority" means — it filters by a list of team ids it was handed, which is what keeps the
+	// two services independent (HARD RULE 3) instead of joining `products` to `teams`.
+	PriorityProductOnly bool `protobuf:"varint,3,opt,name=priority_product_only,json=priorityProductOnly,proto3" json:"priority_product_only,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *TeamListFilter) Reset() {
@@ -1222,6 +1249,13 @@ func (x *TeamListFilter) GetTeamType() TeamType {
 		return x.TeamType
 	}
 	return TeamType_TEAM_TYPE_UNSPECIFIED
+}
+
+func (x *TeamListFilter) GetPriorityProductOnly() bool {
+	if x != nil {
+		return x.PriorityProductOnly
+	}
+	return false
 }
 
 type TeamListFilterSort struct {
@@ -1384,16 +1418,19 @@ func (x *TeamListRequest) GetPage() *v1.CommonPagination {
 
 // TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
 type TeamRowItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type          TeamType               `protobuf:"varint,2,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	TeamCode      string                 `protobuf:"bytes,4,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Deleted       bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
-	ImageUrl      string                 `protobuf:"bytes,7,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type        TeamType               `protobuf:"varint,2,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	TeamCode    string                 `protobuf:"bytes,4,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Deleted     bool                   `protobuf:"varint,6,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	ImageUrl    string                 `protobuf:"bytes,7,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	// See Team.priority_product. Carried on the row because the product picker reads the priority
+	// TEAM LIST and then narrows a product query by those ids — it never asks per product.
+	PriorityProduct bool `protobuf:"varint,8,opt,name=priority_product,json=priorityProduct,proto3" json:"priority_product,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TeamRowItem) Reset() {
@@ -1473,6 +1510,13 @@ func (x *TeamRowItem) GetImageUrl() string {
 		return x.ImageUrl
 	}
 	return ""
+}
+
+func (x *TeamRowItem) GetPriorityProduct() bool {
+	if x != nil {
+		return x.PriorityProduct
+	}
+	return false
 }
 
 type TeamRowMapItem struct {
@@ -2205,7 +2249,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x13bank_account_number\x18\x05 \x01(\tR\x11bankAccountNumber\x12.\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
 	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\x120\n" +
-	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseId\"\x82\x02\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseId\"\xad\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -2214,7 +2258,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x18\n" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12/\n" +
 	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\x12\x1b\n" +
-	"\timage_url\x18\b \x01(\tR\bimageUrl\"\xd0\x01\n" +
+	"\timage_url\x18\b \x01(\tR\bimageUrl\x12)\n" +
+	"\x10priority_product\x18\t \x01(\bR\x0fpriorityProduct\"\xd0\x01\n" +
 	"\x11TeamCreateRequest\x12=\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\x04type\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
@@ -2241,10 +2286,11 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x11TeamDeleteRequest\x12 \n" +
 	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"\x14\n" +
-	"\x12TeamDeleteResponse\"a\n" +
+	"\x12TeamDeleteResponse\"\x95\x01\n" +
 	"\x0eTeamListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x128\n" +
-	"\tteam_type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\"\xcf\x01\n" +
+	"\tteam_type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\x122\n" +
+	"\x15priority_product_only\x18\x03 \x01(\bR\x13priorityProductOnly\"\xcf\x01\n" +
 	"\x12TeamListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x124\n" +
@@ -2254,7 +2300,7 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x06filter\x18\x01 \x01(\v2!.warehouse.team.v1.TeamListFilterR\x06filter\x129\n" +
 	"\x04sort\x18\x02 \x01(\v2%.warehouse.team.v1.TeamListFilterSortR\x04sort\x12F\n" +
 	"\fdata_request\x18\x03 \x03(\x0e2#.warehouse.team.v1.TeamListDataTypeR\vdataRequest\x12A\n" +
-	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\xd8\x01\n" +
+	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x06\x92\xb5\x18\x02 \x01\"\x83\x02\n" +
 	"\vTeamRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -2262,7 +2308,8 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\tteam_code\x18\x04 \x01(\tR\bteamCode\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x18\n" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12\x1b\n" +
-	"\timage_url\x18\a \x01(\tR\bimageUrl\"\xb7\x01\n" +
+	"\timage_url\x18\a \x01(\tR\bimageUrl\x12)\n" +
+	"\x10priority_product\x18\b \x01(\bR\x0fpriorityProduct\"\xb7\x01\n" +
 	"\x0eTeamRowMapItem\x12I\n" +
 	"\bmap_data\x18\x01 \x03(\v2..warehouse.team.v1.TeamRowMapItem.MapDataEntryR\amapData\x1aZ\n" +
 	"\fMapDataEntry\x12\x10\n" +

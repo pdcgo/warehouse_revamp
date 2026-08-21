@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, Flex, Stack, Text } from "@chakra-ui/react";
 
-import { Pagination } from "../../../components/Pagination";
-import { RefreshOverlay } from "../../../components/RefreshOverlay";
+import { Pagination } from "../../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { MovementTable, type MovementRow } from "../../../features/inventory/MovementTable";
 import { useOwnerStockHistory } from "../../../features/products/queries";
 import { WarehouseFilter, WarehouseNote } from "./parts";

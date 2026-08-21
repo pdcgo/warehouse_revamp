@@ -7,11 +7,11 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../../api/clients";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
 import { ProductStatus } from "../../../gen/warehouse/product/v1/product_pb";
-import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { RefreshOverlay } from "../../../components/RefreshOverlay";
-import { Pagination } from "../../../components/Pagination";
-import { ProductListItem } from "../../../components/ProductListItem";
-import { toaster } from "../../../components/Toaster";
+import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
+import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
+import { Pagination } from "../../../components/chrome/Pagination";
+import { ProductListItem } from "../../../components/products/ProductListItem";
+import { toaster } from "../../../components/feedback/Toaster";
 import {
   useArchiveProduct,
   useProducts,

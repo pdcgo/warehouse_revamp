@@ -13,8 +13,8 @@ import {
 } from "@chakra-ui/react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Logo } from "../../components/Logo";
-import { PasswordInput } from "../../components/PasswordInput";
+import { Logo } from "../../components/chrome/Logo";
+import { PasswordInput } from "../../components/inputs/PasswordInput";
 import { ForgotPasswordDialog } from "./components/ForgotPasswordDialog";
 import { useAuth } from "../../features/auth/AuthContext";
 

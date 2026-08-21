@@ -16,7 +16,7 @@ import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { useUpdateTeam } from "./queries";
 
 // EditTeamDialog changes only name + description. `type` and `team_code` are immutable after

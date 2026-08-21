@@ -47,7 +47,7 @@ func TestAccept_MintsBatchPerLine(t *testing.T) {
 
 	// 100 shirts split 60/40; 28 hats unplaced with 2 broken.
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CodShippingFee: 50000,
+		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
 				ItemId:           items[0].GetId(),

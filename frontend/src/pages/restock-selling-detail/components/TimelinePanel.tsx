@@ -12,7 +12,7 @@ import {
   RestockRequestStatus,
 } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
-import { UserItem } from "../../../components/UserItem";
+import { UserItem } from "../../../components/entity/UserItem";
 import { formatUnixDateTime } from "../../../lib/datetime";
 
 export interface TimelinePanelProps {
@@ -37,6 +37,9 @@ const LOOK: Partial<Record<RestockRequestEventKind, { icon: LucideIcon; palette?
   // Money left the warehouse's hands, and it reads as money — amber rather than the acceptance's
   // green, so the two steps of one arrival are told apart at a glance instead of by their captions.
   [RestockRequestEventKind.COD_FEE]: { icon: Banknote, palette: "orange" },
+  // 00021 — the same step, widened past the fee at the door. COD_FEE above is kept for the rows
+  // written before a delivery could cost the warehouse more than one thing.
+  [RestockRequestEventKind.COST_RECORDED]: { icon: Banknote, palette: "orange" },
 };
 
 const TITLE_KEY: Partial<Record<RestockRequestEventKind, string>> = {
@@ -45,6 +48,7 @@ const TITLE_KEY: Partial<Record<RestockRequestEventKind, string>> = {
   [RestockRequestEventKind.ACCEPTED]: "restock.timeline.accepted",
   [RestockRequestEventKind.CANCELLED]: "restock.timeline.cancelled",
   [RestockRequestEventKind.COD_FEE]: "restock.timeline.codFee",
+  [RestockRequestEventKind.COST_RECORDED]: "restock.timeline.costRecorded",
 };
 
 // TIMELINE — WHO DID WHAT, AND WHEN.
@@ -224,6 +228,8 @@ function kindSlug(kind: RestockRequestEventKind): string {
       return "cancelled";
     case RestockRequestEventKind.COD_FEE:
       return "cod-fee";
+    case RestockRequestEventKind.COST_RECORDED:
+      return "cost-recorded";
     default:
       return "unknown";
   }

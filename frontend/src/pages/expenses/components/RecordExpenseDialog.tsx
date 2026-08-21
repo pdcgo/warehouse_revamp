@@ -8,11 +8,11 @@ import { rpcError } from "../../../api/clients";
 import { useSaveExpense } from "../queries";
 import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
-import { ExpenseKindSelect } from "../../../components/ExpenseKindSelect";
-import { CurrencyInput } from "../../../components/CurrencyInput";
-import { DatePicker } from "../../../components/DatePicker";
-import { ShopSelect } from "../../../components/ShopSelect";
-import { toaster } from "../../../components/Toaster";
+import { ExpenseKindSelect } from "../../../components/pickers/ExpenseKindSelect";
+import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
+import { DatePicker } from "../../../components/datetime/DatePicker";
+import { ShopSelect } from "../../../components/pickers/ShopSelect";
+import { toaster } from "../../../components/feedback/Toaster";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);

@@ -20,8 +20,8 @@ import type { SupplierChannel } from "../../../gen/warehouse/inventory/v1/suppli
 import { SupplierChannelType } from "../../../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { MarketplaceSelect } from "../../../components/MarketplaceSelect";
-import { toaster } from "../../../components/Toaster";
+import { MarketplaceSelect } from "../../../components/pickers/MarketplaceSelect";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveSupplierChannel } from "../../../features/suppliers/queries";
 
 // SupplierChannelFormDialog creates OR edits a channel of one supplier (#120) — the way a team reaches

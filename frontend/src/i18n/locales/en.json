@@ -26,9 +26,10 @@
     "expenses": "Expenses",
     "profit": "Profit",
     "orderDrafts": "Order Drafts",
-    "statement": "Daily Statement",
+    "statement": "Statement",
     "settlement": "Liability",
-    "picking": "Picking"
+    "picking": "Picking",
+    "more": "More"
   },
   "menu": {
     "theme": "Theme",
@@ -40,7 +41,8 @@
   "shell": {
     "openMenu": "Open menu",
     "search": "Search…",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "menu": "Menu"
   },
   "liability": {
     "title": "Liability",
@@ -120,12 +122,16 @@
     "recordNote": "Note",
     "recordNoteOptional": "(optional)",
     "recordNoteHelp": "A hint for the person confirming — the ledger records the typed cause, never this note.",
-    "recordSubmit": "Make Payment"
+    "recordSubmit": "Make Payment",
+    "causeRestockOutlay": "Delivery costs · restock #{{id}}"
   },
   "common": {
     "perPage": "Per page",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "searchPlaceholder": "Search",
+    "clearFilters": "Clear filters",
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}"
   },
   "dateRange": {
     "all": "All dates",
@@ -240,6 +246,24 @@
       "lost": "Lost"
     }
   },
+  "customerLineItem": {
+    "missing": "No customer"
+  },
+  "orderLineItem": {
+    "unsaved": "Unsaved"
+  },
+  "productListExternal": {
+    "title": "Products From The App",
+    "caption": "Send By External Extension",
+    "captionFrom": "Send By External Extension — {{source}}",
+    "empty": "The app sent no products.",
+    "noName": "(the app read no name)",
+    "qty": "× {{n}}",
+    "qtyUnknown": "Quantity not read",
+    "priceUnknown": "Price not read",
+    "total": "Total",
+    "totalPartial": "Partial"
+  },
   "productListItem": {
     "stock": "Stock {{n}}",
     "outOfStock": "Out of stock",
@@ -250,16 +274,17 @@
   "productPicker": {
     "trigger": "Select products",
     "title": "Select Products",
-    "selected": "{{n}} selected",
     "clear": "Clear",
     "noTeam": "Select a team to browse its catalogue.",
     "noTeamAll": "Select a team to discover products.",
-    "stockScope": "Stock is at the destination warehouse; on the way counts every warehouse.",
-    "ongoingScope": "On the way counts orders to every warehouse, not yet accepted.",
-    "tabOwn": "My Products",
-    "tabOthers": "Other Team Products",
     "allTeams": "All teams",
-    "searchCapped": "More than {{limit}} products match — showing the ones in stock among the first {{limit}}. Type more to narrow it."
+    "searchCapped": "More than {{limit}} products match — showing the ones in stock among the first {{limit}}. Type more to narrow it.",
+    "colProduct": "Product",
+    "colOngoing": "On the way",
+    "colReady": "Ready stock",
+    "tabOwn": "My Product",
+    "tabPriority": "Priority Product",
+    "tabOther": "Other Product"
   },
   "discover": {
     "title": "Discover Products",
@@ -425,6 +450,7 @@
     "address": "Address",
     "qty": "Qty",
     "items": "Items",
+    "itemsHelp": "What is being sold. Every line is measured against the warehouse chosen above — its stock and its HPP, not the catalogue's.",
     "backToOrders": "Back to Orders",
     "cancelOrder": "Cancel Order",
     "teamFallback": "Team #{{id}}",
@@ -438,6 +464,12 @@
     "deliveryAddress": "Delivery address",
     "customerName": "Customer name",
     "shop": "Shop",
+    "marketplace": "Marketplace",
+    "marketplaceAll": "All marketplaces",
+    "marketplaceHelp": "Narrows the shop list below.",
+    "orderExternalRefId": "Marketplace order ID",
+    "orderExternalRefIdPlaceholder": "e.g. 250815ABCD1234",
+    "orderExternalRefIdHelp": "The storefront's own ID for this order. Leave empty if it was not sold on a marketplace.",
     "warehouse": "Warehouse",
     "warehouseHelp": "Which warehouse ships this order. Its stock is taken from here when the order is placed.",
     "addLine": "Add line",
@@ -453,9 +485,14 @@
     "cancelMessage": "Cancel order #{{id}}? This can't be undone.",
     "cancel": "Cancel",
     "customerAndShipping": "Customer & shipping",
+    "customerInfo": "Customer Information",
+    "customerInfoHelp": "Who the parcel is for, where it goes, and what was handed to the courier.",
     "saveAsDraft": "Save as Draft",
     "draftSaved": "Saved as a draft",
-    "receipt": "Shipping receipt",
+    "receipt": "Shipping Receipt",
+    "receiptCode": "Receipt Code",
+    "receiptCodePlaceholder": "e.g. JP2026081500471183",
+    "receiptCodeHelp": "The courier's tracking number, exactly as printed on the slip.",
     "receiptAttach": "Attach receipt",
     "receiptReplace": "Replace receipt",
     "receiptRemove": "Remove receipt",
@@ -608,7 +645,8 @@
     "sourceHandlingFee": "Handling fee, order",
     "sourceProductFee": "Product fee, order",
     "sourcePayment": "Payment",
-    "sourceUnknown": "Unknown"
+    "sourceUnknown": "Unknown",
+    "sourceRestockOutlay": "Delivery costs, restock"
   },
   "restock": {
     "title": "Restock Requests",
@@ -695,7 +733,8 @@
       "awaiting": "Waiting for the warehouse",
       "noDate": "Date not recorded",
       "edited": "Request edited",
-      "unknown": "Something happened"
+      "unknown": "Something happened",
+      "costRecorded": "Delivery costs recorded"
     },
     "summary": {
       "totalProducts": "Total products",
@@ -873,7 +912,7 @@
         "cost": "Value",
         "productTotal": "Products",
         "shippingTotal": "Shipping",
-        "shippingBreakdown": "{{shipping}} shipping + {{cod}} COD",
+        "shippingBreakdown": "{{shipping}} shipping + {{outlay}} warehouse outlay",
         "grandTotal": "Total"
       },
       "confirm": {
@@ -887,7 +926,21 @@
       }
     },
     "createdByAll": "Anyone who raised it",
-    "acceptedByAll": "Anyone who accepted it"
+    "acceptedByAll": "Anyone who accepted it",
+    "cost": {
+      "title": "What this delivery cost the warehouse",
+      "hint": "What you paid to get these goods in. It is spread over the units that arrived and charged to the requesting team.",
+      "add": "Add a cost",
+      "remove": "Remove this cost",
+      "note": "What it was for",
+      "noteRequired": "Say what this cost was for.",
+      "kind": {
+        "codShipping": "COD fee at the door",
+        "other": "Other",
+        "unknown": "Cost"
+      },
+      "total": "Warehouse outlay"
+    }
   },
   "shops": {
     "title": "Shops",
@@ -1762,11 +1815,11 @@
     "breakdown": "What the costs were"
   },
   "statement": {
-    "title": "Daily Statement",
-    "selectTeam": "Select a team to view its daily statement.",
+    "title": "Statement",
+    "selectTeam": "Select a team to view its statement.",
     "expectedNotice": "These are EXPECTED figures, not settled money — no marketplace payout has been reconciled against them.",
-    "rangeUnbounded": "Pick a start and an end date — a daily statement needs both ends.",
-    "rangeTooLong": "That range covers {{days}} days. A daily statement covers at most {{max}}.",
+    "rangeUnbounded": "Pick a start and an end date — a statement needs both ends.",
+    "rangeTooLong": "That range covers {{days}} days. A statement covers at most {{max}}.",
     "expectedMargin": "Expected margin",
     "marginSource": "From orders placed in this period",
     "feesEarned": "Fees earned",
@@ -1777,18 +1830,12 @@
     "ofWhichStockLoss": "of which {{amount}} stock written off",
     "profit": "Profit",
     "loss": "This period spent more than it made.",
-    "perDay": "Per day",
-    "perDaySource": "Averaged over {{count}} day",
-    "perDaySource_other": "Averaged over {{count}} days",
     "unknownCost": "{{count}} order with an unknown cost is counted as pure profit — every figure here is overstated by whatever those goods cost.",
     "unknownCost_other": "{{count}} orders with an unknown cost are counted as pure profit — every figure here is overstated by whatever those goods cost.",
-    "unknownCostDay": "{{count}} order this day had an unknown cost",
-    "unknownCostDay_other": "{{count}} orders this day had an unknown cost",
-    "hideQuiet": "Hide days with no activity",
-    "dayCount": "Showing {{shown}} of {{total}} days",
-    "empty": "No days to show for this period.",
+    "hideQuiet": "Hide {{unit}} with no activity",
+    "dayCount": "Showing {{shown}} of {{total}} {{unit}}",
+    "empty": "Nothing to show for this period.",
     "table": {
-      "date": "Date",
       "orders": "Orders",
       "revenue": "Revenue",
       "cogs": "COGS",
@@ -1801,7 +1848,68 @@
       "expenses": "Expenses",
       "profit": "Profit",
       "running": "Running",
-      "total": "Period total"
+      "total": "Period total",
+      "bucket": {
+        "day": "Date",
+        "month": "Month",
+        "year": "Year"
+      }
+    },
+    "grainCapped": "The series behind this screen covers at most {{max}} days, so a yearly view can only show this year — not last year beside it.",
+    "unit": {
+      "day": "day",
+      "day_other": "days",
+      "month": "month",
+      "month_other": "months",
+      "year": "year",
+      "year_other": "years"
+    },
+    "perUnit": "Per {{unit}}",
+    "perUnitSource": "Averaged over {{count}} {{unit}}",
+    "unknownCostRow": "{{count}} order in this {{unit}} had an unknown cost",
+    "unknownCostRow_other": "{{count}} orders in this {{unit}} had an unknown cost"
+  },
+  "balance": {
+    "title": "Balance Sheet",
+    "compare": "Compare",
+    "rangeMeaning": "Two instants, not a period: the sheet is as of {{to}}, compared with {{from}}. Nothing on this page is summed over the window.",
+    "showGaps": "Show what is not tracked",
+    "mockNotice": "A design mock — every figure on this page is typed into a fixture file. Nothing here reads from a service.",
+    "section": {
+      "assets": "Assets",
+      "liabilities": "Liabilities",
+      "equity": "Equity"
+    },
+    "total": {
+      "assets": "Total assets",
+      "liabilities": "Total liabilities",
+      "equity": "Total equity"
+    },
+    "colLine": "Line",
+    "colChange": "Change",
+    "notTracked": "not tracked",
+    "checkAssetsCaption": "What the business holds",
+    "checkLiabilitiesCaption": "What it owes to others",
+    "checkEquityCaption": "What is left over — the owner's share",
+    "ties": "The sheet ties — assets equal liabilities plus equity.",
+    "doesNotTie": "This sheet does not tie. Assets are out by {{amount}} against liabilities plus equity — the difference is stated here rather than absorbed into a line.",
+    "gapSummary": "{{untracked}} of {{total}} lines have no source in this system. {{amount}} of the {{position}} position would be typed in by hand.",
+    "profitTies": "Profit for the period, {{amount}}, matches the Profit screen — the one figure that joins the two reports.",
+    "profitMismatch": "Profit for the period is {{sheet}} here and {{statement}} on the Profit screen. One of the two reports is wrong.",
+    "equityNote": "Equity is a residual: {{amount}} is what remains after debts, not money available to spend.",
+    "line": {
+      "cash": "Cash & bank",
+      "inventory": "Stock on hand",
+      "goodsInTransit": "Stock in transit",
+      "receivable": "Owed to us",
+      "deposits": "Deposits & prepaid",
+      "payable": "Owed by us",
+      "supplierPayable": "Owed to suppliers",
+      "accrued": "Accrued expenses",
+      "capital": "Capital",
+      "retained": "Retained earnings",
+      "profit": "Profit for the period",
+      "drawings": "Drawings"
     }
   },
   "expenses": {
@@ -1883,5 +1991,11 @@
       "value": "Value at risk",
       "writtenOff": "Written off"
     }
+  },
+  "periodGrain": {
+    "label": "Group by",
+    "day": "Daily",
+    "month": "Monthly",
+    "year": "Yearly"
   }
 }

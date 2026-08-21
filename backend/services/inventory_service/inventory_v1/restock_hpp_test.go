@@ -88,8 +88,8 @@ func TestRestockFulfil_FreezesTheHPPOfWhatArrived(t *testing.T) {
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		CodShippingFee: 25000,
-		Lines:          allArrived(req),
+		CostLines: codLines(25000),
+		Lines:     allArrived(req),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -172,8 +172,8 @@ func TestRestockFulfil_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		CodShippingFee: 10000,
-		Lines:          allArrived(req),
+		CostLines: codLines(10000),
+		Lines:     allArrived(req),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)

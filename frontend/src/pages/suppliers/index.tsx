@@ -21,9 +21,9 @@ import type { Supplier } from "../../gen/warehouse/inventory/v1/supplier_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDeleteSupplier, useSuppliers } from "../../features/suppliers/queries";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { Pagination } from "../../components/Pagination";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { Pagination } from "../../components/chrome/Pagination";
+import { toaster } from "../../components/feedback/Toaster";
 import { SupplierFormDialog } from "./components/SupplierFormDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];

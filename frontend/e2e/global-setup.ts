@@ -46,20 +46,20 @@ export default function globalSetup(): void {
     execSync(cmd, { cwd: "../backend", stdio: "inherit", env: { ...process.env } });
 
   // Start from a fresh, EMPTY test database every run — the dev database is never touched.
-  run(`go run ./cmd/tool db reset-test --dsn "${ADMIN_DSN}"`);
+  run(`go run ../tools/san db reset-test --admin-dsn "${ADMIN_DSN}"`);
 
   for (const service of servicesToMigrate()) {
-    run(`go run ./cmd/tool migrate up --service ${service} --dsn "${TEST_DSN}"`);
+    run(`go run ../tools/san migrate up --service ${service} --dsn "${TEST_DSN}"`);
   }
   // A TINY region fixture — one real chain (Aceh → … → Keude Bakongan), not the 91.599-row seed.
   // The order form's AddressPicker needs regions to be pickable at all, but making every e2e run load
   // the whole country would cost seconds and couple the suite to upstream reference data. Five rows
   // prove the cascade and the snapshot; the loader is the same one production uses.
   run(
-    `go run ./cmd/tool region load-seed --file ../frontend/e2e/fixtures/regions.csv --dsn "${TEST_DSN}"`,
+    `go run ../tools/san region load-seed --file ../frontend/e2e/fixtures/regions.csv --dsn "${TEST_DSN}"`,
   );
 
   // The migration creates root with an EMPTY password, which bcrypt can never match. Without this
   // the account exists and cannot log in — which is the point.
-  run(`go run ./cmd/tool seed root --password ${ROOT_PASSWORD} --dsn "${TEST_DSN}"`);
+  run(`go run ../tools/san seed root --password ${ROOT_PASSWORD} --dsn "${TEST_DSN}"`);
 }

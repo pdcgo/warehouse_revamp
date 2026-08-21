@@ -14,7 +14,7 @@ import {
 import { rpcError } from "../../../api/clients";
 import type { Supplier } from "../../../gen/warehouse/inventory/v1/supplier_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveSupplier } from "../../../features/suppliers/queries";
 
 // SupplierFormDialog creates OR edits a supplier in the CURRENT team. The team is the scope: it

@@ -13,8 +13,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
-import { toaster } from "../../../components/Toaster";
-import { TeamTypeSelect, teamTypeLabel } from "../../../components/TeamTypeSelect";
+import { toaster } from "../../../components/feedback/Toaster";
+import { TeamTypeSelect, teamTypeLabel } from "../../../components/pickers/TeamTypeSelect";
 import { useCreateTeam } from "../../../features/teams/queries";
 import { useTeam } from "../../../features/team/TeamContext";
 

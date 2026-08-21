@@ -87,12 +87,17 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		// An order id is what somebody quotes off a chat message or a label, so a numeric term searches
 		// it as well as the text columns — never INSTEAD of them, because a phone number is also digits
 		// and matching only the id would lose the more likely hit.
-		clause := `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\')`
+		// The MARKETPLACE REFERENCE is searched beside the customer's name and phone, because it is the
+		// number a person is most often holding when they come looking: it is what the buyer quotes,
+		// what a payout report lists, and what the storefront's own support asks for. A field that can
+		// only be read once you have already found the order would not have been worth typing.
+		clause := `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
+			` OR order_external_ref_id ILIKE @like ESCAPE '\')`
 
 		id, err := strconv.ParseUint(term, 10, 64)
 		if err == nil && id > 0 {
 			clause = `(customer_name ILIKE @like ESCAPE '\' OR customer_phone ILIKE @like ESCAPE '\'` +
-				` OR id = @id)`
+				` OR order_external_ref_id ILIKE @like ESCAPE '\' OR id = @id)`
 			args["id"] = id
 		}
 

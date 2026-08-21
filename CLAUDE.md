@@ -47,7 +47,6 @@ iface version (`warehouse.team.v1` → `team_v1`). **One file per RPC**, the con
 tools/san/                   the OPERATIONS CLI — top-level, acts on real data (HARD RULE 3b)
 backend/
   cmd/app_development/       the dev server — wires services into the mux
-  cmd/tool/                  the development CLI (HARD RULE 3)
   gen/                       generated code (never hand-edited)
   pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
   services/
@@ -92,7 +91,7 @@ Same rules as the performance audit: only an UNSAFE result is written up
 `warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
 instance (`:5433`), a different database, so a test run can never read or corrupt review data.
 `san_testdb` creates `warehouse_test` on demand and rolls back per test; the e2e resets it fresh
-each run and drops it after (`go run ./cmd/tool db reset-test|drop-test`), and runs its own API/UI
+each run and drops it after (`go run ./tools/san db reset-test|drop-test`), and runs its own API/UI
 on **dedicated ports (8081 / 5175)** so it cannot reuse — or pollute — the dev servers, and can run
 while they're up. Override the target with `TEST_DATABASE_URL`.
 
@@ -133,13 +132,14 @@ backend/services/<service_name>/
   same commit as any refactor, flow change, or code change that touches the flow — the doc must not
   drift. Simple single-table CRUD RPCs do not need an entry.
 
-Migrations are driven by the **development tool** at [backend/cmd/tool/](backend/cmd/tool/)
-(`urfave/cli/v3`), run from `./backend`:
+Migrations are driven by the **unified CLI** at [tools/san/](tools/san/) (`urfave/cli/v3`, HARD
+RULE 3b). It finds the checkout by walking up from your working directory, so it runs from
+anywhere in the repo:
 
 ```sh
-go run ./cmd/tool migrate create add_users --service user_service   # writes a .sql file, no DB
-go run ./cmd/tool migrate up                                        # prompts: database, then service
-go run ./cmd/tool migrate status --service user_service
+go run ./tools/san migrate create add_users --service user_service   # writes a .sql file, no DB
+go run ./tools/san migrate up                                        # prompts: database, then service
+go run ./tools/san migrate status --service user_service
 ```
 
 Run interactively and it asks **two things, in this order**: which **database**
@@ -149,6 +149,9 @@ arrow-key away from a local one.
 
 - `--service <name>` skips the service prompt. Services are **discovered from the filesystem**
   (`backend/services/*`) — there is no hardcoded list to go stale.
+- `migrate up-all` migrates **every** service, in dependency order (`team_service` then
+  `user_service` first — team 1 must exist before the root role references it), asking only for
+  the database. That is the one-command path for a fresh database.
 - `--dsn` (or `DATABASE_URL`) skips the database prompt — the non-interactive path for CI.
 - `create` touches no database, so it never prompts for one.
 
@@ -163,11 +166,27 @@ default** — it reads `PRODUCTION_DATABASE_URL` and fails if unset.
 > Postgres is on **5433, not 5432** — another project on this machine already runs a Postgres
 > on 5432, and this system must not share its database.
 
-### 3b. `tools/san` is the OPERATIONS CLI — it drives services, never tables
+### 3b. `tools/san` is THE CLI — one binary for schema, fixtures, operations and the workspace
 
-Two CLIs, two jobs. [backend/cmd/tool/](backend/cmd/tool/) owns the **schema and the fixtures**
-(migrate, seed, test databases). [tools/san/](tools/san/) owns the **actions an operator performs
-on real data** — the first being `user reset-password`.
+**One tool, not two** (owner, `docs/requirements/development_level.md`). [tools/san/](tools/san/)
+owns the **schema** (`migrate`), the **fixtures** (`seed`, `db`, `region`), the **actions an
+operator performs on real data** (`user reset-password`), and **serving the checkout to a coding
+agent** (`remote`, `remote mcp`).
+
+> ⚠ **`backend/cmd/tool` is GONE.** It held migrate/seed/db/region and was split from `san` on the
+> argument that a developer's tool and an operator's tool are used at different moments by different
+> people. That is true of the COMMANDS and was never true of the BINARY — and the split had no seat
+> for `deploy` at all. Anything still saying `go run ./cmd/tool …` is stale; the command is
+> `go run ./tools/san …`.
+
+What the merge does **not** collapse is the guard rails: every command that touches a database
+resolves it through [backend/pkgs/san_dbtarget/](backend/pkgs/san_dbtarget/), so the Local/Production
+prompt and the `type "production" to continue` confirmation protect all of them.
+
+⚠ **`san db` uses `--admin-dsn`, not `--dsn`.** It creates and drops the test database, which needs
+a connection to a DIFFERENT database — and the root `--dsn` reads `DATABASE_URL`, which during a
+test run points at the very database being dropped. The flag was renamed when the two CLIs merged,
+because until then there was no root flag to collide with.
 
 **It lives at the REPO ROOT, not under `backend/`** (owner). It is not a part of the server: it is
 the tool a human reaches for when something has to be done to a running system, and it should read
@@ -189,7 +208,7 @@ go run ./tools/san user reset-password --user-id 57 --dsn …  # non-interactive
 - **A command calls the RPC handler, never a hand-written `UPDATE`.** Setting a password is a
   hash *plus* a `last_password_reset` stamp (which kills the account's existing tokens) *plus* a
   cache eviction. A second copy of that sequence is a copy that falls behind the first — which is
-  exactly what `cmd/tool seed root`'s raw UPDATE already is.
+  exactly what `san seed root`'s raw UPDATE already is.
 - **It is wired with Google Wire** ([tools/san/wire.go](tools/san/wire.go)), same
   rule as HARD RULE 4 — `go tool wire ./tools/san`. The **DSN is an injector parameter**, not a
   provider: which database to act on is an operator's per-invocation choice.
@@ -226,7 +245,7 @@ exposes, then add one line to `service_api.go`'s `san_grpc.Register(mux, …)` c
 gRPC reflection come from the same call ([backend/pkgs/san_grpc/](backend/pkgs/san_grpc/)), so a
 service can't be served without also appearing in reflection, or vice-versa.
 
-CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`, `tools/san`).
+CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `tools/san`).
 
 `tools/san` has its own composition root ([tools/san/wire.go](tools/san/wire.go),
 `go tool wire ./tools/san`) — see HARD RULE 3b.
@@ -441,7 +460,7 @@ So, three requirements on any list:
 
 1. **A paginated or filtered list spreads `listQuery`.** Not the raw option — the preset, so the
    reason travels with the setting and every list is findable by one name.
-2. **It wraps its table in [`RefreshOverlay`](frontend/src/components/RefreshOverlay.tsx)**, with
+2. **It wraps its table in [`RefreshOverlay`](frontend/src/components/feedback/RefreshOverlay.tsx)**, with
    `busy={query.isFetching && !query.isPending}`. Kept rows with no indicator are a screen that
    silently lies about how current it is. The overlay waits 150ms before showing, so a fast refetch
    never flickers — that delay is the component's job, not the caller's.
@@ -543,10 +562,28 @@ backend/     Go server (Connect RPC) — services/<service_name>/ (HARD RULE 2)
 tools/san/   the operations CLI — a tool of the repo, not of the server (HARD RULE 3b)
 frontend/    React + TypeScript (Vite), Connect RPC client
 plans/       design discussion — <service_name>/brainstorming.md (HARD RULE 4)
+docs/faq/    the team FAQ — every question already asked, with its answer (see below)
 ```
 
 Generated code is committed (`backend/gen/`, `frontend/src/gen/`) but **never hand-edited** —
 regenerate instead.
+
+## The FAQ — record an answer once
+
+Several people build this and people join. The same questions get asked, answered in chat, and
+lost — and the second answer differs slightly from the first. [docs/faq/](docs/faq/) is where the
+answer goes instead.
+
+- **Answer a question that could be asked again → write it into `docs/faq/` the same day**, and add
+  its row to [docs/faq/readme.md](docs/faq/readme.md) in the same commit. The `faq-create` skill does
+  both.
+- **The FAQ explains and points — it is never a second source of truth.** The authority stays
+  `CLAUDE.md`, `guidelines/`, the code and the other `docs/`; an entry gives the short answer and
+  links there.
+- **"Not decided yet" is a valid entry** — say so and link the `plans/` doc. Never settle an open
+  design question in the FAQ (HARD RULE 8).
+- **When a rule changes, grep `docs/faq/` in the same commit.** A wrong FAQ entry is worse than a
+  missing one: it is confidently wrong and the reader has no reason to doubt it.
 
 ## The proto contract
 
@@ -572,12 +609,17 @@ it once a real domain service replaces it.
 | Regenerate Go + TS | `cd proto && buf generate` |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
-| Migrations | `cd backend && go run ./cmd/tool migrate <cmd> --service <svc>` |
+| Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
+| Serve this checkout to a coding agent | `go run ./tools/san remote` — Connect RPC **and** MCP at `/mcp`; prints a token kept in `.san/remote-token.json` and REUSED across restarts (`--no-persist-token` for one run only); loopback by default |
+| Serve it to a hosted agent (Claude Web) | `go run ./tools/san remote mcp --public-url https://<tunnel>` + a tunnel to `:8099` — MCP only. **Without `--public-url` it answers 403 to everything** |
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
 | E2E (starts both servers) | `cd frontend && npm run e2e` |
+| Component workbench (`:6006`) | `cd frontend && npm run storybook` |
+| Run every story's `play()` as a test | `cd frontend && npm run test:stories` |
+| Build the static Storybook | `cd frontend && npm run build-storybook` |
 | Check every mermaid diagram parses | `cd frontend && npm run lint:mermaid` |
 
 Both must run for the UI to reach the API. The server allows CORS from
@@ -699,22 +741,48 @@ everything else → JSON), so they cannot disagree about what a cached value loo
 - **Backend** — Go 1.25, `connectrpc.com/connect`, h2c, plain `net/http` mux.
   Dev CLI: `urfave/cli/v3`. Migrations: `pressly/goose/v3` (Postgres via `pgx`).
 - **Frontend** — React 18, TypeScript, Vite, **Chakra UI v3**, react-router-dom v7,
-  `@connectrpc/connect-web`, Playwright for e2e.
+  `@connectrpc/connect-web`, Playwright for e2e, Storybook 10 + Vitest browser mode for components.
   Connect-ES v2 needs no separate service plugin: `protoc-gen-es` emits the service
   descriptor, and the client is `createClient(HelloService, transport)`.
 
 ### Frontend structure — `layouts/`, `pages/`, `features/` (owner, #199)
 
 ```
-frontend/src/
-  layouts/            the shell: Layout, the sidebar, nav, TeamSwitcher
-  pages/<page>/
-    index.tsx         THE page component — one directory per SCREEN
-    components/       used by THIS page and nothing else
-  features/<domain>/  queries + anything shared by SEVERAL pages of one domain
-  components/         the design system (see below) — shared app-wide
-  api/ lib/ i18n/ gen/ theme.ts router.tsx
+frontend/
+  .storybook/         the workbench: main/preview config, the stub transport, the fixtures
+  src/
+    layouts/          the shell — TWO of them, and exactly one mounts (see below)
+      Layout.tsx      the picker: a breakpoint chooses desktop or mobile
+      shell.ts        the breakpoint + the page canvas — both shells read them
+      nav.ts          the menu, the "where am I" match, the bottom bar — SHARED
+      TeamSwitcher.tsx  shared: the sidebar's card, and the mobile top bar's chip
+      desktop/        DesktopLayout (sidebar + breadcrumb top bar), Sidebar
+      mobile/         MobileLayout (compact top bar), BottomNav, MenuSheet
+    pages/<page>/
+      index.tsx       THE page component — one directory per SCREEN
+      components/     used by THIS page and nothing else
+    features/<domain>/  queries + anything shared by SEVERAL pages of one domain
+    components/<group>/ the design system (see below) — shared app-wide, grouped
+                      by KIND, each with its <Component>.stories.tsx beside it
+    api/ lib/ i18n/ gen/ theme.ts router.tsx
 ```
+
+**A phone gets a DIFFERENT SHELL, not the desktop one squeezed.** `Layout` reads one media query
+(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside a
+breadcrumb top bar — or `MobileLayout`: a compact top bar (team chip, screen name, notifications), and
+navigation moved to a **bottom tab bar** the thumb reaches, carrying this team's three destinations
+plus **More**, which opens the full menu as a full-screen sheet. There is no hamburger on a phone.
+
+- ⚠ **Exactly ONE shell mounts** — a JS breakpoint, never `hideFrom`/`hideBelow`. Hiding one with CSS
+  renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of
+  every `data-testid` the e2e reach for.
+- **Everything that THINKS is shared**: `nav.ts` builds the menu from the team's type and your role,
+  answers "where am I" (longest-prefix), and decides the bottom bar; `shell.ts` owns the breakpoint and
+  the grey page canvas. A rule living in one shell is a rule the other one breaks.
+- **The bottom bar's three tabs are a DECISION, filtered against the real menu** (`bottomBarFor`) — a
+  tab is never offered for a screen this team's menu does not contain.
+- Each shell is reviewed and tested directly in Storybook (`Layouts/Desktop/*`, `Layouts/Mobile/*`);
+  `Layout` itself has no story, because the runner has one fixed viewport.
 
 **One directory per PAGE, named for the screen** — `pages/order-create/`, not
 `pages/orders/new/`. Flat and route-descriptive, so every directory has exactly one `index.tsx` and
@@ -741,20 +809,34 @@ folders while being curated gallery components — if a component exports a `des
 ### The design system
 
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
-`frontend/src/components/` holds 29 of them, 26 previewed with their own description at
-[`/components`](frontend/src/pages/components-gallery/index.tsx) — that gallery is the fastest way to see what
-exists, and it is generated from the components themselves so it cannot drift. `graphify query "what
-shared components exist for <the thing>"` works too.
+`frontend/src/components/` holds 39 of them, **grouped by kind**, every one with a **Storybook**
+story beside it (`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way
+to see what exists; `graphify query "what shared components exist for <the thing>"` works too.
+
+| `components/<group>/` | | |
+| --- | --- | --- |
+| `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
+| `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
+| `entity/` | 5 | show a product / a team / a person the same way everywhere |
+| `badges/` | 4 | a status or a kind, in its ONE standard colour |
+| `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
+| `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
+| `inputs/` | 2 | a typed value, formatted or masked |
+
+The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
+I find it?" have the same answer. A new component goes in the group it belongs to and its story's
+`title` is `Components/<Group>/<Name>` — if neither is obvious, the component is probably two things.
 
 This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
 The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
 "unplaced" *selectable* while its placeholder stays disabled, because a place is not an absence
 (#136/#139); `SupplierSelect` and `ShippingSelect` had that exact bug and were fixed in #131;
-`ProductListItem`'s stock badge means the **warehouse** total, so a per-shelf number does not belong in
-it (#138). A fresh `<select>` gets none of that.
+`ProductListItem`'s stock badge is shown even at ZERO, because out-of-stock is the case worth seeing
+(#138). A fresh `<select>` gets none of that — and each of those rules is now a story that fails if
+somebody removes it.
 
 If nothing fits, prefer **extending the shared component over forking it** — and if you do add one,
-it needs an `export const description` and a gallery entry in the same change (see below).
+it needs an `export const description` and a story file in the same change (see below).
 
 **Build UI from Chakra UI v3 components — reach for a raw native element only on explicit
 request.** A control, a layout, a piece of chrome should be a Chakra component (`Button`, `Field`,
@@ -771,7 +853,7 @@ Two more UI rules:
   opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
   menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
-  reversible — goes through a [`ConfirmDialog`](frontend/src/components/ConfirmDialog.tsx) (Chakra
+  reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
 - **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
   "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
@@ -779,11 +861,60 @@ Two more UI rules:
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
-- **Every curated shared component exports a `description`.** A reusable component previewed in
-  the [components gallery](frontend/src/pages/components-gallery/index.tsx) (`/components`) must
-  `export const description = "…"` alongside itself, and the gallery renders it — so the gallery
-  is living documentation generated from the components, not a parallel list that drifts. Adding a
-  new shared component to the gallery means adding its `description` in the same file.
+- **Every shared component has a STORY beside it, and the story is the documentation.** (owner)
+  `frontend/src/components/<Component>.stories.tsx`, in the same commit as the component. It carries
+  the states worth reviewing AND a `play()` function per behavioural rule — see *Storybook* below.
+  A component exporting `description` feeds it straight into the story's docs page
+  (`parameters.docs.description.component`), so the sentence lives once, in the component.
+
+  > This replaced a hand-written gallery page at `/components` — 1238 lines of JSX that rendered
+  > each component beside its `description`. It documented but never *checked*: every rule in those
+  > descriptions could be broken without anything failing, and the page had to be edited by hand for
+  > each new component. The stories cover the same ground and fail when a rule is broken.
+
+### Storybook — the component workbench, and the third test layer
+
+Every shared component is developed and documented in **Storybook 10**, and every story is also a
+**test**: Vitest renders it in a real Chromium and runs its `play()` as the test body. One
+definition is both the thing the owner reviews in the sidebar and the thing CI fails on.
+
+```sh
+cd frontend
+npm run storybook        # the workbench, on :6006
+npm run test:stories     # every story's play() headlessly — the one to run after a component change
+npm run build-storybook  # the static site (storybook-static/, gitignored)
+```
+
+**Where the layers sit.** This does not replace Playwright: `npm run e2e` drives the whole app
+against a real Go server and a real Postgres, while a story pins ONE component with the API stubbed.
+A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
+timeout in an order-flow spec.
+
+**The API is stubbed at the TRANSPORT**, not per hook — [.storybook/stubTransport.ts](frontend/.storybook/stubTransport.ts)
+is a `createRouterTransport` fake that replaces `src/transport.ts` at build time
+([stubTransportPlugin.ts](frontend/.storybook/stubTransportPlugin.ts)). That module has exactly ONE
+importer (`src/api/clients.ts`), so all ~106 client consumers are stubbed at a single seam and no
+component needs a Storybook-only prop. The component then runs its REAL query hook, adapter, loading
+and error states. Fixtures are [.storybook/fixtures.ts](frontend/.storybook/fixtures.ts), imported by
+the stories too, so a story asserts on the same values the stub served.
+
+- ⚠ **The swap is a `resolve.alias`, not a `resolveId` hook.** Storybook and the Vitest browser
+  runner pre-bundle `clients.ts` as an optimized dep, and that scan does not run project `resolveId`
+  hooks — it fails OPEN, serving the real transport, and the only symptom is pickers that never fill.
+- **An unstubbed method throws `unimplemented`**, which shows up as a visible error rather than an
+  empty dropdown that reads as a styling bug. Add the method to the router when a component needs it.
+- **`parameters: { signedIn: true }`** wraps a story in `AuthProvider` + `TeamProvider`. Opt-in, and
+  only `ProductPicker` needs it (it reads `useTeam()`, which throws outside the provider).
+
+**Things that will bite when writing a story:**
+
+| | |
+| --- | --- |
+| `Select.HiddenSelect` renders a native `<option>` per item | query by **role**, not text, or every `getByText` matches twice |
+| Popovers/listboxes animate in | `await waitFor(() => expect(el).toBeVisible())` before clicking — until then `pointer-events: none` rejects the click |
+| Some pickers portal, some deliberately do not | `screen` for portalled (TeamSelect, RoleSelect); `within(canvasElement)` for the inline ones (RackSelect, ShopSelect, MarketplaceSelect, CategorySelect — they must work inside modal Dialogs) |
+| A controlled input needs real state | a story pinning `value` to a constant re-renders the field back after every keystroke, so typing tests nothing. `userEvent.type(el, "…", { delay: 40 })` too — at machine speed a controlled input drops characters |
+| Module-level caches survive between stories | the shipping catalogue and the color-mode/token storage are reset in `preview.tsx`'s `beforeEach` |
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
 set. Two things are centralised there on purpose:

@@ -25,9 +25,9 @@ import { SupplierChannelType } from "../../gen/warehouse/inventory/v1/supplier_c
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDeleteSupplierChannel, useSupplier, useSupplierChannels } from "../../features/suppliers/queries";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { MarketplaceBadge } from "../../components/MarketplaceBadge";
-import { toaster } from "../../components/Toaster";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { toaster } from "../../components/feedback/Toaster";
 import { SupplierChannelFormDialog } from "./components/SupplierChannelFormDialog";
 
 function parseSupplierId(raw: string | undefined): bigint {

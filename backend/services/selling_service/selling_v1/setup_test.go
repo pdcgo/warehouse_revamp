@@ -94,21 +94,21 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{})
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{})
 }
 
 // newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{})
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{})
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{})
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{})
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -119,7 +119,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog)
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{})
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -171,4 +171,33 @@ func placeOrderAs(
 	}
 
 	return resp.Msg.GetOrder().GetId()
+}
+
+// fakeCredit is the settlement side of an order, in the only two states the order flow cares about:
+// everybody allows it, or one named creditor does not.
+//
+// It records what it was ASKED, because half of #189 is that the right creditors get checked at all —
+// a check that silently only ever looks at the warehouse would pass every "is it blocked" test while
+// letting a frozen product owner's goods ship forever.
+type fakeCredit struct {
+	block *selling_v1.CreditBlock
+	err   error
+	asked []uint64
+}
+
+func (f *fakeCredit) Check(
+	_ context.Context,
+	_ uint64,
+	creditorTeamIDs []uint64,
+) (*selling_v1.CreditBlock, error) {
+	f.asked = creditorTeamIDs
+
+	return f.block, f.err
+}
+
+// newServiceWithCredit is for the tests that care whether an order is REFUSED (#189).
+func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
+	t.Helper()
+
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit)
 }

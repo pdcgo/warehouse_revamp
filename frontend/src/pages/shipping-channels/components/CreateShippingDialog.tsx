@@ -12,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
-import { toaster } from "../../../components/Toaster";
+import { toaster } from "../../../components/feedback/Toaster";
 import { useCreateShipping } from "../queries";
 
 // CreateShippingDialog adds a courier to the GLOBAL catalogue. `code` is the stable machine key a

@@ -3,8 +3,8 @@ import { Card, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 
 import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { DetailField } from "../../../features/restock/DetailField";
-import { paymentTypeLabel } from "../../../components/PaymentTypeSelect";
-import { ShippingBadge } from "../../../components/ShippingBadge";
+import { paymentTypeLabel } from "../../../components/pickers/PaymentTypeSelect";
+import { ShippingBadge } from "../../../components/badges/ShippingBadge";
 import { formatRupiah } from "../../../lib/money";
 
 export interface InfoPanelProps {

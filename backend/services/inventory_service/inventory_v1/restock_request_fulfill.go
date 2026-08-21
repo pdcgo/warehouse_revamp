@@ -33,6 +33,33 @@ func (s *Service) RestockRequestFulfill(
 ) (*connect.Response[inventoryv1.RestockRequestFulfillResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
 
+	// WHAT THIS DELIVERY COST THE WAREHOUSE (00021), validated before anything is written: a bad line
+	// must not be discovered halfway through receiving goods onto shelves.
+	//
+	// The pair rule protovalidate cannot express — OTHER needs a note — is checked here, because a
+	// constraint between two fields is not a constraint on either one of them.
+	costLines := make([]inventory_service_models.RestockCostLine, 0, len(req.Msg.GetCostLines()))
+	var costLineTotal int64
+
+	for _, line := range req.Msg.GetCostLines() {
+		kind := restockCostKindToText(line.GetKind())
+		if kind == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errCostLineKind)
+		}
+
+		note := line.GetNote()
+		if kind == restockCostOther && note == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errCostLineNote)
+		}
+
+		costLines = append(costLines, inventory_service_models.RestockCostLine{
+			Kind:   kind,
+			Amount: line.GetAmount(),
+			Note:   note,
+		})
+		costLineTotal += line.GetAmount()
+	}
+
 	var rr inventory_service_models.RestockRequest
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -173,7 +200,11 @@ func (s *Service) RestockRequestFulfill(
 			sellableTotal += cl.quantity
 		}
 
-		freight := rr.ShippingCost + req.Msg.GetCodShippingFee()
+		// EVERY OUTLAY IS FREIGHT. `shipping_cost` is what the requesting team already paid to have the
+		// goods sent; the cost lines are what the warehouse paid to get them in. Different pockets,
+		// same question here — getting the goods here is part of what they cost, so all of it feeds the
+		// HPP that becomes an order's COGS. Who is out of pocket is settled below, not in the cost.
+		freight := rr.ShippingCost + costLineTotal
 
 		var freightPerUnit int64
 		if sellableTotal > 0 {
@@ -322,9 +353,6 @@ func (s *Service) RestockRequestFulfill(
 		}
 
 		rr.Status = restockStatusFulfilled
-		// What the courier charged at the door (#155). Written by the WAREHOUSE at acceptance, because it
-		// is the side that paid it — and it lands in the same transaction as the goods it belongs to.
-		rr.CODShippingFee = req.Msg.GetCodShippingFee()
 
 		// WHO COUNTED IT, AND WHEN (owner) — the same actor and moment the batches above record, so a
 		// delivery and its cost layers can never disagree about who accepted them. Stamped rather than
@@ -334,11 +362,29 @@ func (s *Service) RestockRequestFulfill(
 		rr.AcceptedByUserID = actor
 		rr.AcceptedAt = &acceptedAt
 
+		// WHAT THE DELIVERY COST THE WAREHOUSE (00021), in the same transaction as the goods it was
+		// spent on. The lines were validated before the transaction opened; here they only need the
+		// delivery, the person and the moment — the same three the acceptance itself records.
+		//
+		// They are written even though `freight` already used their total, because the total is not the
+		// record: "the requesting team owes 180.000" is unanswerable without the lines that say why.
+		for i := range costLines {
+			costLines[i].RestockRequestID = rr.ID
+			costLines[i].ActorID = actor
+			costLines[i].CreatedAt = acceptedAt
+
+			costErr := tx.Create(&costLines[i]).Error
+			if costErr != nil {
+				return costErr
+			}
+		}
+
+		rr.CostLines = costLines
+
 		statusErr := tx.
 			Model(&rr).
 			Updates(map[string]any{
 				"status":              restockStatusFulfilled,
-				"cod_shipping_fee":    rr.CODShippingFee,
 				"accepted_by_user_id": actor,
 				"accepted_at":         acceptedAt,
 				"updated_at":          acceptedAt,
@@ -348,25 +394,26 @@ func (s *Service) RestockRequestFulfill(
 			return statusErr
 		}
 
-		// WHAT WAS PAID AT THE DOOR, AS ITS OWN STEP (owner) — written FIRST, so the timeline reads
-		// "paid the courier, then counted the goods in". That is the order it physically happened: the
-		// fee is handed over before the box is open, and the acceptance is what the payment bought.
+		// WHAT THE WAREHOUSE PAID, AS ITS OWN STEP (owner) — written FIRST, so the timeline reads "paid
+		// for the delivery, then counted the goods in". That is the order it physically happened: the
+		// money changes hands before the box is open, and the acceptance is what it bought.
 		//
 		// Two steps rather than one because they are two claims about two different pockets. ACCEPTED
 		// says goods landed; this says the warehouse is out of pocket for goods it does not own, which
-		// is exactly the debt PostCODFee records below (#184). Folded into the acceptance, the payment
-		// is invisible on the requesting team's timeline — and that team is the one who has to settle it.
+		// is exactly the debt PostRestockOutlay records below (#184). Folded into the acceptance, the
+		// payment is invisible on the requesting team's timeline — and that team has to settle it.
 		//
 		// It shares `acceptedAt` with the acceptance rather than taking its own time.Now(): both are the
 		// same act. The ORDER comes from the insert order — Detail sorts by `at ASC, id ASC`, so the row
 		// written first reads first when the second is the same.
 		//
-		// Nothing is written for a fee of 0, on the same reasoning that stops the ledger posting below:
-		// most deliveries are not COD, and a step saying "paid nothing" is a claim about a non-event.
-		if rr.CODShippingFee > 0 {
-			codEventErr := recordRestockEvent(tx, rr.ID, restockEventCODFee, actor, acceptedAt)
-			if codEventErr != nil {
-				return codEventErr
+		// Nothing is written when there are no cost lines, on the same reasoning that stops the ledger
+		// posting below: most deliveries cost the warehouse nothing, and a step saying "paid nothing" is
+		// a claim about an event that did not occur.
+		if costLineTotal > 0 {
+			costEventErr := recordRestockEvent(tx, rr.ID, restockEventCostRecorded, actor, acceptedAt)
+			if costEventErr != nil {
+				return costEventErr
 			}
 		}
 
@@ -377,27 +424,31 @@ func (s *Service) RestockRequestFulfill(
 			return acceptEventErr
 		}
 
-		// THE OBLIGATION THE COD FEE CREATES (#184), in this same transaction.
+		// THE OBLIGATION THE OUTLAY CREATES (#184), in this same transaction.
 		//
-		// The warehouse has just paid the courier for goods it does not own, so the requesting team
+		// The warehouse has just paid for a delivery of goods it does not own, so the requesting team
 		// owes it that money. Until now the number reached the order's COGS and stopped there —
 		// correct for costing, and completely silent on who is owed it or whether it was ever repaid.
 		//
-		// ⚠ THIS DOES NOT CHANGE WHAT COD DOES TODAY. The fee still flows into HPP and into the
+		// ⚠ THIS DOES NOT CHANGE WHAT THE COSTS DO TODAY. They still flow into HPP and into the
 		// order's COGS; that is *costing* and it stays. Settlement adds the missing half. The same
 		// rupiah answers two different questions, and recording it here must not remove it from the
 		// other.
+		//
+		// ONE ENTRY FOR THE WHOLE DELIVERY, not one per line. What the team owes is a single debt for
+		// a single delivery; the lines are the answer to "why", and they live on the restock beside the
+		// goods they arrived with.
 		//
 		// In the transaction rather than after it, because the failure it prevents is the exact
 		// situation this whole service exists to fix: goods on the shelf, money out of the warehouse's
 		// pocket, and no record that anybody owes it.
 		//
-		// A fee of 0 posts NOTHING. Most deliveries are not COD, and an entry of zero would be a
-		// ledger row saying nothing happened — worse than no row, because it reads as a debt of
-		// nothing rather than the absence of one.
-		if rr.CODShippingFee > 0 {
-			return s.settlement.PostCODFee(
-				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, rr.CODShippingFee)
+		// A total of 0 posts NOTHING. Most deliveries cost the warehouse nothing, and an entry of zero
+		// would be a ledger row saying nothing happened — worse than no row, because it reads as a debt
+		// of nothing rather than the absence of one.
+		if costLineTotal > 0 {
+			return s.settlement.PostRestockOutlay(
+				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, costLineTotal)
 		}
 
 		return nil

@@ -89,7 +89,7 @@ test("Liability: a COD acceptance shows up as a real debt, in words (#185)", asy
   const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestFulfill", {
     teamId: warehouseId,
     requestId: String(request.id),
-    codShippingFee: String(COD_FEE),
+    costLines: [{ kind: "RESTOCK_COST_KIND_COD_SHIPPING", amount: String(COD_FEE) }],
     lines: request.items.map((item: { id: string; quantity: number }) => ({
       itemId: item.id,
       receivedQuantity: item.quantity,
@@ -118,7 +118,7 @@ test("Liability: a COD acceptance shows up as a real debt, in words (#185)", asy
   await expect(page.getByTestId("counterparty-balance")).toHaveText("You owe them Rp 25.000");
 
   // And the line says WHY, by id — which is what the typed (source_type, source_id) pair was for.
-  await expect(page.getByTestId("counterparty-table")).toContainText("COD fee, restock");
+  await expect(page.getByTestId("counterparty-table")).toContainText("Delivery costs, restock");
   await expect(page.getByTestId("counterparty-table")).toContainText(`#${request.id}`);
 });
 
@@ -185,7 +185,7 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
 
   // The Payable tab carries the debt, named by its typed cause + the restock id (not a free-text note).
   await page.getByTestId("liability-detail-tab-payable").click();
-  await expect(page.getByTestId("liability-detail-payable")).toContainText("COD fee");
+  await expect(page.getByTestId("liability-detail-payable")).toContainText("Delivery costs");
 
   // Make Payment opens the two-phase form (recording alone moves nothing until they confirm).
   await page.getByTestId("liability-detail-make-payment").click();

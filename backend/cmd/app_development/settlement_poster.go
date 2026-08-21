@@ -29,7 +29,7 @@ func NewSettlementPoster(settlement *settlement_v1.Service) inventory_v1.Settlem
 	return &settlementPoster{settlement: settlement}
 }
 
-func (p *settlementPoster) PostCODFee(
+func (p *settlementPoster) PostRestockOutlay(
 	ctx context.Context,
 	tx *gorm.DB,
 	sellingTeamID, warehouseID, restockRequestID uint64,
@@ -40,7 +40,7 @@ func (p *settlementPoster) PostCODFee(
 		DebtorTeamID:   sellingTeamID,
 		CreditorTeamID: warehouseID,
 		Amount:         amount,
-		SourceType:     settlement_v1.SourceTypeCODFee,
+		SourceType:     settlement_v1.SourceTypeRestockOutlay,
 		SourceID:       restockRequestID,
 	})
 
@@ -48,6 +48,40 @@ func (p *settlementPoster) PostCODFee(
 	// ledger is deliberate. An acceptance that somehow ran twice must not fail on the second attempt
 	// over a debt that is already correctly recorded; the ledger's job is to refuse the duplicate,
 	// and this caller's job is to decide that refusing is fine.
+	if errors.Is(err, settlement_v1.ErrAlreadyPosted) {
+		return nil
+	}
+
+	return err
+}
+
+// PostStockDamage records that the WAREHOUSE owes the OWNING TEAM for stock it broke or lost while
+// holding it (business_level §Warehouse 5).
+//
+// ⚠ NOTE THE DIRECTION — it is the reverse of every other posting in this file. Elsewhere the selling
+// team owes the warehouse; here the warehouse is the debtor, because the goods it lost were never
+// its own. Getting this backwards would charge the victim.
+func (p *settlementPoster) PostStockDamage(
+	ctx context.Context,
+	tx *gorm.DB,
+	ownerTeamID, warehouseID, movementID uint64,
+	amount int64,
+	reversal bool,
+) error {
+	_, err := p.settlement.PostEntry(ctx, tx, settlement_v1.Posting{
+		// The warehouse broke it, so the warehouse owes; the team that owns the goods is owed.
+		DebtorTeamID:   warehouseID,
+		CreditorTeamID: ownerTeamID,
+		Amount:         amount,
+		SourceType:     settlement_v1.SourceTypeStockDamage,
+		SourceID:       movementID,
+		// A FOUND adjust gives the reimbursement back as a compensating entry against its own
+		// movement, never by deleting the one that charged it.
+		Reversal: reversal,
+	})
+
+	// Already posted is a normal answer here for the same reason it is above: an adjust that somehow
+	// ran twice must not fail over a debt that is already correctly recorded.
 	if errors.Is(err, settlement_v1.ErrAlreadyPosted) {
 		return nil
 	}

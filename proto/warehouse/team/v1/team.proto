@@ -162,6 +162,19 @@ message Team {
   // A compact team picture (like a user avatar). Empty when the team has no picture. Set via
   // TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
   string image_url = 8;
+
+  // THE PRIORITY-PRODUCT FEATURE (owner). Set by ROOT, and it applies to the team's WHOLE catalogue:
+  // every product this team owns is a priority product to everybody browsing.
+  //
+  // A flag on the TEAM rather than on the product, and deliberately not a per-viewer curation — so
+  // every selling team discovering products sees the same priority set. It is what backs the product
+  // picker's *Priority Product* tab.
+  //
+  // ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
+  // that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+  // team could grant itself the feature. How root sets it is not designed yet — the column and the
+  // read path land first.
+  bool priority_product = 9;
 }
 
 message TeamCreateRequest {
@@ -266,6 +279,15 @@ enum TeamRowSort {
 message TeamListFilter {
   string q = 1 [(buf.validate.field).string.max_len = 100];
   TeamType team_type = 2;
+
+  // Only teams that carry the priority-product feature (see Team.priority_product). false = no
+  // narrowing, which is the default.
+  //
+  // This is how the product picker resolves its *Priority Product* tab: it asks team_service WHICH
+  // TEAMS are priority, then narrows a product query by those ids. product_service is never told
+  // what "priority" means — it filters by a list of team ids it was handed, which is what keeps the
+  // two services independent (HARD RULE 3) instead of joining `products` to `teams`.
+  bool priority_product_only = 3;
 }
 
 message TeamListFilterSort {
@@ -294,6 +316,9 @@ message TeamRowItem {
   string description = 5;
   bool deleted = 6;
   string image_url = 7;
+  // See Team.priority_product. Carried on the row because the product picker reads the priority
+  // TEAM LIST and then narrows a product query by those ids — it never asks per product.
+  bool priority_product = 8;
 }
 
 message TeamRowMapItem {

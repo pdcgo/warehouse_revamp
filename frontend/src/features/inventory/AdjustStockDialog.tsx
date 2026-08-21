@@ -17,9 +17,9 @@ import { rpcError } from "../../api/clients";
 import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { StockAdjustReason } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { toaster } from "../../components/Toaster";
-import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { useAdjustStock, useProductBatches, useProductPlaces } from "../../features/inventory/queries";
+import { toaster } from "../../components/feedback/Toaster";
+import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { useAdjustStock, useProductBatches, useProductPlaces } from "./queries";
 
 // The reason drives the model (#211): a RECOUNT reconciles the whole shelf to a counted figure, while
 // DAMAGED/LOST/FOUND change a specific batch's units.

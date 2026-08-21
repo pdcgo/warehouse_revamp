@@ -156,6 +156,88 @@ func TestOrder_CreateWithNote(t *testing.T) {
 	}
 }
 
+// THE MARKETPLACE'S OWN ID for the order (owner) — stored verbatim, carried back out unchanged, and
+// findable by the free-text search. That last part is the point of the field: the reference is what a
+// buyer quotes and what a payout report lists, so an order that could only be found by customer name
+// would leave the number nobody can act on.
+func TestOrder_CreateWithExternalRef(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	ctx := context.Background()
+
+	shopID := insertShop(t, db, 2, "Shop", "S-REF", "shopee")
+
+	// The shape a marketplace reference actually arrives in — mixed case and digits, no structure we
+	// could have predicted, which is why nothing here parses it.
+	const ref = "250815ABCD1234"
+
+	created, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Budi", OrderExternalRefId: ref,
+		Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate with an external ref: %v", err)
+	}
+
+	if created.Msg.GetOrder().GetOrderExternalRefId() != ref {
+		t.Fatalf("ref on create = %q, want %q", created.Msg.GetOrder().GetOrderExternalRefId(), ref)
+	}
+
+	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
+		TeamId: 2, OrderId: created.Msg.GetOrder().GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("OrderDetail: %v", err)
+	}
+
+	if resp.Msg.GetOrder().GetOrderExternalRefId() != ref {
+		t.Fatalf("ref on detail = %q, want %q", resp.Msg.GetOrder().GetOrderExternalRefId(), ref)
+	}
+
+	// An order taken over the phone has NO marketplace reference, and "" is how it says so — not a
+	// placeholder, and nothing to back-fill.
+	phone, err := svc.OrderCreate(ctx, connect.NewRequest(&sellingv1.OrderCreateRequest{
+		TeamId: 2, ShopId: shopID, WarehouseId: testWarehouse,
+		CustomerName: "Lewat Telepon", Subtotal: 10000, Total: 10000,
+		Items: []*sellingv1.OrderItem{
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, UnitPrice: 10000},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("OrderCreate without an external ref: %v", err)
+	}
+
+	if phone.Msg.GetOrder().GetOrderExternalRefId() != "" {
+		t.Fatalf("ref with none given = %q, want empty", phone.Msg.GetOrder().GetOrderExternalRefId())
+	}
+
+	// SEARCHABLE BY IT — a partial term, because somebody reading a reference off a chat message
+	// quotes the tail of it as often as the whole thing.
+	found, err := svc.OrderList(ctx, connect.NewRequest(&sellingv1.OrderListRequest{
+		TeamId: 2,
+		Filter: &sellingv1.OrderListFilter{Search: "ABCD"},
+		Page:   &commonv1.CommonPagination{Page: 1, Limit: 10},
+	}))
+	if err != nil {
+		t.Fatalf("OrderList by ref: %v", err)
+	}
+
+	rows := orderRows(found.Msg)
+	if len(rows) != 1 {
+		t.Fatalf("search by ref returned %d orders, want 1 — the phone order has no ref to match",
+			len(rows))
+	}
+
+	if rows[0].GetId() != created.Msg.GetOrder().GetId() {
+		t.Fatalf("search by ref found order %d, want %d",
+			rows[0].GetId(), created.Msg.GetOrder().GetId())
+	}
+}
+
 // The shipping receipt is a REFERENCE to a document_service document, snapshotted with its label —
 // so an order can be rendered without calling document_service, and the bytes stay where they are.
 // An order with none carries an empty receipt message rather than nil.

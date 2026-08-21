@@ -26,7 +26,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useSettlementPositions } from "../../features/settlement/queries";
 import { directionCopy, daysSince } from "../../features/settlement/direction";
-import { Pagination } from "../../components/Pagination";
+import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
 
 const PAGE_SIZE = 20;

@@ -32,13 +32,16 @@ import { lineTotal, rackLabel, unitPrice } from "../../features/restock/lines";
 import {
   askedQuantity,
   brokenQuantity,
+  costKindSlug,
   damageReasons,
   goodsTotal,
   lostQuantity,
   receivedQuantity,
+  warehouseOutlay,
 } from "../../features/restock/summary";
-import { RestockStatusBadge } from "../../components/RestockStatusBadge";
-import { ShippingBadge } from "../../components/ShippingBadge";
+import { costKindLabel } from "../../components/pickers/CostKindSelect";
+import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
+import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 
@@ -120,8 +123,8 @@ export function RestockWarehouseDetailPage() {
   const askedTotal = useMemo(() => askedQuantity(items), [items]);
   const receivedTotal = useMemo(() => receivedQuantity(items), [items]);
 
-  const codFee = request?.codShippingFee ?? 0n;
-  const grandTotal = productsTotal + (request?.shippingCost ?? 0n) + codFee;
+  const outlay = request ? warehouseOutlay(request) : 0n;
+  const grandTotal = productsTotal + (request?.shippingCost ?? 0n) + outlay;
 
   if (!current) {
     return (
@@ -455,16 +458,20 @@ export function RestockWarehouseDetailPage() {
                   {formatRupiah(request.shippingCost)}
                 </Text>
               </Text>
-              {/* The fee THIS warehouse paid at the door (#155) — hidden until there is one, since
-                  most deliveries are not COD. */}
-              {codFee > 0n && (
-                <Text fontSize="sm" color="fg.muted">
-                  {t("restock.accept.codFee")}:{" "}
-                  <Text as="span" data-testid="restock-detail-cod-fee">
-                    {formatRupiah(codFee)}
+              {/* What THIS warehouse laid out to receive the delivery (00021) — one row per cost,
+                  and none at all when it paid nothing, which is most deliveries. */}
+              {(request?.costLines ?? []).map((line) => (
+                <Text key={line.id.toString()} fontSize="sm" color="fg.muted">
+                  {costKindLabel(t, line.kind)}
+                  {line.note ? ` — ${line.note}` : ""}:{" "}
+                  <Text
+                    as="span"
+                    data-testid={`restock-detail-cost-${costKindSlug(line.kind)}`}
+                  >
+                    {formatRupiah(line.amount)}
                   </Text>
                 </Text>
-              )}
+              ))}
               <Text
                 fontSize="md"
                 fontWeight="semibold"

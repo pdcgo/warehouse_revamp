@@ -144,3 +144,118 @@ func TestProductDiscover_OwnerTeamFilter(t *testing.T) {
 		t.Fatalf("total = %d, want 0", none.Msg.GetPageInfo().GetTotalItems())
 	}
 }
+
+// The PRIORITY partition (owner). Priority is a flag on the TEAM, held in team_service — a service
+// this one must not join to (HARD RULE 3). So the caller resolves which teams are priority and hands
+// the ids over; these two filters are the two halves the picker's tabs need.
+func TestProductDiscover_OwnerTeamIds(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertProduct(t, db, 2, "A-1", "Alpha") // the caller's own
+	insertProduct(t, db, 3, "B-1", "Beta")  // a priority team
+	insertProduct(t, db, 4, "C-1", "Gamma") // an ordinary other team
+
+	// THE PRIORITY TAB: only the named teams' products.
+	resp, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
+		TeamId:         2,
+		ExcludeOwnTeam: true,
+		OwnerTeamIds:   []uint64{3},
+		Page:           &commonv1.CommonPagination{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("ProductDiscover: %v", err)
+	}
+
+	rows := listRows(resp.Msg.GetItems())
+	if resp.Msg.GetPageInfo().GetTotalItems() != 1 || len(resp.Msg.GetIds()) != 1 {
+		t.Fatalf("owner_team_ids=[3] returned %d items, want 1", resp.Msg.GetPageInfo().GetTotalItems())
+	}
+	if got := rows[resp.Msg.GetIds()[0]].GetTeamId(); got != 3 {
+		t.Errorf("returned team %d, want 3", got)
+	}
+}
+
+// …and its complement. The two tabs are two halves of ONE partition, so the same id list drives both
+// — which is what stops a priority product being listed on the Priority tab AND the Other tab, where
+// ticking it once would show it ticked twice.
+func TestProductDiscover_ExcludeOwnerTeamIds(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertProduct(t, db, 2, "A-1", "Alpha") // the caller's own
+	insertProduct(t, db, 3, "B-1", "Beta")  // a priority team
+	insertProduct(t, db, 4, "C-1", "Gamma") // an ordinary other team
+
+	resp, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
+		TeamId:              2,
+		ExcludeOwnTeam:      true,
+		ExcludeOwnerTeamIds: []uint64{3},
+		Page:                &commonv1.CommonPagination{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("ProductDiscover: %v", err)
+	}
+
+	// Neither the caller's own (excluded by exclude_own_team) nor the priority team's.
+	rows := listRows(resp.Msg.GetItems())
+	if resp.Msg.GetPageInfo().GetTotalItems() != 1 || len(resp.Msg.GetIds()) != 1 {
+		t.Fatalf("exclude_owner_team_ids=[3] returned %d items, want 1", resp.Msg.GetPageInfo().GetTotalItems())
+	}
+	if got := rows[resp.Msg.GetIds()[0]].GetTeamId(); got != 4 {
+		t.Errorf("returned team %d, want 4", got)
+	}
+}
+
+// ⚠ AN EMPTY LIST IS NO NARROWING, on both fields — the same convention `owner_team_id = 0` follows.
+//
+// Worth a test of its own because the failure is silent and inverted: a caller whose priority set is
+// empty and which sends `owner_team_ids: []` anyway gets the WHOLE catalogue, and a Priority tab
+// showing everything reads as "all of this is priority" rather than as a bug. The contract is what it
+// is; the caller is required to render nothing itself, and this pins the behaviour it must work
+// around rather than pretending the empty list filters.
+func TestProductDiscover_EmptyTeamIdListsDoNotNarrow(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertProduct(t, db, 2, "A-1", "Alpha")
+	insertProduct(t, db, 3, "B-1", "Beta")
+	insertProduct(t, db, 4, "C-1", "Gamma")
+
+	resp, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
+		TeamId:              2,
+		OwnerTeamIds:        []uint64{},
+		ExcludeOwnerTeamIds: []uint64{},
+		Page:                &commonv1.CommonPagination{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("ProductDiscover: %v", err)
+	}
+
+	if got := resp.Msg.GetPageInfo().GetTotalItems(); got != 3 {
+		t.Errorf("empty lists returned %d items, want all 3 (no narrowing)", got)
+	}
+}
+
+// The narrowings INTERSECT rather than override — naming a team on one list and excluding it on the
+// other returns nothing, which is the honest answer to a contradictory ask rather than an error.
+func TestProductDiscover_TeamIdListsIntersect(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertProduct(t, db, 3, "B-1", "Beta")
+
+	resp, err := svc.ProductDiscover(context.Background(), connect.NewRequest(&productv1.ProductDiscoverRequest{
+		TeamId:              2,
+		OwnerTeamIds:        []uint64{3},
+		ExcludeOwnerTeamIds: []uint64{3},
+		Page:                &commonv1.CommonPagination{Page: 1, Limit: 50},
+	}))
+	if err != nil {
+		t.Fatalf("ProductDiscover: %v", err)
+	}
+
+	if got := resp.Msg.GetPageInfo().GetTotalItems(); got != 0 {
+		t.Errorf("contradictory lists returned %d items, want 0", got)
+	}
+}

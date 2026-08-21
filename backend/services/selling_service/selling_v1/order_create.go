@@ -31,7 +31,12 @@ func (s *Service) OrderCreate(
 		shippingCost:     req.Msg.GetShippingCost(),
 		total:            req.Msg.GetTotal(),
 		marketplaceTotal: req.Msg.GetMarketplaceTotal(),
-		items:            req.Msg.GetItems(),
+		// The storefront's own id for this order, as typed. OrderDraftPromote leaves this empty for
+		// now — a draft's `external_id` is its idempotency key (and is a minted `form-…` id for a
+		// draft this form made), so carrying it across would fill the field with something that is
+		// not a marketplace reference.
+		orderExternalRefID: req.Msg.GetOrderExternalRefId(),
+		items:              req.Msg.GetItems(),
 	})
 	if err != nil {
 		return nil, err

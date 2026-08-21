@@ -145,9 +145,6 @@ const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.U
 const UserDetailPage = lazy(() =>
   import("./pages/user-detail").then((m) => ({ default: m.UserDetailPage })),
 );
-const ComponentsPage = lazy(() =>
-  import("./pages/components-gallery").then((m) => ({ default: m.ComponentsPage })),
-);
 const SettingsPage = lazy(() =>
   import("./pages/settings").then((m) => ({ default: m.SettingsPage })),
 );
@@ -328,7 +325,6 @@ export const router = createBrowserRouter([
       { path: "inventories/racks/:rackId", element: <RackDetailPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "users/:userId", element: <UserDetailPage /> },
-      { path: "components", element: <ComponentsPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],

@@ -6,9 +6,9 @@ import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useUpdateTeam, useSaveTeamInfo, useTeamDetail } from "../../features/teams/queries";
 import { TeamPicture } from "./components/TeamPicture";
-import { toaster } from "../../components/Toaster";
+import { toaster } from "../../components/feedback/Toaster";
 import { isTeamManager } from "../../lib/roles";
-import { TeamSelect } from "../../components/TeamSelect";
+import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 
 // SettingsPage (#44) lets a team manager change the CURRENT team's picture and name.

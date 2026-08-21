@@ -37,7 +37,7 @@ func seedTwoBatches(t *testing.T, svc *inventory_v1.Service, warehouse uint64) *
 	items := req.GetItems()
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CodShippingFee: 50000,
+		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
 				ItemId:           items[0].GetId(),

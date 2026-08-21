@@ -7,7 +7,10 @@ import { useAuth } from "../auth/AuthContext";
 
 // Stored in sessionStorage, NOT localStorage: the active team is per-TAB, so two tabs can be open
 // on two different teams at once (a warehouse manager reconciling against a selling team, say).
-const CURRENT_TEAM_KEY = "warehouse_revamp.team";
+// Exported so a test harness can plant the selection rather than re-typing the key. A second copy
+// of a storage key is a copy that silently stops matching — and the symptom would be a story quietly
+// rendering the DEFAULT team while claiming to be another one.
+export const CURRENT_TEAM_KEY = "warehouse_revamp.team";
 
 interface TeamState {
   teams: TeamAccessItem[];

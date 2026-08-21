@@ -19,9 +19,9 @@ import { ArrowLeft, PackageCheck } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { TeamItem } from "../../components/TeamItem";
-import { MarketplaceBadge } from "../../components/MarketplaceBadge";
-import { toaster } from "../../components/Toaster";
+import { TeamItem } from "../../components/entity/TeamItem";
+import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiah } from "../../lib/money";
 
 // A return's lifecycle mirrors the restock request (brainstorming §4.3): ONGOING while the goods are

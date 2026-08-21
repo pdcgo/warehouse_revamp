@@ -24,19 +24,23 @@ import { ArrowLeft, History, LayoutGrid, Plus, Trash2, TriangleAlert } from "luc
 
 import { rpcError } from "../../api/clients";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockDamageType } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { CurrencyInput } from "../../components/CurrencyInput";
-import { DamageTypeSelect } from "../../components/DamageTypeSelect";
-import { ProductListItem } from "../../components/ProductListItem";
-import { RackSelect, UNPLACED } from "../../components/RackSelect";
-import { ShippingBadge } from "../../components/ShippingBadge";
-import { toaster } from "../../components/Toaster";
+import {
+  RestockCostKind,
+  RestockDamageType,
+} from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { CostKindSelect } from "../../components/pickers/CostKindSelect";
+import { DamageTypeSelect } from "../../components/pickers/DamageTypeSelect";
+import { ProductListItem } from "../../components/products/ProductListItem";
+import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
+import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
-import { TeamItem } from "../../components/TeamItem";
-import { UserItem } from "../../components/UserItem";
+import { TeamItem } from "../../components/entity/TeamItem";
+import { UserItem } from "../../components/entity/UserItem";
 import {
   useRestockRequest,
   useRestockActors,
@@ -55,6 +59,15 @@ interface PlacementDraft {
   key: string;
   place: string;
   quantity: string;
+}
+
+// One cost the WAREHOUSE paid to receive this delivery (00021): what kind, how much, and what for.
+// `kind` is the ENUM the picker emits — nothing here re-maps strings on the way out.
+interface CostDraft {
+  key: string;
+  kind: RestockCostKind;
+  amount: string;
+  note: string;
 }
 
 // One problem row: what failed to become stock, how many, and why (#154). `type` is the ENUM, not a
@@ -118,7 +131,11 @@ export function RestockAcceptPage() {
   const [submitError, setSubmitError] = useState("");
   const [placements, setPlacements] = useState<Record<string, PlacementDraft[]>>({});
   const [problems, setProblems] = useState<Record<string, ProblemDraft[]>>({});
-  const [codFee, setCodFee] = useState("0");
+  // WHAT THIS DELIVERY COST THE WAREHOUSE (00021). One row per outlay, starting with the fee at the
+  // door because that is the one almost every COD delivery has — the rest are added when they happen.
+  const [costs, setCosts] = useState<CostDraft[]>(() => [
+    { key: nextKey(), kind: RestockCostKind.COD_SHIPPING, amount: "0", note: "" },
+  ]);
 
   const fulfill = useFulfillRestockRequest();
   const busy = fulfill.isPending;
@@ -196,7 +213,20 @@ export function RestockAcceptPage() {
 
   const items = useMemo(() => request?.items ?? [], [request]);
 
-  const freight = (request?.shippingCost ?? 0n) + toRupiah(codFee);
+  // What the person at the door has typed so far. A row of 0 counts as nothing — it is the state a
+  // fresh row starts in, not a cost — and the same rule decides what is sent.
+  const outlay = costs.reduce((sum, row) => sum + toRupiah(row.amount), 0n);
+
+  // OTHER without a note is refused by the handler, so the button is disabled rather than letting
+  // someone submit a delivery they have finished counting and be told no.
+  const costsIncomplete = costs.some(
+    (row) =>
+      toRupiah(row.amount) > 0n &&
+      row.kind === RestockCostKind.OTHER &&
+      row.note.trim() === "",
+  );
+
+  const freight = (request?.shippingCost ?? 0n) + outlay;
 
   // What the ORDER was worth, from the lines as raised. This is the asked-for value, not the
   // received one: it is the figure on the invoice the courier is holding, which is the whole point
@@ -233,7 +263,12 @@ export function RestockAcceptPage() {
   // Freight rides on every SHELVED (sellable) unit across the whole delivery — problems carry none.
   const sellableTotal = items.reduce((sum, item) => sum + lineState(item).placed, 0n);
 
-  const ready = items.length > 0 && items.every((item) => lineState(item).ready);
+  // An OTHER cost with no note blocks Accept for the same reason an unplaced line does: the server
+  // refuses it, and finding that out after a full count is typed is the worst moment to be told.
+  const ready =
+    items.length > 0 &&
+    items.every((item) => lineState(item).ready) &&
+    !costsIncomplete;
 
   const totalReceived = items.reduce((sum, item) => sum + lineState(item).count, 0n);
   const blockedLines = items.filter((item) => !lineState(item).ready).length;
@@ -273,6 +308,25 @@ export function RestockAcceptPage() {
     });
   }
 
+  // A new cost row starts EMPTY and typed OTHER: COD is already the first row, and a second one is
+  // by definition something else. Amount 0 so it counts for nothing until somebody types.
+  function addCost() {
+    setCosts((prev) => [
+      ...prev,
+      { key: nextKey(), kind: RestockCostKind.OTHER, amount: "0", note: "" },
+    ]);
+  }
+
+  function updateCost(rowKey: string, patch: Partial<CostDraft>) {
+    setCosts((prev) =>
+      prev.map((row) => (row.key === rowKey ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function removeCost(rowKey: string) {
+    setCosts((prev) => prev.filter((row) => row.key !== rowKey));
+  }
+
   function addProblem(itemKey: string) {
     setProblems((prev) => ({
       ...prev,
@@ -305,7 +359,15 @@ export function RestockAcceptPage() {
       await fulfill.mutateAsync({
         teamId,
         requestId: request.id,
-        codShippingFee: toRupiah(codFee),
+        // A row of 0 is a row nobody filled in — the state every fresh row starts in. Sending it
+        // would be refused (the handler wants a positive amount) and would mean nothing anyway.
+        costLines: costs
+          .filter((row) => toRupiah(row.amount) > 0n)
+          .map((row) => ({
+            kind: row.kind,
+            amount: toRupiah(row.amount),
+            note: row.note.trim(),
+          })),
         // Built from `request.items` so the payload's shape comes from the REQUEST and cannot drop a
         // line a map missed. received = the shelved units; the problems ride separately (#154).
         lines: request.items.map((item) => {
@@ -612,7 +674,7 @@ export function RestockAcceptPage() {
                 <Stat.HelpText>
                   {t("restock.accept.summary.shippingBreakdown", {
                     shipping: formatRupiah(request.shippingCost),
-                    cod: formatRupiah(toRupiah(codFee)),
+                    outlay: formatRupiah(outlay),
                   })}
                 </Stat.HelpText>
               </Stat.Root>
@@ -630,19 +692,81 @@ export function RestockAcceptPage() {
         </Card.Root>
       </SimpleGrid>
 
-      {/* The COD fee lives OUTSIDE the summary cards (owner). Everything in them is a fact already
-          recorded on the request — read it, don't touch it. This is the one money figure the person
-          at the door TYPES: what the courier actually collected on handover. Inside a card it read as
-          another recorded row, when it is an input that moves the Shipping stat above and every HPP
-          below. */}
-      <Flex align="flex-end" gap="card" wrap="wrap">
+      {/* WHAT THE DELIVERY COST THE WAREHOUSE lives OUTSIDE the summary cards (owner). Everything in
+          them is a fact already recorded on the request — read it, don't touch it. These are the money
+          figures the person at the door TYPES, and they move the Shipping stat above and every HPP
+          below. Inside a card they would read as more recorded rows.
+
+          A LIST rather than the single COD box this replaced (00021): the fee at the door was never
+          the only thing a warehouse pays to get a delivery in, and anything else was going either
+          unrecorded or into the COD box under the wrong name. */}
+      <Stack gap="field" data-testid="accept-costs">
         <Stack gap="0.5">
           <Text fontSize="xs" color="fg.subtle">
-            {t("restock.accept.codFee")}
+            {t("restock.cost.title")}
           </Text>
-          <CurrencyInput value={codFee} data-testid="accept-cod-fee" onChange={setCodFee} />
+          <Text fontSize="xs" color="fg.muted">
+            {t("restock.cost.hint")}
+          </Text>
         </Stack>
-      </Flex>
+
+        {costs.map((row, index) => (
+          <Flex key={row.key} align="flex-end" gap="field" wrap="wrap">
+            <CostKindSelect
+              value={row.kind}
+              onChange={(kind) => updateCost(row.key, { kind })}
+            />
+
+            <CurrencyInput
+              value={row.amount}
+              // The COD row keeps the id it had as a single field: it is still literally the COD fee
+              // input, and the tests that reach for it are asking the same question.
+              data-testid={
+                row.kind === RestockCostKind.COD_SHIPPING
+                  ? "accept-cod-fee"
+                  : `accept-cost-amount-${index}`
+              }
+              onChange={(amount) => updateCost(row.key, { amount })}
+            />
+
+            {/* The note is REQUIRED for OTHER and pointless for COD, where the kind already says what
+                it was. Shown either way so the row does not change shape as the kind is picked. */}
+            <Input
+              value={row.note}
+              placeholder={t("restock.cost.note")}
+              maxLength={200}
+              maxW="20rem"
+              data-testid={`accept-cost-note-${index}`}
+              onChange={(e) => updateCost(row.key, { note: e.target.value })}
+            />
+
+            {/* The last row stays: with none at all there is nothing to type into, and the person at
+                the door would have to find the Add button before they could record anything. */}
+            {costs.length > 1 && (
+              <IconButton
+                size="xs"
+                variant="ghost"
+                aria-label={t("restock.cost.remove")}
+                data-testid={`accept-cost-remove-${index}`}
+                onClick={() => removeCost(row.key)}
+              >
+                <Icon as={Trash2} boxSize="4" />
+              </IconButton>
+            )}
+          </Flex>
+        ))}
+
+        <Button
+          size="xs"
+          variant="outline"
+          alignSelf="flex-start"
+          data-testid="accept-cost-add"
+          onClick={addCost}
+        >
+          <Icon as={Plus} boxSize="4" />
+          {t("restock.cost.add")}
+        </Button>
+      </Stack>
 
       {items.map((item) => {
         const st = lineState(item);

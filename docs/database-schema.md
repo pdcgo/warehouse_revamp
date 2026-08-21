@@ -27,6 +27,7 @@ erDiagram
         text        team_code   UK "required unique"
         text        description
         text        image_url   "compact team picture, empty if none"
+        boolean     priority_product "granted by ROOT — the team's WHOLE catalogue is priority"
         boolean     deleted     "soft delete"
         timestamptz created_at
         timestamptz updated_at
@@ -60,7 +61,26 @@ erDiagram
 - **`teams`** — one row per team (a warehouse *is* a team; see `plans/team_service/`). Root-ness is
   structural: `CHECK ((type = 'root') = (id = 1))` ties `id = 1` and `type = 'root'` together so the
   hardcoded root-team scope in the access interceptor can never drift from the data. Indexes:
-  `UNIQUE (team_code)`, and a partial `(type) WHERE deleted = FALSE`.
+  `UNIQUE (team_code)`, a partial `(type) WHERE deleted = FALSE`, and a partial
+  `(id) WHERE priority_product AND NOT deleted`.
+  - **`priority_product`** — the priority-product feature, granted by **ROOT**, applying to the team's
+    **whole catalogue**: every product it owns is a priority product to everybody discovering products.
+    It backs the product picker's *Priority Product* tab.
+
+    On the **team** rather than on each product, because the decision is about a team — one write,
+    and automatically true of everything the team adds later, with no backfill when a team is granted
+    the feature. In **`teams`** rather than `team_infos` for a policy reason, not a layout one:
+    `TeamInfoUpdate` is callable by `ROLE_TEAM_OWNER`, so a capability granted by root must not live
+    in a message a team owner can write, or a team could grant itself the feature.
+
+    ⚠ **`product_service` never reads this column** — it cannot, because `teams` belongs to
+    `team_service` and cross-service joins are forbidden (HARD RULE 3). The caller reads the priority
+    **team ids** from `TeamList(filter.priority_product_only)` and passes them to `ProductDiscover` as
+    `owner_team_ids` / `exclude_owner_team_ids`, so `product_service` filters by ids it was handed and
+    never learns what "priority" means. One flag, one owner, two independent schemas.
+
+    ⚠ **How root SETS it is not designed yet** (owner) — the column and the read path landed first, so
+    no RPC writes it today.
 - **`team_infos`** — 1:1 with `teams` (`UNIQUE (team_id)`, which is what makes `TeamInfoUpdate` a
   real `ON CONFLICT` upsert). `return_warehouse_id` / `return_user_id` are opaque ids owned by other
   services — no FK is possible across the service boundary.
@@ -251,6 +271,7 @@ erDiagram
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
         bigint      total              "subtotal + shipping_cost"
         bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
+        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none (a phone order). NOT unique — uniqueness is still open"
         text        note                "free text for the people handling the order; nothing reads it, '' = none"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
@@ -388,7 +409,7 @@ erDiagram
     revenue report was optimistic by exactly the freight.
 
     ```
-    additional = (shipping_cost + cod_shipping_fee) / sellable units on the request
+    additional = (shipping_cost + SUM(restock_cost_lines.amount)) / sellable units on the request
     hpp        = (line total / that line's sellable units) + additional
     ```
 
@@ -636,6 +657,7 @@ erDiagram
 
     restock_requests ||--o{ restock_request_items : "restock_request_id"
     restock_requests ||--o{ restock_request_events : "restock_request_id"
+    restock_requests ||--o{ restock_cost_lines : "restock_request_id"
     suppliers ||--o{ restock_requests : "supplier_id (nullable)"
 
     restock_requests {
@@ -648,7 +670,6 @@ erDiagram
         text        receipt            "optional: courier tracking number (resi)"
         bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
         bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
-        bigint      cod_shipping_fee   "fee paid AT THE DOOR by the warehouse at acceptance (#155), CHECK >= 0"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
         text        note               "optional free text"
         bigint      created_by_user_id "who RAISED it, opaque user_service id, no FK; 0 = not recorded"
@@ -660,10 +681,20 @@ erDiagram
         timestamptz updated_at
     }
 
+    restock_cost_lines {
+        bigserial   id                 PK
+        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
+        text        kind               "cod_shipping | other (mapper-guarded, #80); starts at two and grows"
+        bigint      amount             "whole rupiah the WAREHOUSE laid out, CHECK > 0"
+        text        note               "why; required for 'other' by the handler, '' otherwise"
+        bigint      actor_id           "who typed it, opaque user_service id, no FK"
+        timestamptz created_at
+    }
+
     restock_request_events {
         bigserial   id                 PK
         bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        text        kind               "created | edited | accepted | cancelled (mapper-guarded, #80)"
+        text        kind               "created | edited | accepted | cancelled | cost_recorded (mapper-guarded, #80)"
         bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
         timestamptz at                 "WHEN IT HAPPENED — not the insert time; the backfill carries old dates"
         timestamptz created_at
@@ -936,7 +967,7 @@ erDiagram
   (case-insensitive **prefix** typeahead — a leading-wildcard "contains" search would need `pg_trgm`),
   and `level` (a scoped search: "find a kecamatan named X").
 - **The 91 599 rows are NOT in the migration.** They are generated from pinned upstream dumps and
-  loaded separately — `go run ./cmd/tool region build-seed` then `… region load-seed` (idempotent
+  loaded separately — `go run ./tools/san region build-seed` then `… region load-seed` (idempotent
   upsert; ~5 s). Postgres runs in Docker and cannot read a host file, so a server-side `COPY … FROM
   '<path>'` inside the migration would not work; this mirrors how the category taxonomy is seeded
   from a file. See
@@ -1061,6 +1092,7 @@ erDiagram
 ```mermaid
 erDiagram
     settlement_entries }o--|| settlement_balances : "projected into"
+    settlement_payments ||--o{ settlement_entries : "a CONFIRMED one posts"
     settlement_terms {
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
@@ -1092,6 +1124,21 @@ erDiagram
         bigint      balance             "same sign convention; positive = they owe you"
         timestamptz oldest_unsettled_at "when the current run of debt began, NULL when square"
         timestamptz created_at
+        timestamptz updated_at
+    }
+
+    settlement_payments {
+        bigserial   id               PK
+        bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
+        bigint      creditor_team_id "who was paid, and the ONLY team that may confirm"
+        bigint      amount           "whole rupiah, ALWAYS POSITIVE — direction is the two ids"
+        text        status           "recorded, confirmed or reversed"
+        text        note             "the payers hint for the human confirming"
+        text        reversal_reason  "why a confirmation was undone"
+        bigint      recorded_by      "who claimed it — opaque user id"
+        bigint      confirmed_by     "who agreed — opaque user id"
+        timestamptz created_at
+        timestamptz confirmed_at     "NULL until confirmed; SURVIVES a reversal"
         timestamptz updated_at
     }
 ```
@@ -1151,4 +1198,24 @@ erDiagram
     markup still charges **cost**, because the product fee is a *cost transfer*: the goods left the
     owner's stock and do not come back. See `docs/services/settlement_service/rpc.md`.
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
-    it. Until #189 lands, every row is absent — which is exactly the "nothing configured" case.
+    it. #189 added the RPCs that write it — until then every row was absent, so every fee was 0 and
+    every credit limit unlimited.
+- **`settlement_payments`** — one team's claim that it paid another, and the creditor's agreement that
+  the money arrived (#188). **Settlement is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
+  only the confirm posts to the ledger.
+  - ⚠ **It is NOT the ledger.** This table holds the claim; `settlement_entries` holds what moved. A payment
+    sitting at `recorded` has changed no balance at all — one side asserting a transfer is not evidence
+    that it landed, and only the creditor can see the money arrive. That asymmetry is also why
+    counterparties are teams only: an external party has no account and could never confirm.
+  - **`amount` is always POSITIVE**; direction lives in the two team columns. A negative payment would be
+    a refund, which is a different thing and is not modelled.
+  - **A reversal is a compensating entry, never an edit.** The confirmation stays and an
+    equal-and-opposite entry joins it — "it was briefly settled" is what an audit needs to see.
+    `confirmed_at` / `confirmed_by` SURVIVE a reversal: when it was agreed, and by whom, are facts.
+  - **`settlement_payments_awaiting_idx` is the badge query** — `(creditor_team_id, status, id DESC)`, the
+    creditor's inbox of what is waiting on them. A payment nobody notices is a debt that stays open for
+    no reason.
+  - ⚠ **Confirm locks the row `FOR UPDATE`.** It is a check-then-act on money, and two managers clicking
+    Confirm in the same second is ordinary here — without the lock both reads see `recorded`, both post,
+    and the debt is paid off twice. Proven against a real Postgres in `payment_confirm_race_test.go`
+    (8 concurrent confirms → exactly one succeeds, balance lands on 0).
