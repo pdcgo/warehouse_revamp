@@ -29,3 +29,6 @@ development_data/
 
 # audit-frontend-structure output (regenerated on every run)
 .claude/skills/audit-frontend-structure/last-report.md
+
+# san remote's persisted token (--persist-token) — a live credential, never committed
+.san/

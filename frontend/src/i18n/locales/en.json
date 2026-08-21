@@ -122,7 +122,8 @@
     "recordNote": "Note",
     "recordNoteOptional": "(optional)",
     "recordNoteHelp": "A hint for the person confirming — the ledger records the typed cause, never this note.",
-    "recordSubmit": "Make Payment"
+    "recordSubmit": "Make Payment",
+    "causeRestockOutlay": "Delivery costs · restock #{{id}}"
   },
   "common": {
     "perPage": "Per page",
@@ -644,7 +645,8 @@
     "sourceHandlingFee": "Handling fee, order",
     "sourceProductFee": "Product fee, order",
     "sourcePayment": "Payment",
-    "sourceUnknown": "Unknown"
+    "sourceUnknown": "Unknown",
+    "sourceRestockOutlay": "Delivery costs, restock"
   },
   "restock": {
     "title": "Restock Requests",
@@ -731,7 +733,8 @@
       "awaiting": "Waiting for the warehouse",
       "noDate": "Date not recorded",
       "edited": "Request edited",
-      "unknown": "Something happened"
+      "unknown": "Something happened",
+      "costRecorded": "Delivery costs recorded"
     },
     "summary": {
       "totalProducts": "Total products",
@@ -909,7 +912,7 @@
         "cost": "Value",
         "productTotal": "Products",
         "shippingTotal": "Shipping",
-        "shippingBreakdown": "{{shipping}} shipping + {{cod}} COD",
+        "shippingBreakdown": "{{shipping}} shipping + {{outlay}} warehouse outlay",
         "grandTotal": "Total"
       },
       "confirm": {
@@ -923,7 +926,21 @@
       }
     },
     "createdByAll": "Anyone who raised it",
-    "acceptedByAll": "Anyone who accepted it"
+    "acceptedByAll": "Anyone who accepted it",
+    "cost": {
+      "title": "What this delivery cost the warehouse",
+      "hint": "What you paid to get these goods in. It is spread over the units that arrived and charged to the requesting team.",
+      "add": "Add a cost",
+      "remove": "Remove this cost",
+      "note": "What it was for",
+      "noteRequired": "Say what this cost was for.",
+      "kind": {
+        "codShipping": "COD fee at the door",
+        "other": "Other",
+        "unknown": "Cost"
+      },
+      "total": "Warehouse outlay"
+    }
   },
   "shops": {
     "title": "Shops",

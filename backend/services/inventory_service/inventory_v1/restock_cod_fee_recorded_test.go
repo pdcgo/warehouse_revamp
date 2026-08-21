@@ -67,8 +67,8 @@ func acceptWithFee(
 
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
 		TeamId: feeWarehouse, RequestId: reqID,
-		CodShippingFee: codFee,
-		Lines:          allArrived(created.Msg.GetRequest()),
+		CostLines: codLines(codFee),
+		Lines:     allArrived(created.Msg.GetRequest()),
 	}))
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -84,20 +84,36 @@ func acceptWithFee(
 		t.Fatalf("detail: %v", err)
 	}
 
-	// The COLUMN itself, in the database, not just what the RPC chose to echo. HPP reads this column
-	// directly (stock_cost.go), so a fee that reached the wire but not the row would still cost wrong.
-	var stored inventory_service_models.RestockRequest
+	// The ROWS themselves, in the database, not just what the RPC chose to echo. HPP sums these lines
+	// directly (stock_cost.go), so a cost that reached the wire but not the table would still cost
+	// wrong.
+	var stored []inventory_service_models.RestockCostLine
 
-	err = db.Where("id = ?", reqID).Take(&stored).Error
+	err = db.Where("restock_request_id = ?", reqID).Order("id ASC").Find(&stored).Error
 	if err != nil {
-		t.Fatalf("read request row: %v", err)
+		t.Fatalf("read cost lines: %v", err)
 	}
 
-	if stored.CODShippingFee != codFee {
-		t.Fatalf("cod_shipping_fee = %d in the database, want %d", stored.CODShippingFee, codFee)
+	var storedTotal int64
+	for i := range stored {
+		storedTotal += stored[i].Amount
+	}
+
+	if storedTotal != codFee {
+		t.Fatalf("cost lines total %d in the database, want %d", storedTotal, codFee)
 	}
 
 	return detail.Msg.GetRequest()
+}
+
+// codFeeOf is what the delivery cost the warehouse at the door, read off the cost lines (00021).
+func codFeeOf(r *inventoryv1.RestockRequest) int64 {
+	var total int64
+	for _, line := range r.GetCostLines() {
+		total += line.GetAmount()
+	}
+
+	return total
 }
 
 // committed is what the whole restock cost — goods plus every freight charge on them. The same sum
@@ -108,7 +124,7 @@ func committed(r *inventoryv1.RestockRequest) int64 {
 		goods += item.GetTotalPrice()
 	}
 
-	return goods + r.GetShippingCost() + r.GetCodShippingFee()
+	return goods + r.GetShippingCost() + codFeeOf(r)
 }
 
 func TestRestockFulfil_TheCODFeeIsRecordedAndMovesTheTotal(t *testing.T) {
@@ -116,9 +132,9 @@ func TestRestockFulfil_TheCODFeeIsRecordedAndMovesTheTotal(t *testing.T) {
 
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 25000)
 
-	if req.GetCodShippingFee() != 25000 {
+	if codFeeOf(req) != 25000 {
 		t.Fatalf("cod fee reads back as %d, want 25000 — the requesting team cannot settle a fee it "+
-			"is never shown", req.GetCodShippingFee())
+			"is never shown", codFeeOf(req))
 	}
 
 	// 500.000 goods + 15.000 freight + 25.000 at the door.
@@ -134,9 +150,9 @@ func TestRestockFulfil_NoCODFeeLeavesTheTotalAtTheOrderedValue(t *testing.T) {
 
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 0)
 
-	if req.GetCodShippingFee() != 0 {
+	if codFeeOf(req) != 0 {
 		t.Fatalf("cod fee = %d on a delivery nobody paid for at the door, want 0",
-			req.GetCodShippingFee())
+			codFeeOf(req))
 	}
 
 	if got := committed(req); got != 515000 {

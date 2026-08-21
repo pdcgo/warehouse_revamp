@@ -158,3 +158,99 @@ which you would pick, and **ask**. Recommend, then let the owner decide.
 Keep credentials, secrets, and the names of unrelated internal systems out of **everything
 committed** — code, comments, docs, commit messages. Development credentials that are deliberately
 public (the compose file, `seed dev`) are the documented exception.
+
+---
+
+## How do I let another AI agent work on this checkout?
+
+`go run ./tools/san remote` from the repo root. It serves this working tree — shell commands
+**streamed** as they run, plus byte-exact file read/write — and prints a **fresh token minted for
+that run**, which is the only thing authorizing a caller.
+
+```sh
+go run ./tools/san remote                     # loopback, prints the token once
+```
+
+It serves **two faces on one port**, and which you want depends on the agent:
+
+| | For | |
+| --- | --- | --- |
+| **Connect RPC** | a client we write | Streamed output, frame by frame |
+| **MCP**, at `/mcp` | a client we did **not** write — Claude Web, a browser agent, someone else's harness | No code on the far side. See [the next question](#how-do-i-let-claude-on-the-web-work-on-my-local-checkout) |
+
+Hand the token to the agent and nothing else; stopping the server ends the access. Full flags,
+error codes and the RPC shapes are in [docs/tools/san.md](../tools/san.md#remote).
+
+**Things worth knowing before you do it:**
+
+- ⚠ **It is not a sandbox.** Whoever holds the token runs whatever you can run. The workspace root
+  stops a mistyped path, not a determined caller — the command can `cd` anywhere.
+- It binds to **loopback** by default. Reaching it from another machine should be an SSH tunnel,
+  not `--addr 0.0.0.0`, and the banner says so loudly if you do the latter.
+- Every command the agent runs is printed on **your** terminal. That visibility is half the deal.
+- It needs **no database** — the only `san` command that never asks Local/Production.
+
+---
+
+## How do I let Claude on the web work on my local checkout?
+
+Serve the checkout with a tunnel in front of it, and connect to the **MCP endpoint** — a hosted
+client cannot reach `127.0.0.1`, and will not grow a client for our proto contract either.
+
+```sh
+# terminal 1 — MCP only, TOLD that a tunnel is in front of it
+go run ./tools/san remote mcp --public-url https://devel.example.com
+
+# terminal 2 — the tunnel
+cloudflared tunnel --url http://127.0.0.1:8099        # or: ngrok http 8099
+```
+
+`remote mcp` serves the MCP endpoint and **nothing else** — no Connect RPCs, no gRPC reflection.
+That address is deliberately reachable from the internet, and a hosted agent cannot call an RPC
+anyway, so publishing one there is a surface with no user. Use plain `san remote` when you want
+both faces locally.
+
+The banner then prints the URL to paste into the client's connector box. It **contains the token**,
+because a hosted client has a URL field and nowhere to type a header:
+
+```
+https://devel.example.com/mcp/<the token>
+```
+
+⚠ **`--public-url` is not optional here.** Without it every MCP request comes back **403** and
+nothing says why: the MCP SDK rejects a request that *arrives on loopback* carrying a *non-loopback
+`Host`* — which is the exact shape of every tunnelled request. Naming the public URL is how you
+tell the server that shape is expected.
+
+⚠ **That URL is a shell on your machine for anyone who reads it** — a screenshot, browser history,
+your tunnel provider's access log. It dies when you Ctrl-C the server; bound it further with
+`--token-ttl 4h`. A client that *can* send headers (Claude Code, Claude Desktop, Cursor) should use
+`Authorization: Bearer <token>` against `http://127.0.0.1:8099/mcp` instead, with no tunnel at all.
+
+The four tools, the truncation rule and the errors are in
+[docs/tools/san.md](../tools/san.md#remote-mcp).
+
+---
+
+## Why does `san remote` have its own token instead of a normal login?
+
+The caller is a program, not a person with roles in a team, so there is no identity to carry and no
+role to look up — and minting a fake user would put a shell behind the credential the login screen
+also accepts.
+
+It is also the only thing that makes streaming work. The access interceptor
+[refuses every streaming RPC](../../backend/services/user_service/access_interceptors/interceptor.go)
+because it reads team scope from the request **body**, which has not arrived when an interceptor
+runs. A bearer token is a **header** — present before the first message — so `remote`'s own
+interceptor guards unary and streaming calls alike.
+
+---
+
+## Why can't `san remote` just be a service in `backend/services/`?
+
+Because a shell must never be mountable into the process serving customers, and
+`backend/services/*` is exactly the tree `service_api.go` wires from. Keeping it at
+[tools/san/remote/](../../tools/san/remote/) makes that structural rather than a rule someone has
+to remember — mounting it on the app would need an import from `backend/` up into `tools/`.
+
+This is a deliberate exception to HARD RULE 2, and the only one.

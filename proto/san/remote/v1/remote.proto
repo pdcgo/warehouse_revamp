@@ -33,6 +33,16 @@ service RemoteService {
 
   // Exec runs ONE command and streams its output as it is produced.
   rpc Exec(ExecRequest) returns (stream ExecResponse);
+
+  // FileRead and FileWrite move EXACT BYTES, which the shell cannot.
+  //
+  // Everything an agent does to a file could in principle go through Exec — but writing source
+  // through a heredoc means the content passes through a shell parser, and PowerShell in
+  // particular will interpolate a `$` and mangle a backtick in code it was only supposed to
+  // store. Reading back through `cat` adds the shell's own line-ending and encoding opinions.
+  // These two carry bytes, so what the agent sent is what lands on disk.
+  rpc FileRead(FileReadRequest) returns (FileReadResponse);
+  rpc FileWrite(FileWriteRequest) returns (FileWriteResponse);
 }
 
 message InfoRequest {}
@@ -118,4 +128,51 @@ message ExecResult {
   bool timed_out = 2;
 
   int64 duration_ms = 3;
+}
+
+// FileReadRequest reads one file from the workspace.
+message FileReadRequest {
+  // Path RELATIVE to the workspace root, forward slashes or native. Same containment rule as
+  // ExecRequest.working_dir: absolute paths and anything climbing out with .. are refused.
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4096
+  }];
+}
+
+message FileReadResponse {
+  // The file, byte for byte. `bytes` and not `string` on purpose — a source file is usually
+  // UTF-8 but a fixture, an image or a file mid-edit is not obliged to be, and proto3 would
+  // reject it.
+  bytes content = 1;
+
+  int64 size = 2;
+
+  // Last modification time, so an agent can tell whether the file moved under it between the
+  // read it based an edit on and the write that follows.
+  google.protobuf.Timestamp modified_at = 3;
+}
+
+message FileWriteRequest {
+  // Path RELATIVE to the workspace root.
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4096
+  }];
+
+  // The whole file. A write REPLACES — there is no append and no partial write, because a
+  // half-applied edit is the failure mode worth designing out.
+  bytes content = 2;
+
+  // Create the parent directories when they are missing. Off by default, so a typo in a path
+  // fails loudly instead of quietly creating a tree nobody asked for.
+  bool create_dirs = 3;
+}
+
+message FileWriteResponse {
+  int64 size = 1;
+
+  // True when the write replaced an existing file rather than creating one — the cheapest way
+  // for an agent to notice it clobbered something it did not mean to.
+  bool replaced = 2;
 }

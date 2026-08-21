@@ -530,8 +530,8 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
       await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
         teamId: wh.team.id,
         requestId: created.request.id,
-        // What the courier charged at the door — known only to the warehouse, and only now.
-        codShippingFee: 25000,
+        // What the delivery cost the warehouse — known only to it, and only now.
+        costLines: [{ kind: "RESTOCK_COST_KIND_COD_SHIPPING", amount: 25000 }],
         lines: [
           {
             itemId: created.request.items[0].id,
@@ -553,7 +553,7 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
 
   // Listed as its own line, not folded into the freight: the fee is a separate obligation to the
   // warehouse (#184), and a total that merely got bigger tells nobody what to settle.
-  await expect(page.getByTestId("restock-detail-cod-fee")).toContainText("25.000");
+  await expect(page.getByTestId("restock-detail-cost-cod-shipping")).toContainText("25.000");
 
   // 500.000 goods + 15.000 freight + 25.000 at the door. A total still reading 515.000 means the fee
   // was stored and never counted — which is exactly how it stays unpaid.
@@ -573,7 +573,7 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
 
   expect(steps).toEqual([
     "restock-timeline-created",
-    "restock-timeline-cod-fee",
+    "restock-timeline-cost-recorded",
     "restock-timeline-accepted",
   ]);
 });

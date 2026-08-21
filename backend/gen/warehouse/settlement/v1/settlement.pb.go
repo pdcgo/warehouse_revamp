@@ -35,7 +35,11 @@ type SettlementSourceType int32
 const (
 	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_UNSPECIFIED SettlementSourceType = 0
 	// The warehouse paid the courier at the door for goods it does not own (#155/#184). `source_id` is
-	// the restock request. The only obligation that exists in the system today.
+	// the restock request.
+	//
+	// ⚠ SUPERSEDED BY RESTOCK_OUTLAY, and kept because history is not rewritten: every entry posted
+	// before a delivery could carry more than one kind of cost still reads as what it was. Nothing
+	// posts under it any more.
 	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_COD_FEE SettlementSourceType = 1
 	// The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
 	// the order.
@@ -45,6 +49,33 @@ const (
 	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE SettlementSourceType = 3
 	// A confirmed payment (#188). `source_id` is the payment.
 	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_PAYMENT SettlementSourceType = 4
+	// EVERYTHING THE WAREHOUSE LAID OUT to receive one delivery — the COD fee at the door and whatever
+	// else it paid to get the goods in. `source_id` is the restock request, and the amount is the sum
+	// of that request's cost lines.
+	//
+	// ONE ENTRY PER DELIVERY, not per line: what the requesting team owes is a single debt for a
+	// single delivery, and the breakdown of why lives on the restock beside the goods it belongs to.
+	// Posting per line would also make `source_id` ambiguous — it would have to name a cost line while
+	// every other source type names the business object.
+	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY SettlementSourceType = 5
+	// STOCK THE WAREHOUSE BROKE OR LOST while holding it, valued at the batch's frozen cost.
+	// `source_id` is the ADJUST MOVEMENT that recorded it.
+	//
+	// The warehouse owes the OWNING TEAM, because the goods were never the warehouse's: it holds them,
+	// the selling team owns them (business_level Â§Warehouse 4/5). Recording only the write-off would say
+	// the warehouse lost value and leave the owner's goods simply gone.
+	//
+	// ⚠ THIS IS NOT THE SAME RECORD AS THE EXPENSE. `EXPENSE_KIND_STOCK_WRITE_OFF` is the warehouse's
+	// own P&L view of the same event; this is who it now owes. Both are correct and neither replaces
+	// the other — one answers "what did our losses cost us", the other "who do we have to pay".
+	//
+	// Goods FOUND again post the same source type as a REVERSAL against the found movement, so the
+	// history reads as one story: reimbursed, then given back.
+	//
+	// ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level Â§Warehouse 6). Those
+	// never enter the warehouse's custody, and they travel a different path — a restock damage line,
+	// not an adjust.
+	SettlementSourceType_SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE SettlementSourceType = 6
 )
 
 // Enum value maps for SettlementSourceType.
@@ -55,13 +86,17 @@ var (
 		2: "SETTLEMENT_SOURCE_TYPE_HANDLING_FEE",
 		3: "SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE",
 		4: "SETTLEMENT_SOURCE_TYPE_PAYMENT",
+		5: "SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY",
+		6: "SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE",
 	}
 	SettlementSourceType_value = map[string]int32{
-		"SETTLEMENT_SOURCE_TYPE_UNSPECIFIED":  0,
-		"SETTLEMENT_SOURCE_TYPE_COD_FEE":      1,
-		"SETTLEMENT_SOURCE_TYPE_HANDLING_FEE": 2,
-		"SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE":  3,
-		"SETTLEMENT_SOURCE_TYPE_PAYMENT":      4,
+		"SETTLEMENT_SOURCE_TYPE_UNSPECIFIED":    0,
+		"SETTLEMENT_SOURCE_TYPE_COD_FEE":        1,
+		"SETTLEMENT_SOURCE_TYPE_HANDLING_FEE":   2,
+		"SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE":    3,
+		"SETTLEMENT_SOURCE_TYPE_PAYMENT":        4,
+		"SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY": 5,
+		"SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE":   6,
 	}
 )
 
@@ -3198,13 +3233,15 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12'\n" +
 	"\x0fcounterparty_id\x18\x02 \x01(\x04R\x0ecounterpartyId:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"\x1f\n" +
-	"\x1dSettlementTermsDeleteResponse*\xd7\x01\n" +
+	"\x1dSettlementTermsDeleteResponse*\xab\x02\n" +
 	"\x14SettlementSourceType\x12&\n" +
 	"\"SETTLEMENT_SOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eSETTLEMENT_SOURCE_TYPE_COD_FEE\x10\x01\x12'\n" +
 	"#SETTLEMENT_SOURCE_TYPE_HANDLING_FEE\x10\x02\x12&\n" +
 	"\"SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE\x10\x03\x12\"\n" +
-	"\x1eSETTLEMENT_SOURCE_TYPE_PAYMENT\x10\x04*\xb5\x01\n" +
+	"\x1eSETTLEMENT_SOURCE_TYPE_PAYMENT\x10\x04\x12)\n" +
+	"%SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY\x10\x05\x12'\n" +
+	"#SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE\x10\x06*\xb5\x01\n" +
 	"\x1eSettlementPositionListDataType\x122\n" +
 	".SETTLEMENT_POSITION_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12.\n" +
 	"*SETTLEMENT_POSITION_LIST_DATA_TYPE_GENERAL\x10\x01\x12/\n" +

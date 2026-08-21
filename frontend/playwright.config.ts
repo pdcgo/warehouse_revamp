@@ -27,7 +27,7 @@ export default defineConfig({
       // ensure-test guarantees warehouse_test exists before gorm.Open runs — Playwright may start
       // this web server before global-setup, and the backend would otherwise crash on a missing DB.
       // global-setup still resets + migrates + seeds it (a fresh DB per run).
-      command: "go run ./cmd/tool db ensure-test && go run ./cmd/app_development",
+      command: "go run ../tools/san db ensure-test && go run ./cmd/app_development",
       cwd: "../backend",
       url: "http://localhost:8081/healthz",
       reuseExistingServer: true,

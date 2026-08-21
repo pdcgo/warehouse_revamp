@@ -32,7 +32,7 @@ second time will be slightly different. That drift is the actual cost.
 | File | Covers |
 | --- | --- |
 | [getting-started.md](getting-started.md) | first day — what to read, running it locally, logging in, ports |
-| [workflow.md](workflow.md) | branches, issues, the board, which docs a change must carry |
+| [workflow.md](workflow.md) | branches, issues, the board, which docs a change must carry, serving the repo to an agent |
 | [backend.md](backend.md) | services, RPCs, Wire, tests, the audits, authorization |
 | [contract.md](contract.md) | the proto: generation, pagination, who may call what |
 | [database.md](database.md) | migrations, the local database, the test database, Redis |
@@ -67,6 +67,9 @@ second time will be slightly different. That drift is the actual cost.
 - [Can I copy a model / screen / enum from the other repos on this machine?](workflow.md#can-i-copy-a-model--screen--enum-from-the-other-repos-on-this-machine)
 - [I hit a genuine design fork. Do I just pick one?](workflow.md#i-hit-a-genuine-design-fork-do-i-just-pick-one)
 - [This repo is public. What does that change?](workflow.md#this-repo-is-public-what-does-that-change)
+- [How do I let another AI agent work on this checkout?](workflow.md#how-do-i-let-another-ai-agent-work-on-this-checkout)
+- [How do I let Claude on the web work on my local checkout?](workflow.md#how-do-i-let-claude-on-the-web-work-on-my-local-checkout)
+- [Why does `san remote` have its own token instead of a normal login?](workflow.md#why-does-san-remote-have-its-own-token-instead-of-a-normal-login)
 
 ### Backend
 
@@ -78,7 +81,7 @@ second time will be slightly different. That drift is the actual cost.
 - [Do the tests touch my development database?](backend.md#do-the-tests-touch-my-development-database)
 - [My Go tests all pass suspiciously fast. Are they actually running?](backend.md#my-go-tests-all-pass-suspiciously-fast-are-they-actually-running)
 - [Do I really have to audit every RPC?](backend.md#do-i-really-have-to-audit-every-rpc)
-- [What is `tools/san` versus `backend/cmd/tool`?](backend.md#what-is-toolssan-versus-backendcmdtool)
+- [Where did `backend/cmd/tool` go?](backend.md#where-did-backendcmdtool-go)
 - [How do I reset a user's password?](backend.md#how-do-i-reset-a-users-password)
 - [Why is my new RPC returning permission denied?](backend.md#why-is-my-new-rpc-returning-permission-denied)
 - [Does the token carry my role?](backend.md#does-the-token-carry-my-role)
@@ -136,6 +139,9 @@ second time will be slightly different. That drift is the actual cost.
 - [Permission denied calling an RPC](troubleshooting.md#permission-denied-calling-an-rpc)
 - [Something cached is stale after I changed a role/permission](troubleshooting.md#something-cached-is-stale-after-i-changed-a-rolepermission)
 - [A Pub/Sub message keeps being redelivered forever](troubleshooting.md#a-pubsub-message-keeps-being-redelivered-forever)
+- [My MCP endpoint answers 403 to everything, but only through the tunnel](troubleshooting.md#my-mcp-endpoint-answers-403-to-everything-but-only-through-the-tunnel)
+- [My MCP client re-initializes on every call and loses its state](troubleshooting.md#my-mcp-client-re-initializes-on-every-call-and-loses-its-state)
+- [My MCP client connects but every tool call comes back unauthorized](troubleshooting.md#my-mcp-client-connects-but-every-tool-call-comes-back-unauthorized)
 
 ---
 

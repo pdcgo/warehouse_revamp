@@ -408,7 +408,7 @@ async function cmdSetup() {
   // before any migration can create it.
   if ((flags.target ?? "dev") === "test") {
     log("→ db ensure-test");
-    spawnSync("go", ["run", "./cmd/tool", "db", "ensure-test"], { cwd: BACKEND, stdio: "inherit" });
+    spawnSync("go", ["run", "../tools/san", "db", "ensure-test"], { cwd: BACKEND, stdio: "inherit" });
   }
 
   // Order is a CONTRACT: team_service seeds team 1, and user_service's root seed puts ROLE_ROOT
@@ -425,7 +425,7 @@ async function cmdSetup() {
     log(`→ migrate up --service ${service}`);
     const r = spawnSync(
       "go",
-      ["run", "./cmd/tool", "migrate", "up", "--service", service, "--dsn", target.dsn],
+      ["run", "../tools/san", "migrate", "up", "--service", service, "--dsn", target.dsn],
       { cwd: BACKEND, stdio: "inherit" },
     );
     if (r.status !== 0) fail(`migration failed for ${service}`);
@@ -434,7 +434,7 @@ async function cmdSetup() {
   log("→ seed dev fixture");
   const seed = spawnSync(
     "go",
-    ["run", "./cmd/tool", "seed", "dev", "--password", DEV_PASSWORD, "--dsn", target.dsn],
+    ["run", "../tools/san", "seed", "dev", "--password", DEV_PASSWORD, "--dsn", target.dsn],
     { cwd: BACKEND, stdio: "inherit" },
   );
   if (seed.status !== 0) fail("dev seed failed");

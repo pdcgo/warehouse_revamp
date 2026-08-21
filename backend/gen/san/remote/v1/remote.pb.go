@@ -434,6 +434,237 @@ func (x *ExecResult) GetDurationMs() int64 {
 	return 0
 }
 
+// FileReadRequest reads one file from the workspace.
+type FileReadRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path RELATIVE to the workspace root, forward slashes or native. Same containment rule as
+	// ExecRequest.working_dir: absolute paths and anything climbing out with .. are refused.
+	Path          string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileReadRequest) Reset() {
+	*x = FileReadRequest{}
+	mi := &file_san_remote_v1_remote_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileReadRequest) ProtoMessage() {}
+
+func (x *FileReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_san_remote_v1_remote_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileReadRequest.ProtoReflect.Descriptor instead.
+func (*FileReadRequest) Descriptor() ([]byte, []int) {
+	return file_san_remote_v1_remote_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *FileReadRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+type FileReadResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The file, byte for byte. `bytes` and not `string` on purpose — a source file is usually
+	// UTF-8 but a fixture, an image or a file mid-edit is not obliged to be, and proto3 would
+	// reject it.
+	Content []byte `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Size    int64  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	// Last modification time, so an agent can tell whether the file moved under it between the
+	// read it based an edit on and the write that follows.
+	ModifiedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileReadResponse) Reset() {
+	*x = FileReadResponse{}
+	mi := &file_san_remote_v1_remote_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileReadResponse) ProtoMessage() {}
+
+func (x *FileReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_san_remote_v1_remote_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileReadResponse.ProtoReflect.Descriptor instead.
+func (*FileReadResponse) Descriptor() ([]byte, []int) {
+	return file_san_remote_v1_remote_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *FileReadResponse) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *FileReadResponse) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *FileReadResponse) GetModifiedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ModifiedAt
+	}
+	return nil
+}
+
+type FileWriteRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Path RELATIVE to the workspace root.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// The whole file. A write REPLACES — there is no append and no partial write, because a
+	// half-applied edit is the failure mode worth designing out.
+	Content []byte `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	// Create the parent directories when they are missing. Off by default, so a typo in a path
+	// fails loudly instead of quietly creating a tree nobody asked for.
+	CreateDirs    bool `protobuf:"varint,3,opt,name=create_dirs,json=createDirs,proto3" json:"create_dirs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileWriteRequest) Reset() {
+	*x = FileWriteRequest{}
+	mi := &file_san_remote_v1_remote_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileWriteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileWriteRequest) ProtoMessage() {}
+
+func (x *FileWriteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_san_remote_v1_remote_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileWriteRequest.ProtoReflect.Descriptor instead.
+func (*FileWriteRequest) Descriptor() ([]byte, []int) {
+	return file_san_remote_v1_remote_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *FileWriteRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *FileWriteRequest) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *FileWriteRequest) GetCreateDirs() bool {
+	if x != nil {
+		return x.CreateDirs
+	}
+	return false
+}
+
+type FileWriteResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Size  int64                  `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"`
+	// True when the write replaced an existing file rather than creating one — the cheapest way
+	// for an agent to notice it clobbered something it did not mean to.
+	Replaced      bool `protobuf:"varint,2,opt,name=replaced,proto3" json:"replaced,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileWriteResponse) Reset() {
+	*x = FileWriteResponse{}
+	mi := &file_san_remote_v1_remote_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileWriteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileWriteResponse) ProtoMessage() {}
+
+func (x *FileWriteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_san_remote_v1_remote_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileWriteResponse.ProtoReflect.Descriptor instead.
+func (*FileWriteResponse) Descriptor() ([]byte, []int) {
+	return file_san_remote_v1_remote_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *FileWriteResponse) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *FileWriteResponse) GetReplaced() bool {
+	if x != nil {
+		return x.Replaced
+	}
+	return false
+}
+
 var File_san_remote_v1_remote_proto protoreflect.FileDescriptor
 
 const file_san_remote_v1_remote_proto_rawDesc = "" +
@@ -467,16 +698,35 @@ const file_san_remote_v1_remote_proto_rawDesc = "" +
 	"\texit_code\x18\x01 \x01(\x05R\bexitCode\x12\x1b\n" +
 	"\ttimed_out\x18\x02 \x01(\bR\btimedOut\x12\x1f\n" +
 	"\vduration_ms\x18\x03 \x01(\x03R\n" +
-	"durationMs*q\n" +
+	"durationMs\"1\n" +
+	"\x0fFileReadRequest\x12\x1e\n" +
+	"\x04path\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80 R\x04path\"}\n" +
+	"\x10FileReadResponse\x12\x18\n" +
+	"\acontent\x18\x01 \x01(\fR\acontent\x12\x12\n" +
+	"\x04size\x18\x02 \x01(\x03R\x04size\x12;\n" +
+	"\vmodified_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"modifiedAt\"m\n" +
+	"\x10FileWriteRequest\x12\x1e\n" +
+	"\x04path\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80 R\x04path\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\x12\x1f\n" +
+	"\vcreate_dirs\x18\x03 \x01(\bR\n" +
+	"createDirs\"C\n" +
+	"\x11FileWriteResponse\x12\x12\n" +
+	"\x04size\x18\x01 \x01(\x03R\x04size\x12\x1a\n" +
+	"\breplaced\x18\x02 \x01(\bR\breplaced*q\n" +
 	"\n" +
 	"ExecStream\x12\x1b\n" +
 	"\x17EXEC_STREAM_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12EXEC_STREAM_SYSTEM\x10\x01\x12\x16\n" +
 	"\x12EXEC_STREAM_STDOUT\x10\x02\x12\x16\n" +
-	"\x12EXEC_STREAM_STDERR\x10\x032\x93\x01\n" +
+	"\x12EXEC_STREAM_STDERR\x10\x032\xb0\x02\n" +
 	"\rRemoteService\x12?\n" +
 	"\x04Info\x12\x1a.san.remote.v1.InfoRequest\x1a\x1b.san.remote.v1.InfoResponse\x12A\n" +
-	"\x04Exec\x12\x1a.san.remote.v1.ExecRequest\x1a\x1b.san.remote.v1.ExecResponse0\x01BFZDgithub.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1;remotev1b\x06proto3"
+	"\x04Exec\x12\x1a.san.remote.v1.ExecRequest\x1a\x1b.san.remote.v1.ExecResponse0\x01\x12K\n" +
+	"\bFileRead\x12\x1e.san.remote.v1.FileReadRequest\x1a\x1f.san.remote.v1.FileReadResponse\x12N\n" +
+	"\tFileWrite\x12\x1f.san.remote.v1.FileWriteRequest\x1a .san.remote.v1.FileWriteResponseBFZDgithub.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1;remotev1b\x06proto3"
 
 var (
 	file_san_remote_v1_remote_proto_rawDescOnce sync.Once
@@ -491,7 +741,7 @@ func file_san_remote_v1_remote_proto_rawDescGZIP() []byte {
 }
 
 var file_san_remote_v1_remote_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_san_remote_v1_remote_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_san_remote_v1_remote_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_san_remote_v1_remote_proto_goTypes = []any{
 	(ExecStream)(0),               // 0: san.remote.v1.ExecStream
 	(*InfoRequest)(nil),           // 1: san.remote.v1.InfoRequest
@@ -499,23 +749,32 @@ var file_san_remote_v1_remote_proto_goTypes = []any{
 	(*ExecRequest)(nil),           // 3: san.remote.v1.ExecRequest
 	(*ExecResponse)(nil),          // 4: san.remote.v1.ExecResponse
 	(*ExecResult)(nil),            // 5: san.remote.v1.ExecResult
-	nil,                           // 6: san.remote.v1.ExecRequest.EnvEntry
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*FileReadRequest)(nil),       // 6: san.remote.v1.FileReadRequest
+	(*FileReadResponse)(nil),      // 7: san.remote.v1.FileReadResponse
+	(*FileWriteRequest)(nil),      // 8: san.remote.v1.FileWriteRequest
+	(*FileWriteResponse)(nil),     // 9: san.remote.v1.FileWriteResponse
+	nil,                           // 10: san.remote.v1.ExecRequest.EnvEntry
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_san_remote_v1_remote_proto_depIdxs = []int32{
-	7, // 0: san.remote.v1.InfoResponse.token_expires_at:type_name -> google.protobuf.Timestamp
-	6, // 1: san.remote.v1.ExecRequest.env:type_name -> san.remote.v1.ExecRequest.EnvEntry
-	0, // 2: san.remote.v1.ExecResponse.stream:type_name -> san.remote.v1.ExecStream
-	5, // 3: san.remote.v1.ExecResponse.result:type_name -> san.remote.v1.ExecResult
-	1, // 4: san.remote.v1.RemoteService.Info:input_type -> san.remote.v1.InfoRequest
-	3, // 5: san.remote.v1.RemoteService.Exec:input_type -> san.remote.v1.ExecRequest
-	2, // 6: san.remote.v1.RemoteService.Info:output_type -> san.remote.v1.InfoResponse
-	4, // 7: san.remote.v1.RemoteService.Exec:output_type -> san.remote.v1.ExecResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	11, // 0: san.remote.v1.InfoResponse.token_expires_at:type_name -> google.protobuf.Timestamp
+	10, // 1: san.remote.v1.ExecRequest.env:type_name -> san.remote.v1.ExecRequest.EnvEntry
+	0,  // 2: san.remote.v1.ExecResponse.stream:type_name -> san.remote.v1.ExecStream
+	5,  // 3: san.remote.v1.ExecResponse.result:type_name -> san.remote.v1.ExecResult
+	11, // 4: san.remote.v1.FileReadResponse.modified_at:type_name -> google.protobuf.Timestamp
+	1,  // 5: san.remote.v1.RemoteService.Info:input_type -> san.remote.v1.InfoRequest
+	3,  // 6: san.remote.v1.RemoteService.Exec:input_type -> san.remote.v1.ExecRequest
+	6,  // 7: san.remote.v1.RemoteService.FileRead:input_type -> san.remote.v1.FileReadRequest
+	8,  // 8: san.remote.v1.RemoteService.FileWrite:input_type -> san.remote.v1.FileWriteRequest
+	2,  // 9: san.remote.v1.RemoteService.Info:output_type -> san.remote.v1.InfoResponse
+	4,  // 10: san.remote.v1.RemoteService.Exec:output_type -> san.remote.v1.ExecResponse
+	7,  // 11: san.remote.v1.RemoteService.FileRead:output_type -> san.remote.v1.FileReadResponse
+	9,  // 12: san.remote.v1.RemoteService.FileWrite:output_type -> san.remote.v1.FileWriteResponse
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_san_remote_v1_remote_proto_init() }
@@ -529,7 +788,7 @@ func file_san_remote_v1_remote_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_san_remote_v1_remote_proto_rawDesc), len(file_san_remote_v1_remote_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

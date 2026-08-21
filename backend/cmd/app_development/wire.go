@@ -56,6 +56,7 @@ func InitializeApp() (*App, error) {
 		settlement_v1.NewService,
 		// Joins inventory to settlement (#184) — see settlement_poster.go.
 		NewSettlementPoster,
+		NewCreditChecker,
 		region_v1.NewService,
 		revenue_v1.NewService,
 		expense_v1.NewService,

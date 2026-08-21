@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -47,8 +48,23 @@ func newServiceWithExpense(t *testing.T, db *gorm.DB, expense inventory_v1.Expen
 // recordingPoster captures the COD obligations a fulfil posts, so a test can assert on WHAT was
 // recorded rather than on whether some other service's table changed.
 type recordingPoster struct {
-	posted []codPosting
-	fail   error
+	posted  []codPosting
+	damaged []damagePosting
+	fail    error
+}
+
+// codLines is the cost-line form of what these tests used to write as `CodShippingFee: n` (00021):
+// one COD_SHIPPING line, which is what every one of them means by "this delivery cost the warehouse
+// n at the door". A zero is no lines at all — not a line of zero, which the handler refuses.
+func codLines(amount int64) []*inventoryv1.RestockCostLine {
+	if amount == 0 {
+		return nil
+	}
+
+	return []*inventoryv1.RestockCostLine{{
+		Kind:   inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING,
+		Amount: amount,
+	}}
 }
 
 type codPosting struct {
@@ -58,7 +74,7 @@ type codPosting struct {
 	amount           int64
 }
 
-func (p *recordingPoster) PostCODFee(
+func (p *recordingPoster) PostRestockOutlay(
 	_ context.Context,
 	_ *gorm.DB,
 	sellingTeamID, warehouseID, restockRequestID uint64,
@@ -103,4 +119,38 @@ func ctxUser(id uint64) context.Context {
 		IdentityId: id,
 		Username:   "tester",
 	})
+}
+
+// damagePosting is one reimbursement the warehouse owes for stock it broke, lost, or found again
+// (business_level §Warehouse 5).
+type damagePosting struct {
+	ownerTeamID uint64
+	warehouseID uint64
+	movementID  uint64
+	amount      int64
+	reversal    bool
+}
+
+// PostStockDamage records the debt side of a damaged/lost/found adjust. Kept on recordingPoster
+// beside the outlay postings so one fake answers both halves of what inventory owes settlement.
+func (p *recordingPoster) PostStockDamage(
+	_ context.Context,
+	_ *gorm.DB,
+	ownerTeamID, warehouseID, movementID uint64,
+	amount int64,
+	reversal bool,
+) error {
+	if p.fail != nil {
+		return p.fail
+	}
+
+	p.damaged = append(p.damaged, damagePosting{
+		ownerTeamID: ownerTeamID,
+		warehouseID: warehouseID,
+		movementID:  movementID,
+		amount:      amount,
+		reversal:    reversal,
+	})
+
+	return nil
 }

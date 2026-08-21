@@ -84,7 +84,11 @@ enum SettlementSourceType {
   SETTLEMENT_SOURCE_TYPE_UNSPECIFIED = 0;
 
   // The warehouse paid the courier at the door for goods it does not own (#155/#184). `source_id` is
-  // the restock request. The only obligation that exists in the system today.
+  // the restock request.
+  //
+  // ⚠ SUPERSEDED BY RESTOCK_OUTLAY, and kept because history is not rewritten: every entry posted
+  // before a delivery could carry more than one kind of cost still reads as what it was. Nothing
+  // posts under it any more.
   SETTLEMENT_SOURCE_TYPE_COD_FEE = 1;
 
   // The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
@@ -97,6 +101,35 @@ enum SettlementSourceType {
 
   // A confirmed payment (#188). `source_id` is the payment.
   SETTLEMENT_SOURCE_TYPE_PAYMENT = 4;
+
+  // EVERYTHING THE WAREHOUSE LAID OUT to receive one delivery — the COD fee at the door and whatever
+  // else it paid to get the goods in. `source_id` is the restock request, and the amount is the sum
+  // of that request's cost lines.
+  //
+  // ONE ENTRY PER DELIVERY, not per line: what the requesting team owes is a single debt for a
+  // single delivery, and the breakdown of why lives on the restock beside the goods it belongs to.
+  // Posting per line would also make `source_id` ambiguous — it would have to name a cost line while
+  // every other source type names the business object.
+  SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY = 5;
+
+  // STOCK THE WAREHOUSE BROKE OR LOST while holding it, valued at the batch's frozen cost.
+  // `source_id` is the ADJUST MOVEMENT that recorded it.
+  //
+  // The warehouse owes the OWNING TEAM, because the goods were never the warehouse's: it holds them,
+  // the selling team owns them (business_level Â§Warehouse 4/5). Recording only the write-off would say
+  // the warehouse lost value and leave the owner's goods simply gone.
+  //
+  // ⚠ THIS IS NOT THE SAME RECORD AS THE EXPENSE. `EXPENSE_KIND_STOCK_WRITE_OFF` is the warehouse's
+  // own P&L view of the same event; this is who it now owes. Both are correct and neither replaces
+  // the other — one answers "what did our losses cost us", the other "who do we have to pay".
+  //
+  // Goods FOUND again post the same source type as a REVERSAL against the found movement, so the
+  // history reads as one story: reimbursed, then given back.
+  //
+  // ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level Â§Warehouse 6). Those
+  // never enter the warehouse's custody, and they travel a different path — a restock damage line,
+  // not an adjust.
+  SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE = 6;
 }
 
 // One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating

@@ -9,7 +9,7 @@ Postgres on `:5433`, [goose](https://github.com/pressly/goose) migrations, **own
 From `backend/`, with the owning service named:
 
 ```sh
-go run ./cmd/tool migrate create add_users --service user_service
+go run ./tools/san migrate create add_users --service user_service
 ```
 
 That writes a `.sql` file into `backend/services/user_service/db_migrations/` and touches **no
@@ -24,9 +24,9 @@ keeps services independent.
 
 ```sh
 cd backend
-go run ./cmd/tool migrate up                          # prompts: database, then service
-go run ./cmd/tool migrate up --service user_service   # skips the service prompt
-go run ./cmd/tool migrate status --service user_service
+go run ./tools/san migrate up                          # prompts: database, then service
+go run ./tools/san migrate up --service user_service   # skips the service prompt
+go run ./tools/san migrate status --service user_service
 ```
 
 Run interactively and it asks **two things, in this order**: which **database** (Local /
@@ -91,16 +91,16 @@ The data is a bind mount, so a reset is a container-down plus a directory remova
 docker compose down
 rm -rf development_data/postgres          # gitignored
 docker compose up -d
-cd backend && go run ./cmd/tool migrate up   # once per service
-cd backend && go run ./cmd/tool seed dev
-cd backend && go run ./cmd/tool seed categories
+go run ./tools/san migrate up   # once per service
+go run ./tools/san seed dev
+go run ./tools/san seed categories
 ```
 
 For the **test** database, there is a command — never touch the dev one with it:
 
 ```sh
-cd backend && go run ./cmd/tool db reset-test    # drops + recreates warehouse_test
-cd backend && go run ./cmd/tool db drop-test
+go run ./tools/san db reset-test    # drops + recreates warehouse_test
+go run ./tools/san db drop-test
 ```
 
 ---
@@ -110,8 +110,8 @@ cd backend && go run ./cmd/tool db drop-test
 One command, run from `backend/`:
 
 ```sh
-cd backend && go run ./cmd/tool seed categories             # seed_asset/category.json
-cd backend && go run ./cmd/tool seed categories -f other.json
+go run ./tools/san seed categories             # seed_asset/category.json
+go run ./tools/san seed categories -f other.json
 ```
 
 It upserts the global product-category tree (25 top-level, 127 nodes) from

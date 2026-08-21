@@ -41,6 +41,10 @@ const (
 	RemoteServiceInfoProcedure = "/san.remote.v1.RemoteService/Info"
 	// RemoteServiceExecProcedure is the fully-qualified name of the RemoteService's Exec RPC.
 	RemoteServiceExecProcedure = "/san.remote.v1.RemoteService/Exec"
+	// RemoteServiceFileReadProcedure is the fully-qualified name of the RemoteService's FileRead RPC.
+	RemoteServiceFileReadProcedure = "/san.remote.v1.RemoteService/FileRead"
+	// RemoteServiceFileWriteProcedure is the fully-qualified name of the RemoteService's FileWrite RPC.
+	RemoteServiceFileWriteProcedure = "/san.remote.v1.RemoteService/FileWrite"
 )
 
 // RemoteServiceClient is a client for the san.remote.v1.RemoteService service.
@@ -51,6 +55,15 @@ type RemoteServiceClient interface {
 	Info(context.Context, *connect.Request[v1.InfoRequest]) (*connect.Response[v1.InfoResponse], error)
 	// Exec runs ONE command and streams its output as it is produced.
 	Exec(context.Context, *connect.Request[v1.ExecRequest]) (*connect.ServerStreamForClient[v1.ExecResponse], error)
+	// FileRead and FileWrite move EXACT BYTES, which the shell cannot.
+	//
+	// Everything an agent does to a file could in principle go through Exec — but writing source
+	// through a heredoc means the content passes through a shell parser, and PowerShell in
+	// particular will interpolate a `$` and mangle a backtick in code it was only supposed to
+	// store. Reading back through `cat` adds the shell's own line-ending and encoding opinions.
+	// These two carry bytes, so what the agent sent is what lands on disk.
+	FileRead(context.Context, *connect.Request[v1.FileReadRequest]) (*connect.Response[v1.FileReadResponse], error)
+	FileWrite(context.Context, *connect.Request[v1.FileWriteRequest]) (*connect.Response[v1.FileWriteResponse], error)
 }
 
 // NewRemoteServiceClient constructs a client for the san.remote.v1.RemoteService service. By
@@ -76,13 +89,27 @@ func NewRemoteServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(remoteServiceMethods.ByName("Exec")),
 			connect.WithClientOptions(opts...),
 		),
+		fileRead: connect.NewClient[v1.FileReadRequest, v1.FileReadResponse](
+			httpClient,
+			baseURL+RemoteServiceFileReadProcedure,
+			connect.WithSchema(remoteServiceMethods.ByName("FileRead")),
+			connect.WithClientOptions(opts...),
+		),
+		fileWrite: connect.NewClient[v1.FileWriteRequest, v1.FileWriteResponse](
+			httpClient,
+			baseURL+RemoteServiceFileWriteProcedure,
+			connect.WithSchema(remoteServiceMethods.ByName("FileWrite")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // remoteServiceClient implements RemoteServiceClient.
 type remoteServiceClient struct {
-	info *connect.Client[v1.InfoRequest, v1.InfoResponse]
-	exec *connect.Client[v1.ExecRequest, v1.ExecResponse]
+	info      *connect.Client[v1.InfoRequest, v1.InfoResponse]
+	exec      *connect.Client[v1.ExecRequest, v1.ExecResponse]
+	fileRead  *connect.Client[v1.FileReadRequest, v1.FileReadResponse]
+	fileWrite *connect.Client[v1.FileWriteRequest, v1.FileWriteResponse]
 }
 
 // Info calls san.remote.v1.RemoteService.Info.
@@ -95,6 +122,16 @@ func (c *remoteServiceClient) Exec(ctx context.Context, req *connect.Request[v1.
 	return c.exec.CallServerStream(ctx, req)
 }
 
+// FileRead calls san.remote.v1.RemoteService.FileRead.
+func (c *remoteServiceClient) FileRead(ctx context.Context, req *connect.Request[v1.FileReadRequest]) (*connect.Response[v1.FileReadResponse], error) {
+	return c.fileRead.CallUnary(ctx, req)
+}
+
+// FileWrite calls san.remote.v1.RemoteService.FileWrite.
+func (c *remoteServiceClient) FileWrite(ctx context.Context, req *connect.Request[v1.FileWriteRequest]) (*connect.Response[v1.FileWriteResponse], error) {
+	return c.fileWrite.CallUnary(ctx, req)
+}
+
 // RemoteServiceHandler is an implementation of the san.remote.v1.RemoteService service.
 type RemoteServiceHandler interface {
 	// Info is the handshake: where the workspace is, what shell will run the command, when the
@@ -103,6 +140,15 @@ type RemoteServiceHandler interface {
 	Info(context.Context, *connect.Request[v1.InfoRequest]) (*connect.Response[v1.InfoResponse], error)
 	// Exec runs ONE command and streams its output as it is produced.
 	Exec(context.Context, *connect.Request[v1.ExecRequest], *connect.ServerStream[v1.ExecResponse]) error
+	// FileRead and FileWrite move EXACT BYTES, which the shell cannot.
+	//
+	// Everything an agent does to a file could in principle go through Exec — but writing source
+	// through a heredoc means the content passes through a shell parser, and PowerShell in
+	// particular will interpolate a `$` and mangle a backtick in code it was only supposed to
+	// store. Reading back through `cat` adds the shell's own line-ending and encoding opinions.
+	// These two carry bytes, so what the agent sent is what lands on disk.
+	FileRead(context.Context, *connect.Request[v1.FileReadRequest]) (*connect.Response[v1.FileReadResponse], error)
+	FileWrite(context.Context, *connect.Request[v1.FileWriteRequest]) (*connect.Response[v1.FileWriteResponse], error)
 }
 
 // NewRemoteServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -124,12 +170,28 @@ func NewRemoteServiceHandler(svc RemoteServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(remoteServiceMethods.ByName("Exec")),
 		connect.WithHandlerOptions(opts...),
 	)
+	remoteServiceFileReadHandler := connect.NewUnaryHandler(
+		RemoteServiceFileReadProcedure,
+		svc.FileRead,
+		connect.WithSchema(remoteServiceMethods.ByName("FileRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	remoteServiceFileWriteHandler := connect.NewUnaryHandler(
+		RemoteServiceFileWriteProcedure,
+		svc.FileWrite,
+		connect.WithSchema(remoteServiceMethods.ByName("FileWrite")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/san.remote.v1.RemoteService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RemoteServiceInfoProcedure:
 			remoteServiceInfoHandler.ServeHTTP(w, r)
 		case RemoteServiceExecProcedure:
 			remoteServiceExecHandler.ServeHTTP(w, r)
+		case RemoteServiceFileReadProcedure:
+			remoteServiceFileReadHandler.ServeHTTP(w, r)
+		case RemoteServiceFileWriteProcedure:
+			remoteServiceFileWriteHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -145,4 +207,12 @@ func (UnimplementedRemoteServiceHandler) Info(context.Context, *connect.Request[
 
 func (UnimplementedRemoteServiceHandler) Exec(context.Context, *connect.Request[v1.ExecRequest], *connect.ServerStream[v1.ExecResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("san.remote.v1.RemoteService.Exec is not implemented"))
+}
+
+func (UnimplementedRemoteServiceHandler) FileRead(context.Context, *connect.Request[v1.FileReadRequest]) (*connect.Response[v1.FileReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("san.remote.v1.RemoteService.FileRead is not implemented"))
+}
+
+func (UnimplementedRemoteServiceHandler) FileWrite(context.Context, *connect.Request[v1.FileWriteRequest]) (*connect.Response[v1.FileWriteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("san.remote.v1.RemoteService.FileWrite is not implemented"))
 }

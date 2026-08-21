@@ -12,7 +12,7 @@ import (
 
 // The harness's own tests run against a table nothing else owns, so they never collide with the
 // service tests sharing `warehouse_test`. It is created on demand and left in place — dropping it
-// buys nothing, and `go run ./cmd/tool db reset-test` clears it with everything else.
+// buys nothing, and `go run ./tools/san db reset-test` clears it with everything else.
 const selftest = "san_race_selftest"
 
 func newHarness(t *testing.T) *san_race.Harness {

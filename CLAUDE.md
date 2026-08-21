@@ -47,7 +47,6 @@ iface version (`warehouse.team.v1` → `team_v1`). **One file per RPC**, the con
 tools/san/                   the OPERATIONS CLI — top-level, acts on real data (HARD RULE 3b)
 backend/
   cmd/app_development/       the dev server — wires services into the mux
-  cmd/tool/                  the development CLI (HARD RULE 3)
   gen/                       generated code (never hand-edited)
   pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
   services/
@@ -92,7 +91,7 @@ Same rules as the performance audit: only an UNSAFE result is written up
 `warehouse_test`, never the development database (`postgres`) the owner reviews on: same Postgres
 instance (`:5433`), a different database, so a test run can never read or corrupt review data.
 `san_testdb` creates `warehouse_test` on demand and rolls back per test; the e2e resets it fresh
-each run and drops it after (`go run ./cmd/tool db reset-test|drop-test`), and runs its own API/UI
+each run and drops it after (`go run ./tools/san db reset-test|drop-test`), and runs its own API/UI
 on **dedicated ports (8081 / 5175)** so it cannot reuse — or pollute — the dev servers, and can run
 while they're up. Override the target with `TEST_DATABASE_URL`.
 
@@ -133,13 +132,14 @@ backend/services/<service_name>/
   same commit as any refactor, flow change, or code change that touches the flow — the doc must not
   drift. Simple single-table CRUD RPCs do not need an entry.
 
-Migrations are driven by the **development tool** at [backend/cmd/tool/](backend/cmd/tool/)
-(`urfave/cli/v3`), run from `./backend`:
+Migrations are driven by the **unified CLI** at [tools/san/](tools/san/) (`urfave/cli/v3`, HARD
+RULE 3b). It finds the checkout by walking up from your working directory, so it runs from
+anywhere in the repo:
 
 ```sh
-go run ./cmd/tool migrate create add_users --service user_service   # writes a .sql file, no DB
-go run ./cmd/tool migrate up                                        # prompts: database, then service
-go run ./cmd/tool migrate status --service user_service
+go run ./tools/san migrate create add_users --service user_service   # writes a .sql file, no DB
+go run ./tools/san migrate up                                        # prompts: database, then service
+go run ./tools/san migrate status --service user_service
 ```
 
 Run interactively and it asks **two things, in this order**: which **database**
@@ -149,6 +149,9 @@ arrow-key away from a local one.
 
 - `--service <name>` skips the service prompt. Services are **discovered from the filesystem**
   (`backend/services/*`) — there is no hardcoded list to go stale.
+- `migrate up-all` migrates **every** service, in dependency order (`team_service` then
+  `user_service` first — team 1 must exist before the root role references it), asking only for
+  the database. That is the one-command path for a fresh database.
 - `--dsn` (or `DATABASE_URL`) skips the database prompt — the non-interactive path for CI.
 - `create` touches no database, so it never prompts for one.
 
@@ -163,11 +166,27 @@ default** — it reads `PRODUCTION_DATABASE_URL` and fails if unset.
 > Postgres is on **5433, not 5432** — another project on this machine already runs a Postgres
 > on 5432, and this system must not share its database.
 
-### 3b. `tools/san` is the OPERATIONS CLI — it drives services, never tables
+### 3b. `tools/san` is THE CLI — one binary for schema, fixtures, operations and the workspace
 
-Two CLIs, two jobs. [backend/cmd/tool/](backend/cmd/tool/) owns the **schema and the fixtures**
-(migrate, seed, test databases). [tools/san/](tools/san/) owns the **actions an operator performs
-on real data** — the first being `user reset-password`.
+**One tool, not two** (owner, `docs/requirements/development_level.md`). [tools/san/](tools/san/)
+owns the **schema** (`migrate`), the **fixtures** (`seed`, `db`, `region`), the **actions an
+operator performs on real data** (`user reset-password`), and **serving the checkout to a coding
+agent** (`remote`, `remote mcp`).
+
+> ⚠ **`backend/cmd/tool` is GONE.** It held migrate/seed/db/region and was split from `san` on the
+> argument that a developer's tool and an operator's tool are used at different moments by different
+> people. That is true of the COMMANDS and was never true of the BINARY — and the split had no seat
+> for `deploy` at all. Anything still saying `go run ./cmd/tool …` is stale; the command is
+> `go run ./tools/san …`.
+
+What the merge does **not** collapse is the guard rails: every command that touches a database
+resolves it through [backend/pkgs/san_dbtarget/](backend/pkgs/san_dbtarget/), so the Local/Production
+prompt and the `type "production" to continue` confirmation protect all of them.
+
+⚠ **`san db` uses `--admin-dsn`, not `--dsn`.** It creates and drops the test database, which needs
+a connection to a DIFFERENT database — and the root `--dsn` reads `DATABASE_URL`, which during a
+test run points at the very database being dropped. The flag was renamed when the two CLIs merged,
+because until then there was no root flag to collide with.
 
 **It lives at the REPO ROOT, not under `backend/`** (owner). It is not a part of the server: it is
 the tool a human reaches for when something has to be done to a running system, and it should read
@@ -189,7 +208,7 @@ go run ./tools/san user reset-password --user-id 57 --dsn …  # non-interactive
 - **A command calls the RPC handler, never a hand-written `UPDATE`.** Setting a password is a
   hash *plus* a `last_password_reset` stamp (which kills the account's existing tokens) *plus* a
   cache eviction. A second copy of that sequence is a copy that falls behind the first — which is
-  exactly what `cmd/tool seed root`'s raw UPDATE already is.
+  exactly what `san seed root`'s raw UPDATE already is.
 - **It is wired with Google Wire** ([tools/san/wire.go](tools/san/wire.go)), same
   rule as HARD RULE 4 — `go tool wire ./tools/san`. The **DSN is an injector parameter**, not a
   provider: which database to act on is an operator's per-invocation choice.
@@ -226,7 +245,7 @@ exposes, then add one line to `service_api.go`'s `san_grpc.Register(mux, …)` c
 gRPC reflection come from the same call ([backend/pkgs/san_grpc/](backend/pkgs/san_grpc/)), so a
 service can't be served without also appearing in reflection, or vice-versa.
 
-CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `cmd/tool`, `tools/san`).
+CLI entrypoints use **`urfave/cli/v3`** (`cmd/app_development`, `tools/san`).
 
 `tools/san` has its own composition root ([tools/san/wire.go](tools/san/wire.go),
 `go tool wire ./tools/san`) — see HARD RULE 3b.
@@ -590,9 +609,10 @@ it once a real domain service replaces it.
 | Regenerate Go + TS | `cd proto && buf generate` |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
-| Migrations | `cd backend && go run ./cmd/tool migrate <cmd> --service <svc>` |
+| Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
-| Serve this checkout to a coding agent | `go run ./tools/san remote` — prints a per-run token; loopback by default |
+| Serve this checkout to a coding agent | `go run ./tools/san remote` — Connect RPC **and** MCP at `/mcp`; prints a token kept in `.san/remote-token.json` and REUSED across restarts (`--no-persist-token` for one run only); loopback by default |
+| Serve it to a hosted agent (Claude Web) | `go run ./tools/san remote mcp --public-url https://<tunnel>` + a tunnel to `:8099` — MCP only. **Without `--public-url` it answers 403 to everything** |
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |

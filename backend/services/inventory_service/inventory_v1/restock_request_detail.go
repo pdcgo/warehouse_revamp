@@ -37,6 +37,10 @@ func (s *Service) RestockRequestDetail(
 		// from months ago), and the id breaks the tie when two events share a second — an edit made in
 		// the same second as the create must still read second.
 		Preload("Events", func(db *gorm.DB) *gorm.DB { return db.Order("at ASC, id ASC") }).
+		// WHAT THE WAREHOUSE LAID OUT (00021), in the order it was typed. The detail carries them for
+		// the same reason it carries the timeline: this is the screen where the requesting team is told
+		// what it owes, and a total with no lines under it is a number nobody can question.
+		Preload("CostLines", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Where("id = ? AND (requesting_team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
 		First(&rr).
 		Error

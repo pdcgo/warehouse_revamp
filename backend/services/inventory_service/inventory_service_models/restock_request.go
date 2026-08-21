@@ -30,12 +30,15 @@ type RestockRequest struct {
 	// this is what the summary adds on top. PaymentType is stored as text and mapped in the handler
 	// layer (no DB CHECK IN-list, cf. #80).
 	ShippingCost int64
-	// The courier fee paid AT THE DOOR (#155) — entered by the warehouse when it accepts, because it
-	// is the side that pays it and it only exists once the goods turn up. Summed with ShippingCost and
-	// spread across the units that arrived sellable.
-	CODShippingFee int64 `gorm:"column:cod_shipping_fee"`
-	PaymentType    string
-	Note           string
+	// What the WAREHOUSE laid out to receive this delivery (00021) — one row per outlay, entered when
+	// it accepts, because it is the side that pays these and none of them exist until the goods turn
+	// up. Summed with ShippingCost and spread across the units that arrived sellable.
+	//
+	// Replaced the single `cod_shipping_fee` column: the fee at the door was never the only thing a
+	// warehouse pays to get a delivery in, and a scalar could only hold the one it was named after.
+	CostLines   []RestockCostLine `gorm:"foreignKey:RestockRequestID"`
+	PaymentType string
+	Note        string
 
 	// WHO handled it, as opaque user_service ids (no FK, like the team ids above). Both 0 until the
 	// act happens — and 0 on any row raised before 00018, which is deliberately not backfilled: a

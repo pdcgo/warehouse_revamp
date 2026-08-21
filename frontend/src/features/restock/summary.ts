@@ -3,6 +3,7 @@ import type {
   RestockRequestItem,
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
+  RestockCostKind,
   RestockDamageType,
   RestockRequestStatus,
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -60,15 +61,38 @@ export function goodsTotal(items: RestockRequestItem[]): bigint {
   return items.reduce((sum, item) => sum + item.totalPrice, 0n);
 }
 
+// The slug the tests reach for. The LABEL lives with the picker (CostKindSelect) the way
+// damageTypeLabel does — this is only an id, and it must stay stable even if the wording changes.
+export function costKindSlug(kind: RestockCostKind): string {
+  switch (kind) {
+    case RestockCostKind.COD_SHIPPING:
+      return "cod-shipping";
+    case RestockCostKind.OTHER:
+      return "other";
+    default:
+      return "unknown";
+  }
+}
+
+// WHAT THE WAREHOUSE LAID OUT to receive this delivery (00021) — the fee at the door, and anything
+// else it paid to get the goods in.
+//
+// It is empty until a warehouse accepts, because none of these exist until the goods turn up. Every
+// screen that shows a restock's cost reads it through here rather than summing the lines itself: the
+// selling detail, the warehouse detail and the two lists must not disagree about what a delivery cost.
+export function warehouseOutlay(request: RestockRequest): bigint {
+  return request.costLines.reduce((sum, line) => sum + line.amount, 0n);
+}
+
 // What the whole restock has COMMITTED — goods plus every freight charge on them.
 //
-// `cod_shipping_fee` is 0 until a warehouse accepts and enters what the courier charged at the door
-// (#155), so this is the ordered value while pending and the landed value once accepted. It is
-// deliberately NOT re-based on what arrived: the stored line total is the number off the invoice,
-// and scaling it by received/asked would invent a per-piece rounding nobody typed. A short delivery
-// is reported as a SHORTFALL beside the value instead — see below.
+// The warehouse's outlay is empty until acceptance (#155), so this is the ordered value while pending
+// and the landed value once accepted. It is deliberately NOT re-based on what arrived: the stored line
+// total is the number off the invoice, and scaling it by received/asked would invent a per-piece
+// rounding nobody typed. A short delivery is reported as a SHORTFALL beside the value instead — see
+// below.
 export function committedValue(request: RestockRequest): bigint {
-  return goodsTotal(request.items) + request.shippingCost + request.codShippingFee;
+  return goodsTotal(request.items) + request.shippingCost + warehouseOutlay(request);
 }
 
 // How many pieces the delivery came UP SHORT, or 0.

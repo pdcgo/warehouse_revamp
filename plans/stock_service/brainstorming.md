@@ -225,6 +225,30 @@ flowchart TD
     S --> W["the same physical loss reads as<br/>two different numbers"]
 ```
 
+### Update — the REIMBURSEMENT half is settled, the WRITE-OFF half is not (owner, 2026-08-20)
+
+The same split reappeared on a second axis the moment the warehouse started **reimbursing** the owner
+for stock it loses (business_level §Warehouse 5). The owner settled that half: **an opname shortfall
+reimburses the owning team**, exactly as a `DAMAGED` / `LOST` adjust does.
+
+So the picture is now:
+
+| how the loss was found | write-off (expense) | reimbursement (settlement) |
+| --- | --- | --- |
+| `StockAdjust` DAMAGED / LOST | ✅ | ✅ |
+| **`StockAdjust` RECOUNT** | ❌ | ❌ |
+| `StockOpname` shortfall | ✅ | ✅ |
+
+**RECOUNT is now the only path that does neither**, which makes the original recommendation stronger
+rather than weaker: it is one branch out of step with three, on both axes at once.
+
+**→ Recommend (unchanged):** bring `StockAdjust`'s RECOUNT in line — value the shortfall off the FIFO
+layers the draw consumes and reimburse from the same draw. `attributeDeltaFIFOValued` now returns
+**both** numbers (`Value` and `ByOwner`), so it is a smaller change than when this was written.
+
+⚠ Still not done here, for the reason it was not done before: RECOUNT is a shipped, tested money path
+and changing what it books is the owner's call (HARD RULE 8).
+
 ### What stops it recurring
 
 The decision lives in this doc and the behaviour lives in a test comment, and neither points at the

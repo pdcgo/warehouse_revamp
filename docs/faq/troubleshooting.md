@@ -149,3 +149,46 @@ transient, and silently ACKing bad payloads would lose them.
 
 Local broker: `docker compose --profile pubsub up -d` (emulator on `:8085`, honours
 `PUBSUB_EMULATOR_HOST`). In tests use `EmptySender`, which validates and drops.
+
+---
+
+## My MCP endpoint answers 403 to everything, but only through the tunnel
+
+You did not pass `--public-url`. Restart with it:
+
+```sh
+go run ./tools/san remote --public-url https://devel.example.com
+```
+
+The MCP SDK carries a **DNS-rebinding guard**: a request that *arrives on loopback* while carrying
+a *non-loopback `Host` header* is rejected. That is the exact shape of every tunnelled request —
+`cloudflared` connects to `127.0.0.1` and forwards `Host: devel.example.com`. Locally everything
+works, so the symptom only appears once a tunnel is in front, and the 403 says nothing about why.
+
+The server does **not** infer this from the request, because that would mean dropping a security
+guard whenever a caller sent a header — so the operator declares it instead. Details in
+[docs/tools/san.md](../tools/san.md#putting-a-tunnel-in-front).
+
+---
+
+## My MCP client re-initializes on every call and loses its state
+
+It cannot read the `Mcp-Session-Id` response header. For a browser-based client that means CORS:
+the header must be in **`Access-Control-Expose-Headers`**, not merely allowed on the request. `san
+remote` exposes it ([mcp_http.go](../../tools/san/remote/mcp_http.go)); a proxy or tunnel in front
+that strips response headers will undo that.
+
+---
+
+## My MCP client connects but every tool call comes back unauthorized
+
+The token is checked on **every** request, not just `initialize`. Two ways to present it, and the
+**header wins** when both are there:
+
+| | |
+| --- | --- |
+| `Authorization: Bearer <token>` | Claude Code, Claude Desktop, Cursor — anything with a headers map |
+| `https://…/mcp/<token>` | a hosted client with only a URL box |
+
+A token from a *previous* run will not work: `san remote` mints a fresh one per run and it dies
+with the process. Re-read the banner, or pin one with `--token`.

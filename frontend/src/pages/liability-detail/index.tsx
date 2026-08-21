@@ -77,6 +77,8 @@ function causeKey(type: SettlementSourceType): string {
   switch (type) {
     case SettlementSourceType.COD_FEE:
       return "liabilityDetail.causeCodFee";
+    case SettlementSourceType.RESTOCK_OUTLAY:
+      return "liabilityDetail.causeRestockOutlay";
     case SettlementSourceType.HANDLING_FEE:
       return "liabilityDetail.causeHandlingFee";
     case SettlementSourceType.PRODUCT_FEE:

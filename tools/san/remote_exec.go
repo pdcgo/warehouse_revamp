@@ -14,7 +14,6 @@ import (
 
 	remotev1 "github.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1/remotev1connect"
-	"github.com/pdcgo/warehouse_revamp/tools/san/remote"
 )
 
 const defaultRemoteURL = "http://" + defaultRemoteAddr
@@ -59,16 +58,10 @@ func remoteExecCommand() *cli.Command {
 }
 
 func runRemoteExec(ctx context.Context, cmd *cli.Command) error {
-	token := strings.TrimSpace(cmd.String("token"))
-	if token == "" {
-		return errors.New("no token: pass --token or set SAN_REMOTE_TOKEN (the server prints one at startup)")
+	client, err := remoteClient(cmd)
+	if err != nil {
+		return err
 	}
-
-	client := remotev1connect.NewRemoteServiceClient(
-		remoteHTTPClient(),
-		cmd.String("url"),
-		connect.WithInterceptors(remote.NewClientAuthInterceptor(token)),
-	)
 
 	if cmd.Bool("info") {
 		return printRemoteInfo(ctx, client)

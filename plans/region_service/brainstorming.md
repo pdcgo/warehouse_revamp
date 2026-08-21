@@ -105,7 +105,7 @@ instead of being name-matched. External reference data → no conflict with the 
 **Volume:** 38 provinsi · 514 kabupaten/kota · 7.285 kecamatan · 83.762 desa/kelurahan. Trivial for
 Postgres; revised ~yearly by the government.
 
-> **Built (#113).** The pipeline is `go run ./cmd/tool region build-seed` → `regions.csv`, pinned by
+> **Built (#113).** The pipeline is `go run ./tools/san region build-seed` → `regions.csv`, pinned by
 > commit SHA. Two findings from the real data:
 > - The edition upstream actually ships is **Kepmendagri 300.2.2-2138/2025**, not the
 >   *300.2.2-2430/2025* cited above — but its volume matches these counts **exactly** (91.599 rows),

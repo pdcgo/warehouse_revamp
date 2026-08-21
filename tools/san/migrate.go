@@ -28,20 +28,15 @@ func migrateCommand() *cli.Command {
 			"references it), so a fresh database is fully migrated in one command. It asks\n" +
 			"only for the database, not a service.\n\n" +
 			"Examples:\n" +
-			"  go run ./cmd/tool migrate create add_users --service user_service\n" +
-			"  go run ./cmd/tool migrate up\n" +
-			"  go run ./cmd/tool migrate up-all\n" +
-			"  go run ./cmd/tool migrate status --service user_service",
+			"  go run ./tools/san migrate create add_users --service user_service\n" +
+			"  go run ./tools/san migrate up\n" +
+			"  go run ./tools/san migrate up-all\n" +
+			"  go run ./tools/san migrate status --service user_service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "service",
 				Aliases: []string{"s"},
 				Usage:   "which service to migrate; prompts when omitted",
-			},
-			&cli.StringFlag{
-				Name:    "dsn",
-				Sources: cli.EnvVars("DATABASE_URL"),
-				Usage:   "postgres DSN; skips the Local/Production prompt. Not needed for `create`",
 			},
 		},
 		Action: runMigrate,
@@ -157,8 +152,14 @@ func orderedServicesWithMigrations() ([]string, error) {
 	}
 
 	withMigrations := make([]string, 0, len(all))
+
 	for _, service := range all {
-		_, statErr := os.Stat(migrationsDir(service))
+		dir, dirErr := migrationsDir(service)
+		if dirErr != nil {
+			return nil, dirErr
+		}
+
+		_, statErr := os.Stat(dir)
 		if statErr == nil {
 			withMigrations = append(withMigrations, service)
 		}
@@ -187,9 +188,12 @@ func orderedServicesWithMigrations() ([]string, error) {
 // Each service tracks its applied migrations in its own <service>_version table — without
 // that, services would share one goose history and stop being independently migratable.
 func prepareMigrations(service string) (string, error) {
-	dir := migrationsDir(service)
+	dir, err := migrationsDir(service)
+	if err != nil {
+		return "", err
+	}
 
-	err := os.MkdirAll(dir, 0o755)
+	err = os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return "", err
 	}

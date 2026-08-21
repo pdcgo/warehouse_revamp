@@ -14,7 +14,7 @@
 >   judged the exposure acceptable: every account in this system is internal staff.
 >   **Writing** stays scoped (TEAM_OWNER/TEAM_ADMIN + `use_scope`). No separate
 >   `TeamInfoDetail` RPC. (owner, 2026-07-13 — see §3.1 for when to revisit)
-> - **Keep the all-teams dev seed** — but it lives in `cmd/tool seed`, **never in a migration**,
+> - **Keep the all-teams dev seed** — but it lives in `san seed`, **never in a migration**,
 >   and hard-refuses a Production target. Bootstrap (root team + root user) is a separate,
 >   real migration with the password from config. (owner, 2026-07-13 — §3.2)
 > - **FIX `TeamInfoUpdate`** — the duplicate-row race and the silent field-blanking are real
@@ -195,12 +195,12 @@ some sample data.
 | | Bootstrap seed | Dev seed |
 | --- | --- | --- |
 | What | root team (id=1) + root user + `ROLE_ROOT` | the all-teams superuser + sample teams/users |
-| Where | **goose migration** (`team_service` 00002, `user_service` 00003) | **`go run ./cmd/tool seed`** — never a migration |
+| Where | **goose migration** (`team_service` 00002, `user_service` 00003) | **`go run ./tools/san seed`** — never a migration |
 | Prod | **required** — the system does not work without team 1 | **hard-refuses**: aborts if the target is Production |
 | Password | from config (`ROOT_PASSWORD`), never a literal | a fixed dev password, fine locally |
 
 The rule that makes it safe: **the dev seed is never a migration.** Migrations run against
-production by design — anything inside one *will* eventually execute there. `cmd/tool` already
+production by design — anything inside one *will* eventually execute there. `san seed` already
 prompts Local vs Production and makes you type `production` to confirm; `seed` simply refuses the
 Production target outright.
 

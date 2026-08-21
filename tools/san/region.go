@@ -68,8 +68,19 @@ type region struct {
 	KodePos    string // level 4 only, may be empty where the source has none
 }
 
+// defaultRegionSeedPath is where the checked-in seed lives, resolved against the REPO ROOT rather
+// than the working directory — so `san region load-seed` finds it wherever it is run from.
+//
+// It returns "" when the checkout cannot be located, which the flag layer turns into a required
+// --file rather than an error at construction time: a --help must not fail because somebody ran
+// the binary from outside a checkout.
 func defaultRegionSeedPath() string {
-	return filepath.Join(servicesRoot, "region_service", "db_migrations", "seed", "regions.csv")
+	root, err := servicesRoot()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(root, "region_service", "db_migrations", "seed", "regions.csv")
 }
 
 func regionCommand() *cli.Command {
@@ -84,7 +95,7 @@ func regionCommand() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "out",
-						Usage: "output CSV path (relative to ./backend)",
+						Usage: "output CSV path; defaults to the checked-in seed. A relative path is relative to your working directory",
 						Value: defaultRegionSeedPath(),
 					},
 					&cli.StringFlag{
@@ -107,13 +118,8 @@ func regionCommand() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "file",
-						Usage: "path to the generated regions CSV (relative to ./backend)",
+						Usage: "path to the generated regions CSV; defaults to the checked-in seed. A relative path is relative to your working directory",
 						Value: defaultRegionSeedPath(),
-					},
-					&cli.StringFlag{
-						Name:    "dsn",
-						Sources: cli.EnvVars("DATABASE_URL"),
-						Usage:   "postgres DSN; skips the Local/Production prompt",
 					},
 				},
 				Action: loadRegionSeed,
@@ -289,7 +295,7 @@ func buildRegionSeed(ctx context.Context, cmd *cli.Command) error {
 
 	attached := attachKodePos(regions, postcodes)
 
-	err = validate(regions)
+	err = validateRegionTree(regions)
 	if err != nil {
 		return err
 	}
@@ -412,9 +418,9 @@ func attachKodePos(regions []region, postcodes map[string]string) int {
 	return attached
 }
 
-// validate proves the tree hangs together before it is written: every non-provinsi row's parent must
+// validateRegionTree proves the tree hangs together before it is written: every non-provinsi row's parent must
 // exist, and be exactly one level up. A seed with an orphan is a picker that dead-ends.
-func validate(regions []region) error {
+func validateRegionTree(regions []region) error {
 	byCode := make(map[string]region, len(regions))
 	for _, r := range regions {
 		if _, dup := byCode[r.Code]; dup {

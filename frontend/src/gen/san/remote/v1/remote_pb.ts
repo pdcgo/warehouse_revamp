@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file san/remote/v1/remote.proto.
  */
 export const file_san_remote_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChpzYW4vcmVtb3RlL3YxL3JlbW90ZS5wcm90bxINc2FuLnJlbW90ZS52MSINCgtJbmZvUmVxdWVzdCLDAQoMSW5mb1Jlc3BvbnNlEhYKDndvcmtzcGFjZV9yb290GAEgASgJEg0KBXNoZWxsGAIgAygJEgoKAm9zGAMgASgJEgwKBGFyY2gYBCABKAkSHwoXZGVmYXVsdF90aW1lb3V0X3NlY29uZHMYBSABKA0SGwoTbWF4X3RpbWVvdXRfc2Vjb25kcxgGIAEoDRI0ChB0b2tlbl9leHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLmAQoLRXhlY1JlcXVlc3QSHAoHY29tbWFuZBgBIAEoCUILukgIcgYQARiAgAQSHQoLd29ya2luZ19kaXIYAiABKAlCCLpIBXIDGIAgEjAKA2VudhgDIAMoCzIjLnNhbi5yZW1vdGUudjEuRXhlY1JlcXVlc3QuRW52RW50cnkSGAoFc3RkaW4YBCABKAlCCbpIBnIEGICAQBIiCg90aW1lb3V0X3NlY29uZHMYBSABKA1CCbpIBioEGICjBRoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBInUKDEV4ZWNSZXNwb25zZRIPCgdtZXNzYWdlGAEgASgJEikKBnN0cmVhbRgCIAEoDjIZLnNhbi5yZW1vdGUudjEuRXhlY1N0cmVhbRIpCgZyZXN1bHQYAyABKAsyGS5zYW4ucmVtb3RlLnYxLkV4ZWNSZXN1bHQiRwoKRXhlY1Jlc3VsdBIRCglleGl0X2NvZGUYASABKAUSEQoJdGltZWRfb3V0GAIgASgIEhMKC2R1cmF0aW9uX21zGAMgASgDKnEKCkV4ZWNTdHJlYW0SGwoXRVhFQ19TVFJFQU1fVU5TUEVDSUZJRUQQABIWChJFWEVDX1NUUkVBTV9TWVNURU0QARIWChJFWEVDX1NUUkVBTV9TVERPVVQQAhIWChJFWEVDX1NUUkVBTV9TVERFUlIQAzKTAQoNUmVtb3RlU2VydmljZRI/CgRJbmZvEhouc2FuLnJlbW90ZS52MS5JbmZvUmVxdWVzdBobLnNhbi5yZW1vdGUudjEuSW5mb1Jlc3BvbnNlEkEKBEV4ZWMSGi5zYW4ucmVtb3RlLnYxLkV4ZWNSZXF1ZXN0Ghsuc2FuLnJlbW90ZS52MS5FeGVjUmVzcG9uc2UwAUJGWkRnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vc2FuL3JlbW90ZS92MTtyZW1vdGV2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp]);
+  fileDesc("ChpzYW4vcmVtb3RlL3YxL3JlbW90ZS5wcm90bxINc2FuLnJlbW90ZS52MSINCgtJbmZvUmVxdWVzdCLDAQoMSW5mb1Jlc3BvbnNlEhYKDndvcmtzcGFjZV9yb290GAEgASgJEg0KBXNoZWxsGAIgAygJEgoKAm9zGAMgASgJEgwKBGFyY2gYBCABKAkSHwoXZGVmYXVsdF90aW1lb3V0X3NlY29uZHMYBSABKA0SGwoTbWF4X3RpbWVvdXRfc2Vjb25kcxgGIAEoDRI0ChB0b2tlbl9leHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLmAQoLRXhlY1JlcXVlc3QSHAoHY29tbWFuZBgBIAEoCUILukgIcgYQARiAgAQSHQoLd29ya2luZ19kaXIYAiABKAlCCLpIBXIDGIAgEjAKA2VudhgDIAMoCzIjLnNhbi5yZW1vdGUudjEuRXhlY1JlcXVlc3QuRW52RW50cnkSGAoFc3RkaW4YBCABKAlCCbpIBnIEGICAQBIiCg90aW1lb3V0X3NlY29uZHMYBSABKA1CCbpIBioEGICjBRoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBInUKDEV4ZWNSZXNwb25zZRIPCgdtZXNzYWdlGAEgASgJEikKBnN0cmVhbRgCIAEoDjIZLnNhbi5yZW1vdGUudjEuRXhlY1N0cmVhbRIpCgZyZXN1bHQYAyABKAsyGS5zYW4ucmVtb3RlLnYxLkV4ZWNSZXN1bHQiRwoKRXhlY1Jlc3VsdBIRCglleGl0X2NvZGUYASABKAUSEQoJdGltZWRfb3V0GAIgASgIEhMKC2R1cmF0aW9uX21zGAMgASgDIisKD0ZpbGVSZWFkUmVxdWVzdBIYCgRwYXRoGAEgASgJQgq6SAdyBRABGIAgImIKEEZpbGVSZWFkUmVzcG9uc2USDwoHY29udGVudBgBIAEoDBIMCgRzaXplGAIgASgDEi8KC21vZGlmaWVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJSChBGaWxlV3JpdGVSZXF1ZXN0EhgKBHBhdGgYASABKAlCCrpIB3IFEAEYgCASDwoHY29udGVudBgCIAEoDBITCgtjcmVhdGVfZGlycxgDIAEoCCIzChFGaWxlV3JpdGVSZXNwb25zZRIMCgRzaXplGAEgASgDEhAKCHJlcGxhY2VkGAIgASgIKnEKCkV4ZWNTdHJlYW0SGwoXRVhFQ19TVFJFQU1fVU5TUEVDSUZJRUQQABIWChJFWEVDX1NUUkVBTV9TWVNURU0QARIWChJFWEVDX1NUUkVBTV9TVERPVVQQAhIWChJFWEVDX1NUUkVBTV9TVERFUlIQAzKwAgoNUmVtb3RlU2VydmljZRI/CgRJbmZvEhouc2FuLnJlbW90ZS52MS5JbmZvUmVxdWVzdBobLnNhbi5yZW1vdGUudjEuSW5mb1Jlc3BvbnNlEkEKBEV4ZWMSGi5zYW4ucmVtb3RlLnYxLkV4ZWNSZXF1ZXN0Ghsuc2FuLnJlbW90ZS52MS5FeGVjUmVzcG9uc2UwARJLCghGaWxlUmVhZBIeLnNhbi5yZW1vdGUudjEuRmlsZVJlYWRSZXF1ZXN0Gh8uc2FuLnJlbW90ZS52MS5GaWxlUmVhZFJlc3BvbnNlEk4KCUZpbGVXcml0ZRIfLnNhbi5yZW1vdGUudjEuRmlsZVdyaXRlUmVxdWVzdBogLnNhbi5yZW1vdGUudjEuRmlsZVdyaXRlUmVzcG9uc2VCRlpEZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3Nhbi9yZW1vdGUvdjE7cmVtb3RldjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message san.remote.v1.InfoRequest
@@ -218,6 +218,122 @@ export const ExecResultSchema: GenMessage<ExecResult> = /*@__PURE__*/
   messageDesc(file_san_remote_v1_remote, 4);
 
 /**
+ * FileReadRequest reads one file from the workspace.
+ *
+ * @generated from message san.remote.v1.FileReadRequest
+ */
+export type FileReadRequest = Message<"san.remote.v1.FileReadRequest"> & {
+  /**
+   * Path RELATIVE to the workspace root, forward slashes or native. Same containment rule as
+   * ExecRequest.working_dir: absolute paths and anything climbing out with .. are refused.
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message san.remote.v1.FileReadRequest.
+ * Use `create(FileReadRequestSchema)` to create a new message.
+ */
+export const FileReadRequestSchema: GenMessage<FileReadRequest> = /*@__PURE__*/
+  messageDesc(file_san_remote_v1_remote, 5);
+
+/**
+ * @generated from message san.remote.v1.FileReadResponse
+ */
+export type FileReadResponse = Message<"san.remote.v1.FileReadResponse"> & {
+  /**
+   * The file, byte for byte. `bytes` and not `string` on purpose — a source file is usually
+   * UTF-8 but a fixture, an image or a file mid-edit is not obliged to be, and proto3 would
+   * reject it.
+   *
+   * @generated from field: bytes content = 1;
+   */
+  content: Uint8Array;
+
+  /**
+   * @generated from field: int64 size = 2;
+   */
+  size: bigint;
+
+  /**
+   * Last modification time, so an agent can tell whether the file moved under it between the
+   * read it based an edit on and the write that follows.
+   *
+   * @generated from field: google.protobuf.Timestamp modified_at = 3;
+   */
+  modifiedAt?: Timestamp;
+};
+
+/**
+ * Describes the message san.remote.v1.FileReadResponse.
+ * Use `create(FileReadResponseSchema)` to create a new message.
+ */
+export const FileReadResponseSchema: GenMessage<FileReadResponse> = /*@__PURE__*/
+  messageDesc(file_san_remote_v1_remote, 6);
+
+/**
+ * @generated from message san.remote.v1.FileWriteRequest
+ */
+export type FileWriteRequest = Message<"san.remote.v1.FileWriteRequest"> & {
+  /**
+   * Path RELATIVE to the workspace root.
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * The whole file. A write REPLACES — there is no append and no partial write, because a
+   * half-applied edit is the failure mode worth designing out.
+   *
+   * @generated from field: bytes content = 2;
+   */
+  content: Uint8Array;
+
+  /**
+   * Create the parent directories when they are missing. Off by default, so a typo in a path
+   * fails loudly instead of quietly creating a tree nobody asked for.
+   *
+   * @generated from field: bool create_dirs = 3;
+   */
+  createDirs: boolean;
+};
+
+/**
+ * Describes the message san.remote.v1.FileWriteRequest.
+ * Use `create(FileWriteRequestSchema)` to create a new message.
+ */
+export const FileWriteRequestSchema: GenMessage<FileWriteRequest> = /*@__PURE__*/
+  messageDesc(file_san_remote_v1_remote, 7);
+
+/**
+ * @generated from message san.remote.v1.FileWriteResponse
+ */
+export type FileWriteResponse = Message<"san.remote.v1.FileWriteResponse"> & {
+  /**
+   * @generated from field: int64 size = 1;
+   */
+  size: bigint;
+
+  /**
+   * True when the write replaced an existing file rather than creating one — the cheapest way
+   * for an agent to notice it clobbered something it did not mean to.
+   *
+   * @generated from field: bool replaced = 2;
+   */
+  replaced: boolean;
+};
+
+/**
+ * Describes the message san.remote.v1.FileWriteResponse.
+ * Use `create(FileWriteResponseSchema)` to create a new message.
+ */
+export const FileWriteResponseSchema: GenMessage<FileWriteResponse> = /*@__PURE__*/
+  messageDesc(file_san_remote_v1_remote, 8);
+
+/**
  * ExecStream names which pipe a frame's text came from. SYSTEM is the server talking about the
  * run (what it is about to execute, how it ended) rather than the command talking.
  *
@@ -291,6 +407,30 @@ export const RemoteService: GenService<{
     methodKind: "server_streaming";
     input: typeof ExecRequestSchema;
     output: typeof ExecResponseSchema;
+  },
+  /**
+   * FileRead and FileWrite move EXACT BYTES, which the shell cannot.
+   *
+   * Everything an agent does to a file could in principle go through Exec — but writing source
+   * through a heredoc means the content passes through a shell parser, and PowerShell in
+   * particular will interpolate a `$` and mangle a backtick in code it was only supposed to
+   * store. Reading back through `cat` adds the shell's own line-ending and encoding opinions.
+   * These two carry bytes, so what the agent sent is what lands on disk.
+   *
+   * @generated from rpc san.remote.v1.RemoteService.FileRead
+   */
+  fileRead: {
+    methodKind: "unary";
+    input: typeof FileReadRequestSchema;
+    output: typeof FileReadResponseSchema;
+  },
+  /**
+   * @generated from rpc san.remote.v1.RemoteService.FileWrite
+   */
+  fileWrite: {
+    methodKind: "unary";
+    input: typeof FileWriteRequestSchema;
+    output: typeof FileWriteResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_san_remote_v1_remote, 0);

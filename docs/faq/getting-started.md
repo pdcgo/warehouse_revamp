@@ -28,8 +28,8 @@ Prerequisites: Go, Node, Docker. All commands from the **repo root** unless stat
 
 ```sh
 docker compose up -d                          # Postgres :5433, Redis :6380
-cd backend && go run ./cmd/tool migrate up    # prompts: database, then service — apply for EVERY service
-cd backend && go run ./cmd/tool seed dev      # sample teams + logins (development only)
+go run ./tools/san migrate up    # prompts: database, then service — apply for EVERY service
+go run ./tools/san seed dev      # sample teams + logins (development only)
 cd backend && go run ./cmd/app_development    # the API on :8080
 cd frontend && npm install && npm run dev     # the UI on :5174
 ```
@@ -45,8 +45,8 @@ match — deliberately, so no default password can ever ship to production. Give
 development fixture:
 
 ```sh
-cd backend && go run ./cmd/tool seed root --password <yours>   # just the root account
-cd backend && go run ./cmd/tool seed dev                       # teams + several accounts (recommended)
+go run ./tools/san seed root --password <yours>   # just the root account
+go run ./tools/san seed dev                       # teams + several accounts (recommended)
 ```
 
 `seed dev` is idempotent, and **hard-refuses a production target**. It creates:
@@ -70,7 +70,7 @@ In order of likelihood:
 
 1. **Migrations were only applied for one service.** `migrate up` prompts for a *service* and
    applies that one. Every service owns its own migrations — run it once per service.
-2. **No seed.** `go run ./cmd/tool seed dev`, and `seed categories` for the product taxonomy.
+2. **No seed.** `go run ./tools/san seed dev`, and `seed categories` for the product taxonomy.
 3. **You are in the wrong team.** Most data is team-scoped; use the team switcher.
 4. **The API is not running**, or the browser console shows a CORS/connection error — the UI needs
    `:8080` up.

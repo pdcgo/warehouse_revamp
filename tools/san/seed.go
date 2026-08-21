@@ -37,11 +37,6 @@ func seedCommand() *cli.Command {
 						Sources:  cli.EnvVars("ROOT_PASSWORD"),
 						Required: true,
 					},
-					&cli.StringFlag{
-						Name:    "dsn",
-						Sources: cli.EnvVars("DATABASE_URL"),
-						Usage:   "postgres DSN; skips the Local/Production prompt",
-					},
 				},
 				Action: runSeedRoot,
 			},
@@ -61,20 +56,15 @@ func seedCommand() *cli.Command {
 						Sources: cli.EnvVars("DEV_PASSWORD"),
 						Value:   "devpassword123",
 					},
-					&cli.StringFlag{
-						Name:    "dsn",
-						Sources: cli.EnvVars("DATABASE_URL"),
-						Usage:   "postgres DSN; skips the Local/Production prompt",
-					},
 				},
 				Action: runSeedDev,
 			},
 			{
 				Name:  "categories",
 				Usage: "upsert the product-category taxonomy from a JSON file",
-				Description: "Upserts the global product-category tree from seed_asset/category.json (the\n" +
-					"Shopee Indonesia taxonomy). Idempotent — matches an existing active category by\n" +
-					"(parent, name) and inserts only what is missing, so re-running adds nothing.\n\n" +
+				Description: "Upserts the global product-category tree from backend/seed_asset/category.json\n" +
+					"(the Shopee Indonesia taxonomy). Idempotent — matches an existing active category\n" +
+					"by (parent, name) and inserts only what is missing, so re-running adds nothing.\n\n" +
 					"Unlike the dev fixture this is real reference data, so it is NOT refused against\n" +
 					"Production — the database prompt (and the production confirmation) still guards it.",
 				Flags: []cli.Flag{
@@ -82,12 +72,13 @@ func seedCommand() *cli.Command {
 						Name:    "file",
 						Aliases: []string{"f"},
 						Usage:   "path to the category JSON",
-						Value:   "seed_asset/category.json",
-					},
-					&cli.StringFlag{
-						Name:    "dsn",
-						Sources: cli.EnvVars("DATABASE_URL"),
-						Usage:   "postgres DSN; skips the Local/Production prompt",
+						// Resolved against the REPO ROOT, not the working directory. It read
+						// "seed_asset/category.json" while this command lived in backend/cmd/tool,
+						// which silently meant "relative to wherever you are standing" — and the
+						// moment the command moved to the repo-root CLI it started looking for the
+						// file next to go.mod and failing. A default that depends on the operator's
+						// cwd is a default that works for exactly one cwd.
+						Value: defaultCategorySeedPath(),
 					},
 				},
 				Action: runSeedCategories,

@@ -16,11 +16,18 @@ import (
 const testDBName = "warehouse_test"
 
 func dbCommand() *cli.Command {
-	// NOTE: this flag deliberately does NOT read DATABASE_URL — that env is the TEST database
-	// (warehouse_test), but these commands need a connection to a DIFFERENT (maintenance) database
-	// to drop/create the test one. Default to the local Postgres (dbname=postgres); --dsn overrides.
-	dsnFlag := &cli.StringFlag{
-		Name:  "dsn",
+	// ⚠ NAMED --admin-dsn, not --dsn, and that is not cosmetic.
+	//
+	// These commands need a connection to a database OTHER than the one they are acting on: you
+	// cannot drop the database you are connected to. Every other san command's --dsn is the
+	// database being worked on, and the root flag also reads DATABASE_URL — which in a test run
+	// points at warehouse_test, the exact database `reset-test` is about to drop.
+	//
+	// While these lived in their own binary the name could safely be --dsn, because there was no
+	// root flag to inherit from. Folding the two CLIs into one removed that safety, so the flag is
+	// renamed rather than left to collide silently.
+	adminDSNFlag := &cli.StringFlag{
+		Name:  "admin-dsn",
 		Usage: "admin DSN on a database OTHER than the test one (e.g. dbname=postgres); defaults to the local Postgres",
 	}
 
@@ -31,19 +38,19 @@ func dbCommand() *cli.Command {
 			{
 				Name:   "ensure-test",
 				Usage:  "create " + testDBName + " if it does not exist (no drop)",
-				Flags:  []cli.Flag{dsnFlag},
+				Flags:  []cli.Flag{adminDSNFlag},
 				Action: runEnsureTest,
 			},
 			{
 				Name:   "reset-test",
 				Usage:  "drop and recreate an empty " + testDBName,
-				Flags:  []cli.Flag{dsnFlag},
+				Flags:  []cli.Flag{adminDSNFlag},
 				Action: runResetTest,
 			},
 			{
 				Name:   "drop-test",
 				Usage:  "drop " + testDBName + " (cleanup after a run)",
-				Flags:  []cli.Flag{dsnFlag},
+				Flags:  []cli.Flag{adminDSNFlag},
 				Action: runDropTest,
 			},
 		},
@@ -54,7 +61,7 @@ func dbCommand() *cli.Command {
 // runs this before it starts, so gorm.Open always finds the database no matter whether Playwright
 // launches the web server before or after global-setup.
 func runEnsureTest(ctx context.Context, cmd *cli.Command) error {
-	db, err := adminConn(ctx, cmd.String("dsn"))
+	db, err := adminConn(ctx, cmd.String("admin-dsn"))
 	if err != nil {
 		return err
 	}
@@ -79,7 +86,7 @@ func runEnsureTest(ctx context.Context, cmd *cli.Command) error {
 }
 
 // adminConn connects to the MAINTENANCE database (never the test one), which is what lets it create
-// or drop the test database. Defaults to the local Postgres; --dsn overrides for CI.
+// or drop the test database. Defaults to the local Postgres; --admin-dsn overrides for CI.
 func adminConn(ctx context.Context, dsnFlag string) (*sql.DB, error) {
 	dsn := dsnFlag
 	if dsn == "" {
@@ -102,7 +109,7 @@ func adminConn(ctx context.Context, dsnFlag string) (*sql.DB, error) {
 }
 
 func runResetTest(ctx context.Context, cmd *cli.Command) error {
-	db, err := adminConn(ctx, cmd.String("dsn"))
+	db, err := adminConn(ctx, cmd.String("admin-dsn"))
 	if err != nil {
 		return err
 	}
@@ -125,7 +132,7 @@ func runResetTest(ctx context.Context, cmd *cli.Command) error {
 }
 
 func runDropTest(ctx context.Context, cmd *cli.Command) error {
-	db, err := adminConn(ctx, cmd.String("dsn"))
+	db, err := adminConn(ctx, cmd.String("admin-dsn"))
 	if err != nil {
 		return err
 	}

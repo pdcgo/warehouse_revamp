@@ -11,13 +11,16 @@ import { lineTotal, unitPrice } from "../../../features/restock/lines";
 import {
   askedQuantity,
   brokenQuantity,
+  costKindSlug,
   damageReasons,
   goodsTotal,
   lostQuantity,
   receivedQuantity,
+  warehouseOutlay,
 } from "../../../features/restock/summary";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
+import { costKindLabel } from "../../../components/pickers/CostKindSelect";
 import { DamageCell } from "../../../features/restock/DamageCell";
 import { formatRupiah } from "../../../lib/money";
 
@@ -60,11 +63,11 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
   // The goods plus EVERY freight charge on them — the same arithmetic the list's Value column does,
   // so a row and the page it opens can never disagree about what a restock cost.
   //
-  // `cod_shipping_fee` is what the courier charged at the door (#155). The warehouse pays and enters
-  // it, but it is freight on this team's goods, so it belongs in this team's total; it is 0 until a
-  // delivery is accepted, and its row is hidden until there is one.
-  const codFee = request.codShippingFee;
-  const grandTotal = productsTotal + request.shippingCost + codFee;
+  // The cost lines are what the WAREHOUSE laid out to receive this delivery (00021). It pays and
+  // enters them, but they are freight on this team's goods, so they belong in this team's total —
+  // and this team is the side that has to settle them. Empty until a delivery is accepted.
+  const grandTotal =
+    productsTotal + request.shippingCost + warehouseOutlay(request);
 
   return (
     // maxW="full" so the card can never be wider than the tab panel holding it. Without it a wide
@@ -251,16 +254,22 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                 {formatRupiah(request.shippingCost)}
               </Text>
             </Text>
-            {/* Hidden until there IS one: most deliveries are not COD, and a "Rp 0" row would
-                invite the reader to wonder what they had missed. */}
-            {codFee > 0n && (
-              <Text fontSize="sm" color="fg.muted">
-                {t("restock.accept.codFee")}:{" "}
-                <Text as="span" data-testid="restock-detail-cod-fee">
-                  {formatRupiah(codFee)}
+            {/* ONE ROW PER COST, and nothing at all when there are none: most deliveries cost the
+                warehouse nothing, and a "Rp 0" row would invite the reader to wonder what they had
+                missed. Each row carries its own note, because this is the screen where the team being
+                charged finds out what for. */}
+            {request.costLines.map((line) => (
+              <Text key={line.id.toString()} fontSize="sm" color="fg.muted">
+                {costKindLabel(t, line.kind)}
+                {line.note ? ` — ${line.note}` : ""}:{" "}
+                <Text
+                  as="span"
+                  data-testid={`restock-detail-cost-${costKindSlug(line.kind)}`}
+                >
+                  {formatRupiah(line.amount)}
                 </Text>
               </Text>
-            )}
+            ))}
             <Text
               fontSize="md"
               fontWeight="semibold"

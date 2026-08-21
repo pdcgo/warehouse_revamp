@@ -16,7 +16,7 @@ CREATE UNIQUE INDEX shippings_code_unique ON shippings (code);
 
 -- Seed the couriers common in Indonesia. This is stable REFERENCE data — not environment-specific
 -- and not credentials — so it belongs in the migration (it must exist in production too), unlike
--- the dev-user fixture, which lives in `cmd/tool seed` and refuses production.
+-- the dev-user fixture, which lives in `san seed` and refuses production.
 INSERT INTO shippings (code, name) VALUES
     ('jne',       'JNE'),
     ('jnt',       'J&T Express'),

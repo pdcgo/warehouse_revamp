@@ -33,6 +33,8 @@ function sourceKey(type: SettlementSourceType): string {
   switch (type) {
     case SettlementSourceType.COD_FEE:
       return "settlement.sourceCodFee";
+    case SettlementSourceType.RESTOCK_OUTLAY:
+      return "settlement.sourceRestockOutlay";
     case SettlementSourceType.HANDLING_FEE:
       return "settlement.sourceHandlingFee";
     case SettlementSourceType.PRODUCT_FEE:

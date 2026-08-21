@@ -67,6 +67,15 @@ func NewToken(value string, ttl time.Duration, now time.Time) *Token {
 	return token
 }
 
+// NewTokenAt adopts a token with an ALREADY-DECIDED expiry, which is what reading one back from
+// the token store needs: the deadline belongs to the token, not to the run that loaded it.
+//
+// NewToken cannot serve that case — it computes now+ttl, so every restart would push the expiry
+// out and a persisted token would in practice never expire.
+func NewTokenAt(value string, expiresAt time.Time) *Token {
+	return &Token{value: value, expiresAt: expiresAt}
+}
+
 func (t *Token) Value() string { return t.value }
 
 // ExpiresAt is zero when the token lives as long as the process.

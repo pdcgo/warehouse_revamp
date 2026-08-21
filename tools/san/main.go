@@ -1,9 +1,26 @@
-// Command san is the OPERATIONS CLI — the tool an operator reaches for when something has to be
-// done to real data by hand.
+// Command san is the UNIFIED DEVELOPMENT AND OPERATIONS CLI for this repository.
 //
-// It is not the migrator: cmd/tool owns the schema and the dev fixtures. san owns the actions a
-// human performs against a running system, the first of them being "this person cannot log in,
-// set their password".
+// One binary covers the whole life of the project's data and the environment around it:
+//
+//	san migrate    the schema      — goose, per service (HARD RULE 3)
+//	san seed       the fixtures    — root, dev, categories
+//	san db         the test database
+//	san region     reference data
+//	san user       operations on real data, through the real services
+//	san remote     serve this checkout to a coding agent (Connect RPC + MCP)
+//
+// # Why one binary and not two
+//
+// migrate/seed/db/region lived in backend/cmd/tool, split from san on the argument that a
+// developer's tool and an operator's tool are used at different moments by different people. That
+// is true of the COMMANDS and was never true of the BINARY: the moment matters to whoever is
+// typing, and a `--help` line carries it, whereas "which of our two programs owns migrate" is a
+// fact every new person has to be told and nothing in the tree reveals. The split also had no seat
+// for `deploy`, which belongs to neither half.
+//
+// What the merge does NOT collapse is the guard rails. Which database a command acts on still goes
+// through san_dbtarget, so the "type production to continue" prompt protects every command that
+// touches a database rather than one binary's worth of them.
 //
 // # It drives the SERVICES, never the tables
 //
@@ -48,6 +65,15 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
+			// The schema and the fixtures. These were `backend/cmd/tool` until the unified-tools
+			// requirement folded them in — one binary a developer learns once, rather than two
+			// whose only difference was which of them happened to own `migrate`.
+			migrateCommand(),
+			seedCommand(),
+			dbCommand(),
+			regionCommand(),
+
+			// Operations on real data, and the workspace server.
 			userCommand(),
 			remoteCommand(),
 		},

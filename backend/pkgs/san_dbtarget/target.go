@@ -1,13 +1,16 @@
 // Package san_dbtarget picks WHICH database a command-line tool acts on.
 //
-// It exists because more than one CLI needs that choice — the migrator (cmd/tool) and the
-// operations tool (tools/san) — and because the guard in front of Production must not exist in
-// two copies. A confirmation prompt that is duplicated is one careless edit away from protecting
-// only one of the tools that needs it.
+// It exists because more than one CALLER needs that choice — `san migrate` opens a database/sql
+// handle, `san user` opens a GORM one — and because the guard in front of Production must not
+// exist in two copies. A confirmation prompt that is duplicated is one careless edit away from
+// protecting only one of the paths that needs it.
+//
+// It was written when the migrator and the operations tool were two separate binaries. They are
+// one now, which does not retire the package: the split that mattered was never between the
+// binaries, it was between the code that CHOOSES a database and the code that connects to one.
 //
 // The contract is deliberately narrow: it resolves a DSN and a human label, and it never opens a
-// connection. Each tool opens its own handle (database/sql for the migrator, GORM for san), so
-// this package has no opinion about the driver.
+// connection. Each caller opens its own handle, so this package has no opinion about the driver.
 package san_dbtarget
 
 import (

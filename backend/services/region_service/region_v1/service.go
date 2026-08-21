@@ -7,7 +7,7 @@
 //   - It is GLOBAL. There is no team scope on any RPC — regions are the same for everyone — so the
 //     policies are `allow_only_authenticated` and no handler reads a team id (plan §4.4).
 //   - It is READ-ONLY. The rows come from a pinned upstream seed (#113/#114), loaded by
-//     `go run ./cmd/tool region load-seed`. Nothing writes regions through this API.
+//     `go run ./tools/san region load-seed`. Nothing writes regions through this API.
 package region_v1
 
 import (

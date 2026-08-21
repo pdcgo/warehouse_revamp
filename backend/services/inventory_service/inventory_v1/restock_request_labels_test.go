@@ -67,7 +67,7 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 
 	// Accept: shirts split 60/40 across two shelves; hats 28 to the unplaced pile with 2 broken.
 	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CodShippingFee: 50000,
+		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
 				ItemId:           items[0].GetId(),

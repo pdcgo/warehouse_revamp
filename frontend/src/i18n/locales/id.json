@@ -122,7 +122,8 @@
     "recordNote": "Catatan",
     "recordNoteOptional": "(opsional)",
     "recordNoteHelp": "Petunjuk untuk orang yang mengonfirmasi — buku besar mencatat penyebab bertipe, bukan catatan ini.",
-    "recordSubmit": "Buat Pembayaran"
+    "recordSubmit": "Buat Pembayaran",
+    "causeRestockOutlay": "Biaya penerimaan · restock #{{id}}"
   },
   "common": {
     "perPage": "Per halaman",
@@ -641,7 +642,8 @@
     "sourceHandlingFee": "Biaya penanganan, pesanan",
     "sourceProductFee": "Biaya produk, pesanan",
     "sourcePayment": "Pembayaran",
-    "sourceUnknown": "Tidak diketahui"
+    "sourceUnknown": "Tidak diketahui",
+    "sourceRestockOutlay": "Biaya penerimaan, restock"
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -727,7 +729,8 @@
       "awaiting": "Menunggu gudang",
       "noDate": "Tanggal tidak tercatat",
       "edited": "Permintaan diubah",
-      "unknown": "Ada perubahan"
+      "unknown": "Ada perubahan",
+      "costRecorded": "Biaya penerimaan dicatat"
     },
     "summary": {
       "totalProducts": "Total produk",
@@ -905,7 +908,7 @@
         "cost": "Nilai",
         "productTotal": "Produk",
         "shippingTotal": "Pengiriman",
-        "shippingBreakdown": "{{shipping}} ongkir + {{cod}} COD",
+        "shippingBreakdown": "{{shipping}} ongkir + {{outlay}} pengeluaran gudang",
         "grandTotal": "Total"
       },
       "confirm": {
@@ -919,7 +922,21 @@
       }
     },
     "createdByAll": "Siapa saja yang membuat",
-    "acceptedByAll": "Siapa saja yang menerima"
+    "acceptedByAll": "Siapa saja yang menerima",
+    "cost": {
+      "title": "Biaya yang dikeluarkan gudang untuk kiriman ini",
+      "hint": "Yang Anda bayar untuk memasukkan barang ini. Dibagi ke unit yang datang dan ditagihkan ke tim peminta.",
+      "add": "Tambah biaya",
+      "remove": "Hapus biaya ini",
+      "note": "Untuk apa",
+      "noteRequired": "Sebutkan biaya ini untuk apa.",
+      "kind": {
+        "codShipping": "Biaya COD di tempat",
+        "other": "Lainnya",
+        "unknown": "Biaya"
+      },
+      "total": "Pengeluaran gudang"
+    }
   },
   "shops": {
     "title": "Toko",

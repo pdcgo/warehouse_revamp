@@ -101,7 +101,7 @@ is reviewing on.
 - Unit/integration tests use [`backend/pkgs/san_testdb/`](../../backend/pkgs/san_testdb/): a
   per-test transaction that **rolls back**, so tests are isolated and need no cleanup.
 - The e2e resets `warehouse_test` fresh each run and drops it after
-  (`go run ./cmd/tool db reset-test | drop-test`), and serves on **dedicated ports 8081 / 5175** so
+  (`go run ./tools/san db reset-test | drop-test`), and serves on **dedicated ports 8081 / 5175** so
   it can run while your dev servers are up.
 - Override the target with `TEST_DATABASE_URL`.
 
@@ -138,14 +138,24 @@ two callers in the same second is the normal case, not the edge case.
 
 ---
 
-## What is `tools/san` versus `backend/cmd/tool`?
+## Where did `backend/cmd/tool` go?
 
-Two CLIs, two jobs.
+**It was folded into [`tools/san`](../tools/san.md).** There is one CLI now.
 
-| | Owns | Run from | Example |
-| --- | --- | --- | --- |
-| `backend/cmd/tool` | the **developer's** side: schema and fixtures | `backend/` | `go run ./cmd/tool migrate up` |
-| `tools/san` | the **operator's** side: actions on real data, through the services | repo root | `go run ./tools/san user reset-password --username ani` |
+| Was | Is now |
+| --- | --- |
+| `go run ./cmd/tool migrate up` | `go run ./tools/san migrate up` |
+| `go run ./cmd/tool seed dev` | `go run ./tools/san seed dev` |
+| `go run ./cmd/tool db reset-test` | `go run ./tools/san db reset-test` — note the flag is **`--admin-dsn`** |
+| `go run ./cmd/tool region load-seed` | `go run ./tools/san region load-seed` |
+
+Two other things changed with the move:
+
+- **It runs from anywhere in the checkout.** `migrate` used to need you standing in `./backend`.
+  `san` walks up from your working directory to find the repo.
+- **`db` takes `--admin-dsn`.** It creates and drops the test database, which needs a connection to
+  a DIFFERENT database — and the root `--dsn` reads `DATABASE_URL`, which during a test run points
+  at the very database being dropped.
 
 `tools/san` sits at the repo root on purpose — it is a tool of the repository, not part of the
 server. Its rules: **a command calls the RPC handler, never a hand-written `UPDATE`** (a second
