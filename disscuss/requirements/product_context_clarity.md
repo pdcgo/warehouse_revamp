@@ -183,12 +183,19 @@ the lock — [user_context_clarity Critique 4](user_context_clarity.md#critique)
    — the two answers travel together and cannot be picked separately.
 2. **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
    **→ I recommend arrived.**
+   ⚠ **`stock_context.md`'s new receiving flow answers this by arrow order, and it answers ORDERED**:
+   *Calculate Unit Price* runs **before** *Is Any Lost* and *Calculate valid Qty*. That contradicts the
+   recommendation above, so the question is now *"is that sequence deliberate?"* —
+   [stock_context Q1](stock_context_clarity.md#question).
 3. **What is the reserve — a per-product count set by the owner, and does it bind the owner's own orders?**
    ([Critique 5](#critique)) **→ I recommend a per-product count, binding only other teams.**
 4. **Does turning on the shared lock affect orders already placed?** ([Critique 6](#critique))
    **→ I recommend no — new orders only.**
 5. **What moment consumes a FIFO layer, and is the fee frozen there too?**
    ([Critique 3](#critique), [Critique 7](#critique)) **→ I recommend at commitment, both frozen on the line.**
+   ⚠ **Now also a boundary question:** the layers are `inventory_service`'s and COGS is `ledger_service`'s,
+   so *where the frozen number is stored and who owns it* travels with this answer —
+   [architectures Q3](architectures/architecture_context_clarity.md#question).
 
 ---
 

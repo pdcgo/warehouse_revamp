@@ -157,9 +157,11 @@ flowchart LR
    **→ I recommend no for v1.**
 5. **Does the found-back charge need the owner's acknowledgement?** ([Critique 3](#critique))
    **→ I recommend yes — it is a debt asserted on someone else's books, and it can now block them.**
-6. **Should cause 3 adopt the order doc's payable/receivable pair — and is repayment IN GOODS allowed?** ([Critique 10](#critique))
-   **→ I recommend yes to the vocabulary, no to repayment in kind — a goods repayment is a restock plus a
-   payment, not a second instrument.**
+6. **Is repayment IN GOODS allowed** — may a borrowing team clear cause 3 by restocking the owner with
+   equivalent units instead of paying? ([Critique 10](#critique))
+   **→ I recommend no: a goods repayment is a restock plus a payment, not a second instrument.**
+   *(The vocabulary half of this question is dropped — `order_context.md` has since settled on
+   **payable/receivable**, so adopting it here is a wording fix, not a decision to be made.)*
 
 ---
 

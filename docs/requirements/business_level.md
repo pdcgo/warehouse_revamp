@@ -58,6 +58,7 @@ In our business, we can have multiple team on that.
 5. every broken and lost in warehouse, warehouse have responsbility reimburse the cost (Unit Price) to the team that own the goods.
 6. warehouse dont have responsbility every broken/lost goods at receiving restock or return goods from the returning orders.
 7. doing stock opname.
+8. manage placements of the stocks.
 
 ## Selling Team
 ### The responsbility

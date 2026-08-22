@@ -118,6 +118,12 @@ precisely what makes the role-only version unenforceable.
    ([Critique 6](#critique)) **→ I recommend yes to cross-type, no to two roles in one team.**
 3. **Is the separation rule about the ROLE or about the PERSON?** ([Critique 2](#critique))
    **→ I recommend the person — the role version is unenforceable now that one human can hold two.**
+   ⚠ **`stock_context.md`'s receiving flow does not contradict this — it declines to address it, and that
+   is worth saying precisely.** The actor is *"Warehouse Team Member"*, which could be any of Owner, Admin
+   or Packer, so no role is excluded. But the flow runs **one actor end to end** — accept, input losses,
+   input broken, set placements — with **no second party anywhere**, and it is the first place a confirm
+   step would appear if one existed. Evidence of a single-actor procedure, not a decision against a
+   confirm step.
 4. **Which role may perform the money-setting acts** — accept a restock and type its fee, and set the
    markup, reserve and lock? ([Critique 3](#critique), [Critique 4](#critique))
    **→ I recommend Owner or Admin for all of them, never the person counting and never Customer Service.**

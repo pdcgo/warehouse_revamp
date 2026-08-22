@@ -20,6 +20,15 @@ the current open set.
 >
 > ⚠ **One residue kept:** the bullets name the legs and never the **amount** — see [Question 7](#question).
 >
+> **Re-examined after §How New Order Processed.** ✅ **Closed:** *is there an unattended machine path?* —
+> no: a scanned order always becomes a **draft** and always needs a person to review and finalize it.
+> **Narrowed, not closed:** the API question (what `finalize` enforces, and whose orders an app may
+> create) · the states question (the pre-warehouse half is answered, the warehouse half is not) ·
+> and the commit question, which is **re-posed in your vocabulary**: *draft, or finalize?*
+>
+> ⚠ **Still open and now sharper: deduplication.** One path checks by human eye, the other does not check
+> at all — and it is the machine path that retries ([Critique 14](#critique)).
+>
 > ⚠ **§What Make Our Order Unique answers a different question from the one I asked, and the words
 > collide.** Your new section says what is **distinctive** about these orders — they mix borrowed and own
 > lines. My [Question 1](#question) asks what makes an order **identifiable**, so a retrying API can be
@@ -52,6 +61,68 @@ Two entry paths, both first-class: **Customer Service records it manually** — 
 team *([user_context](user_context_clarity.md#selling-roles-are-owner-admin-customer-service))* — and a
 **create-order API** exists so a selling team's own external app can post orders faster.
 *(§How Order Enter Our System)*
+
+#### an-order-is-drafted-then-finalized
+An order has **two states before the warehouse ever sees it**: `draft` and `finalized`.
+*(§How New Order Processed)*
+
+- **A person may skip the draft.** Path 1 branches on *"make draft first?"* — *no* goes straight to
+  *"User Make and finalize Order"*, with no review step at all.
+- **A machine may not.** Path 2 is unconditional: *Scan → Create Draft → User Review → User Finalize*.
+
+✅ **That asymmetry is deliberate and it is right.** A human entering their own order does not need a
+second human to check it; a scanner does. **There is no unattended machine path** — every order reaches
+`finalized` through a person.
+
+### The lifecycle, whole — now mostly yours, with one seam and one dangling end
+
+⚠ **Provisional: §Complete Journey Of The Orders is visibly unfinished** — its last node,
+`is Shipment Problem ?`, has **no outgoing edges**. The journey stops exactly where the hardest part
+begins, so everything after *shipped* is undrawn rather than decided. Nothing below treats that as an
+answer, and I have filed no questions about what the missing branches should say.
+
+**What I had proposed for the warehouse half is deleted — you have now drawn it**, and yours is the
+version below. My proposal survives only where the doc is still silent (dotted).
+
+```mermaid
+flowchart LR
+  subgraph "how an order is entered"
+    D["draft"] --> F["finalized"]
+  end
+  subgraph "the journey"
+    C["Order Created"] --> A["Warehouse Accept Order"]
+    A --> P["Warehouse Process Order — packing/picking"]
+    P --> G["Warehouse Give to Shipping Channel"]
+    G --> W["status warehouse process completed"]
+    W --> S["status shipped"]
+    S --> Q{"is Shipment Problem?"}
+  end
+  F -.->|"is Order Created the same moment as finalized? nothing says"| C
+  C --> X["cancelled — the only exit drawn, and only here"]
+  Q -.->|"undrawn — this is where RETURNS enter"| Z["not yet written"]
+  D -.->|"a draft nobody finalizes — still no rule"| Y["abandoned?"]
+```
+
+**Two seams and one gap, in order of how much they cost:**
+
+| | what | where it bites |
+| --- | --- | --- |
+| **the seam** | `finalized` and `Order Created` are never linked | it is exactly where [Question 4](#question) lives |
+| **the gate** | cancellation is one decision, before the warehouse accepts | [Critique 6](#critique) — an order already picked has no exit |
+| **the end** | `is Shipment Problem ?` has no branches | undrawn, not undecided — no questions filed |
+#### the-warehouse-accepts-before-it-processes
+The journey runs **Order Created → (cancel gate) → Warehouse Accept Order → Warehouse Process Order
+(Packing/Picking) → Warehouse Give to Shipping Channel → status `completed` → status `shipped`**.
+*(§Complete Journey Of The Orders — provisional, the flow is unfinished)*
+
+⚠ **`Warehouse Accept Order` is a step nobody had recorded**, and it is the first named handoff between
+two teams in the order path. It implies the warehouse can **decline or defer** — on what grounds, and what
+becomes of the order then, is unwritten. Folded into [Question 3](#question) rather than opened separately.
+
+⚠ **Some boxes are activities and two are status writes** — *"set status warehouse process `completed`"*
+and *"set status `shipped`"*. Read literally the order carries **two** statuses, a warehouse-process one
+and an order one. **→ Recommend one line in the doc separating the two**: which boxes are *things a person
+does* and which are *values the order holds*. Q3 is nearly readable off this flow and stops just short.
 
 #### an-order-mixes-own-and-borrowed-lines
 *"our Order can contain partials shared products and own products"* — one order carries **both** kinds of
@@ -170,12 +241,15 @@ sequenceDiagram
 | **3** | **There is no lifecycle.** An order is created and then nothing. No states, no transitions, no actor moving it. The crew cannot see what to work on next, and the business cannot say when a sale is a sale. | State the **states a person starts and finishes**, so an order being worked on right now looks different from one nobody has touched. My proposal: **placed → picking → packed → handed over → cancelled**, with any later "delivered" fact treated as information *about* the order and not as a state the warehouse owns (see [business_level Contradiction](business_level_clarity.md#one-sentence-two-endpoints-for-warehouse-responsibility)). |
 | **4** | **Nothing says when stock is COMMITTED.** At creation, or when a picker starts? This is the most consequential unanswered question in the requirement set: it decides whether two selling teams can sell the same last unit — and with [reserved-stock-is-never-shared](product_context_clarity.md#reserved-stock-is-never-shared) now in the doc, it also decides **when the reserve is checked**. A reserve tested at creation and a reserve tested at picking protect different things. | Commit **at creation**, and test the reserve there. It is the only choice that makes "available" mean something to the person taking the order, and its cost — stock held by an order nobody picks — is fixed by cancellation, which you need anyway. |
 | **5** | **One order, one warehouse — is that a rule or an accident?** [an-order-carries-four-facts](#an-order-carries-four-facts) names a *warehouse* singular, but [stock-splits-across-warehouses](business_level_clarity.md#stock-splits-across-warehouses) says a team's goods sit in several. So an order for two products may have no single warehouse holding both. | Make it a stated rule: **one order ships from one warehouse**, and an order that cannot be filled from one is split by whoever takes it. Splitting later, inside the system, means a parcel, a courier fee and a marketplace order id that no longer map one-to-one. |
-| **6** | **Cancellation is not mentioned at all** — and it is the most common thing that happens to an order after creation. Before picking, after picking, after packing and after handover are four different physical situations: goods on a shelf, in a tote, in a box, on a van. | Say **who may cancel and until when**. My proposal: freely until packed · after packed it is a **return-to-stock** task for the crew, not a cancellation · after handover it is a return. And every money movement the order caused reverses with it — the order fee, the cross charge — which matters more now that those movements can push a team through its [debt threshold](balance_context_clarity.md#debt-threshold-limits-liability). |
+| **6** | **Cancellation is now drawn — as ONE gate, before the warehouse accepts.** ✅ The *before-acceptance* case is answered: `Is Cancel ? → yes → User Cancel Order → End`, and the user does it. ⚠ **After that gate there is no exit at all.** An order the warehouse has accepted, picked, or packed cannot be cancelled anywhere in the drawn journey — and a buyer cancelling mid-pack is ordinary, not exotic. Goods are then in a tote with no way to say so. | Say whether the single gate is **the rule** or a **simplification of a flow still being drawn** — I am not assuming which. If it is the rule, it is defensible and should be stated as one: *"an order cannot be cancelled once the warehouse has accepted it"*, so everyone can see the cut-off. If it is not, the missing cases are cancel-during-pick (goods return to the shelf) and cancel-after-handover (which is a return, not a cancellation). Either way the money reverses with it — the order fee and the cross charge — which no doc has said yet. |
 | **7** | **A partially fillable order has no answer — and [an-order-mixes-own-and-borrowed-lines](#an-order-mixes-own-and-borrowed-lines) makes it two questions, not one.** The picker reaches the shelf and there are 4 of the 5 ordered. Ship 4, hold, or split? A shortfall on an **own** line costs the team its own sale. A shortfall on a **borrowed** line also means the cross charge already computed against another team is now wrong — money that has to shrink, on somebody else's books. | Decide it once, in the doc. **I would ship what is there and record the shortfall on the order** — the buyer is waiting and a held order helps nobody. And state the money half explicitly: **a short-picked borrowed line reduces the charge to that owner to what actually shipped**, which needs the charge to be revisable up to handover, or posted at handover rather than at creation. |
 | **8** | **The mixed order is now stated, and §Order Anatomy still does not carry it.** *"Product Related"* is one of the four things an order brings, and it says nothing about **whose goods** each line is — yet §What Make Our Order Unique makes ownership vary *within* one order. Nothing says the owner is **frozen** either, and a product's owner is exactly the sort of thing corrected six months after a sale. | Add it to §Order Anatomy item 4: **every line carries its owning team and its cost, frozen at creation**, never looked up later. A debt must not move when a catalogue is tidied. |
 | **11** | **A blocked line has no defined effect on the order — and there are now three ways to block one.** A [shared lock](product_context_clarity.md#shared-lock-stops-sharing-entirely) is on · the line would break the owner's [reserve](product_context_clarity.md#reserved-stock-is-never-shared) · the buyer's team is past its [debt threshold](balance_context_clarity.md#debt-threshold-limits-liability) **with that one owner**. Since one order can borrow from several owners, an order can be simultaneously allowed against B and refused against C. Nothing says whether that kills the order or only the line. | **All-or-nothing at creation**, with the refusal naming the line and the reason. A partly-accepted order is a parcel the buyer did not order, and silently dropping a line is worse than refusing the whole thing — the person taking the order can drop it themselves and retake it. |
 | **9** | **Returns are named as a warehouse responsibility and have no doc** — yet `product_context.md` now prices a returned unit back into stock, so a return is already a *pricing* event with no *process* behind it. Nothing says who declares a return, what states it has, whether the unit rejoins sellable stock, or what happens to the money. | A **return context doc**, or a section here. It cannot live as an exception clause in a liability rule plus a formula in the pricing doc — between them they imply a whole process nobody has written down. |
 | **10** | **Nothing says what the business must be able to PROVE about an order.** Which buyer, which shop, what was picked, by whom, what it cost, what was charged, which parcel left the building — and now also **which door the order came in by**. Without that, "transparency accounting" ([business_level](business_level_clarity.md) §covered 3) has no evidence for the most common transaction in the business. | List the facts an order carries **forever**, and mark which are frozen at creation versus recorded as it moves. Frozen: shop, warehouse, lines, their owners, their cost, **its source (typed or API, and by whom)**. Recorded: who picked, who packed, when it was handed over. |
+| **13** | **`User Review Order` is the sole control between a machine scan and an order that moves stock and money — and it is unspecified, and it CANNOT FAIL.** The flow has no branch out of review: `Create Draft → User Review Order → User Finalize the Order` runs one way. A reviewer who spots a bad scan has nowhere to go in the drawn process. Nothing says what they are checking, or what they may change — quantities, lines, the shop, the owning team. A review nobody can fail is a rubber stamp, and it is the only defence the machine path has. | Give review a **reject branch** and say what it produces: I recommend *approve · edit-then-approve · discard, with a reason*. And name the short list a reviewer is actually checking — I would make it the fields the rest of the system freezes: **shop, warehouse, lines, quantities, and the owning team of each line**. |
+| **14** | **Deduplication is a HUMAN step on one path and ABSENT on the other — and it is absent on the path that retries.** Path 1 opens with *"User Check not recorded order on their own selling platform marketplace"*, which is a person checking by eye. Path 2 has **no equivalent step**: scan → create draft, unconditionally, so a rescan produces a second draft of the same marketplace order. **Nothing in either path is a uniqueness rule** — [Question 1](#question) recommends the marketplace order id refuse a duplicate by construction, and as drawn nothing does. ⚠ **One mitigation, stated fairly:** a duplicate draft still has to pass a human finalize, so it is not unattended — but that relies on someone spotting two identical drafts, possibly reviewed by different people at different times. | Keep the human check as a *convenience* and add the constraint underneath it: **refuse a second order with the same marketplace id in the same shop, at draft creation**. Then the scanner may retry freely and the reviewer never sees a duplicate to miss. |
+| **15** | **A draft may have no owning team yet.** [an-order-carries-four-facts](#an-order-carries-four-facts) derives the owning team from the **shop**, and neither flow says when the shop is set — a scanned draft may exist before anyone has said which shop, and therefore which team, it belongs to. That matters the moment drafts are listed, counted, or visible to more than one team, and it decides whose [debt threshold](balance_context_clarity.md#debt-threshold-limits-liability) would even be consulted. | **A draft carries its shop from the moment it exists** — the scanner knows which storefront it read. If that is genuinely unknowable at scan time, then a draft belongs to the **app's own team** until review assigns it, and say so, because "unowned" is not a state anything else in this system can handle. |
 
 ---
 
@@ -185,15 +259,35 @@ sequenceDiagram
    marketplace order id within a shop? *(Not the same question as §What Make Our Order Unique, which
    answers what is distinctive about them.)* ([Critique 1](#critique))
    **→ I recommend the marketplace order id within a shop, and refuse a duplicate.**
-2. **Does the API enforce the same reserve, lock and threshold checks as the manual path — and may it
-   create orders for another team?** ([Critique 2](#critique)) **→ I recommend same rules, never another team.**
-3. **What states does an order pass through, and who moves it?** ([Critique 3](#critique))
-   **→ I recommend placed → picking → packed → handed over → cancelled.**
-4. **When is stock committed, and when is the reserve tested?** ([Critique 4](#critique))
-   **→ I recommend both at creation.**
+2. **What does `User Finalize` ENFORCE, and may an app scan for a team other than its own?** ✅ The
+   *"who"* half is closed — Path 2 always drafts and always needs a person, so there is **no unattended
+   machine path**. What remains is which rules run at finalize (reserve · shared lock · debt threshold),
+   and whose orders an app may create. ([Critique 2](#critique))
+   **→ I recommend all three enforced at finalize, and never another team.**
+3. **Which boxes in the journey are STATUSES, and may the warehouse decline at `Warehouse Accept Order`?**
+   ✅ Largely answered — the sequence is drawn, and my own proposal is deleted in favour of yours. What is
+   left is small and specific: the flow mixes activities with two explicit status writes
+   (*warehouse process `completed`*, *`shipped`*), so it reads as **two statuses on one order** without
+   saying so · and **acceptance implies a refusal nobody has described**.
+   ([the-warehouse-accepts-before-it-processes](#the-warehouse-accepts-before-it-processes))
+   **→ I recommend one line separating "what a person does" from "what the order holds", and a stated
+   ground and outcome for a warehouse declining an order.**
+4. **Is `Order Created` the same moment as `finalized` — and does a DRAFT commit stock?** ⚠ **Your two
+   flows share no vertex.** §How New Order Processed ends at *"finalize the order"*, §Complete Journey
+   begins at *"Order Created"*, and nothing links them — so a reader cannot tell whether the journey
+   starts **before or after** the moment this question is about. Naming one shared moment would answer
+   most of this for free. ⚠ My earlier answer was *"at creation"*, and creation now names **two**
+   moments, so the word no longer picks one. The same question
+   runs for the reserve, the shared lock, the debt threshold, and the ledger — **a draft surely must not
+   post a payable to the owning team, and nothing says that either.** ([Critique 4](#critique))
+   **→ I recommend NOTHING happens at draft: no stock held, no ledger entry, no threshold check.
+   Everything commits at `finalize`, atomically.** A draft that holds stock lets an unreviewed scan block
+   another team's selling, and drafts nobody finalizes then leak inventory until something reaps them.
+   The cost of my choice is honest and small: availability shown while drafting can go stale, so
+   **finalize must re-check and may refuse** — which is [Question 5](#question) already.
 5. **Does one blocked or unavailable LINE refuse the whole order?** — a lock, a reserve, or a debt
    threshold reached with one of several owners. ([Critique 11](#critique))
-   **→ I recommend all-or-nothing at creation, with the refusal naming the line.**
+   **→ I recommend all-or-nothing at FINALIZE, with the refusal naming the line.**
 6. **What happens on a partial pick — and does a short-picked BORROWED line reduce what that owner is
    owed?** ([Critique 7](#critique)) **→ I recommend ship what is there, record the shortfall, and charge
    the owner for what actually shipped.**
@@ -201,6 +295,16 @@ sequenceDiagram
    the amount; `product_context.md` §Pricing Behavior 2 supplies it and this doc does not repeat or link it.
    ([Contradiction — the residue](#contradiction))
    **→ I recommend saying it here in four words, or linking: the two docs already agree.**
+8. **What is `User Review Order` checking, and can it REJECT?** The flow runs one way — review always
+   proceeds to finalize — so a reviewer who spots a bad scan has nowhere to go. ([Critique 13](#critique))
+   **→ I recommend approve · edit-then-approve · discard-with-a-reason, and a stated checklist: shop,
+   warehouse, lines, quantities, and each line's owning team.**
+9. **Is the single cancel gate the RULE, or a simplification of a flow still being drawn?** As drawn, an
+   order the warehouse has accepted can never be cancelled — no exit exists after that point.
+   ([Critique 6](#critique))
+   **→ I recommend stating it either way rather than leaving it implied. If it is the rule, say
+   "not cancellable once accepted" so the cut-off is visible. And say that cancelling reverses the order
+   fee and the cross charge, which no doc has yet.**
 
 ---
 

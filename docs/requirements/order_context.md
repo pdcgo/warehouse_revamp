@@ -89,6 +89,63 @@ when order created. its bring 4 things.
 
     ```
 
+## Complete Journey Of The Orders.
+```mermaid
+flowchart TD
+s(("start"))
+e(("End"))
+
+s-->create["Order Created"]
+create-->cancel{"Is Cancel ?"}
+cancel-->|yes|uc["User Cancel Order"]
+    uc-->e
+cancel-->|no|waccept["Warehouse Accept Order"]
+    waccept-->process["Warehouse Process Order (Packing/Picking)"]
+    process-->give["Warehouse Give to Shipping Channel"]
+    give-->setwcompleted["set status warehouse process `completed`"]
+    setwcompleted-->setship["set status `shipped`"]
+    setship-->shipproblem{"is Shipment Problem ?"}
+    shipproblem-->|yes|setproblem["set status `problem`"]
+        setproblem-->e
+    shipproblem-->|no|completed["set status `completed`"]
+        completed-->e
+
+```
+
+## How New Order Processed.
+
+1. How User Input The Order.
+    ```mermaid
+    flowchart TD
+    s(("start"))
+    s-->u("User Check not recorded order on their own selling platform marketplace")
+    u-->isdraft{"make draft first ?"}
+    isdraft-->|yes|draftmake["User Input Draft Order"]
+        draftmake-->rev("User Review Order")
+        rev-->final("finalize the order")
+        final-->e
+    isdraft-->|no|insertfinal["User Make and finalize Order"]
+        insertfinal-->e
+
+
+    e(("end"))
+
+    ```
+2. How Selling third parties record order
+    ```mermaid
+    flowchart TD
+    s(("Start"))
+    e(("End"))
+
+    s-->th("Third Parties App Scan Order")
+    th-->draft("Create Draft Order")
+    draft-->u("User Review Order")
+    u-->final("User Finalize the Order")
+    final-->e
+    
+    ```
+
+
 
 
 

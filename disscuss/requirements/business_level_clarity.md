@@ -53,6 +53,13 @@ opname, or hands a parcel to a courier — see [user_context_clarity](user_conte
 **Selling team** owns every unit of stock · the **warehouse team** holds it physically and decides its
 placement · ownership never transfers to the warehouse. *(§Stock Ownership 1, §Warehouse Team 4)*
 
+#### warehouse-manages-placements
+**Warehouse team** · *"manage **placements** of the stocks"* — a standalone responsibility, alongside
+handling stock and doing opname. *(§Warehouse Team 8)* ⚠ **The same capability is also a clause inside
+§Warehouse Team 4**, so the list now states it twice — see [Critique 7](#critique). The plural noun is what
+makes me read item 8 as a **promotion**: item 4 describes an activity the warehouse performs, item 8 names
+**things that can be managed**. Nothing anywhere says what one is.
+
 #### stock-splits-across-warehouses
 One selling team's stock for one product may sit in **several warehouses at once** — the diagram splits
 100 into 70 + 30. So "how much do I have" is a **per-warehouse** question before it is a total.
@@ -162,6 +169,7 @@ negative half — the doc that defines the four teams' responsibilities says who
 | **4** | **§Admin now says "manage all resource" and that is a very large sentence.** It answers whether Admin acts — it does — but not *what*. Managing a team's users is one thing; adjusting a stock count, editing a cross markup, or posting a balance entry are each a different order of power, and the third would make Admin a second set of books. | Enumerate it in §Admin: I would allow **manage users and roles · override a control · unblock · read everything**, and forbid **posting money** and **changing a count** — the two acts that would let a non-owner rewrite what another team owes. And every admin act is **recorded with actor and reason**, which is [Critique 1](#critique) again. |
 | **5** | **Whether a TEAM can be two types is still unanswered — and the person half being settled makes it sharper, not softer.** `user_context.md` §General now allows one human to hold roles in several teams, so a person standing on both sides of a money rule is a described case rather than a worry. If a **team** could also be both a warehouse and a selling team, [warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) would have it reimbursing itself, and a debt threshold would apply against itself. | State: **a team has exactly ONE type.** The four responsibilities are genuinely different jobs, and one team holding two of them turns three money rules into no-ops. The small-operation case that would otherwise tempt a dual-type team is already covered by the person-level flexibility — see [user_context_clarity Question 2](user_context_clarity.md#question). |
 | **6** | **"until its shipped" ends the warehouse's job and nothing covers the parcel after it.** A courier loses a shipped parcel — not broken in the warehouse, not at receiving, not a return. `stock_context.md` §Stock loss covers only the two phases inside the building, and no role hands the parcel over. | Add a third loss phase — **in transit to the customer** — and name who bears it. I would put it on the **selling team** (it owns the sale and the courier relationship), with the courier claim as the recovery. |
+| **7** | **Placement is now asserted twice in the same list.** *"§Warehouse 4: Ownership of stock is by selling team. But, warehouse managing phisique of goods and **placement of goods**"* · *"§Warehouse 8: manage **placements** of the stocks."* One responsibility, two homes, in the one place HARD RULE 11 says restated lists go stale — the next rule about placement has two items to be added to, and only one will get it. | **I read item 8 as a promotion, not a slip** — *placements* (plural, manageable things) is a different claim from *placement of goods* (an activity) — and if so the fix is to **fold the clause out of item 4**, leaving it to say only what it is about: ownership. Item 4 then reads *"Ownership of stock is by selling team, but the warehouse holds the goods physically"*, and item 8 owns placement outright. ⚠ If instead you meant item 8 as a restatement, delete one — but then [warehouse-manages-placements](#warehouse-manages-placements) is not a new capability and the questions it raises do not arise. **Only you can say which.** |
 
 ---
 
@@ -177,6 +185,10 @@ negative half — the doc that defines the four teams' responsibilities says who
 4. **Who bears a parcel lost after handover to the courier?** ([Critique 6](#critique))
    **→ I recommend the selling team.**
 5. **What does "transparency accounting" have to prove, and to whom?** ([Critique 1](#critique))
+6. **Is §Warehouse 8 a PROMOTION of placement to a first-class capability, or a restatement of the clause
+   already in §Warehouse 4?** ([Critique 7](#critique))
+   **→ I recommend promotion, with the clause folded out of item 4 — and if it is a restatement, delete one
+   rather than leaving both.**
 
 ---
 

@@ -33,6 +33,22 @@ Siblings: [business_level](business_level_clarity.md) · [user_context](user_con
 [receiving-losses-are-not-the-warehouses](business_level_clarity.md#receiving-losses-are-not-the-warehouses),
 which said only who does *not* pay.
 
+#### receiving-is-one-flow-for-restock-and-return
+**Warehouse team member** · goods arrive, whether a **restock or a return** · one procedure handles both:
+check against the system · accept · optional fee · calculate unit price · record losses and breakages ·
+calculate valid quantity · **set placements**. *(§How Warehouse Team Member Accept Stock / Return That
+Arrived)*
+
+✅ **This closes what "at receiving" means.** The word in [selling-team-bears-the-receiving-loss](#selling-team-bears-the-receiving-loss)
+now has a defined scope — the flow is titled for both phases and its first node reads *"Receiving
+Restock/Return"* — so a return arriving damaged is a loss **at receiving**, and the selling team bears it.
+That question was open for every pass of this analysis and is **deleted**. ⚠ The closure rests on *receiving*
+meaning the same thing in the prose rule and in the flow's title; if it does not, this reopens.
+
+⚠ **Still unstated: WHICH selling team**, when the sale was cross-team — the borrower who sold it, or the
+owner whose goods they are. The flow never mentions an owning team at all
+([product_context Critique 9](product_context_clarity.md#critique)).
+
 #### in-custody-shortfall-is-the-warehouses
 **Warehouse team** · stock already **in** the warehouse · a loss **or an opname shortfall** · is a
 warehouse **liability**. *(§Stock loss 2)* — so an unexplained count difference is money, not a
@@ -60,9 +76,9 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | | The question | Why it cannot be deferred |
 | --- | --- | --- |
 | **1** | **What is the unit we track?** A piece, a box, a pair? Is it the same unit the supplier sells and the marketplace sells? | If they differ, every count, every cost and every order line needs a conversion — a business rule nobody can guess. It also decides what `AllProductQtyRestock` counts in [unit-price-is-landed-cost](product_context_clarity.md#unit-price-is-landed-cost). |
-| **2** | **Where can stock BE?** On a shelf · arrived but not yet shelved · in transit between warehouses · set aside as damaged · held for an order. | These are the places a person can physically point at, and [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) now attaches **money** to being "in the warehouse" — so the boundary of that phrase has a price. |
+| **2** | **Where can stock BE?** On a shelf · arrived but not yet shelved · in transit between warehouses · set aside as damaged · held for an order. | ⚠ **`business_level.md` §Warehouse 8 now makes placement a named capability and still does not say what a placement IS** — a rack, a shelf, a bin, a zone. My recommendation elsewhere that opname be *"counted per shelf"* assumes a grain no doc has defined. These are the places a person can physically point at, and [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) now attaches **money** to being "in the warehouse" — so the boundary of that phrase has a price. |
 | **3** | **What does "available" mean?** On-hand minus what — committed orders, the shared reserve, damaged units awaiting a decision? | Two selling teams share one pool by design, and [reserved-stock-is-never-shared](product_context_clarity.md#reserved-stock-is-never-shared) now subtracts from it. "Available" is the number both teams sell against, and if it means two things they will oversell. |
-| **4** | **Who may move stock, and who may change a count?** Placement is the warehouse's — but may the *owner* adjust a quantity? May the warehouse write stock off unilaterally? | A count change is now provably money. Whoever may change it alone can move another team's money — in either direction. |
+| **4** | **Who may move stock, is the move RECORDED, and who may change a count?** `business_level.md` §Warehouse 8 now names *"manage placements of the stocks"* as a standalone responsibility ([warehouse-manages-placements](business_level_clarity.md#warehouse-manages-placements)) — so moving goods between places is a first-class act, and nothing says it leaves a trace. ⚠ **An unrecorded move is indistinguishable from a loss at the next count**, and under [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) a count shortfall is a **warehouse liability**. A crew that reshelves without recording it **manufactures its own debt** — and the units turn up on another shelf as an unexplained surplus. | **Every move is recorded, from place to place, with its actor** — that single rule is what makes the opname liability survivable, because a difference then has somewhere to be explained from. Also answer the two originals: may the *owner* adjust a quantity, and may the warehouse write stock off unilaterally? |
 | **5** | **Can stock change OWNER without moving?** Team A sells its remaining units to team B, or a team closes. | Nothing allows it and nothing forbids it. If it can happen it is a movement with a cost and a balance entry, not an edit. |
 | **6** | **How often is stock counted, and who may call for a count?** §Warehouse 7 says opname happens. Nothing says when, at what grain, or who triggers it. | Now that a shortfall is a liability, **the trigger is a financial act**. See [Critique 2](#critique). |
 
@@ -93,53 +109,63 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | **6** | **In-transit stock between warehouses has no owner of the risk.** Goods leave warehouse 1 and have not arrived at warehouse 2 — they are in nobody's custody, so [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) does not reach them. A transfer is currently the one way to lose goods with no liability. | Name **in transit** as a place, and put the risk on the **sending** warehouse until receipt is confirmed. |
 | **7** | **Two Packers at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
 | **8** | **Expiry is never mentioned in the requirement set.** If anything you sell perishes, it is a loss with a date on it that nobody is watching, and FIFO stops being an accounting rule and becomes a picking instruction. | Say whether **anything you sell expires**. If yes, expiry belongs here as a first-class fact and it changes how the crew picks. If no, one line closes a whole area. |
+| **9** | **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](product_context_clarity.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](business_level_clarity.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
+| **10** | **A delivery that is both SHORT and DAMAGED can only record one of the two.** `Is Any Lost → yes → Input Losts → Calculate valid Qty` — the "yes" branch **skips the broken check entirely**. Only a delivery with *no* losses ever reaches *Is Any Broken*. Both happen in one delivery routinely: a carton missing and another crushed. Under the drawn flow the crushed one is never recorded, so it becomes stock the system believes is sellable — and the difference surfaces later as an unexplained shortfall, which under [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) is a **warehouse liability** for goods that arrived broken. | Make the two checks **sequential, not exclusive** — `Input Losts → Is Any Broken`. One arrow again, and it stops the warehouse inheriting a supplier's damage. |
+| **11** | **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and leave the goods **unplaced** until someone resolves it. Then the count reconciles and the manual report is a task rather than a dead end. |
+| **12** | **Placement now has two moments and only one is drawn.** The receiving flow ends at `Set Placements`, so a **first** placement always happens and nothing routinely sits unshelved — good, and it matches [warehouse-manages-placements](business_level_clarity.md#warehouse-manages-placements). What the flow does not cover is the **later** move: reshelving, consolidating, moving between racks. My recording recommendation in row 4 covers both, but only the second is a *move* — the first is part of accepting, and it already has a natural record because the receipt exists. | Say the two are different acts: **placement at receiving is part of the receipt** · **a later move is its own recorded event with its own actor**. Otherwise "record every move" reads as demanding a second record for something the receipt already captured. |
 
 ---
 
 ## Question
 
-1. **Does "at receiving" include RETURN receiving?** ([Contradiction](#contradiction))
-   **→ I recommend saying it explicitly either way — as written, that phase has no bearer at all.**
-2. **Is there a tolerance on an opname shortfall, and can the warehouse dispute one?**
+1. **Is the flow's step order deliberate — `Calculate Unit Price` BEFORE the shortfall is known?** As
+   drawn, freight and the warehouse fee are divided by the **expected** quantity, so units that never
+   arrived carry cost and the ones that did are under-priced. ([Critique 9](#critique))
+   **→ I recommend moving it after `Calculate valid Qty`. One arrow — but a diagram is not prose, so this
+   is a question and not a finding against you.**
+2. **Should a delivery be able to record losses AND breakages?** The `Is Any Lost → yes` branch skips
+   `Is Any Broken` entirely, so a short-and-damaged delivery can only record the shortage.
+   ([Critique 10](#critique)) **→ I recommend chaining them: `Input Losts → Is Any Broken`.**
+3. **Goods arrive that the system does not know about — what happens to them physically, and who bears
+   them?** *"Report Manually (Outside System)"* ends the flow with stock in the building and no record.
+   ([Critique 11](#critique)) **→ I recommend recording a receipt with no matching restock and leaving the
+   goods unplaced, so the escape hatch ends inside the system.**
+4. **Is there a tolerance on an opname shortfall, and can the warehouse dispute one?**
    ([Critique 1](#critique)) **→ I recommend no tolerance, with a short recount window.**
-3. **Who may call for an opname, and at what grain?** ([Critique 2](#critique))
+5. **Who may call for an opname, and at what grain?** ([Critique 2](#critique))
    **→ I recommend the warehouse schedules it, the owner may request one, counted per shelf.**
-4. **After the warehouse has reimbursed a broken unit, whose object is it?** ([Critique 4](#critique))
+6. **After the warehouse has reimbursed a broken unit, whose object is it?** ([Critique 4](#critique))
    **→ I recommend the warehouse's.**
-5. **Does anything you sell expire?** ([Critique 8](#critique))
+7. **Does anything you sell expire?** ([Critique 8](#critique))
 
 ---
 
 # Contradiction
 
-## the receiving boundary is drawn with different words in two docs, and one phase falls in the gap
+## ✅ the receiving-boundary gap is CLOSED — recorded, not deleted silently
 
-> `business_level.md` §Warehouse Team 6: *"warehouse dont have responsbility every broken/lost goods at
-> **receiving restock** or **return goods from the returning orders**."* — **two** phases named.
->
-> `stock_context.md` §Stock loss 1: *"Selling Team bears the loss **at receiving**."* — **one** phrase,
-> and it is the word the other doc uses for the *first* of those two phases.
+For several passes this section held a contradiction: `business_level.md` §Warehouse 6 named **two**
+phases the warehouse is not liable for — *"receiving restock or return goods from the returning orders"* —
+while §Stock loss 1 assigned the loss using **one** word, *"at receiving"*. Between them, a return arriving
+smashed was borne by nobody.
 
-So a unit that comes back from a customer smashed is: **not** the warehouse's (§Warehouse 6 says so
-outright) and **not clearly** the selling team's (only if *"at receiving"* is read to include return
-receiving). Between the two rules the phase has **no bearer** — and unlike the other gaps this one is
-not an omission, it is two rules that look complete side by side and are not.
+**§How Warehouse Team Member Accept Stock / Return That Arrived closes it** by giving the word a scope:
+one flow, titled for both, first node *"Receiving Restock/Return"*. So *"at receiving"* covers both phases
+and the selling team bears both.
 
-**I think `stock_context.md` §Stock loss 1 is the line to fix**, because it is the doc that assigns
-bearers and it uses a narrower word than the doc it is completing.
-
-**→ Recommend** §Stock loss list the phases explicitly — *restock receiving* · *return receiving* ·
-*in the warehouse* · *in transit* · *after handover* — with a bearer against each. And for return
-receiving specifically, say **which** selling team bears it when the sale was cross-team: the borrower
-who sold it, or the owner whose goods they are. I would say the **owner**, because the unit re-enters
-their stock, but that is your call and it is worth a line.
+**Why it is recorded rather than removed:** the cause was a rule assigning liability with a **word whose
+scope lived in another document** — the same shape as the two leg-naming contradictions in
+`order_context_clarity`. What closed it was not a new rule but a **definition of the term**, and that is
+the cheapest fix available for this class. ⚠ The one residue is named under
+[receiving-is-one-flow-for-restock-and-return](#receiving-is-one-flow-for-restock-and-return): *which*
+selling team bears a cross-sold return.
 
 ```mermaid
 flowchart LR
   R["a return arrives smashed"] --> A{"warehouse?"}
-  A -->|"no — business_level §Warehouse 6"| B{"selling team?"}
-  B -->|"only if 'at receiving' includes returns"| C["undecided"]
-  C --> D["today: nobody bears it"]
+  A -->|"no — business_level §Warehouse 6"| B["the SELLING team, per §Stock loss 1"]
+  B --> C["because the flow defines receiving as covering returns"]
+  C -.->|"still open: WHICH selling team on a cross-sold unit"| D["product_context Critique 9"]
 ```
 
 ---

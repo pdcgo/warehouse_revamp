@@ -48,7 +48,7 @@ like the one below is visible on the first line rather than in the path.
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **The filename and the heading name two different subjects, and `product_context.md` links here as its own system requirements.** A reader following the link from the pricing doc lands on a stock heading. One of the two is wrong and only you know which. | If this is meant to be the **product** one, the heading is the typo. If the **stock** system requirements were started here by accident, they want their own `systems_stock_context.md` — and note [stock_context.md](../../../docs/requirements/stock_context.md) is itself still one section long, so a system doc for it would be derived from very little ([stock_context_clarity](../stock_context_clarity.md)). |
-| **2** | **`systems/` has no stated contract.** With one empty file it is impossible to tell whether a systems doc holds RPCs and tables, or business rules stated precisely enough to implement. That difference decides whether these files are yours or a programmer's. | State it in one line at the top of the folder's first real file. **I would keep `systems/` as precise BUSINESS rules — inputs, outputs, invariants — and leave schemas and RPCs to `plans/`**, so the requirement set stays readable by someone who does not read Go. |
+| **2** | **`systems/` has no stated contract — and it is now the MIDDLE of a three-layer ladder.** A third layer, [`architectures/`](../../../docs/requirements/architectures/architecture_context.md), arrived while this one was still a single empty heading, so any new rule now has three plausible homes and no stated rule for choosing. | **Moved, not dropped.** The boundary question is asked once, over the whole ladder, in [architectures/architecture_context_clarity](../architectures/architecture_context_clarity.md#question) — it changed shape when the third layer appeared and only the whole ladder can answer it. |
 
 ---
 
@@ -57,8 +57,11 @@ like the one below is visible on the first line rather than in the path.
 1. **Is this file the product one or the stock one?** ([Critique 1](#critique))
    **→ I recommend product, and the heading is corrected** — the filename matches the link from
    `product_context.md`, so two references point at *product* against one pointing at *stock*.
-2. **What does a `systems/` doc hold that its context doc does not?** ([Critique 2](#critique))
-   **→ I recommend precise business rules, not schemas.**
+
+> **One question was re-routed out of this file** — *what does a `systems/` doc hold that its context doc
+> does not* is now asked once over all three layers, in
+> [architectures/architecture_context_clarity](../architectures/architecture_context_clarity.md#question).
+> Left here as a pointer, not as an open item, so it is counted once.
 
 ---
 
