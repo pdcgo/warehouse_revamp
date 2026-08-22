@@ -145,9 +145,66 @@ cancel-->|no|waccept["Warehouse Accept Order"]
     
     ```
 
+## About Customer Pays & Order Revenue.
+1. In our business, order is from other platform. Revenue is hold by platform, until platform transfer to our bank accounts.
+2. Estimate Revenue is just recorded. its doesn't affect the ledger, its used for statistic.
+```mermaid
+stateDiagram-v2
+    platform: Selling Outside Platform
+    state platform {
+        state "Platform Order Created" as pcreated
+        state "Order Shipped" as pshipped
+        state "Order Completed" as pcompleted
+        state "Order Have Revenue" as prev
+        
+
+        [*] --> pcreated
+        
+        pcreated-->screated: Customer Service Record Order, and write estimate Revenue
+        pcreated-->pshipped
+        pshipped-->pcompleted
+        pcompleted-->prev
+        prev-->wallet: Cash Out to Balance.
+        prev-->revenue: Write to True Revenue System Ledger
+
+
+        wallet: Platform Wallet
+        state wallet {
+            state "Balance" as balance
+            state "Withdrawal" as wd
+            [*]-->balance
+            balance-->wd: Selling Admin/Customer Service do withdrawal
+            wd-->revenue: Selling Admin/Customer Record Withdrawal
+        }
+
+        
+    }
 
 
 
+    system: Our System
+    state system {
+
+        revenue: Revenue System Ledger
+        state revenue {
+            state "Balance" as sbalance
+            sbalance-->[*]
+        }
+        state "Order Created" as screated
+        
+        warehouse: Warehouse
+        state warehouse {
+            state "Order Processed" as process
+            state "Order Shipped" as shipped
+
+            screated-->process: Order Processed By Warehouse
+            process-->shipped
+            shipped-->[*]
+        }
+        
+    }
+
+```
 
 
 

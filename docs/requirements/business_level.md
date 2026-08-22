@@ -30,6 +30,7 @@ For more explanation read this.
 3. [Team Balance Management Context](./balance_context.md)
 4. [Order Context](./order_context.md)
 5. [User Context](./user_context.md)
+6. [Ledger Context](./ledger_context.md)
 
 
 ## Business Entity.
@@ -186,3 +187,5 @@ end
     - supplier can be vendor for a big quantity.
     - supplier can be came from other marketplace platform.
     - supplier can be just random url product on internet in small quantity goods needed. 
+
+
