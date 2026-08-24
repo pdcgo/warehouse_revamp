@@ -145,9 +145,13 @@ cancel-->|no|waccept["Warehouse Accept Order"]
     
     ```
 
+## Order Settlements.
+
 ## About Customer Pays & Order Revenue.
-1. In our business, order is from other platform. Revenue is hold by platform, until platform transfer to our bank accounts.
+
+1. In our business, order is from other platform.
 2. Estimate Revenue is just recorded. its doesn't affect the ledger, its used for statistic.
+
 ```mermaid
 stateDiagram-v2
     platform: Selling Outside Platform
@@ -206,7 +210,55 @@ stateDiagram-v2
 
 ```
 
+### Hold Funds, Revenue And Withdrawals.
+```mermaid
+stateDiagram-v2
+state ords{
+    state "Order" as ord
+    state "Hold Fund" as hfund
+    state "Revenue" as rev
+    [*]-->ord
+    ord-->hfund
+    ord-->rev
+
+}
+
+```
+
+### How Withdrawal/Revenue entered or left the business ?.
+Withdrawal/Revenue entered or left the business is inputted manually/batch import by customer service or admin to our system.
+
+### True Revenue.
+1. True revenue is order scoped.
+
+### 
 
 
+## Stock Ownership When Order Return. 
+```mermaid
+flowchart TD
 
+s(("Start"))
+e(("End"))
+
+s-->ret["Order Return Happen"]
+ret-->iscross{"Is Product Cross"}
+iscross-->|yes|linkmap{"Is Product Have LinkMap"}
+    linkmap-->|no|pcreate["Duplicate Cross Product"]
+        pcreate-->own["Set Ownership to Own"]
+        own-->reg["Register To LinkMap"]
+        reg-->claim["Claim Cross Return Stock With Own Product"]
+    linkmap-->|yes|pget["Getting Own Product Have Linked"]
+        pget-->claim
+    
+    claim-->ivcreate["Create Return"]
+
+iscross-->|no|ivcreate
+ivcreate-->e
+
+
+```
+### What Is Product LinkMap
+1. its use for prevent duplicate create product when order return happened.
+2. its use for map product ownership when its return.
 

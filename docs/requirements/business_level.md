@@ -31,6 +31,7 @@ For more explanation read this.
 4. [Order Context](./order_context.md)
 5. [User Context](./user_context.md)
 6. [Ledger Context](./ledger_context.md)
+7. [Settlement Context](./settlement_context.md)
 
 
 ## Business Entity.

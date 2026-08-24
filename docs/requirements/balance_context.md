@@ -65,3 +65,4 @@ end
 ## Balance Policy.
 For prevent unfair liability, we must have feature Debt Thresholds.
 1. Debt Thresholds is manage by team owner and can overide by admin/root team.
+2. when customer service finalizes order that contain cross products. its compared to the committed pair row only.
