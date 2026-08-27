@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
--- THE LEDGER OF WHAT TEAMS OWE EACH OTHER (#183, plans/settlement_service/brainstorming.md §4).
+-- THE LEDGER OF WHAT TEAMS OWE EACH OTHER (#183).
 --
 -- Two tables, and the relationship between them is the whole design: `settlement_entries` is the
 -- TRUTH — immutable, append-only — and `settlement_balances` is a PROJECTION of it. Every balance

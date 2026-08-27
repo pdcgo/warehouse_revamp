@@ -875,8 +875,8 @@ export const OrderDraftRowSortSchema: GenEnum<OrderDraftRowSort> = /*@__PURE__*/
   enumDesc(file_warehouse_selling_v1_order_draft, 1);
 
 /**
- * OrderDraftService owns `order_drafts` + `order_draft_items` (#190,
- * plans/selling_service/brainstorming.md §6) — an INCOMPLETE order pushed in by a third-party app,
+ * OrderDraftService owns `order_drafts` + `order_draft_items` (#190) — an INCOMPLETE order pushed in
+ * by a third-party app,
  * which a person in this system finishes and promotes into a real order.
  *
  * A draft is not a quotation, not a reservation, not an unpaid marketplace order, and not a

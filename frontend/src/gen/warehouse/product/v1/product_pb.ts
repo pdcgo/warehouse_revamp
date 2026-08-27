@@ -197,16 +197,16 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
 
   /**
    * ── CROSS ────────────────────────────────────────────────────────────────────────────────────
-   *
+   * 
    * "Cross" is another team using OUR product on THEIR order: they sell it through their own shop,
    * the goods come out of our stock, and we charge them a MARKUP over our cost for it. The markup is
    * therefore a property of the product being lent out, set by the team that owns it.
-   *
+   * 
    * In BASIS POINTS — 1/100 of a percent, so 1250 = 12.50%. Percent is the format a person types and
    * reads, and the UI shows exactly that; the wire keeps it as an integer because this number
    * multiplies money, and a float that rounds differently on two screens becomes an argument between
    * two teams rather than a display bug.
-   *
+   * 
    * 0 = no markup: the other team pays what we paid. That is a real, chooseable answer, which is why
    * it is not modelled as "unset".
    *
@@ -216,11 +216,11 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
 
   /**
    * LOCKED — may another team put this product on ITS order?
-   *
+   * 
    * false (the default) = yes: it appears in ProductDiscover and another team can build an order
    * around it, paying cross_markup_bps over our cost. That is how every product has behaved so far.
    * true = ours only: it drops out of cross-team discovery entirely.
-   *
+   * 
    * The field is named for what it DOES to other teams, because that is the question its owner is
    * answering — "can somebody else sell this?" — and a flag named for the permissive state would
    * read as a double negative on every screen that shows it.
@@ -231,20 +231,20 @@ export type ProductCreateRequest = Message<"warehouse.product.v1.ProductCreateRe
 
   /**
    * ── RESERVED ─────────────────────────────────────────────────────────────────────────────────
-   *
+   * 
    * A HOLD-BACK BUFFER, not a quantity: how many units of this product are never offered for sale,
    * so that `available = on_hand − reserved_stock`. It is the answer to "never sell the last N" —
    * the margin that keeps a count that drifted, a unit that got damaged on the shelf, or two orders
    * landing in the same second from turning into an oversell somebody has to apologise for.
-   *
+   * 
    * It belongs to the PRODUCT, not to a warehouse: it is a decision about the item ("this one is
    * fragile / always miscounted / a display piece"), taken once by the person who owns the
    * catalogue, and it holds wherever the thing is stocked. The physical per-warehouse quantities
    * stay in inventory_service, which applies this buffer when it computes what is sellable.
-   *
+   * 
    * In UNITS, matching how stock is counted everywhere else — a percentage would round to fractions
    * of a physical object. 0 = hold nothing back, which is the default and a real answer.
-   *
+   * 
    * The upper bound is a sanity rail, not a policy: a million units is far past any real buffer and
    * still catches a quantity typed into the wrong field.
    *
@@ -582,11 +582,11 @@ export type ProductDiscoverRequest = Message<"warehouse.product.v1.ProductDiscov
    * rather than "everything sellable". Set by a picker that offers *My products* and *Other teams'
    * products* as separate tabs, where the two overlapping would mean the same row appearing twice
    * with no way to tell which tab it belonged to.
-   *
+   * 
    * Server-side, and it has to be: the result is PAGINATED, so dropping own-team rows in the client
    * would narrow the loaded page while `total_items` went on counting them — a pager offering page 4
    * of a list that ends at page 3.
-   *
+   * 
    * A field on the REQUEST rather than in ProductListFilter, because that filter is shared with
    * ProductList, where "everyone except me" describes an empty set.
    *
@@ -596,14 +596,14 @@ export type ProductDiscoverRequest = Message<"warehouse.product.v1.ProductDiscov
 
   /**
    * Only products owned by THIS team. 0 = every team, which is the default.
-   *
+   * 
    * The lens for "I know whose product I want" — cross-team discovery returns every sellable product
    * in the system, and by the time there are a dozen selling teams a search box alone means scrolling
    * somebody else's catalogue to find the one you meant.
-   *
+   * 
    * Server-side for the same reason `exclude_own_team` is: the result is paginated, and a filter
    * applied after the page has loaded narrows the rows while the count keeps describing the whole set.
-   *
+   * 
    * Set alongside `exclude_own_team` it simply intersects — naming your OWN team while excluding it
    * returns nothing, which is the honest answer to a contradictory ask rather than an error.
    *
@@ -613,25 +613,25 @@ export type ProductDiscoverRequest = Message<"warehouse.product.v1.ProductDiscov
 
   /**
    * ── The PRIORITY partition ──────────────────────────────────────────────────────────────────
-   *
+   * 
    * Two lists of owning teams, one keeping and one dropping. They exist as a PAIR because the
    * picker's *Priority Product* and *Other Product* tabs are two halves of one partition: priority is
    * a flag on the TEAM (see warehouse.team.v1.Team.priority_product), so the caller reads the
    * priority team ids once and then asks for the two complementary slices.
-   *
+   * 
    *   Priority tab   owner_team_ids         = [the priority teams]
    *   Other tab      exclude_owner_team_ids = [the priority teams]
-   *
+   * 
    * ⚠ IDS RATHER THAN A `priority` BOOLEAN ON THIS REQUEST, and that is not indirection for its own
    * sake. product_service does not own `teams` and must not join to it (HARD RULE 3 — services stay
    * independent), so it cannot answer "whose owner has the feature". Handed a list of team ids it can
    * answer perfectly, and it never has to learn what the list means. The flag stays in exactly one
    * place, and the two services keep their own schemas.
-   *
+   * 
    * ⚠ AN EMPTY LIST IS NO NARROWING, on both. A caller whose priority set is genuinely empty must
    * render nothing itself rather than sending `owner_team_ids: []` — which would return the whole
    * catalogue and read, on the Priority tab, as "everything is priority".
-   *
+   * 
    * Both intersect with `owner_team_id` and `exclude_own_team` rather than overriding them; a
    * contradictory ask returns nothing, which is the honest answer.
    *
@@ -681,7 +681,7 @@ export const ProductDiscoverResponseSchema: GenMessage<ProductDiscoverResponse> 
 
 /**
  * ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
- *
+ * 
  * It exists because a warehouse physically holds other teams' goods: a selling team raises a restock
  * for its own product, and fulfilling it puts that product on the warehouse's shelf. So "what is on
  * rack A-01-3" starts from stock rows whose product ids belong to somebody else's catalogue, and a
@@ -980,7 +980,7 @@ export const ProductDeleteResponseSchema: GenMessage<ProductDeleteResponse> = /*
 
 /**
  * ProductRestore puts an archived product back into the catalogue (`deleted = false`).
- *
+ * 
  * It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
  * reason no other update can: archiving frees the SKU (the uniqueness index is partial —
  * `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
@@ -1104,7 +1104,7 @@ export const ProductRowSortSchema: GenEnum<ProductRowSort> = /*@__PURE__*/
 /**
  * ProductStatus selects which half of the catalogue a list answers over: the live products, or the
  * archived ones. It is the ACTIVE / ARCHIVED tab on the product list.
- *
+ * 
  * An archived product is not deleted — the row survives, its stock outlives it, and its past orders
  * still name it. What archiving does is take it out of circulation: out of the pickers, out of new
  * orders, out of restocks.
@@ -1171,10 +1171,10 @@ export const ProductByIdsDataTypeSchema: GenEnum<ProductByIdsDataType> = /*@__PU
  * its own catalogue), and every WRITE is team-scoped: `team_id` carries (use_scope), and the handler
  * only ever touches rows with that team_id — you cannot create, edit or delete another team's product
  * by passing its id.
- *
+ * 
  * READS are not all so narrow, and deliberately: `team_id` on those means "the team you hold a role in"
  * and NOT "the team whose products you get back".
- *
+ * 
  *   - ProductList     — this team's own catalogue. Narrow.
  *   - ProductDiscover — every team's catalogue, for SELLING roles: a selling team browses to find
  *                       things to sell (#106).

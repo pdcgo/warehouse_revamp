@@ -9,8 +9,7 @@ import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
 
-// SettlementService is the ledger of WHAT TEAMS OWE EACH OTHER (#180,
-// plans/settlement_service/brainstorming.md).
+// SettlementService is the ledger of WHAT TEAMS OWE EACH OTHER (#180).
 //
 // It exists because an obligation already happens today and nothing records it: when a restock
 // arrives COD, the WAREHOUSE pays the courier at the door for goods it does not own (#155). That

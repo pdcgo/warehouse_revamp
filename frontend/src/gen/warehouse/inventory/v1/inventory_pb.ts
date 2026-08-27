@@ -4220,8 +4220,6 @@ export const OwnerStockHistoryDataTypeSchema: GenEnum<OwnerStockHistoryDataType>
  * the thing a worker has a role in. `product_id` is an OPAQUE id owned by product_service — there
  * is no cross-service FK; it is resolved over RPC when a name is needed.
  *
- * See plans/inventory_service/brainstorming.md.
- *
  * @generated from service warehouse.inventory.v1.InventoryService
  */
 export const InventoryService: GenService<{

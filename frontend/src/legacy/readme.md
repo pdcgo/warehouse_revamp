@@ -44,5 +44,5 @@ Two possible endings for each piece, and both are fine:
 - it is **absorbed** — its one useful rule is folded into the live component that already did the
   job, and the legacy copy is deleted.
 
-The tree is finished when it is empty. Track the mapping and the open decisions in
-[plans/design-system-adoption.md](../../../plans/design-system-adoption.md).
+The tree is finished when it is empty. Which screens are absorbed and which are dropped is an owner
+decision, not yet settled.

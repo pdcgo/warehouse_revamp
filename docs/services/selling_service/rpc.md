@@ -254,8 +254,7 @@ own (`warehouse.event_base.v1.event_config`), so a publisher cannot send it to t
 
 A **draft** is an incomplete order pushed in by a **third-party app**, which a person here finishes
 and promotes. It lives in `order_drafts` / `order_draft_items`, not in `orders` — see
-[database-schema.md](../../database-schema.md) for why, and
-`plans/selling_service/brainstorming.md` §6 for the design.
+[database-schema.md](../../database-schema.md) for why (#190).
 
 `OrderDraftPush` is worth documenting because it is not the CRUD it looks like: it is a
 **create-or-update keyed on `(team_id, source, external_id)` that writes untouched fields only**.

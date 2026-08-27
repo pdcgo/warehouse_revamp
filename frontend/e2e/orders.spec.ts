@@ -191,8 +191,7 @@ test("setup: a category, a shop, and a product for the order to reference", asyn
 // screen is PRODUCT-DRIVEN (it lists the warehouse's own catalogue and joins stock onto it), so it
 // cannot show — or receive — a product belonging to a selling team. Which is precisely this case: the
 // order's product belongs to the ordering team while the stock sits in the warehouse. See
-// plans/inventory_service/brainstorming.md §4; fixing that screen is its own piece of work, not this
-// spec's job to route around.
+// Fixing that screen is its own piece of work, not this spec's job to route around.
 test("setup: stock in the warehouse for the order to draw", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 

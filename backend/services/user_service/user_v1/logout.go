@@ -16,7 +16,7 @@ import (
 //
 // ⚠ THE TOKEN REMAINS VALID until it expires. This drops the user's cached roles, nothing more.
 // Logout is a client-side act: the client discards the token. Real revocation needs a
-// denylist — see plans/user_service/brainstorming.md §6.5.
+// denylist.
 func (s *AuthService) Logout(
 	ctx context.Context,
 	req *connect.Request[userv1.LogoutRequest],

@@ -16,8 +16,8 @@ import { useDebounced } from "../../lib/useDebounced";
 import type { Region, RegionAncestry } from "../../gen/warehouse/region/v1/region_pb";
 
 // What the picker emits — codes AND names, so a consumer can SNAPSHOT the address onto its own
-// record without a second round-trip (plans/region_service/brainstorming.md §5: a saved address is
-// frozen text, never a live FK into the region tree).
+// record without a second round-trip: a saved address is frozen text, never a live FK into the
+// region tree.
 export type AddressValue = {
   provinsiCode: string;
   provinsiName: string;

@@ -1279,8 +1279,8 @@ type ProductDiscoverRequest struct {
 	// a flag on the TEAM (see warehouse.team.v1.Team.priority_product), so the caller reads the
 	// priority team ids once and then asks for the two complementary slices.
 	//
-	//	Priority tab   owner_team_ids         = [the priority teams]
-	//	Other tab      exclude_owner_team_ids = [the priority teams]
+	//   Priority tab   owner_team_ids         = [the priority teams]
+	//   Other tab      exclude_owner_team_ids = [the priority teams]
 	//
 	// ⚠ IDS RATHER THAN A `priority` BOOLEAN ON THIS REQUEST, and that is not indirection for its own
 	// sake. product_service does not own `teams` and must not join to it (HARD RULE 3 — services stay

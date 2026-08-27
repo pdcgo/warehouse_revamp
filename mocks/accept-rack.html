@@ -11,7 +11,7 @@
  * Play CDN (the one documented exception to "self-contained" — needs   *
  * the network to render — see mocks/README.md). Tailwind's theme is    *
  * mapped onto the shared :root design tokens below, so the mocks still  *
- * match the Chakra app and stay in step with plans/design-tokens.md;    *
+ * match the Chakra app and stay in step with frontend/src/theme.ts;     *
  * dark mode rides entirely on the tokens flipping at [data-theme=dark]. *
  * ------------------------------------------------------------------ -->
 <!-- A throwaway preview of a REDESIGN of the wired restock-accept screen
@@ -52,7 +52,7 @@
 
 <style>
   /* The shared design-token set (#213) — the single source, kept in step with
-     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+     frontend/src/theme.ts. Tailwind's config above consumes these. */
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
     --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;

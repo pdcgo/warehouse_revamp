@@ -1,8 +1,9 @@
 # Warehouse Revamp
 
 A warehouse management system, **built new from first principles** — not a port of anything. It is
-in active design: the running discussion lives in [../plans/](../plans/), and screens are designed
-before the API and the schema are derived from them.
+in active design: requirements are written in [business/](business/) and [technical/](technical/),
+and screens are designed before the API and the schema are derived
+from them.
 
 This document is the map. For the authoritative detail, follow the links.
 
@@ -21,7 +22,9 @@ proto/       the API contract — one buf module; one `buf generate` emits both 
 backend/     Go server (Connect RPC over net/http), one directory per service
 tools/san/   the operations CLI — top-level, because it is a tool of the repo, not of the server
 frontend/    React + TypeScript (Vite) + Chakra UI v3, a Connect-ES client
-plans/       the design discussion — one brainstorming doc per service
+docs/business/   what the business needs — owner-written
+docs/technical/  how it gets built — owner-written
+guidelines/  programmer-authoritative service + code guidelines
 docs/         human-facing docs (this file, the FAQ, the schema, per-service RPC flows)
 ```
 
@@ -80,7 +83,7 @@ Chakra's `<Icon>`. The UI is internationalised with
 
 The warehouse **fulfilment** core (the physical operation — who works there, the jobs, whether
 anything is barcoded) is deliberately **not designed yet**; it is the foundation the order and
-revenue work waits on. See [../plans/plan.md](../plans/plan.md).
+revenue work waits on.
 
 ---
 
@@ -126,45 +129,27 @@ cd frontend && npm run typecheck && npm run build && npm run e2e
 
 ---
 
-## Overnight delegation mode
-
-The board can be worked **autonomously** — for leaving a batch of ready issues running overnight
-while you review progress from the GitHub Project board on your phone. It works the **Ready**
-column: each issue is triaged, the genuinely-actionable ones are built on `dev` (one at a time,
-kept green) and moved to **In review**; anything under-specified or blocked is left in Ready with
-a `🌙 overnight (parked)` comment saying why — never half-built.
-
-**Control keywords** (say these to Claude Code):
-
-| Say | Effect |
-| --- | --- |
-| `overnight mode: start` | Begin the autonomous run — sweep the Ready column, implement the actionable issues, re-checking through the night for anything you add. |
-| `overnight mode: stop` | Halt after the current step. Nothing in flight is left half-committed; `dev` stays green. |
-| `overnight mode: status` | Report what's In review, In progress, and parked so far. |
-
-**Guardrails it always honours:**
-
-- Commits to `dev` **only when the full green gate passes** (`buf lint`, `go build/vet/test`,
-  frontend `typecheck`). Never commits red.
-- Moves each issue **In progress → In review** and **stops there** — never Done, never closes an
-  issue, never pushes or merges to `main`. You review and flip those.
-- **Non-destructive to your other work** — it only stages or reverts the exact files it creates
-  for an issue, never unrelated uncommitted changes in your tree.
-- Every provisional call (a decision you hadn't answered) is logged in the relevant
-  `plans/<svc>/brainstorming.md` and flagged in an issue comment for your review.
-
-The machinery is a reusable workflow —
-[`.claude/workflows/overnight-board.js`](../.claude/workflows/overnight-board.js) — not tied to
-any one issue, so future nights just need issues dropped into **Ready**.
-
----
-
 ## Where design happens
 
-Nothing is built before it is thought through in [../plans/](../plans/): `plan.md` holds the
-system-level design (the people, the jobs, the scope), and each service has its own
-`<name>_service/brainstorming.md`. Decisions are recorded there as they land; the code follows the
-doc, not the other way round.
+**[development_lifecycle.md](development_lifecycle.md) is the development flow** — how a requirement
+becomes working software. Three trees share one path shape, so a context has the same coordinates in
+each:
+
+```
+docs/business/<big>/<small>.md           what the business needs — the owner writes it
+docs/technical/<big>/<small>.md          how it gets built      — the owner writes it
+docs/development_state/<big>/<small>.md  how far it has got     — the agent writes it
+```
+
+Beside any owner doc an agent may create exactly two files: a **`_clarify.md`** (its open questions
+and proposed design — a question set, never an answer) and a **`_decision.md`** (what the owner
+decided, recorded before it is acted on, append-only). Nothing else in those trees is the agent's to
+create. [../guidelines/](../guidelines/) holds the programmer-authoritative service and code
+guidelines.
+
+Analysis is **frontend-first**: pages and components are built in Storybook with mock wiring so a
+screen can be previewed before any backend exists, and the contract is derived from what the page
+must show and do.
 
 The database schema is mirrored for humans in [database-schema.md](database-schema.md) (one mermaid
 `erDiagram` per service, kept in step with the migrations), and non-trivial cross-service RPC flows

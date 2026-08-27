@@ -13,11 +13,10 @@ import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
 //     the app should reference. Retune the whole app's density by editing them here.
 //
 // The neutral + brand palette, radii, shadows and type below are the mock token set (#213), promoted
-// here so the real Chakra screens inherit the look the mocks agreed. The mock-var → token mapping is
-// documented in plans/design-tokens.md — keep the two in sync.
+// here so the real Chakra screens inherit the look the mocks agreed.
 //
 // NOTE: the accent ramp below is a placeholder. No brand/visual identity has been chosen for
-// this system yet — see plans/plan.md.
+// this system yet.
 const customConfig = defineConfig({
   theme: {
     // Cast to any: Chakra's generic recipe types only type `colorPalette` in defaultVariants
@@ -88,7 +87,7 @@ const customConfig = defineConfig({
       // inherits the agreed look — and so BOTH color modes render (the `.dark` class flips them).
       colors: {
         // Virtual tokens that colorPalette="brand" resolves on every Chakra component. The ramp is a
-        // placeholder identity (plans/plan.md); violet is the agreed WORKING accent, reconciled to the
+        // placeholder identity — violet is the agreed WORKING accent, reconciled to the
         // mock's --accent (solid), --accent-soft (subtle) and --accent-fg (fg) in both modes.
         brand: {
           contrast: { value: { _light: "white", _dark: "white" } },

@@ -1549,7 +1549,7 @@
     "signedIn": "Signed in",
     "userLabel": "User:",
     "teamLabel": "Team:",
-    "warehouseNotDesigned": "The warehouse itself is not designed yet — see plans/plan.md §1.",
+    "warehouseNotDesigned": "The warehouse itself is not designed yet.",
     "signIn": "Sign in",
     "rememberMe": "Remember me",
     "loginFailed": "Login failed",

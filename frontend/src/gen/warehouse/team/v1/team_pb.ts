@@ -225,7 +225,7 @@ export type TeamInfo = Message<"warehouse.team.v1.TeamInfo"> & {
 
   /**
    * The warehouse this SELLING team ships from by default (#145). 0 = not configured.
-   *
+   * 
    * A convenience, not a rule: the order form pre-selects it and the person may still choose another,
    * and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
    * fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
@@ -295,11 +295,11 @@ export type Team = Message<"warehouse.team.v1.Team"> & {
   /**
    * THE PRIORITY-PRODUCT FEATURE (owner). Set by ROOT, and it applies to the team's WHOLE catalogue:
    * every product this team owns is a priority product to everybody browsing.
-   *
+   * 
    * A flag on the TEAM rather than on the product, and deliberately not a per-viewer curation — so
    * every selling team discovering products sees the same priority set. It is what backs the product
    * picker's *Priority Product* tab.
-   *
+   * 
    * ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
    * that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
    * team could grant itself the feature. How root sets it is not designed yet — the column and the
@@ -473,7 +473,7 @@ export type TeamListFilter = Message<"warehouse.team.v1.TeamListFilter"> & {
   /**
    * Only teams that carry the priority-product feature (see Team.priority_product). false = no
    * narrowing, which is the default.
-   *
+   * 
    * This is how the product picker resolves its *Priority Product* tab: it asks team_service WHICH
    * TEAMS are priority, then narrows a product query by those ids. product_service is never told
    * what "priority" means — it filters by a list of team ids it was handed, which is what keeps the
@@ -967,7 +967,7 @@ export const WeekdaySchema: GenEnum<Weekday> = /*@__PURE__*/
 /**
  * THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
  * Never redeclare it in another package.
- *
+ * 
  * The numbers deliberately match no legacy numbering: nothing persists them (the column is
  * TEXT with a CHECK), so a raw int carried over from old code produces an obviously wrong
  * value rather than a plausible, silently-swapped one.
@@ -1100,7 +1100,7 @@ export const TeamByIdsDataTypeSchema: GenEnum<TeamByIdsDataType> = /*@__PURE__*/
 
 /**
  * TeamService owns `teams` and `team_infos`.
- *
+ * 
  * Its most important RPC is TeamByIds: it is how every OTHER service turns a team_id it stores
  * locally into a name and a type WITHOUT touching this service's database. Per-service
  * independence forbids a cross-service SQL join; this is the replacement.

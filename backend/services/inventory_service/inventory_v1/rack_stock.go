@@ -20,7 +20,7 @@ import (
 //
 // A line's product may belong to ANOTHER team's catalogue — a selling team's restock puts its product
 // on this warehouse's shelf — so only the id is returned here. Resolving sku/name is the caller's job,
-// via product_service's ProductByIds (see plans/inventory_service/brainstorming.md §4): this service
+// via product_service's ProductByIds: this service
 // owns stock, not the catalogue, and inventing a name for a product it does not own would be guessing.
 func (s *Service) RackStock(
 	ctx context.Context,

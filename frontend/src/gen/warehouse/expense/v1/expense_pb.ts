@@ -908,8 +908,6 @@ export const ExpenseRowSortSchema: GenEnum<ExpenseRowSort> = /*@__PURE__*/
  *   - A ledger. No balances, no double entry — the same call revenue made (revenue §2.4). An expense row
  *     records that money went out, not an account movement.
  *
- * See plans/expense_service/brainstorming.md.
- *
  * @generated from service warehouse.expense.v1.ExpenseService
  */
 export const ExpenseService: GenService<{

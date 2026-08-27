@@ -48,8 +48,8 @@ var errAdjustBatchArgs = errors.New("a damaged/lost/found adjust needs a batch a
 // StockOpname — which IS a recount, in bulk — follows Q4 on BOTH axes: it writes the value off and, as
 // of 2026-08-20 (owner), reimburses the owner too. So RECOUNT is now the ONLY path of the three that
 // books nothing, and the same physical loss still moves money or does not depending on which RPC
-// counted it. Recorded in full under `# Contradiction` in plans/stock_service/brainstorming.md, with
-// the recommendation to bring this branch in line — `attributeDeltaFIFOValued` now returns both
+// counted it. That is a standing CONTRADICTION, left deliberately: the recommendation is to bring
+// this branch in line — `attributeDeltaFIFOValued` now returns both
 // numbers it would need (`Value` and `ByOwner`). Left alone here because changing a shipped, tested
 // money path is the owner's call (HARD RULE 8).
 func (s *Service) StockAdjust(

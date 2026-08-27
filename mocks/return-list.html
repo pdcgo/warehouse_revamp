@@ -17,8 +17,8 @@
  * the Play CDN, theme mapped onto the shared :root design tokens below. *
  *                                                                       *
  * The design still has OPEN FORKS the owner must settle (see the        *
- * footnote and plans/return_service/brainstorming.md §7). This mock     *
- * takes the doc's PROPOSED answers so there is something to react to.   *
+ * footnote below). This mock takes the PROPOSED answers so there is      *
+ * something to react to.                                                *
  * ------------------------------------------------------------------ -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -50,7 +50,7 @@
 
 <style>
   /* The shared design-token set (#213) — the single source, kept in step with
-     frontend/src/theme.ts (plans/design-tokens.md). Tailwind's config above consumes these. */
+     frontend/src/theme.ts. Tailwind's config above consumes these. */
   :root {
     --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f9fafb;
     --sidebar: #ffffff; --border: #e4e7ec; --border-strong: #d0d5dd;
@@ -302,7 +302,7 @@
 
       <p class="text-fg-subtle text-xs mt-3">A return is a restock's <strong>mirror image</strong> (#163): goods arriving at the warehouse to be counted, placed, and partly written off — but they <strong>left the building</strong>, went to a buyer, and came back, possibly broken. <strong>Ongoing</strong> is the in-flight state #144 asks about — created before the goods arrive; <strong>Received</strong> is where they are counted and inspected, so some units go back to a sellable shelf and some are written off (see RTN-0137). <strong>Team</strong> is the catalogue owner whose goods came back; <strong>Value</strong> is the expected refund value (final money follows from what condition actually arrived, so it settles on receipt, not creation). An <strong>order is optional</strong> (§5.2) — a walk-in parcel can be logged with none (RTN-0140). The <strong>date range</strong> filters on the created date; filters and search re-query the full set, so the page count reflects every return.</p>
 
-      <p class="text-fg-subtle text-xs mt-2">⚠ <strong>Open forks — the owner's to settle</strong> (<code>plans/return_service/brainstorming.md</code> §7): whether "arrived, awaiting count" is a state distinct from Ongoing; whether judging is a step separate from receiving; what the money does (proposed: a second, negative revenue row); and which service owns a return. This mock takes the doc's proposed answers so there is a shape to react to. Opening a return — <strong>receive &amp; inspect</strong> — is the next screen.</p>
+      <p class="text-fg-subtle text-xs mt-2">⚠ <strong>Open forks — the owner's to settle</strong>: whether "arrived, awaiting count" is a state distinct from Ongoing; whether judging is a step separate from receiving; what the money does (proposed: a second, negative revenue row); and which service owns a return. This mock takes one set of proposed answers so there is a shape to react to. Opening a return — <strong>receive &amp; inspect</strong> — is the next screen.</p>
     </div></div>
   </main>
 

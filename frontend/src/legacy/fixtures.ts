@@ -1,9 +1,8 @@
 // Sample data for the legacy REFERENCE pages.
 //
 // The legacy screens are ported as a design reference, not as a working app — their original data
-// layer targets a different backend contract that does not exist in this repo (see
-// plans/design-system-adoption.md). So each page takes its rows as PROPS and its story supplies
-// them from here.
+// layer targets a different backend contract that does not exist in this repo. So each page takes
+// its rows as PROPS and its story supplies them from here.
 //
 // Two consequences worth being deliberate about:
 //

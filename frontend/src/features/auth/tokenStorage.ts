@@ -4,7 +4,7 @@
 // Otherwise     -> sessionStorage (dies with the tab).
 //
 // ⚠ Both are readable by any JavaScript on the page, so an XSS is a full session takeover. That
-// is the accepted trade-off (owner's call, plans/user_service §6.4): it buys a 6-line transport
+// is the accepted trade-off (owner's call): it buys a 6-line transport
 // interceptor and no CSRF surface at all, since nothing is sent automatically by the browser.
 // The mitigation lives on the server: CheckAccess refuses to renew a token expired beyond a
 // bounded window, so a stolen token is not immortal.

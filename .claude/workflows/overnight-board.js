@@ -26,7 +26,7 @@ const RULES = `You are in the warehouse_revamp repo (branch dev, cwd = repo root
 - After any .proto edit: 'cd proto && buf lint && buf generate'. After changing Wire providers: 'cd backend && go tool wire ./cmd/app_development'. Generated code is committed but never hand-edited.
 - A list RPC over growing data MUST take warehouse.common.v1.PageFilter and return PageInfo. A request message with NO role policy is DENIED (deny by default).
 - Frontend: Chakra UI v3 only (no raw html controls), lucide icons via <Icon>, sizes from theme.ts; a curated shared component must 'export const description' and appear in the /components gallery. Destructive actions use ConfirmDialog; detail views are pages, not dialogs.
-- Design-first is a HARD RULE: if an issue's design is NOT settled in its plans/<svc>/brainstorming.md, or it needs a decision only the owner can make, or it depends on an undesigned foundation (the warehouse fulfilment core — see plans/plan.md — is deliberately NOT designed yet), then it is BLOCKED, not actionable. Do not build on sand.
+- Design-first is a HARD RULE: if an issue's design is NOT settled in guidelines/ (disscuss/ is mid-argument and NEVER counts as settled — HARD RULE 7), or it needs a decision only the owner can make, or it depends on an undesigned foundation (the warehouse fulfilment core is deliberately NOT designed yet), then it is BLOCKED, not actionable. Do not build on sand.
 
 GIT SAFETY (critical — the working tree may hold the owner's other uncommitted work):
 - NEVER run 'git add -A', 'git commit -a', 'git reset --hard', 'git clean', or 'git stash'. They would touch files you did not create.
@@ -63,9 +63,9 @@ Triage issue #${it.number} ("${it.title}") for AUTONOMOUS overnight implementati
 Read the whole thread — the LAST comment is usually the current spec:
   gh api repos/${REPO}/issues/${it.number} --jq '.body'
   gh api repos/${REPO}/issues/${it.number}/comments --jq '.[].body'
-Then read the matching plans/<service>/brainstorming.md and skim the code the issue touches (prefer 'graphify query' before broad grep).
+Then read the matching guidelines/ doc and docs/requirements/ context, and skim the code the issue touches (prefer 'graphify query' before broad grep).
 
-Set actionable=true ONLY if ALL hold: (a) the design is settled in the brainstorming doc, (b) the spec is clear enough to build with no new owner decision, (c) every dependency is already built or is also actionable tonight. Otherwise actionable=false with a one-line blockedReason. List dependsOn (issue numbers that must land first). If actionable, give a 3-6 step plan.`,
+Set actionable=true ONLY if ALL hold: (a) the design is settled in guidelines/ or fully specified in the issue thread, (b) the spec is clear enough to build with no new owner decision, (c) every dependency is already built or is also actionable tonight. Otherwise actionable=false with a one-line blockedReason. List dependsOn (issue numbers that must land first). If actionable, give a 3-6 step plan.`,
     { label: `triage-#${it.number}`, phase: 'Triage', agentType: 'general-purpose', schema: {
       type: 'object', additionalProperties: false, required: ['number', 'actionable', 'summary'],
       properties: {

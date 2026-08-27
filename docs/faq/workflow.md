@@ -1,6 +1,6 @@
 # FAQ — Working on the project
 
-Branching, issues, the board, and which docs a change has to carry with it.
+The development flow, branching, and which docs a change has to carry with it.
 
 ---
 
@@ -15,63 +15,24 @@ unasked, never force-push it.
 
 ---
 
-## How do I pick up an issue?
+## How does work get done here?
 
-1. Find it in **Ready** on project #2.
-2. **Move it to In progress FIRST — before writing a line of code.** Not after the first edit, not
-   at commit time. The board is how the owner sees what is being worked on right now.
-3. Read the issue body **and every comment** (see below).
-4. Build it, keep `dev` green, commit.
-5. Move it to **In review** — and stop there.
+Follow **[../development_lifecycle.md](../development_lifecycle.md)** — that is the development flow.
 
-**Do not move anything to Done, and do not close the issue.** Done means "the owner reviewed it",
-not "the code landed". The owner previews on `dev` and flips it.
+1. The owner defines a requirement — business in `docs/business/<big>/<small>.md`, technical in
+   `docs/technical/<big>/<small>.md`.
+2. An agent analyses it. Anything unclear becomes a question in a **`<small>_clarify.md`** beside the
+   doc, and waits for the owner — it is never guessed at.
+3. **Implementation analysis is frontend-first**: pages and components are built in Storybook with
+   mock wiring, so the screen can be previewed before any backend exists.
+4. Full implementation, then tests.
+5. The pass ends by writing **`docs/development_state/<big>/<small>.md`** — the state summary the
+   next agent reads to get oriented.
 
----
+When the owner answers, record the answer in **`<small>_decision.md`** beside the doc *before* acting
+on it. A decision that lives only in chat gets re-litigated by the next agent.
 
-## Where is the real spec for an issue?
-
-**In the comments, not the body.** The body is the opening ask; refinements, reworks and new
-requirements arrive as comments, and the **last comment is usually the current spec**. An issue is
-not done until its comments are.
-
-Read the whole thread before starting *and* before moving it to In review.
-
----
-
-## `gh issue view N --comments` errors. What do I use instead?
-
-It is broken in this repo (a Projects-classic GraphQL deprecation). Use REST:
-
-```sh
-gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'    # all, oldest→newest
-gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[-1].body'     # the latest only
-```
-
----
-
-## How do I know which issue is highest priority?
-
-Read the **issue-level Priority field** (the issue sidebar, above the Projects box) — not the
-project board's field, and never your own judgement.
-
-```sh
-gh api "repos/pdcgo/warehouse_revamp/issues?state=open&per_page=100" --paginate \
-  --jq '.[] | select(.pull_request == null)
-        | select(.issue_field_values | length > 0)
-        | "\(.number)\t\(.issue_field_values[].single_select_option.name)\t\(.title)"'
-```
-
-Two traps:
-
-- **There are two fields called "Priority" and only one is real.** Project #2 also has a ProjectV2
-  field named Priority with no options and no values. It is unused — do not "fix" it by adding
-  options, that creates a second competing Priority.
-- **Most issues have no Priority set.** That is normal. Say the field is unset and ask the owner —
-  never present an inferred order as if it came from the board.
-
-`gh project item-list --format json` does **not** include custom fields; it is still the right tool
-for Status and item ids.
+> There is no GitHub project board and no per-issue board dance any more — the lifecycle replaced it.
 
 ---
 
@@ -104,33 +65,35 @@ Simple single-table CRUD RPCs need no `rpc.md` entry.
 
 ---
 
-## Where do I write a design idea — `plans/` or `disscuss/`?
+## Where do I write a design idea?
 
-| Folder | What it is | Can I build from it? |
+| Path | What it is | Can I build from it? |
 | --- | --- | --- |
-| `plans/<service>/brainstorming.md` | the design discussion for a service | it is the design record — code follows the doc |
-| `disscuss/architecture/<topic>.md` | architecture being **argued out**, mid-argument | **No. Never cite it as a decision.** |
-| `guidelines/` | final, programmer-authoritative | **Yes — build from this** |
-
-When something is final it **moves** from `disscuss/` to `guidelines/` and is **deleted from
-`disscuss/` in the same change**. A copy left behind is how a superseded draft gets read as current.
+| `docs/business/<ctx>/<slice>.md` | the owner's business truth, **owner-written** | it is what a design must satisfy |
+| `docs/technical/<ctx>/<slice>.md` | the owner's technical design, **owner-written** | yes — this is the design |
+| `<slice>_clarify.md` | **your** critique, questions and proposed design for that doc | No — it is a question set, not an answer |
+| `<slice>_decision.md` | what the owner decided, recorded by you, append-only | **Yes — a recorded decision is settled** |
+| `guidelines/` | programmer-authoritative service + code guidelines | **Yes** |
+| `docs/development_state/<ctx>/<slice>.md` | how far this slice has got — written for the next agent | as orientation, not as truth |
 
 ---
 
-## Can I edit a doc in `disscuss/`?
+## Can I edit one of the owner's requirement docs?
 
-**No — a doc in `disscuss/` belongs to the owner.** Not a heading, not a typo, not a broken diagram.
+**No — a doc in `docs/business/` or `docs/technical/` belongs to the owner.** Not a heading, not a
+typo, not a broken diagram.
 
-Everything you have to say about it goes in a sibling file with a `_clarity` suffix:
+You may create exactly two files beside it, and nothing else:
 
 ```
-disscuss/architecture/mutation_and_ledger.md          ← the owner's plan. READ-ONLY.
-disscuss/architecture/mutation_and_ledger_clarity.md  ← your critique, questions, proposals.
+docs/technical/ledger/mutation_and_ledger.md           ← the owner's. READ-ONLY.
+docs/technical/ledger/mutation_and_ledger_clarify.md   ← your critique, questions, proposals.
+docs/technical/ledger/mutation_and_ledger_decision.md  ← what the owner decided. Append-only.
 ```
 
-Something wrong in the owner's file is **reported in the clarity file, naming the line — never
-fixed by editing**. When the plan is final it moves to `guidelines/` and the clarity file is
-deleted with it.
+Something wrong in the owner's file is **reported in the `_clarify.md`, naming the line — never fixed
+by editing**. `_clarify.md` is the current open set, so an answered point is deleted from it once its
+answer is recorded in `_decision.md`.
 
 ---
 
@@ -148,8 +111,8 @@ option itself. The point of building new is to escape an accumulated design, not
 
 ## I hit a genuine design fork. Do I just pick one?
 
-**No.** Put it in the relevant `plans/<service>/brainstorming.md` as options with trade-offs, say
-which you would pick, and **ask**. Recommend, then let the owner decide.
+**No.** Put it in the `_clarify.md` beside the doc that can answer it as options with trade-offs, say which you
+would pick, and **ask**. Recommend, then let the owner decide.
 
 ---
 

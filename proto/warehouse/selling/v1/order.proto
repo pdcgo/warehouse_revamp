@@ -11,7 +11,7 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/sel
 
 // OrderService owns `orders` + `order_items` — the SELLING side of an order (#67): who ordered, from
 // which shop, the lines, and the money. Fulfillment (pick→pack→ship) is a separate concern that
-// waits on the warehouse core (plans/plan.md §1), so it is deliberately absent here. Team-scoped
+// waits on the warehouse core, so it is deliberately absent here. Team-scoped
 // like the rest of selling_service; OrderCreate does NOT touch inventory (that is #69).
 service OrderService {
   rpc OrderCreate(OrderCreateRequest) returns (OrderCreateResponse);

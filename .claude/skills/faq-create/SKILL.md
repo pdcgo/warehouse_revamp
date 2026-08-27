@@ -57,7 +57,7 @@ Then decide:
 | File | Covers |
 | --- | --- |
 | `getting-started.md` | first day — what to read, running it, logging in, ports |
-| `workflow.md` | branches, issues, the board, which docs a change must carry, `plans/` vs `disscuss/` |
+| `workflow.md` | branches, issues, the board, which docs a change must carry, `disscuss/` vs `guidelines/` |
 | `backend.md` | services, RPCs, Wire, tests, the audits, authorization |
 | `contract.md` | the proto: generation, pagination, who may call what |
 | `database.md` | migrations, the local database, the test database, Redis |
@@ -82,7 +82,7 @@ where the truth lives first:
 ```sh
 graphify query "<the question>"        # code questions — before grep/read
 grep -n "<keyword>" CLAUDE.md guidelines/*.md guidelines/architectures/*.md
-ls plans/ docs/
+ls disscuss/ guidelines/ docs/
 ```
 
 | Authority | Where |
@@ -92,11 +92,12 @@ ls plans/ docs/
 | schema | `docs/database-schema.md` + the migrations |
 | RPC flows | `docs/services/<service>/rpc.md` |
 | the CLI | `docs/tools/san.md` |
-| still being designed | `plans/<service>/brainstorming.md` |
+| still being designed | nothing authoritative — say so, and link the `disscuss/` doc arguing it |
 
 ⚠ **`disscuss/` is never an answer.** It is mid-argument by definition — never cite it as decided.
 
-⚠ **If the answer is not decided, that IS the entry:** say so plainly and link the `plans/` doc.
+⚠ **If the answer is not decided, that IS the entry:** say so plainly and link the `disscuss/` doc
+where it is being argued (flagged as not-yet-decided), or say plainly that nothing is written yet.
 Never settle an open design question here — that is the owner's call.
 
 ⚠ **Never answer from a sibling repo under `d:\pdcgo`.** They are not a design input.

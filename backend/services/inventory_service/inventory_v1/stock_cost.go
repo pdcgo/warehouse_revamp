@@ -11,7 +11,7 @@ import (
 // StockCost reports what products cost this warehouse, so an order can freeze its COGS (#74).
 //
 // THE COST IS THE LATEST FULFILLED RESTOCK'S PRICE for that product into this warehouse. That is a
-// deliberate simplification, recorded in plans/revenue_service/brainstorming.md rather than hidden:
+// deliberate simplification, written down here rather than hidden:
 // a product can arrive on several restocks at different prices, so "what it cost" is genuinely
 // ambiguous, and the honest alternatives — a weighted average, or FIFO cost layers — both need a model
 // nothing here has yet. Latest-price needs nothing new and is right whenever prices are stable.

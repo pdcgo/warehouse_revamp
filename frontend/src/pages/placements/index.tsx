@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MapPin } from "lucide-react";
 
 // PlacementsPage is a deliberate STUB (#95). "Placements" means where stock physically sits — rack
-// and bin locations — which belongs to the warehouse core (plans/plan.md §1) and is not designed
+// and bin locations — which belongs to the warehouse core and is not designed
 // yet. The route and menu item exist so the Inventories sub-menu is complete; this is where it lands
 // until warehouse locations are designed.
 export function PlacementsPage() {

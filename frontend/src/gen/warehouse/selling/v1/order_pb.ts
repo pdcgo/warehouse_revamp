@@ -99,11 +99,11 @@ export type OrderItem = Message<"warehouse.selling.v1.OrderItem"> & {
   /**
    * What this product COST us, per unit, frozen when the order was placed (#74). `unit_price` is what
    * the buyer pays; this is what we paid, and the gap between them is the margin.
-   *
+   * 
    * SERVER-SET AND IGNORED ON INPUT. The cost is looked up from the warehouse's restock history at
    * order time — a client supplying it would be writing its own margin, which is the one number
    * nobody placing an order should get to choose.
-   *
+   * 
    * 0 means "unknown", not "free": a product that was never restocked (received straight into stock,
    * say) has no recorded cost. Margin on such a line reads as if the goods were free, so 0 here is a
    * flag that the number is not to be trusted rather than a value to compute with.
@@ -122,12 +122,12 @@ export const OrderItemSchema: GenMessage<OrderItem> = /*@__PURE__*/
 
 /**
  * A customer's delivery address, FROZEN onto the order (#118).
- *
+ * 
  * A SNAPSHOT, not a live reference. region_service's rows change — a desa is renamed, merged, split —
  * and a historical order must keep reading exactly what was agreed, so the codes AND the names are
  * stored. Rendering a past order therefore never needs region_service at all. This is the same
  * decision the order already makes about its money and its line items: it freezes them.
- *
+ * 
  * selling_service defines its OWN address shape rather than importing region_service's
  * RegionAncestry: a snapshot is THIS service's data (HARD RULE 3), and it must not track another
  * service's contract.
@@ -201,12 +201,12 @@ export const OrderAddressSchema: GenMessage<OrderAddress> = /*@__PURE__*/
 /**
  * The SHIPPING RECEIPT attached to an order (owner) — the courier's slip photographed, or the PDF
  * the marketplace prints. One per order.
- *
+ * 
  * A REFERENCE, not the file: the bytes live in document_service, and this records which document
  * they are. The id is opaque (no FK across services, HARD RULE 3), and the two labels beside it are
  * a deliberate SNAPSHOT — an order can name its attachment, and say whether it is a picture or a
  * PDF, without calling another service to render a row.
- *
+ * 
  * The document is PRIVATE, so viewing it is a DocumentService.GetDownloadUrl call scoped to the
  * team. Storing a URL here instead would either be a link that expires in the database, or a
  * permanently public one for a document that names a buyer and their address.
@@ -305,15 +305,15 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
 
   /**
    * What this order SOLD FOR on the marketplace — a NOTE, and nothing computes from it (owner).
-   *
+   * 
    * `total` remains `subtotal + shipping_cost`. This sits beside it recording what the storefront
    * actually took: after the marketplace's vouchers, coin subsidies and promotions, what the buyer
    * paid there is a different figure from what these lines add up to, and neither is a correction of
    * the other. Stored rather than derived because nothing here CAN derive it — a person reads it off
    * the storefront and types it in.
-   *
+   * 
    * 0 = not recorded, not "sold for nothing": an order taken over the phone has no marketplace figure.
-   *
+   * 
    * ⚠ Never add it to margin or revenue. `margin = total - cogs - shipping_cost` still holds, and
    * folding this in would count the same sale twice.
    *
@@ -331,7 +331,7 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   /**
    * The order's HISTORY, oldest first — populated by OrderDetail only, exactly like `items`. A list
    * returning every order's whole history would multiply its page size by the length of each life.
-   *
+   * 
    * ⚠ An order in `status: SHIPPED` does NOT necessarily carry six events. Everything placed before
    * the events table existed was backfilled from the two moments the row actually recorded — when it
    * was created, and when it last changed — so an old order's history is short because that is all
@@ -356,13 +356,13 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   /**
    * What the whole order's goods COST us, frozen at order time (#74) — the sum of every line's
    * quantity × unit_cost.
-   *
+   * 
    * Denormalised onto the header on purpose: OrderList returns a summary WITHOUT lines, so a list that
    * wants to show margin would otherwise have to load every order's items. It is frozen exactly like
    * `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
-   *
+   * 
    *   margin = total − cogs − shipping_cost
-   *
+   * 
    * 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
    *
    * @generated from field: int64 cogs = 16;
@@ -380,16 +380,16 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
 
   /**
    * A free-text NOTE about this order, written by whoever took it (owner).
-   *
+   * 
    * The one field on an order that the system never reads. It carries what the structured fields
    * cannot: "buyer asks for it after 5pm", "wrap the glass one", "second attempt, first parcel came
    * back". Those are instructions to a PERSON — the CS who rings back, the crew who packs it — and
    * every attempt to turn that class of remark into an enum ends with a list nobody's actual case
    * fits.
-   *
+   * 
    * ⚠ Nothing branches on it. It is not a status, not a tag, and not a place to encode a rule the
    * system should be holding — the moment something reads it, that something needs a real field.
-   *
+   * 
    * "" = nothing was written down, which is the ordinary case.
    *
    * @generated from field: string note = 18;
@@ -399,11 +399,11 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   /**
    * WHICH WAREHOUSE fulfils this order (#72) — chosen per order by whoever types it in, and stored
    * here rather than inferred. An opaque team_service id (a WAREHOUSE team); no FK across services.
-   *
+   * 
    * It is on the ORDER, not looked up from the shop, on purpose: a shop's default changing later
    * would otherwise silently make old orders read as if they had shipped from a building they never
    * shipped from. What an order says happened must stay what happened.
-   *
+   * 
    * This is also what makes #69 possible at all — "deduct at placement" is meaningless until an order
    * says which warehouse to deduct FROM.
    *
@@ -414,15 +414,15 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   /**
    * THE MARKETPLACE'S OWN ID for this order — what the storefront calls it, read off the screen and
    * typed in beside the shop that took it (owner).
-   *
+   * 
    * It is the only name this order has that a BUYER, a courier's dashboard or the marketplace's own
    * support can be asked about: our `id` means nothing to any of them. So it is stored verbatim and
    * never parsed — every marketplace formats its reference differently, and any structure we imposed
    * would be a rule that the next storefront breaks.
-   *
+   * 
    * "" = there is no marketplace reference, which is the ordinary state of an order taken over the
    * phone. Not "unknown": an order that never had one never will.
-   *
+   * 
    * ⚠ NOT unique, and nothing joins on it. It is evidence of where an order came from, not a key —
    * whether two orders may share one is an open question (see the migration), and enforcing it before
    * that is decided would refuse legitimate re-entry.
@@ -503,7 +503,7 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
 
   /**
    * The shipping receipt, already uploaded to document_service by the client. Optional.
-   *
+   * 
    * NOT VERIFIED HERE, and that is a choice rather than an oversight: checking the id would make
    * placing an order depend on document_service being up, for a label. A wrong id costs a receipt
    * that will not open — never another team's file, because GetDownloadUrl is scoped to the caller's
@@ -516,7 +516,7 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
   /**
    * A free-text note about the order, for the people who handle it. Optional; "" is the ordinary
    * case. See Order.note — nothing in the system reads it.
-   *
+   * 
    * Capped at 2000 characters: long enough for the several sentences a difficult order really does
    * need, short enough that the field cannot become a document store.
    *
@@ -527,7 +527,7 @@ export type OrderCreateRequest = Message<"warehouse.selling.v1.OrderCreateReques
   /**
    * The marketplace's own id for this order, as the person read it off the storefront. Optional; ""
    * is the ordinary case for an order taken over the phone. See Order.order_external_ref_id.
-   *
+   * 
    * Capped at 128 to match OrderDraft.external_id — the two hold the same kind of thing, and a
    * reference that fits in a draft must fit in the order that draft becomes.
    *
@@ -638,7 +638,7 @@ export type OrderListFilter = Message<"warehouse.selling.v1.OrderListFilter"> & 
   /**
    * Free text over the customer's NAME, their PHONE, and — when the term is all digits — the ORDER
    * ID. Case-insensitive, substring. "" = no filter.
-   *
+   * 
    * Those three and no more. A CS person looking an order up has one of them in front of them: the
    * buyer said their name, the buyer rang from a number, or somebody quoted an order number. Widening
    * it to the address or the line items would make the same term match orders for reasons the person
@@ -650,7 +650,7 @@ export type OrderListFilter = Message<"warehouse.selling.v1.OrderListFilter"> & 
 
   /**
    * Only orders placed on THIS shop. 0 = no filter.
-   *
+   * 
    * A shop belongs to a SELLING team, so this is meaningful only when a selling team is asking. A
    * warehouse reading its pick queue holds no shops; it simply leaves this at 0.
    *
@@ -661,7 +661,7 @@ export type OrderListFilter = Message<"warehouse.selling.v1.OrderListFilter"> & 
   /**
    * The window the order was PLACED in — `created_at`, inclusive on both ends, unix seconds.
    * 0 on either side is an OPEN end, so {0,0} means every date.
-   *
+   * 
    * `created_at` because it is the only timestamp an order has that means anything to the person
    * filtering. When fulfilment starts stamping its own (picked_at, shipped_at), this becomes a
    * WHICH-timestamp choice and the field names here are what stop that being ambiguous — the shared
@@ -1045,7 +1045,7 @@ export const OrderShipResponseSchema: GenMessage<OrderShipResponse> = /*@__PURE_
 export type OrderProductActivityItem = Message<"warehouse.selling.v1.OrderProductActivityItem"> & {
   /**
    * When it last sold. 0 = never ordered.
-   *
+   * 
    * CANCELLED orders do not count. The question this answers is "is this product moving", and an
    * order that was placed and then unwound moved nothing — treating it as a sale would make a dead
    * product look alive on the strength of a mistake somebody corrected.
@@ -1275,7 +1275,7 @@ export type OrderStatFilter = Message<"warehouse.selling.v1.OrderStatFilter"> & 
    * them would sit above a table describing a smaller set — "Placed 12" over four visible rows, with
    * nothing on screen explaining the gap. The server shares ONE query builder between the two RPCs so
    * they cannot drift.
-   *
+   * 
    * Each means exactly what it means on OrderListFilter; see there for why search covers those three
    * columns and why the window is `created_at`.
    *
@@ -1330,7 +1330,7 @@ export const OrderStatRequestSchema: GenMessage<OrderStatRequest> = /*@__PURE__*
 
 /**
  * OrderStatusCount is one status and what is sitting in it RIGHT NOW — the GROUPING half of the stat.
- *
+ * 
  * It is a live census, not a window: an order counted here is an order in that state today. That is
  * what makes it the work queue, and it is why these numbers carry no date range while the preview's
  * do.
@@ -1366,10 +1366,10 @@ export const OrderStatusCountSchema: GenMessage<OrderStatusCount> = /*@__PURE__*
 /**
  * OrderStatPreview is the MONEY half — a rolling 30-day window, which is what a person means by "how
  * is it going lately".
- *
+ * 
  * CANCELLED orders are excluded from both figures, for the same reason OrderActivityPreview excludes
  * them: a cancelled order is not a sale, and counting one would let a team read revenue it never took.
- *
+ * 
  * There is no average-order-value field, deliberately. It is `revenue_30d / orders_30d`, and a client
  * that divides the two numbers it is already displaying cannot disagree with the tiles beside it —
  * whereas a third number computed here could, the moment either definition moved.
@@ -1452,9 +1452,9 @@ export enum OrderStatus {
    * The warehouse's states (#150). Each is an action a person STARTS AND FINISHES, so an order being
    * worked on right now is visibly different from one nobody has touched — which is the whole reason
    * "just record it shipped" was rejected.
-   *
+   * 
    *   CONFIRMED → PICKING → PACKED → SHIPPED
-   *
+   * 
    * Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
    * somebody is guessing at what happened.
    *
@@ -1481,7 +1481,7 @@ export const OrderStatusSchema: GenEnum<OrderStatus> = /*@__PURE__*/
 
 /**
  * WHAT HAPPENED TO AN ORDER — one kind per step of its life.
- *
+ * 
  * Deliberately NOT the same enum as OrderStatus, though today they map one-to-one. A status is where
  * the order IS; an event is something that WAS DONE, and the two come apart the moment anything
  * happens that does not change the status — a note edited, a receipt attached, a courier corrected.
@@ -1621,7 +1621,7 @@ export const OrderProductActivityDataTypeSchema: GenEnum<OrderProductActivityDat
 /**
  * OrderService owns `orders` + `order_items` — the SELLING side of an order (#67): who ordered, from
  * which shop, the lines, and the money. Fulfillment (pick→pack→ship) is a separate concern that
- * waits on the warehouse core (plans/plan.md §1), so it is deliberately absent here. Team-scoped
+ * waits on the warehouse core, so it is deliberately absent here. Team-scoped
  * like the rest of selling_service; OrderCreate does NOT touch inventory (that is #69).
  *
  * @generated from service warehouse.selling.v1.OrderService
@@ -1666,9 +1666,9 @@ export const OrderService: GenService<{
   /**
    * The WAREHOUSE's side of an order (#150): the crew records what it has done, in the order it
    * happens and one step at a time.
-   *
+   * 
    *   PLACED → CONFIRMED → PICKING → PACKED → SHIPPED
-   *
+   * 
    * ⚠ CONFIRM IS THE FIRST OF THESE, not a selling-side step that precedes them (owner) — see
    * OrderConfirmRequest for why #91's selling-side confirm was wrong. All four are scoped to the
    * order's WAREHOUSE, not its selling team; see OrderPickRequest for why that is the only scope
@@ -1707,11 +1707,11 @@ export const OrderService: GenService<{
   },
   /**
    * ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
-   *
+   * 
    * The selling team's product list asks one question of this service: when did each of these
    * products last SELL? It is the other half of the stock picture — a product with a full shelf and
    * no order in two months is a different problem from one that is simply out.
-   *
+   * 
    * Both are team-scoped like every other read here, so they can only ever describe the caller's own
    * orders.
    *
@@ -1732,11 +1732,11 @@ export const OrderService: GenService<{
   },
   /**
    * ── The ORDER LIST's own stat ──────────────────────────────────────────────────────────────────
-   *
+   * 
    * The stat above the list, and it is a DIFFERENT question from OrderActivityStat above: that one
    * describes a set of PRODUCTS ("when did each of these last sell"), this one describes the set of
    * ORDERS the screen is showing ("what is waiting on somebody, and what has it been worth").
-   *
+   * 
    * Deliberately NOT folded into OrderList. A stat that rode on the list response would be recomputed
    * on every page turn and every sort, for numbers that do not change when you turn a page — and it
    * would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to

@@ -58,7 +58,7 @@ erDiagram
     }
 ```
 
-- **`teams`** — one row per team (a warehouse *is* a team; see `plans/team_service/`). Root-ness is
+- **`teams`** — one row per team (a warehouse *is* a team). Root-ness is
   structural: `CHECK ((type = 'root') = (id = 1))` ties `id = 1` and `type = 'root'` together so the
   hardcoded root-team scope in the access interceptor can never drift from the data. Indexes:
   `UNIQUE (team_code)`, a partial `(type) WHERE deleted = FALSE`, and a partial
@@ -425,8 +425,7 @@ erDiagram
     fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
     That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
     model nothing has yet — and it is safe to change because the answer is **frozen onto the line**, so
-    a new rule changes future orders and never rewrites what past ones recorded. See
-    `plans/revenue_service/brainstorming.md`.
+    a new rule changes future orders and never rewrites what past ones recorded.
   - **0 means UNKNOWN, not free.** A product never restocked has no recorded cost, and every row
     predating this column is in that position. A margin computed over an unknown cost reads as pure
     profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
@@ -450,7 +449,7 @@ erDiagram
   is a question worth being able to ask. The whole address is **optional** — as the free text it
   replaced was.
 - **`order_drafts`** / **`order_draft_items`** — an incomplete order **pushed in by a third-party
-  app** (#190, `plans/selling_service/brainstorming.md` §6), finished by a person here and promoted
+  app** (#190), finished by a person here and promoted
   into a real order. A draft is not a quotation, not a reservation, not an unpaid marketplace order,
   and it holds no stock.
   - **Its own table, not an `ORDER_STATUS_DRAFT` on `orders`.** The reason is not tidiness: on one
@@ -812,8 +811,8 @@ erDiagram
   teams have racks; a selling team has nowhere to put a shelf.
 - **`racks` is the REGISTRY, not a location model.** Nothing references a rack yet: stock is still
   counted per `(warehouse_id, product_id)` in `stock_levels`. Putting stock **on** a rack is
-  `plans/inventory_service/` §3's open decision (warehouse-level vs bin-level), and writing down the
-  racks a warehouse has does not settle it — it is the prerequisite, not the answer.
+  an **open owner decision** (warehouse-level vs bin-level), and writing down the racks a warehouse
+  has does not settle it — it is the prerequisite, not the answer.
 - **`supplier_channels`** — the ways a team can reach or order from a supplier (#120): an **online**
   channel (a store on a marketplace) or an **offline** channel (a physical shop). `supplier_id` is a
   **real FK** to `suppliers` (same service, `ON DELETE CASCADE`); scope to a team is enforced by the
@@ -955,8 +954,7 @@ erDiagram
   desa/kelurahan) with a kode pos on each desa (#112/#114). **Global reference data**: unlike almost
   every other table here there is **no `team_id`** and no `use_scope` — regions are the same for
   everyone, so the reads are unscoped and open to any authenticated user.
-- **One self-referential table, not four typed ones** (owner call, `plans/region_service/` §4.2
-  option A). `code` — the government's dotted kode wilayah — **is** the identity, and the hierarchy is
+- **One self-referential table, not four typed ones** (owner call). `code` — the government's dotted kode wilayah — **is** the identity, and the hierarchy is
   derivable from it (`11` → `11.01` → `11.01.01` → `11.01.01.2001`), so the upstream source loads
   near-verbatim and "children of X" is a single indexed predicate (`WHERE parent_code = ?`).
   `parent_code` is a **real self-FK** (`ON DELETE CASCADE`) — an orphan is a picker that dead-ends.
@@ -1143,8 +1141,8 @@ erDiagram
     }
 ```
 
-- **`settlement_entries`** — the ledger of what teams owe each other (#183,
-  `plans/settlement_service/brainstorming.md`). Immutable and append-only: a correction is a
+- **`settlement_entries`** — the ledger of what teams owe each other (#183). Immutable and
+  append-only: a correction is a
   **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
   anything.
   - **Every movement writes TWO legs in one transaction**, one per side, holding exact negatives —

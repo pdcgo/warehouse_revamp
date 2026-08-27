@@ -903,8 +903,8 @@ export const RackHistoryDataTypeSchema: GenEnum<RackHistoryDataType> = /*@__PURE
  * RackService owns `racks` — the physical places inside ONE warehouse (#129).
  *
  * This is the REGISTRY only: a warehouse writes down the racks it has. Stock is still counted per
- * (warehouse, product) — putting stock ON a rack is the location-level model in
- * plans/inventory_service/ §3, and that is a separate decision, not implied by having a list of them.
+ * (warehouse, product) — putting stock ON a rack is the location-level model, and that is a separate
+ * decision, not implied by having a list of them.
  *
  * Scoped to the warehouse, which IS a team: `team_id` carries (use_scope) and every query is
  * constrained to it, so one warehouse can never read or mutate another's racks by id. Only warehouse

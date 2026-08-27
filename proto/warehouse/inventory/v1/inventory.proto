@@ -16,8 +16,6 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // Everything is scoped by `warehouse_id` (a team of type WAREHOUSE): that is the physical place and
 // the thing a worker has a role in. `product_id` is an OPAQUE id owned by product_service — there
 // is no cross-service FK; it is resolved over RPC when a name is needed.
-//
-// See plans/inventory_service/brainstorming.md.
 service InventoryService {
   rpc StockList(StockListRequest) returns (StockListResponse);
   rpc StockHistory(StockHistoryRequest) returns (StockHistoryResponse);

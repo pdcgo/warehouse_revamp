@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
--- A DRAFT ORDER (#190, plans/selling_service/brainstorming.md §6) — an incomplete order pushed in by
+-- A DRAFT ORDER (#190) — an incomplete order pushed in by
 -- a third-party app, which a person in this system finishes and promotes.
 --
 -- Its OWN table, deliberately NOT an ORDER_STATUS_DRAFT on `orders` (§6.2). The reason is not

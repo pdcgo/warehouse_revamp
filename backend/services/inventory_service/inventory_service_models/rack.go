@@ -9,7 +9,7 @@ import "time"
 // is enforced by the access interceptor (use_scope), not the DB.
 //
 // This is the registry, not a location model: nothing points at a rack yet, and stock is still
-// counted per (warehouse, product). Stock ON a rack is plans/inventory_service/ §3's open decision.
+// counted per (warehouse, product). Stock ON a rack is a separate, open owner decision.
 type Rack struct {
 	ID          uint64 `gorm:"primaryKey"`
 	WarehouseID uint64

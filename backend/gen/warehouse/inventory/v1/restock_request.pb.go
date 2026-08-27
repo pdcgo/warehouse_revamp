@@ -2009,11 +2009,10 @@ type RestockRequestFulfillRequest struct {
 	// goods actually turn up.
 	//
 	// Each line does TWO things, and that is the point of collecting them here:
-	//  1. it joins shipping_cost in the freight spread across the units that arrived sellable, so it
-	//     reaches the HPP that becomes an order's COGS — what it cost to get the goods here;
-	//  2. it raises what the requesting team owes this warehouse, because the warehouse is out of
-	//     pocket for goods it does not own.
-	//
+	//   1. it joins shipping_cost in the freight spread across the units that arrived sellable, so it
+	//      reaches the HPP that becomes an order's COGS — what it cost to get the goods here;
+	//   2. it raises what the requesting team owes this warehouse, because the warehouse is out of
+	//      pocket for goods it does not own.
 	// The same rupiah answers both questions; neither reading may drop it.
 	//
 	// Empty is the ordinary case — most deliveries cost the warehouse nothing.
@@ -2349,10 +2348,10 @@ type RestockRequestReceivedLine struct {
 	// A LIST, because a delivery of 100 does not go on one shelf. The quantities must sum to
 	// `received_quantity` exactly, and the handler refuses anything else rather than interpreting it:
 	//
-	//	received_quantity > 0  → placements are REQUIRED and must total it. Goods that arrived are
-	//	                         somewhere, and the system is told rather than left to guess.
-	//	received_quantity == 0 → placements must be EMPTY. Nothing usable turned up, so there is
-	//	                         nothing to put anywhere.
+	//   received_quantity > 0  → placements are REQUIRED and must total it. Goods that arrived are
+	//                            somewhere, and the system is told rather than left to guess.
+	//   received_quantity == 0 → placements must be EMPTY. Nothing usable turned up, so there is
+	//                            nothing to put anywhere.
 	//
 	// `unplaced` stays available for a warehouse that has not shelved yet — a legal place, not an
 	// absence (#135), and #136 is how that pile gets shelved later.

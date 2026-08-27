@@ -22,8 +22,6 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/exp
 //     Putting them here would split one order's money across two services.
 //   - A ledger. No balances, no double entry — the same call revenue made (revenue §2.4). An expense row
 //     records that money went out, not an account movement.
-//
-// See plans/expense_service/brainstorming.md.
 service ExpenseService {
   // Record money that went out (#168).
   rpc ExpenseCreate(ExpenseCreateRequest) returns (ExpenseCreateResponse);

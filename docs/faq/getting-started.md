@@ -12,13 +12,14 @@ Four things, in this order — about an hour:
 | --- | --- | --- |
 | 1 | [../readme.md](../readme.md) | the map: what the repo is, how the sides fit together |
 | 2 | [../../CLAUDE.md](../../CLAUDE.md) | **the rules.** Not optional — most review comments are a rule from here |
-| 3 | [../../plans/plan.md](../../plans/plan.md) | what we are actually building, and what is still undecided |
+| 3 | [../requirements/](../business/) | the owner's business context — what the warehouse actually needs |
 | 4 | [../../guidelines/](../../guidelines/) | the authoritative service/RPC shapes you must follow when writing code |
 
 Then get it running (below), click through the UI, and pick a **Ready** issue off the board.
 
-> `plans/` and `disscuss/` are *thinking*, not truth. `guidelines/`, `docs/` and the code are.
-> See [workflow.md](workflow.md#where-do-i-write-a-design-idea--plans-or-disscuss).
+> The owner's docs in `docs/business/` and `docs/technical/` are the truth. A `_clarify.md` is an
+> open question set, not an answer.
+> See [workflow.md](workflow.md#where-do-i-write-a-design-idea).
 
 ---
 

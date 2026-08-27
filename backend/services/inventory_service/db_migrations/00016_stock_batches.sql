@@ -1,5 +1,5 @@
 -- +goose Up
--- STOCK BECOMES PER-(SHELF × BATCH) — the FIFO cost-layer model (#208/#209, plans/stock_service).
+-- STOCK BECOMES PER-(SHELF × BATCH) — the FIFO cost-layer model (#208/#209).
 --
 -- Until now on-hand was per (warehouse, product, rack) with cost read as "the latest restock's price"
 -- (StockCost). That cannot answer the questions every stock screen asks: what is THIS shelf worth when

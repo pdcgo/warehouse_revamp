@@ -1,6 +1,5 @@
 # settlement_service — the ledger of what teams owe each other
 
-Design: [plans/settlement_service/brainstorming.md](../../../plans/settlement_service/brainstorming.md).
 Tables: [database-schema.md](../../database-schema.md#settlement_service).
 
 ## The first writer — a COD restock (#184)

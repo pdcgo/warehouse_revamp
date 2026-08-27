@@ -21,8 +21,9 @@ second time will be slightly different. That drift is the actual cost.
 - The FAQ **explains and points** — it never becomes a second source of truth. The authority is
   `CLAUDE.md`, `guidelines/`, the code and the other `docs/`; an entry says the short answer and
   links there.
-- **Not decided yet is a valid answer.** Say so and link the `plans/` doc. Do not settle an open
-  design question in the FAQ — that is the owner's call.
+- **Not decided yet is a valid answer.** Say so, and link the `_clarify.md` where it is being
+  argued (flagged as not-yet-decided) or say plainly that nothing is written yet. Do not settle an
+  open design question in the FAQ — that is the owner's call.
 - One `##` heading per question, phrased **the way it was actually asked**.
 
 ---
@@ -62,8 +63,9 @@ second time will be slightly different. That drift is the actual cost.
 - [How do I know which issue is highest priority?](workflow.md#how-do-i-know-which-issue-is-highest-priority)
 - [What has to be green before I commit?](workflow.md#what-has-to-be-green-before-i-commit)
 - [Which docs must I update in the same commit as my change?](workflow.md#which-docs-must-i-update-in-the-same-commit-as-my-change)
-- [Where do I write a design idea — `plans/` or `disscuss/`?](workflow.md#where-do-i-write-a-design-idea--plans-or-disscuss)
-- [Can I edit a doc in `disscuss/`?](workflow.md#can-i-edit-a-doc-in-disscuss)
+- [Where do I write a design idea?](workflow.md#where-do-i-write-a-design-idea)
+- [Can I edit one of the owner's requirement docs?](workflow.md#can-i-edit-one-of-the-owners-requirement-docs)
+- [How does work get done here?](workflow.md#how-does-work-get-done-here)
 - [Can I copy a model / screen / enum from the other repos on this machine?](workflow.md#can-i-copy-a-model--screen--enum-from-the-other-repos-on-this-machine)
 - [I hit a genuine design fork. Do I just pick one?](workflow.md#i-hit-a-genuine-design-fork-do-i-just-pick-one)
 - [This repo is public. What does that change?](workflow.md#this-repo-is-public-what-does-that-change)
@@ -172,7 +174,7 @@ By hand, five steps:
 | one question per `##` heading | one heading covering three questions |
 | the asker's phrasing | the tidied-up phrasing nobody would search for |
 | link the authoritative doc | restate its content and let the copy go stale |
-| say "not decided yet" and link `plans/` | settle an open design question here |
+| say "not decided yet" and link the `_clarify.md` | settle an open design question here |
 | a table or a list | a paragraph |
 | the symptom, in `troubleshooting.md` | the diagnosis as the heading — people search the symptom |
 

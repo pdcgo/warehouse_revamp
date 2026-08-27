@@ -124,7 +124,7 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      # Every mermaid diagram in docs/ and plans/ must PARSE (#152) — a broken one renders as an
+      # Every mermaid diagram in docs/, disscuss/ and guidelines/ must PARSE (#152) — a broken one renders as an
       # error box, and the markdown looks fine in the diff. It runs in this job rather than the
       # typecheck job because it parses in a real browser, and this is where chromium is installed.
       # Before the e2e, since it needs no database and fails in seconds.

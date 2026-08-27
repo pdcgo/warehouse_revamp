@@ -33,8 +33,7 @@ a line of real React is written (#201).
   layer for previews; it never graduates — only the token set does.
 - **Shared tokens (#213).** The one thing that DID graduate from the mocks is their token set — the
   `:root` palette (colors + dark variants), radii, shadows, the system font stack. It now lives in
-  `frontend/src/theme.ts` as Chakra `semanticTokens`; the mock-var → theme-token mapping is
-  [`plans/design-tokens.md`](../plans/design-tokens.md). Keep a mock's `:root` values in step with it.
+  `frontend/src/theme.ts` as Chakra `semanticTokens`. Keep a mock's `:root` values in step with it.
 
 ## What is here
 

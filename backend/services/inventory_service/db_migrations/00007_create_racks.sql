@@ -3,7 +3,7 @@
 -- The racks inside a warehouse (#129) — the registry only: a warehouse writes down the places it has.
 --
 -- Stock is still counted per (warehouse, product) in stock_levels. Putting stock ON a rack is the
--- location-level model in plans/inventory_service/ §3, which is a separate owner decision — having a
+-- location-level model, which is a separate owner decision — having a
 -- list of racks does not imply it, and nothing here references a rack yet.
 CREATE TABLE racks (
     id           BIGSERIAL   PRIMARY KEY,

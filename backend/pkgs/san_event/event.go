@@ -10,7 +10,7 @@
 // can enforce are in guidelines/event-guideline.md.
 //
 // ⚠ Do NOT take design from disscuss/ — that folder is where architecture is argued out and nothing
-// in it is settled (CLAUDE.md HARD RULE 7b).
+// in it is settled (CLAUDE.md HARD RULE 7).
 //
 // Transport stays in pkgs/event_source — clients, topics, subscriptions, push/pull drivers. This
 // package's inbound edge is IncomingMessage, the normalised form a driver produces.

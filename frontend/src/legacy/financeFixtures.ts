@@ -8,7 +8,7 @@
 //
 // ⚠ AND NOT A DESIGN COMMITMENT. This repo has no invoice, accounting or reporting service — these
 // screens are ported as a REFERENCE of what the legacy system did (owner). Nothing here should be
-// read as a decision that this system will work the same way. See plans/design-system-adoption.md.
+// read as a decision that this system will work the same way.
 
 export type InvoiceDirection = "payable" | "receivable";
 

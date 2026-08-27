@@ -408,7 +408,7 @@ message ProductByIdsRequest {
   //
   // This IS new exposure for warehouse roles: they could not read another team's product names before.
   // The bound is that a by-ids lookup is not a browse — a caller must already know the id — and that
-  // what comes back is a catalogue label, not money. See plans/inventory_service/brainstorming.md §4:
+  // what comes back is a catalogue label, not money.
   // "only what it holds" is NOT enforced and cannot be here, because product_service does not know what
   // any warehouse holds; enforcing it would mean moving this behind inventory_service.
   option (warehouse.role_base.v1.request_policy) = {

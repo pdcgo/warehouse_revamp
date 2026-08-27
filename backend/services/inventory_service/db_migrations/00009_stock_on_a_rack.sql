@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
--- Stock is located ON a rack (#135, implementing the §3 decision recorded in plans/inventory_service).
+-- Stock is located ON a rack (#135, implementing the bin-level location decision).
 -- The grain becomes (warehouse, rack, product); it was (warehouse, product).
 --
 -- NULL rack_id means UNPLACED: "somewhere in this warehouse, not yet on a shelf." Every existing row

@@ -304,9 +304,9 @@ warehouse holds **other teams' goods** (a selling team's restock puts its produc
 the ids belong to catalogues `inventory_service` does not own, and inventing a name for them would be
 guessing. The caller resolves them through `product_service`'s **`ProductByIds`** — added for exactly
 this, and the reason the §4 question ("whose product is in whose warehouse") had to be settled before
-this screen could exist. See `plans/inventory_service/brainstorming.md` §4, including the two things it
-is honest about: it is **new exposure for warehouse roles**, and *"only what it holds"* is **not
-enforced** and cannot be by `product_service`, which does not know what any warehouse holds.
+this screen could exist. Two things that decision is honest about: it is **new exposure for warehouse
+roles**, and *"only what it holds"* is **not enforced** and cannot be by `product_service`, which
+does not know what any warehouse holds.
 
 ### Moving stock inside a warehouse (#136)
 
@@ -742,5 +742,5 @@ The obligation joins the count's **transaction**; the expense stays best-effort 
 split the single-adjust path draws, and for the same reason.
 
 ⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement. It is
-now the only one of the three paths out of step, on both axes. Recorded under `# Contradiction` in
-`plans/stock_service/brainstorming.md`; changing a shipped money path is the owner's call.
+now the only one of the three paths out of step, on both axes — an open **contradiction**, left
+standing deliberately: changing a shipped money path is the owner's call.

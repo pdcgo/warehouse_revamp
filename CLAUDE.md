@@ -7,9 +7,11 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 `warehouse_revamp` is a **new warehouse system, built from scratch**. Not a refactor, not a
 port, not a migration.
 
-It is at the **design stage** — almost nothing is decided. The running design discussion is
-**[plans/plan.md](plans/plan.md)**. Read it before proposing anything, and keep it current as
-decisions land.
+It is at the **design stage** — almost nothing is decided. The business truth is
+**[docs/business/](docs/business/)** and the technical truth is **[docs/technical/](docs/technical/)**
+— both owner-written. How a requirement becomes working software is
+**[docs/development_lifecycle.md](docs/development_lifecycle.md)**. Read them before proposing
+anything.
 
 > **This repository is PUBLIC.** Keep credentials, secrets, and the names of unrelated internal
 > systems out of anything committed — code, comments, docs, and commit messages alike.
@@ -168,7 +170,7 @@ default** — it reads `PRODUCTION_DATABASE_URL` and fails if unset.
 
 ### 3b. `tools/san` is THE CLI — one binary for schema, fixtures, operations and the workspace
 
-**One tool, not two** (owner, `docs/requirements/development_level.md`). [tools/san/](tools/san/)
+**One tool, not two** (owner, `docs/technical/development/level.md`). [tools/san/](tools/san/)
 owns the **schema** (`migrate`), the **fixtures** (`seed`, `db`, `region`), the **actions an
 operator performs on real data** (`user reset-password`), and **serving the checkout to a coding
 agent** (`remote`, `remote mcp`).
@@ -223,8 +225,9 @@ go run ./tools/san user reset-password --user-id 57 --dsn …  # non-interactive
   discoverable by reading `main.go` is a CLI nobody uses. Same rule as a schema change updating
   `docs/database-schema.md`.
 
-The general service guideline lives in [plans/plan_service.md](plans/plan_service.md) — it is
-the owner's doc; treat it as authoritative and keep this section in sync with it.
+The general service guideline lives in
+[guidelines/service-guideline.md](guidelines/service-guideline.md) — it is programmer-authoritative
+(RULE 7); treat it as such and keep this section in sync with it.
 
 ### 4. Wiring is **Google Wire**. Never hand-wire dependencies.
 
@@ -269,82 +272,70 @@ srv := &http.Server{Addr: addr, Handler: handler, Protocols: protocols}
 *from the screens* — never the reverse. If a screen can't be tied to a person doing a task, it
 doesn't get built.
 
-### 7. Brainstorming lives in `./plans/<service_name>/brainstorming.md`
+### 7. Requirements live in `docs/business/` and `docs/technical/` — one shape, three trees
 
-`./plans/` is where design is thought through **before** it is built. One directory per
-service, mirroring the `backend/services/<service_name>/` layout:
-
-```
-plans/
-  plan.md               system-level design (the people, the jobs, the scope)
-  plan_service.md       the general service guideline (owner's doc)
-  <service_name>/
-    brainstorming.md    ← the design discussion for that service
-```
-
-A service is designed in its `brainstorming.md` first. Code follows the doc, not the other way
-round — and the doc stays current as decisions land (see HARD RULE 6).
-
-### 7b. `./disscuss/` is NOT final — it is where architecture is argued out
-
-`./disscuss/` holds the **brainstorming process** for architecture detail and anything else being
-thought through. Nothing in it is settled.
-
-> ⚠ **Never rely on `disscuss/`, never cite it as a decision, and never build from it.** A doc there
-> may be mid-argument, may contain options nobody picked, and may contain critique that was later
-> withdrawn.
-
-**When something IS final, it MOVES:**
+Every context has the same coordinates in three trees, so *what the business needs*, *how it is
+designed* and *how far it has got* are one lookup in three files:
 
 ```
-disscuss/architecture/<topic>.md      ← being argued out. Not authoritative.
-        ↓  the owner says it is final
-guidelines/architectures/<topic>.md   ← authoritative. Build from this.
+docs/business/<big_context>/<small_context>.md          what the business needs — HUMAN-WRITTEN
+docs/technical/<big_context>/<small_context>.md         how it gets built     — HUMAN-WRITTEN
+docs/development_state/<big_context>/<small_context>.md how far it has got    — AGENT-WRITTEN
 ```
 
-**And it is REMOVED from `disscuss/` in the same change** — a copy left behind is how a superseded
-draft gets read as current. The move is not a publish step; it is the whole distinction between the
-two folders.
+- **`docs/business/` and `docs/technical/` are the owner's.** They are the source of truth; read
+  them before proposing anything (see RULE 7b for what you may and may not write there).
+- **`docs/development_state/`** is a summary of the state of development, written by the agent at the
+  end of a pass so the next agent starts oriented. Never hand-maintained as prose to be read by
+  people — it exists to be read by the next agent.
+- `<small_context>` is deliberately loose: the smallest slice that can go through the lifecycle.
+- `guidelines/` still holds the programmer-authoritative service and code guidelines
+  ([guidelines/service-guideline.md](guidelines/service-guideline.md)) — do not rewrite anything in
+  it without an explicit ask.
 
-`guidelines/` is programmer-authoritative (see the note at the top of
-[guidelines/service-guideline.md](guidelines/service-guideline.md)) — do not rewrite anything in it
-without an explicit ask.
+> ⚠ **`disscuss/` is GONE.** Design is no longer argued out in a separate folder and promoted; it is
+> written in `docs/technical/` and questioned in a `_clarify.md` beside it. Anything still referring
+> to `disscuss/` — or to `docs/requirements/` — is stale.
 
-### 7c. In `disscuss/`, the owner's doc is THEIRS — your response goes in `<name>_clarity.md` (owner)
+### 7b. The owner's doc is THEIRS — your response goes in `<name>_clarify.md` beside it (owner)
 
-A plan doc in `disscuss/` is written by the owner. **Never edit it, never rewrite it, never "tidy"
-it, never append a section to it.** Not a heading, not a typo, not a broken diagram.
+A requirement doc in `docs/business/` or `docs/technical/` is written by the owner. **Never edit it,
+never rewrite it, never "tidy" it, never append a section to it.** Not a heading, not a typo, not a
+broken diagram.
 
-**Every critique, complaint, question, warning, contradiction, risk and recommendation goes in a
-SEPARATE sibling file** named after the doc:
+**You may create exactly two files beside it, and nothing else:**
 
 ```
-disscuss/architecture/mutation_and_ledger.md            ← the owner's plan. READ-ONLY to you.
-disscuss/architecture/mutation_and_ledger_clarity.md    ← everything you have to say about it.
+docs/technical/ledger/mutation_and_ledger.md           ← the owner's. READ-ONLY to you.
+docs/technical/ledger/mutation_and_ledger_clarify.md   ← everything you have to say about it.
+docs/technical/ledger/mutation_and_ledger_decision.md  ← what the owner decided, recorded.
 ```
 
-- **`<filename>_clarity.md`** — same directory, same basename, `_clarity` suffix. One clarity file
-  per plan doc, never a shared one.
-- **When the owner updates the plan, RE-EXAMINE and UPDATE the clarity file.** It tracks the doc, so
-  a point the owner has since answered is **deleted** from clarity, not left standing with a
-  strikethrough. Clarity is the *current* open set, not a log.
-- **A question goes in the clarity file of the doc that can ANSWER it.** (owner) A template doc
+- **`<filename>_clarify.md`** — same directory, same basename, `_clarify` suffix. One clarify file
+  per doc, never a shared one. It is the **current open set**: a point the owner has since answered
+  is **deleted**, not left standing with a strikethrough.
+- **`<filename>_decision.md`** — the opposite lifecycle: **append-only**. When the owner answers,
+  the answer is written here before it is acted on, each entry carrying what it decided (RULE 12 —
+  named, not numbered) and its reasoning. A decision that lives only in chat is a decision the next
+  agent will re-litigate.
+- **That two-file allowance is the whole allowance.** Anything else in the owner's trees is theirs
+  to create.
+- **When the owner updates the doc, RE-EXAMINE and UPDATE the clarify file.** It tracks the doc, so
+  it is always the current open set — while `_decision.md` keeps the record of what was settled.
+- **A question goes in the clarify file of the doc that can ANSWER it.** (owner) A template doc
   cannot decide its implementer's column types, and an implementer's doc cannot decide the template's
   shape. Before writing a question, ask *which doc's author settles this?* — and put it there.
   Asking in the wrong file makes the owner answer it twice, or answer it somewhere it will not be
   found. When a doc gains a downstream doc, **re-route** anything already misfiled and leave a one-line
   pointer saying where it went.
   ```
-  mutation_and_ledger.md   the TEMPLATE   → "should the log carry one change column or one per measure?"
-  stock_design.md          the INSTANCE   → "is valuation numeric or integer rupiah?"
+  ledger/mutation_and_ledger.md   the TEMPLATE   → "one change column, or one per measure?"
+  stock/design.md                 the INSTANCE   → "is valuation numeric or integer rupiah?"
   ```
-- **A clarity file never becomes a guideline.** When the plan is final it moves to `guidelines/`
-  (RULE 7b) and the clarity file is **deleted with it** — its questions are answered by then, and a
-  surviving critique file would read as doubt about a settled doc.
 - **Something wrong in the owner's file is REPORTED, not fixed.** A mermaid diagram that fails
   `npm run lint:mermaid` (RULE 3), a contradiction (RULE 11), a schema that can't work — all of it
-  is a clarity entry naming the line, never an edit to the plan.
-- The clarity file follows RULE 8b in full: short, visualised, every critique carrying its own
+  is a clarify entry naming the line, never an edit to the doc.
+- The clarify file follows RULE 8b in full: short, visualised, every critique carrying its own
   `**→ Recommend:**` inline.
 
 > This exists because the alternative was tried and failed. The owner deleted 14 discussion docs
@@ -355,12 +346,12 @@ disscuss/architecture/mutation_and_ledger_clarity.md    ← everything you have 
 ### 8. Don't settle open questions unilaterally
 
 This is a collaborative design. When a decision is needed, put it in the relevant
-brainstorming doc as an option with its trade-offs and **ask** — do not quietly pick one and
-build on it.
+clarity file as an option with its trade-offs and **ask** — do not quietly pick one and build on
+it.
 
 ### 8b. How we discuss (owner)
 
-Applies to `plans/`, `disscuss/`, and replies in chat.
+Applies to the owner's requirement trees (`docs/business/`, `docs/technical/`) and to replies in chat.
 
 1. **Write LESS markdown.** The owner previews these docs — a wall of prose is not reviewable.
    Short sections, tight tables, no restating. Prefer a table or a list over a paragraph.
@@ -375,23 +366,23 @@ Applies to `plans/`, `disscuss/`, and replies in chat.
    ```
 
    Critique names the weakness, Recommendation says what to do instead, Question is what you need
-   back. The owner answers and clarifies — that is the loop. **In `disscuss/` that shape is the
-   shape of the `_clarity.md` file** (RULE 7c) — it never goes in the owner's plan doc.
-4. **`disscuss/` is not final** (RULE 7b), and the owner's doc there is not yours to edit (RULE 7c).
+   back. The owner answers and clarifies — that is the loop. **That shape is the
+   shape of the `_clarify.md` file** (RULE 7b) — it never goes in the owner's doc.
+4. **The owner's doc is not yours to edit** (RULE 7b) — your response is the `_clarify.md` beside it.
 5. **Do not lean on what this project already does.** Existing architecture, models and concepts are
    a **reference for discussion, never a justification**. Analyse them freely for weakness,
    trade-off and bug potential — "it is already built that way" is not an argument. This is RULE 1
    turned inward.
-6. **When it is final it becomes a guideline** — moved to `guidelines/`, deleted from `disscuss/`
-   (RULE 7b).
+6. **When the owner decides, RECORD IT** in the `_decision.md` beside the doc, and delete the
+   answered question from the `_clarify.md`.
 7. **Always visualise.** We discuss to DESIGN, so every design doc carries diagrams — grains, flows,
    states, sequences, before/after. A picture is how the owner reads it. Mermaid, and it must parse
    (RULE 3: `npm run lint:mermaid`).
 8. **Write the RESULTING DESIGN, not just the argument.** A response that is all critique and
    questions leaves the owner nothing to preview. Carry a **`## Proposed Design`** — the concrete
    outcome: tables, schema, components, flow. Critique says what is wrong, Recommendation says what
-   to do, Proposed Design says **what it IS**. In `disscuss/` this lives in the `_clarity.md`
-   (RULE 7c) as a proposal *for* the owner's doc — you never write it into the doc yourself.
+   to do, Proposed Design says **what it IS**. This lives in the `_clarify.md`
+   (RULE 7b) as a proposal *for* the owner's doc — you never write it into the doc yourself.
 9. **We are DIALECTIC — brainstorming together, not delivering verdicts.** The owner argues back and
    so should you: hold a position, defend it with the warehouse and the trade-offs, and change it when
    the counter-argument is better. Say "I think X because Y — what breaks?" rather than presenting a
@@ -401,15 +392,12 @@ Applies to `plans/`, `disscuss/`, and replies in chat.
     beside it makes the owner scroll to a distant list and re-pair them. One `**→ Recommend:**` line
     under each point — or a `→ Recommend` column when the critique is a table. The standalone
     `## Recommendation` then holds only the CROSS-CUTTING decision, not a re-list.
-11. **What the owner has DECIDED goes under `# Proposal`, at the top — with its VISUALISATION, SPEC
-    and related detail.** Not a bare list of verdicts: each closed decision carries the diagram and the
-    concrete specification that makes it buildable, so the settled design can be read on its own without
-    mining the argument below it. Everything outside `# Proposal` is still open. Move an item up the
-    moment the owner closes it, and mark any sub-part still under discussion — "decided" must never
-    over-claim.
-    ⚠ **This applies to `plans/`, not to `disscuss/`.** In `disscuss/` the owner's own doc IS the
-    proposal (RULE 7c) — there is no decided/open split to maintain, and an empty heading there
-    means "not designed yet", not "open question".
+11. **A decision is recorded with its VISUALISATION and SPEC — never as a bare verdict.** A closed
+    decision carries the diagram and the concrete specification that makes it buildable, so it can be
+    read on its own without mining the argument that produced it. This is what a `## Proposed Design`
+    in a `_clarify.md` (RULE 8b.8) and an entry in a `_decision.md` both owe the reader.
+    ⚠ **There is no decided/open split to maintain** — the owner's own doc IS the
+    proposal (RULE 7b), and an empty heading there means "not designed yet", not "open question".
 
 ### 9. A list RPC over data that can grow MUST paginate
 
@@ -491,11 +479,12 @@ refetching whenever the screen actually asks something.
 
 ### 11. A contradiction found in a design doc is RECORDED, not just fixed
 
-Every discussion doc carries a **`# Contradiction`** section. When a decision is found to contradict
+Every design doc carries a **`# Contradiction`** section. When a decision is found to contradict
 something already written, **fix it AND write it there** — with the example, the recommendation, and a
-diagram (RULE 8b.7: everything is visualised).
+diagram (RULE 8b.7: everything is visualised). In a `guidelines/` doc that means fixing the text and
+recording what went stale.
 
-⚠ **In `disscuss/`, `# Contradiction` lives in the `_clarity.md`, and nothing is fixed** (RULE 7c).
+⚠ **`# Contradiction` lives in the `_clarify.md`, and nothing is fixed** (RULE 7b).
 A contradiction inside the owner's plan doc is reported — quote both lines, say which one you think
 is wrong, recommend — and the owner resolves it in their own file.
 
@@ -522,7 +511,7 @@ they collect, because it is the only place a changed rule has to be restated N t
 
 ### 12. A decision is NAMED and LINKED, never numbered
 
-In `disscuss/`, `plans/` and `guidelines/`, every decision carries a **kebab-case name that says what it
+In the requirement trees and `guidelines/`, every decision carries a **kebab-case name that says what it
 decided** — `mint-per-layer`, not `F2` — and **every reference to it is a markdown link to the section
 that defines it**, so the owner can click through and read it instead of scrolling to look it up. (owner)
 
@@ -561,7 +550,10 @@ proto/       the API contract — ONE place, one buf module, one generate
 backend/     Go server (Connect RPC) — services/<service_name>/ (HARD RULE 2)
 tools/san/   the operations CLI — a tool of the repo, not of the server (HARD RULE 3b)
 frontend/    React + TypeScript (Vite), Connect RPC client
-plans/       design discussion — <service_name>/brainstorming.md (HARD RULE 4)
+docs/business/    what the business needs — owner-written (HARD RULE 7)
+docs/technical/   how it gets built — owner-written (HARD RULE 7)
+docs/development_state/  how far each context has got — agent-written (HARD RULE 7)
+guidelines/  programmer-authoritative service + code guidelines
 docs/faq/    the team FAQ — every question already asked, with its answer (see below)
 ```
 
@@ -580,8 +572,9 @@ answer goes instead.
 - **The FAQ explains and points — it is never a second source of truth.** The authority stays
   `CLAUDE.md`, `guidelines/`, the code and the other `docs/`; an entry gives the short answer and
   links there.
-- **"Not decided yet" is a valid entry** — say so and link the `plans/` doc. Never settle an open
-  design question in the FAQ (HARD RULE 8).
+- **"Not decided yet" is a valid entry** — say so and link the `_clarify.md` holding the open question (or say
+  plainly that nothing has been written yet). Never settle an open design question in the FAQ
+  (HARD RULE 8).
 - **When a rule changes, grep `docs/faq/` in the same commit.** A wrong FAQ entry is worse than a
   missing one: it is confidently wrong and the reader has no reason to doubt it.
 
@@ -689,7 +682,7 @@ reflection at runtime**, so the contract is readable from the `.proto` alone.
 | Option | Extends | Field | Declares |
 | --- | --- | --- | --- |
 | `warehouse.event_base.v1.event_config` | `MessageOptions` | 50001 | which Pub/Sub topic an event belongs to |
-| `warehouse.role_base.v1.request_policy` *(planned)* | `MessageOptions` | 50002 | who may call an RPC (see `plans/user_service/`) |
+| `warehouse.role_base.v1.request_policy` *(planned)* | `MessageOptions` | 50002 | who may call an RPC (see the roling section above) |
 
 **The generated option package must be linked into the binary**, or `proto.HasExtension`
 silently returns false and the option appears absent. It reads as a logic bug; it is a linking
@@ -937,8 +930,7 @@ stays.
 
 The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 
-Auth is deliberately **not wired** into the frontend shell: it's still being designed in
-`plans/user_service/brainstorming.md`.
+Auth is deliberately **not wired** into the frontend shell: it is still being designed.
 
 ## Go style
 
@@ -956,73 +948,42 @@ services grow.
 
 ---
 
+## Development lifecycle
+
+**[docs/development_lifecycle.md](docs/development_lifecycle.md) is the development flow.** A
+requirement is defined by the owner, analysed, questioned if unclear, implemented frontend-first,
+tested, and summarised into `docs/development_state/`. Read it before picking up work.
+
+The two entry lanes and where their docs live (HARD RULE 7):
+
+| lane | the owner writes | you write beside it |
+| --- | --- | --- |
+| business | `docs/business/<big>/<small>.md` | `<small>_clarify.md`, `<small>_decision.md` |
+| technical | `docs/technical/<big>/<small>.md` | `<small>_clarify.md`, `<small>_decision.md` |
+
+**`implementation_analysis` is frontend-first and previewable** — pages and components are built in
+Storybook with mock wiring so the screen can be looked at *before* the backend exists. That is HARD
+RULE 6 made concrete: the contract is derived from what a page must show and do, not the reverse.
+
+**When the analysis raises a question, it goes in the `_clarify.md` and the answer comes back as a
+`_decision.md` entry** (HARD RULE 7b). Do not settle it yourself (HARD RULE 8).
+
+**Whenever you write or change a `_clarify.md`, rebuild [docs/biggest_question.md](docs/biggest_question.md)** —
+the rollup of every open question, ranked by what is BLOCKED. It is derived: never hand-edited, built
+from `_clarify.md` only (never `_decision.md`), and the seven shown are a display cap, so it always
+says how many are not shown and where they live.
+
+**At the end of a pass, write the state report** — `docs/development_state/<big>/<small>.md`. It is
+written for the next agent, not for a person: what exists, what does not, what was decided.
+
 ## Git workflow
 
 All work happens on a single long-lived **`dev`** branch. Commit straight to `dev` — do **not**
-create a branch or a PR per issue/task. The owner keeps `dev` checked out to preview the running
-app and review as work lands, so per-issue branch-switching just gets in the way.
+create a branch or a PR per task. The owner keeps `dev` checked out to preview the running app and
+review as work lands, so branch-switching just gets in the way.
 
-- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright e2e
-  should pass at each commit.
-- **Decompose big work into SUB-ISSUES, not loose top-level issues.** When a plan is large enough
-  to split into pieces, create the pieces as GitHub **sub-issues under a parent issue** (via the
-  Sub-issues feature), not as unparented standalone issues — so progress rolls up under the parent
-  and stays trackable. (owner, #81)
-- **An issue's real spec lives in its COMMENTS, not just the body.** The owner drives each
-  issue as a thread: the body is the initial ask; refinements, reworks, and NEW requirements
-  arrive as comments, and the **last comment is usually the current spec**. Before starting —
-  and before moving anything to In review — read the full comment thread and satisfy the latest
-  requirements. An issue is not done until its comments are.
-  - `gh issue view N --comments` is **broken here** (it errors on a Projects-classic GraphQL
-    deprecation). Use the REST API instead:
-    `gh api repos/pdcgo/warehouse_revamp/issues/N/comments --jq '.[] | .body'` (all) or
-    `… --jq '.[-1].body'` (last only; the array is oldest→newest).
-- **Read PRIORITY from the ISSUE, not from the project board — and do not invent it.** When
-  asked to work "by priority", the order comes from the owner's **Priority** field. Read it first.
-  - ⚠ **There are TWO fields named "Priority", and only one is real.** The owner sets an
-    **issue-level custom field** (GitHub's issue Fields, shown in the issue sidebar *above* the
-    Projects box). Project #2 *also* has a ProjectV2 field called Priority — it has **no options
-    and no values**, is not used, and reading it returns nothing. Do not "fix" it by adding
-    options; that would create a second, competing Priority.
-  - The issue-level field lives in `issue_field_values`, and **REST is the working path**:
-    ```sh
-    # one issue
-    gh api repos/pdcgo/warehouse_revamp/issues/165 \
-      --jq '[.issue_field_values[]? | "\(.issue_field_name)=\(.single_select_option.name)"]'
-    # every open issue that has one
-    gh api "repos/pdcgo/warehouse_revamp/issues?state=open&per_page=100" --paginate \
-      --jq '.[] | select(.pull_request == null)
-            | select(.issue_field_values | length > 0)
-            | "\(.number)\t\(.issue_field_values[].single_select_option.name)\t\(.title)"'
-    ```
-    The key is **`issue_field_name`**, not `name`. GraphQL exposes `Issue.issueFieldValues`, but
-    `IssueFieldSingleSelectValue` has **no `singleSelectOption`** field — a GraphQL attempt fails
-    with `undefinedField`, so use REST.
-  - `gh project item-list --format json` **does NOT include custom fields** — its items expose
-    only `content, id, status, title`. It is still the right tool for **Status** and item ids.
-  - **Most issues have no Priority set** (4 of 33 open, when this was written). Absence is normal
-    and is not a reason to rank by your own judgement: say the field is unset and **ask the owner**
-    (or propose an order for confirmation). Never present an inferred order as if it were the
-    board's.
-- Track progress on the GitHub Project board (project #2 "Warehouse Revamp", owner `pdcgo`):
-  move items **Ready → In progress** when you start, and **In progress → In review** when the
-  work is finished and green on `dev`.
-  - **Move it to In progress FIRST — before writing a single line of code, as the opening step of
-    picking up the item.** Not after the first edit, not at commit time, not "later". The board is
-    how the owner sees what's being worked on right now; code that lands while the item still reads
-    *Ready* means the board lied about the state the whole time. If you catch yourself already
-    editing files with the item still in Ready, you skipped this — fix it immediately.
-  - **Stop at In review** — do **not** move to Done and do **not** `gh issue close` it yourself.
-    The owner previews on `dev`, then flips it to Done and closes the issue. Done means "the owner
-    reviewed it", not "the code landed".
-  - Board IDs for `gh project item-edit` (needs the `project` token scope —
-    `gh auth refresh -s project`):
-    - Project id `PVT_kwDOB8TF184BdVMC` · Status field id `PVTSSF_lADOB8TF184BdVMCzhX3esc`
-    - Status options: Backlog `f75ad846` · Ready `61e4505c` · In progress `47fc9ee4` ·
-      In review `df73e18b` · Done `98236657`
-    - Move: `gh project item-edit --project-id <PID> --id <ITEM> --field-id <SF>
-      --single-select-option-id <OPT>` · Find an item id:
-      `gh project item-list 2 --owner pdcgo --format json`
+- Keep `dev` green: `buf lint`, `go build/vet/test`, frontend typecheck, and the Playwright spec for
+  the work in hand should pass at each commit. CI runs the full suite.
 - Promote to `main` by merging `dev` → `main` **when the owner asks**. Never force-push `main`;
   never push `main` or merge without an explicit ask.
 
