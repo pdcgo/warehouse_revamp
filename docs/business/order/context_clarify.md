@@ -38,6 +38,29 @@ the current open set.
 >
 > ✅ **Your block-beta parses**, and the completed picture is the mixed order in one image — two different owners' products resolving onto stock held by one warehouse.
 >
+> **Re-examined after §Order Draft.** ✅ **The stock half of the biggest open question is CLOSED and
+> deleted** — *"When Order in draft stage, its not create this yet: Stock, Placement"*. A draft holds no
+> stock and no placement, which is the answer I recommended and the one the build already implements.
+> **What is left of that question is the MONEY half**, and the section is silent on it: no ledger entry,
+> no debt threshold, no shared lock, no reserve is named either way. See [Question 4](#question).
+>
+> ⚠ **Your §Responsbility list is the more consequential half of the edit.** A draft keeps **external
+> product info** — the marketplace's SKU, not our product id. That makes *nothing-at-draft*
+> **structurally necessary** rather than a policy: with no mapped product a draft cannot know whose goods
+> a line is, so it has no owner, no COGS, no cross-charge, no threshold to consult and no lock to honour.
+> It also forces [Question 5](#question)'s answer: every check lands on `finalize`, so **finalize must be
+> able to refuse**. Written up as [a-draft-holds-facts-not-commitments](#a-draft-holds-facts-not-commitments).
+>
+> ⚠ **Two things the section opens**, both small: *Placement* collides with the phrase the rest of the
+> system uses for the finalize moment ([Question 10](#question)) · and the external-SKU→product mapping is
+> remembered nowhere, so the same SKU is mapped by hand on every order forever
+> ([Question 11](#question)).
+>
+> ✅ **Also closed and deleted this round: does a draft carry its SHOP?** Yes
+> ([a-draft-carries-its-shop](./context_decision.md#a-draft-carries-its-shop)) — so a draft has an owning
+> team from the moment it exists, and *"unowned"*, which nothing else in this system could handle, never
+> occurs. That was Critique 15, now gone.
+>
 > **Three sections of prose, and the order run is the warehouse's whole day.** That is still the finding:
 > everything the crew physically does — pick, pack, hand over, take back — hangs off an order, and none
 > of it has a rule yet.
@@ -74,6 +97,57 @@ An order has **two states before the warehouse ever sees it**: `draft` and `fina
 second human to check it; a scanner does. **There is no unattended machine path** — every order reaches
 `finalized` through a person.
 
+#### a-draft-holds-facts-not-commitments
+A draft **creates no stock and no placement**, and it keeps only what the outside world said:
+**marketplace info · warehouse info · shipping info · customer info · external product info**.
+*(§Order Draft)*
+
+✅ **This closes the stock half of [Question 4](#question)** in the direction I recommended.
+
+⚠ **The reason is stronger than the rule, and the doc does not say it.** A draft keeps *external*
+product info — the marketplace's SKU, **not our product id**. Everything the system would want to check
+at draft hangs off our product: which team owns the line, what it costs, whether it is
+[shared-locked](../product/context_clarify.md#shared-lock-stops-sharing-entirely), whether it breaks a
+[reserve](../product/context_clarify.md#reserved-stock-is-never-shared), whose
+[debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) applies. With no mapped
+product **none of them are even computable**. So *nothing at draft* is not a policy choice that could
+have gone the other way — it is forced.
+
+```mermaid
+flowchart LR
+  subgraph "draft — facts only"
+    M["marketplace info"]
+    WH["warehouse info"]
+    SH["shipping info"]
+    CU["customer info"]
+    EX["EXTERNAL product info<br/>a SKU, not our product"]
+  end
+  subgraph "finalize — commitments"
+    MAP["map external SKU to our product"]
+    OWN["line owner, own or borrowed"]
+    MON["COGS, cross charge, threshold, lock, reserve"]
+    ST["stock and rack placement"]
+  end
+  EX --> MAP
+  MAP --> OWN
+  OWN --> MON
+  MON --> ST
+  MAP -.->|"no mapping, no owner, so nothing above is computable at draft"| EX
+```
+
+**→ Recommend** two sentences in §Order Draft: *"A draft creates no ledger entry and passes no check —
+it has no mapped product, so it has no owner and no cost."* and *"Because every check runs at finalize,
+finalize may refuse."* The first makes the rule un-forgettable, the second states the consequence you
+have already accepted by choosing it.
+
+✅ **A draft also carries its SHOP** — and therefore its owning team — from the moment it exists
+([a-draft-carries-its-shop](./context_decision.md#a-draft-carries-its-shop)). The §Responsbility list does
+not name it, so the rule lives in the decision rather than the doc.
+
+⚠ **What §Order Draft still leaves open** — two small things, each a question below: *Placement* is the
+word the rest of this system uses for the **moment an order is placed** ([Question 10](#question)) · and
+the **external SKU to product mapping is remembered nowhere** ([Question 11](#question)).
+
 ### The lifecycle, whole — now mostly yours, with one seam and one dangling end
 
 ⚠ **Provisional: §Complete Journey Of The Orders is visibly unfinished** — its last node,
@@ -97,17 +171,20 @@ flowchart LR
     W --> S["status shipped"]
     S --> Q{"is Shipment Problem?"}
   end
-  F -.->|"is Order Created the same moment as finalized? nothing says"| C
+  F ==>|"ONE MOMENT — order-created-is-finalize"| C
   C --> X["cancelled — the only exit drawn, and only here"]
   Q -.->|"undrawn — this is where RETURNS enter"| Z["not yet written"]
   D -.->|"a draft nobody finalizes — still no rule"| Y["abandoned?"]
 ```
 
-**Two seams and one gap, in order of how much they cost:**
+✅ **The seam is CLOSED** — [order-created-is-finalize](./context_decision.md#order-created-is-finalize).
+`finalize the order` and `Order Created` are one moment under two names, so the two flows join and
+*"at creation"* now picks exactly one instant.
+
+**One gate and one gap remain:**
 
 | | what | where it bites |
 | --- | --- | --- |
-| **the seam** | `finalized` and `Order Created` are never linked | it is exactly where [Question 4](#question) lives |
 | **the gate** | cancellation is one decision, before the warehouse accepts | [Critique 6](#critique) — an order already picked has no exit |
 | **the end** | `is Shipment Problem ?` has no branches | undrawn, not undecided — no questions filed |
 #### the-warehouse-accepts-before-it-processes
@@ -249,7 +326,6 @@ sequenceDiagram
 | **10** | **Nothing says what the business must be able to PROVE about an order.** Which buyer, which shop, what was picked, by whom, what it cost, what was charged, which parcel left the building — and now also **which door the order came in by**. Without that, "transparency accounting" ([business_level](../business_level_clarify.md) §covered 3) has no evidence for the most common transaction in the business. | List the facts an order carries **forever**, and mark which are frozen at creation versus recorded as it moves. Frozen: shop, warehouse, lines, their owners, their cost, **its source (typed or API, and by whom)**. Recorded: who picked, who packed, when it was handed over. |
 | **13** | **`User Review Order` is the sole control between a machine scan and an order that moves stock and money — and it is unspecified, and it CANNOT FAIL.** The flow has no branch out of review: `Create Draft → User Review Order → User Finalize the Order` runs one way. A reviewer who spots a bad scan has nowhere to go in the drawn process. Nothing says what they are checking, or what they may change — quantities, lines, the shop, the owning team. A review nobody can fail is a rubber stamp, and it is the only defence the machine path has. | Give review a **reject branch** and say what it produces: I recommend *approve · edit-then-approve · discard, with a reason*. And name the short list a reviewer is actually checking — I would make it the fields the rest of the system freezes: **shop, warehouse, lines, quantities, and the owning team of each line**. |
 | **14** | **Deduplication is a HUMAN step on one path and ABSENT on the other — and it is absent on the path that retries.** Path 1 opens with *"User Check not recorded order on their own selling platform marketplace"*, which is a person checking by eye. Path 2 has **no equivalent step**: scan → create draft, unconditionally, so a rescan produces a second draft of the same marketplace order. **Nothing in either path is a uniqueness rule** — [Question 1](#question) recommends the marketplace order id refuse a duplicate by construction, and as drawn nothing does. ⚠ **One mitigation, stated fairly:** a duplicate draft still has to pass a human finalize, so it is not unattended — but that relies on someone spotting two identical drafts, possibly reviewed by different people at different times. | Keep the human check as a *convenience* and add the constraint underneath it: **refuse a second order with the same marketplace id in the same shop, at draft creation**. Then the scanner may retry freely and the reviewer never sees a duplicate to miss. |
-| **15** | **A draft may have no owning team yet.** [an-order-carries-four-facts](#an-order-carries-four-facts) derives the owning team from the **shop**, and neither flow says when the shop is set — a scanned draft may exist before anyone has said which shop, and therefore which team, it belongs to. That matters the moment drafts are listed, counted, or visible to more than one team, and it decides whose [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) would even be consulted. | **A draft carries its shop from the moment it exists** — the scanner knows which storefront it read. If that is genuinely unknowable at scan time, then a draft belongs to the **app's own team** until review assigns it, and say so, because "unowned" is not a state anything else in this system can handle. |
 
 ---
 
@@ -272,19 +348,19 @@ sequenceDiagram
    ([the-warehouse-accepts-before-it-processes](#the-warehouse-accepts-before-it-processes))
    **→ I recommend one line separating "what a person does" from "what the order holds", and a stated
    ground and outcome for a warehouse declining an order.**
-4. **Is `Order Created` the same moment as `finalized` — and does a DRAFT commit stock?** ⚠ **Your two
-   flows share no vertex.** §How New Order Processed ends at *"finalize the order"*, §Complete Journey
-   begins at *"Order Created"*, and nothing links them — so a reader cannot tell whether the journey
-   starts **before or after** the moment this question is about. Naming one shared moment would answer
-   most of this for free. ⚠ My earlier answer was *"at creation"*, and creation now names **two**
-   moments, so the word no longer picks one. The same question
-   runs for the reserve, the shared lock, the debt threshold, and the ledger — **a draft surely must not
-   post a payable to the owning team, and nothing says that either.** ([Critique 4](#critique))
-   **→ I recommend NOTHING happens at draft: no stock held, no ledger entry, no threshold check.
-   Everything commits at `finalize`, atomically.** A draft that holds stock lets an unreviewed scan block
-   another team's selling, and drafts nobody finalizes then leak inventory until something reaps them.
-   The cost of my choice is honest and small: availability shown while drafting can go stale, so
-   **finalize must re-check and may refuse** — which is [Question 5](#question) already.
+4. **Does a DRAFT touch the MONEY?** ✅ **Two thirds of this question are now closed.** §Order Draft
+   says a draft creates no **stock** and no **placement**
+   ([a-draft-holds-facts-not-commitments](#a-draft-holds-facts-not-commitments)), and
+   [order-created-is-finalize](./context_decision.md#order-created-is-finalize) joined the two flows — so
+   *"at creation"* now picks one instant and that instant is `finalize`. **What is left is the financial
+   half, which the section does not mention either way:** a payable to a borrowed line's owner · the
+   [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) · the
+   [shared lock](../product/context_clarify.md#shared-lock-stops-sharing-entirely) · the
+   [reserve](../product/context_clarify.md#reserved-stock-is-never-shared). ([Critique 4](#critique))
+   **→ I recommend NONE of them at draft — no ledger entry, no check — and I think your own section
+   already forces it:** a draft holds an *external* SKU, so it has no product, no owner and no cost, and
+   none of those four are computable. The cost is honest and small: availability seen while drafting can
+   go stale, so **finalize must re-check and may refuse**, which is [Question 5](#question) already.
 5. **Does one blocked or unavailable LINE refuse the whole order?** — a lock, a reserve, or a debt
    threshold reached with one of several owners. ([Critique 11](#critique))
    **→ I recommend all-or-nothing at FINALIZE, with the refusal naming the line.**
@@ -305,6 +381,19 @@ sequenceDiagram
    **→ I recommend stating it either way rather than leaving it implied. If it is the rule, say
    "not cancellable once accepted" so the cut-off is visible. And say that cancelling reverses the order
    fee and the cross charge, which no doc has yet.**
+10. **Is "Placement" the RACK, or the moment the order is placed?** Beside "Stock" it reads as rack
+    placement — but *"frozen at placement"* is the phrase the rest of this system uses for the
+    **finalize** moment, so the same word now names both ends of the sentence.
+    ([a-draft-holds-facts-not-commitments](#a-draft-holds-facts-not-commitments))
+    **→ I recommend saying "rack placement", or dropping the word — "Stock" already covers it.**
+11. **Is the external SKU to product mapping REMEMBERED between orders?** A draft keeps *external product
+    info*, and somewhere between draft and finalize a person turns that SKU into one of our products.
+    Nothing says that answer is kept. If it is not, the same SKU is mapped by hand on **every** order
+    forever — which cancels most of what the API path was for, since the scan saves typing and then
+    charges it back at review. *(This is the same shape as §What Is Product LinkMap, on a different pair:
+    LinkMap bridges product-to-product, this bridges a marketplace SKU to a product.)*
+    **→ I recommend remembering it per shop, so a draft arrives pre-mapped and review is a glance rather
+    than data entry — with an unrecognised SKU still stopping at a person.**
 
 ---
 

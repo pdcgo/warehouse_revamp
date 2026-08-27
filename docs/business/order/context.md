@@ -262,3 +262,19 @@ ivcreate-->e
 1. its use for prevent duplicate create product when order return happened.
 2. its use for map product ownership when its return.
 
+
+## Order Draft
+When Order in draft stage, its not create this yet:
+- Stock
+- Placement
+
+### Responsbility
+1. Order draft is keep :
+    - marketplace info
+    - warehouse info
+    - shipping info 
+    - customer info
+    - external product info
+
+
+

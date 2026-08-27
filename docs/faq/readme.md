@@ -123,6 +123,7 @@ second time will be slightly different. That drift is the actual cost.
 - [Why does my list flicker, or show stale numbers?](frontend.md#why-does-my-list-flicker-or-show-stale-numbers)
 - [How does mobile work? Do I add responsive props?](frontend.md#how-does-mobile-work-do-i-add-responsive-props)
 - [Where does user-visible text go?](frontend.md#where-does-user-visible-text-go)
+- [How do I run Storybook?](frontend.md#how-do-i-run-storybook)
 - [Does my component need a Storybook story?](frontend.md#does-my-component-need-a-storybook-story)
 - [What bites when writing a story?](frontend.md#what-bites-when-writing-a-story)
 - [How do I run the e2e?](frontend.md#how-do-i-run-the-e2e)

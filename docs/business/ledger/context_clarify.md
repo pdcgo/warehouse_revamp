@@ -10,8 +10,17 @@ current open set.
 > questions go with it (*in-band or broker*, *four logs or one outbox*). **What survives got bigger, not
 > smaller:** replay, at-least-once and reconciliation stop being arguments *against* an option and become
 > **required spec** for the one you chose.
+>
+> **Re-examined after the first box was renamed, and after [settlement_context](../settlement/context.md)
+> landed.** ✅ **Closed and deleted — one contradiction:** *the source named Revenue is fed by a trigger
+> that produces no revenue*. The box now reads **`Settlement Log`** and its transition **`Settlement
+> Happen`** (was `Revenue Log` / `Writing Log`), so the label is no longer the wrong side, and
+> [settlement_context](../settlement/context.md) is the source that fills it — real revenue now has a
+> box, a log and a publisher. ⚠ **One residue kept**, moved to [Awaiting](#awaiting): what an order posts
+> *at order time* — COGS and a payable — still has no box of its own.
 
 Siblings: [balance_context](../balance/context_clarify.md) · [order_context](../order/context_clarify.md) ·
+[settlement_context](../settlement/context_clarify.md) ·
 [architectures/architecture_context](../../technical/architecture/context_clarify.md) ·
 [business_level](../business_level_clarify.md) · [stock_context](../stock/context_clarify.md) ·
 [product_context](../product/context_clarify.md).
@@ -210,40 +219,6 @@ flowchart TB
   X --> Y["so it moves out — pair exposure, synchronous"]
 ```
 
-## the source named Revenue is fed by a trigger that produces no revenue
-
-> `ledger_context.md:11-14` — `state "Revenue Log" as revlog` · `[*]-->order: Order Happen` ·
-> `order-->revlog: Writing Log`
->
-> `order_context.md:150` — *"Estimate Revenue is just recorded. **its doesn't affect the ledger**, its used
-> for statistic."*
-> `order_context.md:168` — `prev-->revenue: Write to True Revenue System Ledger` — true revenue is written
-> from **platform completion**
-> `order_context.md:17-19` — at order time the movements are *"the debit is COGS"* and a **payable** /
-> **receivable**
-
-**I think the box label is the wrong side.** What an order writes at `Order Happen` is **COGS and a
-payable** — not revenue. Real revenue enters at a moment (`order_context.md:167-177`: platform completion,
-wallet, withdrawal) that has **no box, no log and no publisher** in this diagram. As drawn, either the
-estimate reaches the book — contradicting `:150` — or the book never learns about revenue at all.
-
-**→ RECOMMEND** rename the box to what the order actually posts, and add a **settlement / withdrawal
-source**. The cheaper fix — one log with an `is_estimate` flag the projection ignores — I would not pick:
-an estimate and a settlement arrive from **different parties on different days**, and folding them into one
-log is how the two get summed by accident.
-
-```mermaid
-flowchart LR
-  OH["Order Happen"] --> P1["COGS, payable, receivable — real, at order time"]
-  OH --> P2["Estimate Revenue — statistic only, order_context line 150"]
-  PC["platform marks it completed"] --> P3["TRUE revenue"]
-  WD["withdrawal to the bank"] --> P4["cash in"]
-  P1 --> BOX["the box called 'Revenue Log'"]
-  P2 -.->|"must NOT reach the book"| BOX
-  P3 -.->|"no box, no log, no publisher"| MISSING["nowhere"]
-  P4 -.-> MISSING
-```
-
 ---
 
 # Awaiting
@@ -256,3 +231,9 @@ flowchart LR
   are now where rounding is frozen forever.
 - **No retention rule for four permanent record-of-truth tables.** They are now the audit trail, so "how
   long" is a business answer, not an ops one.
+- **What an order posts AT ORDER TIME has no box.** Residue of the contradiction closed above. The first
+  box now covers `Order Happen → Settlement Happen → Settlement Log`, which is the *later* moment; the
+  COGS and the payable that [order_context](../order/context.md) says are written when the order is
+  placed publish nothing. COGS may belong to `Inventory Log`, but the payable is the same gap
+  [Critique 1](#critique) already names — which is a second reason `payment-is-the-fifth-source` is not
+  optional.

@@ -184,6 +184,25 @@ Indonesia. Catalogs are `frontend/src/i18n/locales/en.json` and `id.json`; add t
 
 ---
 
+## How do I run Storybook?
+
+```sh
+cd frontend
+npm run storybook        # the workbench, :6006
+npm run test:stories     # every story's play() headlessly — after any component change
+npm run build-storybook  # the static site (storybook-static/, gitignored)
+```
+
+**It needs neither the Go API nor Postgres.** The Connect transport is stubbed at build time
+(`.storybook/stubTransport.ts`), so a component runs its real query hook against fixtures — which
+is the point: a picker regression fails here in a second, naming the component, instead of as a
+mysterious timeout in an e2e spec.
+
+Port 6006 is Storybook's own default and collides with nothing on this machine — unlike
+[5433 / 6380 / 5174](getting-started.md#why-are-the-ports-5433--6380--5174-instead-of-the-usual-ones).
+
+---
+
 ## Does my component need a Storybook story?
 
 **Yes, if it is a shared component — in the same commit**, as
@@ -194,11 +213,7 @@ Indonesia. Catalogs are `frontend/src/i18n/locales/en.json` and `id.json`; add t
 body. A component exporting `description` feeds it into the story's docs page, so the sentence
 lives once, in the component.
 
-```sh
-cd frontend
-npm run storybook        # the workbench, :6006
-npm run test:stories     # every play() headlessly — run this after a component change
-```
+Run `npm run test:stories` after any component change — see [How do I run Storybook?](#how-do-i-run-storybook).
 
 > This replaced a hand-written gallery page — 1238 lines of JSX that documented but never
 > *checked*. Every rule in those descriptions could be broken with nothing failing.
