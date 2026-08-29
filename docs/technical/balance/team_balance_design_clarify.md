@@ -72,6 +72,40 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # ⚠ Re-examined after §Detail Pair Team Balance — and Q6 is ANSWERED
+>
+> Three lines, and they close the question this file asked last round. *"The Change Log"* was **two
+> logs**, not one, and you have now named them separately:
+>
+> | §Detail Pair Team Balance | |
+> | --- | --- |
+> | 1. Its show general summarize | ✅ the pair's position, already there as two directions |
+> | 2. Its show change **limit** history log | 🆕 **built this pass** — a fifth tab |
+> | 3. its show change **balance** log | ✅ the four entry / payment tabs |
+>
+> ⛔ **Q6 is DELETED**, recorded as
+> [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs).
+> ⚠ It closes **against** this file's recommendation: I proposed reading item 3 as *one* of the two
+> logs and you answered *both*. Worth noting, because the reasoning I offered for picking one — *the
+> entries are already there, so naming a log must mean the other* — was a decent argument and still
+> wrong. Naming a thing that already exists is how a requirement doc says it is REQUIRED, not new.
+>
+> ✅ **Built, and previewable**: a fifth tab on `/liability/:counterpartyId`, three stories, and
+> `ChangeLogPanel` promoted from `pages/liability-terms/components/` to `features/liability/` —
+> the moment a second page imported it, it stopped being one page's component (CLAUDE.md).
+>
+> ```mermaid
+> flowchart LR
+>   P["pair detail"] --> S["1. summarize"]
+>   P --> L["2. LIMIT history — a rule that changed"]
+>   P --> B["3. BALANCE log — money that moved"]
+>   L -.->|"different grain — never merged"| B
+> ```
+>
+> ⚠ **Q7 survives and is NARROWED.** Showing the limit history here says nothing about where a limit
+> is **written**, and Credit Terms is still not in §Frontend Requirements. It still blocks
+> `design_accept`.
+
 > # ⚠ Re-examined after the doc's FIRST CONTENT — three frontend requirements
 >
 > `team_balance_design.md` is no longer empty. It leads with **§Frontend Requirements**, which is the
@@ -460,7 +494,7 @@ be inferred later from a note.
 | | Problem *(found by re-examining after §Frontend Requirements)* | → Recommend |
 | --- | --- | --- |
 | **16** | **"Summarize All Balance" summarises ONE PAGE, and it looks right when it is wrong.** [liability-list](../../../frontend/src/pages/liability-list/index.tsx) computes `totalPayable`, `totalReceivable` and the oldest-unsettled tile by reducing `rows` — which is `positions` after a **client-side** search and type filter, and `positions` is one page of **20**. A creditor with 21 counterparties gets a headline total that silently omits the 21st, and turning to page 2 changes the "total". ⚠ Your requirement is *"Summarize **All** Balance"*, which is exactly the thing this cannot do. | **The summary comes from the SERVER, never from the loaded page.** → I recommend adding the totals to `LiabilityPositionListResponse` beside `awaiting_confirmation` — already a whole-set number computed server-side, so the shape exists and the precedent is yours. A separate `LiabilitySummary` RPC is the alternative and I would not: a second round trip for a number the list query already touches every row of. ⚠ The client-side search must then stop narrowing the tiles, or the summary and the filter disagree in a new way. |
-| **17** | **"The Change Log" has two readings and they live on different pages.** Item 3 pairs it with the pair detail. It could mean **(a)** the ledger entries for that pair — every fee, reimbursement and payment, which the detail page already shows in four tabs — or **(b)** the history of the CREDIT LIMIT for that pair, which is what [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) settled and what `LiabilityTermsHistoryList` was declared for. Different logs, different grains: (a) is money that moved, (b) is a rule that changed. | **Name which one, and I would put BOTH on the detail page.** → I recommend reading item 3 as **(b)**, because (a) is already there and would not have needed naming — and then the pair detail grows a fifth tab, *Limit changes*, reading `LiabilityTermsHistoryList` filtered to that counterparty. Smaller than it sounds: the panel is built and takes a `counterpartyId` already. |
+| ~~**17**~~ | ✅ **RESOLVED — it was BOTH.** §Detail Pair Team Balance now names them separately, recorded as [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs), and the limit log is built as a fifth tab. Kept one round as a record, because the lesson is worth more than the incident: I read *"the entries are already on that page, so naming a log must mean the other one"* as decisive, and it was not — **a requirement doc names what already exists, because that is how it says the thing is REQUIRED rather than incidental.** ⚠ The two logs must never merge: one is a rule changing, one is money moving, and only the second is a ledger. Original wording: **"The Change Log" has two readings and they live on different pages.** Item 3 pairs it with the pair detail. It could mean **(a)** the ledger entries for that pair — every fee, reimbursement and payment, which the detail page already shows in four tabs — or **(b)** the history of the CREDIT LIMIT for that pair, which is what [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) settled and what `LiabilityTermsHistoryList` was declared for. Different logs, different grains: (a) is money that moved, (b) is a rule that changed. | **Name which one, and I would put BOTH on the detail page.** → I recommend reading item 3 as **(b)**, because (a) is already there and would not have needed naming — and then the pair detail grows a fifth tab, *Limit changes*, reading `LiabilityTermsHistoryList` filtered to that counterparty. Smaller than it sounds: the panel is built and takes a `counterpartyId` already. |
 | **18** | **Credit Terms is a fourth screen and your list has three.** `/liability/terms` is where the limit, the handling fee and the markup are SET — the only place §Balance Policy's threshold is configurable outside the database. It is not in §Frontend Requirements, which reads either as "not needed" or as "I did not list it". ⚠ It is at `design_accept` now, so this is live rather than bookkeeping. | **Say whether it is a screen or a section.** → I recommend **a screen, kept**, because the DEFAULT row (`counterparty_id = 0`) is terms for *every team without their own* and has no pair detail page to live on — that alone forces a list. Then item 3's log is the per-pair *view* of what that screen *writes*. The alternative — terms as a section of the pair detail — cannot express the default row at all. |
 
 | | Problem *(found by re-examining the implemented frontend)* | → Recommend |
@@ -468,7 +502,7 @@ be inferred later from a note.
 | ~~**12**~~ | ⛔ **WITHDRAWN — and the toolchain behind it is FIXED.** This said `frontend/src/gen/warehouse/liability/` was missing after the `settlement` → `liability` rename. Commit `0d4cbc4` committed `liability_pb.ts` and `liability.connect.go`, and `npm run typecheck` exits **0**. ✅ **The destructive-command warning is also resolved** (2026-08-29): every plugin is now `local:` and pinned — `protoc-gen-go` / `protoc-gen-connect-go` as `tool` directives in the root go.mod, `protoc-gen-es` as a frontend devDependency — so `cd proto && buf generate` needs **no BSR token**. Verified by running it: 51 files regenerated, `go build`/`go vet`/`tsc` all clean. | No action. ⚠ The prerequisite is now `cd frontend && npm install`, and it is written into the [Commands table](../../../CLAUDE.md) and [docs/faq/contract.md](../../faq/contract.md). `clean: true` still empties both trees on a failed run — `git checkout -- backend/gen frontend/src/gen`. |
 | **13** | **`STOCK_DAMAGE` rendered as "Unknown".** `causeKey` in `liability-detail` switched on five source types and the proto has six — so **every broken-or-lost reimbursement and every found-back reversal** displayed as *"Unknown #123"* on the counterparty ledger. That is cause 4, the one the business doc spends the most words on, and the one where the WAREHOUSE is the debtor. ✅ **Fixed in this pass** — the case and `causeStockDamage` in both locales. | Kept here because the shape recurs: **an enum switch with a `default` that renders "unknown" cannot fail loudly**, so a new `source_type` reaches production as a blank label. Worth a story asserting every `LiabilitySourceType` maps to a real key. |
 | **14** | **Two shipped RPCs have no screen, and both are the "something went wrong" half.** `PaymentReverse` exists in `liability_service` and **nothing in the frontend calls it** — so a confirmation made in error cannot be undone by anyone. `TermsSet` / `TermsList` / `TermsDelete` ship, and **no screen sets a credit limit or a markup** — so the debt threshold your §Balance Policy requires is configurable only by direct database access. | The reverse is a small addition to the payment row's actions (behind a `ConfirmDialog`, with the reason `liability_payments.reversal_reason` already holds). **The terms screen is the bigger gap**, and it is where [Q6](#question)'s override recording would live — build them together, since "who may change this limit, and is it recorded" is the same screen's question. |
-| **15** | **The daily statement reads a source type NOTHING POSTS, so a stated responsibility under-reports.** [queries.ts:81](../../../frontend/src/pages/daily-statement/queries.ts) reads `LiabilitySourceType.COD_FEE`, and [mapper.go:28](../../../backend/services/liability_service/liability_v1/mapper.go) says `SourceTypeRestockOutlay` *"supersedes SourceTypeCODFee, which nothing posts under any more"*. So the statement's COD column is **permanently zero** and `RESTOCK_OUTLAY` appears in **no column at all** — while `HANDLING_FEE` is the only thing counted as income. ⚠ Sharper since [balance-manages-and-reports](../../business/balance/context_decision.md#balance-manages-and-reports) made *"serve the daily report"* one of balance's two stated jobs. ⚠ **The obvious fix is now the WRONG ONE.** *"Read `RESTOCK_OUTLAY` where the screen reads `COD_FEE`"* was this critique's recommendation until [the-warehouse-receivable-is-order-fee-cod-fee-and-found](../../business/balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) named the business movement **`cod_fee`** — siding with the name the ledger abandoned, and with the screen. **Rename the ledger's source type back to `cod_fee` and the screen needs no change at all.** That is [business Q6](../../business/balance/context_clarify.md#question), and it travels with the same migration that splits `STOCK_DAMAGE` into `broken_good` / `lost_good` / `found`. Same failure shape as [Critique 13](#critique): a source type was renamed and one of its two readers followed. ⚠ **Hold until Q2 and Q6 land** — Q2 decides whether `RESTOCK_COST_KIND_OTHER` survives, and a rename to `cod_fee` while the posting still charges every cost line would put a name on the column that the amount does not match. |
+| **15** | **The daily statement reads a source type NOTHING POSTS, so a stated responsibility under-reports.** [queries.ts:81](../../../frontend/src/pages/daily-statement/queries.ts) reads `LiabilitySourceType.COD_FEE`, and [mapper.go:28](../../../backend/services/liability_service/liability_v1/mapper.go) says `SourceTypeRestockOutlay` *"supersedes SourceTypeCODFee, which nothing posts under any more"*. So the statement's COD column is **permanently zero** and `RESTOCK_OUTLAY` appears in **no column at all** — while `HANDLING_FEE` is the only thing counted as income. ⚠ Sharper since [balance-manages-reports-and-takes-payments](../../business/balance/context_decision.md#balance-manages-reports-and-takes-payments) made *"serve the daily report"* one of balance's **three** stated jobs. ⚠ **The obvious fix is now the WRONG ONE.** *"Read `RESTOCK_OUTLAY` where the screen reads `COD_FEE`"* was this critique's recommendation until [the-warehouse-receivable-is-order-fee-cod-fee-and-found](../../business/balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) named the business movement **`cod_fee`** — siding with the name the ledger abandoned, and with the screen. **Rename the ledger's source type back to `cod_fee` and the screen needs no change at all.** That is [business Q6](../../business/balance/context_clarify.md#question), and it travels with the same migration that splits `STOCK_DAMAGE` into `broken_good` / `lost_good` / `found`. Same failure shape as [Critique 13](#critique): a source type was renamed and one of its two readers followed. ⚠ **Hold until Q2 and Q6 land** — Q2 decides whether `RESTOCK_COST_KIND_OTHER` survives, and a rename to `cod_fee` while the posting still charges every cost line would put a name on the column that the amount does not match. |
 
 ✅ **Reimbursement at COGS is settled, and it is the right measure** — `business_level.md` warehouse #5.
 The owner loses the goods, not the sale, so COGS makes them whole without the warehouse insuring a margin
@@ -508,16 +542,19 @@ new**, and all three come from re-reading the code rather than the docs.
 5. **🆕 May the creditor REJECT a claimed payment?** ([Critique 11](#critique)) Today the only way to
    refuse one is to confirm it and reverse it, which writes two real movements for money that never moved.
    **→ I recommend a `rejected` terminal state that posts nothing.**
-6. **🆕 Which log does item 3 mean — the ENTRIES or the LIMIT history?** ([Critique 17](#critique))
-   The entries are already on the pair detail page in four tabs, so naming a change log there reads as
-   asking for the other one.
-   **→ I recommend the LIMIT history, as a fifth tab on the pair detail page** — the panel exists and
-   already takes a counterparty.
-7. **🆕 Is Credit Terms a screen of its own, or a section of the pair detail?** ([Critique 18](#critique))
-   ⛔ **This one is blocking**: the prototype is at `design_accept` waiting on the answer.
-   **→ I recommend a screen.** The default row is terms for every team without their own, and it has
-   no pair detail page to live on.
-8. **🆕 Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
+> ⛔ **Q6 is DELETED — and the answer was BOTH.**
+> [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs):
+> the pair detail carries a summary, the **limit** history and the **balance** log, as three separate
+> things. Built — a fifth tab, with `ChangeLogPanel` promoted to `features/liability/`.
+
+6. **Is Credit Terms a screen of its own, or a section of the pair detail?** ([Critique 18](#critique))
+   ⛔ **Still blocking**: the prototype is at `design_accept` waiting on the answer.
+   ⚠ **Narrowed by [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs)**,
+   not answered by it — the pair detail now READS the limit history, which says nothing about where a
+   limit is WRITTEN. §Frontend Requirements still names three screens and this is a fourth.
+   **→ I recommend a screen.** The default row (`counterparty_id = 0`) is terms for every team without
+   their own, and it has no pair detail page to live on.
+7. **Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
    ([Critique 16](#critique)) You listed it as its own item, before the list — which reads as a
    separate screen, and today it is four tiles on top of the list.
    **→ I recommend the tiles, fixed rather than replaced** — a summary one scroll from the rows it

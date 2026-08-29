@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, Plus } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
+import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
@@ -139,6 +140,13 @@ export function LiabilityDetailPage() {
 
   const [entryPage, setEntryPage] = useState(1);
   const [paymentPage, setPaymentPage] = useState(1);
+  // The CREDIT LIMIT log pages on its own. Three lists share this screen — entries, payments and
+  // limit changes — and one shared page number would turn to page 2 of a log the reader is not
+  // looking at, then show them page 2 of the one they are.
+  //
+  // ⚠ It belongs HERE, with the other hooks, above the `if (!current)` guard below. Declared after
+  // that early return it runs on only one of the two paths, and React throws on the hook order.
+  const [limitPage, setLimitPage] = useState(1);
   const [dateRange, setDateRange] = useState<DateRange>(ALL_DATES);
 
   const [recordOpen, setRecordOpen] = useState(false);
@@ -419,6 +427,15 @@ export function LiabilityDetailPage() {
             <Tabs.Trigger value="team" data-testid="liability-detail-tab-team">
               {t("liabilityDetail.tabTeam")}
             </Tabs.Trigger>
+            {/* THE CREDIT LIMIT LOG — `team_balance_design.md` §Detail Pair Team Balance 2.
+                ⚠ It is a DIFFERENT log from the four tabs beside it. Those are money that MOVED;
+                this is a RULE that changed. Both belong on this page because a person asking "why
+                is this team blocked" needs the limit's history and the balance's history together —
+                but they must never be merged into one list, because they have different grains and
+                only one of them is a ledger. */}
+            <Tabs.Trigger value="limits" data-testid="liability-detail-tab-limits">
+              {t("liabilityDetail.tabLimits")}
+            </Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="receivable">
@@ -467,6 +484,19 @@ export function LiabilityDetailPage() {
                 onPageChange={setPaymentPage}
               />
             </Stack>
+          </Tabs.Content>
+
+          <Tabs.Content value="limits">
+            {/* The panel is a DOMAIN component (features/liability), not this page's: the Credit
+                Terms screen renders the same log across every counterparty, and the moment a second
+                page imported it, it stopped being one page's component. */}
+            <ChangeLogPanel
+              teamId={current.teamId}
+              counterpartyId={counterpartyId}
+              nameOf={() => name}
+              page={limitPage}
+              onPageChange={setLimitPage}
+            />
           </Tabs.Content>
         </Tabs.Root>
       )}

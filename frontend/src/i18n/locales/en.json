@@ -128,7 +128,8 @@
     "recordNoteOptional": "(optional)",
     "recordNoteHelp": "A hint for the person confirming — the ledger records the typed cause, never this note.",
     "recordSubmit": "Make Payment",
-    "causeRestockOutlay": "Delivery costs · restock #{{id}}"
+    "causeRestockOutlay": "Delivery costs · restock #{{id}}",
+    "tabLimits": "Limit changes"
   },
   "common": {
     "perPage": "Per page",

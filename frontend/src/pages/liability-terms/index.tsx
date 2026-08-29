@@ -30,7 +30,7 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
-import { ChangeLogPanel } from "./components/ChangeLogPanel";
+import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { CreditMeter, WARN_AT, limitStateOf } from "./components/CreditMeter";
 import { TermsEditDialog, type CounterpartyOption } from "./components/TermsEditDialog";
 

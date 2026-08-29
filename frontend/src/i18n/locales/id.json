@@ -128,7 +128,8 @@
     "recordNoteOptional": "(opsional)",
     "recordNoteHelp": "Petunjuk untuk orang yang mengonfirmasi — buku besar mencatat penyebab bertipe, bukan catatan ini.",
     "recordSubmit": "Buat Pembayaran",
-    "causeRestockOutlay": "Biaya penerimaan · restock #{{id}}"
+    "causeRestockOutlay": "Biaya penerimaan · restock #{{id}}",
+    "tabLimits": "Perubahan batas"
   },
   "common": {
     "perPage": "Per halaman",

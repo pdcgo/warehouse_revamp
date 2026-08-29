@@ -581,3 +581,23 @@ export const liabilityTermsChanges = [
     override: false, changedAtUnix: 1_754_800_000n,
   },
 ];
+
+// The pair ledger for warehouse 11 ↔ selling 12 — what the pair detail page reads.
+//
+// ⚠ Signed FROM TEAM 11'S SIDE: positive = they owe us. So the handling fees are positive and the
+// broken-goods reimbursement is negative, because that is the one cause where the WAREHOUSE is the
+// debtor. A fixture with only positive rows would make the payable tab permanently empty and the
+// screen's two-column direction rule untestable.
+export const liabilityEntries = [
+  { id: 501n, teamId: 11n, counterpartyId: 12n, amount: 30_000n, sourceType: 2, sourceId: 9001n, reversal: false, groupId: 1n, balanceAfter: 8_700_000n, createdAtUnix: 1_756_000_000n },
+  { id: 502n, teamId: 11n, counterpartyId: 12n, amount: 1_200_000n, sourceType: 5, sourceId: 7001n, reversal: false, groupId: 2n, balanceAfter: 8_670_000n, createdAtUnix: 1_755_900_000n },
+  { id: 503n, teamId: 11n, counterpartyId: 12n, amount: -450_000n, sourceType: 6, sourceId: 6001n, reversal: false, groupId: 3n, balanceAfter: 7_470_000n, createdAtUnix: 1_755_800_000n },
+  { id: 504n, teamId: 11n, counterpartyId: 12n, amount: 30_000n, sourceType: 2, sourceId: 9000n, reversal: false, groupId: 4n, balanceAfter: 7_920_000n, createdAtUnix: 1_755_700_000n },
+];
+
+// One payment from each side, so both the "my payments" and "their payments" tabs have a row — and
+// the second is RECORDED rather than confirmed, which is the state only the creditor can clear.
+export const liabilityPayments = [
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n },
+];

@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowRight } from "lucide-react";
 
-import { rpcError, userClient } from "../../../api/clients";
-import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
-import { useTermsHistory } from "../../../features/liability/queries";
-import { Pagination } from "../../../components/chrome/Pagination";
-import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
-import { formatRupiah } from "../../../lib/money";
+import { rpcError, userClient } from "../../api/clients";
+import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
+import { useTermsHistory } from "./queries";
+import { Pagination } from "../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { formatRupiah } from "../../lib/money";
 
 const PAGE_SIZE = 10;
 
@@ -33,7 +33,11 @@ interface ChangeLogPanelProps {
   onPageChange: (page: number) => void;
 }
 
-// ChangeLogPanel is the audit trail behind the Credit Terms screen.
+// ChangeLogPanel is the audit trail for one creditor-debtor pair's CREDIT LIMIT.
+//
+// ⚠ IT LIVES IN features/, NOT in a page directory, because TWO pages read it: the Credit Terms
+// screen (where limits are written) and the pair detail page (where one pair's history is read).
+// The moment a second page imported it, it stopped being that page's component — CLAUDE.md.
 //
 // ⚠ IT EXISTS BECAUSE A RAISE ERASES THE WARNING. A team at 85% whose limit doubles drops to 42%
 // and the 80% badge vanishes — with only the current values stored, nothing anywhere would show it

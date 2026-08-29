@@ -24,6 +24,7 @@ import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
 import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
+  LiabilityPaymentService,
   LiabilityService,
   LiabilitySourceType,
   LiabilityTermsService,
@@ -76,6 +77,8 @@ import {
   regions,
   liabilityDays,
   shops,
+  liabilityEntries,
+  liabilityPayments,
   liabilityPositions,
   liabilityTerms,
   liabilityTermsChanges,
@@ -682,6 +685,20 @@ export const transport = createRouterTransport(({ service }) => {
         awaitingConfirmation: 0,
       }),
 
+    // The pair ledger — what the pair detail page reads.
+    //
+    // ⚠ `balance` is the pair's CURRENT net, not the sum of the returned window. The screen shows
+    // both, and a stub deriving one from the other would hide a real difference between them.
+    liabilityEntryList: (req) => ({
+      ...pagedColumnar(
+        "entry",
+        liabilityEntries.filter((e) => e.counterpartyId === req.filter?.counterpartyId),
+        req.page,
+      ),
+      balance:
+        liabilityPositions.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+    }),
+
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
     // it treats as earnings. It picks HANDLING_FEE alone: COD reimburses cash already handed to a
     // courier, so summing every source and calling it income counts money nobody earned.
@@ -708,6 +725,23 @@ export const transport = createRouterTransport(({ service }) => {
 
       return { days: perDay, totals: { net: sumMap(bySource), bySource } };
     },
+  });
+
+  service(LiabilityPaymentService, {
+    // Both sides' payments for one pair. `awaitingMyConfirmation` is a SERVER-side filter, so the
+    // stub honours it rather than letting the screen narrow — a paginated list filtered on the
+    // client reports the unfiltered total beside the wrong rows.
+    liabilityPaymentList: (req) =>
+      pagedColumnar(
+        "payment",
+        liabilityPayments.filter(
+          (p) =>
+            (p.payerTeamId === req.filter?.counterpartyId ||
+              p.creditorTeamId === req.filter?.counterpartyId) &&
+            (!req.filter?.awaitingMyConfirmation || p.status === 1),
+        ),
+        req.page,
+      ),
   });
 
   service(LiabilityTermsService, {
