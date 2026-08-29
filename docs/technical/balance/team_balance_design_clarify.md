@@ -382,9 +382,16 @@ sequenceDiagram
 
 ## The proof, and the cross-team read
 
-🆕 The hard half of §Payment Flow. `document_service` can hold the file today — what it cannot do is
-let the creditor see it, because [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go)
+🆕 The hard-looking half of §Payment Flow — and it is **cheaper than it first reads**.
+`document_service` can hold the file today; what it cannot do is let the creditor see it, because
+[`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go)
 filters `id = ? AND team_id = ?` and the proof belongs to the **payer's** team.
+
+⚠ **I first proposed `LiabilityPaymentProofUrl`** — balance vouches for the creditor and has
+`document_service` sign the key. It works, and it needs an **internal, non-team-scoped signing
+path**. That is a permanent liability: one bug in balance's relation check leaks every private file
+in the system. **The payer granting the share themselves avoids it entirely**, and every call below
+is an ordinary team-scoped write in the payer's own session.
 
 ```mermaid
 sequenceDiagram
@@ -396,23 +403,25 @@ sequenceDiagram
     A->>+doc: RequestUpload — PAYMENT_PROOF, team A
     doc-->>-A: signed PUT url
     A->>doc: PUT the bytes, then ConfirmUpload
+    A->>doc: ShareDocument — doc D with team B
+    Note over doc: A owns D, so A may share it. Ordinary scoped write
     A->>bal: PaymentRecord — amount, note, document ids
 
-    B->>+bal: PaymentProofUrl — payment 42
-    bal->>bal: is B the payer or the creditor of 42?
-    bal->>+doc: sign this key — service to service
-    doc-->>-bal: short-lived url
-    bal-->>-B: the url
-
-    B--xdoc: GetDownloadUrl direct — NotFound, and correctly so
+    B->>+doc: GetDownloadUrl — team B, doc D
+    doc->>doc: owner is B? no. shared with B? YES
+    doc-->>-B: short-lived signed url
 ```
 
 | the decision | |
 | --- | --- |
-| **who authorizes** | `liability_service`, from the **payment relation**. `document_service` knows nothing about payments and must not learn |
-| **what document_service gains** | `DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF` (**private** — a transfer slip names an account number), and a signing path that is not team-scoped and callable only from inside the cluster |
-| ⚠ **the open piece** | that internal signing path **does not exist**. Every read today is team-scoped on purpose. Adding one is a contract decision about how services trust each other, and this is the first case that needs it |
-| **the doc it owes** | HARD RULE 3 — a cross-service flow gets `docs/services/liability_service/rpc.md` with this sequence |
+| **who authorizes** | `document_service`, from a **share row it owns**. It learns *"shared with team X"* — never *"this is a payment proof"* |
+| **the new table** | `document_shares(document_id, team_id, granted_by, created_at)`. `GetDownloadUrl` gains one clause: **owner OR shared-with** |
+| **the new RPC** | `ShareDocument`, scoped to the document's **owning** team. Nothing privileged about it |
+| **what liability gains** | a `repeated string document_ids` on `PaymentRecordRequest`, and the payment row keeps them. **No new RPC, no cross-service call** |
+| **also needed** | `DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF` (**private** — a transfer slip names an account number) |
+| ✅ **the invariant that survives** | *there is no way to read a document without a row saying you may.* Vouching would have replaced it with *"trust liability_service"* |
+| ⚠ **two rules it needs** | a shared document **cannot be hard-deleted**, and a share is **permanent** — the creditor acted on that evidence. And a share must NOT put the file in B's document **list**, only make a read by id succeed |
+| **what it does NOT need** | a service-to-service trust path, an internal signing endpoint, or an `rpc.md` cross-service flow — there is no cross-service call left to draw |
 
 ## Where the amount comes from — and why item 5 never recomputes it
 
@@ -577,7 +586,7 @@ The owner loses the goods, not the sale, so COGS makes them whole without the wa
 it has no control over. No action — recorded so it is not re-litigated.
 
 ---
-| **19** | **🆕 The proof cannot be read by the person who has to read it, and no single service can fix that.** §Payment Flow's middle step is *"Team B check manually"*, and today there is nothing to check: a payment carries `note` and no document. Attaching one is easy; **showing it to the creditor is not.** [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so the payer's file is NotFound to the creditor — deliberately, and that ACL is right. `document_service` cannot widen without opening every private file, and it cannot special-case payments without learning what a payment is. | **`LiabilityPaymentProofUrl` on `liability_service`** — it checks the caller is the payer or the creditor of that payment, then has `document_service` sign the key. Full design in [§The proof and the cross-team read](#the-proof-and-the-cross-team-read). ⚠ **The blocking piece is a service-to-service signing path that does not exist** — every `document_service` read is team-scoped on purpose, and this is the first case that needs an inside-the-cluster one. That is a contract decision, not an implementation detail, so it is worth answering before the payment screen grows an upload button. |
+| **19** | **🆕 The proof cannot be read by the person who has to read it, and no single service can fix that.** §Payment Flow's middle step is *"Team B check manually"*, and today there is nothing to check: a payment carries `note` and no document. Attaching one is easy; **showing it to the creditor is not.** [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so the payer's file is NotFound to the creditor — deliberately, and that ACL is right. `document_service` cannot widen without opening every private file, and it cannot special-case payments without learning what a payment is. | ⚠ **REVISED, and it is much smaller than I first said.** I proposed `LiabilityPaymentProofUrl` — balance vouches, `document_service` signs — which needs an internal non-team-scoped signing path and makes one bug in balance's relation check a leak of every private file. **The payer can grant the share themselves**, in their own scope: a `document_shares` row, a `ShareDocument` RPC scoped to the owner, and one extra clause in `GetDownloadUrl`. No service asks another for permission, and `document_service` keeps its invariant. Full design in [§The proof and the cross-team read](#the-proof-and-the-cross-team-read). **→ There is no architecture decision left here** — only whether proof is required ([business Q10](../../business/balance/context_clarify.md#question)). |
 
 # Question
 

@@ -45,7 +45,7 @@ settlement cycle" as a statement about `settlement_service`.
 | **`actor_id` on `liability_entries`** | causes 1–5 are **permanently unattributable**. Only payments record who acted, and it cannot be back-filled |
 | **the terms change log** | [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires actor + reason + a log with a **nullable** limit. None of it is built |
 | **a `rejected` payment state** | ⛔ **a confirmed DEFECT and now BUILD WORK.** §Payment Flow gives the creditor `reject`, terminal, posting nothing. Spec in [§Reject, as build work](../../technical/balance/team_balance_design_clarify.md#reject-as-build-work) — a proto value, an RPC, a rename of `reversal_reason` to `reason`, and one dialog. No migration for the status: the column is text |
-| **payment PROOF, and any way for the creditor to see it** | ⛔ **the flow's middle step cannot be executed.** A payment carries a 500-char `note` and no document, and `document_service` scopes every read to the owning team — so a payer's file is NotFound to the creditor. Needs the system's first service-to-service signing path. [technical C19](../../technical/balance/team_balance_design_clarify.md#critique) |
+| **payment PROOF, and any way for the creditor to see it** | ⛔ **the flow's middle step cannot be executed.** A payment carries a 500-char `note` and no document, and `document_service` scopes every read to the owning team — so a payer's file is NotFound to the creditor. ⚠ **Smaller than first reported**: a `document_shares` row + a `ShareDocument` RPC scoped to the file's owner + one clause in `GetDownloadUrl`, all in the payer's own scope. **No service-to-service trust path is needed** — that first assessment is retracted. [technical C19](../../technical/balance/team_balance_design_clarify.md#critique) |
 | **a `PaymentReverse` screen** | ⚠ **INVERTED — no longer a defect.** It was recorded as one last round. §Payment Flow makes `accept` terminal, so the shipped RPC may be a path the design does not want. Do not build a screen until [business Q11](../../business/balance/context_clarify.md#question) answers |
 | **the selling team's daily report** | `revenue_service` was removed in `0d4cbc4`. `StatementMode` is `"warehouse"` alone and the page **refuses** a selling team |
 | **a dispute mechanism / a chase instrument** | neither exists. With no cycle, lowering the limit is the only lever a creditor has |
@@ -128,12 +128,15 @@ creditor decides, a claim posts nothing, reject is terminal — so nothing shipp
 and is now buildable. The missing `PaymentReverse` screen is **not** a defect any more — a terminal
 `accept` makes that RPC questionable rather than under-built. The next agent should not build it.
 
-⚠ **The proof requirement is the heavy one, and it is not about payments.** `document_service`
-answers NotFound for another team's file *on purpose*, and it cannot learn what a payment is without
-becoming the wrong service. The fix is a `liability_service` RPC that authorizes from the payment
-relation and asks `document_service` to sign — which needs an **internal, non-team-scoped signing
-path that does not exist**. That is a contract decision every later cross-service private read will
-inherit, so it is worth answering before an upload button is added anywhere.
+⚠ **The proof requirement, and a retraction.** `document_service` answers NotFound for another
+team's file *on purpose*, and it cannot learn what a payment is without becoming the wrong service.
+This report first said the fix needed an **internal, non-team-scoped signing path** with balance
+vouching for the creditor. **That is retracted** — it is the expensive design, and one bug in the
+vouching service's relation check would leak every private file. **The payer can grant the share
+themselves**, in their own scope, before creating the payment: a `document_shares` row, a
+`ShareDocument` RPC scoped to the file's owner, and one extra clause in `GetDownloadUrl`. No
+cross-service call, and `document_service` keeps its invariant — *no read without a row saying you
+may.* Two rules come with it: a shared file cannot be hard-deleted, and a share is permanent.
 
 ## ⚠ 10 story tests fail, and they are the daily statement's
 
@@ -218,7 +221,7 @@ Technical: [team_balance_design_clarify.md](../../technical/balance/team_balance
 | --- | --- |
 | [Q8](../../business/balance/context_clarify.md#question) whose job is the selling daily report | a shipped page **refuses** selling teams today. Balance's §Responsbility 2 claims it |
 | [Q2](../../business/balance/context_clarify.md#question) does `found` need the owner's acknowledgement | if yes, `found` becomes two-phase like a payment — a state machine and a screen that do not exist |
-| [Q10](../../business/balance/context_clarify.md#question) is payment proof REQUIRED | the flow's middle step is unexecutable without it, and the fix is an architecture decision — the first service-to-service trust path |
+| [Q10](../../business/balance/context_clarify.md#question) is payment proof REQUIRED | the flow's middle step is unexecutable without it. ⚠ The fix is **ordinary build work**, not an architecture decision — an earlier claim that it needed a service-to-service trust path is retracted |
 
 The rest are real but gate nothing shipped: operating costs, repayment in goods, the return half of
 `cod_fee`, dispute finality, the chase instrument, external payables, the cost-line enum, `offset` as

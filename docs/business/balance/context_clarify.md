@@ -402,22 +402,23 @@ flowchart LR
 | what a proof IS | one or more uploaded files — a transfer screenshot, a bank PDF — attached to the payment, never to the ledger |
 | who uploads | the **payer**, at create. The file belongs to the payer's team |
 | who may READ | the payer's team **and the creditor's team**, and nobody else. Not the whole system, not a sibling selling team |
-| what authorizes the read | **the payment relation**, not the document's team. Being named on payment P is what makes P's proof readable |
+| how the creditor gets in | the payer **grants a share** on the file, as themselves, before creating the payment. No service asks another service for permission |
 | after a decision | the proof is **kept**, accepted or rejected. It is the evidence for a decision somebody may be asked about later |
+| ⚠ therefore | a shared file **cannot be hard-deleted**, and a share is **permanent**. The creditor acted on it and must be able to show what they saw |
 
 ```mermaid
 flowchart LR
-  A["Team A — payer"] -->|"uploads"| D["document, owned by team A"]
-  A -->|"creates"| P["payment, names the document"]
-  B["Team B — creditor"] -->|"asks balance for the proof"| P
-  P -->|"B is the creditor of P — so, a signed URL"| D
-  B -.->|"asks documents directly — NotFound, and correctly so"| D
+  A["Team A — payer"] -->|"1. uploads"| D["document, owned by team A"]
+  A -->|"2. shares with B — A owns it, so A may"| S["share row"]
+  A -->|"3. creates"| P["payment, names the document"]
+  B["Team B — creditor"] -->|"reads by id"| D
+  S -.->|"the row that lets B in"| D
 ```
 
-⚠ **`document_service`'s scope is right and must not widen.** It answers NotFound for another
-team's file on purpose. The judgement *"B may see this one"* needs a fact only balance holds, so it
-belongs to balance — the plumbing is
-[technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique).
+⚠ **`document_service`'s scope is right and must not widen** — it answers NotFound for another
+team's file on purpose. What it gains is one clause: *owner **or** shared-with*. It still never
+learns what a payment is, and it keeps its invariant — **no read without a row saying you may**.
+Plumbing in [technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique).
 
 ### The threshold — now the ONLY control, and what it still does not say
 
@@ -525,7 +526,7 @@ flowchart LR
 | **17** | **Nothing can answer *"what did order 1 actually make"*.** Settlement holds that order's marketplace money at **order** grain, and the `order_fee` it also cost sits here at **pair** grain. The join exists in the data and not in the contract: [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go) writes `SourceID = orderID`, while `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. So the fee is recorded, attributable, and **unaskable**. | **One filter field, never a second copy of the fee.** → I recommend adding an `order_id` (`source_id`) filter to `LiabilityEntryListFilter` and assembling the order's P&L on the screen from settlement + the frozen COGS + the fee. Posting the fee into `settlement_entries` as well would make one movement two rows in two services with no shared transaction — [technical Critique 4](../../technical/balance/team_balance_design_clarify.md#critique) is that exact failure. |
 
 ---
-| **18** | **🆕 The proof has nowhere to live — and the creditor could not read it if it did.** §Payment Flow makes *"bring image/doc/screenshot Proof of bank transfer"* part of creating a payment, and *"Team B check manually"* is the entire reason acceptance is a human act rather than a rule. Today a payment carries `note` — 500 characters of free text — and no document. ⛔ **The second half is verified, not suspected.** `document_service` exists and can hold the file, but [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so a file uploaded by team A **reads as NotFound to team B**. The one person who must see the proof is the one person that ACL is written to exclude — so the flow's middle step cannot happen at all. | **A payment NAMES its documents, and the payment relation authorizes the read** — never the document's team. Design in [§A payment's proof](#a-payments-proof-and-who-may-see-it), plumbing in [technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique). ⚠ And say whether proof is **required** ([Q10](#question)): a manual check with an optional attachment is a check with nothing to look at. |
+| **18** | **🆕 The proof has nowhere to live — and the creditor could not read it if it did.** §Payment Flow makes *"bring image/doc/screenshot Proof of bank transfer"* part of creating a payment, and *"Team B check manually"* is the entire reason acceptance is a human act rather than a rule. Today a payment carries `note` — 500 characters of free text — and no document. ⛔ **The second half is verified, not suspected.** `document_service` exists and can hold the file, but [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so a file uploaded by team A **reads as NotFound to team B**. The one person who must see the proof is the one person that ACL is written to exclude — so the flow's middle step cannot happen at all. | ⚠ **REVISED — my first recommendation was more expensive than the problem.** I proposed a `LiabilityPaymentProofUrl` that vouches for the creditor and asks `document_service` to sign, which needs an internal non-team-scoped signing path. **The payer can grant the share themselves**, in their own scope, before creating the payment — so no service ever asks another for permission and `document_service` keeps its invariant intact. Design in [§A payment's proof](#a-payments-proof-and-who-may-see-it), plumbing in [technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique). ⚠ And say whether proof is **required** ([Q10](#question)): a manual check with an optional attachment is a check with nothing to look at. |
 | **19** | **🆕 `accept` is a TERMINAL state, and shipped code can leave it.** Your lifecycle is `pending → accept → [*]` — a confirmation is final. `LiabilityPaymentReverse` ships, takes a mandatory reason, and moves a confirmed payment to `REVERSED`. ⚠ **There are three positions here, not two**, and they differ only in what a correction does to the CLAIM: your diagram (accept is the end, no undo drawn) · my earlier proposal (the row stays `accepted`, a **compensating entry** fixes the ledger) · shipped (a compensating entry **and** the row flips to `REVERSED`). The middle one may be what you meant — a reversal is a later ledger act, not an un-accepting — but the shipped enum makes `REVERSED` a state of the payment, which yours does not have. ⚠ **I argued the other way last round**, and re-reading your diagram I think the asymmetry is the point: **reject posts nothing, accept posts money.** A wrong reject costs a re-submitted claim — two rows for one transfer, no harm done. A wrong accept has already lowered a real debt, and with no undo the only remedy is a hand-typed adjustment with no link to the payment that caused it: the exact untraceable correction two-phase confirmation exists to prevent. And a mis-confirm is likely — it is a tired person matching a screenshot against a bank app. | **Keep the correction, and say which of the three it is.** → I recommend the **middle**: the claim stays `accepted` forever, and a mis-confirm is fixed by a compensating entry that names the payment. It keeps your diagram literally true and still leaves a trail. → It is your rule, so it is [Q11](#question). ⚠ If you want accept final, the RPC and its status must be **removed**, not left unused — an unreachable write path in a ledger is one somebody eventually reaches. |
 
 ## Question
@@ -577,6 +578,11 @@ flowchart LR
     `MakePaymentDialog` collects an amount and a note, and would let a payment through with neither.
     **→ I recommend required — at least one file, refused without one.** A creditor asked to accept on
     nothing has only the payer's word, which is what the two-phase design already refuses to trust.
+    ⚠ **One caveat worth knowing before you answer**: a bank transfer is the only payment kind that
+    *has* a slip. If `offset` is ever allowed ([technical Q2](../../technical/balance/team_balance_design_clarify.md#question)),
+    or cash changes hands in the building, there is nothing to attach. **→ Require it anyway** —
+    relaxing a validation later is a compatible change, and adding a `kind` enum now would be
+    designing for a feature you have not approved.
 11. **🆕 Is a confirmed payment FINAL?** ([Critique 19](#critique)) Your lifecycle ends at `accept`, and
     `LiabilityPaymentReverse` ships and can undo one.
     **→ I recommend NOT final** — accepting posts real money and a mis-confirm needs an undo that

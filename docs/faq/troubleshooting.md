@@ -211,13 +211,15 @@ id-holder cannot even confirm the file exists.
 private document is scoped to the team that uploaded it, and the check cannot be widened without
 opening every team's private files at once.
 
-**So how does another team ever see one?** ⚠ **Not decided yet.** The first real case is a payment's
-proof of transfer: the creditor has to look at a file the payer owns. The proposal is that the
-**owning domain vouches** — `liability_service` checks you are the payer or the creditor of that
-payment, then asks `document_service` to sign the key, so `document_service` never learns what a
-payment is. It needs an internal, non-team-scoped signing path that **does not exist yet**:
+**So how does another team ever see one?** ⚠ **Not decided yet**, and the first real case is a
+payment's proof of transfer: the creditor has to look at a file the payer owns. The proposal is a
+**share grant** — the owner shares the document with another team, as themselves, and
+`GetDownloadUrl` gains one clause: *owner **or** shared-with*. `document_service` learns *"shared
+with team X"* and never *"this is a payment proof"*, so its invariant holds: **no read without a row
+saying you may.** See
 [technical balance C19](../technical/balance/team_balance_design_clarify.md#critique) ·
 [balance Q10](../business/balance/context_clarify.md#question).
 
-Until that is answered: **do not widen `GetDownloadUrl`**, and do not teach `document_service` a
-cross-team special case.
+Until that is answered: **do not widen `GetDownloadUrl`**, do not teach `document_service` what a
+payment is, and do not add an internal signing path that skips the scope check — one bug in the
+calling service would then leak every private file in the system.
