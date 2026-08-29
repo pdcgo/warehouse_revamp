@@ -138,5 +138,3 @@ For prevent unfair liability, we must have feature Debt Thresholds.
 1. there is warning on the balance screen and daily report if thresholds 80% reached.
 2. thresholds default is unlimited. and team owner, team admin, or root edited it.
 
-
-

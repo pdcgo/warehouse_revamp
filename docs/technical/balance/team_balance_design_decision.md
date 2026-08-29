@@ -72,3 +72,61 @@ makes the reader hold one number in their head while they go and find the other.
 limit, and the Credit Terms screen (`/liability/terms`) is still not named in §Frontend Requirements.
 That is [Q7 in the clarify](./team_balance_design_clarify.md#question), and it still blocks
 `design_accept` on a finished prototype.
+
+---
+
+## every-entry-names-who-posted-it
+
+> The owner, in chat — *"yes"*, answering [Q4](./team_balance_design_clarify.md#question):
+> should `liability_entries` carry an actor?
+
+**The verdict.** Every ledger entry records **the person who caused it**. Not the service, not the
+event — the human whose act produced the money movement.
+
+⚠ **This closes the first half of Q4 and REVERSES my recommendation on the second.** I proposed a
+reserved id meaning *"posted by the system"* for causes 1–5, on the reasoning that five of the six
+post from events so *"the service, not a person"* was the honest answer. **The code says otherwise:**
+the person is already at hand and is dropped at the boundary.
+
+```mermaid
+flowchart LR
+  ctx["actorFrom(ctx) — restock_request_fulfill.go:191"] --> a["AcceptedBy"]
+  ctx --> b["AcceptedByUserID"]
+  ctx --> c["costLines[i].ActorID"]
+  ctx --> d["the restock events"]
+  ctx -.->|"NOT passed — the signature has no actor"| e["PostRestockOutlay"]
+  e --> f["the ledger entry — anonymous"]
+```
+
+A column reading *"system"* for five of six causes would cost a migration and answer nothing:
+[business Critique 8](../../business/balance/context_clarify.md#critique) — *a team disputing a
+charge must see who recorded it* — would still be unanswerable, and the threshold makes that acute,
+because a charge nobody can explain can now stop a team trading.
+
+### The spec
+
+| | |
+| --- | --- |
+| the column | `actor_id` on `liability_entries`, **NOT NULL** |
+| what fills it | the **human** who acted — the person who accepted the restock, cancelled the order, recorded the damage |
+| how it gets there | **two more parameters**, on `PostRestockOutlay` and `PostStockDamage`. The value already exists at both call sites |
+| `0` | reserved for a genuinely unattended posting — a scheduled job. **Today nothing qualifies** |
+| backfill | ⚠ **impossible.** Rows written before this cannot be attributed, and there is no source to recover it from. Every day of trading adds more |
+
+### ⚠ One sentinel, two meanings — fix it in the same pass
+
+`liability_payments.recorded_by` / `confirmed_by` are documented as *"0 when unknown"*. If entries
+use `0` for *the system*, one value means two things inside one service. A payment is **always** a
+person's act, so `0` there is not a state worth having:
+
+| | today | should be |
+| --- | --- | --- |
+| `liability_entries.actor_id` | — | `0` = the system, and nothing writes it yet |
+| `liability_payments.recorded_by` | `0` = unknown | never `0` |
+| `liability_payments.confirmed_by` | `0` = unknown | never `0` while confirmed |
+
+### It rides with a migration that is already approved
+
+[the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
+is decided and unrun, and touches this same table. Adding `actor_id` in that migration costs one
+pass instead of two.

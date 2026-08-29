@@ -42,7 +42,7 @@ settlement cycle" as a statement about `settlement_service`.
 | --- | --- |
 | **the terms screen** | `liabilityTermsClient` has **zero callers**. The debt threshold — fully decided — is configurable only by direct database access |
 | **the 80% warning** | needs that screen, and a place on the daily report |
-| **`actor_id` on `liability_entries`** | causes 1–5 are **permanently unattributable**. Only payments record who acted, and it cannot be back-filled |
+| **`actor_id` on `liability_entries`** | ✅ **DECIDED, not built** — [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it). It records the **human**, not a system sentinel: `restock_request_fulfill.go:191` already computes the actor and `PostRestockOutlay`'s signature drops it. Two parameters plus a NOT NULL column. ⚠ Rows written before it are **permanently unattributable** and every day adds more |
 | **the terms change log** | [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires actor + reason + a log with a **nullable** limit. None of it is built |
 | **a `rejected` payment state** | ⛔ **a confirmed DEFECT and now BUILD WORK.** §Payment Flow gives the creditor `reject`, terminal, posting nothing. Spec in [§Reject, as build work](../../technical/balance/team_balance_design_clarify.md#reject-as-build-work) — a proto value, an RPC, a rename of `reversal_reason` to `reason`, and one dialog. No migration for the status: the column is text |
 | **payment PROOF, and any way for the creditor to see it** | ⛔ **the flow's middle step cannot be executed.** A payment carries a 500-char `note` and no document, and `document_service` scopes every read to the owning team — so a payer's file is NotFound to the creditor. ⚠ **Smaller than first reported**: a `document_shares` row + a `ShareDocument` RPC scoped to the file's owner + one clause in `GetDownloadUrl`, all in the payer's own scope. **No service-to-service trust path is needed** — that first assessment is retracted. [technical C19](../../technical/balance/team_balance_design_clarify.md#critique) |
@@ -211,6 +211,18 @@ prototype — no backend, no migration** — and because the threshold itself ha
 Every input the screen needed was already decided. ⚠ **What was NOT decided and had to be derived
 from the screen is the contract** — the `reason` field and the change-log RPC — which is why those go
 through `design_accept` with the pages rather than being settled separately.
+
+## ⚠ The next migration carries THREE approved changes — do not run it piecemeal
+
+| | |
+| --- | --- |
+| the source-type vocabulary | [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) — decided, unrun |
+| `actor_id` on the entries table | [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it) — decided, unrun |
+| the rename off *liability* | **pending one answer** — [technical Q8](../../technical/balance/team_balance_design_clarify.md#question). `balance_entries`, `balance_service`, `warehouse.balance.v1`, plus `team_balances` and `credit_terms` |
+
+All three touch the same table and the same proto. Run separately, each is a full pass over a
+141-file surface; run together, one. ⚠ The rename is also the only one that gets **harder** after
+go-live — it becomes a data migration plus a breaking proto change plus a client rollout.
 
 ## Open questions — 17, and only three of them gate work
 

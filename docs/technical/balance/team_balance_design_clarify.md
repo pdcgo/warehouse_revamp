@@ -72,6 +72,18 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # ⚠ Re-examined after the actor answer — and a RENAME is on the table
+>
+> ✅ **[Q4](#question) closes: every entry names who posted it.** Recorded as
+> [every-entry-names-who-posted-it](./team_balance_design_decision.md#every-entry-names-who-posted-it).
+> ⚠ **The second half of that question closed against my own recommendation, from evidence in the
+> code**: I proposed a *"posted by the system"* sentinel for the five event-driven causes.
+> `restock_request_fulfill.go:191` already computes `actor := actorFrom(ctx)` and writes it onto four
+> things — and then calls `PostRestockOutlay`, whose signature has no actor at all. **The person is
+> not missing, it is dropped at the boundary.** Two parameters, not a sentinel.
+>
+> 🆕 **And you asked whether it should be `balance_logs` rather than `liability_entries`.** That is a
+> bigger question than one table name — [Critique 20](#critique) and [Q8](#question).
 > # ⚠ Re-examined after §Payment Flow — Q5 is ANSWERED and C14 half INVERTS
 >
 > `balance_context.md` §Payment Flow specifies the payment lifecycle in two diagrams. ✅ **This
@@ -367,6 +379,43 @@ sequenceDiagram
   other reversal here. ⚠ Shipped code goes further and flips the payment's own status to `REVERSED` —
   which your lifecycle does not have. [business Q11](../../business/balance/context_clarify.md#question).
 
+## The rename
+
+🆕 Proposed against your `balance_logs` question. Two names are currently bad for reasons the rename
+makes visible, so this is not purely mechanical.
+
+| today | becomes | why |
+| --- | --- | --- |
+| `liability_service` · `warehouse.liability.v1` | `balance_service` · `warehouse.balance.v1` | the context is called Balance in every doc you have written |
+| `liability_entries` | **`balance_entries`** | *entries* is the accounting noun for a ledger's rows. Not *logs* — see [Critique 20](#critique) |
+| `liability_balances` | **`team_balances`** | ⚠ `balance_balances` is absurd. The code and UI already call these **positions**, and the grain is a team pair |
+| `liability_payments` | `balance_payments` | |
+| `liability_terms` | **`credit_terms`** | ⚠ it is not about the balance at all — it is the credit limit, the handling fee and the markup |
+| `/liability` · `liabilityClient` · `features/liability/` | `balance` | a warehouse person reading the nav bar does not recognise *liability* |
+
+### The cost, measured
+
+| | |
+| --- | --- |
+| files touched | **141**, excluding generated code |
+| occurrences | **2350**, excluding generated code |
+| the proto package | a **breaking** rename — but there is no external consumer, and one `buf generate` moves both sides |
+| the risk | mechanical. Nothing about the rename changes behaviour |
+| ⚠ the docs | every doc that restates a table name goes stale in the same instant — `docs/database-schema.md` first. RULE 11: **one cause, many sites** |
+
+### ⚠ Why NOW rather than later
+
+```mermaid
+flowchart LR
+  N["rename NOW"] --> A["one migration, with the vocabulary change and actor_id"]
+  L["rename LATER"] --> B["a data migration"]
+  L --> C["a breaking proto change with clients in the field"]
+  L --> D["a client rollout"]
+```
+
+The vocabulary migration is decided and unrun, and `actor_id` lands on the same table. Bundling all
+three is one pass over the service instead of three.
+
 ## Reject, as build work
 
 🆕 Answered by §Payment Flow. Nothing below exists; all of it is small.
@@ -587,6 +636,7 @@ it has no control over. No action — recorded so it is not re-litigated.
 
 ---
 | **19** | **🆕 The proof cannot be read by the person who has to read it, and no single service can fix that.** §Payment Flow's middle step is *"Team B check manually"*, and today there is nothing to check: a payment carries `note` and no document. Attaching one is easy; **showing it to the creditor is not.** [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so the payer's file is NotFound to the creditor — deliberately, and that ACL is right. `document_service` cannot widen without opening every private file, and it cannot special-case payments without learning what a payment is. | ⚠ **REVISED, and it is much smaller than I first said.** I proposed `LiabilityPaymentProofUrl` — balance vouches, `document_service` signs — which needs an internal non-team-scoped signing path and makes one bug in balance's relation check a leak of every private file. **The payer can grant the share themselves**, in their own scope: a `document_shares` row, a `ShareDocument` RPC scoped to the owner, and one extra clause in `GetDownloadUrl`. No service asks another for permission, and `document_service` keeps its invariant. Full design in [§The proof and the cross-team read](#the-proof-and-the-cross-team-read). **→ There is no architecture decision left here** — only whether proof is required ([business Q10](../../business/balance/context_clarify.md#question)). |
+| **20** | **🆕 *"liability"* is not merely unfamiliar — it is WRONG for half the rows, and *"log"* would be wrong for all of them.** ✅ You are right that the word has to go: every posting is a **mirrored pair**, so one side's liability is the other's receivable, and naming the table after one leg misnames half its rows. *Balance* is direction-neutral, which is what a signed pair needs, and it is the word your own docs use throughout — *liability* appears in none of them. ❌ **But `log` is the wrong noun.** A log is append-only narrative whose rows stand alone. This is a **ledger**: two rows are ONE posting, `sum(change) == 0` per transaction, and the balance is derived from it. *"Log an entry"* reads as one row — which is precisely the invariant someone who was not here will break. ⚠ **And it cannot be a half-rename**: `balance_logs` inside `liability_service` is worse than either name on its own. | **`balance_entries`, and rename the whole context.** It keeps your word, keeps the accounting noun for a ledger's rows, and drops *liability*. Full mapping in [§The rename](#the-rename). ⚠ **No contradiction with your screen** — *"Change Log"* is the right label for what a person reads; the table underneath is a ledger, and [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) was about the **values** people say, not the structural noun. **→ Do it inside the migration you have already approved** — that decision is unrun and already edits the proto enum, writes a migration, fixes the daily statement and regenerates both sides, and `actor_id` lands on the same table. Three approved changes, one pass. |
 
 # Question
 
@@ -612,11 +662,11 @@ new**, and all three come from re-reading the code rather than the docs.
    **→ I recommend exactly that** — it matches what physically happened — but the alternative (the
    warehouse keeps them, no reversal) is defensible and it is your call. ⚠ The code has already taken the
    first option: `PostStockDamage(..., reversal: true)`.
-4. **🆕 Should `liability_entries` carry an ACTOR, and what fills it for machine postings?**
-   ([Critique 9](#critique)) Five of the six causes post from events, so the honest answer for those may be
-   *"the service, not a person"*.
-   **→ I recommend `actor_id` non-null going forward, with a reserved id meaning "posted by the system"**
-   — a null actor and a system actor look identical in a query, and only one of them is a gap.
+> ⛔ **Q4 is DELETED — every entry names who posted it.**
+> [every-entry-names-who-posted-it](./team_balance_design_decision.md#every-entry-names-who-posted-it).
+> ⚠ Its second half closed **against** this file's recommendation, and from the code: I proposed a
+> *"posted by the system"* sentinel, and `restock_request_fulfill.go:191` shows the human actor is
+> already computed and simply not passed. Two parameters, not a sentinel.
 > ⛔ **Q5 is DELETED — and the answer was the one this file recommended.**
 > §Payment Flow gives the creditor `reject`, terminal, posting nothing:
 > [the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides).
@@ -635,6 +685,14 @@ new**, and all three come from re-reading the code rather than the docs.
    limit is WRITTEN. §Frontend Requirements still names three screens and this is a fourth.
    **→ I recommend a screen.** The default row (`counterparty_id = 0`) is terms for every team without
    their own, and it has no pair detail page to live on.
+8. **🆕 Is it `balance_entries` or `balance_logs` — and does the WHOLE context rename?**
+   ([Critique 20](#critique)) You asked for `balance_logs`. I agree *liability* must go and disagree
+   about *log*: a log's rows stand alone, and this table's two rows are one posting.
+   **→ I recommend `balance_entries`, and the whole context** — `balance_service`,
+   `warehouse.balance.v1`, plus `team_balances` and `credit_terms` for the two names that
+   `balance_` makes awkward. Mapping and cost in [§The rename](#the-rename).
+   ⚠ **And do it inside the vocabulary migration you already approved**, which is unrun and touches
+   the same table — three approved changes for one pass over the service.
 7. **Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
    ([Critique 16](#critique)) You listed it as its own item, before the list — which reads as a
    separate screen, and today it is four tiles on top of the list.
