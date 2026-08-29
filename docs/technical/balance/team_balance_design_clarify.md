@@ -72,6 +72,22 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # 🆕 `liability_entries` → `liability_logs`, and my earlier objection is WEAKER than I said
+>
+> A second naming idea, and a much smaller one — it keeps the `liability` prefix, so it does **not**
+> reopen [liability-stays](./team_balance_design_decision.md#liability-stays) (that decision was about
+> the **prefix** and the whole-context rename, not the suffix).
+>
+> ⚠ **I have to weaken my own argument.** I said *log* invites treating a row as standing alone and
+> breaking *two legs are one posting*. I should have checked the code before leaning on it:
+>
+> | | |
+> | --- | --- |
+> | `liability_entries.group_id` | **shipped** — *"Shared by both legs of one movement, from `liability_group_seq`"* |
+> | `post_entry.go:156` | the **only** construction site outside tests and the mapper, and it writes both legs in one transaction |
+>
+> A name is a weak guard; a single write path and a group id are strong ones, and both already exist.
+> That argument mostly falls — see [Critique 21](#critique) for what survives.
 > # ⚠ Re-examined after the actor answer — and a RENAME is on the table
 >
 > ✅ **[Q4](#question) closes: every entry names who posted it.** Recorded as
@@ -382,6 +398,29 @@ sequenceDiagram
   other reversal here. ⚠ Shipped code goes further and flips the payment's own status to `REVERSED` —
   which your lifecycle does not have. [business Q11](../../business/balance/context_clarify.md#question).
 
+## The two logs, named
+
+🆕 Proposed against `liability_entries` → `liability_logs`. The point is not the one table — it is
+that naming it settles what the **other** one is called, and there is only one chance to do that
+before the second table exists.
+
+| what it logs | table | built? |
+| --- | --- | --- |
+| money that MOVED — one leg per side, `group_id` pairs them | **`liability_logs`** | ✅ today as `liability_entries` |
+| a RULE that changed — the credit limit, the fee, the markup | **`liability_terms_logs`** | ❌ not built. [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires it |
+
+```mermaid
+flowchart TB
+  P["pair detail"] --> B["balance log — liability_logs"]
+  P --> L["limit log — liability_terms_logs"]
+  B -.->|"different grain, never merged"| L
+  B --> B1["a row is ONE LEG. group_id pairs the two"]
+  L --> L1["a row is one WHOLE change"]
+```
+
+⚠ **The two are not the same shape**, which is the reason to qualify both names rather than let one
+take the bare word: a balance row is **half** a movement, a limit row is a **whole** change.
+
 ## Reject, as build work
 
 🆕 Answered by §Payment Flow. Nothing below exists; all of it is small.
@@ -603,6 +642,7 @@ it has no control over. No action — recorded so it is not re-litigated.
 ---
 | **19** | **🆕 The proof cannot be read by the person who has to read it, and no single service can fix that.** §Payment Flow's middle step is *"Team B check manually"*, and today there is nothing to check: a payment carries `note` and no document. Attaching one is easy; **showing it to the creditor is not.** [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so the payer's file is NotFound to the creditor — deliberately, and that ACL is right. `document_service` cannot widen without opening every private file, and it cannot special-case payments without learning what a payment is. | ⚠ **REVISED, and it is much smaller than I first said.** I proposed `LiabilityPaymentProofUrl` — balance vouches, `document_service` signs — which needs an internal non-team-scoped signing path and makes one bug in balance's relation check a leak of every private file. **The payer can grant the share themselves**, in their own scope: a `document_shares` row, a `ShareDocument` RPC scoped to the owner, and one extra clause in `GetDownloadUrl`. No service asks another for permission, and `document_service` keeps its invariant. Full design in [§The proof and the cross-team read](#the-proof-and-the-cross-team-read). **→ There is no architecture decision left here** — only whether proof is required ([business Q10](../../business/balance/context_clarify.md#question)). |
 | ~~**20**~~ | ⛔ **CLOSED — the rename is cancelled** ([liability-stays](./team_balance_design_decision.md#liability-stays)), and the objection is **accepted rather than refuted**: the name does describe one leg of a mirrored pair, and that is now a known cost. Kept one round because the reasoning is worth not repeating — a whole-context rename is 141 files, and it forces `balance_balances` and `balance_terms`, both worse than what they replace. ✅ **The `log` half of the argument still matters even though the rename is off**: this is a ledger, two rows are one posting, and nothing in the schema should invite treating a row as standing alone. Original: **"liability" is not merely unfamiliar — it is WRONG for half the rows, and "log" would be wrong for all of them.** ✅ You are right that the word has to go: every posting is a **mirrored pair**, so one side's liability is the other's receivable, and naming the table after one leg misnames half its rows. *Balance* is direction-neutral, which is what a signed pair needs, and it is the word your own docs use throughout — *liability* appears in none of them. ❌ **But `log` is the wrong noun.** A log is append-only narrative whose rows stand alone. This is a **ledger**: two rows are ONE posting, `sum(change) == 0` per transaction, and the balance is derived from it. *"Log an entry"* reads as one row — which is precisely the invariant someone who was not here will break. ⚠ **And it cannot be a half-rename**: `balance_logs` inside `liability_service` is worse than either name on its own. | **`balance_entries`, and rename the whole context.** It keeps your word, keeps the accounting noun for a ledger's rows, and drops *liability*. Full mapping in [§The rename](#the-rename). ⚠ **No contradiction with your screen** — *"Change Log"* is the right label for what a person reads; the table underneath is a ledger, and [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) was about the **values** people say, not the structural noun. **→ Do it inside the migration you have already approved** — that decision is unrun and already edits the proto enum, writes a migration, fixes the daily statement and regenerates both sides, and `actor_id` lands on the same table. Three approved changes, one pass. |
+| **21** | **🆕 `liability_logs` is cheap and defensible — the one cost left is that it claims the bare word "log", and you have TWO of them.** ⚠ **My structural objection is withdrawn**: `group_id` shipped and `post_entry.go` is the single write path, so *two legs are one posting* is enforced by code rather than by a noun. ✅ It is also small — **153 occurrences across 38 files** outside generated code, against 2350 for the rename you cancelled — and it keeps the `liability` prefix, so it does not disturb [liability-stays](./team_balance_design_decision.md#liability-stays). ❌ **What survives is an argument you handed me last week.** [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs) says that page carries **two** logs — the **limit** log and the **balance** log — and that they must never merge. Name this table `liability_logs` and the generic word belongs to one of them, while the other ends up `liability_terms_changes`. Then *"the log"* is ambiguous in exactly the place you insisted the two are different things. | **Take the rename, and name the SIBLING in the same breath** so *log* never needs disambiguating: `liability_logs` for the balance one, **`liability_terms_logs`** for the limit one (unbuilt, so it costs nothing to name now). Both are logs, both are qualified by what they log, and neither owns the bare word. ⚠ **One precision you are trading away, worth knowing once:** *entry* means one side of a double-entry posting — which is exactly what a row is, and the model's own comment says so (*"ONE LEG of one movement"*). *Log* says *"a record of something that happened"*, and a leg is not a thing that happened — the **movement** is. Small, real, and probably worth trading for your own vocabulary. **→ Put it in the pending migration** ([the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) + [every-entry-names-who-posted-it](./team_balance_design_decision.md#every-entry-names-who-posted-it)) — same table, so the rename is free there and a second pass otherwise. |
 
 # Question
 
@@ -655,6 +695,12 @@ new**, and all three come from re-reading the code rather than the docs.
 > [liability-stays](./team_balance_design_decision.md#liability-stays). The migration is back to two
 > approved changes: the source-type vocabulary and `actor_id`.
 
+8. **🆕 `liability_logs` — and what is the LIMIT log called?** ([Critique 21](#critique)) Renaming
+   `liability_entries` is cheap and my structural objection to *log* is withdrawn (`group_id` shipped,
+   one write path). What it decides that is not obvious is the **other** log's name.
+   **→ I recommend `liability_logs` and `liability_terms_logs`** — both qualified, so neither owns the
+   bare word in a design where [the pair detail shows two of them](./team_balance_design_decision.md#the-pair-detail-shows-both-logs).
+   **→ And put it in the pending migration**, which already touches this table.
 7. **Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
    ([Critique 16](#critique)) You listed it as its own item, before the list — which reads as a
    separate screen, and today it is four tiles on top of the list.

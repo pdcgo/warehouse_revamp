@@ -220,7 +220,12 @@ through `design_accept` with the pages rather than being settled separately.
 | `actor_id` on the entries table | [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it) — decided, unrun |
 
 Both touch the same table and the same proto — run separately, each is a full pass over the service.
-**Nothing gates them.**
+
+⚠ **A third rider is proposed and undecided**: renaming `liability_entries` → **`liability_logs`**
+([technical Q8](../../technical/balance/team_balance_design_clarify.md#question)). It keeps the
+`liability` prefix, so it does not disturb the decision below. **153 occurrences across 38 files** —
+cheap inside this migration, a second pass outside it. What it really settles is the name of the
+**other** log, the limit history, which does not exist yet.
 
 > ⛔ **A third rider was floated and cancelled.** Renaming `liability_*` to `balance_*` —
 > [liability-stays](../../technical/balance/team_balance_design_decision.md#liability-stays). Do not
