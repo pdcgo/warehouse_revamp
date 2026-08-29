@@ -3,7 +3,10 @@
 **Pass:** `agent_analysis` re-examination, then `implementation_analysis` for the THRESHOLD slice —
 both **COMPLETE** (2026-08-29).
 **Lifecycle position:** ⛔ **waiting at `design_accept`** for the Credit Terms screen. That gate
-blocks, so nothing behind it has run.
+blocks, so nothing behind it has run. ⚠ **And the owner's doc has since named three frontend
+requirements that do not include this screen** — so the gate now has a question in front of it:
+[technical balance Q7](../../technical/balance/team_balance_design_clarify.md#question), *is Credit
+Terms a screen or a section?*
 **The context as a whole does not advance** — the business lane's `clarity` gate answers **yes** with
 9 open questions. One slice moved because none of them touched it.
 

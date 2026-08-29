@@ -57,19 +57,33 @@ for (const f of files) {
   let start = 0;
   let buf = [];
 
+  // ⚠ A FENCE MAY SIT INSIDE A BLOCKQUOTE — "> ```mermaid" — and that is not a rarity: every
+  // `_clarify.md` carries its re-examination diagrams inside the quoted header block, which is how
+  // those files separate "what changed this round" from the standing argument.
+  //
+  // Until this stripped the quote markers, `/^\s*```mermaid/` never matched them and every one of
+  // those diagrams was skipped in silence — the same failure mode as the `audits` root before it was
+  // listed above, and the worse half of it: the run still printed a green count, so the check looked
+  // like it had passed on a file it had not opened.
+  const QUOTE = /^(\s*(?:>\s?)+)/;
+  const unquote = (line) => line.replace(QUOTE, "");
+
   lines.forEach((l, i) => {
-    if (!inBlock && /^\s*```mermaid/.test(l)) {
+    const bare = unquote(l);
+
+    if (!inBlock && /^\s*```mermaid/.test(bare)) {
       inBlock = true;
       start = i + 1;
       buf = [];
       return;
     }
-    if (inBlock && /^\s*```\s*$/.test(l)) {
+    if (inBlock && /^\s*```\s*$/.test(bare)) {
       blocks.push({ file: relative(repo, f).split(sep).join("/"), line: start, code: buf.join("\n") });
       inBlock = false;
       return;
     }
-    if (inBlock) buf.push(l);
+    // The diagram's own lines are unquoted the same way, so mermaid never sees a leading ">".
+    if (inBlock) buf.push(bare);
   });
 }
 

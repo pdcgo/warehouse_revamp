@@ -72,6 +72,42 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # ⚠ Re-examined after the doc's FIRST CONTENT — three frontend requirements
+>
+> `team_balance_design.md` is no longer empty. It leads with **§Frontend Requirements**, which is the
+> right order (HARD RULE 6) and the first time this design has been stated as *screens* rather than
+> recovered from migrations.
+>
+> | your requirement | what exists today |
+> | --- | --- |
+> | 1. Summarize All Balance | the four stat tiles at the top of `/liability`. ⚠ **They summarise the LOADED PAGE, not all balances** — [Critique 16](#critique) |
+> | 2. List Of Pair Team Balance page | ✅ `/liability` — one row per counterparty, both directions in two columns |
+> | 3. Detail Pair Team Balance and The Change Log | ✅ `/liability/:counterpartyId` — four tabs of entries and payments. ⚠ **"The Change Log" has two readings** — [Critique 17](#critique) |
+>
+> ⚠ **Three requirements, and a FOURTH screen was built last week.** Credit Terms
+> (`/liability/terms`) is not in your list. It is where the credit limit, the handling fee, the
+> markup and the **terms change log** live — and if your item 3's change log means that log, it is
+> currently on the wrong page. [Critique 18](#critique), and it is the one I would settle first
+> because a prototype is already sitting at `design_accept` on the answer.
+>
+> ```mermaid
+> flowchart TB
+>   R1["1. Summarize All Balance"] --> T["the 4 tiles on /liability"]
+>   T -.->|"computed over ONE PAGE of 20"| W["wrong once a team has 21 counterparties"]
+>   R2["2. List of pair balances"] --> L["/liability"]
+>   R3["3. Detail + The Change Log"] --> D["/liability/:counterpartyId"]
+>   R3 --> Q{"WHICH log?"}
+>   Q -->|"the ledger entries"| D
+>   Q -->|"the limit history"| X["/liability/terms — a page you have not named"]
+> ```
+>
+> ✅ **Nothing below is closed by this update** — the doc states screens, and the five open questions
+> are about the ledger's shape. What it adds is three new ones.
+>
+> **The backend half is still unwritten**, which under RULE 8b.11 means *not designed yet* rather
+> than an open question. The design does exist — as four migrations and twelve handlers — so the gap
+> is the writing-down, not the deciding. A proposal for it is [below](#proposed-design).
+
 > # ⚠ Re-verified against the tree at `0d4cbc4` — three critiques STAND, one is WITHDRAWN
 >
 > Every claim this file makes about shipped code was re-checked line by line. **Nothing was closed by
@@ -421,6 +457,12 @@ be inferred later from a note.
 | **10** | **`reversal` is a BOOLEAN, and the entry it reverses is not recorded anywhere.** This file argued *"`reverses_id`, not a boolean"* and it shipped as a flag. The consequence is sharper than the style point: cause 5 posts under the **find's own `movement_id`**, not the loss's, so a partial find works (no idempotency collision ✅) but **nothing ties it back to the loss it repays.** *"Loss #91 was 60.000 — how much of it is still outstanding?"* is unanswerable from the ledger; you can only sum `stock_damage` entries for the pair and hope no other loss overlaps. | **Add `reverses_group_id`** (nullable, pointing at the `group_id` of the movement being undone). It keeps the current idempotency key untouched — the key uses `reversal`, which stays — and makes *"what is left of this loss"* one join. ⚠ Also rename the concept in the doc: `reversal` today means *"this is a giving-back movement"*, not *"this reverses entry X"*, and the two readings differ. |
 | **11** | **A claimed payment that never arrived has NO TERMINAL STATE.** [Q3](#question) asked whether the creditor may REJECT. Shipped statuses are `recorded` · `confirmed` · `reversed` — **there is no `rejected`.** So a creditor faced with a payment that did not land can only leave it at `recorded` forever, or **confirm it and then reverse it** — which posts two real ledger movements for money that never moved, and leaves the pair's history telling a story that did not happen. | **Add `rejected`, with a reason, posting nothing** — a terminal state that writes no entry, which is what `recorded` → `rejected` should have been from the start. `reversed` stays for its real job: undoing a confirmation that was made in error. Two different failures, and today they share one path. |
 
+| | Problem *(found by re-examining after §Frontend Requirements)* | → Recommend |
+| --- | --- | --- |
+| **16** | **"Summarize All Balance" summarises ONE PAGE, and it looks right when it is wrong.** [liability-list](../../../frontend/src/pages/liability-list/index.tsx) computes `totalPayable`, `totalReceivable` and the oldest-unsettled tile by reducing `rows` — which is `positions` after a **client-side** search and type filter, and `positions` is one page of **20**. A creditor with 21 counterparties gets a headline total that silently omits the 21st, and turning to page 2 changes the "total". ⚠ Your requirement is *"Summarize **All** Balance"*, which is exactly the thing this cannot do. | **The summary comes from the SERVER, never from the loaded page.** → I recommend adding the totals to `LiabilityPositionListResponse` beside `awaiting_confirmation` — already a whole-set number computed server-side, so the shape exists and the precedent is yours. A separate `LiabilitySummary` RPC is the alternative and I would not: a second round trip for a number the list query already touches every row of. ⚠ The client-side search must then stop narrowing the tiles, or the summary and the filter disagree in a new way. |
+| **17** | **"The Change Log" has two readings and they live on different pages.** Item 3 pairs it with the pair detail. It could mean **(a)** the ledger entries for that pair — every fee, reimbursement and payment, which the detail page already shows in four tabs — or **(b)** the history of the CREDIT LIMIT for that pair, which is what [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) settled and what `LiabilityTermsHistoryList` was declared for. Different logs, different grains: (a) is money that moved, (b) is a rule that changed. | **Name which one, and I would put BOTH on the detail page.** → I recommend reading item 3 as **(b)**, because (a) is already there and would not have needed naming — and then the pair detail grows a fifth tab, *Limit changes*, reading `LiabilityTermsHistoryList` filtered to that counterparty. Smaller than it sounds: the panel is built and takes a `counterpartyId` already. |
+| **18** | **Credit Terms is a fourth screen and your list has three.** `/liability/terms` is where the limit, the handling fee and the markup are SET — the only place §Balance Policy's threshold is configurable outside the database. It is not in §Frontend Requirements, which reads either as "not needed" or as "I did not list it". ⚠ It is at `design_accept` now, so this is live rather than bookkeeping. | **Say whether it is a screen or a section.** → I recommend **a screen, kept**, because the DEFAULT row (`counterparty_id = 0`) is terms for *every team without their own* and has no pair detail page to live on — that alone forces a list. Then item 3's log is the per-pair *view* of what that screen *writes*. The alternative — terms as a section of the pair detail — cannot express the default row at all. |
+
 | | Problem *(found by re-examining the implemented frontend)* | → Recommend |
 | --- | --- | --- |
 | ~~**12**~~ | ⛔ **WITHDRAWN — and the toolchain behind it is FIXED.** This said `frontend/src/gen/warehouse/liability/` was missing after the `settlement` → `liability` rename. Commit `0d4cbc4` committed `liability_pb.ts` and `liability.connect.go`, and `npm run typecheck` exits **0**. ✅ **The destructive-command warning is also resolved** (2026-08-29): every plugin is now `local:` and pinned — `protoc-gen-go` / `protoc-gen-connect-go` as `tool` directives in the root go.mod, `protoc-gen-es` as a frontend devDependency — so `cd proto && buf generate` needs **no BSR token**. Verified by running it: 51 files regenerated, `go build`/`go vet`/`tsc` all clean. | No action. ⚠ The prerequisite is now `cd frontend && npm install`, and it is written into the [Commands table](../../../CLAUDE.md) and [docs/faq/contract.md](../../faq/contract.md). `clean: true` still empties both trees on a failed run — `git checkout -- backend/gen frontend/src/gen`. |
@@ -466,6 +508,21 @@ new**, and all three come from re-reading the code rather than the docs.
 5. **🆕 May the creditor REJECT a claimed payment?** ([Critique 11](#critique)) Today the only way to
    refuse one is to confirm it and reverse it, which writes two real movements for money that never moved.
    **→ I recommend a `rejected` terminal state that posts nothing.**
+6. **🆕 Which log does item 3 mean — the ENTRIES or the LIMIT history?** ([Critique 17](#critique))
+   The entries are already on the pair detail page in four tabs, so naming a change log there reads as
+   asking for the other one.
+   **→ I recommend the LIMIT history, as a fifth tab on the pair detail page** — the panel exists and
+   already takes a counterparty.
+7. **🆕 Is Credit Terms a screen of its own, or a section of the pair detail?** ([Critique 18](#critique))
+   ⛔ **This one is blocking**: the prototype is at `design_accept` waiting on the answer.
+   **→ I recommend a screen.** The default row is terms for every team without their own, and it has
+   no pair detail page to live on.
+8. **🆕 Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
+   ([Critique 16](#critique)) You listed it as its own item, before the list — which reads as a
+   separate screen, and today it is four tiles on top of the list.
+   **→ I recommend the tiles, fixed rather than replaced** — a summary one scroll from the rows it
+   summarises beats a screen you have to leave to act. What must change either way is where the
+   numbers come from.
 > ⛔ **Q6 is DELETED — the override recording is ANSWERED.**
 > [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded)
 > settles it: `actor_id` on every write, a `reason` when the actor is outside the creditor team, and a
