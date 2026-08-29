@@ -63,6 +63,9 @@ end
 ### Responsbility.
 1. Manage Balance.
 2. Serve Balance Daily Report.
+3. Manage Payments Accross Team.
+
+## Payment Flow.
 
 
 ## What Things That Affect The Team Balance.
@@ -107,4 +110,6 @@ For prevent unfair liability, we must have feature Debt Thresholds.
 ## About Thresholds.
 1. there is warning on the balance screen and daily report if thresholds 80% reached.
 2. thresholds default is unlimited. and team owner, team admin, or root edited it.
+
+
 

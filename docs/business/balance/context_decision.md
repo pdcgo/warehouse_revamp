@@ -7,7 +7,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | --- | --- |
 | [no-overdue-only-the-threshold](#no-overdue-only-the-threshold) | there is **no settlement cycle, no due date and no overdue state**. The debt threshold is the only control |
 | [the-grain-is-the-team-pair](#the-grain-is-the-team-pair) | a balance is held **per ordered pair of teams**, never one number per team |
-| [balance-manages-and-reports](#balance-manages-and-reports) | two jobs: hold the ledger, and serve the daily report. The warehouse's statement income exists nowhere else |
+| ~~[balance-manages-and-reports](#balance-manages-and-reports)~~ | ⚠ **RENAMED** — its verdict *"exactly two jobs"* is no longer true. See below |
+| [balance-manages-reports-and-takes-payments](#balance-manages-reports-and-takes-payments) | **three** jobs: hold the ledger, serve the daily report, and take payments between teams |
 | [the-order-fee-posts-at-creation-and-reverses-on-cancel](#the-order-fee-posts-at-creation-and-reverses-on-cancel) | `order_fee` is raised at order **creation** and **reversed** on cancellation — ratifying what shipped, and fixing the name |
 | [the-warehouse-receivable-is-order-fee-cod-fee-and-found](#the-warehouse-receivable-is-order-fee-cod-fee-and-found) | the warehouse may charge **three** things — `order_fee`, `cod_fee`, `found`. Resolves the causes-list contradiction |
 | [cod-fee-is-the-couriers-incidental-ask](#cod-fee-is-the-couriers-incidental-ask) | `shipping_fee` is the agreed freight at creation; `cod_fee` is whatever the courier asks at the door — **accidental and open-ended by design** |
@@ -102,6 +103,14 @@ flowchart LR
 ---
 
 ## balance-manages-and-reports
+
+⚠ **RENAMED to [balance-manages-reports-and-takes-payments](#balance-manages-reports-and-takes-payments)**
+(2026-08-29). §Responsbility grew a third line — *"Manage Payments Accross Team"* — so this
+section's verdict, *"exactly two jobs"*, is wrong as written. RULE 12: a decision whose verdict
+changes is renamed and its references grepped, never quietly edited.
+
+**Everything below still holds about the two jobs it named.** Only the count changed, and the
+reasoning about the daily report is untouched.
 
 > `balance_context.md` §Responsbility — *"1. Manage Balance. 2. Serve Balance Daily Report."*
 
@@ -688,3 +697,64 @@ Step 2 is impossible here, so nothing after it can land:
 pinned by the root go.mod's `tool` directives and by `frontend/package.json`, so `cd proto && buf
 generate` needs no Buf account. **The six steps above run in order.** ⚠ The verdict of this decision is
 unchanged — only the sentence about what stood in its way.
+
+---
+
+## balance-manages-reports-and-takes-payments
+
+> `balance_context.md` §Responsbility — *"1. Manage Balance. 2. Serve Balance Daily Report.
+> 3. Manage Payments Accross Team."*
+
+**The verdict.** Balance has **three** jobs. The third is **payments between teams** — recording
+one, and confirming it — and it is the only one of the three that lets a balance go back down.
+
+⚠ **This renames [balance-manages-and-reports](#balance-manages-and-reports)**, whose verdict was
+*"exactly two jobs"* (RULE 12).
+
+✅ **It ratifies shipped code.** `liability_payments`, `LiabilityPaymentRecord`,
+`LiabilityPaymentConfirm`, `LiabilityPaymentReverse`, `LiabilityPaymentList` and the
+`awaiting_confirmation` count all exist. Payments were built and never *named* as a
+responsibility — which is why two holes in them read as niceties until now.
+
+```mermaid
+sequenceDiagram
+    participant D as the debtor — the payer
+    participant L as balance
+    participant C as the creditor
+
+    D->>L: record a payment — I sent 2.000.000
+    Note over L: NOTHING posts. A claim is not money
+    L->>C: it appears as awaiting your confirmation
+    C->>L: confirm — it arrived
+    Note over L: NOW the settling entry posts, and the pair moves
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| what a payment IS | a **claim and an acknowledgement**, never a transfer. The money moves by bank outside this system |
+| the two phases | **record** by the payer, **confirm** by the creditor. Only the confirm posts |
+| who may confirm | the **creditor only** — they are the one who sees the money arrive |
+| what moves the balance | the confirm, and nothing else. A recorded payment changes no figure |
+| never blocked | the threshold must **never** refuse a payment. A team that cannot pay because it owes too much is a deadlock, and with no cycle nothing would ever break it |
+
+### ⚠ Not a wallet
+
+*Managing payments* is managing the claim and the acknowledgement. It is **not** holding money:
+no cash, no bank account, no float, no balance to draw down. The pair figure is an **obligation**,
+and the third responsibility does not turn it into an account with money in it.
+
+### Two gaps this promotes from nicety to defect
+
+Both were open before and both were arguable while payments were merely *built*. Naming them a
+responsibility ends that argument.
+
+| | |
+| --- | --- |
+| **no `rejected` state** | a creditor facing a payment that never arrived can only leave it at `recorded` forever, or **confirm it and reverse it** — two real ledger movements for money that never moved, and a pair history telling a story that did not happen. [technical Q5](../../technical/balance/team_balance_design_clarify.md#question) |
+| **`PaymentReverse` has no screen** | the RPC ships and **nothing in the frontend calls it**, so a confirmation made in error cannot be undone by anyone. [technical C14](../../technical/balance/team_balance_design_clarify.md#critique) |
+
+⚠ **And the chase problem is now sharper, not smaller.** With payments a stated job, the absence of
+any way to *ask* for one stands out: a creditor's only lever is still lowering the limit, which
+stops the debtor trading rather than requesting money ([Critique 11](./context_clarify.md#critique)).

@@ -10,15 +10,29 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**92 open questions across 16 files.** The seven below are shown; **85 are not** — they are not
+**91 open questions across 16 files.** The seven below are shown; **84 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-> **Driven by `team_balance_design.md` gaining its FIRST CONTENT** — three frontend requirements,
-> the first time the balance design has been stated as screens rather than recovered from migrations.
+> **Driven by two owner edits on the same day** — `team_balance_design.md` §Detail Pair Team Balance,
+> and `balance_context.md` §Responsbility gaining a THIRD line.
 >
-> ▲ **NEW at #7 — is Credit Terms a screen or a section?** It enters because it *stops a lifecycle
-> pass*: a finished prototype is sitting at `design_accept` waiting on the answer, which outranks a
-> question about work nobody has started. It is also cheap — one sentence settles it.
+> ⛔ **One question closed and it closed against my recommendation.** *"Which change log does the pair
+> detail show?"* — I argued it must mean one of the two, because the other was already on the page.
+> The answer was **both**
+> ([the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs)),
+> and the reasoning I used was the flaw: **a requirement doc names what already exists, because that
+> is how it says the thing is required rather than incidental.**
+>
+> ⚠ **A DECISION WAS RENAMED.** `balance_context.md` §Responsbility 3 — *"Manage Payments Accross
+> Team"* — makes `balance-manages-and-reports` ("exactly two jobs") wrong as written. It is now
+> [balance-manages-reports-and-takes-payments](business/balance/context_decision.md#balance-manages-reports-and-takes-payments),
+> references grepped (RULE 12). Nothing new opens: it **ratifies shipped payment code** and promotes
+> two known gaps — no `rejected` state, and a `PaymentReverse` RPC with no screen — from niceties to
+> defects in a *stated* responsibility.
+>
+> ▲ **#7 stays Credit Terms, narrowed to its blocking half.** The pair detail now READS the limit
+> history, which says nothing about where a limit is WRITTEN — and a finished prototype is still
+> sitting at `design_accept` waiting on that.
 >
 > ▼ **Demoted out of the shown seven:** *whose shelf does a returned cross-sold unit land on*. It is
 > now #8, unchanged and unanswered ([product Q1](business/product/context_clarify.md#question)).
@@ -60,11 +74,11 @@ closed, only smaller. The per-file counts are at the bottom.
 | **4** | **What moment consumes a FIFO layer, and which service stores the frozen cost?** Layers are inventory's, COGS is ledger's — the answer sets a service boundary, not just a timing. | the inventory/ledger split, COGS correctness, order lines | [product Q5](business/product/context_clarify.md#question) · [architecture Q3](technical/architecture/context_clarify.md#question) | **At commitment, both frozen on the line.** |
 | **5** | **🆕 Whose job is the SELLING team's money screen — and can one ORDER's true result be read anywhere?** Two halves of one gap opened by `0d4cbc4`. **(a)** `revenue_service` was removed and it held the selling team's income, so the daily statement is `StatementMode = "warehouse"` alone and **refuses** a selling team — while `balance_context.md` §Responsbility 2 still claims *"Serve Balance Daily Report"*. **(b)** The marketplace money is settlement's at **order** grain and the `order_fee` is balance's at **pair** grain, so *"what did order 1 make"* has no reader: `order_fees.go` writes `SourceID = orderID`, but `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. | every selling team's view of its own money — a shipped page refuses them today · the meaning of balance's second stated responsibility · order-level profitability | [balance Q8](business/balance/context_clarify.md#question) · [balance Q9](business/balance/context_clarify.md#question) | **(a) Two screens — balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things, and only the warehouse's is a pair-ledger read. §Responsbility 2 should then say *warehouse*. **(b) One `order_id` filter on `LiabilityEntryListFilter`, never a second copy of the fee** in settlement's ledger — one movement written as two rows in two services with no shared transaction is the failure [technical balance C4](technical/balance/team_balance_design_clarify.md#critique) already names. |
 | **6** | **Which PRE-CHECKS does a draft run — does it touch the reserve, the shared lock, the debt threshold?** ✅ The ledger half is closed; the moment is fixed at finalize. What is unstated is which of the checks a *draft* runs before it. | the ledger's write moment, the threshold's trigger, the lock and reserve checks | [order Q4](business/order/context_clarify.md#question) | **None of it at draft** — your own section forces it: a draft holds an *external* SKU, so it has no product, no owner and no cost, and none of the four are computable. The price is that **finalize must re-check and may refuse**. |
-| **7** | **🆕 Is Credit Terms a SCREEN of its own, or a section of the pair detail — and which log does "Detail Pair Team Balance and The Change Log" mean?** `team_balance_design.md` names three frontend requirements and the Credit Terms screen is not one of them, while its item 3 names a change log that could be either the pair's LEDGER ENTRIES (already on that page, in four tabs) or the CREDIT LIMIT history (built, and currently on a different page). | ⛔ `design_accept` on a finished prototype · where the limit history is read · whether the terms screen survives | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) · [Q7](technical/balance/team_balance_design_clarify.md#question) | **A screen, kept** — the DEFAULT row (`counterparty_id = 0`) is terms for every team without their own and has no pair detail page to live on, which alone forces a list. And read item 3's log as the **limit history**, as a fifth tab on the pair detail: the entries are already there and would not have needed naming. |
+| **7** | **Is Credit Terms a SCREEN of its own, or a section of the pair detail?** `team_balance_design.md` §Frontend Requirements names three screens and Credit Terms — where the limit, the handling fee and the markup are SET — is not one of them. ⚠ **Narrowed, not answered**, by [the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs): the pair detail now READS that pair's limit history, which says nothing about where a limit is WRITTEN. | ⛔ `design_accept` on a finished prototype · the only place §Balance Policy's threshold is configurable outside the database | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) | **A screen, kept.** The DEFAULT row (`counterparty_id = 0`) is terms for every team without their own and has no pair detail page to live on — that alone forces a list. Terms as a section of the pair detail cannot express it at all. |
 
 ---
 
-## Where the other 85 are
+## Where the other 84 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -75,7 +89,7 @@ Every file's full open count — the seven above are drawn from these, not addit
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 9 | ▲ was 7 — the daily report, and the per-order read |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 8 | ▲ was 5 — the owner's doc gained its first content |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 7 | ▼ was 8 — "which change log?" was answered as BOTH |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |

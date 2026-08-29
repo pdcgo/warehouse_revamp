@@ -74,7 +74,7 @@ points are **deleted**, so this file is always the current open set.
 > **Three new sections, and they are the first statement of who owes what BY PARTY** rather than by
 > cause. Four more decisions in [context_decision.md](./context_decision.md), and **all four ratify
 > shipped behaviour** — the first time that has happened in this file:
-> [balance-manages-and-reports](./context_decision.md#balance-manages-and-reports) ·
+> [balance-manages-reports-and-takes-payments](./context_decision.md#balance-manages-reports-and-takes-payments) ·
 > [the-order-fee-posts-at-creation-and-reverses-on-cancel](./context_decision.md#the-order-fee-posts-at-creation-and-reverses-on-cancel) ·
 > [the-warehouse-receivable-is-order-fee-cod-fee-and-found](./context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) ·
 > [the-warehouse-payable-is-broken-and-lost](./context_decision.md#the-warehouse-payable-is-broken-and-lost).
@@ -197,6 +197,52 @@ points are **deleted**, so this file is always the current open set.
 > ⚠ **`liability_entries` still has no actor.** This settles the *terms*, not the ledger — *"who
 > posted this charge"* stays unanswerable and unbackfillable
 > ([technical C9](../../technical/balance/team_balance_design_clarify.md#critique)).
+
+> # ⚠ Re-examined after §Responsbility grew a THIRD line
+>
+> *"3. Manage Payments Accross Team."* — one line, and it renames a decision.
+> [balance-manages-and-reports](./context_decision.md#balance-manages-and-reports) said **exactly two
+> jobs**, so its verdict is now wrong as written and it is renamed
+> [balance-manages-reports-and-takes-payments](./context_decision.md#balance-manages-reports-and-takes-payments) (RULE 12,
+> references grepped).
+>
+> ✅ **It ratifies shipped code** — `liability_payments`, Record / Confirm / Reverse / List and the
+> `awaiting_confirmation` count all exist. Payments were **built and never named**, which is exactly
+> why the two holes in them read as niceties until now.
+>
+> ⛔ **Two open items are promoted from nicety to DEFECT**, because a gap in a stated responsibility
+> is a different thing from a gap in something nobody claimed:
+>
+> | | |
+> | --- | --- |
+> | **no `rejected` state** | a creditor facing a payment that never arrived can only leave it at `recorded` forever, or **confirm then reverse** — two real ledger movements for money that never moved. [technical Q5](../../technical/balance/team_balance_design_clarify.md#question) |
+> | **`PaymentReverse` has no screen** | the RPC ships and nothing calls it, so a confirmation made in error cannot be undone by anyone. [technical C14](../../technical/balance/team_balance_design_clarify.md#critique) |
+>
+> ⚠ **And it sharpens [Critique 11](#critique) rather than answering it.** With payments a stated
+> job, the absence of any way to *ask* for one stands out: a creditor's only lever is still lowering
+> the limit, which stops the debtor trading rather than requesting money. Managing payments without
+> a way to request one is managing only the half that the debtor starts.
+>
+> ```mermaid
+> flowchart LR
+>   R1["1. Manage Balance"] --> A["the ledger — entries and positions"]
+>   R2["2. Serve Daily Report"] --> B["LiabilityDaily — warehouse only today"]
+>   R3["3. Manage Payments"] --> C["record, then confirm"]
+>   C --> D["the ONLY act that lets a balance go down"]
+>   C -.->|"missing"| E["reject a payment that never arrived"]
+>   C -.->|"missing"| G["a screen to reverse a mistaken confirm"]
+>   C -.->|"missing"| H["any way to ASK for a payment"]
+> ```
+>
+> ✅ **And the words "Accross Team" are evidence for the boundary.** [Q7](#question) asks whether
+> supplier and courier payables belong here. A responsibility scoped to payments **across teams** is
+> the teams-only rule stated from the other side — an outsider has no account to confirm from, and
+> now no line in §Responsbility claiming them either. It does not close Q7 (where they DO live is
+> still nowhere), but it strengthens the half I recommended: not in this ledger.
+>
+> ⚠ **What it does NOT make balance is a WALLET.** Managing payments is managing the claim and the
+> acknowledgement — no cash, no bank, no float. The pair figure stays an obligation, and the
+> boundary proposal below is unchanged by this line.
 
 > # ⚠ Re-examined after `settlement_service` LANDED and `revenue_service` was REMOVED
 >
@@ -421,7 +467,7 @@ flowchart LR
 
 | | Problem *(found by re-examining after `settlement_service` landed)* | → Recommend |
 | --- | --- | --- |
-| **16** | **§Responsbility 2 now serves ONE of the two team types.** `revenue_service` was removed with the settlement work and it held the selling team's income, so `StatementMode` is `"warehouse"` alone and the page **refuses** a non-warehouse team rather than show it a subtraction with no income term. ⚠ [balance-manages-and-reports](./context_decision.md#balance-manages-and-reports) reasoned that a warehouse's statement income *"exists nowhere else"* — still true, and it is now the only half that exists at all. | **Say whose report it is.** → I recommend **two screens: balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things — fees − expenses against payout − COGS − fees — and only the warehouse's is a pair-ledger read. Then §Responsbility 2 should say *warehouse* daily report, so the doc stops promising a selling team a screen this ledger cannot give it. |
+| **16** | **§Responsbility 2 now serves ONE of the two team types.** `revenue_service` was removed with the settlement work and it held the selling team's income, so `StatementMode` is `"warehouse"` alone and the page **refuses** a non-warehouse team rather than show it a subtraction with no income term. ⚠ [balance-manages-reports-and-takes-payments](./context_decision.md#balance-manages-reports-and-takes-payments) reasoned that a warehouse's statement income *"exists nowhere else"* — still true, and it is now the only half that exists at all. | **Say whose report it is.** → I recommend **two screens: balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things — fees − expenses against payout − COGS − fees — and only the warehouse's is a pair-ledger read. Then §Responsbility 2 should say *warehouse* daily report, so the doc stops promising a selling team a screen this ledger cannot give it. |
 | **17** | **Nothing can answer *"what did order 1 actually make"*.** Settlement holds that order's marketplace money at **order** grain, and the `order_fee` it also cost sits here at **pair** grain. The join exists in the data and not in the contract: [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go) writes `SourceID = orderID`, while `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. So the fee is recorded, attributable, and **unaskable**. | **One filter field, never a second copy of the fee.** → I recommend adding an `order_id` (`source_id`) filter to `LiabilityEntryListFilter` and assembling the order's P&L on the screen from settlement + the frozen COGS + the fee. Posting the fee into `settlement_entries` as well would make one movement two rows in two services with no shared transaction — [technical Critique 4](../../technical/balance/team_balance_design_clarify.md#critique) is that exact failure. |
 
 ---
@@ -489,6 +535,13 @@ use in `business_level.md` §covered 6 and is **not** one of the six causes here
 its own right. That removes one of the three readings. What is left is the **outbound** fee to send a
 parcel to the customer, and the **COD** amount a courier collects — neither of which appears anywhere in
 the requirement set.
+
+⚠ **A SECOND SITE of the same cause, added by §Responsbility 3.** *Manage Payments Accross Team* is
+now a named responsibility here, and `business_level.md` §covered 6's list of what the balance is
+*used in* still does not mention a payment — the one act that lets a balance go back DOWN. Recorded
+as a site rather than a new entry, per RULE 11: this is the same cause as the shipping-fee drift
+above — **one list restated per audience, going stale per audience** — and grouping by symptom would
+make one problem look like two.
 
 **→ Recommend** name the outbound shipping money explicitly: is it a cost the selling team simply bears,
 or does the warehouse front it at handover and get reimbursed? If the latter, it is a **seventh cause**

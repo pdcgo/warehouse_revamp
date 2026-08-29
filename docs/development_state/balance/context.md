@@ -1,7 +1,7 @@
 # Development state — balance
 
-**Pass:** `agent_analysis` re-examination, then `implementation_analysis` for the THRESHOLD slice —
-both **COMPLETE** (2026-08-29).
+**Pass:** `agent_analysis` re-examination, `implementation_analysis` for the THRESHOLD slice, and a
+second re-examination after two owner edits — all **COMPLETE** (2026-08-29).
 **Lifecycle position:** ⛔ **waiting at `design_accept`** for the Credit Terms screen. That gate
 blocks, so nothing behind it has run. ⚠ **And the owner's doc has since named three frontend
 requirements that do not include this screen** — so the gate now has a question in front of it:
@@ -43,7 +43,8 @@ settlement cycle" as a statement about `settlement_service`.
 | **the 80% warning** | needs that screen, and a place on the daily report |
 | **`actor_id` on `liability_entries`** | causes 1–5 are **permanently unattributable**. Only payments record who acted, and it cannot be back-filled |
 | **the terms change log** | [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires actor + reason + a log with a **nullable** limit. None of it is built |
-| **a `PaymentReverse` screen** | the RPC ships and nothing calls it — a confirmation made in error cannot be undone by anyone |
+| **a `PaymentReverse` screen** | ⛔ **now a DEFECT, not a gap.** The RPC ships and nothing calls it, so a confirmation made in error cannot be undone by anyone — and [balance-manages-reports-and-takes-payments](../../business/balance/context_decision.md#balance-manages-reports-and-takes-payments) made payments a **stated responsibility** |
+| **a `rejected` payment state** | ⛔ same promotion. A creditor facing a payment that never arrived can only leave it at `recorded` forever, or **confirm then reverse** — two real ledger movements for money that never moved |
 | **the selling team's daily report** | `revenue_service` was removed in `0d4cbc4`. `StatementMode` is `"warehouse"` alone and the page **refuses** a selling team |
 | **a dispute mechanism / a chase instrument** | neither exists. With no cycle, lowering the limit is the only lever a creditor has |
 
@@ -84,6 +85,27 @@ clean. The Go diff was the version stamp alone; the TS diff was `codegenv1` → 
 ⚠ **A live bug rides on the first one.** The daily statement reads `LiabilitySourceType.COD_FEE` in
 three files and **nothing posts it** — `RESTOCK_OUTLAY` superseded it and appears in no column. The
 COD column is permanently zero. The rename fixes it without touching the screen.
+
+## 🆕 The pair detail now carries the LIMIT history too
+
+`team_balance_design.md` §Detail Pair Team Balance named three things, and the second was a log
+this page did not have. Recorded as
+[the-pair-detail-shows-both-logs](../../technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs),
+and built:
+
+| | |
+| --- | --- |
+| a fifth tab | `/liability/:counterpartyId` → *Limit changes*, filtered to that pair |
+| the panel moved | `pages/liability-terms/components/ChangeLogPanel` → **`features/liability/`** — two pages read it now, so it stopped being one page's component (CLAUDE.md) |
+| stories | 3, on a new `LiabilityDetailPage.stories.tsx` — the page had none before |
+| the stub grew | `liabilityEntryList` and `LiabilityPaymentService`, so the detail page is previewable at all |
+
+⚠ **The two logs must never merge.** The entry tabs are money that MOVED; the limit tab is a RULE
+that changed. Different grains, and only one of them is a ledger.
+
+⚠ **`limitPage` is a THIRD page number** on that screen, deliberately. One shared number would turn
+to page 2 of a log the reader is not looking at. It also has to be declared with the other hooks,
+**above** the `if (!current)` guard — declared after it, React throws on the hook order.
 
 ## ⚠ 10 story tests fail, and they are the daily statement's
 
