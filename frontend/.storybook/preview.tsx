@@ -10,6 +10,7 @@ import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
+import { resetLiabilityTerms } from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { system } from "../src/theme";
 import "../src/i18n/config";
@@ -231,6 +232,9 @@ const preview: Preview = {
     // selected team is sessionStorage, and is cleared with it.
     clearToken();
     sessionStorage.clear();
+    // The credit-terms table in the stub transport is WRITEABLE, so a story that freezes a team
+    // would otherwise decide what every later story renders.
+    resetLiabilityTerms();
     stubClipboard();
   },
   parameters: {

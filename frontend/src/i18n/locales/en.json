@@ -70,7 +70,8 @@
     "selectTeamView": "Select a team to view its position.",
     "theyOweYou": "They owe you {{amount}}",
     "youOweThem": "You owe them {{amount}}",
-    "square": "Square"
+    "square": "Square",
+    "termsLink": "Credit terms"
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -697,7 +698,7 @@
         "info": "Info",
         "products": "Product",
         "timeline": "Timeline",
-      "settlement": "Settlement"
+        "settlement": "Settlement"
       },
       "product": "Product",
       "accepted": "Accepted"
@@ -2008,5 +2009,60 @@
       "occurredOn": "Belongs to",
       "note": "Note"
     }
+  },
+  "terms": {
+    "title": "Credit Terms",
+    "intro": "What you charge each team, and how far you let them run. A balance is never due — the limit is the only control, so lowering it is also the only way to ask for money.",
+    "setTerms": "Set Terms",
+    "setTitle": "Set Terms",
+    "editTitle": "Edit Terms",
+    "counterparty": "Team",
+    "defaultRow": "Default — every other team",
+    "defaultRowHelp": "Applies to every team without terms of their own",
+    "teamFallback": "Team #{{id}}",
+    "userFallback": "User #{{id}}",
+    "creditLimit": "Credit limit",
+    "limitUnlimited": "Unlimited",
+    "limitFrozen": "Frozen — no credit",
+    "limitCapped": "Limit of",
+    "limitHelp": "Unlimited and Frozen are opposites, not degrees. Frozen refuses the next order whatever the balance.",
+    "handlingFee": "Handling fee",
+    "handlingFeeHelp": "Flat, per order. Nothing set means you charge nothing.",
+    "markup": "Markup",
+    "markupHelp": "Percent over the goods' cost when another team sells your product.",
+    "reason": "Reason",
+    "reasonRequired": "Required — you are changing another team's terms.",
+    "reasonOptional": "Optional. Recorded in the change log either way.",
+    "save": "Save",
+    "actions": "Actions",
+    "edit": "Edit Terms",
+    "viewHistory": "View Change Log",
+    "remove": "Remove Terms",
+    "removeDialog": {
+      "title": "Remove Terms for {{name}}",
+      "message": "This RAISES their limit to unlimited — it is the only way to express 'no limit' once one is set. Their handling fee and markup fall back to your default row.",
+      "confirm": "Remove"
+    },
+    "empty": "No terms set. Every team you trade with is unlimited and charged nothing.",
+    "chargesNothing": "—",
+    "usedOf": "{{used}} of {{limit}}",
+    "warnNear": "Near limit",
+    "warnOver": "Over limit",
+    "tileNear": "Near limit",
+    "tileNearHelp": "At 80% or more of what you allowed",
+    "tileFrozen": "Frozen",
+    "tileFrozenHelp": "No credit at all",
+    "tileUnlimited": "Unlimited",
+    "tileUnlimitedHelp": "No ceiling set",
+    "overrideWriter": "Writing as admin",
+    "override": "Override",
+    "historyAll": "Change log",
+    "historyOne": "Change log — {{name}}",
+    "historyEmpty": "No changes recorded.",
+    "showAllHistory": "Show every team's changes",
+    "colWhen": "When",
+    "colWho": "Who",
+    "colLimitChange": "Limit",
+    "colReason": "Reason"
   }
 }

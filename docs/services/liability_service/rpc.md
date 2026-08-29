@@ -261,6 +261,7 @@ permanently. Three RPCs close that.
 | `LiabilityTermsList` | what the scoped team charges each debtor — the **creditor's own books**, never what it is charged |
 | `LiabilityTermsSet` | upsert one pair's rate and limit |
 | `LiabilityTermsDelete` | remove a pair's row entirely |
+| `LiabilityTermsHistoryList` | every change to those terms, in order. ⛔ **declared, not implemented** — see below |
 
 **The scope is the CREDITOR.** `team_id` is the team that WROTE these rows. A debtor asking what it
 is charged is asking about somebody else's configuration and gets its own empty list.
@@ -295,6 +296,54 @@ after a timeout must not fail because the first attempt worked.
 
 **A rate change never rewrites history.** Terms decide what FUTURE postings charge; entries already
 written are immutable facts about money that moved.
+
+### The change log — `LiabilityTermsHistoryList`, declared and NOT implemented
+
+⛔ **The handler refuses with `Unimplemented`.** It exists because the contract is derived from the
+screen and accepted at the same gate as it (HARD RULE 6): the Credit Terms screen is a Storybook
+prototype awaiting `design_accept`, and a service is mounted WHOLE — so the moment the proto grew an
+RPC, every method of that interface had to exist or the build breaks.
+
+⚠ **It refuses rather than returning an empty page.** An empty list is indistinguishable from *"nobody
+has ever changed a limit"*, which is exactly the false reassurance an audit surface must not give.
+
+Why a LOG and not two more columns on the terms row — both reasons come from decisions already made:
+
+- **The limit IS the chase instrument.** [no-overdue-only-the-threshold](../../business/balance/context_decision.md#no-overdue-only-the-threshold)
+  leaves a creditor no way to demand payment except lowering the limit, so raising and lowering it is
+  an ongoing negotiation between two businesses. Only its latest value is not a record of that.
+- **A raise silently erases the warning.** [the-threshold-warns-at-eighty-percent](../../business/balance/context_decision.md#the-threshold-warns-at-eighty-percent)
+  makes 80% the only signal this design has. A team at 87% whose limit doubles drops to 43% and the
+  badge vanishes — with columns alone, nothing anywhere shows it was ever warning.
+
+What it needs before it can be written, and neither is the handler's decision:
+
+| | |
+| --- | --- |
+| a `liability_terms_changes` table | ⚠ **both limit columns NULLABLE.** `NULL`, `0` and a number are three different acts, and an integer column flattens the first into the second — turning *"they removed the limit"* into *"they froze the team"* |
+| the actor, stamped at write time | in `LiabilityTermsSet` / `LiabilityTermsDelete`, from the TOKEN — along with whether the writer was outside the creditor team. A caller cannot be trusted to report that its own write was an override |
+
+`reason` is already on both write requests: **required when the actor is outside the creditor team**,
+optional when they are. A creditor setting its own terms owes nobody an explanation; somebody else
+changing them does — and that difference is the whole definition of an override here
+([a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded)).
+
+```mermaid
+sequenceDiagram
+    participant U as an owner or an admin
+    participant S as LiabilityTermsSet
+    participant T as liability_terms
+    participant L as liability_terms_changes
+
+    U->>S: new limit, and a reason
+    S->>S: read the actor from the TOKEN, never the request
+    alt the actor is outside the creditor team
+        S->>S: the reason is required — an override
+    end
+    S->>T: upsert the row
+    S->>L: old and new limits, the actor, the reason, the override flag
+    Note over L: NULL, 0 and a number stay three distinct values
+```
 
 ## The credit check — a pre-order gate, not a ledger guard (#189)
 

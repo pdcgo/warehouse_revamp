@@ -509,3 +509,75 @@ export const expenseDays: { teamId: bigint; ago: number; byKind: Record<number, 
   { teamId: 11n, ago: 3, byKind: { [ExpenseKind.OPERATIONAL]: 500_000n, [ExpenseKind.STOCK_LOSS]: 40_000n } },
   { teamId: 11n, ago: 8, byKind: { [ExpenseKind.PAYROLL]: 100_000n } },
 ];
+
+// ── CREDIT TERMS (#189) ─────────────────────────────────────────────────────────────────────────
+//
+// Team 11 (Gudang Pusat) is the CREDITOR throughout — a warehouse, which is who carries the credit
+// risk in this system.
+//
+// The fixture exists to make all THREE limit states visible at once, because they are the states the
+// screen is built to keep apart and a demo with only "a number" proves nothing:
+//
+//   counterparty 0  → the DEFAULT row — unlimited, and it is the rule the others are exceptions to
+//   team 12         → capped, and 87% used   → the 80% WARNING fires
+//   team 13         → 0                      → FROZEN, which is the opposite of the default's absent
+//   team 14         → capped, and 124% used  → OVER
+//   team 15         → no row at all          → it appears in the "set terms" options, not the table
+export const liabilityTerms = [
+  { teamId: 11n, counterpartyId: 0n, handlingFee: 25_000n, productMarkupBp: 500n, creditLimit: undefined, reason: "" },
+  { teamId: 11n, counterpartyId: 12n, handlingFee: 30_000n, productMarkupBp: 750n, creditLimit: 10_000_000n, reason: "" },
+  { teamId: 11n, counterpartyId: 13n, handlingFee: 25_000n, productMarkupBp: 500n, creditLimit: 0n, reason: "" },
+  { teamId: 11n, counterpartyId: 14n, handlingFee: 0n, productMarkupBp: 0n, creditLimit: 5_000_000n, reason: "" },
+];
+
+// What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
+export const liabilityPositions = [
+  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+];
+
+// The change log. ⚠ Read the LIMIT columns of change 3 and 4 together — they are the two acts a
+// single integer column cannot tell apart:
+//
+//   change 3  5.000.000 → undefined   the limit was REMOVED   (unlimited)
+//   change 4  undefined → 0           the team was FROZEN     (no credit at all)
+//
+// Change 1 is the raise that ERASES A WARNING: team 14 sat at 6.2m against 5m — over its limit — and
+// a raise to 20m would drop it to 31% with nothing on the current row showing it had ever been over.
+// The log is the only place that survives.
+export const liabilityTermsChanges = [
+  {
+    id: 4n, counterpartyId: 13n, actorId: 1n,
+    oldCreditLimit: undefined, newCreditLimit: 0n,
+    oldHandlingFee: 25_000n, newHandlingFee: 25_000n,
+    oldProductMarkupBp: 500n, newProductMarkupBp: 500n,
+    reason: "Repeated unpaid restock outlays — frozen pending payment.",
+    override: false, changedAtUnix: 1_756_000_000n,
+  },
+  {
+    id: 3n, counterpartyId: 12n, actorId: 2n,
+    oldCreditLimit: 5_000_000n, newCreditLimit: undefined,
+    oldHandlingFee: 30_000n, newHandlingFee: 30_000n,
+    oldProductMarkupBp: 750n, newProductMarkupBp: 750n,
+    reason: "Cap lifted for the ramadan push — agreed with the owner.",
+    override: true, changedAtUnix: 1_755_600_000n,
+  },
+  {
+    id: 2n, counterpartyId: 12n, actorId: 1n,
+    oldCreditLimit: undefined, newCreditLimit: 10_000_000n,
+    oldHandlingFee: 25_000n, newHandlingFee: 30_000n,
+    oldProductMarkupBp: 500n, newProductMarkupBp: 750n,
+    reason: "",
+    override: false, changedAtUnix: 1_755_200_000n,
+  },
+  {
+    id: 1n, counterpartyId: 14n, actorId: 1n,
+    oldCreditLimit: 20_000_000n, newCreditLimit: 5_000_000n,
+    oldHandlingFee: 0n, newHandlingFee: 0n,
+    oldProductMarkupBp: 0n, newProductMarkupBp: 0n,
+    reason: "",
+    override: false, changedAtUnix: 1_754_800_000n,
+  },
+];

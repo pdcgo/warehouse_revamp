@@ -26,6 +26,7 @@ import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityService,
   LiabilitySourceType,
+  LiabilityTermsService,
 } from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
@@ -75,6 +76,9 @@ import {
   regions,
   liabilityDays,
   shops,
+  liabilityPositions,
+  liabilityTerms,
+  liabilityTermsChanges,
   suppliers,
   teams,
   users,
@@ -127,6 +131,50 @@ function pagedColumnar<C extends string, R extends Row>(slice: C, rows: R[], pag
       totalItems: BigInt(rows.length),
     },
   };
+}
+
+// The same envelope for a slice keyed by something OTHER than `id`.
+//
+// ⚠ The liability POSITION and TERMS slices are keyed by `counterparty_id`, and `0` is a real key
+// there — the creditor's default row. So this cannot reuse `pagedColumnar`, which assumes `row.id`,
+// and it must not treat a 0 key as missing.
+function pagedColumnarBy<C extends string, R>(
+  slice: C,
+  rows: R[],
+  keyOf: (row: R) => bigint,
+  page: PageReq,
+) {
+  const limit = Number(page?.limit ?? 20n) || 20;
+  const current = Number(page?.page ?? 1n) || 1;
+  const window = rows.slice((current - 1) * limit, current * limit);
+
+  const mapData: Record<string, R> = {};
+  for (const row of window) {
+    mapData[keyOf(row).toString()] = row;
+  }
+
+  return {
+    items: [{ d: { case: slice, value: { mapData } } }],
+    ids: window.map(keyOf),
+    pageInfo: {
+      currentPage: current,
+      totalPage: Math.max(1, Math.ceil(rows.length / limit)),
+      totalItems: BigInt(rows.length),
+    },
+  };
+}
+
+// The terms table is WRITEABLE in the stub, so a story can set a limit and see the row change — the
+// whole point of the screen is the write, and echoing the request back would test the dialog without
+// testing that anything landed.
+//
+// ⚠ MODULE STATE SURVIVES BETWEEN STORIES in one browser tab, so preview.tsx resets it in
+// `beforeEach`. Without that, a story that freezes a team decides what every later story renders.
+type StubTerms = (typeof liabilityTerms)[number];
+let termsTable: StubTerms[] = [...liabilityTerms];
+
+export function resetLiabilityTerms() {
+  termsTable = [...liabilityTerms];
 }
 
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
@@ -620,6 +668,20 @@ export const transport = createRouterTransport(({ service }) => {
   });
 
   service(LiabilityService, {
+    // One row per counterparty — what each of them owes this team, which is what a credit limit is
+    // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
+    // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
+    liabilityPositionList: (req) =>
+      ({
+        ...pagedColumnarBy(
+          "position",
+          liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n),
+          (p) => p.counterpartyId,
+          req.page,
+        ),
+        awaitingConfirmation: 0,
+      }),
+
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
     // it treats as earnings. It picks HANDLING_FEE alone: COD reimburses cash already handed to a
     // courier, so summing every source and calling it income counts money nobody earned.
@@ -646,6 +708,59 @@ export const transport = createRouterTransport(({ service }) => {
 
       return { days: perDay, totals: { net: sumMap(bySource), bySource } };
     },
+  });
+
+  service(LiabilityTermsService, {
+    // ⚠ Keyed by counterparty, and the DEFAULT row's key is 0 — see pagedColumnarBy.
+    liabilityTermsList: (req) =>
+      pagedColumnarBy(
+        "terms",
+        termsTable.filter((x) => x.teamId === req.teamId),
+        (x) => x.counterpartyId,
+        req.page,
+      ),
+
+    // Create-or-update on (team, counterparty), as the server does.
+    //
+    // ⚠ `creditLimit` is carried through as `undefined` when absent, NEVER coerced to 0. That
+    // coercion is the exact bug the optional field exists to prevent, and a stub that flattened it
+    // would make the screen's three-way control untestable.
+    liabilityTermsSet: (req) => {
+      const row = {
+        teamId: req.teamId,
+        counterpartyId: req.counterpartyId,
+        handlingFee: req.handlingFee,
+        productMarkupBp: req.productMarkupBp,
+        creditLimit: req.creditLimit,
+        reason: req.reason,
+      };
+
+      const at = termsTable.findIndex(
+        (x) => x.teamId === req.teamId && x.counterpartyId === req.counterpartyId,
+      );
+      if (at >= 0) termsTable[at] = row;
+      else termsTable = [...termsTable, row];
+
+      return { terms: row };
+    },
+
+    // A real delete — the only way to say "unlimited" once a limit exists.
+    liabilityTermsDelete: (req) => {
+      termsTable = termsTable.filter(
+        (x) => !(x.teamId === req.teamId && x.counterpartyId === req.counterpartyId),
+      );
+      return {};
+    },
+
+    liabilityTermsHistoryList: (req) =>
+      pagedColumnarBy(
+        "change",
+        liabilityTermsChanges.filter(
+          (c) => req.filter?.counterpartyId === undefined || c.counterpartyId === req.filter.counterpartyId,
+        ),
+        (c) => c.id,
+        req.page,
+      ),
   });
 
   service(ExpenseService, {

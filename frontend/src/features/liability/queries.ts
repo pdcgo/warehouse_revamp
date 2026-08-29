@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { liabilityClient, liabilityPaymentClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { liabilityClient, liabilityPaymentClient, liabilityTermsClient } from "../../api/clients";
+import { key, listQuery } from "../../api/queryClient";
 import {
   entriesFromList,
   entryRowData,
@@ -8,6 +8,10 @@ import {
   paymentRowData,
   positionRowData,
   positionsFromList,
+  termsChangeRowData,
+  termsChangesFromList,
+  termsFromList,
+  termsRowData,
 } from "./adapt";
 
 // The Liability screens' reads (#185).
@@ -150,6 +154,128 @@ export function useConfirmPayment() {
       liabilityPaymentClient.liabilityPaymentConfirm({
         teamId: args.teamId,
         paymentId: args.paymentId,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
+// ─── terms (#189) ───────────────────────────────────────────────────────────────────────────────
+
+// Every row of terms this team has SET — one per debtor, plus the DEFAULT row at counterparty 0.
+//
+// `listQuery` because a page turn refines the same question. ⚠ The list is a creditor's own
+// configuration, so it is small in practice and paginated anyway (HARD RULE 9) — "returns a list" is
+// the bar, not "is currently large".
+export function useLiabilityTerms(args: {
+  teamId: bigint | undefined;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, page, pageSize } = args;
+
+  return useQuery({
+    ...listQuery,
+    queryKey: key.liability(teamId, { terms: true, page, pageSize }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await liabilityTermsClient.liabilityTermsList({
+        teamId: teamId!,
+        dataRequest: termsRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        terms: termsFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// The change log for ONE pair, or for every pair when `counterpartyId` is undefined.
+//
+// ⚠ `counterpartyId` is `bigint | undefined`, NOT `0n` for "all" — 0 is the default row, a real
+// counterparty here. Sending 0 asks for the default row's history and nothing else.
+export function useTermsHistory(args: {
+  teamId: bigint | undefined;
+  counterpartyId: bigint | undefined;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, counterpartyId, page, pageSize } = args;
+
+  return useQuery({
+    ...listQuery,
+    queryKey: key.liability(teamId, {
+      termsHistory: true,
+      counterpartyId: counterpartyId === undefined ? "all" : counterpartyId.toString(),
+      page,
+      pageSize,
+    }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await liabilityTermsClient.liabilityTermsHistoryList({
+        teamId: teamId!,
+        filter: { counterpartyId },
+        dataRequest: termsChangeRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        changes: termsChangesFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// Set one pair's terms — a CREATE-OR-UPDATE on (team, counterparty).
+//
+// ⚠ `creditLimit: undefined` means UNLIMITED and `0n` means NO CREDIT AT ALL. They are opposites, so
+// the caller must pass `undefined` deliberately rather than letting a blank input coerce to zero —
+// that coercion is the bug the whole optional field exists to prevent.
+export function useSetTerms() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: {
+      teamId: bigint;
+      counterpartyId: bigint;
+      handlingFee: bigint;
+      productMarkupBp: bigint;
+      creditLimit: bigint | undefined;
+      reason: string;
+    }) =>
+      liabilityTermsClient.liabilityTermsSet({
+        teamId: args.teamId,
+        counterpartyId: args.counterpartyId,
+        handlingFee: args.handlingFee,
+        productMarkupBp: args.productMarkupBp,
+        creditLimit: args.creditLimit,
+        reason: args.reason,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
+// Delete one pair's terms, dropping that debtor back to the default row — or, with no default, to
+// charging nothing and allowing anything.
+//
+// ⚠ THIS IS HOW "UNLIMITED" IS EXPRESSED once a limit exists, which makes it the most consequential
+// write in this service rather than a tidy-up. It RAISES the ceiling, so the screen confirms it.
+export function useDeleteTerms() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; counterpartyId: bigint; reason: string }) =>
+      liabilityTermsClient.liabilityTermsDelete({
+        teamId: args.teamId,
+        counterpartyId: args.counterpartyId,
+        reason: args.reason,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });

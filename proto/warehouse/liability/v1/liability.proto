@@ -71,6 +71,9 @@ service LiabilityTermsService {
   rpc LiabilityTermsSet(LiabilityTermsSetRequest) returns (LiabilityTermsSetResponse);
   // Removing a credit limit means DELETING the terms row, never zeroing it — see LiabilityTerms.
   rpc LiabilityTermsDelete(LiabilityTermsDeleteRequest) returns (LiabilityTermsDeleteResponse);
+  // Every change to a limit, in order — see LiabilityTermsChange for why the latest values are not
+  // enough.
+  rpc LiabilityTermsHistoryList(LiabilityTermsHistoryListRequest) returns (LiabilityTermsHistoryListResponse);
 }
 
 // WHAT CAUSED an entry (§4.4). A typed pair `(source_type, source_id)`, never a free-text note:
@@ -722,6 +725,14 @@ message LiabilityTermsSetRequest {
   int64 product_markup_bp = 4 [(buf.validate.field).int64.gte = 0];
   // Omit for unlimited; send 0 to freeze this team's credit entirely.
   optional int64 credit_limit = 5 [(buf.validate.field).int64.gte = 0];
+
+  // WHY the change — required when the actor is not one of the creditor team's own people, optional
+  // when they are. A creditor setting its own terms owes nobody an explanation; somebody else
+  // changing them does, and that difference is the entire definition of an override here.
+  //
+  // ⚠ The ACTOR is not a field. It comes from the token, because a write that names its own author
+  // is a write that can lie about it. The server stamps it onto the change log.
+  string reason = 6 [(buf.validate.field).string.max_len = 500];
 }
 
 message LiabilityTermsSetResponse {
@@ -748,6 +759,101 @@ message LiabilityTermsDeleteRequest {
   ];
 
   uint64 counterparty_id = 2;
+
+  // Same rule as LiabilityTermsSetRequest.reason. Deleting a row RAISES the limit to unlimited, so
+  // it is the single most consequential write this service has.
+  string reason = 3 [(buf.validate.field).string.max_len = 500];
 }
 
 message LiabilityTermsDeleteResponse {}
+
+// ─── the change log ────────────────────────────────────────────────────────────────────────────
+
+// LiabilityTermsChange is one recorded change to a creditor's terms toward one debtor.
+//
+// A log rather than columns on the terms row, for two reasons that both come from decisions already
+// made. First, the limit IS the chase instrument: with no settlement cycle a creditor's only lever
+// is raising and lowering it, so the current value alone is not a record of that negotiation.
+// Second, a RAISE SILENTLY ERASES THE WARNING — a team at 85% whose limit doubles drops to 42% and
+// the 80% warning vanishes with nothing anywhere showing it was ever warning.
+message LiabilityTermsChange {
+  uint64 id = 1;
+  uint64 counterparty_id = 2;
+
+  // Who made the change. Resolve the name with UserByIDs — this service does not know it.
+  uint64 actor_id = 3;
+
+  // ⚠ BOTH LIMITS ARE OPTIONAL, and that is load-bearing rather than tidy. `absent`, `0` and a
+  // number are THREE different acts — no limit at all, frozen entirely, and a real ceiling — and a
+  // plain int64 flattens the first into the second, turning "they removed the limit" into "they
+  // froze the team". The log has to be able to say which one happened.
+  optional int64 old_credit_limit = 4;
+  optional int64 new_credit_limit = 5;
+
+  // The other two terms, before and after. No optional here: 0 means "charge nothing" for both, and
+  // there is no third state to lose.
+  int64 old_handling_fee = 6;
+  int64 new_handling_fee = 7;
+  int64 old_product_markup_bp = 8;
+  int64 new_product_markup_bp = 9;
+
+  string reason = 10;
+
+  // TRUE when the actor was not one of the creditor team's own people — an override. Derived by the
+  // server at write time from the actor's membership, never sent by the caller: whether a write was
+  // an override is a fact about who made it, and the caller is the one party who cannot be trusted
+  // to report it.
+  bool override = 11;
+
+  int64 changed_at_unix = 12;
+}
+
+message LiabilityTermsChangeMapItem {
+  map<uint64, LiabilityTermsChange> map_data = 1;
+}
+
+enum LiabilityTermsHistoryListDataType {
+  LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_CHANGE = 1;
+}
+
+message LiabilityTermsHistoryListFilter {
+  // WHOSE terms. 0 is a real value here — the default row — so this cannot use `gt = 0`, and a
+  // caller wanting every counterparty's history omits the field instead.
+  optional uint64 counterparty_id = 1;
+}
+
+message LiabilityTermsHistoryListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  LiabilityTermsHistoryListFilter filter = 2;
+  repeated LiabilityTermsHistoryListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message LiabilityTermsHistoryListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    LiabilityTermsChangeMapItem change = 2;
+  }
+}
+
+message LiabilityTermsHistoryListResponse {
+  repeated LiabilityTermsHistoryListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}

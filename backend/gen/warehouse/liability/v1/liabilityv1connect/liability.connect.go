@@ -67,6 +67,9 @@ const (
 	// LiabilityTermsServiceLiabilityTermsDeleteProcedure is the fully-qualified name of the
 	// LiabilityTermsService's LiabilityTermsDelete RPC.
 	LiabilityTermsServiceLiabilityTermsDeleteProcedure = "/warehouse.liability.v1.LiabilityTermsService/LiabilityTermsDelete"
+	// LiabilityTermsServiceLiabilityTermsHistoryListProcedure is the fully-qualified name of the
+	// LiabilityTermsService's LiabilityTermsHistoryList RPC.
+	LiabilityTermsServiceLiabilityTermsHistoryListProcedure = "/warehouse.liability.v1.LiabilityTermsService/LiabilityTermsHistoryList"
 )
 
 // LiabilityServiceClient is a client for the warehouse.liability.v1.LiabilityService service.
@@ -359,6 +362,9 @@ type LiabilityTermsServiceClient interface {
 	LiabilityTermsSet(context.Context, *connect.Request[v1.LiabilityTermsSetRequest]) (*connect.Response[v1.LiabilityTermsSetResponse], error)
 	// Removing a credit limit means DELETING the terms row, never zeroing it — see LiabilityTerms.
 	LiabilityTermsDelete(context.Context, *connect.Request[v1.LiabilityTermsDeleteRequest]) (*connect.Response[v1.LiabilityTermsDeleteResponse], error)
+	// Every change to a limit, in order — see LiabilityTermsChange for why the latest values are not
+	// enough.
+	LiabilityTermsHistoryList(context.Context, *connect.Request[v1.LiabilityTermsHistoryListRequest]) (*connect.Response[v1.LiabilityTermsHistoryListResponse], error)
 }
 
 // NewLiabilityTermsServiceClient constructs a client for the
@@ -391,14 +397,21 @@ func NewLiabilityTermsServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		liabilityTermsHistoryList: connect.NewClient[v1.LiabilityTermsHistoryListRequest, v1.LiabilityTermsHistoryListResponse](
+			httpClient,
+			baseURL+LiabilityTermsServiceLiabilityTermsHistoryListProcedure,
+			connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsHistoryList")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // liabilityTermsServiceClient implements LiabilityTermsServiceClient.
 type liabilityTermsServiceClient struct {
-	liabilityTermsList   *connect.Client[v1.LiabilityTermsListRequest, v1.LiabilityTermsListResponse]
-	liabilityTermsSet    *connect.Client[v1.LiabilityTermsSetRequest, v1.LiabilityTermsSetResponse]
-	liabilityTermsDelete *connect.Client[v1.LiabilityTermsDeleteRequest, v1.LiabilityTermsDeleteResponse]
+	liabilityTermsList        *connect.Client[v1.LiabilityTermsListRequest, v1.LiabilityTermsListResponse]
+	liabilityTermsSet         *connect.Client[v1.LiabilityTermsSetRequest, v1.LiabilityTermsSetResponse]
+	liabilityTermsDelete      *connect.Client[v1.LiabilityTermsDeleteRequest, v1.LiabilityTermsDeleteResponse]
+	liabilityTermsHistoryList *connect.Client[v1.LiabilityTermsHistoryListRequest, v1.LiabilityTermsHistoryListResponse]
 }
 
 // LiabilityTermsList calls warehouse.liability.v1.LiabilityTermsService.LiabilityTermsList.
@@ -416,6 +429,12 @@ func (c *liabilityTermsServiceClient) LiabilityTermsDelete(ctx context.Context, 
 	return c.liabilityTermsDelete.CallUnary(ctx, req)
 }
 
+// LiabilityTermsHistoryList calls
+// warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList.
+func (c *liabilityTermsServiceClient) LiabilityTermsHistoryList(ctx context.Context, req *connect.Request[v1.LiabilityTermsHistoryListRequest]) (*connect.Response[v1.LiabilityTermsHistoryListResponse], error) {
+	return c.liabilityTermsHistoryList.CallUnary(ctx, req)
+}
+
 // LiabilityTermsServiceHandler is an implementation of the
 // warehouse.liability.v1.LiabilityTermsService service.
 type LiabilityTermsServiceHandler interface {
@@ -423,6 +442,9 @@ type LiabilityTermsServiceHandler interface {
 	LiabilityTermsSet(context.Context, *connect.Request[v1.LiabilityTermsSetRequest]) (*connect.Response[v1.LiabilityTermsSetResponse], error)
 	// Removing a credit limit means DELETING the terms row, never zeroing it — see LiabilityTerms.
 	LiabilityTermsDelete(context.Context, *connect.Request[v1.LiabilityTermsDeleteRequest]) (*connect.Response[v1.LiabilityTermsDeleteResponse], error)
+	// Every change to a limit, in order — see LiabilityTermsChange for why the latest values are not
+	// enough.
+	LiabilityTermsHistoryList(context.Context, *connect.Request[v1.LiabilityTermsHistoryListRequest]) (*connect.Response[v1.LiabilityTermsHistoryListResponse], error)
 }
 
 // NewLiabilityTermsServiceHandler builds an HTTP handler from the service implementation. It
@@ -450,6 +472,12 @@ func NewLiabilityTermsServiceHandler(svc LiabilityTermsServiceHandler, opts ...c
 		connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	liabilityTermsServiceLiabilityTermsHistoryListHandler := connect.NewUnaryHandler(
+		LiabilityTermsServiceLiabilityTermsHistoryListProcedure,
+		svc.LiabilityTermsHistoryList,
+		connect.WithSchema(liabilityTermsServiceMethods.ByName("LiabilityTermsHistoryList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.liability.v1.LiabilityTermsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LiabilityTermsServiceLiabilityTermsListProcedure:
@@ -458,6 +486,8 @@ func NewLiabilityTermsServiceHandler(svc LiabilityTermsServiceHandler, opts ...c
 			liabilityTermsServiceLiabilityTermsSetHandler.ServeHTTP(w, r)
 		case LiabilityTermsServiceLiabilityTermsDeleteProcedure:
 			liabilityTermsServiceLiabilityTermsDeleteHandler.ServeHTTP(w, r)
+		case LiabilityTermsServiceLiabilityTermsHistoryListProcedure:
+			liabilityTermsServiceLiabilityTermsHistoryListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -477,4 +507,8 @@ func (UnimplementedLiabilityTermsServiceHandler) LiabilityTermsSet(context.Conte
 
 func (UnimplementedLiabilityTermsServiceHandler) LiabilityTermsDelete(context.Context, *connect.Request[v1.LiabilityTermsDeleteRequest]) (*connect.Response[v1.LiabilityTermsDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete is not implemented"))
+}
+
+func (UnimplementedLiabilityTermsServiceHandler) LiabilityTermsHistoryList(context.Context, *connect.Request[v1.LiabilityTermsHistoryListRequest]) (*connect.Response[v1.LiabilityTermsHistoryListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList is not implemented"))
 }

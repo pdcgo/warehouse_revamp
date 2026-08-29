@@ -51,6 +51,9 @@ func dbError(err error) error {
 
 var errSameTeam = errors.New("a team cannot owe itself")
 
+// The terms change log has no table yet — see terms_history_list.go for what it is waiting on.
+var errTermsHistoryNotBuilt = errors.New("the terms change log is not implemented yet")
+
 func totalPages(total int64, limit uint32) uint32 {
 	if limit == 0 {
 		return 0
