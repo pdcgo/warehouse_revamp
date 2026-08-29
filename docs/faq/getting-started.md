@@ -97,7 +97,7 @@ share their database, keyspace, or dev server.
 ## What should I work on?
 
 The GitHub Project board — project #2 "Warehouse Revamp", owner `pdcgo`. Take something from
-**Ready**. See [workflow.md](workflow.md#how-do-i-pick-up-an-issue).
+**Ready**. See [workflow.md](workflow.md#how-does-work-get-done-here).
 
 ---
 

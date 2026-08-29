@@ -57,10 +57,6 @@ second time will be slightly different. That drift is the actual cost.
 ### Working on the project
 
 - [Which branch do I commit to? Do I open a PR per task?](workflow.md#which-branch-do-i-commit-to-do-i-open-a-pr-per-task)
-- [How do I pick up an issue?](workflow.md#how-do-i-pick-up-an-issue)
-- [Where is the real spec for an issue?](workflow.md#where-is-the-real-spec-for-an-issue)
-- [`gh issue view N --comments` errors. What do I use instead?](workflow.md#gh-issue-view-n---comments-errors-what-do-i-use-instead)
-- [How do I know which issue is highest priority?](workflow.md#how-do-i-know-which-issue-is-highest-priority)
 - [What has to be green before I commit?](workflow.md#what-has-to-be-green-before-i-commit)
 - [Which docs must I update in the same commit as my change?](workflow.md#which-docs-must-i-update-in-the-same-commit-as-my-change)
 - [Where do I write a design idea?](workflow.md#where-do-i-write-a-design-idea)
@@ -148,6 +144,7 @@ second time will be slightly different. That drift is the actual cost.
 - [My MCP endpoint answers 403 to everything, but only through the tunnel](troubleshooting.md#my-mcp-endpoint-answers-403-to-everything-but-only-through-the-tunnel)
 - [My MCP client re-initializes on every call and loses its state](troubleshooting.md#my-mcp-client-re-initializes-on-every-call-and-loses-its-state)
 - [My MCP client connects but every tool call comes back unauthorized](troubleshooting.md#my-mcp-client-connects-but-every-tool-call-comes-back-unauthorized)
+- [`GetDownloadUrl` says NotFound for a document I know exists](troubleshooting.md#getdownloadurl-says-notfound-for-a-document-i-know-exists)
 
 ---
 

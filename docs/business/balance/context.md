@@ -66,6 +66,33 @@ end
 3. Manage Payments Accross Team.
 
 ## Payment Flow.
+1. How team create payment.
+```mermaid
+flowchart TD
+s(("start"))
+e(("end"))
+
+s-->a["Team A see -100.000 in Team B"]
+a-->create["Team A create Payment (bring image/doc/screenshot Proof of bank transfer)"]
+create-->bcheck["Team B check manually"]
+bcheck-->correct{"Is Payment Correct ?"}
+correct-->|yes|accept["Team B Accept Payment"]
+correct-->|no|reject["Team B Reject Payment"]
+
+accept-->e
+reject-->e
+
+```
+
+2. Payment lifecycles.
+```mermaid
+stateDiagram-v2
+[*]-->pending: Payment Create
+pending-->accept
+pending-->reject
+accept-->[*]
+reject-->[*]
+```
 
 
 ## What Things That Affect The Team Balance.

@@ -758,3 +758,74 @@ responsibility ends that argument.
 ⚠ **And the chase problem is now sharper, not smaller.** With payments a stated job, the absence of
 any way to *ask* for one stands out: a creditor's only lever is still lowering the limit, which
 stops the debtor trading rather than requesting money ([Critique 11](./context_clarify.md#critique)).
+
+---
+
+## the-debtor-claims-the-creditor-decides
+
+> `balance_context.md` §Payment Flow — *"1. How team create payment"* and *"2. Payment lifecycles"*,
+> two diagrams added 2026-08-29.
+
+**The verdict.** A payment is **started by the team that owes** and **settled by the team that is
+owed**. The debtor creates a claim carrying proof of a bank transfer, the creditor checks it by hand,
+and the creditor either **accepts** it — which posts — or **rejects** it — which posts nothing. Three
+states, and the middle one is a claim rather than money.
+
+This answers [technical Q5](../../technical/balance/team_balance_design_clarify.md#question),
+*"may the creditor reject a claimed payment?"* — **yes**, and it is a first-class terminal state,
+not a confirm-then-reverse.
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: the DEBTOR creates, with proof
+    pending --> accepted: the CREDITOR saw it arrive
+    pending --> rejected: the CREDITOR did not
+    accepted --> [*]
+    rejected --> [*]
+    note right of pending
+        no ledger effect
+        a claim is not money
+    end note
+    note right of accepted
+        both mirrored entries post HERE
+    end note
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| who creates | the **debtor** — the team whose pair figure is negative. Never the creditor, never a third party |
+| what starts it | the debtor **seeing** the figure. There is no request, no notice, no due date — the flow's first step is *"Team A see -100.000"* |
+| what it carries | an amount, and **proof of the bank transfer** — an image, a document or a screenshot |
+| who decides | the **creditor only**, and **manually**. The system never verifies a transfer |
+| accept | posts both mirrored entries. The pair moves, and only now |
+| reject | terminal, posts **nothing**, and the row stays. A rejected claim is history, not a deletion |
+| re-claiming | a rejected payment is not reopened — the debtor makes a **new** claim. Two rows for one transfer is the correct record of what happened |
+
+### ✅ What it ratifies
+
+| shipped | |
+| --- | --- |
+| `LiabilityPaymentRecordRequest.team_id` is the **payer** and the scope | you may only ever record your own payment |
+| `LiabilityPaymentConfirmRequest.team_id` is the **creditor** and the scope | a payer who could confirm their own payment could write off any debt they liked |
+| `RECORDED` has no ledger effect | *"pending"* in your words. Same state, and the code's comment already said why |
+| a negative pair figure means **you owe** | the flow reads *"Team A see -100.000 in Team B"* and then A pays — the sign convention the ledger already uses |
+
+### ⚠ What it does NOT settle
+
+| | |
+| --- | --- |
+| **is proof required?** | the flow says the payer *brings* it. Whether the system **refuses** a payment without one is [Q10](./context_clarify.md#question). The shipped `MakePaymentDialog` collects an amount and a note and would let one through with neither |
+| **where does proof LIVE?** | nowhere today, and the creditor could not read it if it did — `document_service` scopes a read to the owning team. [Critique 18](./context_clarify.md#critique) |
+| **is `accept` really final?** | the diagram makes it terminal, and `LiabilityPaymentReverse` ships and can leave it. [Q11](./context_clarify.md#question) |
+| **may a payment be an OFFSET?** | netting what a warehouse owes a team against what that team owes it is still open — [technical Q2](../../technical/balance/team_balance_design_clarify.md#question) |
+
+### ⚠ It qualifies an entry above it
+
+[balance-manages-reports-and-takes-payments](#balance-manages-reports-and-takes-payments) listed
+*"`PaymentReverse` has no screen"* as a **defect**. A terminal `accept` inverts that: the same RPC
+becomes a path the design does not ask for. This log is append-only, so the earlier entry stands as
+written and this one is the correction — the reverse is now **[Q11](./context_clarify.md#question)**,
+not a defect. Its sibling, the missing `rejected` state, is **confirmed** as a defect and is now
+build work.

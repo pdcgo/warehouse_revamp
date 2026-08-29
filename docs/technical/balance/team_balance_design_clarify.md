@@ -72,6 +72,26 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # ⚠ Re-examined after §Payment Flow — Q5 is ANSWERED and C14 half INVERTS
+>
+> `balance_context.md` §Payment Flow specifies the payment lifecycle in two diagrams. ✅ **This
+> file's [§Item 6](#item-6--a-payment-posts-on-accept-never-on-create) proposal was right in every
+> part it stated** — the payer creates, the creditor decides, a claim posts nothing, reject is
+> terminal and writes no entry. Recorded as
+> [the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides).
+>
+> ⛔ **[Q5](#question) closes: the creditor MAY reject.** It is **build work** now and none of it
+> exists — see [§Reject, as built work](#reject-as-build-work) below.
+>
+> 🆕 **One requirement is new, and it is not small: PROOF.** *"bring image/doc/screenshot Proof of
+> bank transfer"*. A payment carries a 500-char `note` and no document, and the creditor could not
+> read the file if it had one — [Critique 19](#critique).
+>
+> ⚠ **[C14](#critique)'s reverse half INVERTS.** It called *"`PaymentReverse` has no screen"* a gap.
+> A terminal `accept` says that RPC is a path the design does not ask for — so the question is no
+> longer *"where is its screen"* but *"should it exist"*
+> ([business Q11](../../business/balance/context_clarify.md#question)). Its sibling — no terms
+> screen — is untouched and still stands.
 > # ⚠ Re-examined after §Detail Pair Team Balance — and Q6 is ANSWERED
 >
 > Three lines, and they close the question this file asked last round. *"The Change Log"* was **two
@@ -344,7 +364,55 @@ sequenceDiagram
 - **Over-payment flips the sign, and that is correct** — the creditor now owes the payer, which the
   signed pair represents natively and an "amount outstanding" column could not.
 - **A wrong acceptance is corrected by a compensating entry, never by un-accepting.** Same rule as every
-  other reversal here.
+  other reversal here. ⚠ Shipped code goes further and flips the payment's own status to `REVERSED` —
+  which your lifecycle does not have. [business Q11](../../business/balance/context_clarify.md#question).
+
+## Reject, as build work
+
+🆕 Answered by §Payment Flow. Nothing below exists; all of it is small.
+
+| | |
+| --- | --- |
+| proto | `LIABILITY_PAYMENT_STATUS_REJECTED = 4`, and a `LiabilityPaymentReject` RPC scoped to the **creditor** with a required reason |
+| model | `Status = "rejected"` — the column is text, so **no migration for the status itself** |
+| the reason column | `liability_payments.reversal_reason` is the wrong name once two acts write it. **→ Rename to `reason`** — the status already says which act filled it, so two columns would leave one always null |
+| the ledger | **nothing posts.** That is the entire point of the state |
+| the screen | a second action on an awaiting-confirmation row. Terminal and not undoable, so a `ConfirmDialog` with the reason field in it |
+| what stays untouched | `REVERSED`, whatever [business Q11](../../business/balance/context_clarify.md#question) decides. Refusing a claim and undoing a confirmation are different failures and must not share a path |
+
+## The proof, and the cross-team read
+
+🆕 The hard half of §Payment Flow. `document_service` can hold the file today — what it cannot do is
+let the creditor see it, because [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go)
+filters `id = ? AND team_id = ?` and the proof belongs to the **payer's** team.
+
+```mermaid
+sequenceDiagram
+    participant A as Team A — payer
+    participant doc as document_service
+    participant bal as liability_service
+    participant B as Team B — creditor
+
+    A->>+doc: RequestUpload — PAYMENT_PROOF, team A
+    doc-->>-A: signed PUT url
+    A->>doc: PUT the bytes, then ConfirmUpload
+    A->>bal: PaymentRecord — amount, note, document ids
+
+    B->>+bal: PaymentProofUrl — payment 42
+    bal->>bal: is B the payer or the creditor of 42?
+    bal->>+doc: sign this key — service to service
+    doc-->>-bal: short-lived url
+    bal-->>-B: the url
+
+    B--xdoc: GetDownloadUrl direct — NotFound, and correctly so
+```
+
+| the decision | |
+| --- | --- |
+| **who authorizes** | `liability_service`, from the **payment relation**. `document_service` knows nothing about payments and must not learn |
+| **what document_service gains** | `DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF` (**private** — a transfer slip names an account number), and a signing path that is not team-scoped and callable only from inside the cluster |
+| ⚠ **the open piece** | that internal signing path **does not exist**. Every read today is team-scoped on purpose. Adding one is a contract decision about how services trust each other, and this is the first case that needs it |
+| **the doc it owes** | HARD RULE 3 — a cross-service flow gets `docs/services/liability_service/rpc.md` with this sequence |
 
 ## Where the amount comes from — and why item 5 never recomputes it
 
@@ -489,7 +557,7 @@ be inferred later from a note.
 | --- | --- | --- |
 | **9** | **`liability_entries` has NO ACTOR COLUMN.** Critique 7 asked for `actor_id`, non-null; the table has `team_id`, `counterparty_id`, `amount`, `source_type`, `source_id`, `reversal`, `group_id`, `balance_after`, `created_at` — and nothing else. Only `liability_payments` carries `recorded_by` / `confirmed_by`, so **cause 6 knows who acted and causes 1–5 do not.** *"Who wrote this charge"* is the first question a disputed balance raises, and the two sides here are effectively different businesses. It is also a **business** requirement already: [balance Critique 8](../../business/balance/context_clarify.md#critique) asks that every movement name its actor, and [business_level Critique 1](../../business/business_level_clarify.md#critique) makes it the test for *"transparency accounting"*. | **Add `actor_id` to `liability_entries` in a new migration.** ⚠ It cannot be back-filled — the entries are immutable and nobody recorded who posted them — so it is nullable for history and non-null-by-convention going forward, or a second column recording *which service* posted when no human did. **The longer this waits the more unattributable rows exist**, and that is the whole cost of the delay. |
 | **10** | **`reversal` is a BOOLEAN, and the entry it reverses is not recorded anywhere.** This file argued *"`reverses_id`, not a boolean"* and it shipped as a flag. The consequence is sharper than the style point: cause 5 posts under the **find's own `movement_id`**, not the loss's, so a partial find works (no idempotency collision ✅) but **nothing ties it back to the loss it repays.** *"Loss #91 was 60.000 — how much of it is still outstanding?"* is unanswerable from the ledger; you can only sum `stock_damage` entries for the pair and hope no other loss overlaps. | **Add `reverses_group_id`** (nullable, pointing at the `group_id` of the movement being undone). It keeps the current idempotency key untouched — the key uses `reversal`, which stays — and makes *"what is left of this loss"* one join. ⚠ Also rename the concept in the doc: `reversal` today means *"this is a giving-back movement"*, not *"this reverses entry X"*, and the two readings differ. |
-| **11** | **A claimed payment that never arrived has NO TERMINAL STATE.** [Q3](#question) asked whether the creditor may REJECT. Shipped statuses are `recorded` · `confirmed` · `reversed` — **there is no `rejected`.** So a creditor faced with a payment that did not land can only leave it at `recorded` forever, or **confirm it and then reverse it** — which posts two real ledger movements for money that never moved, and leaves the pair's history telling a story that did not happen. | **Add `rejected`, with a reason, posting nothing** — a terminal state that writes no entry, which is what `recorded` → `rejected` should have been from the start. `reversed` stays for its real job: undoing a confirmation that was made in error. Two different failures, and today they share one path. |
+| ~~**11**~~ | ✅ **RESOLVED — §Payment Flow names `reject`.** Recorded as [the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides); the spec is [§Reject, as build work](#reject-as-build-work). Kept one round because the shape recurs: **a state machine drawn in a proto is a design nobody agreed to.** Original: **A claimed payment that never arrived has NO TERMINAL STATE.** [Q3](#question) asked whether the creditor may REJECT. Shipped statuses are `recorded` · `confirmed` · `reversed` — **there is no `rejected`.** So a creditor faced with a payment that did not land can only leave it at `recorded` forever, or **confirm it and then reverse it** — which posts two real ledger movements for money that never moved, and leaves the pair's history telling a story that did not happen. | **Add `rejected`, with a reason, posting nothing** — a terminal state that writes no entry, which is what `recorded` → `rejected` should have been from the start. `reversed` stays for its real job: undoing a confirmation that was made in error. Two different failures, and today they share one path. |
 
 | | Problem *(found by re-examining after §Frontend Requirements)* | → Recommend |
 | --- | --- | --- |
@@ -501,7 +569,7 @@ be inferred later from a note.
 | --- | --- | --- |
 | ~~**12**~~ | ⛔ **WITHDRAWN — and the toolchain behind it is FIXED.** This said `frontend/src/gen/warehouse/liability/` was missing after the `settlement` → `liability` rename. Commit `0d4cbc4` committed `liability_pb.ts` and `liability.connect.go`, and `npm run typecheck` exits **0**. ✅ **The destructive-command warning is also resolved** (2026-08-29): every plugin is now `local:` and pinned — `protoc-gen-go` / `protoc-gen-connect-go` as `tool` directives in the root go.mod, `protoc-gen-es` as a frontend devDependency — so `cd proto && buf generate` needs **no BSR token**. Verified by running it: 51 files regenerated, `go build`/`go vet`/`tsc` all clean. | No action. ⚠ The prerequisite is now `cd frontend && npm install`, and it is written into the [Commands table](../../../CLAUDE.md) and [docs/faq/contract.md](../../faq/contract.md). `clean: true` still empties both trees on a failed run — `git checkout -- backend/gen frontend/src/gen`. |
 | **13** | **`STOCK_DAMAGE` rendered as "Unknown".** `causeKey` in `liability-detail` switched on five source types and the proto has six — so **every broken-or-lost reimbursement and every found-back reversal** displayed as *"Unknown #123"* on the counterparty ledger. That is cause 4, the one the business doc spends the most words on, and the one where the WAREHOUSE is the debtor. ✅ **Fixed in this pass** — the case and `causeStockDamage` in both locales. | Kept here because the shape recurs: **an enum switch with a `default` that renders "unknown" cannot fail loudly**, so a new `source_type` reaches production as a blank label. Worth a story asserting every `LiabilitySourceType` maps to a real key. |
-| **14** | **Two shipped RPCs have no screen, and both are the "something went wrong" half.** `PaymentReverse` exists in `liability_service` and **nothing in the frontend calls it** — so a confirmation made in error cannot be undone by anyone. `TermsSet` / `TermsList` / `TermsDelete` ship, and **no screen sets a credit limit or a markup** — so the debt threshold your §Balance Policy requires is configurable only by direct database access. | The reverse is a small addition to the payment row's actions (behind a `ConfirmDialog`, with the reason `liability_payments.reversal_reason` already holds). **The terms screen is the bigger gap**, and it is where [Q6](#question)'s override recording would live — build them together, since "who may change this limit, and is it recorded" is the same screen's question. |
+| **14** | ⚠ **HALF INVERTED by §Payment Flow — the reverse may not belong at all.** `PaymentReverse` exists in `liability_service` and **nothing in the frontend calls it**. This row called that a gap; a terminal `accept` says it is instead an **unasked-for path**, and the question moved to [business Q11](../../business/balance/context_clarify.md#question). ⚠ The other half stands untouched. Original: `PaymentReverse` exists and nothing calls it — so a confirmation made in error cannot be undone by anyone. `TermsSet` / `TermsList` / `TermsDelete` ship, and **no screen sets a credit limit or a markup** — so the debt threshold your §Balance Policy requires is configurable only by direct database access. | ⚠ **Do not build the reverse screen until [Q11](../../business/balance/context_clarify.md#question) answers** — it was the cheap half of this row and it is now the uncertain one. **The terms screen is the bigger gap**, and it is where [Q6](#question)'s override recording would live — build them together, since "who may change this limit, and is it recorded" is the same screen's question. |
 | **15** | **The daily statement reads a source type NOTHING POSTS, so a stated responsibility under-reports.** [queries.ts:81](../../../frontend/src/pages/daily-statement/queries.ts) reads `LiabilitySourceType.COD_FEE`, and [mapper.go:28](../../../backend/services/liability_service/liability_v1/mapper.go) says `SourceTypeRestockOutlay` *"supersedes SourceTypeCODFee, which nothing posts under any more"*. So the statement's COD column is **permanently zero** and `RESTOCK_OUTLAY` appears in **no column at all** — while `HANDLING_FEE` is the only thing counted as income. ⚠ Sharper since [balance-manages-reports-and-takes-payments](../../business/balance/context_decision.md#balance-manages-reports-and-takes-payments) made *"serve the daily report"* one of balance's **three** stated jobs. ⚠ **The obvious fix is now the WRONG ONE.** *"Read `RESTOCK_OUTLAY` where the screen reads `COD_FEE`"* was this critique's recommendation until [the-warehouse-receivable-is-order-fee-cod-fee-and-found](../../business/balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) named the business movement **`cod_fee`** — siding with the name the ledger abandoned, and with the screen. **Rename the ledger's source type back to `cod_fee` and the screen needs no change at all.** That is [business Q6](../../business/balance/context_clarify.md#question), and it travels with the same migration that splits `STOCK_DAMAGE` into `broken_good` / `lost_good` / `found`. Same failure shape as [Critique 13](#critique): a source type was renamed and one of its two readers followed. ⚠ **Hold until Q2 and Q6 land** — Q2 decides whether `RESTOCK_COST_KIND_OTHER` survives, and a rename to `cod_fee` while the posting still charges every cost line would put a name on the column that the amount does not match. |
 
 ✅ **Reimbursement at COGS is settled, and it is the right measure** — `business_level.md` warehouse #5.
@@ -509,6 +577,7 @@ The owner loses the goods, not the sale, so COGS makes them whole without the wa
 it has no control over. No action — recorded so it is not re-litigated.
 
 ---
+| **19** | **🆕 The proof cannot be read by the person who has to read it, and no single service can fix that.** §Payment Flow's middle step is *"Team B check manually"*, and today there is nothing to check: a payment carries `note` and no document. Attaching one is easy; **showing it to the creditor is not.** [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so the payer's file is NotFound to the creditor — deliberately, and that ACL is right. `document_service` cannot widen without opening every private file, and it cannot special-case payments without learning what a payment is. | **`LiabilityPaymentProofUrl` on `liability_service`** — it checks the caller is the payer or the creditor of that payment, then has `document_service` sign the key. Full design in [§The proof and the cross-team read](#the-proof-and-the-cross-team-read). ⚠ **The blocking piece is a service-to-service signing path that does not exist** — every `document_service` read is team-scoped on purpose, and this is the first case that needs an inside-the-cluster one. That is a contract decision, not an implementation detail, so it is worth answering before the payment screen grows an upload button. |
 
 # Question
 
@@ -539,9 +608,12 @@ new**, and all three come from re-reading the code rather than the docs.
    *"the service, not a person"*.
    **→ I recommend `actor_id` non-null going forward, with a reserved id meaning "posted by the system"**
    — a null actor and a system actor look identical in a query, and only one of them is a gap.
-5. **🆕 May the creditor REJECT a claimed payment?** ([Critique 11](#critique)) Today the only way to
-   refuse one is to confirm it and reverse it, which writes two real movements for money that never moved.
-   **→ I recommend a `rejected` terminal state that posts nothing.**
+> ⛔ **Q5 is DELETED — and the answer was the one this file recommended.**
+> §Payment Flow gives the creditor `reject`, terminal, posting nothing:
+> [the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides).
+> ⚠ **The numbers below are NOT renumbered** — `context_decision.md` is append-only and already cites
+> *technical Q5* and *Q6*. Renumbering would silently repoint them, which is the exact cost RULE 12
+> names in ordinals.
 > ⛔ **Q6 is DELETED — and the answer was BOTH.**
 > [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs):
 > the pair detail carries a summary, the **limit** history and the **balance** log, as three separate

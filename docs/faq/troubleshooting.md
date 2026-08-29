@@ -192,3 +192,32 @@ The token is checked on **every** request, not just `initialize`. Two ways to pr
 
 A token from a *previous* run will not work: `san remote` mints a fresh one per run and it dies
 with the process. Re-read the banner, or pin one with `--token`.
+
+---
+
+## `GetDownloadUrl` says NotFound for a document I know exists
+
+You are asking from the wrong team. The handler filters `id = ? AND team_id = ?`, so a document
+belonging to another team comes back **NotFound rather than PermissionDenied** — deliberately, so an
+id-holder cannot even confirm the file exists.
+
+| you are | you get |
+| --- | --- |
+| a member of the document's team | the URL |
+| a member of any other team | NotFound, every time |
+
+**This is the design, not a bug** — see
+[get_download_url.go](../../backend/services/document_service/document_v1/get_download_url.go). A
+private document is scoped to the team that uploaded it, and the check cannot be widened without
+opening every team's private files at once.
+
+**So how does another team ever see one?** ⚠ **Not decided yet.** The first real case is a payment's
+proof of transfer: the creditor has to look at a file the payer owns. The proposal is that the
+**owning domain vouches** — `liability_service` checks you are the payer or the creditor of that
+payment, then asks `document_service` to sign the key, so `document_service` never learns what a
+payment is. It needs an internal, non-team-scoped signing path that **does not exist yet**:
+[technical balance C19](../technical/balance/team_balance_design_clarify.md#critique) ·
+[balance Q10](../business/balance/context_clarify.md#question).
+
+Until that is answered: **do not widen `GetDownloadUrl`**, and do not teach `document_service` a
+cross-team special case.

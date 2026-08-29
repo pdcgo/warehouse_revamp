@@ -1,7 +1,8 @@
 # Development state — balance
 
-**Pass:** `agent_analysis` re-examination, `implementation_analysis` for the THRESHOLD slice, and a
-second re-examination after two owner edits — all **COMPLETE** (2026-08-29).
+**Pass:** `agent_analysis` re-examination, `implementation_analysis` for the THRESHOLD slice, and
+**three** re-examinations after three owner edits to `balance_context.md` and
+`team_balance_design.md` in one day — all **COMPLETE** (2026-08-29).
 **Lifecycle position:** ⛔ **waiting at `design_accept`** for the Credit Terms screen. That gate
 blocks, so nothing behind it has run. ⚠ **And the owner's doc has since named three frontend
 requirements that do not include this screen** — so the gate now has a question in front of it:
@@ -43,8 +44,9 @@ settlement cycle" as a statement about `settlement_service`.
 | **the 80% warning** | needs that screen, and a place on the daily report |
 | **`actor_id` on `liability_entries`** | causes 1–5 are **permanently unattributable**. Only payments record who acted, and it cannot be back-filled |
 | **the terms change log** | [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires actor + reason + a log with a **nullable** limit. None of it is built |
-| **a `PaymentReverse` screen** | ⛔ **now a DEFECT, not a gap.** The RPC ships and nothing calls it, so a confirmation made in error cannot be undone by anyone — and [balance-manages-reports-and-takes-payments](../../business/balance/context_decision.md#balance-manages-reports-and-takes-payments) made payments a **stated responsibility** |
-| **a `rejected` payment state** | ⛔ same promotion. A creditor facing a payment that never arrived can only leave it at `recorded` forever, or **confirm then reverse** — two real ledger movements for money that never moved |
+| **a `rejected` payment state** | ⛔ **a confirmed DEFECT and now BUILD WORK.** §Payment Flow gives the creditor `reject`, terminal, posting nothing. Spec in [§Reject, as build work](../../technical/balance/team_balance_design_clarify.md#reject-as-build-work) — a proto value, an RPC, a rename of `reversal_reason` to `reason`, and one dialog. No migration for the status: the column is text |
+| **payment PROOF, and any way for the creditor to see it** | ⛔ **the flow's middle step cannot be executed.** A payment carries a 500-char `note` and no document, and `document_service` scopes every read to the owning team — so a payer's file is NotFound to the creditor. Needs the system's first service-to-service signing path. [technical C19](../../technical/balance/team_balance_design_clarify.md#critique) |
+| **a `PaymentReverse` screen** | ⚠ **INVERTED — no longer a defect.** It was recorded as one last round. §Payment Flow makes `accept` terminal, so the shipped RPC may be a path the design does not want. Do not build a screen until [business Q11](../../business/balance/context_clarify.md#question) answers |
 | **the selling team's daily report** | `revenue_service` was removed in `0d4cbc4`. `StatementMode` is `"warehouse"` alone and the page **refuses** a selling team |
 | **a dispute mechanism / a chase instrument** | neither exists. With no cycle, lowering the limit is the only lever a creditor has |
 
@@ -106,6 +108,32 @@ that changed. Different grains, and only one of them is a ledger.
 ⚠ **`limitPage` is a THIRD page number** on that screen, deliberately. One shared number would turn
 to page 2 of a log the reader is not looking at. It also has to be declared with the other hooks,
 **above** the `if (!current)` guard — declared after it, React throws on the hook order.
+
+## 🆕 §Payment Flow specified the lifecycle — and it matched the proposal
+
+Two diagrams in `balance_context.md`, recorded as
+[the-debtor-claims-the-creditor-decides](../../business/balance/context_decision.md#the-debtor-claims-the-creditor-decides).
+The technical clarify's §Item 6 proposal turned out right in every part it stated — payer creates,
+creditor decides, a claim posts nothing, reject is terminal — so nothing shipped has to change.
+
+| §Payment Flow | shipped |
+| --- | --- |
+| the **debtor** creates, seeing a negative figure | ✅ `PaymentRecordRequest.team_id` is the payer **and** the scope |
+| carries **proof of bank transfer** | ❌ nothing to carry it, and the creditor could not read it |
+| the creditor checks **manually** | ⛔ not possible — nothing to look at |
+| accept posts, reject posts nothing | ✅ accept · ❌ reject |
+| `accept` is **terminal** | ⚠ shipped `REVERSED` leaves it |
+
+⚠ **Two claims from last round changed.** The missing `rejected` state is **confirmed** as a defect
+and is now buildable. The missing `PaymentReverse` screen is **not** a defect any more — a terminal
+`accept` makes that RPC questionable rather than under-built. The next agent should not build it.
+
+⚠ **The proof requirement is the heavy one, and it is not about payments.** `document_service`
+answers NotFound for another team's file *on purpose*, and it cannot learn what a payment is without
+becoming the wrong service. The fix is a `liability_service` RPC that authorizes from the payment
+relation and asks `document_service` to sign — which needs an **internal, non-team-scoped signing
+path that does not exist**. That is a contract decision every later cross-service private read will
+inherit, so it is worth answering before an upload button is added anywhere.
 
 ## ⚠ 10 story tests fail, and they are the daily statement's
 
@@ -181,17 +209,22 @@ Every input the screen needed was already decided. ⚠ **What was NOT decided an
 from the screen is the contract** — the `reason` field and the change-log RPC — which is why those go
 through `design_accept` with the pages rather than being settled separately.
 
-## Open questions — 14, and only three of them gate work
+## Open questions — 17, and only three of them gate work
 
-Business: [context_clarify.md](../../business/balance/context_clarify.md#question) — **9**.
-Technical: [team_balance_design_clarify.md](../../technical/balance/team_balance_design_clarify.md#question) — **5**.
+Business: [context_clarify.md](../../business/balance/context_clarify.md#question) — **11**.
+Technical: [team_balance_design_clarify.md](../../technical/balance/team_balance_design_clarify.md#question) — **6**.
 
 | gates work | |
 | --- | --- |
 | [Q8](../../business/balance/context_clarify.md#question) whose job is the selling daily report | a shipped page **refuses** selling teams today. Balance's §Responsbility 2 claims it |
 | [Q2](../../business/balance/context_clarify.md#question) does `found` need the owner's acknowledgement | if yes, `found` becomes two-phase like a payment — a state machine and a screen that do not exist |
-| [technical Q5](../../technical/balance/team_balance_design_clarify.md#question) may a creditor REJECT a payment | a terminal state, and it changes the payment screen being designed |
+| [Q10](../../business/balance/context_clarify.md#question) is payment proof REQUIRED | the flow's middle step is unexecutable without it, and the fix is an architecture decision — the first service-to-service trust path |
 
 The rest are real but gate nothing shipped: operating costs, repayment in goods, the return half of
 `cod_fee`, dispute finality, the chase instrument, external payables, the cost-line enum, `offset` as
-a method, and who owns found goods.
+a method, who owns found goods, and whether a confirmed payment is final.
+
+> ⛔ **Technical Q5 — may a creditor reject — is ANSWERED and deleted.** The technical clarify's
+> questions were **deliberately not renumbered**: `context_decision.md` is append-only and already
+> cites *technical Q5* and *Q6*, so renumbering would silently repoint them. That is the ordinal cost
+> RULE 12 names, showing up in practice.

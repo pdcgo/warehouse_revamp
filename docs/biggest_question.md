@@ -10,59 +10,46 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**91 open questions across 16 files.** The seven below are shown; **84 are not** — they are not
+**92 open questions across 16 files.** The seven below are shown; **85 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-> **Driven by two owner edits on the same day** — `team_balance_design.md` §Detail Pair Team Balance,
-> and `balance_context.md` §Responsbility gaining a THIRD line.
+> **Driven by `balance_context.md` §Payment Flow** — two diagrams that specify the payment lifecycle
+> end to end, the third owner edit to the balance context in a day.
 >
-> ⛔ **One question closed and it closed against my recommendation.** *"Which change log does the pair
-> detail show?"* — I argued it must mean one of the two, because the other was already on the page.
-> The answer was **both**
-> ([the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs)),
-> and the reasoning I used was the flaw: **a requirement doc names what already exists, because that
-> is how it says the thing is required rather than incidental.**
+> ✅ **One question closed the way it was recommended.** *"May the creditor REJECT a claimed payment?"*
+> — yes, terminal, posting nothing
+> ([the-debtor-claims-the-creditor-decides](business/balance/context_decision.md#the-debtor-claims-the-creditor-decides)).
+> It is **build work** now, not a question.
 >
-> ⚠ **A DECISION WAS RENAMED.** `balance_context.md` §Responsbility 3 — *"Manage Payments Accross
-> Team"* — makes `balance-manages-and-reports` ("exactly two jobs") wrong as written. It is now
-> [balance-manages-reports-and-takes-payments](business/balance/context_decision.md#balance-manages-reports-and-takes-payments),
-> references grepped (RULE 12). Nothing new opens: it **ratifies shipped payment code** and promotes
-> two known gaps — no `rejected` state, and a `PaymentReverse` RPC with no screen — from niceties to
-> defects in a *stated* responsibility.
+> ▲ **NEW at #6 — payment proof.** It enters high for a reason that is not about payments: the flow's
+> middle step, *"Team B check manually"*, **cannot be executed by the running system at all** —
+> `document_service` scopes every read to the owning team, so the creditor is precisely the person
+> its ACL excludes. Fixing that needs the system's **first service-to-service trust path**, which is
+> an architecture decision every future cross-service private read will inherit.
 >
-> ▲ **#7 stays Credit Terms, narrowed to its blocking half.** The pair detail now READS the limit
-> history, which says nothing about where a limit is WRITTEN — and a finished prototype is still
-> sitting at `design_accept` waiting on that.
+> ⚠ **A defect I reported last round INVERTED.** I called *"`PaymentReverse` has no screen"* a defect.
+> The lifecycle makes `accept` terminal, which makes the same RPC an **unasked-for path** instead. It
+> is now a question, not a defect ([balance Q11](business/balance/context_clarify.md#question)) — and
+> it is small, so it is not shown here. Its sibling, the missing `rejected` state, is **confirmed** as
+> a defect.
 >
-> ▼ **Demoted out of the shown seven:** *whose shelf does a returned cross-sold unit land on*. It is
-> now #8, unchanged and unanswered ([product Q1](business/product/context_clarify.md#question)).
+> ▼ **Demoted out of the shown seven:** *which PRE-CHECKS does a draft run*. Unchanged and unanswered,
+> now #8 ([order Q4](business/order/context_clarify.md#question)).
+>
+> **Earlier rebuilds, still standing:** #7 Credit Terms was narrowed but not answered by
+> [the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs)
+> · `balance-manages-and-reports` was **renamed** to
+> [balance-manages-reports-and-takes-payments](business/balance/context_decision.md#balance-manages-reports-and-takes-payments)
+> when payments became a third responsibility (RULE 12) · the count corrected from 71 to 89 when this
+> rollup started matching `# Question` as well as `## Question`, which had been hiding 17 real
+> questions.
 >
 > ⚠ **Not a question, and worth more than most of them: "Summarize All Balance" is computed over ONE
 > PAGE.** The four tiles on `/liability` reduce the loaded 20 rows, so a creditor with 21
-> counterparties reads a headline total that silently omits one — and turning the page changes the
-> "total". That is a defect with a known fix
+> counterparties reads a headline that silently omits one — and turning the page changes the
+> "total". A defect with a known fix
 > ([technical balance C16](technical/balance/team_balance_design_clarify.md#critique)), not something
 > to rank here.
->
-> **Earlier this rebuild:** a re-examination of the balance context against `0d4cbc4`, where
-> `settlement_service` landed and `revenue_service` was removed in one commit.
->
-> ▲ **NEW at #5 — the selling team's daily report has no income.** `revenue_service` held it and is
-> gone, so a shipped screen now **refuses** every non-warehouse team while balance's §Responsbility 2
-> still claims *"Serve Balance Daily Report"*. It enters above two older questions because it is the
-> only one on this list that is **broken in the running app**, not merely undesigned.
->
-> ▼ **Demoted out of the shown seven: *where does money that is NOT between two of our teams live*.**
-> Unchanged and unanswered — platform withdrawals and supplier/courier payables still have no home. It
-> is now #8, asked in three files
-> ([settlement Q3](business/settlement/context_clarify.md#question) ·
-> [architecture Q7](technical/architecture/context_clarify.md#question) ·
-> [balance Q7](business/balance/context_clarify.md#question)).
->
-> ⚠ **The count jumped 71 → 89 and almost none of that is new questions.** This rollup was matching
-> `## Question` only, and **five technical clarifies write theirs as `# Question`** — so 17 real open
-> questions in `technical/balance`, `technical/stock`, `technical/ledger`, `technical/cost` and
-> `technical/event` were invisible to it. They are counted now. See the note under the table.
 
 ---
 
@@ -73,12 +60,12 @@ closed, only smaller. The per-file counts are at the bottom.
 | **3** | **⛔ DECIDED, and NO LONGER BLOCKED — the ledger vocabulary migration.** Not an open question: [the-ledger-speaks-the-business-words](business/balance/context_decision.md#the-ledger-speaks-the-business-words) settles the target — `order_fee` · **`incidental_fee`** · `broken_good` · `lost_good` · `found`. ✅ **The tooling block is GONE** (2026-08-29): `buf.gen.yaml` now uses `local:` plugins pinned by the root go.mod's `tool` directives and by frontend/package.json, so `cd proto && buf generate` needs **no Buf account**. It stays in this list only because it is the highest-value BUILD item in the repo and nothing has run it yet. | a live bug: the daily statement reads `COD_FEE`, which nothing posts, so its column is permanently zero while `RESTOCK_OUTLAY` appears in none | [decision](business/balance/context_decision.md#the-ledger-speaks-the-business-words) · [technical balance C15](technical/balance/team_balance_design_clarify.md#critique) | **Run the six migration steps.** ⚠ Waiting still costs history: existing rows cannot say whether a `stock_damage` was **broken** or **lost**, and every day adds more of them. |
 | **4** | **What moment consumes a FIFO layer, and which service stores the frozen cost?** Layers are inventory's, COGS is ledger's — the answer sets a service boundary, not just a timing. | the inventory/ledger split, COGS correctness, order lines | [product Q5](business/product/context_clarify.md#question) · [architecture Q3](technical/architecture/context_clarify.md#question) | **At commitment, both frozen on the line.** |
 | **5** | **🆕 Whose job is the SELLING team's money screen — and can one ORDER's true result be read anywhere?** Two halves of one gap opened by `0d4cbc4`. **(a)** `revenue_service` was removed and it held the selling team's income, so the daily statement is `StatementMode = "warehouse"` alone and **refuses** a selling team — while `balance_context.md` §Responsbility 2 still claims *"Serve Balance Daily Report"*. **(b)** The marketplace money is settlement's at **order** grain and the `order_fee` is balance's at **pair** grain, so *"what did order 1 make"* has no reader: `order_fees.go` writes `SourceID = orderID`, but `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. | every selling team's view of its own money — a shipped page refuses them today · the meaning of balance's second stated responsibility · order-level profitability | [balance Q8](business/balance/context_clarify.md#question) · [balance Q9](business/balance/context_clarify.md#question) | **(a) Two screens — balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things, and only the warehouse's is a pair-ledger read. §Responsbility 2 should then say *warehouse*. **(b) One `order_id` filter on `LiabilityEntryListFilter`, never a second copy of the fee** in settlement's ledger — one movement written as two rows in two services with no shared transaction is the failure [technical balance C4](technical/balance/team_balance_design_clarify.md#critique) already names. |
-| **6** | **Which PRE-CHECKS does a draft run — does it touch the reserve, the shared lock, the debt threshold?** ✅ The ledger half is closed; the moment is fixed at finalize. What is unstated is which of the checks a *draft* runs before it. | the ledger's write moment, the threshold's trigger, the lock and reserve checks | [order Q4](business/order/context_clarify.md#question) | **None of it at draft** — your own section forces it: a draft holds an *external* SKU, so it has no product, no owner and no cost, and none of the four are computable. The price is that **finalize must re-check and may refuse**. |
+| **6** | **🆕 Is proof of transfer REQUIRED — and who is allowed to look at it?** §Payment Flow makes the payer *bring* an image or document and the creditor *check it manually*. ⛔ **Neither half is possible today.** A payment carries a 500-char `note` and no document, and [`get_download_url.go`](../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?` — so a file uploaded by the payer reads as **NotFound** to the creditor, the one person who has to see it. `document_service`'s scope is right and must not widen; it simply cannot know what a payment is. | ⛔ the middle step of a **stated responsibility's** flow, unexecutable as the system stands · the payment create screen's design · the system's **first service-to-service trust path**, which every later cross-service private read inherits | [balance Q10](business/balance/context_clarify.md#question) · [technical balance C19](technical/balance/team_balance_design_clarify.md#critique) | **Required — refuse a payment with no file** (a creditor asked to accept on nothing has only the payer's word, which two-phase confirmation already declines to trust). **And authorize the read from the PAYMENT relation, never the document's team**: `LiabilityPaymentProofUrl` on `liability_service` checks you are the payer or the creditor, then has `document_service` sign the key. ⚠ That internal signing path does not exist — deciding it is the real work here. |
 | **7** | **Is Credit Terms a SCREEN of its own, or a section of the pair detail?** `team_balance_design.md` §Frontend Requirements names three screens and Credit Terms — where the limit, the handling fee and the markup are SET — is not one of them. ⚠ **Narrowed, not answered**, by [the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs): the pair detail now READS that pair's limit history, which says nothing about where a limit is WRITTEN. | ⛔ `design_accept` on a finished prototype · the only place §Balance Policy's threshold is configurable outside the database | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) | **A screen, kept.** The DEFAULT row (`counterparty_id = 0`) is terms for every team without their own and has no pair detail page to live on — that alone forces a list. Terms as a section of the pair detail cannot express it at all. |
 
 ---
 
-## Where the other 84 are
+## Where the other 85 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -86,10 +73,10 @@ Every file's full open count — the seven above are drawn from these, not addit
 | --- | ---: | --- |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 13 | |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 11 | |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 9 | ▲ was 7 — the daily report, and the per-order read |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 11 | ▲ was 9 — payment proof, and whether a confirm is final |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 7 | ▼ was 8 — "which change log?" was answered as BOTH |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▼ was 7 — the creditor MAY reject |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |

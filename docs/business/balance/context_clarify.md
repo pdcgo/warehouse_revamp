@@ -198,6 +198,33 @@ points are **deleted**, so this file is always the current open set.
 > posted this charge"* stays unanswerable and unbackfillable
 > ([technical C9](../../technical/balance/team_balance_design_clarify.md#critique)).
 
+> # ⚠ Re-examined after §Payment Flow — it RATIFIES the design and breaks two things
+>
+> Two diagrams, and they make payments the most fully specified thing in this doc. ✅ **They match
+> the shipped two-phase design almost exactly** — the debtor creates, the creditor checks, a claim
+> posts nothing — and they answer
+> [technical Q5](../../technical/balance/team_balance_design_clarify.md#question): **the creditor MAY
+> reject.** Recorded as
+> [the-debtor-claims-the-creditor-decides](./context_decision.md#the-debtor-claims-the-creditor-decides).
+>
+> | §Payment Flow says | shipped |
+> | --- | --- |
+> | Team A sees **-100.000** and creates the payment | ✅ `LiabilityPaymentRecordRequest.team_id` is the PAYER **and** the scope — you may only record your own |
+> | brings **Proof of bank transfer** — image/doc/screenshot | ❌ **nowhere to put it.** A payment carries a 500-char `note` and nothing else |
+> | Team B checks manually | ⛔ **impossible today** — [Critique 18](#critique) |
+> | Team B **accepts** | ✅ `LiabilityPaymentConfirm`, creditor-scoped |
+> | Team B **rejects** | ❌ not built — `RECORDED · CONFIRMED · REVERSED`, no `REJECTED` |
+> | `accept` is **terminal** | ⚠ **contradicts the shipped `REVERSED`** — [Critique 19](#critique) |
+>
+> ⚠ **It also inverts what I told you last round.** I called *"`PaymentReverse` has no screen"* a
+> **defect**. Your lifecycle says a confirmed payment is finished, which makes that RPC an
+> **unasked-for feature** rather than a missing screen. I still think the reverse should live, and I
+> argue it in [Critique 19](#critique) — but it is your rule.
+>
+> ✅ **It settles a reading of cause 6.** *"Create / Accepting Payment"* in §What Things That Affect
+> The Team Balance could be read as *creating* a payment moving the balance. The lifecycle says it
+> does not — `pending` is a claim, acceptance is the posting. **→ Recommend** the cause read
+> *"Accepting a payment from another team"*, since create moves nothing.
 > # ⚠ Re-examined after §Responsbility grew a THIRD line
 >
 > *"3. Manage Payments Accross Team."* — one line, and it renames a decision.
@@ -365,6 +392,33 @@ flowchart LR
   P -.->|"never due — by decision"| B
 ```
 
+### A payment's proof, and who may see it
+
+🆕 Proposed against §Payment Flow. The rule is one sentence and the whole difficulty is in it:
+**the person who must look at the proof is not the person who owns it.**
+
+| | |
+| --- | --- |
+| what a proof IS | one or more uploaded files — a transfer screenshot, a bank PDF — attached to the payment, never to the ledger |
+| who uploads | the **payer**, at create. The file belongs to the payer's team |
+| who may READ | the payer's team **and the creditor's team**, and nobody else. Not the whole system, not a sibling selling team |
+| what authorizes the read | **the payment relation**, not the document's team. Being named on payment P is what makes P's proof readable |
+| after a decision | the proof is **kept**, accepted or rejected. It is the evidence for a decision somebody may be asked about later |
+
+```mermaid
+flowchart LR
+  A["Team A — payer"] -->|"uploads"| D["document, owned by team A"]
+  A -->|"creates"| P["payment, names the document"]
+  B["Team B — creditor"] -->|"asks balance for the proof"| P
+  P -->|"B is the creditor of P — so, a signed URL"| D
+  B -.->|"asks documents directly — NotFound, and correctly so"| D
+```
+
+⚠ **`document_service`'s scope is right and must not widen.** It answers NotFound for another
+team's file on purpose. The judgement *"B may see this one"* needs a fact only balance holds, so it
+belongs to balance — the plumbing is
+[technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique).
+
 ### The threshold — now the ONLY control, and what it still does not say
 
 [no-overdue-only-the-threshold](./context_decision.md#no-overdue-only-the-threshold) removed the
@@ -471,6 +525,8 @@ flowchart LR
 | **17** | **Nothing can answer *"what did order 1 actually make"*.** Settlement holds that order's marketplace money at **order** grain, and the `order_fee` it also cost sits here at **pair** grain. The join exists in the data and not in the contract: [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go) writes `SourceID = orderID`, while `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. So the fee is recorded, attributable, and **unaskable**. | **One filter field, never a second copy of the fee.** → I recommend adding an `order_id` (`source_id`) filter to `LiabilityEntryListFilter` and assembling the order's P&L on the screen from settlement + the frozen COGS + the fee. Posting the fee into `settlement_entries` as well would make one movement two rows in two services with no shared transaction — [technical Critique 4](../../technical/balance/team_balance_design_clarify.md#critique) is that exact failure. |
 
 ---
+| **18** | **🆕 The proof has nowhere to live — and the creditor could not read it if it did.** §Payment Flow makes *"bring image/doc/screenshot Proof of bank transfer"* part of creating a payment, and *"Team B check manually"* is the entire reason acceptance is a human act rather than a rule. Today a payment carries `note` — 500 characters of free text — and no document. ⛔ **The second half is verified, not suspected.** `document_service` exists and can hold the file, but [`get_download_url.go`](../../../backend/services/document_service/document_v1/get_download_url.go) filters `id = ? AND team_id = ?`, so a file uploaded by team A **reads as NotFound to team B**. The one person who must see the proof is the one person that ACL is written to exclude — so the flow's middle step cannot happen at all. | **A payment NAMES its documents, and the payment relation authorizes the read** — never the document's team. Design in [§A payment's proof](#a-payments-proof-and-who-may-see-it), plumbing in [technical Critique 19](../../technical/balance/team_balance_design_clarify.md#critique). ⚠ And say whether proof is **required** ([Q10](#question)): a manual check with an optional attachment is a check with nothing to look at. |
+| **19** | **🆕 `accept` is a TERMINAL state, and shipped code can leave it.** Your lifecycle is `pending → accept → [*]` — a confirmation is final. `LiabilityPaymentReverse` ships, takes a mandatory reason, and moves a confirmed payment to `REVERSED`. ⚠ **There are three positions here, not two**, and they differ only in what a correction does to the CLAIM: your diagram (accept is the end, no undo drawn) · my earlier proposal (the row stays `accepted`, a **compensating entry** fixes the ledger) · shipped (a compensating entry **and** the row flips to `REVERSED`). The middle one may be what you meant — a reversal is a later ledger act, not an un-accepting — but the shipped enum makes `REVERSED` a state of the payment, which yours does not have. ⚠ **I argued the other way last round**, and re-reading your diagram I think the asymmetry is the point: **reject posts nothing, accept posts money.** A wrong reject costs a re-submitted claim — two rows for one transfer, no harm done. A wrong accept has already lowered a real debt, and with no undo the only remedy is a hand-typed adjustment with no link to the payment that caused it: the exact untraceable correction two-phase confirmation exists to prevent. And a mis-confirm is likely — it is a tired person matching a screenshot against a bank app. | **Keep the correction, and say which of the three it is.** → I recommend the **middle**: the claim stays `accepted` forever, and a mis-confirm is fixed by a compensating entry that names the payment. It keeps your diagram literally true and still leaves a trail. → It is your rule, so it is [Q11](#question). ⚠ If you want accept final, the RPC and its status must be **removed**, not left unused — an unreachable write path in a ledger is one somebody eventually reaches. |
 
 ## Question
 
@@ -497,8 +553,11 @@ flowchart LR
    charge becomes final, and causes 4 and 5 are the ones people argue about.
    **→ I recommend a window on the ENTRY — disputable for N days, agreed by silence after** — which
    needs no statement, no due date and no overdue state.
-6. **🆕 How does a creditor CHASE?** ([Critique 11](#critique)) Today the only lever is lowering the
+6. **How does a creditor CHASE?** ([Critique 11](#critique)) Today the only lever is lowering the
    limit, which stops the debtor trading rather than asking it to pay.
+   ⚠ **Narrowed by §Payment Flow, not answered.** The flow opens *"Team A see -100.000"* — the debtor
+   notices on their own — so payment is **debtor-initiated by design**, and there is no step in which
+   a creditor asks for one. What survives is the debtor who never looks.
    **→ I recommend a request-for-payment that posts nothing** — a notice, not a block.
 7. **🆕 Are external payables — suppliers, couriers — in scope for this ledger?**
    ([Critique 12](#critique)) They cannot use cause 6, because an outsider cannot confirm a payment.
@@ -513,6 +572,15 @@ flowchart LR
    The entry knows the `order_id`, the filter does not, so an order's true P&L exists in no screen.
    **→ I recommend one `order_id` filter on `LiabilityEntryListFilter`** — and explicitly **not** a
    copy of the fee in settlement's ledger.
+10. **🆕 Is proof of transfer REQUIRED, or a convention?** ([Critique 18](#critique)) Your flow says the
+    payer *brings* it and the creditor *checks manually*, which reads as required — but the shipped
+    `MakePaymentDialog` collects an amount and a note, and would let a payment through with neither.
+    **→ I recommend required — at least one file, refused without one.** A creditor asked to accept on
+    nothing has only the payer's word, which is what the two-phase design already refuses to trust.
+11. **🆕 Is a confirmed payment FINAL?** ([Critique 19](#critique)) Your lifecycle ends at `accept`, and
+    `LiabilityPaymentReverse` ships and can undo one.
+    **→ I recommend NOT final** — accepting posts real money and a mis-confirm needs an undo that
+    stays attached to the payment. But if you say final, the RPC must go rather than sit unused.
 
 ---
 
