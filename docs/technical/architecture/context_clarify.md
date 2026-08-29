@@ -348,6 +348,10 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
     `settlement_service` is the order payout, line 7 `balance_service` is the pair rows, the threshold and
     the payments. The code went to `liability_service` for the second one, and the frontend renders
     "Liability"/"Kewajiban".
+    ⚠ **Sharpened by [liability-stays](../balance/team_balance_design_decision.md#liability-stays)**
+    (2026-08-29): the owner floated renaming the shipped service to `balance_*`, read the cost, and
+    cancelled it. That is **evidence, not an answer** — a split creates a NEW service, which is a
+    different act from renaming an existing one — but it points the same way this recommendation does.
     **→ I recommend `liability_service`, and editing line 7 to match.** *Balance* is the noun for the
     **number** (`last_balance`, `balance_after`) all over this system — reusing it for the service that
     gates would make "the balance service holds the balance" ambiguous with every other balance. *Liability*

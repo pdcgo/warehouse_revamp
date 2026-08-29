@@ -212,17 +212,21 @@ Every input the screen needed was already decided. ⚠ **What was NOT decided an
 from the screen is the contract** — the `reason` field and the change-log RPC — which is why those go
 through `design_accept` with the pages rather than being settled separately.
 
-## ⚠ The next migration carries THREE approved changes — do not run it piecemeal
+## ⚠ The next migration carries TWO approved changes — do not run it piecemeal
 
 | | |
 | --- | --- |
 | the source-type vocabulary | [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) — decided, unrun |
 | `actor_id` on the entries table | [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it) — decided, unrun |
-| the rename off *liability* | **pending one answer** — [technical Q8](../../technical/balance/team_balance_design_clarify.md#question). `balance_entries`, `balance_service`, `warehouse.balance.v1`, plus `team_balances` and `credit_terms` |
 
-All three touch the same table and the same proto. Run separately, each is a full pass over a
-141-file surface; run together, one. ⚠ The rename is also the only one that gets **harder** after
-go-live — it becomes a data migration plus a breaking proto change plus a client rollout.
+Both touch the same table and the same proto — run separately, each is a full pass over the service.
+**Nothing gates them.**
+
+> ⛔ **A third rider was floated and cancelled.** Renaming `liability_*` to `balance_*` —
+> [liability-stays](../../technical/balance/team_balance_design_decision.md#liability-stays). Do not
+> re-open it: the objection (the name describes one leg of a **mirrored pair**, so half the rows are
+> named after the wrong side) is **accepted as a known cost**, not unheard. The cost that settled it
+> was 141 files, and two tables left worse off — `balance_balances` and `balance_terms`.
 
 ## Open questions — 17, and only three of them gate work
 

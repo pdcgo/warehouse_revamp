@@ -130,3 +130,50 @@ person's act, so `0` there is not a state worth having:
 [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
 is decided and unrun, and touches this same table. Adding `actor_id` in that migration costs one
 pass instead of two.
+
+---
+
+## liability-stays
+
+> The owner, in chat — *"just keep liability as before i ask change name to balance log"*, after
+> floating `balance_logs` and reading what a whole-context rename would cost.
+
+**The verdict.** The service, the proto package, the tables and the frontend route **keep the
+`liability` name**. The rename is **cancelled**, not deferred.
+
+```mermaid
+flowchart LR
+  subgraph "kept"
+    A["liability_service"]
+    B["warehouse.liability.v1"]
+    C["liability_entries · liability_balances"]
+    D["liability_payments · liability_terms"]
+    E["/liability · liabilityClient"]
+  end
+  P["proposed: balance_entries, balance_service, …"] -.->|"cancelled"| A
+```
+
+### ⚠ The known cost, ACCEPTED — do not re-raise it
+
+The objection was real and it is being accepted, not refuted. Recording it here so the next reader
+does not spend the argument again:
+
+| | |
+| --- | --- |
+| the objection | every posting is a **mirrored pair**, so one side's liability is the other's **receivable**. The table name describes one leg, and half its rows are named after the wrong side |
+| what settles it anyway | a whole-context rename is **141 files and 2350 occurrences**, and it forces awkward names on two tables — `balance_balances` is absurd, and `balance_terms` describes a credit limit as if it were a balance |
+| what stays true | the code's own comments already say the direction lives in the two team columns, not in the table's name |
+
+### What this does NOT decide
+
+| | |
+| --- | --- |
+| **the UI label** | *"Change Log"* was never in question — that is what a person reads, and `team_balance_design.md` §Detail Pair Team Balance names it |
+| **the source-type words** | [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) is untouched. The **values** still become `order_fee` · `incidental_fee` · `broken_good` · `lost_good` · `found` — that migration is about what the rows SAY, not what the table is CALLED |
+| **the service split** | `architecture/context.md:7` names a `balance_service`, and [architecture Q10](../architecture/context_clarify.md#question) asks whether the gate half is called that or `liability_service`. ⚠ This is **evidence** for keeping `liability` there too, not an answer — a split creates a new service, which is a different act from renaming an existing one |
+
+### ✅ What it simplifies
+
+The next migration carries **two** approved changes, not three: the source-type vocabulary and
+[every-entry-names-who-posted-it](#every-entry-names-who-posted-it). Both land on
+`liability_entries`, which keeps its name.
