@@ -72,6 +72,28 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # ⚠ Re-verified against the tree at `0d4cbc4` — three critiques STAND, one is WITHDRAWN
+>
+> Every claim this file makes about shipped code was re-checked line by line. **Nothing was closed by
+> the settlement work**, and one of my own findings turned out to be stale.
+>
+> | | verdict |
+> | --- | --- |
+> | [C9](#critique) `liability_entries` has no actor | ✅ **stands** — none of the four migrations adds one |
+> | [C11](#critique) no `rejected` payment state | ✅ **stands** — the proto has `RECORDED` · `CONFIRMED` · `REVERSED` and nothing else |
+> | [C15](#critique) the statement reads a source type nothing posts | ✅ **stands, and it is in THREE files** — `queries.ts`, `StatementSummary.tsx` and `StatementTable.tsx` all read `COD_FEE`, while `RESTOCK_OUTLAY` appears in no column at all |
+> | [C12](#critique) the frontend has no generated liability client | ⛔ **WITHDRAWN** — `liability_pb.ts` and `liability.connect.go` are committed and `npm run typecheck` exits **0** |
+>
+> ⚠ **The report this ledger serves lost half its input in the same commit.** `revenue_service` was
+> removed, so the daily statement is warehouse-only and a selling team is refused. That is a business
+> question, not a design one — asked as
+> [balance Q8](../../business/balance/context_clarify.md#question).
+>
+> ⚠ **And one order's fee is unaskable.** [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go)
+> writes `SourceID = orderID`, so the ledger knows which order each fee belongs to — but
+> `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else, so no caller can ask. One
+> filter field, and it is [balance Q9](../../business/balance/context_clarify.md#question).
+
 ---
 
 # Proposed Design
@@ -401,7 +423,7 @@ be inferred later from a note.
 
 | | Problem *(found by re-examining the implemented frontend)* | → Recommend |
 | --- | --- | --- |
-| **12** | **`frontend/src/gen/warehouse/liability/` DOES NOT EXIST, so the frontend does not typecheck.** The proto was renamed `settlement` → `liability` and `buf generate` was never run: `proto/warehouse/` has `liability/` and no `settlement/`, while `frontend/src/gen/warehouse/` has `settlement/` and no `liability/`. Ten module-not-found errors across `api/clients.ts`, `features/liability/adapt.ts`, both liability pages and **all of `daily-statement`**. ⚠ **And the documented command is destructive here**: `buf.gen.yaml` sets `clean: true` and every plugin is a `remote:` BSR plugin, so `cd proto && buf generate` **without a BSR token deletes all generated code and produces nothing** — it wiped `backend/gen` and `frontend/src/gen` in this pass and they were restored from git. | **Run `buf generate` with a BSR login** and commit the result — it is one command and the rename is otherwise finished. And **write the token requirement into the Commands table**: a command that silently empties two committed directories is one nobody should discover by running it. The two remaining `bigint` errors are fallout of the missing module, not separate defects. |
+| ~~**12**~~ | ⛔ **WITHDRAWN — and the toolchain behind it is FIXED.** This said `frontend/src/gen/warehouse/liability/` was missing after the `settlement` → `liability` rename. Commit `0d4cbc4` committed `liability_pb.ts` and `liability.connect.go`, and `npm run typecheck` exits **0**. ✅ **The destructive-command warning is also resolved** (2026-08-29): every plugin is now `local:` and pinned — `protoc-gen-go` / `protoc-gen-connect-go` as `tool` directives in the root go.mod, `protoc-gen-es` as a frontend devDependency — so `cd proto && buf generate` needs **no BSR token**. Verified by running it: 51 files regenerated, `go build`/`go vet`/`tsc` all clean. | No action. ⚠ The prerequisite is now `cd frontend && npm install`, and it is written into the [Commands table](../../../CLAUDE.md) and [docs/faq/contract.md](../../faq/contract.md). `clean: true` still empties both trees on a failed run — `git checkout -- backend/gen frontend/src/gen`. |
 | **13** | **`STOCK_DAMAGE` rendered as "Unknown".** `causeKey` in `liability-detail` switched on five source types and the proto has six — so **every broken-or-lost reimbursement and every found-back reversal** displayed as *"Unknown #123"* on the counterparty ledger. That is cause 4, the one the business doc spends the most words on, and the one where the WAREHOUSE is the debtor. ✅ **Fixed in this pass** — the case and `causeStockDamage` in both locales. | Kept here because the shape recurs: **an enum switch with a `default` that renders "unknown" cannot fail loudly**, so a new `source_type` reaches production as a blank label. Worth a story asserting every `LiabilitySourceType` maps to a real key. |
 | **14** | **Two shipped RPCs have no screen, and both are the "something went wrong" half.** `PaymentReverse` exists in `liability_service` and **nothing in the frontend calls it** — so a confirmation made in error cannot be undone by anyone. `TermsSet` / `TermsList` / `TermsDelete` ship, and **no screen sets a credit limit or a markup** — so the debt threshold your §Balance Policy requires is configurable only by direct database access. | The reverse is a small addition to the payment row's actions (behind a `ConfirmDialog`, with the reason `liability_payments.reversal_reason` already holds). **The terms screen is the bigger gap**, and it is where [Q6](#question)'s override recording would live — build them together, since "who may change this limit, and is it recorded" is the same screen's question. |
 | **15** | **The daily statement reads a source type NOTHING POSTS, so a stated responsibility under-reports.** [queries.ts:81](../../../frontend/src/pages/daily-statement/queries.ts) reads `LiabilitySourceType.COD_FEE`, and [mapper.go:28](../../../backend/services/liability_service/liability_v1/mapper.go) says `SourceTypeRestockOutlay` *"supersedes SourceTypeCODFee, which nothing posts under any more"*. So the statement's COD column is **permanently zero** and `RESTOCK_OUTLAY` appears in **no column at all** — while `HANDLING_FEE` is the only thing counted as income. ⚠ Sharper since [balance-manages-and-reports](../../business/balance/context_decision.md#balance-manages-and-reports) made *"serve the daily report"* one of balance's two stated jobs. ⚠ **The obvious fix is now the WRONG ONE.** *"Read `RESTOCK_OUTLAY` where the screen reads `COD_FEE`"* was this critique's recommendation until [the-warehouse-receivable-is-order-fee-cod-fee-and-found](../../business/balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) named the business movement **`cod_fee`** — siding with the name the ledger abandoned, and with the screen. **Rename the ledger's source type back to `cod_fee` and the screen needs no change at all.** That is [business Q6](../../business/balance/context_clarify.md#question), and it travels with the same migration that splits `STOCK_DAMAGE` into `broken_good` / `lost_good` / `found`. Same failure shape as [Critique 13](#critique): a source type was renamed and one of its two readers followed. ⚠ **Hold until Q2 and Q6 land** — Q2 decides whether `RESTOCK_COST_KIND_OTHER` survives, and a rename to `cod_fee` while the posting still charges every cost line would put a name on the column that the amount does not match. |
@@ -444,14 +466,12 @@ new**, and all three come from re-reading the code rather than the docs.
 5. **🆕 May the creditor REJECT a claimed payment?** ([Critique 11](#critique)) Today the only way to
    refuse one is to confirm it and reverse it, which writes two real movements for money that never moved.
    **→ I recommend a `rejected` terminal state that posts nothing.**
-6. **🆕 Is the debt-threshold OVERRIDE meant to be recorded?**
-   `balance_context.md` §Balance Policy 1 — *"manage by team owner and can **overide by admin/root
-   team**"*. `LiabilityTermsSet` lets ROOT and ADMIN write the row, so the override **works** — but it
-   writes the same columns the owner writes, so **nothing distinguishes an override from the creditor
-   changing its own mind**, and it never expires.
-   **→ I recommend recording it** — who overrode, why, and until when — which is
-   [business Q1](../../business/balance/context_clarify.md#question) — now that file's FIRST question, since the override became the only way a block ends. An
-   unrecorded permanent override is the difference between a supervisor and a back door.
+> ⛔ **Q6 is DELETED — the override recording is ANSWERED.**
+> [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded)
+> settles it: `actor_id` on every write, a `reason` when the actor is outside the creditor team, and a
+> **change log** whose logged limit is **nullable** — `NULL`, `0` and a number being three different
+> acts. Nothing about it is still open. ⚠ **It is BUILD work now**, and none of it exists: a migration
+> on `liability_terms`, and a screen — `liabilityTermsClient` still has **zero callers**.
 
 ---
 

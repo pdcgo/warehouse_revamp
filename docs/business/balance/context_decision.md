@@ -18,7 +18,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [warehouse-roles-count-as-their-own-team](#warehouse-roles-count-as-their-own-team) | *a team’s own people* = **the role family matching its team type**. ✅ The shipped six-role policy is exactly right |
 | [a-limit-change-is-recorded](#a-limit-change-is-recorded) | `actor_id` always, `reason` when the actor is outside the creditor team, and a **change log** with a nullable limit |
 | [the-block-stops-orders-only](#the-block-stops-orders-only) | the threshold refuses **order creation** and nothing else — never a restock accept, never a payment, never a ledger posting |
-| [the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words) | the source types become `order_fee` · **`incidental_fee`** · `broken_good` · `lost_good` · `found`. ⛔ **blocked on BSR auth** |
+| [the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words) | the source types become `order_fee` · **`incidental_fee`** · `broken_good` · `lost_good` · `found`. ✅ **unblocked — local codegen plugins** |
 | [the-warehouse-payable-is-broken-and-lost](#the-warehouse-payable-is-broken-and-lost) | the warehouse owes the owner in two named cases — `broken_good` and `lost_good`. ⚠ the code has **one** type for both |
 
 ---
@@ -684,4 +684,7 @@ Step 2 is impossible here, so nothing after it can land:
 | ⚠ `clean: true` | so running it anyway **empties `backend/gen` and `frontend/src/gen` and produces nothing** — this has already happened once in a previous pass |
 | local fallback | `protoc-gen-go` is **v1.36.11** against the pinned **v1.36.6**, `protoc-gen-connect-go` **1.20.0** against **v1.18.1**, and **`protoc-gen-es` is absent entirely** — so Go would drift against CI's generated-check and TypeScript could not be produced at all |
 
-**To unblock: `buf registry login` (or set `BUF_TOKEN`), then the six steps above run in order.**
+✅ **UNBLOCKED 2026-08-29 — and not by logging in.** `proto/buf.gen.yaml` now uses `local:` plugins,
+pinned by the root go.mod's `tool` directives and by `frontend/package.json`, so `cd proto && buf
+generate` needs no Buf account. **The six steps above run in order.** ⚠ The verdict of this decision is
+unchanged — only the sentence about what stood in its way.

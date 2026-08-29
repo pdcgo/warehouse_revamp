@@ -212,39 +212,47 @@ design can get wrong.
 
 ---
 
-# Implementation — step 1 of 5, and it is BLOCKED on one command
+# Implementation — step 1 of 5. ✅ **NO LONGER BLOCKED** (2026-08-29)
 
 `design_accept` passed (2026-08-28) — see
-[design-accepted](../../business/settlement/context_decision.md#design-accepted). **The rename is done
-in source and cannot be finished here.**
+[design-accepted](../../business/settlement/context_decision.md#design-accepted). The rename is done
+in source **and generated**: `go build ./...` and `npm run typecheck` are both clean.
 
-## ⛔ `buf generate` needs a Buf token this machine does not have
+## ✅ The Buf token is no longer needed — the plugins are LOCAL
 
-```
-Failure: your Buf API token for buf.build is invalid. Run "buf registry login"
-```
+This section used to say `buf generate` was blocked on `buf registry login`. **That is fixed, and not
+by logging in.** [proto/buf.gen.yaml](../../../proto/buf.gen.yaml) now uses `local:` plugins:
 
-There are **no stored buf credentials at all** on this machine — not an expired token, an absent one.
-Every plugin in [proto/buf.gen.yaml](../../../proto/buf.gen.yaml) is `remote:`, so all three need the
-BSR.
-
-| | |
+| plugin | pinned by |
 | --- | --- |
-| **what unblocks it** | `buf registry login`, then `cd proto && buf generate` |
-| what it produces | `backend/gen/warehouse/liability/` and `frontend/src/gen/warehouse/liability/` |
-| until then | `go build ./...` fails with exactly two errors, both *"no required module provides package …/liability/v1"*. **Nothing else is wrong.** |
+| `protoc-gen-go` | a `tool` directive in the root [go.mod](../../../go.mod) |
+| `protoc-gen-connect-go` | the same |
+| `protoc-gen-es` | a devDependency in [frontend/package.json](../../../frontend/package.json) |
 
-⚠ **`buf generate` has `clean: true`** — it deletes `backend/gen` and `frontend/src/gen` BEFORE running
-the plugins. A failed run therefore leaves both trees EMPTY. They are committed, so
-`git checkout -- backend/gen frontend/src/gen` restores them; this happened twice while establishing
-the above.
+```sh
+cd proto && buf generate      # needs Go and frontend/node_modules. No Buf account.
+```
 
-### Two things that were tried and rejected — do not retry them
+⚠ **`clean: true` still applies** — a failed run empties `backend/gen` and `frontend/src/gen` before
+failing. They are committed: `git checkout -- backend/gen frontend/src/gen`.
 
-| attempt | why it fails |
+### ⚠ The rejection recorded here was half right — read this before repeating it
+
+This file rejected local plugins for **version drift**: the machine's `protoc-gen-go` is v1.36.11
+against a committed v1.36.6, so generating locally rewrote every file with a different version stamp.
+**The observation was correct and the conclusion did not follow.** It was rejecting *whatever happens
+to be installed*, not *pinning to the version the config names*. Pinned, the output is byte-identical
+— verified by generating into a scratchpad and diffing both trees.
+
+| attempt | verdict |
 | --- | --- |
-| **local plugins** (`protoc-gen-go` and `protoc-gen-connect-go` ARE on this machine, and `protoc-gen-es` fetches via `npx`) | ⚠ **version drift.** Local `protoc-gen-go` is **v1.36.11**; the committed code was generated with **v1.36.6**, and connect-go is 1.20.0 against a pinned 1.18.1. Generating locally rewrites every file in both trees with different version stamps — a vast diff that CI's generated-drift check would reject |
-| **hand-renaming the generated `.pb.go`** | ⚠ **it corrupts the descriptor.** The rawDesc is a length-prefixed binary blob holding the file path and package name. `settlement` → `liability` is 10 chars → 9, so every embedded length is then wrong and the file fails to parse at init. This is the concrete reason behind *"generated code is never hand-edited"* |
+| local plugins **on PATH** (`go install`) | ⛔ **still wrong.** A global plugin is whatever another project needed. This is the drift above |
+| local plugins **pinned as dependencies** | ✅ **this is what shipped.** `go tool` builds the plugin from the module's own protobuf, and `protoc-gen-es` sits beside `@bufbuild/protobuf` at a matching version |
+| **hand-renaming the generated `.pb.go`** | ⛔ **it corrupts the descriptor.** The rawDesc is a length-prefixed binary blob holding the file path and package name. `settlement` → `liability` is 10 chars → 9, so every embedded length is then wrong and the file fails to parse at init. This is the concrete reason behind *"generated code is never hand-edited"* |
+
+⚠ **A generator and the runtime it generates against MUST be the same version.** `protoc-gen-es` 2.2.5
+against `@bufbuild/protobuf` 2.12 dies with *"Cannot read properties of undefined (reading 'length')"*,
+which reads like a corrupt `.proto` and is not.
 
 ## What IS done
 

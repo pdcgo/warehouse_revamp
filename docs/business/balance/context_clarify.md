@@ -90,10 +90,10 @@ points are **deleted**, so this file is always the current open set.
 > named five movements and the ledger has one source type and a boolean for three of them. `found`,
 > `broken_good` and `lost_good` are all `STOCK_DAMAGE`. And `cod_fee` sides with
 > `LIABILITY_SOURCE_TYPE_COD_FEE` — the name the ledger **abandoned** and the daily statement still
-> reads. New [Q2](#question) and [Q6](#question).
+> reads. ✅ Since **decided** — [the-ledger-speaks-the-business-words](./context_decision.md#the-ledger-speaks-the-business-words) — and since 2026-08-29 **no longer blocked**: the codegen plugins are local and pinned, so the migration is ordinary build work.
 >
 > ⚠ **`cod_fee` says *"restock/return"* and the return half does not exist** ([Critique 14](#critique)).
-> `StockReturn` is a pick-undo with no cost line and no posting. New [Q8](#question).
+> `StockReturn` is a pick-undo with no cost line and no posting. Asked as [Q4](#question).
 >
 > ✅ **§Responsbility answers half of the boundary** — *manage the balance, serve the daily report*. The
 > **"Whats Not" half is still empty**, so [The boundary](#the-boundary) below keeps only that half as a
@@ -197,6 +197,53 @@ points are **deleted**, so this file is always the current open set.
 > ⚠ **`liability_entries` still has no actor.** This settles the *terms*, not the ledger — *"who
 > posted this charge"* stays unanswerable and unbackfillable
 > ([technical C9](../../technical/balance/team_balance_design_clarify.md#critique)).
+
+> # ⚠ Re-examined after `settlement_service` LANDED and `revenue_service` was REMOVED
+>
+> Commit `0d4cbc4` changed three things about this context at once and **touched
+> `balance_context.md` only to add the sections already answered above** — so nothing below is closed
+> by it, and two things are newly open.
+>
+> | what changed in the code | what it does to this doc |
+> | --- | --- |
+> | `settlement_service` shipped — an **order-grain** signed ledger with its own running `balance` | the word *balance* now names two different things in one system |
+> | `revenue_service` was **removed** | §Responsbility 2 — *"Serve Balance Daily Report"* — is now **warehouse-only**. The page refuses a selling team |
+> | the old `settlement_service` was **renamed** `liability_service` | the code word for this context is `liability`, the business word is `balance`, and *settlement* now means something else entirely |
+>
+> ✅ **The boundary between the two ledgers is stated, and it is right.**
+> `settlement_context.md` §Responsbility — *"for owe and balance across teams, its `liability_service`"*.
+> Two ledgers, one of them explicitly not doing the other's job. Recorded so it is not re-argued.
+>
+> ⚠ **Your §Responsbility 2 is half-served, and the missing half moved into another service.**
+> `StatementMode` is `"warehouse"` and nothing else — a selling team is **refused** rather than shown a
+> subtraction with no income in it. The money that would fill that half — `initial_total`, `fund`,
+> `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment` — is in `settlement_service`, and
+> nothing reads it for this report. New [Critique 16](#critique), new [Q8](#question).
+>
+> ```mermaid
+> flowchart LR
+>   W["warehouse team"] --> R["the daily statement"]
+>   SE["selling team"] -.->|"refused since revenue_service was removed"| R
+>   R --> I["income = handling fees, and nothing else"]
+>   ST["settlement — fund, adjustments, platform fees"] -.->|"nothing reads it here"| R
+> ```
+>
+> ⚠ **No ledger can answer *"what did ONE order make"*.** The marketplace money is settlement's, at
+> order grain. The `order_fee` that same order cost is here, at **pair** grain. The link exists in the
+> data — `liability_entries.source_id` **is** the `order_id` — but not in the contract:
+> `LiabilityEntryListFilter` carries `counterparty_id` **only**. New [Critique 17](#critique), new
+> [Q9](#question).
+>
+> ```mermaid
+> flowchart TB
+>   O["one order"] --> S["settlement_service — ORDER grain"]
+>   O --> L["balance / liability — PAIR grain"]
+>   S --> S1["initial_total, fund, ads fee, adjustment"]
+>   L --> L1["order_fee, cross charge — source_id IS the order id"]
+>   S1 --> Q{"what did THIS order make?"}
+>   L1 --> Q
+>   Q --> N["unanswerable — no filter reaches the fee by order"]
+> ```
 
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [order_context](../order/context_clarify.md) ·
@@ -372,6 +419,11 @@ flowchart LR
 | **14** | **`cod_fee` says *"restock/return"* and the return half does not exist.** `PostRestockOutlay` is called from `RestockRequestFulfill` only. `StockReturn` is a pick-undo — it carries no cost line, no COD field, and posts nothing to this ledger. So a warehouse that pays a courier to bring a customer return back has no way to record it. | Say whether the return half is **v1 or later**. → I recommend **later, but named**: it is a real outlay and the mechanism is identical, but returns have several other open questions in front of them ([product Q1](../product/context_clarify.md#question)). What must not happen is it staying implicit — a doc that says *"restock/return"* while only restock works reads as done. |
 | ~~**15**~~ | ⛔ **WITHDRAWN.** This read *"team owner, team admin, or root"* as excluding warehouse roles. The owner confirmed the opposite: [warehouse-roles-count-as-their-own-team](./context_decision.md#warehouse-roles-count-as-their-own-team) — a team’s own people are **the role family matching its team type**, and the shipped six-role policy is exactly right. Kept one round as a record: the doc’s shorthand and the proto’s enum said the same thing in different words. | No action. ✅ Code needs no change. |
 
+| | Problem *(found by re-examining after `settlement_service` landed)* | → Recommend |
+| --- | --- | --- |
+| **16** | **§Responsbility 2 now serves ONE of the two team types.** `revenue_service` was removed with the settlement work and it held the selling team's income, so `StatementMode` is `"warehouse"` alone and the page **refuses** a non-warehouse team rather than show it a subtraction with no income term. ⚠ [balance-manages-and-reports](./context_decision.md#balance-manages-and-reports) reasoned that a warehouse's statement income *"exists nowhere else"* — still true, and it is now the only half that exists at all. | **Say whose report it is.** → I recommend **two screens: balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things — fees − expenses against payout − COGS − fees — and only the warehouse's is a pair-ledger read. Then §Responsbility 2 should say *warehouse* daily report, so the doc stops promising a selling team a screen this ledger cannot give it. |
+| **17** | **Nothing can answer *"what did order 1 actually make"*.** Settlement holds that order's marketplace money at **order** grain, and the `order_fee` it also cost sits here at **pair** grain. The join exists in the data and not in the contract: [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go) writes `SourceID = orderID`, while `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. So the fee is recorded, attributable, and **unaskable**. | **One filter field, never a second copy of the fee.** → I recommend adding an `order_id` (`source_id`) filter to `LiabilityEntryListFilter` and assembling the order's P&L on the screen from settlement + the frozen COGS + the fee. Posting the fee into `settlement_entries` as well would make one movement two rows in two services with no shared transaction — [technical Critique 4](../../technical/balance/team_balance_design_clarify.md#critique) is that exact failure. |
+
 ---
 
 ## Question
@@ -405,6 +457,16 @@ flowchart LR
 7. **🆕 Are external payables — suppliers, couriers — in scope for this ledger?**
    ([Critique 12](#critique)) They cannot use cause 6, because an outsider cannot confirm a payment.
    **→ I recommend no for v1, but name where they DO live** — the current answer is "nowhere".
+8. **🆕 Whose job is the SELLING team's daily report?** ([Critique 16](#critique)) §Responsbility 2
+   claims *"Serve Balance Daily Report"*, and since `revenue_service` was removed that page serves
+   warehouses only — a selling team is refused at the door.
+   **→ I recommend two screens — balance serves the warehouse statement, settlement serves the selling
+   one** — and §Responsbility 2 saying *warehouse*, so the doc stops promising what this ledger cannot
+   give.
+9. **🆕 Should one ORDER's warehouse fee be readable beside its settlement?** ([Critique 17](#critique))
+   The entry knows the `order_id`, the filter does not, so an order's true P&L exists in no screen.
+   **→ I recommend one `order_id` filter on `LiabilityEntryListFilter`** — and explicitly **not** a
+   copy of the fee in settlement's ledger.
 
 ---
 
