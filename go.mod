@@ -93,4 +93,8 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
 )
 
-tool github.com/google/wire/cmd/wire
+tool (
+	connectrpc.com/connect/cmd/protoc-gen-connect-go
+	github.com/google/wire/cmd/wire
+	google.golang.org/protobuf/cmd/protoc-gen-go
+)

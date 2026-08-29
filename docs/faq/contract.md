@@ -109,6 +109,59 @@ returns false and the option appears absent.
 
 ---
 
+## What do I need installed to run `buf generate`?
+
+**Go, and `cd frontend && npm install`.** No Buf account, no BSR token.
+
+All three plugins are `local:` and pinned where the pin cannot drift:
+
+| plugin | pinned by |
+| --- | --- |
+| `protoc-gen-go` | a `tool` directive in the root [go.mod](../../go.mod) |
+| `protoc-gen-connect-go` | the same |
+| `protoc-gen-es` | a devDependency in [frontend/package.json](../../frontend/package.json) |
+
+That is deliberate: **a generator and the runtime it generates against must be the same version.**
+`go tool protoc-gen-go` is built from the module's own `google.golang.org/protobuf`, and
+`protoc-gen-es` sits beside `@bufbuild/protobuf` at a matching version. Bump one and you have
+bumped the other.
+
+⚠ **Do not `go install` them onto your PATH instead.** A global `protoc-gen-go` is whatever another
+project needed, and generating with it rewrites every file with a different version stamp — the drift
+CI's generated-drift check exists to catch.
+
+---
+
+## `buf generate` emptied `backend/gen` and `frontend/src/gen`. What happened?
+
+[buf.gen.yaml](../../proto/buf.gen.yaml) sets `clean: true`, so buf **deletes both output trees
+before running the plugins**. A run that fails therefore leaves them empty.
+
+They are committed, so nothing is lost:
+
+```sh
+git checkout -- backend/gen frontend/src/gen
+```
+
+The usual cause is a missing plugin. Run it from `proto/` — the plugin paths are relative to the
+working directory — and make sure `frontend/node_modules` exists.
+
+---
+
+## `protoc-gen-es` says "Cannot read properties of undefined (reading 'length')"
+
+The plugin and `@bufbuild/protobuf` are different versions. It reads like a corrupt `.proto` and is
+not: `protoc-gen-es` 2.2.x against a 2.12 runtime dies exactly this way.
+
+```sh
+cd frontend && npm ls @bufbuild/protobuf @bufbuild/protoc-gen-es
+```
+
+Both must be the same minor. That is why the plugin is a devDependency beside the runtime rather than
+an `npx` invocation, which resolves whatever is newest.
+
+---
+
 ## How do I call an RPC by hand, without the UI?
 
 ```sh

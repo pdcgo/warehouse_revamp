@@ -589,6 +589,19 @@ command — no publish step in the middle of the design loop.
 - The proto package must match the directory (`warehouse.hello.v1` ⇢
   `proto/warehouse/hello/v1/`) — buf's `STANDARD` lint enforces it.
 - After **any** `.proto` edit, run `buf generate` from `proto/` before building either side.
+- **The plugins are `local:`, and they need NO Buf account.** They were `remote:` BSR plugins, which
+  meant a token nobody's checkout had — and with `clean: true` a failed run **deletes `backend/gen`
+  and `frontend/src/gen` before failing**, so the documented command was destructive on a fresh
+  machine. Now `protoc-gen-go` and `protoc-gen-connect-go` are `tool` directives in the root
+  [go.mod](go.mod) and `protoc-gen-es` is a devDependency in
+  [frontend/package.json](frontend/package.json).
+  - **Prerequisite: `cd frontend && npm install` must have run** — the TS plugin lives in
+    `frontend/node_modules`, so generation fails without it.
+  - **Run it from `proto/`.** Two plugin paths are relative to the working directory.
+  - ⚠ **Never `go install` the plugins onto PATH instead.** A global `protoc-gen-go` is whatever
+    another project needed, and generating with it rewrites every file with a different version
+    stamp — exactly the drift CI checks for. **A generator and the runtime it generates against must
+    be the same version**, which is what pinning them as dependencies enforces.
 
 `HelloService` is scaffolding — it exists only to prove the pipeline works end to end. Delete
 it once a real domain service replaces it.
@@ -599,7 +612,7 @@ it once a real domain service replaces it.
 | --- | --- |
 | Start local Postgres (`:5433`) | `docker compose up -d` |
 | Lint the contract | `cd proto && buf lint` |
-| Regenerate Go + TS | `cd proto && buf generate` |
+| Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |

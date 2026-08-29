@@ -20,6 +20,19 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      # ⚠ NODE AND THE FRONTEND DEPS COME BEFORE `buf generate`, and that ordering is load-bearing.
+      # The TypeScript plugin is `frontend/node_modules/@bufbuild/protoc-gen-es` — a LOCAL plugin,
+      # not a BSR one — so generation fails outright if the deps are not installed yet.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: install frontend deps (protoc-gen-es lives here)
+        working-directory: frontend
+        run: npm ci
+
       - uses: bufbuild/buf-setup-action@v1
         with:
           version: 1.56.0
@@ -31,6 +44,9 @@ jobs:
 
       # Drift check: regenerate and fail if the committed output differs. Generated code is
       # committed but never hand-edited — this proves it matches the .proto.
+      #
+      # No BSR token is needed: every plugin is `local:`, pinned by the root go.mod's `tool`
+      # directives and by frontend/package.json. See the header of proto/buf.gen.yaml.
       - name: buf generate (drift check)
         working-directory: proto
         run: buf generate
@@ -49,16 +65,9 @@ jobs:
           go build ./...
           go vet ./...
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
       - name: frontend typecheck + build
         working-directory: frontend
         run: |
-          npm ci
           npx tsc --noEmit
           npm run build
 

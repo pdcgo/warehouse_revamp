@@ -97,6 +97,9 @@ second time will be slightly different. That drift is the actual cost.
 - [Does my list RPC need pagination?](contract.md#does-my-list-rpc-need-pagination)
 - [Where do I declare who may call an RPC?](contract.md#where-do-i-declare-who-may-call-an-rpc)
 - [What other behaviour is declared on a proto message?](contract.md#what-other-behaviour-is-declared-on-a-proto-message)
+- [What do I need installed to run `buf generate`?](contract.md#what-do-i-need-installed-to-run-buf-generate)
+- [`buf generate` emptied `backend/gen` and `frontend/src/gen`. What happened?](contract.md#buf-generate-emptied-backendgen-and-frontendsrcgen-what-happened)
+- [`protoc-gen-es` says "Cannot read properties of undefined (reading 'length')"](contract.md#protoc-gen-es-says-cannot-read-properties-of-undefined-reading-length)
 - [How do I call an RPC by hand, without the UI?](contract.md#how-do-i-call-an-rpc-by-hand-without-the-ui)
 - [What is `HelloService` for?](contract.md#what-is-helloservice-for)
 
