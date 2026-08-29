@@ -1,0 +1,88 @@
+package liability_v1
+
+import (
+	"context"
+
+	"connectrpc.com/connect"
+
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
+)
+
+// LiabilityTermsList reads the terms the scoped team SETS AS A CREDITOR (#189) — what it charges
+// each debtor and how far it will let them run.
+//
+// ⚠ IT READS THE CREDITOR SIDE ONLY, and that is the whole scope rule here. `team_id` is the team
+// that WROTE these rows; a debtor asking what it is charged is asking about somebody else's
+// configuration, and gets its own (empty) list rather than theirs. That mirrors how the ledger's own
+// reads work — the scope is always "my books".
+//
+// THE DEFAULT ROW LEADS. `counterparty_id = 0` is the rate applying to every team without one of
+// their own, so it is the first thing to read and `ORDER BY counterparty_id` puts it there without a
+// special case. Paging is by the same key, which is stable because the pair is unique.
+func (s *Service) LiabilityTermsList(
+	ctx context.Context,
+	req *connect.Request[liabilityv1.LiabilityTermsListRequest],
+) (*connect.Response[liabilityv1.LiabilityTermsListResponse], error) {
+	page := req.Msg.GetPage()
+
+	query := s.db.
+		WithContext(ctx).
+		Model(&liability_service_models.LiabilityTerms{}).
+		Where("team_id = ?", req.Msg.GetTeamId())
+
+	var total int64
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	var rows []liability_service_models.LiabilityTerms
+
+	offset := int((page.GetPage() - 1) * page.GetLimit())
+
+	err = query.
+		Order("counterparty_id ASC").
+		Offset(offset).
+		Limit(int(page.GetLimit())).
+		Find(&rows).
+		Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	out := make([]*liabilityv1.LiabilityTerms, 0, len(rows))
+	for i := range rows {
+		out = append(out, termsToProto(&rows[i]))
+	}
+
+	items, ids := termsListItems(out, req.Msg.GetDataRequest())
+
+	return connect.NewResponse(&liabilityv1.LiabilityTermsListResponse{
+		Items: items,
+		Ids:   ids,
+		PageInfo: &commonv1.PageInfo{
+			CurrentPage: page.GetPage(),
+			TotalPage:   totalPages(total, page.GetLimit()),
+			TotalItems:  uint64(total),
+		},
+	}), nil
+}
+
+// termsToProto carries the NULL through as an ABSENT field rather than a zero.
+//
+// ⚠ This is the one mapping in this package where a wrong `0` inverts the meaning: absent is
+// UNLIMITED credit and 0 is NO credit at all. Assigning `CreditLimit: row.CreditLimit` works only
+// because the model's field is already a pointer — if it ever stops being one, this line silently
+// starts granting infinite credit to every frozen team.
+func termsToProto(t *liability_service_models.LiabilityTerms) *liabilityv1.LiabilityTerms {
+	return &liabilityv1.LiabilityTerms{
+		TeamId:          t.TeamID,
+		CounterpartyId:  t.CounterpartyID,
+		HandlingFee:     t.HandlingFee,
+		ProductMarkupBp: t.ProductMarkupBP,
+		CreditLimit:     t.CreditLimit,
+	}
+}

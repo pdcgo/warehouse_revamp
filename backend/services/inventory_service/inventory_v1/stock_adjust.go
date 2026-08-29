@@ -234,7 +234,7 @@ func (s *Service) StockAdjust(
 		// turn up (business_level Â§Warehouse 5, balance_context 4 and 5).
 		//
 		// ⚠ INSIDE THE TRANSACTION, unlike the expense posting below — and the difference is the same
-		// one SettlementPoster already draws. The expense is a DERIVED record: a dropped one is a gap a
+		// one LiabilityPoster already draws. The expense is a DERIVED record: a dropped one is a gap a
 		// report can find. This is an OBLIGATION: stock leaving the shelf while the debt for it does not
 		// commit leaves the owning team's goods gone with nothing recorded, which is exactly the
 		// situation the ledger exists to prevent.
@@ -245,7 +245,7 @@ func (s *Service) StockAdjust(
 		// ⚠ Damage at RECEIVING and on returned orders is NOT charged here (Â§Warehouse 6). Neither
 		// travels this RPC: arrival breakage is a restock damage line, recorded before custody begins.
 		if damageAmount > 0 && damageOwner != 0 && damageOwner != warehouseID {
-			damageErr := s.settlement.PostStockDamage(ctx, tx, damageOwner, warehouseID, mv.ID,
+			damageErr := s.liability.PostStockDamage(ctx, tx, damageOwner, warehouseID, mv.ID,
 				damageAmount, damageReversal)
 			if damageErr != nil {
 				return damageErr

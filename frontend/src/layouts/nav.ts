@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingUp, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -123,18 +123,20 @@ const WAREHOUSE_ORDERS: MenuItem = {
   icon: ShoppingCart,
 };
 const INVENTORY: MenuItem = { to: "/inventory", label: "nav.inventory", icon: Boxes };
-const REVENUE: MenuItem = { to: "/revenue", label: "nav.revenue", icon: TrendingUp };
 const EXPENSES: MenuItem = { to: "/expenses", label: "nav.expenses", icon: Receipt };
-const PROFIT: MenuItem = { to: "/profit", label: "nav.profit", icon: Scale };
-// The same money as Revenue, Expenses and Profit — read DAY BY DAY rather than as a month total.
-// A separate item rather than a tab on Profit: it answers a different question ("which day did it"),
-// it carries its own range control instead of a month picker, and somebody comes looking for it by
-// name the moment a month reads wrong.
+// The WAREHOUSE's money screen, read day by day: the handling fees it charged, less its expenses.
+// ⚠ It used to serve a SELLING team too, reading expected margin from `revenue_service`. That service
+// was removed and its statistics deferred, so the selling half is gone until they are rebuilt — see
+// docs/business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred.
 const STATEMENT: MenuItem = { to: "/statement", label: "nav.statement", icon: CalendarRange };
 // The ledger of what teams owe each other (#185). A TOP-LEVEL section rather than a child of the
 // selling team's money group, because a WAREHOUSE team has no money section at all today and this is
 // where its income actually lives.
-const SETTLEMENT: MenuItem = { to: "/liability", label: "nav.settlement", icon: Handshake };
+const LIABILITY: MenuItem = { to: "/liability", label: "nav.liability", icon: Handshake };
+// The MARKETPLACE payout ledger — what the platform actually paid us for each order, ranked by loss.
+// SELLING ONLY: a warehouse has no marketplace relationship and no orders of its own, so the screen
+// would be permanently empty for it. Same role set as Liability — this is money, not operations.
+const SETTLEMENT: MenuItem = { to: "/settlement", label: "nav.settlement", icon: Scale };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -260,22 +262,17 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // CostList is scoped to the same roles for the same reason — a person taking orders has no
     // business seeing the payroll number.
     if (isTeamManager(role)) {
-      menu.push(REVENUE);
       menu.push(EXPENSES);
-      // Profit is those two subtracted (#172) — the same gate, necessarily: it is made ENTIRELY of
-      // the numbers on the other two screens, so anyone who may not read them may not read this.
-      menu.push(PROFIT);
-      // The daily statement is those same two numbers, per day — so necessarily the same gate. It is
-      // made ENTIRELY of what the three screens above hold, and both its RPCs are policed on exactly
-      // this role set, so a looser menu here would offer a link the server refuses.
-      menu.push(STATEMENT);
+      // ⚠ NO Revenue, Profit or Statement item for a selling team any more. All three were made
+      // ENTIRELY of `revenue_service`'s expected margin, and that service has been removed with its
+      // statistics deferred. Expenses stands alone because it never read revenue at all.
     }
   }
 
   // A WAREHOUSE gets the daily statement too (owner, 2026-08-14), even though it has none of the three
   // money screens above.
   //
-  // It reads a DIFFERENT income column — the handling fees it charged, from settlement_service, because
+  // It reads a DIFFERENT income column — the handling fees it charged, from liability_service, because
   // a warehouse has no orders and therefore no margin. Its costs are its own expenses, and those already
   // include the stock it writes off (#211), which is the number a warehouse actually runs on.
   //
@@ -292,6 +289,10 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) &&
     isTeamManager(role)
   ) {
+    menu.push(LIABILITY);
+  }
+
+  if (teamType === TeamType.SELLING && isTeamManager(role)) {
     menu.push(SETTLEMENT);
   }
 

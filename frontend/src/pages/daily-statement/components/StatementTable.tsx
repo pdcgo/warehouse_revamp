@@ -4,9 +4,8 @@ import { TriangleAlert } from "lucide-react";
 
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseTotals } from "../../../gen/warehouse/expense/v1/expense_pb";
-import type { RevenueTotals } from "../../../gen/warehouse/revenue/v1/revenue_pb";
-import type { SettlementDailyTotals } from "../../../gen/warehouse/settlement/v1/settlement_pb";
-import { SettlementSourceType } from "../../../gen/warehouse/settlement/v1/settlement_pb";
+import type { LiabilityDailyTotals } from "../../../gen/warehouse/liability/v1/liability_pb";
+import { LiabilitySourceType } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import { parseLocalDate } from "../../../lib/datetime";
 import type { PeriodGrain } from "../../../lib/period";
@@ -18,8 +17,7 @@ export interface StatementTableProps {
   rows: StatementRow[];
   /** The period's income, from the server. */
   income: bigint;
-  revenue: RevenueTotals | undefined;
-  settlement: SettlementDailyTotals | undefined;
+  liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
 }
 
@@ -71,8 +69,7 @@ export function StatementTable({
   grain,
   rows,
   income,
-  revenue,
-  settlement,
+  liability,
   expenses,
 }: StatementTableProps) {
   const { t, i18n } = useTranslation();
@@ -81,7 +78,7 @@ export function StatementTable({
 
   const spent = expenses?.total ?? 0n;
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = settlement?.bySource[SettlementSourceType.COD_FEE] ?? 0n;
+  const codFees = liability?.bySource[LiabilitySourceType.COD_FEE] ?? 0n;
 
   if (rows.length === 0) {
     return (
@@ -217,9 +214,9 @@ export function StatementTable({
             ) : (
               <>
                 <Table.Cell />
-                <Table.Cell textAlign="end">{money(revenue?.revenue ?? 0n)}</Table.Cell>
-                <Table.Cell textAlign="end">{money(revenue?.cogs ?? 0n)}</Table.Cell>
-                <Table.Cell textAlign="end">{money(revenue?.shippingCost ?? 0n)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
+                <Table.Cell textAlign="end">{money(0n)}</Table.Cell>
                 <Table.Cell textAlign="end">{money(income)}</Table.Cell>
               </>
             )}

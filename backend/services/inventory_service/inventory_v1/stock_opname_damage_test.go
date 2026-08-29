@@ -8,8 +8,8 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
-	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
 
 // countShelf counts one product on one rack to `counted`.
@@ -41,7 +41,7 @@ func countShelf(
 func TestStockOpname_ShortfallReimbursesTheOwner(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -76,7 +76,7 @@ func TestStockOpname_ShortfallReimbursesTheOwner(t *testing.T) {
 func TestStockOpname_ShortfallSplitsAcrossOwners(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 	const product uint64 = 100
@@ -120,7 +120,7 @@ func TestStockOpname_ShortfallSplitsAcrossOwners(t *testing.T) {
 func TestStockOpname_SurplusReimbursesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -137,7 +137,7 @@ func TestStockOpname_SurplusReimbursesNobody(t *testing.T) {
 func TestStockOpname_ExactCountReimbursesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -155,7 +155,7 @@ func TestStockOpname_ExactCountReimbursesNobody(t *testing.T) {
 func TestStockOpname_UnknownCostReimbursesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -182,7 +182,7 @@ func TestStockOpname_UnknownCostReimbursesNobody(t *testing.T) {
 func TestStockOpname_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = damageOwnerTeam
 
@@ -201,7 +201,7 @@ func TestStockOpname_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // balance is read rather than the call inspected.
 func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &realPoster{settlement: settlement_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
 
 	const warehouse uint64 = 5
 
@@ -209,7 +209,7 @@ func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 
 	countShelf(t, svc, warehouse, rackID, product, 95)
 
-	var ownerBalance settlement_service_models.SettlementBalance
+	var ownerBalance liability_service_models.LiabilityBalance
 
 	err := db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -224,7 +224,7 @@ func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 			ownerBalance.Balance)
 	}
 
-	var entry settlement_service_models.SettlementEntry
+	var entry liability_service_models.LiabilityEntry
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).

@@ -29,7 +29,7 @@ Siblings: [business_level](../business_level_clarify.md) · [user_context](../us
 > as **liability**"*, which denies the borrower a cost of goods that a purchase would have given it.
 >
 > ⚠ **So I read the rules below as LOAN — the goods stay the owner's and the charge is for lending — but no
-> line of prose in `docs/requirements/` says the word outside a diagram label and a bullet.** That is a
+> line of prose in `docs/business/` says the word outside a diagram label and a bullet.** That is a
 > reading, not a decision, and it is yours to write down. **→ Recommend one sentence in
 > `product_context.md`:** *a cross/shared line does not transfer ownership — the goods remain the owning
 > team's and the borrowing team owes for what it consumed.* Three open questions collapse the moment it exists.
@@ -196,6 +196,16 @@ the lock — [user_context_clarity Critique 4](../user/context_clarify.md#critiq
    ⚠ **Now also a boundary question:** the layers are `inventory_service`'s and COGS is `ledger_service`'s,
    so *where the frozen number is stored and who owns it* travels with this answer —
    [architectures Q3](../../technical/architecture/context_clarify.md#question).
+6. **🆕 Does `AdditionalWarehouseFee` belong inside `UnitPrice` at all?** `balance_context.md` has now
+   defined that money as the courier's **accidental ask at the door** — *"coffe tip or other"*
+   ([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
+   §Unit Price Components freezes it into the goods' cost forever. ⚠ That doc's own sequence diagram
+   calls the charge a **reimbursement**, which is an argument against capitalising it made in the
+   owner's own words. ([Contradiction](#contradiction))
+   **→ I recommend taking it OUT and leaving `ShipmentFee` in.** Freight is agreed before the journey
+   and is genuinely part of what the goods cost. A tip is unpredictable, small, and — because
+   `freightPerUnit` floors — frequently contributes **0 per unit** while being charged in full on the
+   balance. That is the worst possible input to a permanently frozen number.
 
 ---
 
@@ -241,6 +251,45 @@ flowchart TB
   Q -->|"the OWNER's"| D["the owner holds its own markup<br/>FIFO draws cost more and §Warehouse 5 overpays"]
   D --> E["two identical units on one shelf, worth different amounts"]
 ```
+
+## `AdditionalWarehouseFee` is capitalised into UnitPrice, and `balance_context.md` has now defined it as a TIP
+
+**Raised by a decision in another doc, and the fix belongs here** — §Unit Price Components is what
+decides the formula.
+
+> `product_context.md` §Unit Price Components: `UnitPrice = ProductPrice + ((ShipmentFee + `**`AdditionalWarehouseFee`**`) / AllProductQtyRestock)`
+> `balance_context.md` §Why `cod_fee` Exists: *"shipping channel person who brought the goods ask accidental fee (`cod_fee`) … for the cost like coffe tip or other."*
+
+They are the **same money** — *"additional warehouse fee **on accept stock (optional)**"* and
+*"**optionally** set warehouse when accept restock"* describe one line item
+([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
+So a discretionary tip handed over at a door is currently **frozen into the goods' cost forever**,
+and every later COGS, margin and breakage reimbursement reads it.
+
+**Three consequences, and the third is the one that decides it:**
+
+1. **It is permanent where the debt is not.** The ledger entry can be reversed; `stock_batches.unit_cost`
+   is frozen at acceptance and has no correction path.
+2. **It sets what the warehouse owes itself back.** A `broken_good` reimbursement is `qty × unit_cost` —
+   so a bigger tip today means a bigger payout if the warehouse breaks the goods tomorrow.
+3. ⚠ **The same rupiah is EXACT in the ledger and rounds to ZERO in the cost.** `freightPerUnit` is
+   integer division (`restock_request_fulfill.go`), so a 5.000 tip across 1.000 units contributes
+   **0** to unit price while being charged **in full** on the balance. The capitalisation is therefore
+   already unreliable for exactly the amounts this fee is described as being.
+
+```mermaid
+flowchart LR
+  T["a courier's ask at the door"] --> L["cod_fee — charged in full, reversible"]
+  T --> U["÷ qty, integer floor"]
+  U --> Z["often 0 per unit — silently dropped"]
+  U --> P["when non-zero: frozen in unit_cost forever"]
+```
+
+**→ Recommend: keep `cod_fee` OUT of `UnitPrice`.** ⚠ **`balance_context.md`'s own diagram already
+names it** — *"Charge to selling as **reimbursement**"*. A reimbursement is money going back to
+whoever fronted it, not a component of what the goods cost. Add that it is unpredictable and small,
+and it is the worst possible input to a permanently frozen number. `ShipmentFee` stays inside: it is
+agreed before the journey and is genuinely part of what the goods cost. Asked as [Q6](#question).
 
 ---
 

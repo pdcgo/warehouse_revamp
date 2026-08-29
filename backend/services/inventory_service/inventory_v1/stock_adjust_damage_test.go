@@ -10,8 +10,8 @@ import (
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
-	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
 
 // The team `acceptOne` raises its restock as — so the batches it mints are owned by team 2, and team 2
@@ -82,7 +82,7 @@ func adjustBatch(
 func TestStockAdjust_DamageMakesTheWarehouseOweTheOwner(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -116,7 +116,7 @@ func TestStockAdjust_DamageMakesTheWarehouseOweTheOwner(t *testing.T) {
 func TestStockAdjust_LostReimbursesToo(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -135,7 +135,7 @@ func TestStockAdjust_LostReimbursesToo(t *testing.T) {
 func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -173,7 +173,7 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 func TestStockAdjust_DamageIsKeyedOnItsMovement(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -203,7 +203,7 @@ func TestStockAdjust_DamageIsKeyedOnItsMovement(t *testing.T) {
 func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -231,7 +231,7 @@ func TestStockAdjust_RecountReimbursesNobody(t *testing.T) {
 func TestStockAdjust_UnknownCostPostsNoDebt(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	const warehouse uint64 = 5
 
@@ -258,7 +258,7 @@ func TestStockAdjust_UnknownCostPostsNoDebt(t *testing.T) {
 func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	// acceptOne raises the restock as team 2, so making the warehouse team 2 makes it its own owner.
 	const warehouse uint64 = damageOwnerTeam
@@ -275,13 +275,13 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 
 // ── The whole chain, against the real ledger ────────────────────────────────────────────────────
 //
-// The tests above prove inventory's half with a fake. This one wires the REAL settlement service
+// The tests above prove inventory's half with a fake. This one wires the REAL liability service
 // through the same adapter shape the composition root uses, so the assertion is about rows in
-// `settlement_balances` rather than about a call being made — and about the SIGN, which is the one
+// `liability_balances` rather than about a call being made — and about the SIGN, which is the one
 // thing a fake can agree with while production has it backwards.
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &realPoster{settlement: settlement_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
 
 	const warehouse uint64 = 5
 
@@ -292,7 +292,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 
 	// THE OWNER IS OWED: positive on its side. If this ever reads -200000 the warehouse has billed the
 	// team whose stock it destroyed.
-	var ownerBalance settlement_service_models.SettlementBalance
+	var ownerBalance liability_service_models.LiabilityBalance
 
 	err := db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -308,7 +308,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	}
 
 	// And the entry says WHY, by id.
-	var entry settlement_service_models.SettlementEntry
+	var entry liability_service_models.LiabilityEntry
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -340,7 +340,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 
 	var entries int64
 
-	err = db.Model(&settlement_service_models.SettlementEntry{}).
+	err = db.Model(&liability_service_models.LiabilityEntry{}).
 		Where("team_id = ? AND counterparty_id = ? AND source_type = ?",
 			damageOwnerTeam, warehouse, "stock_damage").
 		Count(&entries).Error

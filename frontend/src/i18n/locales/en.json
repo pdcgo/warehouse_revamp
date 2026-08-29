@@ -22,14 +22,13 @@
     "users": "Users",
     "settings": "Settings",
     "profile": "Profile",
-    "revenue": "Revenue",
     "expenses": "Expenses",
-    "profit": "Profit",
     "orderDrafts": "Order Drafts",
     "statement": "Statement",
-    "settlement": "Liability",
     "picking": "Picking",
-    "more": "More"
+    "more": "More",
+    "liability": "Liability",
+    "settlement": "Settlement"
   },
   "menu": {
     "theme": "Theme",
@@ -67,7 +66,11 @@
     "colAwaiting": "Awaiting",
     "toConfirm": "{{count}} to confirm",
     "teamFallback": "Team #{{id}}",
-    "empty": "No counterparties yet."
+    "empty": "No counterparties yet.",
+    "selectTeamView": "Select a team to view its position.",
+    "theyOweYou": "They owe you {{amount}}",
+    "youOweThem": "You owe them {{amount}}",
+    "square": "Square"
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -100,6 +103,7 @@
     "causeHandlingFee": "Handling fee · order #{{id}}",
     "causeProductFee": "Product fee · order #{{id}}",
     "causePayment": "Payment #{{id}}",
+    "causeStockDamage": "Stock damage · movement #{{id}}",
     "causeUnknown": "Unknown #{{id}}",
     "statusRecorded": "Recorded",
     "statusConfirmed": "Confirmed",
@@ -559,7 +563,8 @@
     "detail": {
       "tab": {
         "info": "Info",
-        "timeline": "Timeline"
+        "timeline": "Timeline",
+        "settlement": "Settlement"
       }
     },
     "timeline": {
@@ -618,35 +623,6 @@
     "promoted": "Order created from the draft",
     "deleteOneTitle": "Delete Order Draft",
     "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again."
-  },
-  "settlement": {
-    "title": "Liability",
-    "intro": "What you and each counterparty owe each other. Chase the oldest first — a debt nobody chases is one nobody gets paid.",
-    "selectTeamView": "Select a team to view its position.",
-    "counterparty": "Counterparty",
-    "position": "Position",
-    "ageing": "Ageing",
-    "unsettledOnly": "Unsettled only",
-    "theyOweYou": "They owe you {{amount}}",
-    "youOweThem": "You owe them {{amount}}",
-    "square": "Square",
-    "oldestUnsettled": "oldest unsettled {{days}} days",
-    "awaiting": "{{count}} awaiting you",
-    "allSquare": "Everything is settled.",
-    "noCounterparties": "No counterparties yet.",
-    "back": "Back to Liability",
-    "what": "What",
-    "amount": "Amount",
-    "balanceAfter": "Balance after",
-    "when": "When",
-    "reversal": "Reversed",
-    "noEntries": "Nothing has moved between you yet.",
-    "sourceCodFee": "COD fee, restock",
-    "sourceHandlingFee": "Handling fee, order",
-    "sourceProductFee": "Product fee, order",
-    "sourcePayment": "Payment",
-    "sourceUnknown": "Unknown",
-    "sourceRestockOutlay": "Delivery costs, restock"
   },
   "restock": {
     "title": "Restock Requests",
@@ -720,7 +696,8 @@
       "tab": {
         "info": "Info",
         "products": "Product",
-        "timeline": "Timeline"
+        "timeline": "Timeline",
+      "settlement": "Settlement"
       },
       "product": "Product",
       "accepted": "Accepted"
@@ -1613,26 +1590,6 @@
       "stepFailed": "Could not record that step"
     }
   },
-  "revenue": {
-    "title": "Revenue",
-    "selectTeam": "Select a team to view its revenue.",
-    "empty": "No revenue recorded yet.",
-    "expectedNotice": "These are EXPECTED figures, frozen when each order was placed — not money that has been paid out and reconciled.",
-    "table": {
-      "order": "Order",
-      "revenue": "Revenue",
-      "cogs": "COGS",
-      "shipping": "Shipping",
-      "margin": "Expected Margin",
-      "unknown": "Unknown",
-      "voided": "Cancelled"
-    },
-    "totals": {
-      "heading": "This Period",
-      "unknownCost_one": "{{count}} order has an unknown cost — its margin reads as if the goods were free.",
-      "unknownCost_other": "{{count}} orders have an unknown cost — their margin reads as if the goods were free."
-    }
-  },
   "batches": {
     "title": "Batches",
     "selectTeam": "Select a warehouse team to see its batches.",
@@ -1800,24 +1757,9 @@
     "noBatches": "No deliveries of this product yet.",
     "owner": "Owner"
   },
-  "profit": {
-    "title": "Profit",
-    "selectTeam": "Select a team to view its profit.",
-    "expectedNotice": "These are EXPECTED figures, not settled money — the margin below has not been reconciled against what any marketplace actually paid out.",
-    "expectedMargin": "Expected margin",
-    "marginSource": "From orders placed this month",
-    "totalCost": "Costs",
-    "costSource": "Recorded against this month",
-    "profit": "Profit",
-    "loss": "This month spent more than it made.",
-    "unknownCost": "{{count}} order with an unknown cost is counted as pure profit — the figure above is overstated by whatever those goods cost.",
-    "unknownCost_other": "{{count}} orders with an unknown cost are counted as pure profit — the figure above is overstated by whatever those goods cost.",
-    "breakdown": "What the costs were"
-  },
   "statement": {
     "title": "Statement",
     "selectTeam": "Select a team to view its statement.",
-    "expectedNotice": "These are EXPECTED figures, not settled money — no marketplace payout has been reconciled against them.",
     "rangeUnbounded": "Pick a start and an end date — a statement needs both ends.",
     "rangeTooLong": "That range covers {{days}} days. A statement covers at most {{max}}.",
     "expectedMargin": "Expected margin",
@@ -1830,7 +1772,6 @@
     "ofWhichStockLoss": "of which {{amount}} stock written off",
     "profit": "Profit",
     "loss": "This period spent more than it made.",
-    "unknownCost": "{{count}} order with an unknown cost is counted as pure profit — every figure here is overstated by whatever those goods cost.",
     "unknownCost_other": "{{count}} orders with an unknown cost are counted as pure profit — every figure here is overstated by whatever those goods cost.",
     "hideQuiet": "Hide {{unit}} with no activity",
     "dayCount": "Showing {{shown}} of {{total}} {{unit}}",
@@ -1867,7 +1808,8 @@
     "perUnit": "Per {{unit}}",
     "perUnitSource": "Averaged over {{count}} {{unit}}",
     "unknownCostRow": "{{count}} order in this {{unit}} had an unknown cost",
-    "unknownCostRow_other": "{{count}} orders in this {{unit}} had an unknown cost"
+    "unknownCostRow_other": "{{count}} orders in this {{unit}} had an unknown cost",
+    "notAvailable": "Statistics for this team are being rebuilt — this screen currently serves warehouse teams only."
   },
   "balance": {
     "title": "Balance Sheet",
@@ -1997,5 +1939,74 @@
     "day": "Daily",
     "month": "Monthly",
     "year": "Yearly"
+  },
+  "orderSettlement": {
+    "tab": "Settlement",
+    "initialTotalWarning": "⚠ This rewrites the sale every loss on this order is measured against. It cannot be edited or deleted afterwards — only offset.",
+    "panelTitle": "Settlement ledger",
+    "addEntry": "Add entry",
+    "rowActions": "Row actions",
+    "reverse": "Reverse",
+    "reverseTitle": "Reverse This Entry",
+    "reverseBody": "This posts a new entry of {{amount}} in the opposite direction. The original stays on the ledger — entries are never edited or deleted.",
+    "reverseConfirm": "Post reversal",
+    "reversalOf": "reverses an earlier entry",
+    "appendOnlyNotice": "Entries cannot be edited or deleted. A correction is posted as a further entry, so the ledger stays a record of what happened.",
+    "postedOn": "learned {{date}}",
+    "estimate": "Sold for",
+    "received": "Received",
+    "lost": "Lost",
+    "gained": "Gained",
+    "trueMargin": "True margin",
+    "lossHint": "{{hidden}} never itemised, {{named}} named",
+    "noEstimateTitle": "No marketplace total was recorded for this order",
+    "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace total.",
+    "listTitle": "Settlement",
+    "listSubtitle": "Orders ranked by how much of what the buyer paid never reached us. A gap is normal — the platform keeps costs it never itemises.",
+    "totalEstimate": "Sold for",
+    "totalLost": "Lost",
+    "totalHidden": "Never itemised",
+    "impliedRate": "{{rate}}% of sales",
+    "filterShop": "Shop",
+    "allShops": "All shops",
+    "noRef": "(no reference)",
+    "hasManual": "has manual entries",
+    "rowNoEstimate": "No marketplace total recorded — nothing to measure against",
+    "col": {
+      "when": "When",
+      "type": "Type",
+      "detail": "Detail",
+      "change": "Change",
+      "balance": "Balance",
+      "order": "Order",
+      "shop": "Shop",
+      "estimate": "Sold for",
+      "received": "Received",
+      "lost": "Lost",
+      "hidden": "Never itemised"
+    },
+    "type": {
+      "initial_total": "Estimate",
+      "fund": "Payout",
+      "external_ads_fee": "Ads fee",
+      "affiliate_fee": "Affiliate fee",
+      "marketplace_adjustment": "Adjustment",
+      "other": "Other"
+    },
+    "addDialogTitle": "Add Settlement Entry",
+    "addDialogConfirm": "Post entry",
+    "addDialogWarning": "Entries cannot be edited or deleted afterwards. A mistake is corrected by posting a reversal.",
+    "directionIn": "Money reached us",
+    "directionOut": "Money taken from us",
+    "previewIn": "This will add {{amount}} to the order.",
+    "previewOut": "This will take {{amount}} from the order.",
+    "occurredHelp": "The day the charge belongs to, not today. The day it was recorded is stamped separately.",
+    "field": {
+      "type": "Type",
+      "direction": "Direction",
+      "amount": "Amount",
+      "occurredOn": "Belongs to",
+      "note": "Note"
+    }
   }
 }

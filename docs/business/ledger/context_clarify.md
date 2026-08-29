@@ -143,7 +143,7 @@ than no gate**, because it also produces a false audit trail.
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **The one cause that REDUCES a debt has no way into the book.** [balance_context.md](../balance/context.md) cause 6 — *"Create / Accepting Payment other teams"* — maps to **none** of the four sources *(lines 8, 18, 27, 36)*, while `architecture_context.md:10` lists *"payments"* inside the ledger. A projection has no inbound path except the broker, and nothing publishes a payment. **As drawn, a balance can only grow.** | **`payment-is-the-fifth-source`** — a fifth box with its own `payment_log`, and a **two-phase** state, because *"Create / Accepting"* is a handshake, not a write. It also needs an owning service, which the six in `architecture_context.md` do not contain. |
-| **2** | **Four logs and one book that can disagree, and no reconciler is named.** Under [ledger-is-downstream-projection](#ledger-is-downstream-projection) this is no longer avoidable — it is the cost of the option you chose, and it has to be budgeted rather than discovered. Nothing says who compares them, at what cadence, at what tolerance, or what happens when they differ. | **A daily job comparing `SUM(*_log)` against the projected book, per team pair, with a named human owner** — and a non-zero result treated as an **incident**, not a log line. Tolerance zero: [balance_context Critique 8](../balance/context_clarify.md#critique) already asks for exact whole rupiah. |
+| **2** | **Four logs and one book that can disagree, and no reconciler is named.** Under [ledger-is-downstream-projection](#ledger-is-downstream-projection) this is no longer avoidable — it is the cost of the option you chose, and it has to be budgeted rather than discovered. Nothing says who compares them, at what cadence, at what tolerance, or what happens when they differ. | **A daily job comparing `SUM(*_log)` against the projected book, per team pair, with a named human owner** — and a non-zero result treated as an **incident**, not a log line. Tolerance zero: [balance_context Critique 7](../balance/context_clarify.md#critique) already asks for exact whole rupiah. |
 | **3** | **At-least-once delivery is unhandled, and here it corrupts the BOOK.** A redelivery re-runs `Event Processing` *(line 57)* and **double-posts**. Reordering makes the balance transiently wrong. Neither dedupe nor an idempotency key appears anywhere. | **An idempotency key carried by the log row and enforced by the consumer** — the causing act's natural key (`shop_id` + `marketplace_order_id` + leg for an order, `receipt_id` for a restock). Same defence as [order Q1](../order/context_clarify.md#question), one layer down. |
 | **4** | **A dead-lettered event is a permanently wrong book.** `CLAUDE.md` requires a DLQ on push subscriptions, and under this flow a poisoned message is not a lost notification — it is a missing entry that no screen will ever show as missing. | **Alarm on the DLQ with a named owner, and a replay path.** And the reconciler in [Critique 2](#critique) is what *detects* it, which is a second reason it is not optional. |
 | **5** | **Purchasing is a first-class money source here and has no owning service anywhere.** *(line 18)* — `architecture_context.md:4-10` names six services and none is purchasing, [balance_context](../balance/context_clarify.md)'s six causes do not include paying a supplier, and [order_context](../order/context_clarify.md) credits an asset that no documented transaction ever created. | Either **describe purchasing as a business flow** — who buys, who types the price, is a supplier payable tracked — or **delete the box**. My pick: describe it. It is the largest cash outflow in the business and it currently has no record at all. |
@@ -155,12 +155,15 @@ than no gate**, because it also produces a false audit trail.
 
 ## Question
 
-1. **Where does the Debt Threshold gate live, and does it BLOCK or WARN?**
-   [balance_context.md](../balance/context.md) says *"prevent"*, which a projection
-   cannot do. ([gate-reads-exposure-not-the-book](#gate-reads-exposure-not-the-book))
-   **→ I recommend a synchronous pair-exposure counter outside the ledger, and BLOCK.**
-   *(⚠ The decision belongs in [balance_context](../balance/context_clarify.md#question) — asked here only
-   because line 4 is what removed its previous home.)*
+1. **⚠ NARROWED — the gate SHIPPED, and it shipped as recommended.**
+   `liability_service.CheckCredit` is a synchronous read of `liability_balances` (the projection, not the
+   entries), **outside** the posting path, and it **blocks** — with the reasoning written into the code:
+   *"the ledger records what happened and must never decline to record it."* So *where it lives* and
+   *block-or-warn* are answered. ([gate-reads-exposure-not-the-book](#gate-reads-exposure-not-the-book))
+   **What is still open is the business half, and it is yours**: whether the admin/root **override is
+   recorded and expires**, and whether the gate must never block a **payment**. Both are asked at their
+   proper home — [balance Q2](../balance/context_clarify.md#question) and
+   [technical balance Q6](../../technical/balance/team_balance_design_clarify.md#question).
 2. **Does a `*_log` row carry the frozen amounts, or only the fact?** ([Critique 7](#critique))
    **→ I recommend the frozen amounts — the layer, the qty, the unit price, the markup, the fee.**
 3. **Which box writes a PAYMENT?** ([Critique 1](#critique))
@@ -227,7 +230,7 @@ flowchart TB
   this file. Three or four more — what a log row holds, what the projection may lag by, who reconciles —
   would close most of what is left.
 - **No currency, precision or rounding statement.** Carried from
-  [balance_context Critique 8](../balance/context_clarify.md#critique), and it lands here hardest: the log rows
+  [balance_context Critique 7](../balance/context_clarify.md#critique), and it lands here hardest: the log rows
   are now where rounding is frozen forever.
 - **No retention rule for four permanent record-of-truth tables.** They are now the audit trail, so "how
   long" is a business answer, not an ops one.

@@ -7,10 +7,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
-	revenue_service "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service"
-	revenue_v1 "github.com/pdcgo/warehouse_revamp/backend/services/revenue_service/revenue_v1"
-	settlement_service "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service"
-	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
+	liability_service "github.com/pdcgo/warehouse_revamp/backend/services/liability_service"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
 
 // NewEventSender provides the EventSender the services publish through (#153).
@@ -29,33 +27,32 @@ import (
 //     synchronous where production is not. Anything that depends on those has to be reasoned about,
 //     or tested against the emulator (`docker compose --profile pubsub up -d`).
 //
-// The synchronous part is safe only because the publisher ignores publish errors by design: a revenue
+// The synchronous part is safe only because the publisher ignores publish errors by design: a consumer
 // failure must not fail the order. If a caller ever starts depending on the returned error, this
-// loopback would couple an order's fate to revenue's — which is exactly what the event was chosen to
-// avoid.
+// loopback would couple an order's fate to its consumers' — which is exactly what the event was chosen
+// to avoid.
 func NewEventSender(
-	revenueService *revenue_v1.Service,
-	settlementService *settlement_v1.Service,
+	liabilityService *liability_v1.Service,
 ) event_source.EventSender {
-	revenueHandler := revenue_service.NewRevenuePushHandler(revenueService)
-	settlementHandler := settlement_service.NewSettlementPushHandler(settlementService)
+	liabilityHandler := liability_service.NewLiabilityPushHandler(liabilityService)
 
 	// Which subscriptions each event is delivered to. In production this mapping lives in Pub/Sub's
 	// topic→subscription configuration; here it has to be stated, because there is no Pub/Sub.
 	//
-	// ⚠ A TOPIC FANS OUT TO SEVERAL SUBSCRIPTIONS (#186). Both revenue and settlement consume the same
-	// two order events, each with its own subscription — that is the whole point of a topic. This was
-	// a single subscription per topic until settlement became a second consumer, and the loopback has
-	// to model the fan-out or the dev server would silently deliver to whichever one was listed.
+	// ⚠ A TOPIC FANS OUT TO SEVERAL SUBSCRIPTIONS (#186), and this list must model that even while only
+	// ONE consumer is left. `liability_service` is currently the only subscriber to the two order
+	// events — `revenue_service` was the other and has been removed — but the shape stays a fan-out
+	// list, because a loopback that assumes one handler per topic silently drops the second the day one
+	// is added back. The order events keep being PUBLISHED regardless of who listens (see
+	// order_place.go): that is what makes a statistics consumer re-addable later without touching
+	// selling_service.
 	deliveries := []struct {
 		topic        string
 		subscription string
 		handler      event_source.PushHandler
 	}{
-		{"order-placed", revenue_service.OrderPlacedSubscription, revenueHandler},
-		{"order-cancelled", revenue_service.OrderCancelledSubscription, revenueHandler},
-		{"order-placed", settlement_service.OrderPlacedSubscription, settlementHandler},
-		{"order-cancelled", settlement_service.OrderCancelledSubscription, settlementHandler},
+		{"order-placed", liability_service.OrderPlacedSubscription, liabilityHandler},
+		{"order-cancelled", liability_service.OrderCancelledSubscription, liabilityHandler},
 	}
 
 	return func(ctx context.Context, event proto.Message) (string, error) {

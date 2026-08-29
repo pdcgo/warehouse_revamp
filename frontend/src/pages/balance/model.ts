@@ -11,7 +11,7 @@ import { formatRupiah } from "../../lib/money";
 // as the gap analysis — it says exactly how much of the position no part of this system knows.
 
 /** Which service could serve a line TODAY. `none` is the interesting one. */
-export type LineSource = "inventory" | "settlement" | "profit" | "none";
+export type LineSource = "inventory" | "liability" | "profit" | "none";
 
 export interface BalanceLine {
   /** Stable id — the i18n key and the test id both derive from it. */

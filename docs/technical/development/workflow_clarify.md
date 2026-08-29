@@ -23,7 +23,7 @@ Siblings: [development_level](./level.md) (its nearest neighbour, and
 | --- | --- | --- |
 | `CLAUDE.md` § Git workflow | the rule as an **agent instruction** — branch, board, issue comments, Priority field | enforced on every session |
 | [docs/faq/workflow.md](../../faq/workflow.md) | the same rule as a **how-to**, with the `gh` commands | explains, never decides |
-| `.claude/skills/` (`overnight-board`, the audits) | the rule **automated** | executes |
+| `.claude/skills/` (the audits, `faq-create`, `run-warehouse-revamp`) | the rule **automated** | executes |
 | **this doc** | ??? | undefined |
 
 ```mermaid

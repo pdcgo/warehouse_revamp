@@ -28,7 +28,7 @@ import { check, gaps, section, sectionTotal, type BalanceSheet } from "./model";
 //
 // ⚠ A DESIGN MOCK, ON PURPOSE (see model.ts). It takes its whole sheet as a PROP: there is no query
 // hook, no client, no route and no menu entry, because there is nothing to wire it to. This system
-// has revenue, expenses, settlement and inventory — it has no journal, no chart of accounts and no
+// has revenue, expenses, liability and inventory — it has no journal, no chart of accounts and no
 // cash account, so every figure a balance sheet needs comes either from a service that was never
 // asked for it or from nowhere at all.
 //

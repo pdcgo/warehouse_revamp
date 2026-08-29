@@ -16,10 +16,10 @@ type CreditBlock struct {
 	Limit int64
 }
 
-// CreditChecker asks settlement_service whether this team may take on more debt (#189).
+// CreditChecker asks liability_service whether this team may take on more debt (#189).
 //
 // An INTERFACE THIS SERVICE OWNS, expressed in this service's own types, for exactly the reason
-// StockPicker is: selling_service must never import settlement_service, and the implementation lives
+// StockPicker is: selling_service must never import liability_service, and the implementation lives
 // in the composition root where knowing about both is the entire job.
 //
 // ⚠ IT IS A PRE-CHECK, NOT A GUARD ON THE LEDGER. The ledger records what happened and never declines
@@ -45,7 +45,7 @@ type CreditChecker interface {
 // Deliberately permissive rather than a nil check at the call site, and deliberately NOT the
 // production default — the composition root wires the real one. Placing an order must not fail
 // because a downstream ledger was not wired up, and a unit test about shops should not have to
-// construct a settlement service to sell something.
+// construct a liability service to sell something.
 type noCredit struct{}
 
 func (noCredit) Check(context.Context, uint64, []uint64) (*CreditBlock, error) {

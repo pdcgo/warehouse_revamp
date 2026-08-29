@@ -71,7 +71,7 @@ func acceptWithCosts(
 func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
@@ -115,7 +115,7 @@ func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
 func TestRestockFulfil_PostsOneObligationForTheWholeOutlay(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
@@ -152,7 +152,7 @@ func TestRestockFulfil_PostsOneObligationForTheWholeOutlay(t *testing.T) {
 //	500.000 / 10 = 50.000 goods per unit  →  54.500 HPP
 func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &recordingPoster{})
+	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
 	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
@@ -186,7 +186,7 @@ func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
 // argue with. The pair rule cannot be expressed in protovalidate, so it is the handler's.
 func TestRestockFulfil_RefusesAnOtherCostWithNoNote(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &recordingPoster{})
+	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
 	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, ""),
@@ -204,7 +204,7 @@ func TestRestockFulfil_RefusesAnOtherCostWithNoNote(t *testing.T) {
 // charged, while showing on the screen that has to justify it as "unspecified".
 func TestRestockFulfil_RefusesAnUnknownCostKind(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &recordingPoster{})
+	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
 	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		{Kind: inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED, Amount: 5000},
@@ -222,7 +222,7 @@ func TestRestockFulfil_RefusesAnUnknownCostKind(t *testing.T) {
 // never half-received because of a typo in a cost.
 func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithSettlement(t, db, &recordingPoster{})
+	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, ""),
@@ -263,7 +263,7 @@ func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
 func TestRestockFulfil_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, nil)
 	if err != nil {
@@ -296,7 +296,7 @@ func TestRestockFulfil_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
 func TestRestockFulfil_AFailedPostingRollsBackTheCostLines(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{fail: errors.New("the ledger is down")}
-	svc := newServiceWithSettlement(t, db, poster)
+	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
 		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),

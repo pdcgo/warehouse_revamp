@@ -266,7 +266,7 @@ func (s *Service) countOne(
 				continue
 			}
 
-			postErr := s.settlement.PostStockDamage(ctx, tx, ownerTeamID, warehouseID, mv.ID, amount, false)
+			postErr := s.liability.PostStockDamage(ctx, tx, ownerTeamID, warehouseID, mv.ID, amount, false)
 			if postErr != nil {
 				return nil, postErr
 			}

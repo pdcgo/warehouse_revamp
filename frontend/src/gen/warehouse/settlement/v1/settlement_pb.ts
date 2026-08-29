@@ -5,10 +5,10 @@
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv1";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb";
+import type { CommonPagination, CommonSortType, GeneralMapItem } from "../../common/v1/list_pb";
+import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import type { PageInfo } from "../../common/v1/page_pb";
 import { file_warehouse_common_v1_page } from "../../common/v1/page_pb";
-import type { CommonPagination, CommonSortType, GeneralMapItem, GeneralSort } from "../../common/v1/list_pb";
-import { file_warehouse_common_v1_list } from "../../common/v1/list_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -16,11 +16,10 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/settlement/v1/settlement.proto.
  */
 export const file_warehouse_settlement_v1_settlement: GenFile = /*@__PURE__*/
-  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSKCAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFwoPY291bnRlcnBhcnR5X2lkGAMgASgEEg4KBmFtb3VudBgEIAEoAxJCCgtzb3VyY2VfdHlwZRgFIAEoDjItLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRTb3VyY2VUeXBlEhEKCXNvdXJjZV9pZBgGIAEoBBIQCghyZXZlcnNhbBgHIAEoCBIQCghncm91cF9pZBgIIAEoBBIVCg1iYWxhbmNlX2FmdGVyGAkgASgDEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAyJ/ChJTZXR0bGVtZW50UG9zaXRpb24SFwoPY291bnRlcnBhcnR5X2lkGAEgASgEEg8KB2JhbGFuY2UYAiABKAMSIAoYb2xkZXN0X3Vuc2V0dGxlZF9hdF91bml4GAMgASgDEh0KFWF3YWl0aW5nX2NvbmZpcm1hdGlvbhgEIAEoDSJPChxTZXR0bGVtZW50UG9zaXRpb25MaXN0RmlsdGVyEhcKD2NvdW50ZXJwYXJ0eV9pZBgBIAEoBBIWCg51bnNldHRsZWRfb25seRgCIAEoCCLZAQogU2V0dGxlbWVudFBvc2l0aW9uTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEkMKCHBvc2l0aW9uGAMgASgOMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uU29ydEgAQgMKAXMi5wIKHVNldHRsZW1lbnRQb3NpdGlvbkxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkUKBmZpbHRlchgCIAEoCzI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RGaWx0ZXISRwoEc29ydBgDIAEoCzI5LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RGaWx0ZXJTb3J0Ek0KDGRhdGFfcmVxdWVzdBgEIAMoDjI3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DJK1GAgKBgECAwQGCSLLAQoZU2V0dGxlbWVudFBvc2l0aW9uTWFwSXRlbRJRCghtYXBfZGF0YRgBIAMoCzI/LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbk1hcEl0ZW0uTWFwRGF0YUVudHJ5GlsKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSOgoFdmFsdWUYAiABKAsyKy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UG9zaXRpb246AjgBIqkBCiJTZXR0bGVtZW50UG9zaXRpb25MaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRgoIcG9zaXRpb24YAiABKAsyMi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UG9zaXRpb25NYXBJdGVtSABCAwoBZCLKAQoeU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlEkoKBWl0ZW1zGAEgAygLMjsud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbxIdChVhd2FpdGluZ19jb25maXJtYXRpb24YBCABKA0iPQoZU2V0dGxlbWVudEVudHJ5TGlzdEZpbHRlchIgCg9jb3VudGVycGFydHlfaWQYASABKARCB7pIBDICIAAinQIKGlNldHRsZW1lbnRFbnRyeUxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkoKBmZpbHRlchgCIAEoCzIyLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeUxpc3RGaWx0ZXJCBrpIA8gBARJKCgxkYXRhX3JlcXVlc3QYAyADKA4yNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlMaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgyStRgICgYBAgMEBgkiwgEKFlNldHRsZW1lbnRFbnRyeU1hcEl0ZW0STgoIbWFwX2RhdGEYASADKAsyPC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlNYXBJdGVtLk1hcERhdGFFbnRyeRpYCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjcKBXZhbHVlGAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5OgI4ASKgAQofU2V0dGxlbWVudEVudHJ5TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkAKBWVudHJ5GAIgASgLMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5TWFwSXRlbUgAQgMKAWQitgEKG1NldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZRJHCgVpdGVtcxgBIAMoCzI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeUxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SDwoHYmFsYW5jZRgEIAEoAyKUAQoVU2V0dGxlbWVudERhaWx5RmlsdGVyEjEKBGZyb20YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEi8KAnRvGAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIXCg9jb3VudGVycGFydHlfaWQYAyABKAQijAEKFlNldHRsZW1lbnREYWlseVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRgoGZmlsdGVyGAIgASgLMi4ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudERhaWx5RmlsdGVyQga6SAPIAQE6DJK1GAgKBgECAwQGCSK9AQoRU2V0dGxlbWVudERheUl0ZW0SDAoEZGF0ZRgBIAEoCRIPCgdlbnRyaWVzGAIgASgEEgsKA25ldBgDIAEoAxJLCglieV9zb3VyY2UYBCADKAsyOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RGF5SXRlbS5CeVNvdXJjZUVudHJ5Gi8KDUJ5U291cmNlRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgDOgI4ASKmAQoVU2V0dGxlbWVudERhaWx5VG90YWxzEgsKA25ldBgBIAEoAxJPCglieV9zb3VyY2UYAiADKAsyPC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RGFpbHlUb3RhbHMuQnlTb3VyY2VFbnRyeRovCg1CeVNvdXJjZUVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAzoCOAEikwEKF1NldHRsZW1lbnREYWlseVJlc3BvbnNlEjgKBGRheXMYASADKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RGF5SXRlbRI+CgZ0b3RhbHMYAiABKAsyLi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RGFpbHlUb3RhbHMijwIKEVNldHRsZW1lbnRQYXltZW50EgoKAmlkGAEgASgEEhUKDXBheWVyX3RlYW1faWQYAiABKAQSGAoQY3JlZGl0b3JfdGVhbV9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAMSQAoGc3RhdHVzGAUgASgOMjAud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRTdGF0dXMSDAoEbm90ZRgGIAEoCRITCgtyZWNvcmRlZF9ieRgHIAEoBBIUCgxjb25maXJtZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAkgASgDEhkKEWNvbmZpcm1lZF9hdF91bml4GAogASgDIqABCh5TZXR0bGVtZW50UGF5bWVudFJlY29yZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESIQoQY3JlZGl0b3JfdGVhbV9pZBgCIAEoBEIHukgEMgIgABIXCgZhbW91bnQYAyABKANCB7pIBCICIAASFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6DJK1GAgKBgECAwQGCSJeCh9TZXR0bGVtZW50UGF5bWVudFJlY29yZFJlc3BvbnNlEjsKB3BheW1lbnQYASABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudCJqCh9TZXR0bGVtZW50UGF5bWVudENvbmZpcm1SZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhsKCnBheW1lbnRfaWQYAiABKARCB7pIBDICIAA6DJK1GAgKBgECAwQGCSJfCiBTZXR0bGVtZW50UGF5bWVudENvbmZpcm1SZXNwb25zZRI7CgdwYXltZW50GAEgASgLMioud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnQihgEKH1NldHRsZW1lbnRQYXltZW50UmV2ZXJzZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKcGF5bWVudF9pZBgCIAEoBEIHukgEMgIgABIaCgZyZWFzb24YAyABKAlCCrpIB3IFEAEY9AM6DJK1GAgKBgECAwQGCSJfCiBTZXR0bGVtZW50UGF5bWVudFJldmVyc2VSZXNwb25zZRI7CgdwYXltZW50GAEgASgLMioud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnQiWAobU2V0dGxlbWVudFBheW1lbnRMaXN0RmlsdGVyEhcKD2NvdW50ZXJwYXJ0eV9pZBgBIAEoBBIgChhhd2FpdGluZ19teV9jb25maXJtYXRpb24YAiABKAgimwIKHFNldHRsZW1lbnRQYXltZW50TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRAoGZmlsdGVyGAIgASgLMjQud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRMaXN0RmlsdGVyEkwKDGRhdGFfcmVxdWVzdBgDIAMoDjI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToMkrUYCAoGAQIDBAYJIsgBChhTZXR0bGVtZW50UGF5bWVudE1hcEl0ZW0SUAoIbWFwX2RhdGEYASADKAsyPi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudE1hcEl0ZW0uTWFwRGF0YUVudHJ5GloKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSOQoFdmFsdWUYAiABKAsyKi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudDoCOAEipgEKIVNldHRsZW1lbnRQYXltZW50TGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkQKB3BheW1lbnQYAiABKAsyMS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudE1hcEl0ZW1IAEIDCgFkIqkBCh1TZXR0bGVtZW50UGF5bWVudExpc3RSZXNwb25zZRJJCgVpdGVtcxgBIAMoCzI6LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKzAQoPU2V0dGxlbWVudFRlcm1zEg8KB3RlYW1faWQYASABKAQSFwoPY291bnRlcnBhcnR5X2lkGAIgASgEEh0KDGhhbmRsaW5nX2ZlZRgDIAEoA0IHukgEIgIoABIiChFwcm9kdWN0X21hcmt1cF9icBgEIAEoA0IHukgEIgIoABIiCgxjcmVkaXRfbGltaXQYBSABKANCB7pIBCICKABIAIgBAUIPCg1fY3JlZGl0X2xpbWl0ItEBChpTZXR0bGVtZW50VGVybXNMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJKCgxkYXRhX3JlcXVlc3QYAiADKA4yNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNMaXN0RGF0YVR5cGUSOwoEcGFnZRgDIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgyStRgICgYBAgMEBgkiwgEKFlNldHRsZW1lbnRUZXJtc01hcEl0ZW0STgoIbWFwX2RhdGEYASADKAsyPC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNNYXBJdGVtLk1hcERhdGFFbnRyeRpYCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjcKBXZhbHVlGAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zOgI4ASKgAQofU2V0dGxlbWVudFRlcm1zTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEkAKBXRlcm1zGAIgASgLMi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zTWFwSXRlbUgAQgMKAWQipQEKG1NldHRsZW1lbnRUZXJtc0xpc3RSZXNwb25zZRJHCgVpdGVtcxgBIAMoCzI4LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0xpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8i2AEKGVNldHRsZW1lbnRUZXJtc1NldFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESFwoPY291bnRlcnBhcnR5X2lkGAIgASgEEh0KDGhhbmRsaW5nX2ZlZRgDIAEoA0IHukgEIgIoABIiChFwcm9kdWN0X21hcmt1cF9icBgEIAEoA0IHukgEIgIoABIiCgxjcmVkaXRfbGltaXQYBSABKANCB7pIBCICKABIAIgBAToMkrUYCAoGAQIDBAYJQg8KDV9jcmVkaXRfbGltaXQiVQoaU2V0dGxlbWVudFRlcm1zU2V0UmVzcG9uc2USNwoFdGVybXMYASABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXMiYwocU2V0dGxlbWVudFRlcm1zRGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIXCg9jb3VudGVycGFydHlfaWQYAiABKAQ6DJK1GAgKBgECAwQGCSIfCh1TZXR0bGVtZW50VGVybXNEZWxldGVSZXNwb25zZSqrAgoUU2V0dGxlbWVudFNvdXJjZVR5cGUSJgoiU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlNFVFRMRU1FTlRfU09VUkNFX1RZUEVfQ09EX0ZFRRABEicKI1NFVFRMRU1FTlRfU09VUkNFX1RZUEVfSEFORExJTkdfRkVFEAISJgoiU0VUVExFTUVOVF9TT1VSQ0VfVFlQRV9QUk9EVUNUX0ZFRRADEiIKHlNFVFRMRU1FTlRfU09VUkNFX1RZUEVfUEFZTUVOVBAEEikKJVNFVFRMRU1FTlRfU09VUkNFX1RZUEVfUkVTVE9DS19PVVRMQVkQBRInCiNTRVRUTEVNRU5UX1NPVVJDRV9UWVBFX1NUT0NLX0RBTUFHRRAGKrUBCh5TZXR0bGVtZW50UG9zaXRpb25MaXN0RGF0YVR5cGUSMgouU0VUVExFTUVOVF9QT1NJVElPTl9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEi4KKlNFVFRMRU1FTlRfUE9TSVRJT05fTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEi8KK1NFVFRMRU1FTlRfUE9TSVRJT05fTElTVF9EQVRBX1RZUEVfUE9TSVRJT04QAiqXAQoWU2V0dGxlbWVudFBvc2l0aW9uU29ydBIoCiRTRVRUTEVNRU5UX1BPU0lUSU9OX1NPUlRfVU5TUEVDSUZJRUQQABItCilTRVRUTEVNRU5UX1BPU0lUSU9OX1NPUlRfT0xERVNUX1VOU0VUVExFRBABEiQKIFNFVFRMRU1FTlRfUE9TSVRJT05fU09SVF9CQUxBTkNFEAIqpgEKG1NldHRsZW1lbnRFbnRyeUxpc3REYXRhVHlwZRIvCitTRVRUTEVNRU5UX0VOVFJZX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKwonU0VUVExFTUVOVF9FTlRSWV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESKQolU0VUVExFTUVOVF9FTlRSWV9MSVNUX0RBVEFfVFlQRV9FTlRSWRACKr0BChdTZXR0bGVtZW50UGF5bWVudFN0YXR1cxIpCiVTRVRUTEVNRU5UX1BBWU1FTlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASJgoiU0VUVExFTUVOVF9QQVlNRU5UX1NUQVRVU19SRUNPUkRFRBABEicKI1NFVFRMRU1FTlRfUEFZTUVOVF9TVEFUVVNfQ09ORklSTUVEEAISJgoiU0VUVExFTUVOVF9QQVlNRU5UX1NUQVRVU19SRVZFUlNFRBADKrABCh1TZXR0bGVtZW50UGF5bWVudExpc3REYXRhVHlwZRIxCi1TRVRUTEVNRU5UX1BBWU1FTlRfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABItCilTRVRUTEVNRU5UX1BBWU1FTlRfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEi0KKVNFVFRMRU1FTlRfUEFZTUVOVF9MSVNUX0RBVEFfVFlQRV9QQVlNRU5UEAIqpgEKG1NldHRsZW1lbnRUZXJtc0xpc3REYXRhVHlwZRIvCitTRVRUTEVNRU5UX1RFUk1TX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKwonU0VUVExFTUVOVF9URVJNU19MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESKQolU0VUVExFTUVOVF9URVJNU19MSVNUX0RBVEFfVFlQRV9URVJNUxACMpgDChFTZXR0bGVtZW50U2VydmljZRKJAQoWU2V0dGxlbWVudFBvc2l0aW9uTGlzdBI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3NpdGlvbkxpc3RSZXF1ZXN0Gjcud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc2l0aW9uTGlzdFJlc3BvbnNlEoABChNTZXR0bGVtZW50RW50cnlMaXN0EjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudEVudHJ5TGlzdFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnlMaXN0UmVzcG9uc2USdAoPU2V0dGxlbWVudERhaWx5Ei8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudERhaWx5UmVxdWVzdBowLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnREYWlseVJlc3BvbnNlMtYEChhTZXR0bGVtZW50UGF5bWVudFNlcnZpY2USjAEKF1NldHRsZW1lbnRQYXltZW50UmVjb3JkEjcud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRSZWNvcmRSZXF1ZXN0Gjgud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRSZWNvcmRSZXNwb25zZRKPAQoYU2V0dGxlbWVudFBheW1lbnRDb25maXJtEjgud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRDb25maXJtUmVxdWVzdBo5LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50Q29uZmlybVJlc3BvbnNlEo8BChhTZXR0bGVtZW50UGF5bWVudFJldmVyc2USOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudFJldmVyc2VSZXF1ZXN0Gjkud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBheW1lbnRSZXZlcnNlUmVzcG9uc2UShgEKFVNldHRsZW1lbnRQYXltZW50TGlzdBI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQYXltZW50TGlzdFJlcXVlc3QaNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50UGF5bWVudExpc3RSZXNwb25zZTKjAwoWU2V0dGxlbWVudFRlcm1zU2VydmljZRKAAQoTU2V0dGxlbWVudFRlcm1zTGlzdBIzLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0xpc3RSZXF1ZXN0GjQud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zTGlzdFJlc3BvbnNlEn0KElNldHRsZW1lbnRUZXJtc1NldBIyLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc1NldFJlcXVlc3QaMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VGVybXNTZXRSZXNwb25zZRKGAQoVU2V0dGxlbWVudFRlcm1zRGVsZXRlEjUud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFRlcm1zRGVsZXRlUmVxdWVzdBo2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUZXJtc0RlbGV0ZVJlc3BvbnNlQlRaUmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2Uvc2V0dGxlbWVudC92MTtzZXR0bGVtZW50djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_role_base_v1_role]);
+  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSLyAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSOAoLc291cmNlX3R5cGUYByABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEg4KBmNoYW5nZRgJIAEoAxIPCgdiYWxhbmNlGAogASgDEhMKC29jY3VycmVkX29uGAsgASgJEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtyZXZlcnNlc19pZBgNIAEoBBIMCgRub3RlGA4gASgJEhIKCmFjdG9yX25hbWUYDyABKAkicgoPT3JkZXJTZXR0bGVtZW50EhAKCG9yZGVyX2lkGAEgASgEEhUKDWluaXRpYWxfdG90YWwYAiABKAMSFAoMbGFzdF9iYWxhbmNlGAMgASgDEg8KB3RlYW1faWQYBCABKAQSDwoHc2hvcF9pZBgFIAEoBCKhAwoVU2V0dGxlbWVudFBvc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhkKCG9yZGVyX2lkGAIgASgEQge6SAQyAiAAEhgKB3Nob3BfaWQYCiABKARCB7pIBDICIAASHQoJdW5pcXVlX2lkGAMgASgJQgq6SAdyBRABGIABEkwKD3NldHRsZW1lbnRfdHlwZRgEIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlQgq6SAeCAQQQASAAEkQKC3NvdXJjZV90eXBlGAUgASgOMiMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU291cmNlVHlwZUIKukgHggEEEAEgABIOCgZjaGFuZ2UYBiABKAMSOAoLb2NjdXJyZWRfb24YByABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEhMKC3JldmVyc2VzX2lkGAggASgEEhYKBG5vdGUYCSABKAlCCLpIBXIDGPQDOguStRgHCgUBAgMEBSKgAQoWU2V0dGxlbWVudFBvc3RSZXNwb25zZRI3CgVlbnRyeRgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeRI8CgpzZXR0bGVtZW50GAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50Eg8KB2NyZWF0ZWQYAyABKAgiUQoZT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlchIPCgdzaG9wX2lkGAEgASgEEgwKBGZyb20YAiABKAkSCgoCdG8YAyABKAkSCQoBcRgEIAEoCSKTAQodT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlclNvcnQSOgoEc29ydBgBIAEoDjIsLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudFNvcnQSNgoJc29ydF90eXBlGAIgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZSLiAgoaT3JkZXJTZXR0bGVtZW50TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESSgoGZmlsdGVyGAIgASgLMjIud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlckIGukgDyAEBEkoKDGRhdGFfcmVxdWVzdBgDIAMoDjI0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3REYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQESRAoEc29ydBgFIAEoCzI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RGaWx0ZXJTb3J0OguStRgHCgUBAgMEBSLCAQoWT3JkZXJTZXR0bGVtZW50TWFwSXRlbRJOCghtYXBfZGF0YRgBIAMoCzI8LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW0uTWFwRGF0YUVudHJ5GlgKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnQ6AjgBIqUBCh9PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRQoKc2V0dGxlbWVudBgCIAEoCzIvLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW1IAEIDCgFkIt4BChtPcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2USRwoFaXRlbXMYASADKAsyOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEhsKE3RvdGFsX2luaXRpYWxfdG90YWwYBCABKAMSGgoSdG90YWxfbGFzdF9iYWxhbmNlGAUgASgDImQKHE9yZGVyU2V0dGxlbWVudERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIpgBCh1PcmRlclNldHRsZW1lbnREZXRhaWxSZXNwb25zZRI8CgpzZXR0bGVtZW50GAEgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50EjkKB2VudHJpZXMYAiADKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnkqqAIKDlNldHRsZW1lbnRUeXBlEh8KG1NFVFRMRU1FTlRfVFlQRV9VTlNQRUNJRklFRBAAEiEKHVNFVFRMRU1FTlRfVFlQRV9JTklUSUFMX1RPVEFMEAESGAoUU0VUVExFTUVOVF9UWVBFX0ZVTkQQAhIkCiBTRVRUTEVNRU5UX1RZUEVfRVhURVJOQUxfQURTX0ZFRRADEiEKHVNFVFRMRU1FTlRfVFlQRV9BRkZJTElBVEVfRkVFEAQSKgomU0VUVExFTUVOVF9UWVBFX01BUktFVFBMQUNFX0FESlVTVE1FTlQQBRIZChVTRVRUTEVNRU5UX1RZUEVfT1RIRVIQBhIoCiRTRVRUTEVNRU5UX1RZUEVfSU5JVElBTF9UT1RBTF9DQU5DRUwQBypyCgpTb3VyY2VUeXBlEhsKF1NPVVJDRV9UWVBFX1VOU1BFQ0lGSUVEEAASGAoUU09VUkNFX1RZUEVfRVhQT1JURVIQARIWChJTT1VSQ0VfVFlQRV9NQU5VQUwQAhIVChFTT1VSQ0VfVFlQRV9PUkRFUhADKqkBChNPcmRlclNldHRsZW1lbnRTb3J0EiUKIU9SREVSX1NFVFRMRU1FTlRfU09SVF9VTlNQRUNJRklFRBAAEh4KGk9SREVSX1NFVFRMRU1FTlRfU09SVF9MT1NTEAESIgoeT1JERVJfU0VUVExFTUVOVF9TT1JUX09SREVSX0lEEAISJwojT1JERVJfU0VUVExFTUVOVF9TT1JUX0lOSVRJQUxfVE9UQUwQAyqrAQobT3JkZXJTZXR0bGVtZW50TGlzdERhdGFUeXBlEi8KK09SREVSX1NFVFRMRU1FTlRfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIrCidPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIuCipPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX1NFVFRMRU1FTlQQAjKfAgoRU2V0dGxlbWVudFNlcnZpY2USgAEKE09yZGVyU2V0dGxlbWVudExpc3QSMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZRKGAQoVT3JkZXJTZXR0bGVtZW50RGV0YWlsEjUud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50RGV0YWlsUmVxdWVzdBo2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudERldGFpbFJlc3BvbnNlMosBChZTZXR0bGVtZW50V3JpdGVTZXJ2aWNlEnEKDlNldHRsZW1lbnRQb3N0Ei4ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
- * One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating
- * entry, never an update or a delete — a ledger you can edit is not evidence of anything.
+ * One row of the log. IMMUTABLE.
  *
  * @generated from message warehouse.settlement.v1.SettlementEntry
  */
@@ -31,79 +30,94 @@ export type SettlementEntry = Message<"warehouse.settlement.v1.SettlementEntry">
   id: bigint;
 
   /**
-   * WHOSE side of the movement this leg is. Every posting writes two legs, one per team, in one
-   * transaction — posting half a movement is impossible by construction.
+   * THE IDEMPOTENCY KEY, unique with `order_id`, generated by the CALLER
+   * (#the-unique-id-is-generated-outside-settlement). Returned because it is the only thing that
+   * explains why a re-import wrote nothing.
    *
-   * @generated from field: uint64 team_id = 2;
+   * @generated from field: string unique_id = 2;
+   */
+  uniqueId: string;
+
+  /**
+   * @generated from field: uint64 order_id = 3;
+   */
+  orderId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 5;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: uint64 counterparty_id = 3;
-   */
-  counterpartyId: bigint;
-
-  /**
-   * ⚠ ONE SIGN CONVENTION, STATED ONCE (§4.11): from `team_id`'s point of view, a RECEIVABLE is
-   * POSITIVE and a PAYABLE is NEGATIVE. Whole rupiah, int64 — never a float. Float cannot represent
-   * 0.1 exactly, sums drift, and equality decays into "within epsilon", at which point "are we
-   * square?" has no yes/no answer.
-   * 
-   * The API must never also return an `abs()` of this under another name. Two fields called
-   * "payable" that disagree in sign is a bug that reaches the screen. Direction is rendered as WORDS
-   * by the UI ("They owe you…" / "You owe them…"), from this one signed number.
+   * Who is ANSWERABLE — the person in charge, not the session that wrote the row
+   * (#actor-id-is-the-pic). Set even on machine rows: a human owns every entry.
    *
-   * @generated from field: int64 amount = 4;
+   * @generated from field: uint64 actor_id = 6;
    */
-  amount: bigint;
+  actorId: bigint;
 
   /**
-   * What caused it, and the id of that thing in its own service (opaque, no FK).
+   * @generated from field: warehouse.settlement.v1.SourceType source_type = 7;
+   */
+  sourceType: SourceType;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SettlementType settlement_type = 8;
+   */
+  settlementType: SettlementType;
+
+  /**
+   * Signed, whole rupiah. POSITIVE IS MONEY TOWARD US — see SettlementType.
    *
-   * @generated from field: warehouse.settlement.v1.SettlementSourceType source_type = 5;
+   * @generated from field: int64 change = 9;
    */
-  sourceType: SettlementSourceType;
+  change: bigint;
 
   /**
-   * @generated from field: uint64 source_id = 6;
-   */
-  sourceId: bigint;
-
-  /**
-   * ⚠ WHETHER THIS LEG UNDOES AN EARLIER ONE. A cancelled order's fee is reversed by an
-   * equal-and-opposite entry: the original stays, the balance nets to zero, and the history shows the
-   * fee was charged and then returned. "The fee briefly existed" is exactly what an audit needs.
-   * 
-   * It is part of the IDEMPOTENCY KEY — `(source_type, source_id, counterparty_id, reversal)` — not
-   * merely a display flag. Without it a reversal would collide with the entry it reverses, and a
-   * double cancel would have to be prevented by something less reliable than a unique index.
+   * The running position AFTER this row. Derived and kept for the panel; the log stays what it is
+   * derived from.
    *
-   * @generated from field: bool reversal = 7;
+   * @generated from field: int64 balance = 10;
    */
-  reversal: boolean;
+  balance: bigint;
 
   /**
-   * BOTH LEGS OF ONE MOVEMENT SHARE THIS (§4.3). Without it, "show me both sides of this posting" is
-   * answerable only by matching amount, opposite sign and a near timestamp — a heuristic that fails
-   * exactly when two similar postings land together.
+   * TWO DATES, and they are not the same question. `occurred_on` is the day the platform says the
+   * money belongs to; `posted_on` is the day we learned it. Equal on a same-day row, apart on a late
+   * fee — and a screen that showed only one could not tell a late charge from a backdated one.
    *
-   * @generated from field: uint64 group_id = 8;
+   * @generated from field: string occurred_on = 11;
    */
-  groupId: bigint;
+  occurredOn: string;
 
   /**
-   * The balance after this entry, from `team_id`'s side. A convenience for the history screen, NOT a
-   * second source of truth: the balance is a projection and must stay recomputable from the entries
-   * alone (§4.8), or the ledger cannot be audited.
+   * @generated from field: string posted_on = 12;
+   */
+  postedOn: string;
+
+  /**
+   * Set when this row undoes an earlier one — a compensating entry, never an edit.
    *
-   * @generated from field: int64 balance_after = 9;
+   * @generated from field: uint64 reverses_id = 13;
    */
-  balanceAfter: bigint;
+  reversesId: bigint;
 
   /**
-   * @generated from field: int64 created_at_unix = 10;
+   * @generated from field: string note = 14;
    */
-  createdAtUnix: bigint;
+  note: string;
+
+  /**
+   * Display only, resolved by the handler so the panel needs no second call.
+   *
+   * @generated from field: string actor_name = 15;
+   */
+  actorName: string;
 };
 
 /**
@@ -114,853 +128,288 @@ export const SettlementEntrySchema: GenMessage<SettlementEntry> = /*@__PURE__*/
   messageDesc(file_warehouse_settlement_v1_settlement, 0);
 
 /**
- * One counterparty's position — a row of the position list (#185).
+ * The state row — a PROJECTION of the log, recomputable from it alone.
  *
- * @generated from message warehouse.settlement.v1.SettlementPosition
+ * @generated from message warehouse.settlement.v1.OrderSettlement
  */
-export type SettlementPosition = Message<"warehouse.settlement.v1.SettlementPosition"> & {
+export type OrderSettlement = Message<"warehouse.settlement.v1.OrderSettlement"> & {
   /**
-   * @generated from field: uint64 counterparty_id = 1;
+   * @generated from field: uint64 order_id = 1;
    */
-  counterpartyId: bigint;
+  orderId: bigint;
 
   /**
-   * Signed, from the requesting team's side: positive = they owe you, negative = you owe them. Same
-   * convention as SettlementEntry.amount, deliberately — see the warning there.
+   * What the buyer paid, stored POSITIVE (#initial-total-is-stored-positive). The LIVE sale: a cancel
+   * zeroes it (#cancel-zeroes-the-live-sale).
    *
-   * @generated from field: int64 balance = 2;
+   * ⚠ 0 MEANS NOT RECORDED, never "sold for nothing". A missing fact, not a zero one — so the screens
+   * refuse to compute against it rather than reporting a total loss.
+   *
+   * @generated from field: int64 initial_total = 2;
    */
-  balance: bigint;
+  initialTotal: bigint;
 
   /**
-   * WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
-   * 
-   * ⚠ AGEING IS THE POINT OF THIS SCREEN, not the total. "Rp 2.4m, oldest unsettled 47 days" is
-   * actionable in a way a balance alone is not — a manager chases the old ones.
-   * 
-   * A TIMESTAMP rather than a day count, on purpose: a day count is a rollup, and a rollup has to
-   * name its timezone or it shifts when the server moves (§4.13). The screen renders "47 days" in the
-   * reader's own timezone, which is the only one that means anything to them.
+   * The current position. Negative means part of what the buyer paid never reached us.
    *
-   * @generated from field: int64 oldest_unsettled_at_unix = 3;
+   * @generated from field: int64 last_balance = 3;
    */
-  oldestUnsettledAtUnix: bigint;
+  lastBalance: bigint;
 
   /**
-   * How many payments this counterparty has recorded that the requesting team has NOT yet confirmed.
-   * 
-   * It rides on the position row because a creditor must learn a payment is waiting WITHOUT hunting
-   * for it — a payment nobody notices is a debt that stays open for no reason. It is the row-level
-   * half of the nav badge.
-   *
-   * @generated from field: uint32 awaiting_confirmation = 4;
+   * @generated from field: uint64 team_id = 4;
    */
-  awaitingConfirmation: number;
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 5;
+   */
+  shopId: bigint;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPosition.
- * Use `create(SettlementPositionSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlement.
+ * Use `create(OrderSettlementSchema)` to create a new message.
  */
-export const SettlementPositionSchema: GenMessage<SettlementPosition> = /*@__PURE__*/
+export const OrderSettlementSchema: GenMessage<OrderSettlement> = /*@__PURE__*/
   messageDesc(file_warehouse_settlement_v1_settlement, 1);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementPositionListFilter
+ * ⚠ EVERY FIELD OF THE KEY IS THE CALLER'S. Settlement enforces uniqueness on `(order_id, unique_id)`
+ * and invents nothing (#the-recipe-is-the-callers-problem). The one recipe it does prescribe is the
+ * cancel's, because that is the one a retry would double-credit:
+ * `unique_id = hash(order_id + act_date + "cancel")` (#the-cancel-key-is-order-plus-act-date).
+ *
+ * @generated from message warehouse.settlement.v1.SettlementPostRequest
  */
-export type SettlementPositionListFilter = Message<"warehouse.settlement.v1.SettlementPositionListFilter"> & {
+export type SettlementPostRequest = Message<"warehouse.settlement.v1.SettlementPostRequest"> & {
   /**
-   * Narrow to ONE counterparty. 0 = every counterparty. A filter only, it grants nothing.
-   *
-   * @generated from field: uint64 counterparty_id = 1;
+   * @generated from field: uint64 team_id = 1;
    */
-  counterpartyId: bigint;
+  teamId: bigint;
 
   /**
-   * Only pairs that are not square (the default "who owes what" view).
-   *
-   * @generated from field: bool unsettled_only = 2;
+   * @generated from field: uint64 order_id = 2;
    */
-  unsettledOnly: boolean;
+  orderId: bigint;
+
+  /**
+   * ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
+   * selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
+   * both rows so every list filters by shop without a cross-service call — the same denormalisation
+   * `order.cogs` already is, and safe for the same reason: an order does not move between shops.
+   *
+   * On the FIRST post it establishes the account's shop. Later posts must agree — see the handler.
+   *
+   * @generated from field: uint64 shop_id = 10;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: string unique_id = 3;
+   */
+  uniqueId: string;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SettlementType settlement_type = 4;
+   */
+  settlementType: SettlementType;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SourceType source_type = 5;
+   */
+  sourceType: SourceType;
+
+  /**
+   * Signed. May be 0 — a zero-value adjustment is a real thing a platform reports.
+   *
+   * @generated from field: int64 change = 6;
+   */
+  change: bigint;
+
+  /**
+   * The day the money belongs to. Required: without it a late fee cannot be told from a backdated one.
+   *
+   * @generated from field: string occurred_on = 7;
+   */
+  occurredOn: string;
+
+  /**
+   * The row this one undoes, or 0. A reversal is a NEW row (#a-correction-is-a-new-row).
+   *
+   * @generated from field: uint64 reverses_id = 8;
+   */
+  reversesId: bigint;
+
+  /**
+   * @generated from field: string note = 9;
+   */
+  note: string;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPositionListFilter.
- * Use `create(SettlementPositionListFilterSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.SettlementPostRequest.
+ * Use `create(SettlementPostRequestSchema)` to create a new message.
  */
-export const SettlementPositionListFilterSchema: GenMessage<SettlementPositionListFilter> = /*@__PURE__*/
+export const SettlementPostRequestSchema: GenMessage<SettlementPostRequest> = /*@__PURE__*/
   messageDesc(file_warehouse_settlement_v1_settlement, 2);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementPositionListFilterSort
+ * @generated from message warehouse.settlement.v1.SettlementPostResponse
  */
-export type SettlementPositionListFilterSort = Message<"warehouse.settlement.v1.SettlementPositionListFilterSort"> & {
+export type SettlementPostResponse = Message<"warehouse.settlement.v1.SettlementPostResponse"> & {
   /**
-   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 1;
+   * @generated from field: warehouse.settlement.v1.SettlementEntry entry = 1;
    */
-  sortType: CommonSortType;
+  entry?: SettlementEntry;
 
   /**
-   * @generated from oneof warehouse.settlement.v1.SettlementPositionListFilterSort.s
+   * The account AFTER this write, so a caller never needs a follow-up read.
+   *
+   * @generated from field: warehouse.settlement.v1.OrderSettlement settlement = 2;
    */
-  s: {
-    /**
-     * @generated from field: warehouse.common.v1.GeneralSort general = 2;
-     */
-    value: GeneralSort;
-    case: "general";
-  } | {
-    /**
-     * @generated from field: warehouse.settlement.v1.SettlementPositionSort position = 3;
-     */
-    value: SettlementPositionSort;
-    case: "position";
-  } | { case: undefined; value?: undefined };
+  settlement?: OrderSettlement;
+
+  /**
+   * ⚠ WHETHER THIS CALL WROTE THE ROW, or found it already there and returned it unchanged.
+   *
+   * Without it an idempotent write is indistinguishable from a silent no-op, and a caller whose
+   * `unique_id` recipe is wrong gets no feedback from anywhere — it would simply stop recording and
+   * nothing would say so. That matters more now that `order_service` follows a PRESCRIBED recipe
+   * (#the-cancel-key-is-order-plus-act-date): a bug in it looks exactly like correct de-duplication.
+   *
+   * @generated from field: bool created = 3;
+   */
+  created: boolean;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPositionListFilterSort.
- * Use `create(SettlementPositionListFilterSortSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.SettlementPostResponse.
+ * Use `create(SettlementPostResponseSchema)` to create a new message.
  */
-export const SettlementPositionListFilterSortSchema: GenMessage<SettlementPositionListFilterSort> = /*@__PURE__*/
+export const SettlementPostResponseSchema: GenMessage<SettlementPostResponse> = /*@__PURE__*/
   messageDesc(file_warehouse_settlement_v1_settlement, 3);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementPositionListRequest
+ * @generated from message warehouse.settlement.v1.OrderSettlementListFilter
  */
-export type SettlementPositionListRequest = Message<"warehouse.settlement.v1.SettlementPositionListRequest"> & {
+export type OrderSettlementListFilter = Message<"warehouse.settlement.v1.OrderSettlementListFilter"> & {
   /**
-   * The team whose position this is, and the SCOPE. The counterparty side of a balance can never be
-   * the scope, so the filter is a filter, not an authorization.
+   * One shop, or 0 for every shop in the team. NOT the scope — `team_id` is (see the request).
    *
-   * @generated from field: uint64 team_id = 1;
+   * @generated from field: uint64 shop_id = 1;
    */
-  teamId: bigint;
+  shopId: bigint;
 
   /**
-   * @generated from field: warehouse.settlement.v1.SettlementPositionListFilter filter = 2;
-   */
-  filter?: SettlementPositionListFilter;
-
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPositionListFilterSort sort = 3;
-   */
-  sort?: SettlementPositionListFilterSort;
-
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPositionListDataType data_request = 4;
-   */
-  dataRequest: SettlementPositionListDataType[];
-
-  /**
-   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
-   */
-  page?: CommonPagination;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPositionListRequest.
- * Use `create(SettlementPositionListRequestSchema)` to create a new message.
- */
-export const SettlementPositionListRequestSchema: GenMessage<SettlementPositionListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 4);
-
-/**
- * The POSITION slice reuses the SettlementPosition message directly, keyed by counterparty_id.
- *
- * @generated from message warehouse.settlement.v1.SettlementPositionMapItem
- */
-export type SettlementPositionMapItem = Message<"warehouse.settlement.v1.SettlementPositionMapItem"> & {
-  /**
-   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementPosition> map_data = 1;
-   */
-  mapData: { [key: string]: SettlementPosition };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPositionMapItem.
- * Use `create(SettlementPositionMapItemSchema)` to create a new message.
- */
-export const SettlementPositionMapItemSchema: GenMessage<SettlementPositionMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 5);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPositionListResponseItem
- */
-export type SettlementPositionListResponseItem = Message<"warehouse.settlement.v1.SettlementPositionListResponseItem"> & {
-  /**
-   * @generated from oneof warehouse.settlement.v1.SettlementPositionListResponseItem.d
-   */
-  d: {
-    /**
-     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
-     */
-    value: GeneralMapItem;
-    case: "general";
-  } | {
-    /**
-     * @generated from field: warehouse.settlement.v1.SettlementPositionMapItem position = 2;
-     */
-    value: SettlementPositionMapItem;
-    case: "position";
-  } | { case: undefined; value?: undefined };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPositionListResponseItem.
- * Use `create(SettlementPositionListResponseItemSchema)` to create a new message.
- */
-export const SettlementPositionListResponseItemSchema: GenMessage<SettlementPositionListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 6);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPositionListResponse
- */
-export type SettlementPositionListResponse = Message<"warehouse.settlement.v1.SettlementPositionListResponse"> & {
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPositionListResponseItem items = 1;
-   */
-  items: SettlementPositionListResponseItem[];
-
-  /**
-   * The counterparty ids in sorted (page) order, the key of each position.
+   * The period the ACCOUNT was last moved in, inclusive, as YYYY-MM-DD. Both optional.
    *
-   * @generated from field: repeated uint64 ids = 2;
-   */
-  ids: bigint[];
-
-  /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
-   */
-  pageInfo?: PageInfo;
-
-  /**
-   * Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
-   *
-   * @generated from field: uint32 awaiting_confirmation = 4;
-   */
-  awaitingConfirmation: number;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPositionListResponse.
- * Use `create(SettlementPositionListResponseSchema)` to create a new message.
- */
-export const SettlementPositionListResponseSchema: GenMessage<SettlementPositionListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 7);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementEntryListFilter
- */
-export type SettlementEntryListFilter = Message<"warehouse.settlement.v1.SettlementEntryListFilter"> & {
-  /**
-   * WHOSE history. Required here (the counterparty detail page). Still NOT the scope.
-   *
-   * @generated from field: uint64 counterparty_id = 1;
-   */
-  counterpartyId: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementEntryListFilter.
- * Use `create(SettlementEntryListFilterSchema)` to create a new message.
- */
-export const SettlementEntryListFilterSchema: GenMessage<SettlementEntryListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 8);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementEntryListRequest
- */
-export type SettlementEntryListRequest = Message<"warehouse.settlement.v1.SettlementEntryListRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementEntryListFilter filter = 2;
-   */
-  filter?: SettlementEntryListFilter;
-
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementEntryListDataType data_request = 3;
-   */
-  dataRequest: SettlementEntryListDataType[];
-
-  /**
-   * @generated from field: warehouse.common.v1.CommonPagination page = 4;
-   */
-  page?: CommonPagination;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementEntryListRequest.
- * Use `create(SettlementEntryListRequestSchema)` to create a new message.
- */
-export const SettlementEntryListRequestSchema: GenMessage<SettlementEntryListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 9);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementEntryMapItem
- */
-export type SettlementEntryMapItem = Message<"warehouse.settlement.v1.SettlementEntryMapItem"> & {
-  /**
-   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementEntry> map_data = 1;
-   */
-  mapData: { [key: string]: SettlementEntry };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementEntryMapItem.
- * Use `create(SettlementEntryMapItemSchema)` to create a new message.
- */
-export const SettlementEntryMapItemSchema: GenMessage<SettlementEntryMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 10);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementEntryListResponseItem
- */
-export type SettlementEntryListResponseItem = Message<"warehouse.settlement.v1.SettlementEntryListResponseItem"> & {
-  /**
-   * @generated from oneof warehouse.settlement.v1.SettlementEntryListResponseItem.d
-   */
-  d: {
-    /**
-     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
-     */
-    value: GeneralMapItem;
-    case: "general";
-  } | {
-    /**
-     * @generated from field: warehouse.settlement.v1.SettlementEntryMapItem entry = 2;
-     */
-    value: SettlementEntryMapItem;
-    case: "entry";
-  } | { case: undefined; value?: undefined };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementEntryListResponseItem.
- * Use `create(SettlementEntryListResponseItemSchema)` to create a new message.
- */
-export const SettlementEntryListResponseItemSchema: GenMessage<SettlementEntryListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 11);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementEntryListResponse
- */
-export type SettlementEntryListResponse = Message<"warehouse.settlement.v1.SettlementEntryListResponse"> & {
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementEntryListResponseItem items = 1;
-   */
-  items: SettlementEntryListResponseItem[];
-
-  /**
-   * @generated from field: repeated uint64 ids = 2;
-   */
-  ids: bigint[];
-
-  /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
-   */
-  pageInfo?: PageInfo;
-
-  /**
-   * The pair's current balance, so the header needs no second call.
-   *
-   * @generated from field: int64 balance = 4;
-   */
-  balance: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementEntryListResponse.
- * Use `create(SettlementEntryListResponseSchema)` to create a new message.
- */
-export const SettlementEntryListResponseSchema: GenMessage<SettlementEntryListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 12);
-
-/**
- * ── The DAILY STATEMENT's income half, for a WAREHOUSE ────────────────────────────────────────────
- * 
- * A selling team's income is the margin on its orders (revenue_service). A WAREHOUSE has no orders and
- * therefore no revenue rows at all — what it earns is the FEES it charges the teams it fulfils for, and
- * those live here. Without this RPC a warehouse's daily statement would show margin 0 against real
- * expenses and report every single day as a pure loss (owner, 2026-08-14).
- * 
- * ⚠ IT REPORTS THE LEDGER, NOT "INCOME" — the split is deliberate. Every source type is returned in
- * `by_source` and the caller decides which of them it is willing to call earnings, because they are not
- * the same kind of thing:
- * 
- *   HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
- *   COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
- *   PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
- *   PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
- * 
- * Summing all four and calling it income would double-count: the fee is earned when it is charged and
- * the payment that settles it would be counted again. Naming that judgement here would bake one screen's
- * opinion into the ledger's contract, so the enum is returned whole and the statement documents its
- * choice (it takes HANDLING_FEE).
- * 
- * ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
- * which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
- * series are read side by side on one screen, and a cap that differed would let the statement load part
- * of a period and still look complete.
- * 
- * ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
- *
- * @generated from message warehouse.settlement.v1.SettlementDailyFilter
- */
-export type SettlementDailyFilter = Message<"warehouse.settlement.v1.SettlementDailyFilter"> & {
-  /**
-   * THE PERIOD, inclusive at both ends, as YYYY-MM-DD. REQUIRED on both sides — see the cap above.
-   *
-   * @generated from field: string from = 1;
+   * @generated from field: string from = 2;
    */
   from: string;
 
   /**
-   * @generated from field: string to = 2;
+   * @generated from field: string to = 3;
    */
   to: string;
 
   /**
-   * One counterparty, or 0 for all of them. NOT the scope — `team_id` above is (§4.9).
+   * Free text over the order reference.
    *
-   * @generated from field: uint64 counterparty_id = 3;
+   * @generated from field: string q = 4;
    */
-  counterpartyId: bigint;
+  q: string;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementDailyFilter.
- * Use `create(SettlementDailyFilterSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementListFilter.
+ * Use `create(OrderSettlementListFilterSchema)` to create a new message.
  */
-export const SettlementDailyFilterSchema: GenMessage<SettlementDailyFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 13);
+export const OrderSettlementListFilterSchema: GenMessage<OrderSettlementListFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 4);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementDailyRequest
+ * @generated from message warehouse.settlement.v1.OrderSettlementListFilterSort
  */
-export type SettlementDailyRequest = Message<"warehouse.settlement.v1.SettlementDailyRequest"> & {
+export type OrderSettlementListFilterSort = Message<"warehouse.settlement.v1.OrderSettlementListFilterSort"> & {
+  /**
+   * @generated from field: warehouse.settlement.v1.OrderSettlementSort sort = 1;
+   */
+  sort: OrderSettlementSort;
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 2;
+   */
+  sortType: CommonSortType;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.OrderSettlementListFilterSort.
+ * Use `create(OrderSettlementListFilterSortSchema)` to create a new message.
+ */
+export const OrderSettlementListFilterSortSchema: GenMessage<OrderSettlementListFilterSort> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 5);
+
+/**
+ * @generated from message warehouse.settlement.v1.OrderSettlementListRequest
+ */
+export type OrderSettlementListRequest = Message<"warehouse.settlement.v1.OrderSettlementListRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: warehouse.settlement.v1.SettlementDailyFilter filter = 2;
+   * @generated from field: warehouse.settlement.v1.OrderSettlementListFilter filter = 2;
    */
-  filter?: SettlementDailyFilter;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementDailyRequest.
- * Use `create(SettlementDailyRequestSchema)` to create a new message.
- */
-export const SettlementDailyRequestSchema: GenMessage<SettlementDailyRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 14);
-
-/**
- * One day of the ledger, from the scoped team's point of view.
- *
- * @generated from message warehouse.settlement.v1.SettlementDayItem
- */
-export type SettlementDayItem = Message<"warehouse.settlement.v1.SettlementDayItem"> & {
-  /**
-   * The day this row sums, as YYYY-MM-DD.
-   * 
-   * ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
-   * the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
-   * with the period bounds is why — see docs/services/revenue_service/rpc.md.
-   *
-   * @generated from field: string date = 1;
-   */
-  date: string;
+  filter?: OrderSettlementListFilter;
 
   /**
-   * How many entry legs the day holds, reversals included.
-   *
-   * @generated from field: uint64 entries = 2;
+   * @generated from field: repeated warehouse.settlement.v1.OrderSettlementListDataType data_request = 3;
    */
-  entries: bigint;
-
-  /**
-   * ⚠ ONE SIGN CONVENTION (§4.11), unchanged here: from the scoped team's point of view a RECEIVABLE is
-   * POSITIVE and a PAYABLE is NEGATIVE. `net` is the plain sum, so a day that charged a fee and reversed
-   * it comes to zero — which is the honest answer, and why reversals are INCLUDED rather than filtered.
-   * A series that dropped them would show income the ledger has already taken back.
-   *
-   * @generated from field: int64 net = 3;
-   */
-  net: bigint;
-
-  /**
-   * Split by SettlementSourceType's enum number, so the caller can pick which sources it treats as
-   * earnings without a second call. A source with nothing that day is ABSENT rather than 0 — the same
-   * choice ExpenseDayItem.by_kind makes.
-   *
-   * @generated from field: map<int32, int64> by_source = 4;
-   */
-  bySource: { [key: number]: bigint };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementDayItem.
- * Use `create(SettlementDayItemSchema)` to create a new message.
- */
-export const SettlementDayItemSchema: GenMessage<SettlementDayItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 15);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementDailyTotals
- */
-export type SettlementDailyTotals = Message<"warehouse.settlement.v1.SettlementDailyTotals"> & {
-  /**
-   * @generated from field: int64 net = 1;
-   */
-  net: bigint;
-
-  /**
-   * @generated from field: map<int32, int64> by_source = 2;
-   */
-  bySource: { [key: number]: bigint };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementDailyTotals.
- * Use `create(SettlementDailyTotalsSchema)` to create a new message.
- */
-export const SettlementDailyTotalsSchema: GenMessage<SettlementDailyTotals> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 16);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementDailyResponse
- */
-export type SettlementDailyResponse = Message<"warehouse.settlement.v1.SettlementDailyResponse"> & {
-  /**
-   * ASCENDING by date, and SPARSE — see the note on SettlementDailyFilter.
-   *
-   * @generated from field: repeated warehouse.settlement.v1.SettlementDayItem days = 1;
-   */
-  days: SettlementDayItem[];
-
-  /**
-   * The period's totals, over the same filter. Sent rather than summed in the browser, so the
-   * statement's footer is this service's answer and cannot drift from the days above it.
-   *
-   * @generated from field: warehouse.settlement.v1.SettlementDailyTotals totals = 2;
-   */
-  totals?: SettlementDailyTotals;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementDailyResponse.
- * Use `create(SettlementDailyResponseSchema)` to create a new message.
- */
-export const SettlementDailyResponseSchema: GenMessage<SettlementDailyResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 17);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPayment
- */
-export type SettlementPayment = Message<"warehouse.settlement.v1.SettlementPayment"> & {
-  /**
-   * @generated from field: uint64 id = 1;
-   */
-  id: bigint;
-
-  /**
-   * WHO PAID and WHO WAS PAID. Not interchangeable: only the creditor may confirm, because only the
-   * creditor can see the money arrive.
-   *
-   * @generated from field: uint64 payer_team_id = 2;
-   */
-  payerTeamId: bigint;
-
-  /**
-   * @generated from field: uint64 creditor_team_id = 3;
-   */
-  creditorTeamId: bigint;
-
-  /**
-   * Whole rupiah, always positive. Direction is carried by the two team fields above, not by a sign —
-   * a negative payment would be a refund, which is a different thing and not modelled.
-   *
-   * @generated from field: int64 amount = 4;
-   */
-  amount: bigint;
-
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPaymentStatus status = 5;
-   */
-  status: SettlementPaymentStatus;
-
-  /**
-   * Free text from the payer: a transfer reference, a bank, a date. It is a HINT for the human
-   * confirming, never something the system reads — which is exactly why the ledger uses
-   * `(source_type, source_id)` instead of notes.
-   *
-   * @generated from field: string note = 6;
-   */
-  note: string;
-
-  /**
-   * Opaque user_service ids; no FK. Who claimed and who agreed — this is the record that says a
-   * person, not a process, moved money.
-   *
-   * @generated from field: uint64 recorded_by = 7;
-   */
-  recordedBy: bigint;
-
-  /**
-   * @generated from field: uint64 confirmed_by = 8;
-   */
-  confirmedBy: bigint;
-
-  /**
-   * @generated from field: int64 created_at_unix = 9;
-   */
-  createdAtUnix: bigint;
-
-  /**
-   * @generated from field: int64 confirmed_at_unix = 10;
-   */
-  confirmedAtUnix: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPayment.
- * Use `create(SettlementPaymentSchema)` to create a new message.
- */
-export const SettlementPaymentSchema: GenMessage<SettlementPayment> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 18);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentRecordRequest
- */
-export type SettlementPaymentRecordRequest = Message<"warehouse.settlement.v1.SettlementPaymentRecordRequest"> & {
-  /**
-   * The PAYER — and the scope. You may only ever record your own payment: recording somebody else's
-   * would be asserting a movement of their money.
-   *
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 creditor_team_id = 2;
-   */
-  creditorTeamId: bigint;
-
-  /**
-   * @generated from field: int64 amount = 3;
-   */
-  amount: bigint;
-
-  /**
-   * @generated from field: string note = 4;
-   */
-  note: string;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentRecordRequest.
- * Use `create(SettlementPaymentRecordRequestSchema)` to create a new message.
- */
-export const SettlementPaymentRecordRequestSchema: GenMessage<SettlementPaymentRecordRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 19);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentRecordResponse
- */
-export type SettlementPaymentRecordResponse = Message<"warehouse.settlement.v1.SettlementPaymentRecordResponse"> & {
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPayment payment = 1;
-   */
-  payment?: SettlementPayment;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentRecordResponse.
- * Use `create(SettlementPaymentRecordResponseSchema)` to create a new message.
- */
-export const SettlementPaymentRecordResponseSchema: GenMessage<SettlementPaymentRecordResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 20);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentConfirmRequest
- */
-export type SettlementPaymentConfirmRequest = Message<"warehouse.settlement.v1.SettlementPaymentConfirmRequest"> & {
-  /**
-   * The CREDITOR — and the scope. The whole two-phase design rests on this being the team that was
-   * paid: a payer who could confirm their own payment could write off any debt they liked.
-   *
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 payment_id = 2;
-   */
-  paymentId: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentConfirmRequest.
- * Use `create(SettlementPaymentConfirmRequestSchema)` to create a new message.
- */
-export const SettlementPaymentConfirmRequestSchema: GenMessage<SettlementPaymentConfirmRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 21);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentConfirmResponse
- */
-export type SettlementPaymentConfirmResponse = Message<"warehouse.settlement.v1.SettlementPaymentConfirmResponse"> & {
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPayment payment = 1;
-   */
-  payment?: SettlementPayment;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentConfirmResponse.
- * Use `create(SettlementPaymentConfirmResponseSchema)` to create a new message.
- */
-export const SettlementPaymentConfirmResponseSchema: GenMessage<SettlementPaymentConfirmResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 22);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentReverseRequest
- */
-export type SettlementPaymentReverseRequest = Message<"warehouse.settlement.v1.SettlementPaymentReverseRequest"> & {
-  /**
-   * The CREDITOR again — whoever confirmed is who un-confirms.
-   *
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 payment_id = 2;
-   */
-  paymentId: bigint;
-
-  /**
-   * Why. Reversing a confirmation says a person got it wrong, and the next person to read the history
-   * deserves to know what happened rather than seeing two entries that cancel out for no stated
-   * reason.
-   *
-   * @generated from field: string reason = 3;
-   */
-  reason: string;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentReverseRequest.
- * Use `create(SettlementPaymentReverseRequestSchema)` to create a new message.
- */
-export const SettlementPaymentReverseRequestSchema: GenMessage<SettlementPaymentReverseRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 23);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentReverseResponse
- */
-export type SettlementPaymentReverseResponse = Message<"warehouse.settlement.v1.SettlementPaymentReverseResponse"> & {
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPayment payment = 1;
-   */
-  payment?: SettlementPayment;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentReverseResponse.
- * Use `create(SettlementPaymentReverseResponseSchema)` to create a new message.
- */
-export const SettlementPaymentReverseResponseSchema: GenMessage<SettlementPaymentReverseResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 24);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentListFilter
- */
-export type SettlementPaymentListFilter = Message<"warehouse.settlement.v1.SettlementPaymentListFilter"> & {
-  /**
-   * 0 = every counterparty.
-   *
-   * @generated from field: uint64 counterparty_id = 1;
-   */
-  counterpartyId: bigint;
-
-  /**
-   * Only payments this team must act on: recorded by somebody else, awaiting this team's confirmation.
-   *
-   * @generated from field: bool awaiting_my_confirmation = 2;
-   */
-  awaitingMyConfirmation: boolean;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentListFilter.
- * Use `create(SettlementPaymentListFilterSchema)` to create a new message.
- */
-export const SettlementPaymentListFilterSchema: GenMessage<SettlementPaymentListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 25);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentListRequest
- */
-export type SettlementPaymentListRequest = Message<"warehouse.settlement.v1.SettlementPaymentListRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementPaymentListFilter filter = 2;
-   */
-  filter?: SettlementPaymentListFilter;
-
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPaymentListDataType data_request = 3;
-   */
-  dataRequest: SettlementPaymentListDataType[];
+  dataRequest: OrderSettlementListDataType[];
 
   /**
    * @generated from field: warehouse.common.v1.CommonPagination page = 4;
    */
   page?: CommonPagination;
-};
 
-/**
- * Describes the message warehouse.settlement.v1.SettlementPaymentListRequest.
- * Use `create(SettlementPaymentListRequestSchema)` to create a new message.
- */
-export const SettlementPaymentListRequestSchema: GenMessage<SettlementPaymentListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 26);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementPaymentMapItem
- */
-export type SettlementPaymentMapItem = Message<"warehouse.settlement.v1.SettlementPaymentMapItem"> & {
   /**
-   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementPayment> map_data = 1;
+   * @generated from field: warehouse.settlement.v1.OrderSettlementListFilterSort sort = 5;
    */
-  mapData: { [key: string]: SettlementPayment };
+  sort?: OrderSettlementListFilterSort;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPaymentMapItem.
- * Use `create(SettlementPaymentMapItemSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementListRequest.
+ * Use `create(OrderSettlementListRequestSchema)` to create a new message.
  */
-export const SettlementPaymentMapItemSchema: GenMessage<SettlementPaymentMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 27);
+export const OrderSettlementListRequestSchema: GenMessage<OrderSettlementListRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 6);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementPaymentListResponseItem
+ * @generated from message warehouse.settlement.v1.OrderSettlementMapItem
  */
-export type SettlementPaymentListResponseItem = Message<"warehouse.settlement.v1.SettlementPaymentListResponseItem"> & {
+export type OrderSettlementMapItem = Message<"warehouse.settlement.v1.OrderSettlementMapItem"> & {
   /**
-   * @generated from oneof warehouse.settlement.v1.SettlementPaymentListResponseItem.d
+   * @generated from field: map<uint64, warehouse.settlement.v1.OrderSettlement> map_data = 1;
+   */
+  mapData: { [key: string]: OrderSettlement };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.OrderSettlementMapItem.
+ * Use `create(OrderSettlementMapItemSchema)` to create a new message.
+ */
+export const OrderSettlementMapItemSchema: GenMessage<OrderSettlementMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 7);
+
+/**
+ * @generated from message warehouse.settlement.v1.OrderSettlementListResponseItem
+ */
+export type OrderSettlementListResponseItem = Message<"warehouse.settlement.v1.OrderSettlementListResponseItem"> & {
+  /**
+   * @generated from oneof warehouse.settlement.v1.OrderSettlementListResponseItem.d
    */
   d: {
     /**
@@ -970,30 +419,32 @@ export type SettlementPaymentListResponseItem = Message<"warehouse.settlement.v1
     case: "general";
   } | {
     /**
-     * @generated from field: warehouse.settlement.v1.SettlementPaymentMapItem payment = 2;
+     * @generated from field: warehouse.settlement.v1.OrderSettlementMapItem settlement = 2;
      */
-    value: SettlementPaymentMapItem;
-    case: "payment";
+    value: OrderSettlementMapItem;
+    case: "settlement";
   } | { case: undefined; value?: undefined };
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPaymentListResponseItem.
- * Use `create(SettlementPaymentListResponseItemSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementListResponseItem.
+ * Use `create(OrderSettlementListResponseItemSchema)` to create a new message.
  */
-export const SettlementPaymentListResponseItemSchema: GenMessage<SettlementPaymentListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 28);
+export const OrderSettlementListResponseItemSchema: GenMessage<OrderSettlementListResponseItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 8);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementPaymentListResponse
+ * @generated from message warehouse.settlement.v1.OrderSettlementListResponse
  */
-export type SettlementPaymentListResponse = Message<"warehouse.settlement.v1.SettlementPaymentListResponse"> & {
+export type OrderSettlementListResponse = Message<"warehouse.settlement.v1.OrderSettlementListResponse"> & {
   /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementPaymentListResponseItem items = 1;
+   * @generated from field: repeated warehouse.settlement.v1.OrderSettlementListResponseItem items = 1;
    */
-  items: SettlementPaymentListResponseItem[];
+  items: OrderSettlementListResponseItem[];
 
   /**
+   * Keyed by `order_id` — the accounts' identity IS the order (#the-grain-is-the-order).
+   *
    * @generated from field: repeated uint64 ids = 2;
    */
   ids: bigint[];
@@ -1002,707 +453,335 @@ export type SettlementPaymentListResponse = Message<"warehouse.settlement.v1.Set
    * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
    */
   pageInfo?: PageInfo;
+
+  /**
+   * The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
+   * A card that changed as you turned pages would be reporting the page, which nobody asked about.
+   *
+   * @generated from field: int64 total_initial_total = 4;
+   */
+  totalInitialTotal: bigint;
+
+  /**
+   * @generated from field: int64 total_last_balance = 5;
+   */
+  totalLastBalance: bigint;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementPaymentListResponse.
- * Use `create(SettlementPaymentListResponseSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementListResponse.
+ * Use `create(OrderSettlementListResponseSchema)` to create a new message.
  */
-export const SettlementPaymentListResponseSchema: GenMessage<SettlementPaymentListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 29);
+export const OrderSettlementListResponseSchema: GenMessage<OrderSettlementListResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 9);
 
 /**
- * A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
- * 
- * One row covers both fees and the limit because they are one relationship: the warehouse that
- * charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
- * screens and two chances to configure half of it.
+ * ⚠ THE LOG IS NOT PAGINATED, and that is a bounded choice rather than an oversight. Its length is
+ * the number of times ONE order was settled — a handful, and the panel draws a running balance that a
+ * page boundary would cut in half. HARD RULE 9 governs lists that grow with the DATA; this one grows
+ * with a single order's activity.
  *
- * @generated from message warehouse.settlement.v1.SettlementTerms
+ * @generated from message warehouse.settlement.v1.OrderSettlementDetailRequest
  */
-export type SettlementTerms = Message<"warehouse.settlement.v1.SettlementTerms"> & {
-  /**
-   * The creditor — the team that SETS these terms.
-   *
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * The debtor they apply to. ⚠ 0 IS THE DEFAULT ROW, applying to every team without one of their
-   * own. That is the whole override mechanism, and it is why 0 is not a valid team id anywhere else.
-   *
-   * @generated from field: uint64 counterparty_id = 2;
-   */
-  counterpartyId: bigint;
-
-  /**
-   * FLAT PER ORDER, whole rupiah, charged by a warehouse for fulfilling it. NO RATE CONFIGURED MEANS
-   * CHARGE NOTHING — a warehouse that has set nothing is not silently billing anybody.
-   *
-   * @generated from field: int64 handling_fee = 3;
-   */
-  handlingFee: bigint;
-
-  /**
-   * The markup this team takes when another team sells ITS product, in BASIS POINTS over the cost
-   * (2000 = 20%). Basis points rather than a float, for the same reason money is int64: a percentage
-   * that cannot be represented exactly is a fee that drifts.
-   * 
-   * The anchor is the order line's frozen `unit_cost` (HPP), NOT the buyer-paid price. A markup on
-   * what the buyer paid is a commission model wearing a sale's clothes — on a product that cost
-   * 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while
-   * buyer-paid+markup owes 20.000, and the owner loses 40.000 on their own goods.
-   * 
-   *   product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
-   * 
-   * ⚠ `unit_cost = 0` means UNKNOWN, not free — a product received straight into stock has no
-   * recorded cost, and computes a fee of zero. The decision is to POST THE ZERO and let the
-   * reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping gap.
-   *
-   * @generated from field: int64 product_markup_bp = 4;
-   */
-  productMarkupBp: bigint;
-
-  /**
-   * How much this debtor may owe before their next order is refused.
-   * 
-   * ⚠ ABSENT MEANS UNLIMITED. `0` MEANS NO CREDIT AT ALL. They are opposites, and encoding unlimited
-   * as 0 is the trap: the day somebody genuinely wants to freeze a team they will type 0 and grant
-   * infinite credit instead. Removing a limit means DELETING the terms row, never zeroing this field.
-   * 
-   * The rule is CURRENT debt < limit, so exposure can reach the limit plus one order's fees and the
-   * NEXT order is blocked. Friendlier than a hard ceiling — a person is cut off next time rather than
-   * rejected mid-order for an amount they cannot see — and it agrees with the eventual-consistency
-   * window rather than fighting it.
-   *
-   * @generated from field: optional int64 credit_limit = 5;
-   */
-  creditLimit?: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTerms.
- * Use `create(SettlementTermsSchema)` to create a new message.
- */
-export const SettlementTermsSchema: GenMessage<SettlementTerms> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 30);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementTermsListRequest
- */
-export type SettlementTermsListRequest = Message<"warehouse.settlement.v1.SettlementTermsListRequest"> & {
+export type OrderSettlementDetailRequest = Message<"warehouse.settlement.v1.OrderSettlementDetailRequest"> & {
   /**
    * @generated from field: uint64 team_id = 1;
    */
   teamId: bigint;
 
   /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementTermsListDataType data_request = 2;
+   * @generated from field: uint64 order_id = 2;
    */
-  dataRequest: SettlementTermsListDataType[];
-
-  /**
-   * @generated from field: warehouse.common.v1.CommonPagination page = 3;
-   */
-  page?: CommonPagination;
+  orderId: bigint;
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementTermsListRequest.
- * Use `create(SettlementTermsListRequestSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementDetailRequest.
+ * Use `create(OrderSettlementDetailRequestSchema)` to create a new message.
  */
-export const SettlementTermsListRequestSchema: GenMessage<SettlementTermsListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 31);
+export const OrderSettlementDetailRequestSchema: GenMessage<OrderSettlementDetailRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 10);
 
 /**
- * The TERMS slice reuses the SettlementTerms message directly, keyed by counterparty_id
- * (0 = the default row).
- *
- * @generated from message warehouse.settlement.v1.SettlementTermsMapItem
+ * @generated from message warehouse.settlement.v1.OrderSettlementDetailResponse
  */
-export type SettlementTermsMapItem = Message<"warehouse.settlement.v1.SettlementTermsMapItem"> & {
+export type OrderSettlementDetailResponse = Message<"warehouse.settlement.v1.OrderSettlementDetailResponse"> & {
   /**
-   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementTerms> map_data = 1;
+   * @generated from field: warehouse.settlement.v1.OrderSettlement settlement = 1;
    */
-  mapData: { [key: string]: SettlementTerms };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsMapItem.
- * Use `create(SettlementTermsMapItemSchema)` to create a new message.
- */
-export const SettlementTermsMapItemSchema: GenMessage<SettlementTermsMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 32);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementTermsListResponseItem
- */
-export type SettlementTermsListResponseItem = Message<"warehouse.settlement.v1.SettlementTermsListResponseItem"> & {
-  /**
-   * @generated from oneof warehouse.settlement.v1.SettlementTermsListResponseItem.d
-   */
-  d: {
-    /**
-     * @generated from field: warehouse.common.v1.GeneralMapItem general = 1;
-     */
-    value: GeneralMapItem;
-    case: "general";
-  } | {
-    /**
-     * @generated from field: warehouse.settlement.v1.SettlementTermsMapItem terms = 2;
-     */
-    value: SettlementTermsMapItem;
-    case: "terms";
-  } | { case: undefined; value?: undefined };
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsListResponseItem.
- * Use `create(SettlementTermsListResponseItemSchema)` to create a new message.
- */
-export const SettlementTermsListResponseItemSchema: GenMessage<SettlementTermsListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 33);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementTermsListResponse
- */
-export type SettlementTermsListResponse = Message<"warehouse.settlement.v1.SettlementTermsListResponse"> & {
-  /**
-   * @generated from field: repeated warehouse.settlement.v1.SettlementTermsListResponseItem items = 1;
-   */
-  items: SettlementTermsListResponseItem[];
+  settlement?: OrderSettlement;
 
   /**
-   * @generated from field: repeated uint64 ids = 2;
-   */
-  ids: bigint[];
-
-  /**
-   * @generated from field: warehouse.common.v1.PageInfo page_info = 3;
-   */
-  pageInfo?: PageInfo;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsListResponse.
- * Use `create(SettlementTermsListResponseSchema)` to create a new message.
- */
-export const SettlementTermsListResponseSchema: GenMessage<SettlementTermsListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 34);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementTermsSetRequest
- */
-export type SettlementTermsSetRequest = Message<"warehouse.settlement.v1.SettlementTermsSetRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * 0 sets the DEFAULT row — see SettlementTerms.counterparty_id.
+   * Oldest first, so the running `balance` column reads downward the way it was built.
    *
-   * @generated from field: uint64 counterparty_id = 2;
+   * @generated from field: repeated warehouse.settlement.v1.SettlementEntry entries = 2;
    */
-  counterpartyId: bigint;
-
-  /**
-   * @generated from field: int64 handling_fee = 3;
-   */
-  handlingFee: bigint;
-
-  /**
-   * @generated from field: int64 product_markup_bp = 4;
-   */
-  productMarkupBp: bigint;
-
-  /**
-   * Omit for unlimited; send 0 to freeze this team's credit entirely.
-   *
-   * @generated from field: optional int64 credit_limit = 5;
-   */
-  creditLimit?: bigint;
+  entries: SettlementEntry[];
 };
 
 /**
- * Describes the message warehouse.settlement.v1.SettlementTermsSetRequest.
- * Use `create(SettlementTermsSetRequestSchema)` to create a new message.
+ * Describes the message warehouse.settlement.v1.OrderSettlementDetailResponse.
+ * Use `create(OrderSettlementDetailResponseSchema)` to create a new message.
  */
-export const SettlementTermsSetRequestSchema: GenMessage<SettlementTermsSetRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 35);
+export const OrderSettlementDetailResponseSchema: GenMessage<OrderSettlementDetailResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 11);
 
 /**
- * @generated from message warehouse.settlement.v1.SettlementTermsSetResponse
- */
-export type SettlementTermsSetResponse = Message<"warehouse.settlement.v1.SettlementTermsSetResponse"> & {
-  /**
-   * @generated from field: warehouse.settlement.v1.SettlementTerms terms = 1;
-   */
-  terms?: SettlementTerms;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsSetResponse.
- * Use `create(SettlementTermsSetResponseSchema)` to create a new message.
- */
-export const SettlementTermsSetResponseSchema: GenMessage<SettlementTermsSetResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 36);
-
-/**
- * Removing terms is a DELETE, and that is the point: it is the only way to express "unlimited"
- * once a limit has been set, because 0 already means the opposite.
+ * WHAT A ROW IS (#the-log-is-order-scoped-with-six-types, widened to seven by
+ * #a-cancel-is-an-opposite-row).
  *
- * @generated from message warehouse.settlement.v1.SettlementTermsDeleteRequest
- */
-export type SettlementTermsDeleteRequest = Message<"warehouse.settlement.v1.SettlementTermsDeleteRequest"> & {
-  /**
-   * @generated from field: uint64 team_id = 1;
-   */
-  teamId: bigint;
-
-  /**
-   * @generated from field: uint64 counterparty_id = 2;
-   */
-  counterpartyId: bigint;
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsDeleteRequest.
- * Use `create(SettlementTermsDeleteRequestSchema)` to create a new message.
- */
-export const SettlementTermsDeleteRequestSchema: GenMessage<SettlementTermsDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 37);
-
-/**
- * @generated from message warehouse.settlement.v1.SettlementTermsDeleteResponse
- */
-export type SettlementTermsDeleteResponse = Message<"warehouse.settlement.v1.SettlementTermsDeleteResponse"> & {
-};
-
-/**
- * Describes the message warehouse.settlement.v1.SettlementTermsDeleteResponse.
- * Use `create(SettlementTermsDeleteResponseSchema)` to create a new message.
- */
-export const SettlementTermsDeleteResponseSchema: GenMessage<SettlementTermsDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_settlement_v1_settlement, 38);
-
-/**
- * WHAT CAUSED an entry (§4.4). A typed pair `(source_type, source_id)`, never a free-text note:
- * "why do I owe this?" is the first question anyone asks a balance, and a note cannot be joined,
- * filtered or counted. It is also what lets an order's fee and its reversal read as one story, and
- * what keeps this service out of selling_service's tables.
- * 
- * APPEND ONLY, like every enum here.
+ * ⚠ THE SIGN CONVENTION, STATED ONCE: `change` is signed, and POSITIVE IS MONEY TOWARD US. So
+ * `initial_total` is NEGATIVE — the platform owes us the sale, and the account opens in deficit — and
+ * `fund` is POSITIVE as the money actually arrives. This is the opposite of how a person says it,
+ * which is why `order_settlements.initial_total` stores the sale POSITIVE
+ * (#initial-total-is-stored-positive) and the projection holds the only sign flip in the system.
  *
- * @generated from enum warehouse.settlement.v1.SettlementSourceType
+ * @generated from enum warehouse.settlement.v1.SettlementType
  */
-export enum SettlementSourceType {
+export enum SettlementType {
   /**
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: SETTLEMENT_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * The warehouse paid the courier at the door for goods it does not own (#155/#184). `source_id` is
-   * the restock request.
-   * 
-   * ⚠ SUPERSEDED BY RESTOCK_OUTLAY, and kept because history is not rewritten: every entry posted
-   * before a delivery could carry more than one kind of cost still reads as what it was. Nothing
-   * posts under it any more.
+   * The sale, frozen from `order.marketplace_total` when the order is created. `change` is NEGATIVE.
+   * Written only by `order_service` (source `order`) or by hand
+   * (#initial-total-is-postable-by-cs-and-owners).
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_COD_FEE = 1;
+   * @generated from enum value: SETTLEMENT_TYPE_INITIAL_TOTAL = 1;
    */
-  COD_FEE = 1,
+  INITIAL_TOTAL = 1,
 
   /**
-   * The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
-   * the order.
+   * What actually arrived from the platform. POSITIVE. Several may land for one order.
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_HANDLING_FEE = 2;
+   * @generated from enum value: SETTLEMENT_TYPE_FUND = 2;
    */
-  HANDLING_FEE = 2,
+  FUND = 2,
 
   /**
-   * The order sold a product belonging to ANOTHER team, so the selling team owes that team (#186).
-   * `source_id` is the order. One order can post several of these — one per distinct owning team.
+   * An ads charge the platform billed against this order. Normally negative.
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE = 3;
+   * @generated from enum value: SETTLEMENT_TYPE_EXTERNAL_ADS_FEE = 3;
    */
-  PRODUCT_FEE = 3,
+  EXTERNAL_ADS_FEE = 3,
 
   /**
-   * A confirmed payment (#188). `source_id` is the payment.
+   * An affiliate's cut. Normally negative.
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_PAYMENT = 4;
+   * @generated from enum value: SETTLEMENT_TYPE_AFFILIATE_FEE = 4;
    */
-  PAYMENT = 4,
+  AFFILIATE_FEE = 4,
 
   /**
-   * EVERYTHING THE WAREHOUSE LAID OUT to receive one delivery — the COD fee at the door and whatever
-   * else it paid to get the goods in. `source_id` is the restock request, and the amount is the sum
-   * of that request's cost lines.
-   * 
-   * ONE ENTRY PER DELIVERY, not per line: what the requesting team owes is a single debt for a
-   * single delivery, and the breakdown of why lives on the restock beside the goods it belongs to.
-   * Posting per line would also make `source_id` ambiguous — it would have to name a cost line while
-   * every other source type names the business object.
+   * A platform adjustment — a claim paid, a penalty charged. Signed either way.
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY = 5;
+   * @generated from enum value: SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT = 5;
    */
-  RESTOCK_OUTLAY = 5,
+  MARKETPLACE_ADJUSTMENT = 5,
 
   /**
-   * STOCK THE WAREHOUSE BROKE OR LOST while holding it, valued at the batch's frozen cost.
-   * `source_id` is the ADJUST MOVEMENT that recorded it.
-   * 
-   * The warehouse owes the OWNING TEAM, because the goods were never the warehouse's: it holds them,
-   * the selling team owns them (business_level Â§Warehouse 4/5). Recording only the write-off would say
-   * the warehouse lost value and leave the owner's goods simply gone.
-   * 
-   * ⚠ THIS IS NOT THE SAME RECORD AS THE EXPENSE. `EXPENSE_KIND_STOCK_WRITE_OFF` is the warehouse's
-   * own P&L view of the same event; this is who it now owes. Both are correct and neither replaces
-   * the other — one answers "what did our losses cost us", the other "who do we have to pay".
-   * 
-   * Goods FOUND again post the same source type as a REVERSAL against the found movement, so the
-   * history reads as one story: reimbursed, then given back.
-   * 
-   * ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level Â§Warehouse 6). Those
-   * never enter the warehouse's custody, and they travel a different path — a restock damage line,
-   * not an adjust.
+   * Anything the five above do not name. Signed either way.
    *
-   * @generated from enum value: SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE = 6;
+   * @generated from enum value: SETTLEMENT_TYPE_OTHER = 6;
    */
-  STOCK_DAMAGE = 6,
+  OTHER = 6,
+
+  /**
+   * ⚠ THE SEVENTH (#a-cancel-is-an-opposite-row). The exact opposite of INITIAL_TOTAL, posted when
+   * the order is cancelled, and it ZEROES `order_settlements.initial_total` in the same write
+   * (#cancel-zeroes-the-live-sale). MACHINE ONLY — source must be `order`
+   * (#only-machines-post-the-cancel).
+   *
+   * @generated from enum value: SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL = 7;
+   */
+  INITIAL_TOTAL_CANCEL = 7,
 }
 
 /**
- * Describes the enum warehouse.settlement.v1.SettlementSourceType.
+ * Describes the enum warehouse.settlement.v1.SettlementType.
  */
-export const SettlementSourceTypeSchema: GenEnum<SettlementSourceType> = /*@__PURE__*/
+export const SettlementTypeSchema: GenEnum<SettlementType> = /*@__PURE__*/
   enumDesc(file_warehouse_settlement_v1_settlement, 0);
 
 /**
- * @generated from enum warehouse.settlement.v1.SettlementPositionListDataType
+ * WHICH WRITE PATH a row came from (#entries-arrive-by-api-or-by-hand, widened to three by
+ * #the-third-source-is-order).
+ *
+ * @generated from enum warehouse.settlement.v1.SourceType
  */
-export enum SettlementPositionListDataType {
+export enum SourceType {
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_GENERAL = 1;
+   * `export_service` — a parsed marketplace statement. Deferred, but the contract is settlement's.
+   *
+   * @generated from enum value: SOURCE_TYPE_EXPORTER = 1;
    */
-  GENERAL = 1,
+  EXPORTER = 1,
 
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_LIST_DATA_TYPE_POSITION = 2;
+   * A person, on the order detail page. The only rows `manualEntries()` reviews.
+   *
+   * @generated from enum value: SOURCE_TYPE_MANUAL = 2;
    */
-  POSITION = 2,
+  MANUAL = 2,
+
+  /**
+   * `order_service`, on order create and on order cancel. The ONLY source that may post
+   * SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL.
+   *
+   * @generated from enum value: SOURCE_TYPE_ORDER = 3;
+   */
+  ORDER = 3,
 }
 
 /**
- * Describes the enum warehouse.settlement.v1.SettlementPositionListDataType.
+ * Describes the enum warehouse.settlement.v1.SourceType.
  */
-export const SettlementPositionListDataTypeSchema: GenEnum<SettlementPositionListDataType> = /*@__PURE__*/
+export const SourceTypeSchema: GenEnum<SourceType> = /*@__PURE__*/
   enumDesc(file_warehouse_settlement_v1_settlement, 1);
 
 /**
- * @generated from enum warehouse.settlement.v1.SettlementPositionSort
+ * @generated from enum warehouse.settlement.v1.OrderSettlementSort
  */
-export enum SettlementPositionSort {
+export enum OrderSettlementSort {
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_SORT_UNSPECIFIED = 0;
+   * @generated from enum value: ORDER_SETTLEMENT_SORT_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_SORT_OLDEST_UNSETTLED = 1;
+   * The default and the reason the screen exists: the orders that lost the most, first.
+   *
+   * @generated from enum value: ORDER_SETTLEMENT_SORT_LOSS = 1;
    */
-  OLDEST_UNSETTLED = 1,
+  LOSS = 1,
 
   /**
-   * @generated from enum value: SETTLEMENT_POSITION_SORT_BALANCE = 2;
+   * @generated from enum value: ORDER_SETTLEMENT_SORT_ORDER_ID = 2;
    */
-  BALANCE = 2,
+  ORDER_ID = 2,
+
+  /**
+   * @generated from enum value: ORDER_SETTLEMENT_SORT_INITIAL_TOTAL = 3;
+   */
+  INITIAL_TOTAL = 3,
 }
 
 /**
- * Describes the enum warehouse.settlement.v1.SettlementPositionSort.
+ * Describes the enum warehouse.settlement.v1.OrderSettlementSort.
  */
-export const SettlementPositionSortSchema: GenEnum<SettlementPositionSort> = /*@__PURE__*/
+export const OrderSettlementSortSchema: GenEnum<OrderSettlementSort> = /*@__PURE__*/
   enumDesc(file_warehouse_settlement_v1_settlement, 2);
 
 /**
- * @generated from enum warehouse.settlement.v1.SettlementEntryListDataType
+ * @generated from enum warehouse.settlement.v1.OrderSettlementListDataType
  */
-export enum SettlementEntryListDataType {
+export enum OrderSettlementListDataType {
   /**
-   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: ORDER_SETTLEMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_GENERAL = 1;
+   * @generated from enum value: ORDER_SETTLEMENT_LIST_DATA_TYPE_GENERAL = 1;
    */
   GENERAL = 1,
 
   /**
-   * @generated from enum value: SETTLEMENT_ENTRY_LIST_DATA_TYPE_ENTRY = 2;
+   * @generated from enum value: ORDER_SETTLEMENT_LIST_DATA_TYPE_SETTLEMENT = 2;
    */
-  ENTRY = 2,
+  SETTLEMENT = 2,
 }
 
 /**
- * Describes the enum warehouse.settlement.v1.SettlementEntryListDataType.
+ * Describes the enum warehouse.settlement.v1.OrderSettlementListDataType.
  */
-export const SettlementEntryListDataTypeSchema: GenEnum<SettlementEntryListDataType> = /*@__PURE__*/
+export const OrderSettlementListDataTypeSchema: GenEnum<OrderSettlementListDataType> = /*@__PURE__*/
   enumDesc(file_warehouse_settlement_v1_settlement, 3);
 
 /**
- * A claim that money moved, and whether the creditor has agreed it arrived (#188).
+ * SettlementService is the ledger of WHAT THE MARKETPLACE PAYS US for an order.
  *
- * @generated from enum warehouse.settlement.v1.SettlementPaymentStatus
- */
-export enum SettlementPaymentStatus {
-  /**
-   * @generated from enum value: SETTLEMENT_PAYMENT_STATUS_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * The payer says they paid. NO LEDGER EFFECT YET — one side asserting a transfer is not evidence
-   * that it landed.
-   *
-   * @generated from enum value: SETTLEMENT_PAYMENT_STATUS_RECORDED = 1;
-   */
-  RECORDED = 1,
-
-  /**
-   * The creditor saw the money arrive. THIS is what posts the entry.
-   *
-   * @generated from enum value: SETTLEMENT_PAYMENT_STATUS_CONFIRMED = 2;
-   */
-  CONFIRMED = 2,
-
-  /**
-   * A confirmation made in error, undone by a compensating entry — the confirmation itself is never
-   * deleted.
-   *
-   * @generated from enum value: SETTLEMENT_PAYMENT_STATUS_REVERSED = 3;
-   */
-  REVERSED = 3,
-}
-
-/**
- * Describes the enum warehouse.settlement.v1.SettlementPaymentStatus.
- */
-export const SettlementPaymentStatusSchema: GenEnum<SettlementPaymentStatus> = /*@__PURE__*/
-  enumDesc(file_warehouse_settlement_v1_settlement, 4);
-
-/**
- * @generated from enum warehouse.settlement.v1.SettlementPaymentListDataType
- */
-export enum SettlementPaymentListDataType {
-  /**
-   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_GENERAL = 1;
-   */
-  GENERAL = 1,
-
-  /**
-   * @generated from enum value: SETTLEMENT_PAYMENT_LIST_DATA_TYPE_PAYMENT = 2;
-   */
-  PAYMENT = 2,
-}
-
-/**
- * Describes the enum warehouse.settlement.v1.SettlementPaymentListDataType.
- */
-export const SettlementPaymentListDataTypeSchema: GenEnum<SettlementPaymentListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_settlement_v1_settlement, 5);
-
-/**
- * @generated from enum warehouse.settlement.v1.SettlementTermsListDataType
- */
-export enum SettlementTermsListDataType {
-  /**
-   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_GENERAL = 1;
-   */
-  GENERAL = 1,
-
-  /**
-   * @generated from enum value: SETTLEMENT_TERMS_LIST_DATA_TYPE_TERMS = 2;
-   */
-  TERMS = 2,
-}
-
-/**
- * Describes the enum warehouse.settlement.v1.SettlementTermsListDataType.
- */
-export const SettlementTermsListDataTypeSchema: GenEnum<SettlementTermsListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_settlement_v1_settlement, 6);
-
-/**
- * SettlementService is the ledger of WHAT TEAMS OWE EACH OTHER (#180).
- * 
- * It exists because an obligation already happens today and nothing records it: when a restock
- * arrives COD, the WAREHOUSE pays the courier at the door for goods it does not own (#155). That
- * number reaches the order's COGS — correct for costing, silent on settlement. Nothing says the
- * warehouse is owed it, or whether it was ever repaid.
- * 
+ * ⚠ NOT to be confused with `liability_service`, which is what TEAMS OWE EACH OTHER. That service was
+ * once called `settlement_service` and was renamed precisely so this one could take the name
+ * (docs/business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
+ *
+ * THE ONE IDEA THE WHOLE DESIGN RESTS ON. `initial_total` is a frozen copy of
+ * `order.marketplace_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
+ * (#marketplace-total-is-a-fact-not-an-estimate). What is estimated is only the EXPECTATION that all
+ * of it reaches us. So the running balance is not "drift from a guess", it is exactly:
+ *
+ *     how much of what the buyer paid never reached us
+ *
+ * which is the platform's take, literally. The platform does not itemise it
+ * (#hidden-cost-is-left-in-the-balance), so this gap is the only measure of it we will ever have.
+ *
+ * ⚠ THE BALANCE NEVER REACHES ZERO, AND THAT IS CORRECT (#a-residual-balance-is-normal). There is no
+ * `settled` flag, no "outstanding" figure and no queue to clear anywhere in this contract. A residual
+ * is a VARIANCE — a fact about the order — never a receivable somebody should chase.
+ *
  * Three things it deliberately is NOT:
- * 
- *   - **Not a goods ledger.** Money only. "Borrowing another team's product" is a cross-team SALE,
- *     charged as money at order time — the goods leave and do not come back.
- *   - **Not an allocation engine.** `expense_service` records what a team spent and settlement NEVER
- *     reads it. What reaches a selling team is a PRICE the warehouse set, never a share of its spend.
- *   - **Not open to outsiders.** Counterparties are TEAMS ONLY, because settlement is two-phase: the
- *     creditor confirms a payment, and a party that cannot log in can never confirm anything.
- * 
- * ⚠ TWO AUTHORIZATION TRAPS LIVE IN THIS SERVICE, and both are easy to walk into.
- * 
- *  1. Every request needs `use_scope` on `team_id`. These are team-level roles, and a team-level role
- *     on an unscoped message is evaluated against the ROOT team — the policy becomes a dead letter
- *     and the proto claims something the system does not do.
- *  2. A balance has TWO SIDES and only one can be the scope. A request scoped to `team_id` proves the
- *     caller belongs to THAT team and says nothing about the counterparty. A handler must never treat
- *     a caller-supplied `counterparty_id` as if it were the scope.
- * 
- * The contract was derived from the screens first (#182, HARD RULE 6) and is SPLIT INTO THREE
- * SERVICES — reads, payments, terms — served by one Go implementation, exactly as ShopService,
- * OrderService and OrderDraftService share selling_service's.
- * 
- * ⚠ THE SPLIT IS ABOUT WHEN EACH CAN BE MOUNTED, not about taste. A service is mounted whole: the
- * generated handler interface demands every RPC, and mounting also puts it in reflection. One service
- * covering all nine RPCs could not be served until the last of them existed — so the screens (#185)
- * would have had to ship alongside stubs returning Unimplemented, which is a contract that lies about
- * what the system does. Three services land with their three issues instead.
- * 
- * Two later issues bring their own RPCs rather than crowding these: the reconciliation report (#187)
- * and the pre-order credit check (#189).
+ *
+ *   - **Not an importer.** File import, per-marketplace parsing and the unmatched tray belong to a
+ *     deferred `export_service` (#importing-is-not-settlements-job). This is a ledger with a write API.
+ *   - **Not aware of order status.** Nothing is gated on `OrderStatus` (#settlement-ignores-our-order-status);
+ *     a row may post at any time, including long after delivery.
+ *   - **Not editable.** Append-only (#a-correction-is-a-new-row). A mistake is offset by a further row.
  *
  * @generated from service warehouse.settlement.v1.SettlementService
  */
 export const SettlementService: GenService<{
   /**
-   * The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
+   * The list screen — one row per order, ranked by loss.
    *
-   * @generated from rpc warehouse.settlement.v1.SettlementService.SettlementPositionList
+   * @generated from rpc warehouse.settlement.v1.SettlementService.OrderSettlementList
    */
-  settlementPositionList: {
+  orderSettlementList: {
     methodKind: "unary";
-    input: typeof SettlementPositionListRequestSchema;
-    output: typeof SettlementPositionListResponseSchema;
+    input: typeof OrderSettlementListRequestSchema;
+    output: typeof OrderSettlementListResponseSchema;
   },
   /**
-   * The counterparty detail's running history (#185).
+   * The panel on the order detail page — one account plus its whole log, oldest first.
    *
-   * @generated from rpc warehouse.settlement.v1.SettlementService.SettlementEntryList
+   * @generated from rpc warehouse.settlement.v1.SettlementService.OrderSettlementDetail
    */
-  settlementEntryList: {
+  orderSettlementDetail: {
     methodKind: "unary";
-    input: typeof SettlementEntryListRequestSchema;
-    output: typeof SettlementEntryListResponseSchema;
-  },
-  /**
-   * What the ledger moved PER DAY — a warehouse's income half of the daily statement.
-   *
-   * @generated from rpc warehouse.settlement.v1.SettlementService.SettlementDaily
-   */
-  settlementDaily: {
-    methodKind: "unary";
-    input: typeof SettlementDailyRequestSchema;
-    output: typeof SettlementDailyResponseSchema;
+    input: typeof OrderSettlementDetailRequestSchema;
+    output: typeof OrderSettlementDetailResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_settlement_v1_settlement, 0);
 
 /**
- * Settlement is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
- * posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
+ * The WRITE surface, split from the reads for the reason every split in this repo is made: a service
+ * is mounted whole, so the reads could not ship before the writes existed if they shared one.
  *
- * @generated from service warehouse.settlement.v1.SettlementPaymentService
+ * ⚠ It is ONE RPC on purpose. All three writers — the exporter, a person, and `order_service` — post
+ * the same shape and differ only in `source_type` (#the-third-source-is-order). A per-writer RPC would
+ * be three copies of one idempotent upsert, and idempotency implemented three times is idempotency
+ * implemented twice.
+ *
+ * @generated from service warehouse.settlement.v1.SettlementWriteService
  */
-export const SettlementPaymentService: GenService<{
+export const SettlementWriteService: GenService<{
   /**
-   * @generated from rpc warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentRecord
+   * Append one row. IDEMPOTENT on `(order_id, unique_id)` — see SettlementPostRequest.
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementWriteService.SettlementPost
    */
-  settlementPaymentRecord: {
+  settlementPost: {
     methodKind: "unary";
-    input: typeof SettlementPaymentRecordRequestSchema;
-    output: typeof SettlementPaymentRecordResponseSchema;
-  },
-  /**
-   * @generated from rpc warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentConfirm
-   */
-  settlementPaymentConfirm: {
-    methodKind: "unary";
-    input: typeof SettlementPaymentConfirmRequestSchema;
-    output: typeof SettlementPaymentConfirmResponseSchema;
-  },
-  /**
-   * @generated from rpc warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentReverse
-   */
-  settlementPaymentReverse: {
-    methodKind: "unary";
-    input: typeof SettlementPaymentReverseRequestSchema;
-    output: typeof SettlementPaymentReverseResponseSchema;
-  },
-  /**
-   * @generated from rpc warehouse.settlement.v1.SettlementPaymentService.SettlementPaymentList
-   */
-  settlementPaymentList: {
-    methodKind: "unary";
-    input: typeof SettlementPaymentListRequestSchema;
-    output: typeof SettlementPaymentListResponseSchema;
+    input: typeof SettlementPostRequestSchema;
+    output: typeof SettlementPostResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_settlement_v1_settlement, 1);
-
-/**
- * A creditor's own terms toward its debtors (#189): the handling fee it charges, the markup it takes
- * on its products, and how much it will let a team owe it.
- *
- * @generated from service warehouse.settlement.v1.SettlementTermsService
- */
-export const SettlementTermsService: GenService<{
-  /**
-   * @generated from rpc warehouse.settlement.v1.SettlementTermsService.SettlementTermsList
-   */
-  settlementTermsList: {
-    methodKind: "unary";
-    input: typeof SettlementTermsListRequestSchema;
-    output: typeof SettlementTermsListResponseSchema;
-  },
-  /**
-   * @generated from rpc warehouse.settlement.v1.SettlementTermsService.SettlementTermsSet
-   */
-  settlementTermsSet: {
-    methodKind: "unary";
-    input: typeof SettlementTermsSetRequestSchema;
-    output: typeof SettlementTermsSetResponseSchema;
-  },
-  /**
-   * Removing a credit limit means DELETING the terms row, never zeroing it — see SettlementTerms.
-   *
-   * @generated from rpc warehouse.settlement.v1.SettlementTermsService.SettlementTermsDelete
-   */
-  settlementTermsDelete: {
-    methodKind: "unary";
-    input: typeof SettlementTermsDeleteRequestSchema;
-    output: typeof SettlementTermsDeleteResponseSchema;
-  },
-}> = /*@__PURE__*/
-  serviceDesc(file_warehouse_settlement_v1_settlement, 2);
 

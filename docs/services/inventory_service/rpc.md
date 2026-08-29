@@ -206,7 +206,7 @@ sequenceDiagram
         opt cod_shipping_fee > 0 (#155)
             H->>DB: INSERT restock_request_events (cod_fee)
             Note over H,DB: written FIRST — the courier is paid at the door,<br/>THEN the box is counted in. Nothing at all when the<br/>fee is 0, which is most deliveries.
-            H->>DB: PostCODFee → settlement ledger (#184)
+            H->>DB: PostCODFee → liability ledger (#184)
         end
         H->>DB: INSERT restock_request_events (accepted)
         Note over H,DB: same instant as accepted_at — the timeline and<br/>the accepted-date filter name one second
@@ -666,7 +666,7 @@ belonged to a **selling team**, and until now they were simply gone.
 sequenceDiagram
     participant W as Warehouse staff
     participant I as StockAdjust
-    participant S as settlement_service
+    participant S as liability_service
     participant E as expense_service
 
     W->>I: StockAdjust{DAMAGED, batch, qty}
@@ -695,14 +695,14 @@ a **debt**, not a discount. Getting it backwards would bill the team whose stock
 | | answers |
 | --- | --- |
 | `EXPENSE_KIND_STOCK_WRITE_OFF` | *what did our losses cost us* — the warehouse's own P&L |
-| `SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE` | *who do we now have to pay* |
+| `LIABILITY_SOURCE_TYPE_STOCK_DAMAGE` | *who do we now have to pay* |
 
 Neither replaces the other. Dropping either loses a real question's answer.
 
 ### The debt commits with the stock; the expense does not
 
-The settlement posting joins the adjust's **transaction**; the expense posting stays best-effort
-after it. Same distinction `SettlementPoster` already draws: an expense is a *derived* record and a
+The liability posting joins the adjust's **transaction**; the expense posting stays best-effort
+after it. Same distinction `LiabilityPoster` already draws: an expense is a *derived* record and a
 dropped one is a gap a report can find, while an obligation that fails to commit leaves the owning
 team's goods gone with nothing recorded — the situation the ledger exists to prevent.
 

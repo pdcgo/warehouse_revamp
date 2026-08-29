@@ -14,7 +14,7 @@
 //   - a method nobody stubbed throws `unimplemented`, which surfaces in the story as a visible error
 //     rather than an empty dropdown that looks like a styling bug.
 
-import { createRouterTransport } from "@connectrpc/connect";
+import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 
 import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
@@ -23,11 +23,10 @@ import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
 import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
 import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
-import { RevenueService } from "../src/gen/warehouse/revenue/v1/revenue_pb";
 import {
-  SettlementService,
-  SettlementSourceType,
-} from "../src/gen/warehouse/settlement/v1/settlement_pb";
+  LiabilityService,
+  LiabilitySourceType,
+} from "../src/gen/warehouse/liability/v1/liability_pb";
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
@@ -35,12 +34,37 @@ import { ShippingService } from "../src/gen/warehouse/shipping/v1/shipping_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
+import {
+  SettlementService,
+  SettlementType as WireSettlementType,
+  SourceType as WireSourceType,
+} from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
+
+// The prototype's string unions, back to the wire enums. Same mapping as src/features/settlement,
+// kept here rather than imported so the stub never depends on app code it is meant to replace.
+const stubSettlementType: Record<string, WireSettlementType> = {
+  initial_total: WireSettlementType.INITIAL_TOTAL,
+  initial_total_cancel: WireSettlementType.INITIAL_TOTAL_CANCEL,
+  fund: WireSettlementType.FUND,
+  external_ads_fee: WireSettlementType.EXTERNAL_ADS_FEE,
+  affiliate_fee: WireSettlementType.AFFILIATE_FEE,
+  marketplace_adjustment: WireSettlementType.MARKETPLACE_ADJUSTMENT,
+  other: WireSettlementType.OTHER,
+};
+
+const stubSourceType: Record<string, WireSourceType> = {
+  exporter: WireSourceType.EXPORTER,
+  manual: WireSourceType.MANUAL,
+  order: WireSourceType.ORDER,
+};
 
 import {
   categories,
   couriers,
   dayKey,
   expenseDays,
+  orderDetailFor,
   orderDrafts,
   orders,
   productCosts,
@@ -49,8 +73,7 @@ import {
   racks,
   regionTree,
   regions,
-  revenueDays,
-  settlementDays,
+  liabilityDays,
   shops,
   suppliers,
   teams,
@@ -172,7 +195,7 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
 // ── The daily statement, from three services at once ────────────────────────────────────────────
 //
 // The statement is the one screen here that subtracts one service from another (revenue or
-// settlement, minus expenses), so all three Daily RPCs are stubbed together and share this period
+// liability, minus expenses), so all three Daily RPCs are stubbed together and share this period
 // filter. They are the sparse series the client's date spine is built to fill.
 //
 // A plain string compare is the whole period test — a `yyyy-mm-dd` sorts lexically, which is why the
@@ -276,6 +299,14 @@ export const transport = createRouterTransport(({ service }) => {
     // different messages (User vs the narrower PublicUser), which is exactly why UserSelect has two
     // paths — so the stub keeps them distinct rather than serving one shape for both.
     userList: (req) => columnar("user", users.filter((u) => match(req.filter?.q, u.name, u.username))),
+    // THE ACTORS BEHIND A TIMELINE. `fetchActors` SWALLOWS a failure here and returns an empty map,
+    // so leaving this unstubbed does not throw — it silently degrades every history to "User #61".
+    // That is the one shape of broken stub this file's `unimplemented` default cannot shout about,
+    // which is exactly why it is stubbed rather than left out.
+    //
+    // ⚠ AN UNKNOWN ID IS ABSENT, never a null row — `byIds` already enforces that, and the pages
+    // depend on it: id 0 means "not recorded" and must fall through to the page's own fallback.
+    userByIDs: (req) => byIds("publicUser", publicUsers, req.filter?.ids ?? []),
     searchUser: (req) => ({
       users: publicUsers.filter((u) => match(req.q, u.name, u.username)).slice(0, req.limit || 10),
     }),
@@ -503,6 +534,26 @@ export const transport = createRouterTransport(({ service }) => {
         req.page,
       ),
 
+    // THE DETAIL READ, and it is a DIFFERENT MESSAGE from a list row — `items` and `events` are
+    // populated here and nowhere else (order.proto). That is why it cannot be served by finding the
+    // row in `orders` and handing it back: the whole detail page is built from the two tables a list
+    // row does not carry, so a stub returning the summary would render an order with no lines and no
+    // history and look, on screen, exactly like a bug in the page.
+    //
+    // ⚠ `team_id` IS THE TWO-SIDED SCOPE HERE TOO, not an owner check. A warehouse opens an order it
+    // did not place, every day — refusing that would make the picking crew unable to read the job
+    // they are picking.
+    orderDetail: (req) => {
+      const order = orderDetailFor(req.orderId);
+      if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+      if (order.teamId !== req.teamId && order.warehouseId !== req.teamId) {
+        throw new ConnectError("order not found", Code.NotFound);
+      }
+
+      return { order };
+    },
+
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
     // about to click. Every OTHER filter does apply, and that is the same rule from the other side —
@@ -568,49 +619,20 @@ export const transport = createRouterTransport(({ service }) => {
     orderDraftUpdate: (req) => ({ draft: { id: req.draftId } }),
   });
 
-  service(RevenueService, {
-    // The SELLING half of the statement — what a team's orders were expected to make, per day.
-    revenueDaily: (req) => {
-      const days = periodDays(revenueDays, req.teamId, req.filter);
-
-      return {
-        days: days.map((d) => ({
-          date: d.date,
-          orders: d.orders,
-          revenue: d.revenue,
-          cogs: d.cogs,
-          shippingCost: d.shippingCost,
-          expectedMargin: d.expectedMargin,
-          unknownCostOrders: d.unknownCostOrders,
-        })),
-        // The SERVER's period totals, over the same filter. The screen renders these in its footer
-        // rather than re-summing the rows, so a stub answering zeros here would make the footer
-        // silently disagree with the table above it — exactly the drift the split exists to prevent.
-        totals: {
-          revenue: days.reduce((a, d) => a + d.revenue, 0n),
-          cogs: days.reduce((a, d) => a + d.cogs, 0n),
-          shippingCost: days.reduce((a, d) => a + d.shippingCost, 0n),
-          expectedMargin: days.reduce((a, d) => a + d.expectedMargin, 0n),
-          unknownCostOrders: days.reduce((a, d) => a + d.unknownCostOrders, 0n),
-        },
-      };
-    },
-  });
-
-  service(SettlementService, {
+  service(LiabilityService, {
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
     // it treats as earnings. It picks HANDLING_FEE alone: COD reimburses cash already handed to a
     // courier, so summing every source and calling it income counts money nobody earned.
-    settlementDaily: (req) => {
-      const days = periodDays(settlementDays, req.teamId, req.filter);
+    liabilityDaily: (req) => {
+      const days = periodDays(liabilityDays, req.teamId, req.filter);
       const bySource: Record<number, bigint> = {};
 
       const perDay = days.map((d) => {
         // A source with nothing that day is ABSENT rather than 0 — the contract's choice, and the
         // reason every reader of these maps has to default rather than index blindly.
         const sources: Record<number, bigint> = {};
-        if (d.handlingFee !== 0n) sources[SettlementSourceType.HANDLING_FEE] = d.handlingFee;
-        if (d.codFee !== 0n) sources[SettlementSourceType.COD_FEE] = d.codFee;
+        if (d.handlingFee !== 0n) sources[LiabilitySourceType.HANDLING_FEE] = d.handlingFee;
+        if (d.codFee !== 0n) sources[LiabilitySourceType.COD_FEE] = d.codFee;
 
         addInto(bySource, sources);
 
@@ -658,6 +680,53 @@ export const transport = createRouterTransport(({ service }) => {
         .filter((d) => d.entries > 0n);
 
       return { days: perDay, totals: { total: sumMap(byKindTotal), byKind: byKindTotal } };
+    },
+  });
+
+  // The MARKETPLACE payout ledger. The fixtures are the design prototype's own
+  // (src/pages/order-settlement/fixtures.ts), so a story asserts against the same numbers the
+  // accepted design was reviewed with.
+  service(SettlementService, {
+    orderSettlementDetail: (req) => {
+      // ⚠ THE TWO FIXTURE SETS WERE AUTHORED INDEPENDENTLY. The settlement prototype predates this
+      // contract and numbers its orders 1-6; the order fixtures use 101+. Rather than renumber either
+      // (both are reviewed artefacts), order 101 — the one written out in full — is bridged to the
+      // WORKED example, which is the settlement design's own headline case.
+      const found =
+        req.orderId === 101n
+          ? settlementFixtures.worked
+          : settlementFixtures.allOrders.find((o) => o.orderId === req.orderId);
+
+      // ⚠ ABSENT IS NOT EMPTY — the real service answers NotFound for an order never settled, and
+      // the tab renders "not settled yet" rather than a zeroed panel.
+      if (!found) throw new ConnectError("no settlement account", Code.NotFound);
+
+      return {
+        settlement: {
+          orderId: found.orderId,
+          initialTotal: found.initialTotal,
+          lastBalance: found.lastBalance,
+          teamId: 1n,
+          shopId: 1n,
+        },
+        entries: found.entries.map((e, i) => ({
+          id: BigInt(i + 1),
+          uniqueId: e.uniqueId,
+          orderId: found.orderId,
+          shopId: 1n,
+          teamId: 1n,
+          actorId: 1n,
+          sourceType: stubSourceType[e.sourceType],
+          settlementType: stubSettlementType[e.settlementType],
+          change: e.change,
+          balance: e.balance,
+          occurredOn: e.occurredOn,
+          postedOn: e.postedOn,
+          reversesId: e.reversesId ? BigInt(e.reversesId) : 0n,
+          note: e.note ?? "",
+          actorName: e.actorName,
+        })),
+      };
     },
   });
 });

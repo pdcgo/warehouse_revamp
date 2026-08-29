@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam } from "../../../.storybook/pageStory";
-import { dayKey, expenseDays, revenueDays, settlementDays, teams } from "../../../.storybook/fixtures";
+import { dayKey, expenseDays, revenueDays, liabilityDays, teams } from "../../../.storybook/fixtures";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { formatRupiah } from "../../lib/money";
 import { DailyStatementPage } from "./index";
@@ -20,7 +20,7 @@ import { DailyStatementPage } from "./index";
 //   |               | selling (Toko Melati)                 | warehouse (Gudang Pusat)              |
 //   | ------------- | ------------------------------------- | ------------------------------------- |
 //   | income        | expected margin on its orders         | handling fees it charged              |
-//   | which service | revenue_service                       | settlement_service                    |
+//   | which service | revenue_service                       | liability_service                    |
 //   | the notice    | "these are EXPECTED figures"          | none — both sides are real movements  |
 //   | stock loss    | none — losses post to the warehouse   | its biggest controllable cost         |
 //
@@ -49,7 +49,7 @@ const inWindow = (ago: number, days: number) => ago <= days - 1;
 
 const sellingRevenue = revenueDays.filter((d) => d.teamId === SELLING.id);
 const sellingExpenses = expenseDays.filter((d) => d.teamId === SELLING.id);
-const warehouseFees = settlementDays.filter((d) => d.teamId === WAREHOUSE.id);
+const warehouseFees = liabilityDays.filter((d) => d.teamId === WAREHOUSE.id);
 const warehouseExpenses = expenseDays.filter((d) => d.teamId === WAREHOUSE.id);
 
 const dayTotal = (d: { byKind: Record<number, bigint> }) => sum(Object.values(d.byKind));

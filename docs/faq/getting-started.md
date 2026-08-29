@@ -12,7 +12,7 @@ Four things, in this order — about an hour:
 | --- | --- | --- |
 | 1 | [../readme.md](../readme.md) | the map: what the repo is, how the sides fit together |
 | 2 | [../../CLAUDE.md](../../CLAUDE.md) | **the rules.** Not optional — most review comments are a rule from here |
-| 3 | [../requirements/](../business/) | the owner's business context — what the warehouse actually needs |
+| 3 | [../business/](../business/) | the owner's business context — what the warehouse actually needs |
 | 4 | [../../guidelines/](../../guidelines/) | the authoritative service/RPC shapes you must follow when writing code |
 
 Then get it running (below), click through the UI, and pick a **Ready** issue off the board.

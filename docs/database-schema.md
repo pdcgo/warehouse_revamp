@@ -995,48 +995,24 @@ the owning service resolves them over Connect RPC.
 
 ---
 
-## revenue_service
+## revenue_service — REMOVED
 
-`backend/services/revenue_service/db_migrations/`
+⚠ **The service is gone; its TABLE is not.** `revenue_service` was deleted on 2026-08-28 with its
+statistics deferred — see
+[revenue-service-is-removed-and-statistics-deferred](business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred).
 
-```mermaid
-erDiagram
-    order_revenues {
-        bigserial   id              PK
-        bigint      team_id         "the SELLING team, opaque cross-service id, no FK"
-        bigint      order_id        UK "the order, opaque; UNIQUE — one record per order"
-        timestamptz voided_at       "NULL = still counts; set when the order was cancelled (#164)"
-        bigint      revenue         "what the buyer paid, copied from the order"
-        bigint      cogs            "what the goods cost us, copied"
-        bigint      shipping_cost   "copied"
-        bigint      expected_margin "revenue - cogs - shipping_cost, computed once and stored"
-        boolean     cost_known      "false = cogs is a stand-in for UNKNOWN, not a real 0 (#74)"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-```
+**No drop migration was written, deliberately.** `order_revenues` and every row in it remain in the
+database, so a future statistics service can backfill the history instead of starting at zero. Its
+goose version table `revenue_service_version` remains too, and a fresh database simply never creates
+either — the migrations were deleted with the service, so `migrate up-all` no longer knows about them.
 
-- **`order_revenues`** — what each order was **expected** to make, frozen when it was placed (#75).
-  - **A stored record rather than a calculation**, which is the owner's call against a genuinely
-    cheaper option: #74 already froze `total`, `cogs` and `shipping_cost` onto the order, so a screen
-    could compute the margin with no table at all. What this buys is a **home for #76** — settlement
-    compares expected against what the payout actually was, and "actual" has nowhere to live without a
-    row beside it.
-  - **The money is COPIED, not referenced.** If the order is later edited, or #74's cost rule is
-    replaced (it is explicitly replaceable), this row must still say what was expected *at the time* —
-    which is the only thing it is for. That it duplicates the order's numbers is the accepted cost;
-    what keeps it honest is that it is written **once**, from figures that are themselves frozen.
-  - **`expected_margin` is stored, not derived on read**, because #76 reconciles against it — and a
-    number you reconcile against has to be the one you actually promised, not one recomputed later
-    from inputs that may since have been corrected.
-  - **`cost_known = false` means the cost was UNKNOWN** (#74), not zero. A margin over an unknown cost
-    reads as pure profit, so the flag is what stops that being mistaken for a good month. The row is
-    kept anyway — an order with no revenue record at all is a worse kind of missing than one marked
-    untrustworthy.
-  - `UNIQUE (order_id)`: recording twice would **double** every total computed from this table, which
-    is the kind of error that looks like good news.
+⚠ **A fresh database and an existing one therefore differ here**, and that is the accepted cost of
+keeping the history: an old database has an orphaned table, a new one has nothing. Whichever service
+picks the statistics back up owns the decision about which shape to standardise on.
 
----
+The columns it held — `revenue`, `cogs`, `shipping_cost`, `expected_margin`, `cost_known`,
+`voided_at` — are all still carried by `OrderPlacedEvent` / `OrderCancelledEvent`, which
+`selling_service` keeps publishing with no consumer for exactly this reason.
 
 ## expense_service
 
@@ -1083,15 +1059,24 @@ erDiagram
 
 ---
 
-## settlement_service
+## liability_service
 
-`backend/services/settlement_service/db_migrations/`
+`backend/services/liability_service/db_migrations/`
+
+> ⚠ **These tables were called `settlement_*` until 2026-08-28.** The service renamed because the word
+> `settlement` now means the MARKETPLACE PAYOUT — see
+> [the-name-settlement-moves-to-the-payout](business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
+>
+> Migrations 00001–00003 create the tables under the new names. **`00004_adopt_legacy_settlement_tables.sql`**
+> then copies any rows a database still holds under the old names and drops them — including the old
+> `settlement_service_version` goose table, which would otherwise hand a future (real) `settlement_service`
+> a migration history that was never its own. On a fresh database every step of 00004 is a no-op.
 
 ```mermaid
 erDiagram
-    settlement_entries }o--|| settlement_balances : "projected into"
-    settlement_payments ||--o{ settlement_entries : "a CONFIRMED one posts"
-    settlement_terms {
+    liability_entries }o--|| liability_balances : "projected into"
+    liability_payments ||--o{ liability_entries : "a CONFIRMED one posts"
+    liability_terms {
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
         bigint      counterparty_id   "the debtor — 0 IS THE DEFAULT ROW for every other team"
@@ -1102,7 +1087,7 @@ erDiagram
         timestamptz updated_at
     }
 
-    settlement_entries {
+    liability_entries {
         bigserial   id              PK
         bigint      team_id         "whose books this leg is in, opaque, no FK"
         bigint      counterparty_id "the other side"
@@ -1115,7 +1100,7 @@ erDiagram
         timestamptz created_at
     }
 
-    settlement_balances {
+    liability_balances {
         bigserial   id                  PK
         bigint      team_id             "one row per ORDERED pair — two per relationship"
         bigint      counterparty_id
@@ -1125,7 +1110,7 @@ erDiagram
         timestamptz updated_at
     }
 
-    settlement_payments {
+    liability_payments {
         bigserial   id               PK
         bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
         bigint      creditor_team_id "who was paid, and the ONLY team that may confirm"
@@ -1141,13 +1126,13 @@ erDiagram
     }
 ```
 
-- **`settlement_entries`** — the ledger of what teams owe each other (#183). Immutable and
+- **`liability_entries`** — the ledger of what teams owe each other (#183). Immutable and
   append-only: a correction is a
   **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
   anything.
   - **Every movement writes TWO legs in one transaction**, one per side, holding exact negatives —
     posting half a movement is impossible by construction rather than by discipline. `group_id` (from
-    `settlement_group_seq`) is what lets "show me both sides of this posting" be a query instead of a
+    `liability_group_seq`) is what lets "show me both sides of this posting" be a query instead of a
     heuristic match on amount, opposite sign and a near timestamp.
   - **One sign convention, stated once**: from `team_id`'s side, a receivable is **positive** and a
     payable is **negative**. Nothing anywhere returns an `abs()` of it under another name — two fields
@@ -1164,7 +1149,7 @@ erDiagram
     entry shares the other four values with the entry it undoes.
   - `CHECK (team_id <> counterparty_id)` — a team owing itself could only come from a bug upstream,
     and a ledger is the wrong place to discover one quietly.
-- **`settlement_balances`** — a **projection** of the entries, kept because "what do we owe each
+- **`liability_balances`** — a **projection** of the entries, kept because "what do we owe each
   other" is asked far more often than it changes. Every balance must stay recomputable by summing the
   entries alone, or the ledger cannot be audited; there is a test that does exactly that.
   - **`UNIQUE (team_id, counterparty_id)` is in the FIRST migration, deliberately.** Lock-then-read
@@ -1180,7 +1165,7 @@ erDiagram
     days" is actionable in a way a balance alone is not). A per-entry FIFO age would be truer under
     partial payments and needs an allocation model — which payment settled which entry — that nothing
     here has; see §5.3 of the brainstorming doc.
-- **`settlement_terms`** — a **creditor's terms toward one debtor** (#186/#189): what it charges them
+- **`liability_terms`** — a **creditor's terms toward one debtor** (#186/#189): what it charges them
   and how far it will let them run. One row rather than three tables because these are one
   relationship — the warehouse that charges you 12k an order is the warehouse that caps you at 50m.
   - **`counterparty_id = 0` IS the default row**, applying to every team without one of their own.
@@ -1194,14 +1179,14 @@ erDiagram
   - **The two fees default differently, deliberately.** No `handling_fee` means charge nothing — it is
     a *price*, and a warehouse that configured nothing must not be silently billing anybody. No
     markup still charges **cost**, because the product fee is a *cost transfer*: the goods left the
-    owner's stock and do not come back. See `docs/services/settlement_service/rpc.md`.
+    owner's stock and do not come back. See `docs/services/liability_service/rpc.md`.
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
     it. #189 added the RPCs that write it — until then every row was absent, so every fee was 0 and
     every credit limit unlimited.
-- **`settlement_payments`** — one team's claim that it paid another, and the creditor's agreement that
-  the money arrived (#188). **Settlement is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
+- **`liability_payments`** — one team's claim that it paid another, and the creditor's agreement that
+  the money arrived (#188). **Liability is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
   only the confirm posts to the ledger.
-  - ⚠ **It is NOT the ledger.** This table holds the claim; `settlement_entries` holds what moved. A payment
+  - ⚠ **It is NOT the ledger.** This table holds the claim; `liability_entries` holds what moved. A payment
     sitting at `recorded` has changed no balance at all — one side asserting a transfer is not evidence
     that it landed, and only the creditor can see the money arrive. That asymmetry is also why
     counterparties are teams only: an external party has no account and could never confirm.
@@ -1210,10 +1195,100 @@ erDiagram
   - **A reversal is a compensating entry, never an edit.** The confirmation stays and an
     equal-and-opposite entry joins it — "it was briefly settled" is what an audit needs to see.
     `confirmed_at` / `confirmed_by` SURVIVE a reversal: when it was agreed, and by whom, are facts.
-  - **`settlement_payments_awaiting_idx` is the badge query** — `(creditor_team_id, status, id DESC)`, the
+  - **`liability_payments_awaiting_idx` is the badge query** — `(creditor_team_id, status, id DESC)`, the
     creditor's inbox of what is waiting on them. A payment nobody notices is a debt that stays open for
     no reason.
   - ⚠ **Confirm locks the row `FOR UPDATE`.** It is a check-then-act on money, and two managers clicking
     Confirm in the same second is ordinary here — without the lock both reads see `recorded`, both post,
     and the debt is paid off twice. Proven against a real Postgres in `payment_confirm_race_test.go`
     (8 concurrent confirms → exactly one succeeds, balance lands on 0).
+
+---
+
+## settlement_service
+
+`backend/services/settlement_service/db_migrations/`
+
+The ledger of **what the marketplace pays us** for an order.
+
+> ⚠ **Not `liability_service` above**, which is what TEAMS OWE EACH OTHER. That service held this name
+> until 2026-08-28 — see
+> [the-name-settlement-moves-to-the-payout](business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
+> The two are easy to confuse: both are order-aware ledgers with a state projection. Only this one is
+> **allowed to never balance**.
+
+**The one idea.** `initial_total` is a frozen copy of `order.marketplace_total` — what the buyer
+actually paid, a fact rather than a prediction. The running balance is therefore not drift from a
+guess, it is exactly *how much of what the buyer paid never reached us*: the platform's take, which the
+platform never itemises. So the balance **never reaches zero, and that is correct** — there is no
+`settled` flag and no outstanding figure anywhere in this schema.
+
+```mermaid
+erDiagram
+  settlement_logs {
+    bigserial id PK
+    bigint order_id "THE SCOPE — NOT NULL, always"
+    bigint shop_id "denormalised, frozen"
+    bigint team_id "denormalised, frozen"
+    bigint actor_id "the human accountable, even on machine rows"
+    text source_type "exporter, manual or order"
+    text settlement_type "one of seven"
+    bigint change "signed. POSITIVE IS MONEY TOWARD US"
+    bigint balance "running, after this row"
+    text unique_id "caller-generated. UNIQUE with order_id"
+    date occurred_on "the day the money belongs to"
+    date posted_on "the day we learned it"
+    bigint reverses_id "points BACKWARDS, or NULL"
+    text note
+    timestamptz created_at
+  }
+
+  order_settlements {
+    bigint order_id PK "the row a writer LOCKS"
+    bigint initial_total "the LIVE sale, stored POSITIVE. 0 means NOT RECORDED"
+    bigint last_balance "the current position"
+    bigint team_id
+    bigint shop_id
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  order_settlements ||--|{ settlement_logs : projects
+```
+
+### The sign convention, and the one place it flips
+
+| | |
+| --- | --- |
+| `settlement_logs.change` | **positive is money toward us** — so `initial_total` is NEGATIVE (the platform owes us the sale) and `fund` is POSITIVE |
+| `order_settlements.initial_total` | the sale as a **person** says it, **POSITIVE** |
+| where they meet | the projection, and nowhere else — no screen negates by hand |
+
+Both state figures are recomputable from the log alone, which is what makes the ledger auditable:
+
+```
+last_balance  =  SUM(change) over every row
+initial_total = −SUM(change) over { initial_total, initial_total_cancel }
+```
+
+The second line is why a **cancel needs no special case**: its `change` is the exact opposite of the
+sale's, so the running sum returns to zero on its own.
+
+### Indexes, and what each is for
+
+| index | answers |
+| --- | --- |
+| `settlement_logs_unique_idx` (order_id, unique_id) | ⚠ **the idempotency key.** All three writers retry; this is what makes a retried cancel absorb instead of crediting twice |
+| `settlement_logs_order_idx` (order_id, id) | the panel's running balance, oldest first |
+| `settlement_logs_team_occurred_idx` / `_shop_occurred_idx` | a period's movement for a team or a shop |
+| `order_settlements_team_balance_idx` (team_id, last_balance) | the list screen, ranked by loss |
+| `order_settlements_shop_idx` (shop_id, last_balance) | the same, narrowed to one shop |
+
+### Two things the schema deliberately does NOT hold
+
+- **`order_id` is NOT NULL** ([every-entry-names-an-order](business/settlement/context_decision.md#every-entry-names-an-order)).
+  A cost that cannot name an order never reaches settlement. ⚠ This is also why a platform
+  **withdrawal** — wallet to bank, naming no order — has no home here and is still an open question.
+- **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
+  marketplace's reference; the names and the cost live in `selling_service`, and a service does not
+  read another's tables. The screens supply all four from where they already are.

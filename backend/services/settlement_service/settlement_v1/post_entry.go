@@ -2,226 +2,250 @@ package settlement_v1
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
+	settlementv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
-// ErrAlreadyPosted means this exact movement is already in the ledger.
+// SettlementPost appends one row to an order's ledger and re-projects the account.
 //
-// ⚠ IT IS A NORMAL ANSWER, NOT A FAILURE, and callers must treat it as one. The order fees arrive on
-// Pub/Sub, which delivers AT LEAST ONCE — a redelivered order is expected. A consumer that NACKed
-// this would make Pub/Sub redeliver a message that can never succeed: a poison loop built entirely
-// out of correct behaviour. ACK it and move on.
-var ErrAlreadyPosted = errors.New("settlement: this movement is already posted")
+// ⚠ IT IS IDEMPOTENT, and that is the whole reason all three writers share one RPC. Every one of them
+// retries for a different reason — the exporter re-imports an overlapping statement, a person
+// double-submits the form, and `order_service` retries a cancel across a network timeout. The last is
+// the dangerous one: a retried cancel landing on a fresh key would CREDIT THE ACCOUNT TWICE. Settling
+// that in three separate RPCs would be settling it three times, which is how two of them end up wrong.
+func (s *Service) SettlementPost(
+	ctx context.Context,
+	req *connect.Request[settlementv1.SettlementPostRequest],
+) (*connect.Response[settlementv1.SettlementPostResponse], error) {
+	msg := req.Msg
 
-// Posting is one movement between two teams, stated in the only terms that cannot be misread: WHO
-// OWES, WHO IS OWED, and a POSITIVE amount.
-//
-// Deliberately NOT a signed amount with a single team. A caller passing a sign has to know the
-// convention, and the day somebody gets it backwards the ledger says the creditor owes the debtor —
-// arithmetically consistent, completely wrong, and invisible until a person reads the screen.
-type Posting struct {
-	// The team that owes. Its balance moves DOWN (a payable).
-	DebtorTeamID uint64
-	// The team that is owed. Its balance moves UP (a receivable).
-	CreditorTeamID uint64
+	result, err := s.postEntry(ctx, PostInput{
+		TeamID:         msg.GetTeamId(),
+		OrderID:        msg.GetOrderId(),
+		ShopID:         msg.GetShopId(),
+		UniqueID:       msg.GetUniqueId(),
+		SettlementType: msg.GetSettlementType(),
+		SourceType:     msg.GetSourceType(),
+		Change:         msg.GetChange(),
+		OccurredOn:     msg.GetOccurredOn(),
+		ReversesID:     msg.GetReversesId(),
+		Note:           msg.GetNote(),
+		ActorID:        actorFrom(ctx),
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	// Whole rupiah, always positive — direction is carried by the two fields above.
-	Amount int64
-
-	// What caused this, and its id in whichever service owns it. Together with the counterparty and
-	// `Reversal` they form the idempotency key.
-	SourceType SourceType
-	SourceID   uint64
-
-	// Whether this movement UNDOES an earlier one. A reversal is an equal-and-opposite entry: the
-	// original stays, the balance nets to zero, and the history shows the fee was charged and then
-	// returned. "The fee briefly existed" is exactly what an audit needs to see.
-	//
-	// Set it rather than swapping debtor and creditor: the swap would produce the right arithmetic
-	// with the wrong idempotency key, so a double cancel would reverse twice.
-	Reversal bool
+	return connect.NewResponse(&settlementv1.SettlementPostResponse{
+		Entry:      entryToProto(&result.Entry, ""),
+		Settlement: settlementToProto(&result.State),
+		Created:    result.Created,
+	}), nil
 }
 
-// PostEntry writes BOTH LEGS of one movement, in one transaction.
+// PostInput is the domain shape of a posting, free of the wire type.
 //
-// ⚠ IT IS POLICY-FREE. It records; it never refuses. There is no credit check here and there must
-// never be one — the ledger records what happened, and the order flow chooses to gate itself before
-// calling. A ledger that sometimes declines to record reality is how books stop matching the world.
-//
-// `tx` is supplied by the caller so a posting can join a transaction it must be atomic with — the COD
-// obligation is written in the SAME transaction as the restock acceptance (#184), because a stock
-// movement that commits without its obligation leaves the warehouse out of pocket with no record,
-// which is precisely the situation this service exists to fix.
-//
-// Returns the group id shared by both legs. `ErrAlreadyPosted` if this movement is already recorded.
-func (s *Service) PostEntry(ctx context.Context, tx *gorm.DB, p Posting) (uint64, error) {
-	if p.DebtorTeamID == 0 || p.CreditorTeamID == 0 {
-		return 0, errors.New("settlement: a posting needs both sides")
-	}
-
-	if p.DebtorTeamID == p.CreditorTeamID {
-		return 0, errSameTeam
-	}
-
-	// A zero or negative posting is refused rather than stored. Zero would be an entry that changes
-	// nothing while consuming the pair's idempotency key for that source — so the real fee, when it
-	// arrived, would be swallowed as a duplicate.
-	if p.Amount <= 0 {
-		return 0, errors.New("settlement: a posting must be a positive amount")
-	}
-
-	sourceType := sourceTypeText(p.SourceType)
-	if sourceType == "" {
-		return 0, errors.New("settlement: a posting must say what caused it")
-	}
-
-	// ⚠ A CALLER WITH NO TRANSACTION GETS ONE. "Both legs or neither" is the first invariant of this
-	// ledger, and running on the bare connection would write them as two independent statements —
-	// posting half a movement, which is precisely what this design makes impossible.
-	//
-	// It also contains the failure. A duplicate posting aborts the transaction it is in; on the bare
-	// connection that would be the caller's whole unit of work, so an order's second fee could not be
-	// attempted after the first was found to be a redelivery.
-	if tx == nil {
-		var groupID uint64
-
-		err := s.db.WithContext(ctx).Transaction(func(own *gorm.DB) error {
-			var postErr error
-
-			groupID, postErr = s.postBothLegs(own, p, sourceType)
-
-			return postErr
-		})
-
-		return groupID, err
-	}
-
-	return s.postBothLegs(tx.WithContext(ctx), p, sourceType)
+// It exists so `order_service` can post IN-PROCESS on order create and cancel without building a
+// Connect request and without a network hop to itself — the same reason liability_service's
+// `PostEntry` is a domain function. The RPC above is one caller of it, not the only path in.
+type PostInput struct {
+	TeamID         uint64
+	OrderID        uint64
+	ShopID         uint64
+	UniqueID       string
+	SettlementType settlementv1.SettlementType
+	SourceType     settlementv1.SourceType
+	Change         int64
+	OccurredOn     string
+	ReversesID     uint64
+	Note           string
+	ActorID        uint64
 }
 
-// postBothLegs writes the movement inside whichever transaction it is handed.
-func (s *Service) postBothLegs(tx *gorm.DB, p Posting, sourceType string) (uint64, error) {
-	var groupID uint64
-
-	err := tx.Raw("SELECT nextval('settlement_group_seq')").Scan(&groupID).Error
-	if err != nil {
-		return 0, err
-	}
-
-	// A REVERSAL FLIPS WHO GAINS, and nothing else. The source and the counterparty stay as they
-	// were, so the history reads as one story: the fee, then its return.
-	creditorAmount := p.Amount
-	if p.Reversal {
-		creditorAmount = -p.Amount
-	}
-
-	// The creditor's leg first, then the debtor's mirror. Order is irrelevant to correctness — they
-	// are in one transaction — but a fixed order makes deadlocks between concurrent postings for the
-	// same pair impossible rather than unlikely.
-	err = s.postLeg(tx, p, groupID, p.CreditorTeamID, p.DebtorTeamID, creditorAmount, sourceType)
-	if err != nil {
-		return 0, err
-	}
-
-	err = s.postLeg(tx, p, groupID, p.DebtorTeamID, p.CreditorTeamID, -creditorAmount, sourceType)
-	if err != nil {
-		return 0, err
-	}
-
-	return groupID, nil
+type PostResult struct {
+	Entry   settlement_service_models.SettlementLog
+	State   settlement_service_models.OrderSettlement
+	Created bool
 }
 
-// postLeg writes one side: it moves that side's balance, then records the entry that moved it.
-//
-// Balance first, entry second, so `balance_after` on the entry is the balance that actually resulted
-// rather than one computed alongside it. The two cannot disagree, because only one of them is
-// calculated.
-func (s *Service) postLeg(
-	tx *gorm.DB,
-	p Posting,
-	groupID, teamID, counterpartyID uint64,
-	amount int64,
-	sourceType string,
-) error {
-	balance, err := s.moveBalance(tx, teamID, counterpartyID, amount)
-	if err != nil {
-		return err
-	}
-
-	entry := settlement_service_models.SettlementEntry{
-		TeamID:         teamID,
-		CounterpartyID: counterpartyID,
-		Amount:         amount,
-		SourceType:     sourceType,
-		SourceID:       p.SourceID,
-		Reversal:       p.Reversal,
-		GroupID:        groupID,
-		BalanceAfter:   balance,
-	}
-
-	err = tx.Create(&entry).Error
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		// The unique index fired: this movement is already in the ledger. The transaction is doomed
-		// either way — the caller rolls back, and the balance move above goes with it.
-		return ErrAlreadyPosted
-	}
-
-	return err
+// PostEntry is the in-process write path. See PostInput.
+func (s *Service) PostEntry(ctx context.Context, in PostInput) (PostResult, error) {
+	return s.postEntry(ctx, in)
 }
 
-// moveBalance applies the delta to one side's running total and returns the result.
-//
-// ⚠ THE UPSERT IS THE POINT. Lock-then-read cannot protect a row that does not exist yet: two
-// concurrent first-postings for a new pair both find nothing, both insert, and one update is lost.
-// `ON CONFLICT ... DO UPDATE` against the unique index makes the database serialise them instead.
-//
-// It also maintains the ageing clock. `oldest_unsettled_at` is set as the balance LEAVES zero and
-// cleared as it RETURNS — so paying in full resets it and a partial payment does not. Both are done
-// in the same statement as the arithmetic, because a balance and the age of its debt disagreeing is
-// exactly the sort of thing nobody notices until a manager chases the wrong team.
-func (s *Service) moveBalance(tx *gorm.DB, teamID, counterpartyID uint64, amount int64) (int64, error) {
-	now := time.Now()
+func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, error) {
+	var out PostResult
 
-	// Hand-written rather than built through GORM's OnConflict clause, and the reason is worth
-	// recording: the `CASE` below needs the proposed value twice and the stored value three times.
-	// Expressed as GORM assignments each fragment carries its own placeholders, and the arguments no
-	// longer line up with the statement they were written for — the first version of this compiled,
-	// ran, updated the balance correctly, and silently never cleared the ageing clock.
-	//
-	// `EXCLUDED` is what removes the risk entirely: the proposed row is named rather than re-bound,
-	// so there is exactly one placeholder per value. RETURNING then gives the resulting balance
-	// without a second query that could read a different transaction's answer.
-	const upsert = `
-INSERT INTO settlement_balances
-    (team_id, counterparty_id, balance, oldest_unsettled_at, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT (team_id, counterparty_id) DO UPDATE SET
-    balance = settlement_balances.balance + EXCLUDED.balance,
-    oldest_unsettled_at = CASE
-        -- Square again: stop the clock.
-        WHEN settlement_balances.balance + EXCLUDED.balance = 0 THEN NULL
-        -- Debt begins here: start it.
-        WHEN settlement_balances.balance = 0 THEN EXCLUDED.oldest_unsettled_at
-        -- More debt on an existing run: the oldest unsettled is still the oldest.
-        ELSE settlement_balances.oldest_unsettled_at
-    END,
-    updated_at = EXCLUDED.updated_at
-RETURNING balance`
-
-	var balance int64
-
-	err := tx.
-		Raw(upsert, teamID, counterpartyID, amount, now, now, now).
-		Scan(&balance).
-		Error
-	if err != nil {
-		return 0, err
+	typeText, ok := settlementTypeText[in.SettlementType]
+	if !ok {
+		return out, connect.NewError(connect.CodeInvalidArgument, errUnknownType)
 	}
 
-	return balance, nil
+	sourceText, ok := sourceTypeText[in.SourceType]
+	if !ok {
+		return out, connect.NewError(connect.CodeInvalidArgument, errUnknownSource)
+	}
+
+	// ⚠ THE ONE RULE ENFORCED BY THE DATA RATHER THAN BY CONVENTION. A cancel zeroes the sale of an
+	// order the order service still believes is live — so if a person could post one, the two systems
+	// would disagree with no screen showing it. Having `order` as a source of its own is what makes
+	// this a check instead of a comment.
+	if typeText == typeInitialTotalCancel && sourceText != sourceOrder {
+		return out, errCancelNotMachine
+	}
+
+	occurred, err := parseDate(in.OccurredOn)
+	if err != nil {
+		return out, err
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// The account must EXIST before it can be locked — lock-then-read does not protect a row that
+		// is not there yet, and two concurrent first-postings would otherwise both find nothing, both
+		// insert, and lose one update. DO NOTHING rather than an existence check, because the check
+		// and the insert would be the same race one level up.
+		opening := settlement_service_models.OrderSettlement{
+			OrderID: in.OrderID,
+			TeamID:  in.TeamID,
+			ShopID:  in.ShopID,
+		}
+
+		err := tx.
+			Clauses(clause.OnConflict{DoNothing: true}).
+			Create(&opening).
+			Error
+		if err != nil {
+			return dbError(err)
+		}
+
+		// Now it is guaranteed present, so this serialises every concurrent poster on one order.
+		var state settlement_service_models.OrderSettlement
+
+		err = tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("order_id = ?", in.OrderID).
+			Take(&state).
+			Error
+		if err != nil {
+			return dbError(err)
+		}
+
+		// The scope proves the caller belongs to the team it named. It does NOT prove the account
+		// does — so the account is checked too, or one team could append to another's ledger simply
+		// by knowing an order id.
+		if state.TeamID != in.TeamID {
+			return errWrongTeam
+		}
+
+		if state.ShopID != in.ShopID {
+			return errWrongShop
+		}
+
+		// IDEMPOTENCY. `.Find` rather than `.First` — a miss here is the NORMAL case, and First would
+		// turn it into an error to unwrap.
+		var existing settlement_service_models.SettlementLog
+
+		err = tx.
+			Where("order_id = ? AND unique_id = ?", in.OrderID, in.UniqueID).
+			Limit(1).
+			Find(&existing).
+			Error
+		if err != nil {
+			return dbError(err)
+		}
+
+		if existing.ID != 0 {
+			// Already written. Return it unchanged, and say so — a caller whose key recipe is broken
+			// has no other way to learn that it has silently stopped recording.
+			out = PostResult{Entry: existing, State: state, Created: false}
+
+			return nil
+		}
+
+		// A reversal points BACKWARDS at a row of the same order. Checked because a dangling pointer
+		// in an append-only ledger can never be repaired by an edit.
+		if in.ReversesID != 0 {
+			var reversed settlement_service_models.SettlementLog
+
+			err = tx.
+				Where("id = ? AND order_id = ?", in.ReversesID, in.OrderID).
+				Limit(1).
+				Find(&reversed).
+				Error
+			if err != nil {
+				return dbError(err)
+			}
+
+			if reversed.ID == 0 {
+				return errReversesUnknown
+			}
+		}
+
+		entry := settlement_service_models.SettlementLog{
+			OrderID:        in.OrderID,
+			ShopID:         in.ShopID,
+			TeamID:         in.TeamID,
+			ActorID:        in.ActorID,
+			SourceType:     sourceText,
+			SettlementType: typeText,
+			Change:         in.Change,
+			Balance:        state.LastBalance + in.Change,
+			UniqueID:       in.UniqueID,
+			OccurredOn:     occurred,
+			PostedOn:       time.Now(),
+			Note:           in.Note,
+		}
+
+		if in.ReversesID != 0 {
+			reverses := in.ReversesID
+			entry.ReversesID = &reverses
+		}
+
+		err = tx.Create(&entry).Error
+		if err != nil {
+			return dbError(err)
+		}
+
+		// THE PROJECTION, and it is exactly the formula the schema documents:
+		//
+		//	last_balance  =  SUM(change) over every row
+		//	initial_total = −SUM(change) over the two initial types
+		//
+		// The second line is why a cancel needs no special case. Its `change` is the exact opposite of
+		// the sale's, so the running sum returns to zero on its own — and if a second sale was ever
+		// posted by hand, one cancel correctly does NOT zero it, because two sales are on the account.
+		state.LastBalance = entry.Balance
+
+		if isInitialType(typeText) {
+			state.InitialTotal -= in.Change
+		}
+
+		err = tx.
+			Model(&settlement_service_models.OrderSettlement{}).
+			Where("order_id = ?", in.OrderID).
+			Updates(map[string]any{
+				"initial_total": state.InitialTotal,
+				"last_balance":  state.LastBalance,
+				"updated_at":    time.Now(),
+			}).
+			Error
+		if err != nil {
+			return dbError(err)
+		}
+
+		out = PostResult{Entry: entry, State: state, Created: true}
+
+		return nil
+	})
+	if err != nil {
+		return PostResult{}, err
+	}
+
+	return out, nil
 }

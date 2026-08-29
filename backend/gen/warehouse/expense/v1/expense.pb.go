@@ -1379,7 +1379,7 @@ func (x *ExpenseDailyResponse) GetTotals() *ExpenseTotals {
 
 // ExpenseUpdate corrects an expense (#169).
 //
-// It exists because of the one fact that separates this service from revenue_service: a revenue row is
+// It exists because of the one fact that separated this service from revenue_service (since removed): a revenue row was
 // written by the system from an order and frozen, while an expense row is TYPED BY A PERSON. A person
 // mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
 // workaround — void it and enter another — loses who entered the original and when.

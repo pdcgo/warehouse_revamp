@@ -17,10 +17,15 @@ export const file_warehouse_selling_v1_events: GenFile = /*@__PURE__*/
 /**
  * OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
  *
- * Published by selling_service after the order's transaction commits; consumed by revenue_service,
- * which turns it into the order's expected-margin row (#75). An EVENT rather than a direct call
- * because revenue is DOWNSTREAM of orders: recording what an order was expected to make must never be
- * able to fail the order itself. A shop can keep selling while the revenue service is down.
+ * Published by selling_service after the order's transaction commits. An EVENT rather than a direct
+ * call because everything downstream of an order is DOWNSTREAM: recording what an order was expected
+ * to make must never be able to fail the order itself. A shop keeps selling while its consumers are
+ * down — or, as today, while it has none.
+ *
+ * ⚠ IT CURRENTLY HAS NO CONSUMER, AND IS PUBLISHED ANYWAY — deliberately. `revenue_service` consumed
+ * it into an expected-margin row (#75) and has been REMOVED, with its statistics deferred. This event
+ * is what makes them re-buildable: it carries every figure that service held, so a new consumer can
+ * be added without touching selling_service. **Do not stop publishing it because nothing listens.**
  *
  * IT CARRIES THE MONEY, not just an order id, and that is a correctness choice rather than a
  * convenience. The figures were FROZEN onto the order when it was placed (#74), so shipping them here
@@ -78,7 +83,7 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
   costKnown: boolean;
 
   /**
-   * WHICH WAREHOUSE fulfilled it (#186). settlement_service charges the handling fee to this team —
+   * WHICH WAREHOUSE fulfilled it (#186). liability_service charges the handling fee to this team —
    * the order cannot say who to bill without it.
    *
    * @generated from field: uint64 warehouse_id = 7;
@@ -86,7 +91,7 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
   warehouseId: bigint;
 
   /**
-   * The lines, for settlement's PRODUCT FEE (#186): an order selling another team's product owes that
+   * The lines, for liability's PRODUCT FEE (#186): an order selling another team's product owes that
    * team money.
    *
    * Carried on the event rather than read back, which is the same choice the money above already
@@ -127,10 +132,10 @@ export const OrderPlacedEventSchema: GenMessage<OrderPlacedEvent> = /*@__PURE__*
   messageDesc(file_warehouse_selling_v1_events, 0);
 
 /**
- * One line of a placed order, as settlement needs it (#186).
+ * One line of a placed order, as liability_service needs it (#186).
  *
  * Deliberately not the whole `OrderItem`: an event carries what its consumers need, and sku, name and
- * the buyer-paid price are none of settlement's business. What it needs is who owns the goods and
+ * the buyer-paid price are none of liability_service's business. What it needs is who owns the goods and
  * what they cost.
  *
  * @generated from message warehouse.selling.v1.OrderPlacedLine
@@ -143,7 +148,7 @@ export type OrderPlacedLine = Message<"warehouse.selling.v1.OrderPlacedLine"> & 
 
   /**
    * The team that OWNS this product, resolved from the catalogue when the order was placed. 0 when it
-   * could not be resolved — a product deleted between the pick and the publish — which settlement
+   * could not be resolved — a product deleted between the pick and the publish — which liability_service
    * treats as "nobody to pay" rather than guessing.
    *
    * @generated from field: uint64 owning_team_id = 2;
@@ -180,9 +185,11 @@ export const OrderPlacedLineSchema: GenMessage<OrderPlacedLine> = /*@__PURE__*/
 /**
  * OrderCancelledEvent announces that an order was cancelled (#164).
  *
- * Published by selling_service after the cancel commits; consumed by revenue_service, which VOIDS the
- * order's expected-margin row. Without it, revenue keeps counting money from an order that fell
- * through — the report was overstating from #153 until this landed.
+ * Published by selling_service after the cancel commits. `revenue_service` consumed it to VOID the
+ * order's expected-margin row — without it a report kept counting money from an order that fell
+ * through. That service has been removed, so like OrderPlacedEvent this now has no consumer and is
+ * published regardless: a statistics consumer that saw placements but not cancellations would
+ * overstate from its first day.
  *
  * It carries only the ids. Unlike OrderPlacedEvent, which ships the frozen money because the money IS
  * the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,

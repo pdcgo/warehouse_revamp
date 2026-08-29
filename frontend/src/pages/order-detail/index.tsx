@@ -6,6 +6,7 @@ import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrder, useCancelOrder } from "../../features/orders/queries";
+import { SettlementTab } from "./components/SettlementTab";
 import { useActors } from "../../features/users/queries";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
@@ -175,6 +176,12 @@ export function OrderDetailPage() {
           <Tabs.Trigger value="timeline" data-testid="order-detail-tab-timeline">
             {t("orders.detail.tab.timeline")}
           </Tabs.Trigger>
+          {/* THIRD, and last, because it is the money AFTER the fact — the order exists and has
+              happened before the marketplace pays anything against it
+              (order-detail-manages-the-ledger). */}
+          <Tabs.Trigger value="settlement" data-testid="order-detail-tab-settlement">
+            {t("orders.detail.tab.settlement")}
+          </Tabs.Trigger>
         </Tabs.List>
 
         {/* minW="0" ON EVERY PANEL. A vertical Tabs.Root is a flex ROW, and a flex child defaults to
@@ -188,6 +195,18 @@ export function OrderDetailPage() {
 
         <Tabs.Content value="timeline" flex="1" minW="0">
           <TimelinePanel order={order} actors={actors.data} actorFallback={actorFallback} />
+        </Tabs.Content>
+
+        {/* The four values passed down are the ones settlement is forbidden to know — it never sees
+            the marketplace reference, and the names and cogs belong to selling_service. This page
+            already holds all of them. */}
+        <Tabs.Content value="settlement" flex="1" minW="0">
+          <SettlementTab
+            orderId={order.id}
+            shopId={order.shopId}
+            orderRef={order.orderExternalRefId || String(order.id)}
+            cogs={order.cogs}
+          />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

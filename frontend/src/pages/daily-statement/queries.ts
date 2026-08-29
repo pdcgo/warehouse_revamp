@@ -1,27 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { expenseClient, revenueClient, settlementClient } from "../../api/clients";
+import { expenseClient, liabilityClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseDayItem, ExpenseTotals } from "../../gen/warehouse/expense/v1/expense_pb";
-import type { RevenueDayItem, RevenueTotals } from "../../gen/warehouse/revenue/v1/revenue_pb";
-import { SettlementSourceType } from "../../gen/warehouse/settlement/v1/settlement_pb";
+import { LiabilitySourceType } from "../../gen/warehouse/liability/v1/liability_pb";
 import type {
-  SettlementDailyTotals,
-  SettlementDayItem,
-} from "../../gen/warehouse/settlement/v1/settlement_pb";
+  LiabilityDailyTotals,
+  LiabilityDayItem,
+} from "../../gen/warehouse/liability/v1/liability_pb";
 import { bucketOf, bucketSpine } from "../../lib/period";
 import type { PeriodGrain } from "../../lib/period";
 
-// WHOSE statement this is. The two teams earn money in completely different ways, so they read a
-// different income column — but the same expenses, the same subtraction and the same running total.
+// WHOSE statement this is — and today there is only one answer.
 //
-//   selling    income = the EXPECTED MARGIN on the orders it placed        (revenue_service)
-//   warehouse  income = the HANDLING FEES it charged the teams it serves   (settlement_service)
+//   warehouse  income = the HANDLING FEES it charged the teams it serves   (liability_service)
 //
-// A warehouse has no orders at all, so pointing it at revenue_service would give it margin 0 against
-// real expenses and report every single day as a pure loss (owner, 2026-08-14).
-export type StatementMode = "selling" | "warehouse";
+// ⚠ A `selling` mode existed and read the EXPECTED MARGIN on its orders from `revenue_service`. That
+// service was removed and its statistics deferred, so the mode went with it. The union is kept at one
+// member rather than deleted because the SEAM is the thing worth keeping: the spine, the subtraction
+// and the running total below are mode-independent, and a second income column drops back in here.
+export type StatementMode = "warehouse";
 
 // ONE ROW OF THE STATEMENT — every service's answer for that bucket, already subtracted.
 //
@@ -72,23 +71,20 @@ export interface StatementRow {
 
 export interface Statement {
   rows: StatementRow[];
-  /** The period's income total, from the SERVER. `expectedMargin` in selling mode, handling fees in warehouse mode. */
+  /** The period's income total, from the SERVER — the handling fees it charged. */
   income: bigint;
-  /** Selling mode only — the revenue detail behind the margin. */
-  revenue: RevenueTotals | undefined;
-  /** Warehouse mode only. */
-  settlement: SettlementDailyTotals | undefined;
+  liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
 }
 
-const HANDLING_FEE = SettlementSourceType.HANDLING_FEE;
-const COD_FEE = SettlementSourceType.COD_FEE;
+const HANDLING_FEE = LiabilitySourceType.HANDLING_FEE;
+const COD_FEE = LiabilitySourceType.COD_FEE;
 
 // The daily statement's read.
 //
 // ⚠ THE SUBTRACTION HAPPENS HERE, ON THE CLIENT, and that is not laziness — it is the same call the
 // profit screen already made, for the same reason. revenue_service, expense_service and
-// settlement_service are independent (HARD RULE 3): none imports another, none has a table another can
+// liability_service are independent (HARD RULE 3): none imports another, none has a table another can
 // read. A backend "statement" RPC would have to live in one of them and would make that one service own
 // a number derived from data it does not hold. So the screen asks two of them for the same period and
 // lines them up.
@@ -137,35 +133,19 @@ export function useDailyStatement(args: {
         filter: { from, to, kind, shopId: 0n },
       });
 
-      if (mode === "warehouse") {
-        const [fees, exp] = await Promise.all([
-          settlementClient.settlementDaily({ teamId: teamId!, filter: { from, to, counterpartyId: 0n } }),
-          expensesPromise,
-        ]);
-
-        return {
-          rows: mergeBuckets(from, to, grain, [], fees.days, exp.days),
-          // HANDLING FEES ALONE, and this is the screen's judgement rather than the ledger's — see the
-          // note on SettlementDailyFilter. A COD fee reimburses cash the warehouse already handed a
-          // courier, and a PAYMENT settles a balance that was earned when the fee was charged. Summing
-          // every source and calling it income would count the same money twice.
-          income: fees.totals?.bySource[HANDLING_FEE] ?? 0n,
-          revenue: undefined,
-          settlement: fees.totals,
-          expenses: exp.totals,
-        };
-      }
-
-      const [rev, exp] = await Promise.all([
-        revenueClient.revenueDaily({ teamId: teamId!, filter: { from, to } }),
+      const [fees, exp] = await Promise.all([
+        liabilityClient.liabilityDaily({ teamId: teamId!, filter: { from, to, counterpartyId: 0n } }),
         expensesPromise,
       ]);
 
       return {
-        rows: mergeBuckets(from, to, grain, rev.days, [], exp.days),
-        income: rev.totals?.expectedMargin ?? 0n,
-        revenue: rev.totals,
-        settlement: undefined,
+        rows: mergeBuckets(from, to, grain, fees.days, exp.days),
+        // HANDLING FEES ALONE, and this is the screen's judgement rather than the ledger's — see the
+        // note on LiabilityDailyFilter. A COD fee reimburses cash the warehouse already handed a
+        // courier, and a PAYMENT settles a balance that was earned when the fee was charged. Summing
+        // every source and calling it income would count the same money twice.
+        income: fees.totals?.bySource[HANDLING_FEE] ?? 0n,
+        liability: fees.totals,
         expenses: exp.totals,
       };
     },
@@ -207,30 +187,26 @@ const sum = <T>(rows: T[], of: (row: T) => bigint | undefined) =>
 // a second implementation of this function with a different date walk, which is exactly how the two
 // resolutions would start disagreeing about a period they both claim to describe.
 //
-// It takes BOTH income series and one of them is always empty, rather than being written twice per mode.
-// The spine, the subtraction and the running total are identical in both modes, and those are the parts
-// worth having exactly one copy of.
+// ⚠ It took TWO income series until `revenue_service` was removed — one per mode, one of them always
+// empty. The spine, the subtraction and the running total never varied by mode, which is why a second
+// series drops back in here as one more `bucketise` and one more term in `income`.
 function mergeBuckets(
   from: string,
   to: string,
   grain: PeriodGrain,
-  revenueDays: RevenueDayItem[],
-  feeDays: SettlementDayItem[],
+  feeDays: LiabilityDayItem[],
   expenseDays: ExpenseDayItem[],
 ): StatementRow[] {
-  const revenueAt = bucketise(revenueDays, grain);
   const feesAt = bucketise(feeDays, grain);
   const expensesAt = bucketise(expenseDays, grain);
 
   let running = 0n;
 
   return bucketSpine(from, to, grain).map((bucket) => {
-    const r = revenueAt.get(bucket) ?? [];
     const f = feesAt.get(bucket) ?? [];
     const e = expensesAt.get(bucket) ?? [];
 
-    // Whichever series this mode was given. The other list is empty, so exactly one of these is non-zero.
-    const income = sum(r, (d) => d.expectedMargin) + sum(f, (d) => d.bySource[HANDLING_FEE]);
+    const income = sum(f, (d) => d.bySource[HANDLING_FEE]);
 
     const expenses = sum(e, (d) => d.total);
     const stockLoss = sum(e, (d) => d.byKind[ExpenseKind.STOCK_LOSS]);
@@ -243,11 +219,13 @@ function mergeBuckets(
       bucket,
       income,
 
-      orders: Number(sum(r, (d) => d.orders)),
-      revenue: sum(r, (d) => d.revenue),
-      cogs: sum(r, (d) => d.cogs),
-      shippingCost: sum(r, (d) => d.shippingCost),
-      unknownCostOrders: Number(sum(r, (d) => d.unknownCostOrders)),
+      // ⚠ RESERVED, and always zero today. These five are the selling half, kept in the row shape so
+      // the table's column sets and every consumer stay as they were when statistics return.
+      orders: 0,
+      revenue: 0n,
+      cogs: 0n,
+      shippingCost: 0n,
+      unknownCostOrders: 0,
 
       feeEntries: Number(sum(f, (d) => d.entries)),
       codFees: sum(f, (d) => d.bySource[COD_FEE]),
@@ -265,7 +243,7 @@ function mergeBuckets(
       // Absent on EVERY side, not "zero money". A bucket can hold an order worth nothing and still be a
       // period somebody worked, so this asks whether any service returned a row — which is exactly what
       // the sparse series encode.
-      active: r.length > 0 || f.length > 0 || e.length > 0,
+      active: f.length > 0 || e.length > 0,
     };
   });
 }

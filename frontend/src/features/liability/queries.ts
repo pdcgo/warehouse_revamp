@@ -1,0 +1,158 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { liabilityClient, liabilityPaymentClient } from "../../api/clients";
+import { key } from "../../api/queryClient";
+import {
+  entriesFromList,
+  entryRowData,
+  paymentsFromList,
+  paymentRowData,
+  positionRowData,
+  positionsFromList,
+} from "./adapt";
+
+// The Liability screens' reads (#185).
+//
+// Reads only, and that is the design rather than a stage of it: the ledger's WRITE path is a domain
+// function called in-process, because nothing outside this system may assert that one team owes
+// another. Payments (#188) and terms (#189) will add writes of their own — postings will not.
+
+export function useLiabilityPositions(args: {
+  teamId: bigint | undefined;
+  page: number;
+  pageSize: number;
+  unsettledOnly: boolean;
+}) {
+  const { teamId, page, pageSize, unsettledOnly } = args;
+
+  return useQuery({
+    queryKey: key.liability(teamId, { page, pageSize, unsettledOnly }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityPositionList({
+        teamId: teamId!,
+        filter: { unsettledOnly },
+        dataRequest: positionRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        positions: positionsFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+        awaitingConfirmation: res.awaitingConfirmation,
+      };
+    },
+  });
+}
+
+export function useLiabilityEntries(args: {
+  teamId: bigint | undefined;
+  counterpartyId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, counterpartyId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.liability(teamId, {
+      counterpartyId: counterpartyId.toString(),
+      page,
+      pageSize,
+    }),
+    enabled: teamId !== undefined && counterpartyId > 0n,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityEntryList({
+        teamId: teamId!,
+        filter: { counterpartyId },
+        dataRequest: entryRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        entries: entriesFromList(res.items, res.ids),
+        balance: res.balance,
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// The payment records for ONE relationship (#188). `awaitingMyConfirmation` is a SERVER-SIDE filter —
+// a paginated list narrowed on the client would report the unfiltered total beside the wrong rows
+// (see LiabilityPaymentListRequest). The "my payments / team payments" split the screen draws is a
+// different cut (payer side), done client-side over the loaded page.
+export function useLiabilityPayments(args: {
+  teamId: bigint | undefined;
+  counterpartyId: bigint;
+  awaitingMyConfirmation: boolean;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, counterpartyId, awaitingMyConfirmation, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.liability(teamId, {
+      payments: true,
+      counterpartyId: counterpartyId.toString(),
+      awaitingMyConfirmation,
+      page,
+      pageSize,
+    }),
+    enabled: teamId !== undefined && counterpartyId > 0n,
+    queryFn: async () => {
+      const res = await liabilityPaymentClient.liabilityPaymentList({
+        teamId: teamId!,
+        filter: { counterpartyId, awaitingMyConfirmation },
+        dataRequest: paymentRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        payments: paymentsFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// Record a payment YOU are sending — you are the payer, the counterparty is the creditor. NO ledger
+// effect until they confirm it arrived (two-phase, #188). Every liability read is invalidated on
+// success so the new pending row appears without a manual refetch.
+export function useRecordPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: {
+      teamId: bigint;
+      creditorTeamId: bigint;
+      amount: bigint;
+      note: string;
+    }) =>
+      liabilityPaymentClient.liabilityPaymentRecord({
+        teamId: args.teamId,
+        creditorTeamId: args.creditorTeamId,
+        amount: args.amount,
+        note: args.note,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
+// Confirm a payment the counterparty recorded — only the creditor (you) may, because only the
+// creditor sees the money arrive. THIS is what posts the settling entry to the ledger, so it
+// invalidates the entry reads as well as the payment reads.
+export function useConfirmPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; paymentId: bigint }) =>
+      liabilityPaymentClient.liabilityPaymentConfirm({
+        teamId: args.teamId,
+        paymentId: args.paymentId,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}

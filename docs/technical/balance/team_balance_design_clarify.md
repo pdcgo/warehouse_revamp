@@ -1,7 +1,7 @@
-# Clarity — `team_balance_desgin.md`
+# Clarity — `team_balance_design.md`
 
-Critique, questions and a proposed shape for [team_balance_desgin.md](./team_balance_design.md) — still
-one heading — read against [balance_context.md](../../business/balance/context.md),
+Critique, questions and a proposed shape for [team_balance_design.md](./team_balance_design.md) — still
+one heading, while the ledger it describes has SHIPPED — read against [balance_context.md](../../business/balance/context.md),
 [business_level.md](../../business/business_level.md) and
 [product_context.md](../../business/product/context.md). Those docs are yours; this one is mine.
 Answered points are **deleted**, so this is always the current open set.
@@ -9,7 +9,7 @@ Answered points are **deleted**, so this is always the current open set.
 > **Re-routed:** the requirement docs now have their own clarity files. **Business-level** questions
 > about this ledger — who may charge whom, when a balance must be settled, whether it blocks anything,
 > whether an operating cost ever moves it — are asked in
-> [`disscuss/requirements/balance_context_clarity.md`](../../business/balance/context_clarify.md), and
+> [`business/balance/context_clarify.md`](../../business/balance/context_clarify.md), and
 > the causes-list contradiction is recorded in
 > [`business_level_clarity.md`](../../business/business_level_clarify.md#the-balance-causes-list-is-written-twice-and-the-two-copies-differ).
 > What stays here is the **design**: grain, mirror invariant, idempotency, lock order, reversal mechanics.
@@ -30,6 +30,47 @@ Answered points are **deleted**, so this is always the current open set.
 >
 > **Still the load-bearing thing in the doc:** items 4 and 5 make the warehouse a **debtor**, so this
 > ledger is signed and bidirectional rather than "what selling teams owe".
+
+> # ⚠ Re-examined against `liability_service`, which has SHIPPED
+>
+> **This file argued a design that now exists in code.** [team_balance_design.md](./team_balance_design.md)
+> is still **one heading, 21 bytes** — so by RULE 8b.11 the design is *not written down* — but
+> `backend/services/liability_service/` ships `liability_entries`, `liability_balances`,
+> `liability_payments` and `liability_terms`, and **all six causes post**. The gap is no longer
+> *"nothing is designed"*; it is *"the design exists only as code"*.
+>
+> ✅ **Six things this file asked for were built, and built the way it recommended.** Deleted from here:
+>
+> | asked | shipped |
+> | --- | --- |
+> | Q2 · which service owns this ledger? | **`liability_service`** — one ledger, as recommended. Not `cost_design`, not two |
+> | Q4 · does the balance GATE anything? | **yes, and outside the posting path** — `CheckCredit` is a pre-check; `PostEntry` never refuses. Exactly the recommendation, with the reason written into the code |
+> | Q6 · which side is positive? | **positive = they owe you**, stated once in the migration and the model |
+> | the mirror invariant | two legs, one transaction, sharing `group_id` from `liability_group_seq` |
+> | the idempotency key | `UNIQUE (team_id, counterparty_id, source_type, source_id, reversal)` |
+> | the pair unique index **in the first migration** | `liability_balances_pair_idx`, with the lost-update reasoning in a comment |
+>
+> ⚠ **Four things were built DIFFERENTLY, and three of them are still open questions** — they are
+> [Critique 9–11](#critique) and the [markup contradiction](#the-markup-is-recorded-as-a-float-percent-and-shipped-as-basis-points).
+> The lock-order deadlock ([Critique 8](#critique)) is **unverified**, not closed: `payment_confirm_race_test.go`
+> exists, no other write path has a race test.
+>
+> ✅ **The FRONTEND is implemented too** — `pages/liability-list` (280 lines) and
+> `pages/liability-detail` (631), plus `features/liability/`. It answers Q6 better than this file did:
+> **direction is WORDS, never a sign** (`direction.ts`) — nothing renders a bare negative, payable and
+> receivable are two columns, and colour supports the sentence rather than replacing it.
+> `oldest_unsettled_at` is on screen as an ageing stat with a colour ramp. Record payment and confirm
+> payment both exist.
+>
+> ⚠ **But the frontend does not COMPILE, and three gaps show on screen** —
+> [Critique 12–14](#critique).
+
+> ⚠ **Two columns exist in the code and in no doc**: `liability_balances.oldest_unsettled_at` (ageing)
+> and `liability_terms.product_markup_bp` / `handling_fee` (**where the rates live** — the Awaiting item
+> below, answered by code). ✅ **The ageing column's question is now CLOSED**:
+> [no-overdue-only-the-threshold](../../business/balance/context_decision.md#no-overdue-only-the-threshold)
+> says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
+> exactly what the code does. Code and doc agree.
 
 ---
 
@@ -139,6 +180,30 @@ erDiagram
   pay |o--o| btx : "a payment mints one, on accept"
 ```
 
+### ⚠ What actually SHIPPED — the ERD above is the proposal, not the tables
+
+Read this before building anything against the diagram: **four of its five table names do not exist.**
+The argument above still stands; the names and four columns do not.
+
+| the proposal | shipped in `liability_service` | verdict |
+| --- | --- | --- |
+| `team_balances` | **`liability_balances`** — plus `oldest_unsettled_at` | ✅ same shape, one extra column nothing asked for |
+| `team_balance_logs` | **`liability_entries`** | ⚠ **no `actor_id`** ([C9](#critique)) · `reverses_id` shipped as a **boolean `reversal`** ([C10](#critique)) · `reason` folded into `source_type` |
+| `balance_transactions` | **`liability_group_seq`** — a SEQUENCE, no table | ⚠ defensible (the leg carries `source_type`), but it leaves **nowhere to hang the actor**, which is half of C9 |
+| `payment_transactions` | **`liability_payments`** — `recorded` / `confirmed` / `reversed` | ⚠ **no `rejected`** ([C11](#critique)); `method` shipped as free-text `note` |
+| — | **`liability_terms`** — `handling_fee`, `product_markup_bp`, `credit_limit` | ✅ this is where the RATES live, and it was in no doc |
+
+**The six causes map onto `source_type` like this**, so the numbered list above is not orphaned:
+
+| # | cause | `source_type` |
+| --- | --- | --- |
+| 1 | warehouse order fee | `handling_fee` |
+| 2 | restock receiving outlay | `restock_outlay` *(supersedes `cod_fee`, which nothing posts any more)* |
+| 3 | cross / shared product | `product_fee` |
+| 4 | broken or lost in custody | `stock_damage` |
+| 5 | found back | `stock_damage` with `reversal = true` — ⚠ under the FIND's movement id, not the loss's ([C10](#critique)) |
+| 6 | payment | `payment` |
+
 - **`balance_transactions` is the template's `transaction`, and the mirror is what makes it load-bearing.**
   Every movement is now **two** log rows, so *"show me both sides of this posting"* is only answerable by
   matching amount, opposite sign and a near timestamp — a heuristic that fails exactly when two similar
@@ -246,6 +311,36 @@ removed, arriving one heading lower.
 **link** to `balance_context.md` instead of re-listing the causes. One place to edit, so it cannot
 drift again.
 
+## the markup is recorded as a FLOAT percent and shipped as BASIS POINTS
+
+> This file, above: *"✅ **The markup is a FLOAT percent** (owner) — which is safe here because the rate
+> is not the stored money: the *rounded* `fee` is."*
+>
+> `liability_terms.product_markup_bp int64` — *"Basis points rather than a float for the same reason
+> money is int64."*
+
+**Which one I think is wrong: the recorded decision, and the code is right.** My own argument for
+tolerating a float was that the rate never becomes stored money — true, but it makes correctness depend
+on every future caller rounding at the right moment. Basis points removes the question: `2000` is 20%
+exactly, it compares and sums exactly, and there is no moment at which somebody can forget to round.
+
+⚠ **But it is a recorded owner decision, so I am not treating the code as having settled it.** If the
+percent is the shape you want in the UI, that is a display concern and basis points still serve it
+(`bp / 100`). If you want the stored rate to be a float, the code has to change — and I would argue
+against it.
+
+**→ RECOMMEND** confirm basis points and let the decision be renamed with its verdict (RULE 12) —
+`markup-is-a-float-percent` → `markup-is-basis-points`. What stops this recurring: **a decision about a
+NUMBER'S TYPE is only settled once it names the stored column type, not the mental model.**
+
+```mermaid
+flowchart LR
+  R["the rate — 20 percent"] --> F["float 0.2 — exact only by luck"]
+  R --> B["bp 2000 — exact by construction"]
+  F -.->|"safe ONLY if every caller rounds at the right moment"| M["the stored fee, int64 rupiah"]
+  B -->|"safe with no convention to remember"| M
+```
+
 ## COGS is `float64` and money is `int64` — items 4 and 5 are where they meet
 
 Two positions settled elsewhere collide here for the first time:
@@ -298,6 +393,19 @@ be inferred later from a note.
 
 | **8** | **Two mirrored rows means every posting locks TWO rows — and a deadlock is now available between one pair.** A warehouse fee posts on `(A,W)` then `(W,A)`. In the same second a broken-goods reimbursement posts on `(W,A)` then `(A,W)`. Each holds what the other wants and Postgres kills one. This is not exotic here: your teams work in pairs on one stock level all day, and items 1–3 and item 4 genuinely point in opposite directions. | **Lock the two legs in a fixed order — always ascending `team_id`, never "mine first".** Costs one `if`, and it is the whole fix. Worth proving with [`san_race`](../../../backend/pkgs/san_race) once the RPC exists, per the `audit-sql` skill — a deadlock this cheap to introduce is exactly what that harness is for. |
 
+| | Problem *(found by re-examining against the shipped code)* | → Recommend |
+| --- | --- | --- |
+| **9** | **`liability_entries` has NO ACTOR COLUMN.** Critique 7 asked for `actor_id`, non-null; the table has `team_id`, `counterparty_id`, `amount`, `source_type`, `source_id`, `reversal`, `group_id`, `balance_after`, `created_at` — and nothing else. Only `liability_payments` carries `recorded_by` / `confirmed_by`, so **cause 6 knows who acted and causes 1–5 do not.** *"Who wrote this charge"* is the first question a disputed balance raises, and the two sides here are effectively different businesses. It is also a **business** requirement already: [balance Critique 8](../../business/balance/context_clarify.md#critique) asks that every movement name its actor, and [business_level Critique 1](../../business/business_level_clarify.md#critique) makes it the test for *"transparency accounting"*. | **Add `actor_id` to `liability_entries` in a new migration.** ⚠ It cannot be back-filled — the entries are immutable and nobody recorded who posted them — so it is nullable for history and non-null-by-convention going forward, or a second column recording *which service* posted when no human did. **The longer this waits the more unattributable rows exist**, and that is the whole cost of the delay. |
+| **10** | **`reversal` is a BOOLEAN, and the entry it reverses is not recorded anywhere.** This file argued *"`reverses_id`, not a boolean"* and it shipped as a flag. The consequence is sharper than the style point: cause 5 posts under the **find's own `movement_id`**, not the loss's, so a partial find works (no idempotency collision ✅) but **nothing ties it back to the loss it repays.** *"Loss #91 was 60.000 — how much of it is still outstanding?"* is unanswerable from the ledger; you can only sum `stock_damage` entries for the pair and hope no other loss overlaps. | **Add `reverses_group_id`** (nullable, pointing at the `group_id` of the movement being undone). It keeps the current idempotency key untouched — the key uses `reversal`, which stays — and makes *"what is left of this loss"* one join. ⚠ Also rename the concept in the doc: `reversal` today means *"this is a giving-back movement"*, not *"this reverses entry X"*, and the two readings differ. |
+| **11** | **A claimed payment that never arrived has NO TERMINAL STATE.** [Q3](#question) asked whether the creditor may REJECT. Shipped statuses are `recorded` · `confirmed` · `reversed` — **there is no `rejected`.** So a creditor faced with a payment that did not land can only leave it at `recorded` forever, or **confirm it and then reverse it** — which posts two real ledger movements for money that never moved, and leaves the pair's history telling a story that did not happen. | **Add `rejected`, with a reason, posting nothing** — a terminal state that writes no entry, which is what `recorded` → `rejected` should have been from the start. `reversed` stays for its real job: undoing a confirmation that was made in error. Two different failures, and today they share one path. |
+
+| | Problem *(found by re-examining the implemented frontend)* | → Recommend |
+| --- | --- | --- |
+| **12** | **`frontend/src/gen/warehouse/liability/` DOES NOT EXIST, so the frontend does not typecheck.** The proto was renamed `settlement` → `liability` and `buf generate` was never run: `proto/warehouse/` has `liability/` and no `settlement/`, while `frontend/src/gen/warehouse/` has `settlement/` and no `liability/`. Ten module-not-found errors across `api/clients.ts`, `features/liability/adapt.ts`, both liability pages and **all of `daily-statement`**. ⚠ **And the documented command is destructive here**: `buf.gen.yaml` sets `clean: true` and every plugin is a `remote:` BSR plugin, so `cd proto && buf generate` **without a BSR token deletes all generated code and produces nothing** — it wiped `backend/gen` and `frontend/src/gen` in this pass and they were restored from git. | **Run `buf generate` with a BSR login** and commit the result — it is one command and the rename is otherwise finished. And **write the token requirement into the Commands table**: a command that silently empties two committed directories is one nobody should discover by running it. The two remaining `bigint` errors are fallout of the missing module, not separate defects. |
+| **13** | **`STOCK_DAMAGE` rendered as "Unknown".** `causeKey` in `liability-detail` switched on five source types and the proto has six — so **every broken-or-lost reimbursement and every found-back reversal** displayed as *"Unknown #123"* on the counterparty ledger. That is cause 4, the one the business doc spends the most words on, and the one where the WAREHOUSE is the debtor. ✅ **Fixed in this pass** — the case and `causeStockDamage` in both locales. | Kept here because the shape recurs: **an enum switch with a `default` that renders "unknown" cannot fail loudly**, so a new `source_type` reaches production as a blank label. Worth a story asserting every `LiabilitySourceType` maps to a real key. |
+| **14** | **Two shipped RPCs have no screen, and both are the "something went wrong" half.** `PaymentReverse` exists in `liability_service` and **nothing in the frontend calls it** — so a confirmation made in error cannot be undone by anyone. `TermsSet` / `TermsList` / `TermsDelete` ship, and **no screen sets a credit limit or a markup** — so the debt threshold your §Balance Policy requires is configurable only by direct database access. | The reverse is a small addition to the payment row's actions (behind a `ConfirmDialog`, with the reason `liability_payments.reversal_reason` already holds). **The terms screen is the bigger gap**, and it is where [Q6](#question)'s override recording would live — build them together, since "who may change this limit, and is it recorded" is the same screen's question. |
+| **15** | **The daily statement reads a source type NOTHING POSTS, so a stated responsibility under-reports.** [queries.ts:81](../../../frontend/src/pages/daily-statement/queries.ts) reads `LiabilitySourceType.COD_FEE`, and [mapper.go:28](../../../backend/services/liability_service/liability_v1/mapper.go) says `SourceTypeRestockOutlay` *"supersedes SourceTypeCODFee, which nothing posts under any more"*. So the statement's COD column is **permanently zero** and `RESTOCK_OUTLAY` appears in **no column at all** — while `HANDLING_FEE` is the only thing counted as income. ⚠ Sharper since [balance-manages-and-reports](../../business/balance/context_decision.md#balance-manages-and-reports) made *"serve the daily report"* one of balance's two stated jobs. ⚠ **The obvious fix is now the WRONG ONE.** *"Read `RESTOCK_OUTLAY` where the screen reads `COD_FEE`"* was this critique's recommendation until [the-warehouse-receivable-is-order-fee-cod-fee-and-found](../../business/balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found) named the business movement **`cod_fee`** — siding with the name the ledger abandoned, and with the screen. **Rename the ledger's source type back to `cod_fee` and the screen needs no change at all.** That is [business Q6](../../business/balance/context_clarify.md#question), and it travels with the same migration that splits `STOCK_DAMAGE` into `broken_good` / `lost_good` / `found`. Same failure shape as [Critique 13](#critique): a source type was renamed and one of its two readers followed. ⚠ **Hold until Q2 and Q6 land** — Q2 decides whether `RESTOCK_COST_KIND_OTHER` survives, and a rename to `cod_fee` while the posting still charges every cost line would put a name on the column that the amount does not match. |
+
 ✅ **Reimbursement at COGS is settled, and it is the right measure** — `business_level.md` warehouse #5.
 The owner loses the goods, not the sale, so COGS makes them whole without the warehouse insuring a margin
 it has no control over. No action — recorded so it is not re-litigated.
@@ -306,36 +414,62 @@ it has no control over. No action — recorded so it is not re-litigated.
 
 # Question
 
-1. **Item 2 — everything the warehouse laid out, or only the COD at the door?** And does the warehouse's own
-   ops fee post on the same entry? **→ I recommend a typed cost-line enum, with the ops fee separated by nature.**
-2. **Which service owns this ledger?** `settlement_service` already ships a team-to-team money ledger
-   ([rpc.md](../../services/settlement_service/rpc.md), `settlement_entries`), and
-   [`cost_design.md`](../cost/design.md) is a second ledger keyed by `team_id`. **→ I recommend ONE ledger — this design, in `settlement_service`** —
-   three services holding team money is three that can disagree. `cost_design.md` stays separate only if a cost
-   never moves a balance ([its clarity Q2](../cost/design_clarify.md) asks the same thing and is still open).
-3. **Item 6 — can the creditor REJECT, and is `offset` a payment method?** Accepting is in the doc, refusing is
-   not, and a claimed payment that never arrived has to end somewhere. **→ I recommend `created / accepted /
-   rejected` with a reason**, the row kept either way. And if a warehouse ever settles by *cancelling out* what
-   it owes a team against what that team owes it, that is a payment with `method = offset` and no cash — say
-   whether that is allowed, because it is the one form the pair grain makes tempting.
-4. **Does the balance GATE anything** — does a debtor over its limit stop being able to create orders or request
-   restocks? **→ I recommend yes, read-only and outside the posting path** — the ledger records, it does not police.
-5. **After a reimbursement, who owns the goods if they are found?** The warehouse paid COGS for them. Item 5 as
-   written returns them to the owner and reverses the money. **→ I recommend exactly that** — it matches what
-   physically happened — but the alternative (the warehouse keeps them, no reversal) is defensible and it is your call.
-6. **Which side is `positive`?** The mirror decides the row but not the convention, and it reaches the API.
-   **→ I recommend `balance > 0` means "the counterparty owes me"** — so a creditor reads its own receivables
-   as positive numbers. State it once, and never return `abs()` in one field beside the raw value in another.
+**Three are deleted** — Q2 (which service), Q4 (does it gate), Q6 (which side is positive) are answered
+by `liability_service` as shipped, and it answered all three the way this file recommended. **Three are
+new**, and all three come from re-reading the code rather than the docs.
+
+1. **Item 2 — everything the warehouse laid out, or only the COD at the door?** And does the warehouse's
+   own ops fee post on the same entry?
+   ⚠ **Sharper now that it ships:** `SourceTypeCODFee` is superseded and posts nothing;
+   `SourceTypeRestockOutlay` posts **the sum of the restock's cost lines, one call per delivery**. So the
+   breadth question moved into `restock_cost_lines` — whatever may be entered there is chargeable.
+   **→ I recommend a typed cost-line enum, with the ops fee separated by nature** — the ledger has one
+   `restock_outlay` line and cannot tell *fronted* from *earned*, which is [Critique 2](#critique) landing
+   in shipped code.
+2. **Item 6 — is `offset` a payment method?** The reject half is now [Critique 11](#critique), because the
+   shipped statuses answer it with *"no"* rather than leaving it open. What is still genuinely undecided
+   is whether a warehouse may settle by **cancelling out** what it owes a team against what that team owes
+   it. **→ I recommend allowing it as `method = offset` with no cash** — the pair grain makes it the
+   natural move, and forbidding it just means two fake transfers.
+3. **After a reimbursement, who owns the goods if they are found?** The warehouse paid COGS for them. Item
+   5 as written returns them to the owner and reverses the money.
+   **→ I recommend exactly that** — it matches what physically happened — but the alternative (the
+   warehouse keeps them, no reversal) is defensible and it is your call. ⚠ The code has already taken the
+   first option: `PostStockDamage(..., reversal: true)`.
+4. **🆕 Should `liability_entries` carry an ACTOR, and what fills it for machine postings?**
+   ([Critique 9](#critique)) Five of the six causes post from events, so the honest answer for those may be
+   *"the service, not a person"*.
+   **→ I recommend `actor_id` non-null going forward, with a reserved id meaning "posted by the system"**
+   — a null actor and a system actor look identical in a query, and only one of them is a gap.
+5. **🆕 May the creditor REJECT a claimed payment?** ([Critique 11](#critique)) Today the only way to
+   refuse one is to confirm it and reverse it, which writes two real movements for money that never moved.
+   **→ I recommend a `rejected` terminal state that posts nothing.**
+6. **🆕 Is the debt-threshold OVERRIDE meant to be recorded?**
+   `balance_context.md` §Balance Policy 1 — *"manage by team owner and can **overide by admin/root
+   team**"*. `LiabilityTermsSet` lets ROOT and ADMIN write the row, so the override **works** — but it
+   writes the same columns the owner writes, so **nothing distinguishes an override from the creditor
+   changing its own mind**, and it never expires.
+   **→ I recommend recording it** — who overrode, why, and until when — which is
+   [business Q1](../../business/balance/context_clarify.md#question) — now that file's FIRST question, since the override became the only way a block ends. An
+   unrecorded permanent override is the difference between a supervisor and a back door.
 
 ---
 
 # Awaiting
 
-- **The doc says what moves the balance, not what the ledger IS** — no state/log tables, no flow, no ERD
-  yet. Everything above is a proposal *for* those, not a reading of them.
-- **Nothing says where the RATES live.** Items 1 and 3 both need a number before they can post — the
-  warehouse's order fee and the product's cross markup. Who sets each, is it per warehouse or per pair,
-  and does changing it affect entries already written? (It must not — every entry above freezes its
-  amount, which is the half this doc can settle on its own.)
-- **Filename: `desgin` → `design`.** Cheapest now, before anything links to it — `cost_design_clarity.md`
-  raised this and it is still unfixed. This file gets renamed with it.
+- ⚠ **The design exists as CODE and not as a document.** [team_balance_design.md](./team_balance_design.md)
+  is one heading; `liability_service` is four tables, 20 handlers and the reasoning written into SQL
+  comments. That is backwards from HARD RULE 6, and the practical cost is this file: I re-derived a
+  proposal that was already built, and the differences only surfaced by reading the migrations.
+  **Nothing for you to decide — a note that the doc is the thing missing, not the design.**
+- **The lock-order deadlock ([Critique 8](#critique)) is still unproven.** `payment_confirm_race_test.go`
+  is the only `raceaudit` test in the service; `PostEntry` and the order-fee path have none, and they are
+  the two that post **two legs in opposite directions**. Per the `audit-sql` skill this is exactly what
+  `san_race` is for.
+- ✅ **`liability_balances.oldest_unsettled_at` is RATIFIED, and it is decoration.**
+  [no-overdue-only-the-threshold](../../business/balance/context_decision.md#no-overdue-only-the-threshold)
+  settles that a balance is never due, so the column's *"never, but we will show you how old it is"* is now
+  the design rather than a position the code took alone. **Nothing may be built on it** — no job, no gate,
+  no escalation — because ageing triggers nothing by decision. ⚠ Its reset rule (a **full** payment clears
+  the clock, a partial does not) is now the only thing it says, and it says it to a human who may act or
+  ignore it.

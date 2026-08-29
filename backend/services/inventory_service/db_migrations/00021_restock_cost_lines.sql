@@ -46,7 +46,7 @@ CREATE TABLE restock_cost_lines (
 );
 
 -- The delivery's lines, in the order they were typed. Every read of this table is "the lines of this
--- restock" — the detail screen, the freight sum, and the settlement posting all ask exactly that.
+-- restock" — the detail screen, the freight sum, and the liability posting all ask exactly that.
 CREATE INDEX restock_cost_lines_request_idx
     ON restock_cost_lines (restock_request_id, id);
 

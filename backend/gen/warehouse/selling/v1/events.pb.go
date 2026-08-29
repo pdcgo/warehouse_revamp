@@ -25,10 +25,15 @@ const (
 
 // OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
 //
-// Published by selling_service after the order's transaction commits; consumed by revenue_service,
-// which turns it into the order's expected-margin row (#75). An EVENT rather than a direct call
-// because revenue is DOWNSTREAM of orders: recording what an order was expected to make must never be
-// able to fail the order itself. A shop can keep selling while the revenue service is down.
+// Published by selling_service after the order's transaction commits. An EVENT rather than a direct
+// call because everything downstream of an order is DOWNSTREAM: recording what an order was expected
+// to make must never be able to fail the order itself. A shop keeps selling while its consumers are
+// down — or, as today, while it has none.
+//
+// ⚠ IT CURRENTLY HAS NO CONSUMER, AND IS PUBLISHED ANYWAY — deliberately. `revenue_service` consumed
+// it into an expected-margin row (#75) and has been REMOVED, with its statistics deferred. This event
+// is what makes them re-buildable: it carries every figure that service held, so a new consumer can
+// be added without touching selling_service. **Do not stop publishing it because nothing listens.**
 //
 // IT CARRIES THE MONEY, not just an order id, and that is a correctness choice rather than a
 // convenience. The figures were FROZEN onto the order when it was placed (#74), so shipping them here
@@ -56,10 +61,10 @@ type OrderPlacedEvent struct {
 	// guessed at by the consumer. A margin computed over an unknown cost reads as pure profit, and the
 	// revenue row has to be able to say so.
 	CostKnown bool `protobuf:"varint,6,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
-	// WHICH WAREHOUSE fulfilled it (#186). settlement_service charges the handling fee to this team —
+	// WHICH WAREHOUSE fulfilled it (#186). liability_service charges the handling fee to this team —
 	// the order cannot say who to bill without it.
 	WarehouseId uint64 `protobuf:"varint,7,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	// The lines, for settlement's PRODUCT FEE (#186): an order selling another team's product owes that
+	// The lines, for liability's PRODUCT FEE (#186): an order selling another team's product owes that
 	// team money.
 	//
 	// Carried on the event rather than read back, which is the same choice the money above already
@@ -181,16 +186,16 @@ func (x *OrderPlacedEvent) GetOccurredAtUnix() int64 {
 	return 0
 }
 
-// One line of a placed order, as settlement needs it (#186).
+// One line of a placed order, as liability_service needs it (#186).
 //
 // Deliberately not the whole `OrderItem`: an event carries what its consumers need, and sku, name and
-// the buyer-paid price are none of settlement's business. What it needs is who owns the goods and
+// the buyer-paid price are none of liability_service's business. What it needs is who owns the goods and
 // what they cost.
 type OrderPlacedLine struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	ProductId uint64                 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// The team that OWNS this product, resolved from the catalogue when the order was placed. 0 when it
-	// could not be resolved — a product deleted between the pick and the publish — which settlement
+	// could not be resolved — a product deleted between the pick and the publish — which liability_service
 	// treats as "nobody to pay" rather than guessing.
 	OwningTeamId uint64 `protobuf:"varint,2,opt,name=owning_team_id,json=owningTeamId,proto3" json:"owning_team_id,omitempty"`
 	Quantity     uint32 `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
@@ -267,9 +272,11 @@ func (x *OrderPlacedLine) GetUnitCost() int64 {
 
 // OrderCancelledEvent announces that an order was cancelled (#164).
 //
-// Published by selling_service after the cancel commits; consumed by revenue_service, which VOIDS the
-// order's expected-margin row. Without it, revenue keeps counting money from an order that fell
-// through — the report was overstating from #153 until this landed.
+// Published by selling_service after the cancel commits. `revenue_service` consumed it to VOID the
+// order's expected-margin row — without it a report kept counting money from an order that fell
+// through. That service has been removed, so like OrderPlacedEvent this now has no consumer and is
+// published regardless: a statistics consumer that saw placements but not cancellations would
+// overstate from its first day.
 //
 // It carries only the ids. Unlike OrderPlacedEvent, which ships the frozen money because the money IS
 // the record, there is nothing to snapshot here: "this order stopped counting" is the whole message,

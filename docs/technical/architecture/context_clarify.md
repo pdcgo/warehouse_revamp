@@ -19,6 +19,19 @@ mine.** Answered points are **deleted**, so this file is always the current open
 > [Contradiction](#the-gate-was-left-in-a-service-that-can-no-longer-refuse) and answered by
 > [gate-lives-in-balance-service](#gate-lives-in-balance-service).
 
+> **Re-examined against what has SHIPPED, not only against the docs.** Your list has **eleven** services;
+> `backend/services/` has **twelve**, and they are still not the same set — but the gap moved this round:
+>
+> | | |
+> | --- | --- |
+> | ✅ closed | `settlement_service` → **`liability_service`** — the rename landed, so the tree and §Responsbility now agree. Your line 7 (`balance_service`) is the last dissenting name |
+> | ⚠ opened | `settlement_service` is now **free and unbuilt** — your line 6 names it *"handle settlement of the order"*, which is exactly the payout ledger [design-accepted](../../business/settlement/context_decision.md#design-accepted) approved. It is the one service the doc names that nobody has started |
+> | ✅ closed | `revenue_service` is **removed from the tree** — deleted 2026-08-28 with its statistics deferred ([decision](../../business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred)). `backend/services/` now holds **eleven** |
+> | still open | `order_service` (your line 9) vs the shipped `selling_service`, and `export_service` in no list at all |
+>
+> ⚠ **The split argument survives the rename untouched** — a gate, a book and a policy are still in one box,
+> the box is just called something else now. That is [Critique 2](#critique) and it has not moved.
+
 Siblings: [business_level](../../business/business_level_clarify.md) · [product_context](../../business/product/context_clarify.md) ·
 [order_context](../../business/order/context_clarify.md) · [stock_context](../../business/stock/context_clarify.md) ·
 [balance_context](../../business/balance/context_clarify.md) · [ledger_context](../../business/ledger/context_clarify.md) ·
@@ -275,18 +288,21 @@ Stated as fact and as a proposal, never as a justification (HARD RULE 8b.5).
 | `region_service` | **absorb** into `shipping_service` | a region exists to route a parcel ([Q8](#question)) |
 | `document_service` | **keep** | it is what makes "transparency accounting" provable |
 | `expense_service` | **keep** | `ledger_context.md:36` draws it as its own source box |
-| `revenue_service` | **absorb** into `order_service` | `ledger_context.md:8-14` draws Revenue Log **inside** the Sales/Order boundary |
-| `settlement_service` | **split** into `balance_service` (pair rows, threshold, payments) and `ledger_service` (entries, trial balance) | it holds `settlement_balance`, `settlement_entry`, `settlement_payment`, `settlement_terms` — a **gate**, a **book** and a **policy** in one box, and the settlement makes those three different freshness contracts |
+| ~~`revenue_service`~~ | ✅ **REMOVED — it has already happened** | deleted with its statistics deferred ([decision](../../business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred)). Not absorbed into `order_service` as this table proposed, and not ported onto settlement either: `/revenue` and `/profit` went with it, `/statement` is warehouse-only, and `OrderPlacedEvent` keeps publishing so the statistics are re-buildable |
+| ~~`settlement_service`~~ → `liability_service` | ✅ **RENAMED — it has already happened** | [the-name-settlement-moves-to-the-payout](../../business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout). The tree now holds `liability_service` with `liability_balances`, `liability_terms`, `liability_payments`. **The split verdict below is unchanged by the rename** |
+| `liability_service` | **split** into `balance_service` (pair rows, threshold, payments) and `ledger_service` (entries, trial balance) | it holds a **gate**, a **book** and a **policy** in one box, and the settlement makes those three different freshness contracts. ⚠ the rename settled the noun and left this argument exactly where it was |
+| — | **create** `settlement_service` | the ORDER payout ledger. Named in `settlement_context.md`, [design-accepted](../../business/settlement/context_decision.md#design-accepted), and **not in your list of eleven** |
+| — | **create** `export_service` | named in `settlement_context.md` §General Brief 3 and in no architecture list |
 | — | **create** `balance_service` | nothing in the tree can refuse a finalize |
 | — | **create** `ledger_service` | nothing in the tree holds `ledger_entry` or `ledger_line` |
 
-⚠ **On `revenue_service` + `expense_service` + `settlement_service` vs
+⚠ **On `revenue_service` + `expense_service` + `liability_service` vs
 [one-book-for-all-money](#one-book-for-all-money):** three money-shaped services is **not** three books,
 provided each is a *recorder* and none is a *journal*. Under
 [one-book-many-record-of-truth-sources](#one-book-many-record-of-truth-sources), `expense_service` records
 that money was spent and `order_service` records that revenue was earned — **neither decides an account or
-a debit.** `settlement_service` is the one that genuinely breaks the rule today, because
-`settlement_entry` is a journal living outside the journal.
+a debit.** `liability_service` is the one that genuinely breaks the rule today, because
+`liability_entries` is a journal living outside the journal — the rename moved the box, not the problem.
 
 ---
 
@@ -327,6 +343,20 @@ a debit.** `settlement_service` is the one that genuinely breaks the rule today,
 8. **Is `region` shipping's, or shared master data?**
    **→ I recommend shipping's — every use of a region in the requirement set is a destination.**
 9. **What does `systems/` hold?** ([Critique 7](#critique))
+10. **After the split, is the gate half called `balance_service` (your line 7) or `liability_service` (what
+    shipped)?** Your list already contains **both halves of the split I recommend** — line 6
+    `settlement_service` is the order payout, line 7 `balance_service` is the pair rows, the threshold and
+    the payments. The code went to `liability_service` for the second one, and the frontend renders
+    "Liability"/"Kewajiban".
+    **→ I recommend `liability_service`, and editing line 7 to match.** *Balance* is the noun for the
+    **number** (`last_balance`, `balance_after`) all over this system — reusing it for the service that
+    gates would make "the balance service holds the balance" ambiguous with every other balance. *Liability*
+    names what the row IS. This is a one-line edit to your doc, not a rename.
+11. **Is `export_service` a service, and is it in the list?** `settlement_context.md` §General Brief 3
+    names it and defers it; `architecture/context.md` does not list it.
+    **→ I recommend adding the line now and building it later** — a service named in one doc and absent
+    from the doc that names services is how `settlement`/`balance`/`liability` became three names for one
+    box.
 
 ---
 
@@ -368,10 +398,15 @@ flowchart TB
 
 ## the doc's six services and the tree's twelve are still not the same set
 
-> `architectures/architecture_context.md:5-10` names **`order_service`** and **`ledger_service`**.
-> `backend/services/` contains **neither** — it has `selling_service`, `revenue_service`,
-> `expense_service`, `settlement_service`, plus `category_service`, `document_service`, `region_service`,
-> `shipping_service`.
+> `architectures/architecture_context.md:5-11` names **eleven** services, including **`order_service`**,
+> **`settlement_service`**, **`balance_service`** and **`ledger_service`**.
+> `backend/services/` contains **twelve**, and **four of those eleven names are not among them**: it has
+> `selling_service`, `revenue_service`, `expense_service`, **`liability_service`**, plus
+> `category_service`, `document_service`, `region_service`, `shipping_service`.
+>
+> ⚠ **`settlement_service` is the sharp one now.** It is in your list, it is approved as a design, and
+> after the liability rename **the name is free and the directory is empty** — the only service named in
+> the architecture doc that is neither built nor a rename of something built.
 
 **Which one is wrong is yours to say**, and it is not cosmetic: it decides which service owns
 `ledger_entry`, `team_balance` and the gate. My reconciliation is

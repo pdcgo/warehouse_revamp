@@ -1,5 +1,13 @@
 # Order Context.
 
+## Whats Order Responsbility And Not.
+### Responsbility.
+1. Manage Orders.
+
+### Whats Not.
+1. The Cash, about withdrawal & platform wallet. we separate in other service. for now its defer development, we think later.
+2. The debt related shared/cross product. we dont manage it. we just send it as event and other service handle it.
+
 ## Order Anatomy.
 when order created. its bring 4 things.
 1. Shop Related.

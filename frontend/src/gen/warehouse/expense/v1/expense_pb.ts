@@ -625,7 +625,7 @@ export const ExpenseDailyResponseSchema: GenMessage<ExpenseDailyResponse> = /*@_
 /**
  * ExpenseUpdate corrects an expense (#169).
  *
- * It exists because of the one fact that separates this service from revenue_service: a revenue row is
+ * It exists because of the one fact that separated this service from revenue_service (since removed): a revenue row was
  * written by the system from an order and frozen, while an expense row is TYPED BY A PERSON. A person
  * mistypes. Refusing to let them fix it would leave a wrong number moving profit forever, and the
  * workaround — void it and enter another — loses who entered the original and when.
@@ -896,7 +896,7 @@ export const ExpenseRowSortSchema: GenEnum<ExpenseRowSort> = /*@__PURE__*/
 /**
  * ExpenseService owns `expense_records` (#161) — the money the business spent that NO ORDER caused.
  *
- * That is the whole reason it is not part of revenue_service. A revenue row is written BY THE SYSTEM
+ * That is the whole reason it was never part of revenue_service (since removed). A revenue row was written BY THE SYSTEM
  * from an order (#153); an expense row is TYPED BY A PERSON about a period. Everything below follows from
  * that one difference: the form has to be quick, the mistake has to be fixable, and the row has to say
  * who entered it.

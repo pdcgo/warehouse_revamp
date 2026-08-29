@@ -14,12 +14,15 @@ import { SupplierChannelService } from "../gen/warehouse/inventory/v1/supplier_c
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
-import { RevenueService } from "../gen/warehouse/revenue/v1/revenue_pb";
 import { ExpenseService } from "../gen/warehouse/expense/v1/expense_pb";
 import {
-  SettlementPaymentService,
+  LiabilityPaymentService,
+  LiabilityService,
+  LiabilityTermsService,
+} from "../gen/warehouse/liability/v1/liability_pb";
+import {
   SettlementService,
-  SettlementTermsService,
+  SettlementWriteService,
 } from "../gen/warehouse/settlement/v1/settlement_pb";
 import { transport } from "../transport";
 
@@ -45,14 +48,17 @@ export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
-export const revenueClient = createClient(RevenueService, transport);
 export const expenseClient = createClient(ExpenseService, transport);
 // The ledger of what teams owe each other (#185). Read-only for now: the payment and terms services
 // are declared in the same proto and land with #188/#189 — and the ledger WRITE path is in-process
 // by design, so it has no client here and never will.
+export const liabilityClient = createClient(LiabilityService, transport);
+export const liabilityPaymentClient = createClient(LiabilityPaymentService, transport);
+export const liabilityTermsClient = createClient(LiabilityTermsService, transport);
+// The MARKETPLACE payout ledger — not liability above, which is what teams owe each other. Reads and
+// writes are separate proto services, so the reads could ship before the write path existed.
 export const settlementClient = createClient(SettlementService, transport);
-export const settlementPaymentClient = createClient(SettlementPaymentService, transport);
-export const settlementTermsClient = createClient(SettlementTermsService, transport);
+export const settlementWriteClient = createClient(SettlementWriteService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

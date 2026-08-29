@@ -25,7 +25,7 @@ import { check, formatBalance, gaps, sectionTotal, section } from "./model";
 // Nothing here is wired. There is no route, no menu entry, no query hook and no service behind it,
 // because a balance sheet is not a page you build — it is a page that falls out of double-entry
 // bookkeeping, and this system has no journal, no chart of accounts and no cash account. Assembling
-// one by hand from revenue, expenses, settlement and inventory would produce a page that cannot fail
+// one by hand from revenue, expenses, liability and inventory would produce a page that cannot fail
 // to balance, which sounds like a feature and is the opposite: a wrong asset figure would become a
 // wrong equity figure and the sheet would still print a reassuring tick.
 //

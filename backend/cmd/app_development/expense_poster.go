@@ -15,7 +15,7 @@ import (
 // batch's units as damaged or lost, the money they were worth is recorded as an operational expense
 // the warehouse bears.
 //
-// Same shape as settlementPoster beside it — the composition root is the one place allowed to know
+// Same shape as liabilityPoster beside it — the composition root is the one place allowed to know
 // two services at once, inventory declares the interface it needs, and this adapter is the whole
 // dependency. It calls the RPC handler directly (an internal call, so the policy interceptor does not
 // run); the acting user rides in the ctx, so the expense records who wrote it off.

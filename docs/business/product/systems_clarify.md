@@ -18,7 +18,7 @@ Siblings: [product_context](./context_clarify.md) · [stock_context](../stock/co
 
 ## Proposed Design
 
-`docs/requirements/` runs **low level → high level**, and `systems/` holds the system-level requirements
+`docs/business/` runs **low level → high level**, and `systems/` holds the system-level requirements
 derived from a context doc. So the shape is one derived file per context doc, answering what the context
 doc deliberately does not.
 
@@ -69,7 +69,7 @@ like the one below is visible on the first line rather than in the path.
 
 ## the file's name says product and its only line says stock
 
-> path: `docs/requirements/systems/**systems_product_context**.md`
+> path: `docs/business/product/**systems**.md`
 > its entire content: `# **Stock** System Requirements.`
 > [`product_context.md`](./context.md) §System Requirements: *"for
 > system requirements it live in [this] → `./systems/systems_product_context.md`"*

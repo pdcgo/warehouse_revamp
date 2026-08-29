@@ -28,7 +28,7 @@ type Service struct {
 	// revenue_service is listening — it announces what happened and is done.
 	events event_source.EventSender
 	// Whether this team may take on more debt, asked BEFORE an order is written (#189). An interface
-	// this service owns, so selling_service never imports settlement_service — see credit_checker.go.
+	// this service owns, so selling_service never imports liability_service — see credit_checker.go.
 	credit CreditChecker
 	// Product LABELS, for promoting a draft (#194). A draft line stores only a product_id, and an
 	// order line freezes the sku and name — see product_catalog.go for why they cannot come from the

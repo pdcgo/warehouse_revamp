@@ -61,6 +61,33 @@ the current open set.
 > team from the moment it exists, and *"unowned"*, which nothing else in this system could handle, never
 > occurs. That was Critique 15, now gone.
 >
+> **Re-examined after §Whats Order Responsbility And Not.** ✅ **This is the scope statement the file
+> has been missing**, and it closes the *structural* half of the money question outright: the order
+> **never posts a ledger entry** — not at draft, not at finalize, not at cancel. It **emits an event**
+> and another service decides what that costs. That is exactly what shipped
+> ([push_handler.go](../../../backend/services/liability_service/push_handler.go)), so the doc and the
+> build now agree, and [Question 4](#question) shrinks to *which pre-checks a draft runs* — a much
+> smaller question than the one it replaces.
+>
+> ⚠ **But the two lists are not symmetric, and STOCK is in neither.** §Whats Not names the cash and the
+> cross debt; §Responsbility says only *"Manage Orders"*. Yet placing an order **commits stock
+> synchronously** and an order with no stock **fails**
+> ([StockPicker](../../../backend/services/selling_service/selling_v1/stock_picker.go): *"If it returns an
+> error, NOTHING was taken"*) — the opposite treatment from the debt, which is fire-and-forget. Both are
+> another service's data; only one can fail an order. See [Question 12](#question).
+>
+> ⚠ **"We dont manage it" and "we never ask about it" are different, and the doc only says the first.**
+> The order flow **does** consult liability synchronously before placing —
+> [CreditChecker](../../../backend/services/selling_service/selling_v1/credit_checker.go), *"a PRE-CHECK,
+> not a guard on the ledger"*. Consulting is not managing, so nothing here contradicts; but as written a
+> reader could delete the pre-check and still satisfy the section. See [Question 13](#question).
+>
+> ⚠ **What it does NOT settle: the shortfall.** Handing the amount to another service does not hand over
+> the *fact* — only the order knows 4 of 5 were picked, so only the order can announce it. §Whats Not 2
+> makes [Question 6](#question) sharper rather than smaller: not *"what do we charge?"* but **"do we emit
+> a second event when the picked quantity differs from the ordered one?"** Today there is no such event,
+> and the fee posted at placement is computed from the **ordered** quantity.
+
 > **Three sections of prose, and the order run is the warehouse's whole day.** That is still the finding:
 > everything the crew physically does — pick, pack, hand over, take back — hangs off an order, and none
 > of it has a rule yet.
@@ -147,6 +174,30 @@ not name it, so the rule lives in the decision rather than the doc.
 ⚠ **What §Order Draft still leaves open** — two small things, each a question below: *Placement* is the
 word the rest of this system uses for the **moment an order is placed** ([Question 10](#question)) · and
 the **external SKU to product mapping is remembered nowhere** ([Question 11](#question)).
+
+#### order-emits-it-never-posts
+The order service **does not manage the cross/shared debt and does not hold the cash**. It **announces
+what happened** and another service decides what it costs. *(§Whats Order Responsbility And Not)*
+
+```mermaid
+flowchart LR
+  OS["order_service — manages orders"]
+  OS -->|"emits OrderPlaced / OrderCancelled"| LS["liability_service — computes and posts the debt"]
+  OS -->|"synchronous call, may FAIL the order"| INV["inventory_service — stock"]
+  OS -->|"synchronous READ, may REFUSE the order"| CC["liability_service — credit pre-check"]
+  CASH["cash, wallet, withdrawal"]
+  OS -.->|"not ours, deferred"| CASH
+```
+
+| the order's own money | frozen on the order, single-sided, nobody else's balance moves |
+| --- | --- |
+| `total` · `subtotal` · `marketplace_total` | the sale — a statistic, never a ledger movement *(§About Customer Pays 2)* |
+| `cogs` · `order_items.unit_cost` | the cost, frozen at place |
+| **the cross debt** | **not the order's.** Two legs in `liability_entries`, in two teams' books |
+| **the cash** | **not the order's**, and deferred |
+
+⚠ **Announcing is still a responsibility.** Whatever the order does not say, nobody downstream can
+learn — see [Question 6](#question).
 
 ### The lifecycle, whole — now mostly yours, with one seam and one dangling end
 
@@ -348,25 +399,35 @@ sequenceDiagram
    ([the-warehouse-accepts-before-it-processes](#the-warehouse-accepts-before-it-processes))
    **→ I recommend one line separating "what a person does" from "what the order holds", and a stated
    ground and outcome for a warehouse declining an order.**
-4. **Does a DRAFT touch the MONEY?** ✅ **Two thirds of this question are now closed.** §Order Draft
-   says a draft creates no **stock** and no **placement**
-   ([a-draft-holds-facts-not-commitments](#a-draft-holds-facts-not-commitments)), and
-   [order-created-is-finalize](./context_decision.md#order-created-is-finalize) joined the two flows — so
-   *"at creation"* now picks one instant and that instant is `finalize`. **What is left is the financial
-   half, which the section does not mention either way:** a payable to a borrowed line's owner · the
-   [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) · the
+4. **NARROWED TWICE — which PRE-CHECKS does a draft run?** ✅ **The ledger half is now closed by
+   [order-emits-it-never-posts](#order-emits-it-never-posts):** §Whats Not 2 says the order does not manage
+   the cross debt at all, so *"does a draft post an entry?"* has no branch to take — **no moment of the
+   order posts one.** ✅ The stock half was closed by §Order Draft, and *"at creation"* was pinned to one
+   instant by [order-created-is-finalize](./context_decision.md#order-created-is-finalize). **What is left
+   is only the CHECKS**, which are the order's own and which §Whats Not does not touch: the
+   [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) (a synchronous
+   `CreditChecker` read, and the order flow chooses when to run it) · the
    [shared lock](../product/context_clarify.md#shared-lock-stops-sharing-entirely) · the
    [reserve](../product/context_clarify.md#reserved-stock-is-never-shared). ([Critique 4](#critique))
-   **→ I recommend NONE of them at draft — no ledger entry, no check — and I think your own section
-   already forces it:** a draft holds an *external* SKU, so it has no product, no owner and no cost, and
-   none of those four are computable. The cost is honest and small: availability seen while drafting can
-   go stale, so **finalize must re-check and may refuse**, which is [Question 5](#question) already.
+   **→ I recommend NONE of them at draft, and your own section still forces it:** a draft holds an
+   *external* SKU, so it has no product and no owner, and there is nobody to check a limit against. The
+   cost is honest and small: availability seen while drafting can go stale, so **finalize must re-check
+   and may refuse**, which is [Question 5](#question) already.
 5. **Does one blocked or unavailable LINE refuse the whole order?** — a lock, a reserve, or a debt
    threshold reached with one of several owners. ([Critique 11](#critique))
    **→ I recommend all-or-nothing at FINALIZE, with the refusal naming the line.**
-6. **What happens on a partial pick — and does a short-picked BORROWED line reduce what that owner is
-   owed?** ([Critique 7](#critique)) **→ I recommend ship what is there, record the shortfall, and charge
-   the owner for what actually shipped.**
+6. **SHARPER, not smaller — does the order EMIT a shortfall, when the picked quantity differs from the
+   ordered one?** ✅ [order-emits-it-never-posts](#order-emits-it-never-posts) settles *who computes the
+   amount* — not the order. ⚠ It does **not** settle who announces the **fact**: only the order knows 4 of
+   5 were picked, so if the order stays silent nobody downstream can ever know. **Today it is silent** —
+   the two order events are `OrderPlaced` and `OrderCancelled`, the fee is posted from the **ordered**
+   quantity, and `liability_entries` are immutable, so a short pick is a standing overcharge on **another
+   team's** books with no path to correct it. ([Critique 7](#critique))
+   **→ I recommend ship what is there, record the shortfall on the order, and emit a third event at
+   handover carrying the ACTUALLY SHIPPED lines** — the delta is then somebody else's arithmetic, which is
+   exactly the division §Whats Not 2 just drew. The business half is still yours: **is a short-picked
+   borrowed line charged at what shipped, or at what was ordered?** There is a real case for the latter —
+   the unit was committed off that owner's shelf and they lost the sale — and the mechanism serves either.
 7. **Is the cross line's COGS — and so the payable — `UnitPrice + fee`?** The bullets name the legs and not
    the amount; `product_context.md` §Pricing Behavior 2 supplies it and this doc does not repeat or link it.
    ([Contradiction — the residue](#contradiction))
@@ -394,6 +455,23 @@ sequenceDiagram
     LinkMap bridges product-to-product, this bridges a marketplace SKU to a product.)*
     **→ I recommend remembering it per shop, so a draft arrives pre-mapped and review is a glance rather
     than data entry — with an unrecognised SKU still stopping at a person.**
+
+12. **NEW — is STOCK inside the order's responsibility or outside it? Neither list says.** §Responsbility
+    says only *"Manage Orders"*; §Whats Not names the cash and the cross debt. Yet placing an order
+    **takes stock out of a warehouse synchronously**, and if that fails **the order fails** — the exact
+    opposite of the debt, which is announced and forgotten. Two pieces of another service's data, two
+    different couplings, and the doc distinguishes only one of them.
+    **→ I recommend saying it in one line: "stock is not ours either, but an order MAY NOT EXIST without
+    it — so we take it synchronously and fail if we cannot."** That is the real rule, it is already what
+    is built, and written down it explains why the debt is an event and the stock is a call.
+13. **NEW — may the order still ASK about the debt it does not manage?** §Whats Not 2 says *"we dont
+    manage it"*, which is true of the posting and silent about the **reading**: the order flow consults
+    liability before placing and refuses the order when a creditor is over its limit. That is the
+    [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) gate, and it lives on
+    the order side by design — *"the ledger records what happened and never declines to record it — the
+    ORDER FLOW chooses to gate itself"*.
+    **→ I recommend "we do not manage the debt; we do consult it before placing" —** eight words that
+    keep the gate from reading as a scope violation to the next person who tidies this.
 
 ---
 

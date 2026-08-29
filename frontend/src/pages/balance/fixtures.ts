@@ -20,16 +20,16 @@ interface LineSpec {
 
 const LINES: LineSpec[] = [
   // Nothing in this system holds a cash balance. It is the largest single gap on the sheet and the
-  // one with no partial answer available — settlement knows what is OWED, never what is HELD.
+  // one with no partial answer available — liability knows what is OWED, never what is HELD.
   { id: "cash", section: "assets", source: "none" },
   { id: "inventory", section: "assets", source: "inventory", drillTo: "/inventory" },
   // Stock that has left the supplier and not yet been received — an asset the business owns and
   // cannot touch.
   { id: "goodsInTransit", section: "assets", source: "inventory", drillTo: "/inventories/restock" },
-  { id: "receivable", section: "assets", source: "settlement", drillTo: "/liability" },
+  { id: "receivable", section: "assets", source: "liability", drillTo: "/liability" },
   { id: "deposits", section: "assets", source: "none" },
 
-  { id: "payable", section: "liabilities", source: "settlement", drillTo: "/liability" },
+  { id: "payable", section: "liabilities", source: "liability", drillTo: "/liability" },
   // Suppliers exist as entities; what is owed to them does not. Goods are received without the debt
   // they create being recorded anywhere.
   { id: "supplierPayable", section: "liabilities", source: "none" },

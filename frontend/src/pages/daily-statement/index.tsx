@@ -96,14 +96,14 @@ function rangeDates(range: DateRange): { from: string; to: string } {
 // The grain is a ROLLUP of the same daily fetch (see `mergeBuckets`), not a different request, so every
 // rule below — the spine, the subtraction, the server-owned footer — holds identically at all three.
 //
-// IT SERVES BOTH TEAM TYPES, reading a different income column for each (owner, 2026-08-14):
+// IT IS THE WAREHOUSE'S MONEY SCREEN: the handling fees it charged, less its expenses — and a
+// warehouse's written-off stock is already an expense on its own team (#211), so the two sides need
+// no branch.
 //
-//   selling    the expected margin on its orders    (revenue_service)
-//   warehouse  the handling fees it charged         (settlement_service)
-//
-// A warehouse has no orders, so the selling version pointed at one would show margin 0 against real
-// expenses and call every day a loss. The expenses half is shared and needs no branch — a warehouse's
-// written-off stock is already an expense on its own team (#211).
+// ⚠ It served a SELLING team too, reading expected margin from `revenue_service` (owner, 2026-08-14).
+// That service was removed and its statistics deferred, so the selling half is gone until they are
+// rebuilt. The page now refuses a non-warehouse team rather than showing it a subtraction with no
+// income in it, which would report every day as a pure loss.
 export function DailyStatementPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -123,10 +123,10 @@ export function DailyStatementPage() {
   };
 
   const teamId = current?.teamId;
-  // ROOT falls in with SELLING rather than getting a third case. A root team has neither orders nor
-  // fees, so both modes read empty for it — and the selling shape is the one its members recognise
-  // from the Profit screen beside this one.
-  const mode = current?.teamType === TeamType.WAREHOUSE ? "warehouse" : "selling";
+  // ONE MODE while the selling half is deferred. Kept as a named constant rather than inlined so the
+  // seam stays visible: `StatementMode` is a one-member union for the same reason.
+  const mode = "warehouse" as const;
+  const servesThisTeam = current?.teamType === TeamType.WAREHOUSE;
 
   const { from, to } = rangeDates(range);
   const span = spanDays(from, to);
@@ -185,17 +185,13 @@ export function DailyStatementPage() {
         <DateRangePicker value={range} onChange={setRange} testId="statement-range" />
       </Flex>
 
-      {/* Not decoration. In SELLING mode half of every subtraction below is an EXPECTATION, and an
-          unlabelled money screen is read as cash in the bank. Same notice the profit screen carries —
-          this one just repeats it 30 times.
-
-          A WAREHOUSE does not get it, and that is the point of it being conditional: both sides of its
-          statement are real ledger movements — fees it actually charged, stock it actually wrote off —
-          so warning about an expectation would be crying wolf about the one screen here that has none. */}
-      {mode === "selling" && (
-        <Flex align="center" gap="2" color="fg.muted" data-testid="statement-expected-notice">
+      {/* ⚠ A NON-WAREHOUSE TEAM IS TOLD, not shown zeroes. Its income column came from
+          `revenue_service`, which has been removed with its statistics deferred — so the subtraction
+          would have real expenses and no income, and report every single day as a pure loss. */}
+      {!servesThisTeam && (
+        <Flex align="center" gap="2" color="fg.muted" data-testid="statement-not-available">
           <Icon as={TriangleAlert} boxSize="4" />
-          <Text fontSize="sm">{t("statement.expectedNotice")}</Text>
+          <Text fontSize="sm">{t("statement.notAvailable")}</Text>
         </Flex>
       )}
 
@@ -233,8 +229,7 @@ export function DailyStatementPage() {
             mode={mode}
             grain={grain}
             income={statement?.income ?? 0n}
-            revenue={statement?.revenue}
-            settlement={statement?.settlement}
+            liability={statement?.liability}
             expenses={statement?.expenses}
             buckets={buckets}
             loading={query.isPending}
@@ -278,8 +273,7 @@ export function DailyStatementPage() {
                 grain={grain}
                 rows={rows}
                 income={statement?.income ?? 0n}
-                revenue={statement?.revenue}
-                settlement={statement?.settlement}
+                liability={statement?.liability}
                 expenses={statement?.expenses}
               />
             </RefreshOverlay>

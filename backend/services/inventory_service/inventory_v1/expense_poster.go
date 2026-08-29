@@ -9,10 +9,10 @@ import "context"
 // would answer "how many did we lose" but never "what did the losses cost us", which is the question a
 // manager chasing a supplier or a shift actually asks.
 //
-// An INTERFACE THIS SERVICE OWNS, in its own terms, exactly like SettlementPoster — inventory must not
+// An INTERFACE THIS SERVICE OWNS, in its own terms, exactly like LiabilityPoster — inventory must not
 // import expense_service, and the adapter lives in the composition root.
 //
-// ⚠ UNLIKE SettlementPoster, it does NOT take the caller's transaction, and that is deliberate: the
+// ⚠ UNLIKE LiabilityPoster, it does NOT take the caller's transaction, and that is deliberate: the
 // loss VALUE is a derived record, not the primary fact. The primary fact — the stock leaving the
 // shelf — must commit whether or not the expense write succeeds, so this is posted AFTER the adjust
 // transaction commits. A rare dropped expense is a gap a report can find; a stock adjust that failed

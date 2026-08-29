@@ -1,119 +1,137 @@
 -- +goose Up
 -- +goose StatementBegin
--- THE LEDGER OF WHAT TEAMS OWE EACH OTHER (#183).
+-- THE LEDGER OF WHAT THE MARKETPLACE PAYS US FOR AN ORDER.
 --
--- Two tables, and the relationship between them is the whole design: `settlement_entries` is the
--- TRUTH — immutable, append-only — and `settlement_balances` is a PROJECTION of it. Every balance
--- must be recomputable from the entries alone, or the ledger cannot be audited.
+-- Two tables, and the relationship between them is the whole design: `settlement_logs` is the TRUTH —
+-- immutable, append-only — and `order_settlements` is a PROJECTION of it. Every figure on the state
+-- row must be recomputable from the log alone, or the ledger cannot be audited.
+--
+-- ⚠ NOT the same thing as `liability_*`, which is what TEAMS OWE EACH OTHER. That service held this
+-- name until it was renamed to make room for this one.
 --
 -- Money is BIGINT, whole rupiah, as everywhere else in this system. Float cannot represent 0.1
--- exactly, so sums drift and equality decays into "within epsilon" — at which point "are we square?"
--- has no yes/no answer at all.
-CREATE TABLE settlement_entries (
+-- exactly, so sums drift and equality decays into "within epsilon" — and the one number this ledger
+-- exists to produce is a difference between two money figures.
+CREATE TABLE settlement_logs (
     id              BIGSERIAL   PRIMARY KEY,
 
-    -- ONE LEG. Every posting writes two rows — one from each side — in one transaction, so posting
-    -- half a movement is impossible. `team_id` is whose books this row is in.
+    -- THE SCOPE. One account per order — the grain is the order, absolutely.
+    order_id        BIGINT      NOT NULL,
+
+    -- ⚠ NOT NULL, by decision. A cost that cannot name an order never reaches settlement: it is held
+    -- by export_service until a person attributes it. This is what keeps every read a plain
+    -- `WHERE order_id = ?` with no null branch, and it is why a platform WITHDRAWAL — which names no
+    -- order — cannot be modelled as a settlement row and needs a home elsewhere.
+    --
+    -- Denormalised from the order on purpose, like `order.cogs`: every screen filters by shop or team,
+    -- and an order does not move between shops. A ledger that had to join `orders` to answer "what did
+    -- this shop net in January" would join on every read.
+    shop_id         BIGINT      NOT NULL,
     team_id         BIGINT      NOT NULL,
-    counterparty_id BIGINT      NOT NULL,
 
-    -- ⚠ ONE SIGN CONVENTION, STATED ONCE: from team_id's point of view, a RECEIVABLE is POSITIVE and
-    -- a PAYABLE is NEGATIVE. The two legs of a movement are exact negatives of each other, which is
-    -- also what makes "the whole ledger sums to zero" a check anybody can run.
-    amount          BIGINT      NOT NULL,
+    -- WHO IS ANSWERABLE — the person in charge, not the session that wrote the row. Set even on
+    -- machine rows: a human owns every entry in this ledger.
+    actor_id        BIGINT      NOT NULL,
 
-    -- WHAT CAUSED IT — a typed pair, never a free-text note. "Why do I owe this?" is the first
-    -- question anyone asks a balance, and a note cannot be joined, filtered or counted. source_id is
-    -- an opaque id in another service (a restock request, an order, a payment); no FK, and none is
-    -- possible — those tables belong to other services.
-    --
-    -- Stored as TEXT with no CHECK IN-list, exactly like orders.status: the mapper and the proto
-    -- guard the value, and an IN-list is one more place to drift when the enum grows.
+    -- Stored as TEXT with no CHECK IN-list, exactly like `orders.status` and `liability_entries`:
+    -- the mapper and the proto guard the value, and an IN-list is one more place to drift when the
+    -- enum grows. It grew once already — six types became seven when the cancel was added.
     source_type     TEXT        NOT NULL,
-    source_id       BIGINT      NOT NULL,
+    settlement_type TEXT        NOT NULL,
 
-    -- ⚠ WHETHER THIS LEG UNDOES AN EARLIER ONE, and it is part of the IDEMPOTENCY KEY rather than a
-    -- display flag. A compensating entry shares source_type, source_id and counterparty with the
-    -- entry it reverses — reversal is never a delete — so without this column the unique index below
-    -- would treat a reversal as a duplicate of the thing it reverses and silently swallow it.
-    reversal        BOOLEAN     NOT NULL DEFAULT FALSE,
+    -- ⚠ ONE SIGN CONVENTION, STATED ONCE: POSITIVE IS MONEY TOWARD US. So `initial_total` is NEGATIVE
+    -- (the platform owes us the sale, and the account opens in deficit) and `fund` is POSITIVE as the
+    -- money actually arrives. This is the opposite of how a person says it, which is exactly why
+    -- `order_settlements.initial_total` stores the sale POSITIVE and the projection below holds the
+    -- ONLY sign flip in the system.
+    change          BIGINT      NOT NULL,
 
-    -- BOTH LEGS OF ONE MOVEMENT SHARE THIS. Without it, "show me both sides of this posting" is
-    -- answerable only by matching amount, opposite sign and a near timestamp — a heuristic that
-    -- fails exactly when two similar postings land together.
-    group_id        BIGINT      NOT NULL,
+    -- The running position AFTER this row. Derived, kept for the panel's running-balance column; the
+    -- log remains what it is derived from.
+    balance         BIGINT      NOT NULL,
 
-    -- The balance after this entry, on this side. A convenience for the history screen and NOT a
-    -- second source of truth: it is derived, and the entries remain what it is derived from.
-    balance_after   BIGINT      NOT NULL,
+    -- THE IDEMPOTENCY KEY, generated by the CALLER — settlement enforces uniqueness and invents
+    -- nothing. See the unique index below for why it is load-bearing rather than defensive.
+    unique_id       TEXT        NOT NULL,
 
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- ⚠ TWO DATES, AND THEY ANSWER DIFFERENT QUESTIONS. `occurred_on` is the day the platform says the
+    -- money belongs to; `posted_on` is the day we learned it. Equal on a same-day row and apart on a
+    -- late fee — a ledger carrying only one of them cannot tell a late charge from a backdated one,
+    -- and both happen.
+    occurred_on     DATE        NOT NULL,
+    posted_on       DATE        NOT NULL DEFAULT CURRENT_DATE,
 
-    -- A team cannot owe itself. This would only ever arise from a bug upstream, and a ledger is the
-    -- wrong place to discover one quietly.
-    CONSTRAINT settlement_entries_sides_differ CHECK (team_id <> counterparty_id)
+    -- Set when this row undoes an earlier one. A correction is a NEW row, never an edit or a delete —
+    -- so this points backwards and nothing ever points forwards.
+    reverses_id     BIGINT,
+
+    note            TEXT        NOT NULL DEFAULT '',
+
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ⚠ THE IDEMPOTENCY KEY, and it is load-bearing rather than defensive.
+-- ⚠ THE IDEMPOTENCY KEY, and it is what makes every writer safe to retry.
 --
--- The order fees arrive on Pub/Sub, which delivers AT LEAST ONCE — a redelivered order is normal, not
--- an error. The handler can only safely ACK a duplicate if the database is what makes the duplicate
--- harmless; without this index the alternative is NACKing, which makes Pub/Sub redeliver a message
--- that can never succeed. A poison loop built entirely out of correct behaviour.
+-- All three sources need it for different reasons. `export_service` re-imports a statement that
+-- overlaps one already loaded. A person double-submits the form. And `order_service` retries a cancel
+-- across a network timeout — which is the dangerous one, because a retried cancel that landed on a new
+-- key would CREDIT THE ACCOUNT TWICE. That is why the cancel's key is derived from the order and the
+-- act's own date rather than from the moment of the call: a retry produces the same key and this index
+-- absorbs it.
 --
--- team_id is in the key because a movement writes both legs, and they differ only by which side they
--- are on: (selling, warehouse) and (warehouse, selling) are two rows, not a duplicate.
---
--- counterparty is in the key because ONE ORDER POSTS SEVERAL ENTRIES — a handling fee to the
--- warehouse plus one product fee per owning team — so `source_id` alone is not enough.
-CREATE UNIQUE INDEX settlement_entries_source_idx
-    ON settlement_entries (team_id, counterparty_id, source_type, source_id, reversal);
+-- Scoped to the order because the caller only guarantees uniqueness within one.
+CREATE UNIQUE INDEX settlement_logs_unique_idx ON settlement_logs (order_id, unique_id);
 
--- The history screen: one counterparty's entries, newest first.
-CREATE INDEX settlement_entries_pair_idx ON settlement_entries (team_id, counterparty_id, id DESC);
+-- The panel: one order's whole log, oldest first, drawn as a running balance.
+CREATE INDEX settlement_logs_order_idx ON settlement_logs (order_id, id);
 
--- Both legs of one movement come from here, so the two rows agree without either having to be
--- written first. A sequence rather than "the first leg's id" because that would make one leg
--- special, and the two legs are peers.
-CREATE SEQUENCE settlement_group_seq;
+-- The daily/period reads: a team's or a shop's movement over a span.
+CREATE INDEX settlement_logs_team_occurred_idx ON settlement_logs (team_id, occurred_on);
+CREATE INDEX settlement_logs_shop_occurred_idx ON settlement_logs (shop_id, occurred_on);
 
--- The running total per pair — a PROJECTION of the entries above, kept because "what do we owe each
--- other" is asked far more often than it changes, and summing a growing log on every read is the
--- slow query this table exists to avoid.
-CREATE TABLE settlement_balances (
-    id                  BIGSERIAL   PRIMARY KEY,
-    team_id             BIGINT      NOT NULL,
-    counterparty_id     BIGINT      NOT NULL,
+-- THE STATE ROW — a PROJECTION of the log above, kept because "what did this order net" is asked far
+-- more often than it changes, and summing a growing log on every list row is the slow query this table
+-- exists to avoid.
+CREATE TABLE order_settlements (
+    -- ⚠ THE ORDER IS THE PRIMARY KEY, not a surrogate id. One account per order, enforced by the
+    -- table's shape rather than by an index somebody could forget — and it is the row a writer LOCKS
+    -- to serialise concurrent posts against the same order.
+    order_id      BIGINT      PRIMARY KEY,
 
-    -- Same sign convention as the entries. Positive = they owe you.
-    balance             BIGINT      NOT NULL DEFAULT 0,
-
-    -- WHEN THE CURRENT RUN OF DEBT BEGAN, or NULL when the pair is square.
+    -- ⚠ THE LIVE SALE, STORED POSITIVE — the one place the log's sign convention is inverted.
     --
-    -- Ageing is the point of the position screen — "Rp 2.4m, oldest unsettled 47 days" is actionable
-    -- in a way a balance alone is not. This is the age of the current NON-ZERO RUN: it is set when
-    -- the balance leaves zero and cleared when it returns, so paying in full resets the clock and a
-    -- partial payment does not.
+    -- "Live" because a cancel ZEROES it rather than leaving the historical figure: an
+    -- `initial_total_cancel` row posts and this column goes to 0 in the same transaction. Without
+    -- that, a cancelled order reports both netting the full sale AND losing the whole sale to hidden
+    -- cost — two wrong numbers from one column, and the list screen ranks by exactly those.
     --
-    -- A per-entry FIFO age would be truer under partial payments, and it needs an allocation model —
-    -- which payment settled which entry — that nothing here has. See §5.3 for the trade.
-    oldest_unsettled_at TIMESTAMPTZ,
+    -- It stays a projection, not a hand-maintained number:
+    --     initial_total = −SUM(change) over types initial_total and initial_total_cancel
+    --
+    -- ⚠ 0 MEANS NOT RECORDED, never "sold for nothing". A missing fact, not a zero one — the screens
+    -- must refuse to compute against it rather than reporting a total loss.
+    initial_total BIGINT      NOT NULL DEFAULT 0,
 
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- The current position: SUM(change) over the whole log. Negative means part of what the buyer paid
+    -- never reached us. It is NOT expected to reach zero, and nothing should present it as a debt to
+    -- clear — the residual IS the platform's unitemised take.
+    last_balance  BIGINT      NOT NULL DEFAULT 0,
+
+    -- Denormalised for the same reason as on the log: every list filters by one or the other.
+    team_id       BIGINT      NOT NULL,
+    shop_id       BIGINT      NOT NULL,
+
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ⚠ IN THE FIRST MIGRATION, ON PURPOSE. Lock-then-read does not protect a row that does not exist
--- yet: two concurrent first-postings for a new pair both find nothing, both insert, and one update is
--- lost. Only a database constraint prevents that, and adding it later means adding it after the day
--- it was first needed.
-CREATE UNIQUE INDEX settlement_balances_pair_idx
-    ON settlement_balances (team_id, counterparty_id);
+-- The list screen ranks by loss within a team, optionally narrowed to one shop.
+CREATE INDEX order_settlements_team_balance_idx ON order_settlements (team_id, last_balance);
+CREATE INDEX order_settlements_shop_idx ON order_settlements (shop_id, last_balance);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE settlement_balances;
-DROP SEQUENCE settlement_group_seq;
-DROP TABLE settlement_entries;
+DROP TABLE order_settlements;
+DROP TABLE settlement_logs;
 -- +goose StatementEnd

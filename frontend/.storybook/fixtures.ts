@@ -303,6 +303,125 @@ export const orders = [
   { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
 ];
 
+// ── What a DETAIL read adds, and a list row never carries ───────────────────────────────────────
+//
+// `OrderList` returns a summary; `OrderDetail` is the only read that populates `items` and `events`
+// (order.proto). So the detail page is not "the list row on its own screen" — it is a different
+// message, and the difference is exactly the two tables the page's two tabs are built from.
+//
+// Held per order id rather than folded into `orders`, for two reasons:
+//
+//   - a list fixture carrying line items would let a list story assert on data the list RPC does not
+//     actually return, and that story would keep passing against a server that never sent it
+//   - only a handful of orders are ever OPENED, so writing lines for all eleven is work that buys
+//     nothing. `orderDetailFor` fills the rest from the row itself.
+//
+// 101 is the one written out in full — three lines, a real address, a note, an attached receipt and
+// a marketplace total that DIFFERS from ours. Every one of those is a branch on the Info tab that a
+// bare order would leave untested.
+export const orderDetailExtras: Record<
+  string,
+  {
+    marketplaceTotal?: bigint;
+    cogs?: bigint;
+    note?: string;
+    orderExternalRefId?: string;
+    items?: { id: bigint; productId: bigint; sku: string; name: string; quantity: number; unitPrice: bigint; unitCost: bigint }[];
+    events?: { id: bigint; kind: number; actorUserId: bigint; atUnix: bigint }[];
+    address?: Record<string, string>;
+    receipt?: { documentId: string; filename: string; mimeType: string };
+  }
+> = {
+  // ⚠ 245.000 ON A 250.000 ORDER. `marketplace_total` is what the BUYER PAID THE PLATFORM and
+  // `total` is what WE quoted — they are two different facts and they routinely disagree. Liability
+  // opens its account from the marketplace figure, never from ours, so a fixture where the two were
+  // equal would hide the one number that matters and make every liability screen look right by
+  // accident.
+  "101": {
+    marketplaceTotal: 245_000n,
+    cogs: 148_000n,
+    note: "Titip bubble wrap tambahan, barang pecah belah.",
+    orderExternalRefId: "MEL-250101-0001",
+    items: [
+      { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitPrice: 75_000n, unitCost: 48_000n },
+      { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
+      { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitPrice: 10_000n, unitCost: 6_000n },
+    ],
+    events: [
+      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(1) },
+      { id: 2n, kind: 2, actorUserId: 62n, atUnix: daysAgo(1) + 3_600n },
+    ],
+    address: {
+      provinsiCode: "32", provinsiName: "Jawa Barat",
+      kabupatenCode: "3273", kabupatenName: "Kota Bandung",
+      kecamatanCode: "327301", kecamatanName: "Coblong",
+      desaCode: "3273011", desaName: "Dago",
+      kodePos: "40135",
+      addressLine: "Jl. Ir. H. Juanda No. 12, RT 03 / RW 05",
+    },
+    receipt: { documentId: "doc-101", filename: "resi-101.pdf", mimeType: "application/pdf" },
+  },
+
+  // A CANCELLED order, and the only fixture whose timeline ENDS badly. The Timeline tab colours the
+  // two endings and nothing in between, so one of each is the minimum that proves it.
+  "107": {
+    marketplaceTotal: 73_000n,
+    cogs: 41_000n,
+    events: [
+      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(8) },
+      { id: 2n, kind: 3, actorUserId: 63n, atUnix: daysAgo(7) },
+    ],
+  },
+
+  // NO ACTOR AT ALL — every event backfilled by the history migration is in this state, and 0 is
+  // "not recorded", not "user zero". The page must show the step and stay silent about who took it,
+  // rather than inventing a name or hiding the step.
+  "108": {
+    marketplaceTotal: 0n,
+    cogs: 310_000n,
+    events: [
+      { id: 1n, kind: 1, actorUserId: 0n, atUnix: daysAgo(120) },
+      { id: 2n, kind: 6, actorUserId: 0n, atUnix: daysAgo(119) },
+    ],
+  },
+};
+
+/**
+ * One order as `OrderDetail` returns it — the list row, plus whatever `orderDetailExtras` adds.
+ *
+ * An order with no extras still gets ONE line and ONE event, derived from the row. An empty items
+ * table on a detail page reads as "this order has nothing in it", which is a state no real order is
+ * ever in — so the default is a plausible order, not an empty one.
+ */
+export function orderDetailFor(id: bigint) {
+  const row = orders.find((o) => o.id === id);
+  if (!row) return undefined;
+
+  const extra = orderDetailExtras[id.toString()] ?? {};
+
+  return {
+    ...row,
+    marketplaceTotal: extra.marketplaceTotal ?? row.total,
+    cogs: extra.cogs ?? (row.subtotal * 6n) / 10n,
+    note: extra.note ?? "",
+    orderExternalRefId: extra.orderExternalRefId ?? "",
+    address: extra.address,
+    receipt: extra.receipt,
+    items: extra.items ?? [
+      {
+        id: 1n,
+        productId: 301n,
+        sku: "KPH-M",
+        name: "Kaos Polos Hitam — M",
+        quantity: 1,
+        unitPrice: row.subtotal,
+        unitCost: (row.subtotal * 6n) / 10n,
+      },
+    ],
+    events: extra.events ?? [{ id: 1n, kind: 1, actorUserId: 61n, atUnix: row.createdAtUnix }],
+  };
+}
+
 // ── Order drafts ────────────────────────────────────────────────────────────────────────────────
 //
 // Only the SELLING team has any, and that is not an omission: a draft is a half-typed order, and a
@@ -318,7 +437,7 @@ export const orderDrafts = [
 // Three sparse day-series, one per service the statement subtracts:
 //
 //   revenueDays      what a SELLING team's orders were expected to make   (revenue_service)
-//   settlementDays   what a WAREHOUSE charged the teams it serves         (settlement_service)
+//   liabilityDays   what a WAREHOUSE charged the teams it serves         (liability_service)
 //   expenseDays      what either of them spent                           (expense_service)
 //
 // SPARSE ON PURPOSE, and dated RELATIVE to the clock the story runs on — both because that is what
@@ -363,7 +482,7 @@ export const revenueDays = [
 // ⚠ COD DWARFS THE HANDLING FEES, deliberately: a warehouse handles far more of the courier's cash
 // than it earns, so a screen that counted COD as income would report roughly three times the profit
 // it made. The statement excludes it and says why — this fixture is what makes that assertable.
-export const settlementDays = [
+export const liabilityDays = [
   { teamId: 11n, ago: 1, handlingFee: 500_000n, codFee: 1_200_000n },
   { teamId: 11n, ago: 3, handlingFee: 400_000n, codFee: 800_000n },
   { teamId: 11n, ago: 8, handlingFee: 200_000n, codFee: 0n },

@@ -5,151 +5,98 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
-// SourceType is what caused an entry, in this package's own terms.
+// The enums are stored as TEXT, matching `orders.status` and `liability_entries`. The mapping lives
+// here and nowhere else, so a value can only drift in one file.
 //
-// A local type rather than the generated enum, because PostEntry is called from IN-PROCESS code —
-// the restock acceptance (#184) and the order-event consumer (#186) — and a caller reaching for a
-// proto enum to write a ledger row would be importing the wire format into a domain call.
-type SourceType int
+// ⚠ The text is the CONTRACT with the database. Renaming a constant in the proto is free; changing
+// one of these strings rewrites history, because rows already carry the old spelling.
 
 const (
-	SourceTypeUnspecified SourceType = iota
-	// The warehouse paid the courier at the door for goods it does not own (#155/#184). SourceID is
-	// the restock request.
-	SourceTypeCODFee
-	// The warehouse fulfilled an order (#186). SourceID is the order.
-	SourceTypeHandlingFee
-	// The order sold another team's product (#186). SourceID is the order — one per owning team.
-	SourceTypeProductFee
-	// A confirmed payment (#188). SourceID is the payment.
-	SourceTypePayment
-	// Everything the warehouse laid out to receive one delivery — the COD fee at the door and anything
-	// else it paid to get the goods in. SourceID is the restock request, and the amount is the sum of
-	// that request's cost lines. Supersedes SourceTypeCODFee, which nothing posts under any more.
-	SourceTypeRestockOutlay
-	// Stock the warehouse broke or lost while holding it (#211). SourceID is the ADJUST MOVEMENT.
-	// The warehouse owes the OWNING team: it holds the goods, the selling team owns them.
-	SourceTypeStockDamage
+	typeInitialTotal         = "initial_total"
+	typeInitialTotalCancel   = "initial_total_cancel"
+	typeFund                 = "fund"
+	typeExternalAdsFee       = "external_ads_fee"
+	typeAffiliateFee         = "affiliate_fee"
+	typeMarketplaceAdjust    = "marketplace_adjustment"
+	typeOther                = "other"
+
+	sourceExporter = "exporter"
+	sourceManual   = "manual"
+	sourceOrder    = "order"
 )
 
-// The text stored in `settlement_entries.source_type`. No DB CHECK guards these (the mapper and the
-// proto do), exactly as `orders.status` is handled — an IN-list is one more place to drift when the
-// enum grows.
-const (
-	sourceCODFee        = "cod_fee"
-	sourceHandlingFee   = "handling_fee"
-	sourceProductFee    = "product_fee"
-	sourcePayment       = "payment"
-	sourceRestockOutlay = "restock_outlay"
-	sourceStockDamage   = "stock_damage"
-)
-
-// sourceTypeText maps to storage. An UNSPECIFIED source returns "" and PostEntry refuses it: an entry
-// that cannot say what caused it is unanswerable to the first question anybody asks a balance.
-func sourceTypeText(t SourceType) string {
-	switch t {
-	case SourceTypeCODFee:
-		return sourceCODFee
-	case SourceTypeHandlingFee:
-		return sourceHandlingFee
-	case SourceTypeProductFee:
-		return sourceProductFee
-	case SourceTypePayment:
-		return sourcePayment
-	case SourceTypeRestockOutlay:
-		return sourceRestockOutlay
-	case SourceTypeStockDamage:
-		return sourceStockDamage
-	default:
-		return ""
-	}
+var settlementTypeText = map[settlementv1.SettlementType]string{
+	settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL:          typeInitialTotal,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL:   typeInitialTotalCancel,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_FUND:                   typeFund,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_EXTERNAL_ADS_FEE:       typeExternalAdsFee,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_AFFILIATE_FEE:          typeAffiliateFee,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT: typeMarketplaceAdjust,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER:                  typeOther,
 }
 
-// sourceTypeProto maps storage to the wire enum for the screens (#185). An unrecognised value reads
-// as UNSPECIFIED rather than failing the row: a history that refuses to render because one entry
-// carries a source this build does not know is worse than one line reading "unknown".
-func sourceTypeProto(text string) settlementv1.SettlementSourceType {
-	switch text {
-	case sourceCODFee:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_COD_FEE
-	case sourceHandlingFee:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_HANDLING_FEE
-	case sourceProductFee:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_PRODUCT_FEE
-	case sourcePayment:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_PAYMENT
-	case sourceRestockOutlay:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_RESTOCK_OUTLAY
-	case sourceStockDamage:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_STOCK_DAMAGE
-	default:
-		return settlementv1.SettlementSourceType_SETTLEMENT_SOURCE_TYPE_UNSPECIFIED
-	}
+var settlementTypeEnum = reverseOf(settlementTypeText)
+
+var sourceTypeText = map[settlementv1.SourceType]string{
+	settlementv1.SourceType_SOURCE_TYPE_EXPORTER: sourceExporter,
+	settlementv1.SourceType_SOURCE_TYPE_MANUAL:   sourceManual,
+	settlementv1.SourceType_SOURCE_TYPE_ORDER:    sourceOrder,
 }
 
-// sourceTypeFromText is the inverse of sourceTypeText, for re-posting a movement the ledger already
-// recorded — the reversal path reads a stored entry and posts its opposite (#186).
-func sourceTypeFromText(text string) SourceType {
-	switch text {
-	case sourceCODFee:
-		return SourceTypeCODFee
-	case sourceHandlingFee:
-		return SourceTypeHandlingFee
-	case sourceProductFee:
-		return SourceTypeProductFee
-	case sourcePayment:
-		return SourceTypePayment
-	case sourceRestockOutlay:
-		return SourceTypeRestockOutlay
-	case sourceStockDamage:
-		return SourceTypeStockDamage
-	default:
-		return SourceTypeUnspecified
+var sourceTypeEnum = reverseOf(sourceTypeText)
+
+func reverseOf[E comparable](forward map[E]string) map[string]E {
+	back := make(map[string]E, len(forward))
+	for enum, text := range forward {
+		back[text] = enum
 	}
+
+	return back
 }
 
-// The text stored in `settlement_payments.status` (#188). Same reasoning as the source types above —
-// no DB CHECK guards these, because an IN-list is one more place to drift when the enum grows.
-const (
-	paymentRecorded  = "recorded"
-	paymentConfirmed = "confirmed"
-	paymentReversed  = "reversed"
-)
-
-// paymentStatusProto maps storage to the wire enum. An unrecognised value reads as UNSPECIFIED rather
-// than failing the row: a list that refuses to render because one payment carries a status this build
-// does not know is worse than one line reading "unknown".
-func paymentStatusProto(text string) settlementv1.SettlementPaymentStatus {
-	switch text {
-	case paymentRecorded:
-		return settlementv1.SettlementPaymentStatus_SETTLEMENT_PAYMENT_STATUS_RECORDED
-	case paymentConfirmed:
-		return settlementv1.SettlementPaymentStatus_SETTLEMENT_PAYMENT_STATUS_CONFIRMED
-	case paymentReversed:
-		return settlementv1.SettlementPaymentStatus_SETTLEMENT_PAYMENT_STATUS_REVERSED
-	default:
-		return settlementv1.SettlementPaymentStatus_SETTLEMENT_PAYMENT_STATUS_UNSPECIFIED
-	}
+// isInitialType reports whether a row moves the LIVE SALE rather than the balance alone. Both initial
+// types do, in opposite directions, which is what makes `initial_total` a projection rather than a
+// column somebody maintains.
+func isInitialType(text string) bool {
+	return text == typeInitialTotal || text == typeInitialTotalCancel
 }
 
-// paymentToProto carries the nil ConfirmedAt through as 0 — "not confirmed yet" rather than a date at
-// the epoch. The status already says which, so a caller never has to read 0 as a timestamp.
-func paymentToProto(p *settlement_service_models.SettlementPayment) *settlementv1.SettlementPayment {
-	var confirmedAt int64
-	if p.ConfirmedAt != nil {
-		confirmedAt = p.ConfirmedAt.Unix()
+func entryToProto(
+	log *settlement_service_models.SettlementLog,
+	actorName string,
+) *settlementv1.SettlementEntry {
+	entry := settlementv1.SettlementEntry{
+		Id:             log.ID,
+		UniqueId:       log.UniqueID,
+		OrderId:        log.OrderID,
+		ShopId:         log.ShopID,
+		TeamId:         log.TeamID,
+		ActorId:        log.ActorID,
+		SourceType:     sourceTypeEnum[log.SourceType],
+		SettlementType: settlementTypeEnum[log.SettlementType],
+		Change:         log.Change,
+		Balance:        log.Balance,
+		OccurredOn:     log.OccurredOn.Format(dateLayout),
+		PostedOn:       log.PostedOn.Format(dateLayout),
+		Note:           log.Note,
+		ActorName:      actorName,
 	}
 
-	return &settlementv1.SettlementPayment{
-		Id:              p.ID,
-		PayerTeamId:     p.PayerTeamID,
-		CreditorTeamId:  p.CreditorTeamID,
-		Amount:          p.Amount,
-		Status:          paymentStatusProto(p.Status),
-		Note:            p.Note,
-		RecordedBy:      p.RecordedBy,
-		ConfirmedBy:     p.ConfirmedBy,
-		CreatedAtUnix:   p.CreatedAt.Unix(),
-		ConfirmedAtUnix: confirmedAt,
+	if log.ReversesID != nil {
+		entry.ReversesId = *log.ReversesID
+	}
+
+	return &entry
+}
+
+func settlementToProto(
+	state *settlement_service_models.OrderSettlement,
+) *settlementv1.OrderSettlement {
+	return &settlementv1.OrderSettlement{
+		OrderId:      state.OrderID,
+		InitialTotal: state.InitialTotal,
+		LastBalance:  state.LastBalance,
+		TeamId:       state.TeamID,
+		ShopId:       state.ShopID,
 	}
 }

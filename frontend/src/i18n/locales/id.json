@@ -22,14 +22,13 @@
     "users": "Pengguna",
     "settings": "Pengaturan",
     "profile": "Profil",
-    "revenue": "Pendapatan",
     "expenses": "Biaya",
-    "profit": "Laba",
     "orderDrafts": "Draf Pesanan",
     "statement": "Laporan",
-    "settlement": "Kewajiban",
     "picking": "Pengambilan",
-    "more": "Lainnya"
+    "more": "Lainnya",
+    "liability": "Kewajiban",
+    "settlement": "Penyelesaian"
   },
   "menu": {
     "theme": "Tema",
@@ -67,7 +66,11 @@
     "colAwaiting": "Menunggu",
     "toConfirm": "{{count}} dikonfirmasi",
     "teamFallback": "Tim #{{id}}",
-    "empty": "Belum ada rekanan."
+    "empty": "Belum ada rekanan.",
+    "selectTeamView": "Pilih tim untuk melihat posisinya.",
+    "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
+    "youOweThem": "Anda berhutang {{amount}} kepada mereka",
+    "square": "Lunas"
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -100,6 +103,7 @@
     "causeHandlingFee": "Biaya penanganan · pesanan #{{id}}",
     "causeProductFee": "Biaya produk · pesanan #{{id}}",
     "causePayment": "Pembayaran #{{id}}",
+    "causeStockDamage": "Kerusakan stok · pergerakan #{{id}}",
     "causeUnknown": "Tidak diketahui #{{id}}",
     "statusRecorded": "Dicatat",
     "statusConfirmed": "Dikonfirmasi",
@@ -556,7 +560,8 @@
     "detail": {
       "tab": {
         "info": "Info",
-        "timeline": "Riwayat"
+        "timeline": "Riwayat",
+        "settlement": "Penyelesaian"
       }
     },
     "timeline": {
@@ -615,35 +620,6 @@
     "promoted": "Pesanan dibuat dari draf",
     "deleteOneTitle": "Hapus Draf Pesanan",
     "deleteOneMessage": "Hapus draf {{ref}}? Tindakan ini tidak bisa dibatalkan, dan aplikasi pengirim bisa mengirimnya lagi."
-  },
-  "settlement": {
-    "title": "Kewajiban",
-    "intro": "Apa yang Anda dan tiap rekanan saling hutangkan. Kejar yang paling lama dulu — hutang yang tidak ditagih tidak akan dibayar.",
-    "selectTeamView": "Pilih tim untuk melihat posisinya.",
-    "counterparty": "Rekanan",
-    "position": "Posisi",
-    "ageing": "Umur",
-    "unsettledOnly": "Belum lunas saja",
-    "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
-    "youOweThem": "Anda berhutang {{amount}} kepada mereka",
-    "square": "Lunas",
-    "oldestUnsettled": "terlama belum lunas {{days}} hari",
-    "awaiting": "{{count}} menunggu Anda",
-    "allSquare": "Semuanya sudah lunas.",
-    "noCounterparties": "Belum ada rekanan.",
-    "back": "Kembali ke Kewajiban",
-    "what": "Keterangan",
-    "amount": "Jumlah",
-    "balanceAfter": "Saldo sesudah",
-    "when": "Waktu",
-    "reversal": "Dibatalkan",
-    "noEntries": "Belum ada transaksi di antara kalian.",
-    "sourceCodFee": "Biaya COD, restock",
-    "sourceHandlingFee": "Biaya penanganan, pesanan",
-    "sourceProductFee": "Biaya produk, pesanan",
-    "sourcePayment": "Pembayaran",
-    "sourceUnknown": "Tidak diketahui",
-    "sourceRestockOutlay": "Biaya penerimaan, restock"
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -1609,26 +1585,6 @@
       "stepFailed": "Tidak dapat mencatat langkah itu"
     }
   },
-  "revenue": {
-    "title": "Pendapatan",
-    "selectTeam": "Pilih tim untuk melihat pendapatannya.",
-    "empty": "Belum ada pendapatan tercatat.",
-    "expectedNotice": "Ini angka PERKIRAAN, dibekukan saat pesanan dibuat — bukan uang yang sudah dibayarkan dan direkonsiliasi.",
-    "table": {
-      "order": "Pesanan",
-      "revenue": "Pendapatan",
-      "cogs": "HPP",
-      "shipping": "Ongkir",
-      "margin": "Perkiraan Margin",
-      "unknown": "Tidak diketahui",
-      "voided": "Dibatalkan"
-    },
-    "totals": {
-      "heading": "Periode Ini",
-      "unknownCost_one": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis.",
-      "unknownCost_other": "{{count}} pesanan tidak diketahui biayanya — marginnya terbaca seolah barang gratis."
-    }
-  },
   "batches": {
     "title": "Batch",
     "selectTeam": "Pilih tim gudang untuk melihat batch-nya.",
@@ -1796,23 +1752,9 @@
     "noBatches": "Belum ada kiriman produk ini.",
     "owner": "Pemilik"
   },
-  "profit": {
-    "title": "Laba",
-    "selectTeam": "Pilih tim untuk melihat labanya.",
-    "expectedNotice": "Angka ini adalah PERKIRAAN, bukan uang yang sudah masuk — margin di bawah belum dicocokkan dengan pembayaran nyata dari marketplace mana pun.",
-    "expectedMargin": "Perkiraan margin",
-    "marginSource": "Dari pesanan bulan ini",
-    "totalCost": "Biaya",
-    "costSource": "Tercatat pada bulan ini",
-    "profit": "Laba",
-    "loss": "Bulan ini pengeluaran melebihi pemasukan.",
-    "unknownCost": "{{count}} pesanan dengan biaya tidak diketahui dihitung sebagai laba penuh — angka di atas lebih tinggi dari seharusnya sebesar biaya barang tersebut.",
-    "breakdown": "Rincian biaya"
-  },
   "statement": {
     "title": "Laporan",
     "selectTeam": "Pilih tim untuk melihat laporannya.",
-    "expectedNotice": "Angka ini adalah PERKIRAAN, bukan uang yang sudah cair — belum ada pencairan marketplace yang dicocokkan.",
     "rangeUnbounded": "Pilih tanggal mulai dan tanggal akhir — laporan membutuhkan keduanya.",
     "rangeTooLong": "Rentang itu mencakup {{days}} hari. Laporan maksimal {{max}} hari.",
     "expectedMargin": "Perkiraan margin",
@@ -1825,7 +1767,6 @@
     "ofWhichStockLoss": "termasuk {{amount}} stok yang dihapusbukukan",
     "profit": "Laba",
     "loss": "Periode ini pengeluaran melebihi pemasukan.",
-    "unknownCost": "{{count}} pesanan dengan biaya tidak diketahui dihitung sebagai laba penuh — semua angka di sini lebih tinggi dari seharusnya sebesar biaya barang tersebut.",
     "hideQuiet": "Sembunyikan {{unit}} tanpa aktivitas",
     "dayCount": "Menampilkan {{shown}} dari {{total}} {{unit}}",
     "empty": "Tidak ada data untuk periode ini.",
@@ -1860,7 +1801,8 @@
     },
     "perUnit": "Per {{unit}}",
     "perUnitSource": "Rata-rata dari {{count}} {{unit}}",
-    "unknownCostRow": "{{count}} pesanan pada {{unit}} ini biayanya tidak diketahui"
+    "unknownCostRow": "{{count}} pesanan pada {{unit}} ini biayanya tidak diketahui",
+    "notAvailable": "Statistik untuk tim ini sedang dibangun ulang — layar ini untuk sementara hanya melayani tim gudang."
   },
   "balance": {
     "title": "Neraca",
@@ -1987,5 +1929,74 @@
     "day": "Harian",
     "month": "Bulanan",
     "year": "Tahunan"
+  },
+  "orderSettlement": {
+    "tab": "Settlement",
+    "initialTotalWarning": "⚠ Ini menulis ulang nilai penjualan yang jadi dasar semua perhitungan rugi order ini. Tidak bisa diedit atau dihapus — hanya bisa diimbangi.",
+    "panelTitle": "Buku settlement",
+    "addEntry": "Tambah entri",
+    "rowActions": "Aksi baris",
+    "reverse": "Balikkan",
+    "reverseTitle": "Balikkan Entri Ini",
+    "reverseBody": "Ini membuat entri baru sebesar {{amount}} dengan arah berlawanan. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
+    "reverseConfirm": "Buat pembalikan",
+    "reversalOf": "membalikkan entri sebelumnya",
+    "appendOnlyNotice": "Entri tidak bisa diubah atau dihapus. Koreksi dibuat sebagai entri baru, agar buku tetap menjadi catatan apa yang terjadi.",
+    "postedOn": "diketahui {{date}}",
+    "estimate": "Terjual",
+    "received": "Diterima",
+    "lost": "Hilang",
+    "gained": "Lebih",
+    "trueMargin": "Margin riil",
+    "lossHint": "{{hidden}} tidak dirinci, {{named}} dirinci",
+    "noEstimateTitle": "Total marketplace tidak tercatat untuk pesanan ini",
+    "noEstimateBody": "Semua angka di sini membandingkan yang sampai ke kita dengan yang dibayar pembeli. Tanpa angka itu tidak ada pembanding — pesanan lewat telepon tidak punya total marketplace.",
+    "listTitle": "Settlement",
+    "listSubtitle": "Pesanan diurutkan dari berapa banyak uang pembeli yang tidak sampai ke kita. Selisih itu normal — platform menahan biaya yang tidak pernah dirinci.",
+    "totalEstimate": "Terjual",
+    "totalLost": "Hilang",
+    "totalHidden": "Tidak dirinci",
+    "impliedRate": "{{rate}}% dari penjualan",
+    "filterShop": "Toko",
+    "allShops": "Semua toko",
+    "noRef": "(tanpa referensi)",
+    "hasManual": "ada entri manual",
+    "rowNoEstimate": "Total marketplace tidak tercatat — tidak ada pembanding",
+    "col": {
+      "when": "Kapan",
+      "type": "Jenis",
+      "detail": "Detail",
+      "change": "Perubahan",
+      "balance": "Saldo",
+      "order": "Pesanan",
+      "shop": "Toko",
+      "estimate": "Terjual",
+      "received": "Diterima",
+      "lost": "Hilang",
+      "hidden": "Tidak dirinci"
+    },
+    "type": {
+      "initial_total": "Estimasi",
+      "fund": "Pembayaran",
+      "external_ads_fee": "Biaya iklan",
+      "affiliate_fee": "Biaya afiliasi",
+      "marketplace_adjustment": "Penyesuaian",
+      "other": "Lainnya"
+    },
+    "addDialogTitle": "Tambah Entri Settlement",
+    "addDialogConfirm": "Buat entri",
+    "addDialogWarning": "Entri tidak bisa diubah atau dihapus setelahnya. Kesalahan dikoreksi dengan membuat pembalikan.",
+    "directionIn": "Uang masuk ke kita",
+    "directionOut": "Uang diambil dari kita",
+    "previewIn": "Ini akan menambah {{amount}} ke pesanan.",
+    "previewOut": "Ini akan mengurangi {{amount}} dari pesanan.",
+    "occurredHelp": "Hari biaya itu berlaku, bukan hari ini. Hari pencatatan disimpan terpisah.",
+    "field": {
+      "type": "Jenis",
+      "direction": "Arah",
+      "amount": "Jumlah",
+      "occurredOn": "Berlaku pada",
+      "note": "Catatan"
+    }
   }
 }

@@ -176,7 +176,7 @@ func TestRestockDetail_ACODFeeRecordsItsOwnStepBeforeTheAcceptance(t *testing.T)
 }
 
 // MOST DELIVERIES ARE NOT COD, and a step saying "paid nothing at the door" is a claim about something
-// that did not happen. Same reasoning that keeps a zero fee out of the settlement ledger.
+// that did not happen. Same reasoning that keeps a zero fee out of the liability ledger.
 func TestRestockDetail_NoCODFeeWritesNoFeeStep(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)

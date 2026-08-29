@@ -23,8 +23,8 @@ import (
 type Service struct {
 	db *gorm.DB
 	// Where the COD obligation goes when a restock is accepted (#184) — an interface this service
-	// owns, so inventory never imports settlement_service. See settlement_poster.go.
-	settlement SettlementPoster
+	// owns, so inventory never imports liability_service. See liability_poster.go.
+	liability LiabilityPoster
 	// Where the value of written-off stock goes when a batch is adjusted DAMAGED/LOST (#211) — an
 	// interface this service owns, so inventory never imports expense_service. See expense_poster.go.
 	expense ExpensePoster
@@ -40,12 +40,12 @@ var (
 	_ inventoryv1connect.RackServiceHandler            = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, settlement SettlementPoster, expense ExpensePoster) *Service {
+func NewService(db *gorm.DB, liability LiabilityPoster, expense ExpensePoster) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
 	// the reconciliation report (#187) is what would catch it if it ever did not.
-	if settlement == nil {
-		settlement = noSettlement{}
+	if liability == nil {
+		liability = noLiability{}
 	}
 
 	// Likewise a nil expense poster drops the loss VALUE (not the stock movement) — fine for a test
@@ -54,7 +54,7 @@ func NewService(db *gorm.DB, settlement SettlementPoster, expense ExpensePoster)
 		expense = noExpense{}
 	}
 
-	return &Service{db: db, settlement: settlement, expense: expense}
+	return &Service{db: db, liability: liability, expense: expense}
 }
 
 // errInsufficientStock is returned when a movement would drive on-hand below zero.

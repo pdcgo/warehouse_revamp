@@ -431,7 +431,7 @@ func (s *Service) RestockRequestFulfill(
 		// correct for costing, and completely silent on who is owed it or whether it was ever repaid.
 		//
 		// ⚠ THIS DOES NOT CHANGE WHAT THE COSTS DO TODAY. They still flow into HPP and into the
-		// order's COGS; that is *costing* and it stays. Settlement adds the missing half. The same
+		// order's COGS; that is *costing* and it stays. Liability adds the missing half. The same
 		// rupiah answers two different questions, and recording it here must not remove it from the
 		// other.
 		//
@@ -447,7 +447,7 @@ func (s *Service) RestockRequestFulfill(
 		// would be a ledger row saying nothing happened — worse than no row, because it reads as a debt
 		// of nothing rather than the absence of one.
 		if costLineTotal > 0 {
-			return s.settlement.PostRestockOutlay(
+			return s.liability.PostRestockOutlay(
 				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, costLineTotal)
 		}
 

@@ -30,10 +30,10 @@ import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
-  SettlementPaymentStatus,
-  SettlementSourceType,
-} from "../../gen/warehouse/settlement/v1/settlement_pb";
-import type { SettlementPayment } from "../../gen/warehouse/settlement/v1/settlement_pb";
+  LiabilityPaymentStatus,
+  LiabilitySourceType,
+} from "../../gen/warehouse/liability/v1/liability_pb";
+import type { LiabilityPayment } from "../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../lib/money";
 import {
   ALL_DATES,
@@ -42,13 +42,13 @@ import {
   type DateRange,
 } from "../../components/datetime/DateRangePicker";
 import { useTeam } from "../../features/team/TeamContext";
-import { directionCopy, directionPalette } from "../../features/settlement/direction";
+import { directionCopy, directionPalette } from "../../features/liability/direction";
 import {
   useConfirmPayment,
   useRecordPayment,
-  useSettlementEntries,
-  useSettlementPayments,
-} from "../../features/settlement/queries";
+  useLiabilityEntries,
+  useLiabilityPayments,
+} from "../../features/liability/queries";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -73,42 +73,46 @@ function teamKindKey(type: TeamType): string {
 // WHAT CAUSED an entry, in words, from the typed `(source_type, source_id)` pair — never free text. A
 // line reads "Product fee · order #412", so "why do I owe this?" is answerable, filterable and
 // countable.
-function causeKey(type: SettlementSourceType): string {
+function causeKey(type: LiabilitySourceType): string {
   switch (type) {
-    case SettlementSourceType.COD_FEE:
+    case LiabilitySourceType.COD_FEE:
       return "liabilityDetail.causeCodFee";
-    case SettlementSourceType.RESTOCK_OUTLAY:
+    case LiabilitySourceType.RESTOCK_OUTLAY:
       return "liabilityDetail.causeRestockOutlay";
-    case SettlementSourceType.HANDLING_FEE:
+    case LiabilitySourceType.HANDLING_FEE:
       return "liabilityDetail.causeHandlingFee";
-    case SettlementSourceType.PRODUCT_FEE:
+    case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
-    case SettlementSourceType.PAYMENT:
+    case LiabilitySourceType.PAYMENT:
       return "liabilityDetail.causePayment";
+    // Cause 4 and 5 both post under STOCK_DAMAGE — a reimbursement, and its reversal when the goods
+    // turn up. The REVERSAL badge beside it is what tells the two apart, so one label serves both.
+    case LiabilitySourceType.STOCK_DAMAGE:
+      return "liabilityDetail.causeStockDamage";
     default:
       // A source this build does not know renders as "unknown" rather than breaking the page.
       return "liabilityDetail.causeUnknown";
   }
 }
 
-function statusKey(status: SettlementPaymentStatus): string {
+function statusKey(status: LiabilityPaymentStatus): string {
   switch (status) {
-    case SettlementPaymentStatus.RECORDED:
+    case LiabilityPaymentStatus.RECORDED:
       return "liabilityDetail.statusRecorded";
-    case SettlementPaymentStatus.CONFIRMED:
+    case LiabilityPaymentStatus.CONFIRMED:
       return "liabilityDetail.statusConfirmed";
-    case SettlementPaymentStatus.REVERSED:
+    case LiabilityPaymentStatus.REVERSED:
       return "liabilityDetail.statusReversed";
     default:
       return "liabilityDetail.statusUnknown";
   }
 }
 
-function statusPalette(status: SettlementPaymentStatus): string {
+function statusPalette(status: LiabilityPaymentStatus): string {
   switch (status) {
-    case SettlementPaymentStatus.RECORDED:
+    case LiabilityPaymentStatus.RECORDED:
       return "orange";
-    case SettlementPaymentStatus.CONFIRMED:
+    case LiabilityPaymentStatus.CONFIRMED:
       return "green";
     default:
       return "gray";
@@ -124,7 +128,7 @@ function fmtDate(unix: bigint): string {
 // (CLAUDE.md), reached by clicking a row on the liability list. Four tabs over one relationship: the
 // ledger split by direction (receivable / payable) and the payment records split by who recorded them
 // (mine — you paid them — and theirs, which only you confirm). This supersedes the old
-// /settlement/:counterpartyId screen.
+// /liability/:counterpartyId screen.
 export function LiabilityDetailPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -138,11 +142,11 @@ export function LiabilityDetailPage() {
   const [dateRange, setDateRange] = useState<DateRange>(ALL_DATES);
 
   const [recordOpen, setRecordOpen] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<SettlementPayment | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<LiabilityPayment | null>(null);
 
   const teamId = current?.teamId;
 
-  const entriesQuery = useSettlementEntries({
+  const entriesQuery = useLiabilityEntries({
     teamId,
     counterpartyId,
     page: entryPage,
@@ -151,7 +155,7 @@ export function LiabilityDetailPage() {
   // Both directions and both payer-sides come from ONE read each; the tabs are a client-side cut, and
   // the date range filters whichever tab is open — client-side over the loaded page (the RPCs have no
   // date filter).
-  const paymentsQuery = useSettlementPayments({
+  const paymentsQuery = useLiabilityPayments({
     teamId,
     counterpartyId,
     awaitingMyConfirmation: false,
@@ -281,7 +285,7 @@ export function LiabilityDetailPage() {
     );
   }
 
-  function renderPaymentTable(rows: SettlementPayment[], emptyKey: string, withConfirm: boolean) {
+  function renderPaymentTable(rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) {
     if (rows.length === 0) {
       return (
         <Text color="fg.muted" py="card">
@@ -311,7 +315,7 @@ export function LiabilityDetailPage() {
               <Table.Cell>
                 <Flex align="center" gap="2">
                   <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
-                  {withConfirm && p.status === SettlementPaymentStatus.RECORDED && (
+                  {withConfirm && p.status === LiabilityPaymentStatus.RECORDED && (
                     <Button
                       size="xs"
                       colorPalette="green"
@@ -380,7 +384,7 @@ export function LiabilityDetailPage() {
           <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
         </Stat.Root>
       </SimpleGrid>
-      {/* The position row carries no oldest-unsettled timestamp — SettlementEntryList returns only the
+      {/* The position row carries no oldest-unsettled timestamp — LiabilityEntryList returns only the
           balance, so "oldest unsettled N days" is omitted here (it lives on the list's position row). */}
 
       {/* Date range — OUTSIDE the tabs: one filter over whichever tab is open. */}

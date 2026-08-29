@@ -24,8 +24,8 @@ import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { useSettlementPositions } from "../../features/settlement/queries";
-import { directionCopy, daysSince } from "../../features/settlement/direction";
+import { useLiabilityPositions } from "../../features/liability/queries";
+import { directionCopy, daysSince } from "../../features/liability/direction";
 import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
 
@@ -52,7 +52,7 @@ function teamKindKey(type: TeamType): string {
   }
 }
 
-// LiabilityListPage is the settlement position list (#221/§5.1 A): one row per counterparty, BOTH
+// LiabilityListPage is the liability position list (#221/§5.1 A): one row per counterparty, BOTH
 // directions in one list. Direction is words and TWO columns, never a sign; ageing is the point.
 export function LiabilityListPage() {
   const { current } = useTeam();
@@ -67,7 +67,7 @@ export function LiabilityListPage() {
   const [kind, setKind] = useState<string>("all");
   const [page, setPage] = useState(1);
 
-  const query = useSettlementPositions({ teamId, page, pageSize: PAGE_SIZE, unsettledOnly });
+  const query = useLiabilityPositions({ teamId, page, pageSize: PAGE_SIZE, unsettledOnly });
   const positions = query.data?.positions ?? [];
   const total = query.data?.totalItems ?? 0;
   const awaitingTotal = query.data?.awaitingConfirmation ?? 0;
@@ -103,7 +103,7 @@ export function LiabilityListPage() {
     return (
       <Stack gap="section">
         <Heading size="md">{t("liability.title")}</Heading>
-        <Text color="fg.muted">{t("settlement.selectTeamView")}</Text>
+        <Text color="fg.muted">{t("liability.selectTeamView")}</Text>
       </Stack>
     );
   }

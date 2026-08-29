@@ -126,6 +126,7 @@ export const key = {
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),
+  liability: (teamId: bigint | undefined, params?: Params) => scope("liability", teamId, params),
   settlement: (teamId: bigint | undefined, params?: Params) => scope("settlement", teamId, params),
 
   // No team: global reference data (see `global` above).

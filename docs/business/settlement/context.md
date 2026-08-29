@@ -30,6 +30,9 @@
 5. Settlement doesn't rely on our order status. its can be happen anytime.
 6. settlement just can adjustment by added record log, not updated the log.
 
+## Access Role.
+1. for now, there is no specific role for this service. [defer later].
+
 
 
 ## Settlement Log Ledger Shapes
@@ -52,6 +55,7 @@
     - `affiliate_fee`
     - `marketplace_adjustment`
     - `other`
+    - `initial_total_cancel`
 
 3. what is `source_type`, its for determined how entry added:
     - by external service, `exporter`
@@ -82,3 +86,9 @@
     - `order_id`
     - `initial_total`
     - `last_balance`
+
+
+
+# Type `initial_total` and `initial_total_cancel`
+1. its trigered on order created, `order_service` calling --> `settlement_service`
+2. when order cancel, its create `initial_total_cancel` and make opposite of `initial_total`, `order_service` calling --> `settlement_service`

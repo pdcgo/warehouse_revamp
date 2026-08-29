@@ -57,7 +57,7 @@ and it is the **shared half** of one screen, `/statement`. The other half depend
 | | income comes from | because |
 | --- | --- | --- |
 | **selling** team | `RevenueDaily` — the expected margin on its orders | it sells |
-| **warehouse** team | `SettlementDaily` — the handling fees it charged | it has no orders at all |
+| **warehouse** team | `LiabilityDaily` — the handling fees it charged | it has no orders at all |
 
 The expenses half needs no branch, and that is the neat part: a warehouse's written-off stock is already
 an expense on its own team, so the same RPC serves both.
@@ -72,7 +72,7 @@ sequenceDiagram
     participant UI as "/statement — DailyStatementPage"
     participant E as expense_service
     participant R as "revenue_service — selling"
-    participant S as "settlement_service — warehouse"
+    participant S as "liability_service — warehouse"
 
     UI->>UI: DateRangePicker to from/to — refuse if unbounded or over 366 days
 
@@ -87,7 +87,7 @@ sequenceDiagram
             UI->>R: RevenueDaily(team, from, to)
             R-->>UI: SPARSE days + RevenueTotals — income is expected_margin
         else warehouse team
-            UI->>S: SettlementDaily(team, from, to)
+            UI->>S: LiabilityDaily(team, from, to)
             S-->>UI: SPARSE days + by_source — income is HANDLING_FEE only
         end
     end
@@ -136,7 +136,7 @@ whose length grows **with the data**. This one grows with `to − from`, which t
 
 The cap must match the other two services' exactly. The series are read side by side, and a cap that
 differed would let the statement load half a period and still look complete. It lives in **four** places:
-`maxPeriodDays` in expense, revenue and settlement, and `MAX_PERIOD_DAYS` in
+`maxPeriodDays` in expense, revenue and liability, and `MAX_PERIOD_DAYS` in
 [frontend/src/lib/period.ts](../../../frontend/src/lib/period.ts).
 
 ### Sparse series, one calendar

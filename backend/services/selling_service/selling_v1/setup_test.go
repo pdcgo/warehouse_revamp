@@ -173,7 +173,7 @@ func placeOrderAs(
 	return resp.Msg.GetOrder().GetId()
 }
 
-// fakeCredit is the settlement side of an order, in the only two states the order flow cares about:
+// fakeCredit is the liability side of an order, in the only two states the order flow cares about:
 // everybody allows it, or one named creditor does not.
 //
 // It records what it was ASKED, because half of #189 is that the right creditors get checked at all —

@@ -53,14 +53,14 @@ const OrderDraftsPage = lazy(() =>
 const OrderDraftDetailPage = lazy(() =>
   import("./pages/order-draft-detail").then((m) => ({ default: m.OrderDraftDetailPage })),
 );
-const SettlementPage = lazy(() =>
-  import("./pages/settlement").then((m) => ({ default: m.SettlementPage })),
-);
 const LiabilityListPage = lazy(() =>
   import("./pages/liability-list").then((m) => ({ default: m.LiabilityListPage })),
 );
-const CounterpartyPage = lazy(() =>
-  import("./pages/counterparty").then((m) => ({ default: m.CounterpartyPage })),
+// The MARKETPLACE payout ledger — not liability above, which is what teams owe each other.
+const SettlementListRoute = lazy(() =>
+  import("./pages/order-settlement/SettlementListRoute").then((m) => ({
+    default: m.SettlementListRoute,
+  })),
 );
 const LiabilityDetailPage = lazy(() =>
   import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
@@ -105,12 +105,6 @@ const RestockLabelsPage = lazy(() =>
 );
 const ExpensesPage = lazy(() =>
   import("./pages/expenses").then((m) => ({ default: m.ExpensesPage })),
-);
-const RevenuePage = lazy(() =>
-  import("./pages/revenue").then((m) => ({ default: m.RevenuePage })),
-);
-const ProfitPage = lazy(() =>
-  import("./pages/profit").then((m) => ({ default: m.ProfitPage })),
 );
 const DailyStatementPage = lazy(() =>
   import("./pages/daily-statement").then((m) => ({ default: m.DailyStatementPage })),
@@ -233,13 +227,10 @@ export const router = createBrowserRouter([
       { path: "shops", element: <ShopsPage /> },
       { path: "shops/:shopId", element: <ShopDetailPage /> },
       { path: "orders", element: <OrdersPage /> },
-      // What the team's orders were expected to make (#78).
-      { path: "revenue", element: <RevenuePage /> },
       // What the team spent that no order caused (#170).
       { path: "expenses", element: <ExpensesPage /> },
-      // The two above, subtracted (#172) — the arithmetic happens on the client because neither
-      // service may own a number derived from the other's data.
-      { path: "profit", element: <ProfitPage /> },
+      // ⚠ /revenue and /profit are GONE with `revenue_service`, and there is deliberately no redirect:
+      // both were made entirely of its expected margin, so there is nowhere truthful to send a reader.
       { path: "statement", element: <DailyStatementPage /> },
       { path: "orders/new", element: <OrderCreatePage /> },
       { path: "orders/:orderId", element: <OrderDetailPage /> },
@@ -271,14 +262,19 @@ export const router = createBrowserRouter([
       // scraped line to a real product is work somebody sits down to, not a focused action.
       { path: "order-drafts/:draftId", element: <OrderDraftDetailPage /> },
       // The ledger of what teams owe each other (#185). Its own top-level section — a warehouse team
-      // has no money screens at all today, and this gives it one. The Chakra redesign lives at
-      // /liability (#221); the old /settlement stays reachable but the nav points at the new one.
-      { path: "settlement", element: <SettlementPage /> },
+      // has no money screens at all today, and this gives it one.
+      //
+      // ⚠ THERE IS NO `/settlement` ROUTE ANY MORE, and its absence is the point. The word now means
+      // the MARKETPLACE PAYOUT, whose screens are being built and want exactly these paths. The two
+      // superseded pages that lived here (#221/#222 replaced them) are deleted rather than left
+      // reachable — a route nobody links to, serving an older version of a screen that still works,
+      // is how two designs of one thing stay alive.
       { path: "liability", element: <LiabilityListPage /> },
-      // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row. The Chakra
-      // redesign (#222) lives at /liability/:counterpartyId; the old /settlement one stays reachable.
+      // `/settlement`, not `/order-settlement`: the directory is named for the GRAIN (one account
+      // per order), the route for what the screen is to the person opening it.
+      { path: "settlement", element: <SettlementListRoute /> },
+      // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row (#222).
       { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
-      { path: "settlement/:counterpartyId", element: <CounterpartyPage /> },
       { path: "inventory", element: <InventoryPage /> },
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
       // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever

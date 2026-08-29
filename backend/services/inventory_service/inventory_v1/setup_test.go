@@ -17,7 +17,7 @@ func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 	t.Helper()
 
 	// nil posters — NewService substitutes no-ops, so a test receiving a box onto a shelf does not
-	// have to construct a settlement ledger (#184) or an expense ledger (#211) it has no opinion about.
+	// have to construct a liability ledger (#184) or an expense ledger (#211) it has no opinion about.
 	return inventory_v1.NewService(db, nil, nil)
 }
 
@@ -94,11 +94,11 @@ func (p *recordingPoster) PostRestockOutlay(
 	return nil
 }
 
-// newServiceWithSettlement is for the tests that care what reached the ledger (#184).
-func newServiceWithSettlement(
+// newServiceWithLiability is for the tests that care what reached the ledger (#184).
+func newServiceWithLiability(
 	t *testing.T,
 	db *gorm.DB,
-	poster inventory_v1.SettlementPoster,
+	poster inventory_v1.LiabilityPoster,
 ) *inventory_v1.Service {
 	t.Helper()
 
@@ -132,7 +132,7 @@ type damagePosting struct {
 }
 
 // PostStockDamage records the debt side of a damaged/lost/found adjust. Kept on recordingPoster
-// beside the outlay postings so one fake answers both halves of what inventory owes settlement.
+// beside the outlay postings so one fake answers both halves of what inventory owes liability.
 func (p *recordingPoster) PostStockDamage(
 	_ context.Context,
 	_ *gorm.DB,

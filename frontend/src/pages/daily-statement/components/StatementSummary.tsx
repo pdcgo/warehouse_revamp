@@ -4,9 +4,8 @@ import { Minus, TriangleAlert } from "lucide-react";
 
 import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
 import type { ExpenseTotals } from "../../../gen/warehouse/expense/v1/expense_pb";
-import type { RevenueTotals } from "../../../gen/warehouse/revenue/v1/revenue_pb";
-import type { SettlementDailyTotals } from "../../../gen/warehouse/settlement/v1/settlement_pb";
-import { SettlementSourceType } from "../../../gen/warehouse/settlement/v1/settlement_pb";
+import type { LiabilityDailyTotals } from "../../../gen/warehouse/liability/v1/liability_pb";
+import { LiabilitySourceType } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../../lib/money";
 import type { PeriodGrain } from "../../../lib/period";
 import type { StatementMode } from "../queries";
@@ -15,10 +14,9 @@ export interface StatementSummaryProps {
   mode: StatementMode;
   /** Which unit the average below is per — the table's row grain, so the two agree. */
   grain: PeriodGrain;
-  /** The period's income: expected margin (selling) or handling fees (warehouse). */
+  /** The period's income — the handling fees it charged. */
   income: bigint;
-  revenue: RevenueTotals | undefined;
-  settlement: SettlementDailyTotals | undefined;
+  liability: LiabilityDailyTotals | undefined;
   expenses: ExpenseTotals | undefined;
   /** How many BUCKETS the period covers — the divisor for the per-period average. */
   buckets: number;
@@ -37,8 +35,7 @@ export function StatementSummary({
   mode,
   grain,
   income,
-  revenue,
-  settlement,
+  liability,
   expenses,
   buckets,
   loading,
@@ -54,7 +51,7 @@ export function StatementSummary({
   const profit = income - spent;
 
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = settlement?.bySource[SettlementSourceType.COD_FEE] ?? 0n;
+  const codFees = liability?.bySource[LiabilitySourceType.COD_FEE] ?? 0n;
 
   // AN AVERAGE PER ROW, because that is the number a statement is for: "we clear about 400.000 a day" is
   // a sentence somebody can act on, where a period total is only comparable against another period of
@@ -169,17 +166,10 @@ export function StatementSummary({
           </Flex>
         )}
 
-        {/* How much of the margin above is not to be trusted (#74). It matters MORE on a profit-shaped
-            screen than on the revenue list: an order whose cost is unknown counts as pure profit, so it
-            pushes every figure here UP. A reader who cannot see that is reading an overstatement. */}
-        {!loading && (revenue?.unknownCostOrders ?? 0n) > 0n && (
-          <Flex align="center" gap="2" mt="card" color="orange.fg" data-testid="statement-unknown-cost">
-            <Icon as={TriangleAlert} boxSize="4" />
-            <Text fontSize="sm">
-              {t("statement.unknownCost", { count: Number(revenue?.unknownCostOrders ?? 0n) })}
-            </Text>
-          </Flex>
-        )}
+        {/* ⚠ THE UNKNOWN-COST WARNING WENT WITH `revenue_service`. It said how much of the margin above
+            was not to be trusted (#74) — an order whose cost is unknown counts as pure profit, so it
+            pushed every figure UP. Nothing here reads a margin any more, so there is nothing to warn
+            about; it comes back with the selling half, not before. */}
       </Card.Body>
     </Card.Root>
   );
