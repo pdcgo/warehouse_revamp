@@ -59,6 +59,8 @@
     "kindOther": "Tim",
     "awaitingOnly": "Menunggu konfirmasi saya",
     "unsettledOnly": "Belum lunas saja",
+    "defaultTerms": "Ketentuan Bawaan",
+    "nearLimit": "{{percent}}% dari batas yang Anda tetapkan",
     "colCounterparty": "Rekanan",
     "colPayable": "Hutang",
     "colReceivable": "Piutang",

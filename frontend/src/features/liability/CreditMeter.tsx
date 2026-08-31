@@ -1,7 +1,7 @@
 import { Badge, Progress, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiah } from "../../lib/money";
 
 // The threshold at which the screen warns, from
 // docs/business/balance/context_decision.md#the-threshold-warns-at-eighty-percent.

@@ -19,8 +19,11 @@ import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { formatRupiah } from "../../../lib/money";
-import { CreditMeter } from "./CreditMeter";
-import { TermsEditDialog } from "./TermsEditDialog";
+// ⚠ BOTH ARE DOMAIN COMPONENTS NOW (features/liability), not this page's. The default-terms dialog
+// on `/liability` is their second importer — the-default-terms-row-is-a-dialog-on-the-list — and
+// CLAUDE.md's placement rule is HOW MANY PAGES USE IT, so they moved the moment that landed.
+import { CreditMeter } from "../../../features/liability/CreditMeter";
+import { TermsEditDialog } from "../../../features/liability/TermsEditDialog";
 
 // Big enough to hold every counterparty this creditor has terms for. There is no counterparty filter
 // on `LiabilityTermsList` yet, so the pair's row and the DEFAULT row are both picked out of one read

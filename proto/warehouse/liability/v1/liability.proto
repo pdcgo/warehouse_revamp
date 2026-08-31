@@ -316,6 +316,37 @@ message LiabilityPositionListResponse {
   warehouse.common.v1.PageInfo page_info = 3;
   // Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
   uint32 awaiting_confirmation = 4;
+
+  // SUMMARIZE ALL BALANCE (team_balance_design.md §Frontend Requirements 1), and the operative word
+  // is ALL. the-summary-is-tiles-on-the-list settles that this is the tiles on top of the pair list
+  // rather than a screen of its own — which means the numbers sit on a PAGINATED list and can never
+  // be computed from what that page loaded.
+  //
+  // ⚠ THEY WERE, AND IT LOOKED RIGHT WHILE BEING WRONG. The screen reduced the 20 rows it had, so a
+  // creditor with 21 counterparties read a headline that silently omitted the 21st, and turning to
+  // page 2 changed the "total". `awaiting_confirmation` above was already whole-set and is the
+  // precedent these three follow.
+  //
+  // ⚠ THEY IGNORE THE PAGE AND HONOUR THE FILTER. A page is a window on one answer; a filter changes
+  // which question is being asked, and a total that disagreed with the rows beneath it would be a
+  // new way to mislead.
+
+  // Σ of every POSITIVE balance — what the whole world owes this team.
+  int64 total_receivable = 5;
+
+  // Σ of every NEGATIVE balance, AS A POSITIVE MAGNITUDE. Direction is words on this screen, never a
+  // sign (features/liability/direction.ts), so the wire hands the screen the number it renders
+  // rather than one it must remember to negate.
+  int64 total_payable = 6;
+
+  // WHOSE debt is the oldest, across every counterparty — 0 when nothing is outstanding. The tile
+  // renders that team's name beneath the day count, so the id has to travel with the timestamp;
+  // sending only the age would leave the screen unable to say who it belongs to.
+  uint64 oldest_unsettled_counterparty_id = 7;
+
+  // When that debt was posted, or 0. Read together with the id above — same value the matching
+  // LiabilityPosition carries, so the tile and the row can never disagree.
+  int64 oldest_unsettled_at_unix = 8;
 }
 
 message LiabilityLogListFilter {

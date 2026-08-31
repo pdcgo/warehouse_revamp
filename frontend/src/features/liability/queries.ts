@@ -29,6 +29,10 @@ export function useLiabilityPositions(args: {
   const { teamId, page, pageSize, unsettledOnly } = args;
 
   return useQuery({
+    // ⚠ `listQuery` — a page turn or a filter flip REFINES THE SAME QUESTION, so the previous rows stay
+    // on screen while the next ones load (HARD RULE 10). Without it the table tears down on every
+    // interaction, which is strictly worse than the staleness it was replacing.
+    ...listQuery,
     queryKey: key.liability(teamId, { page, pageSize, unsettledOnly }),
     enabled: teamId !== undefined,
     queryFn: async () => {
@@ -43,6 +47,15 @@ export function useLiabilityPositions(args: {
         positions: positionsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
         awaitingConfirmation: res.awaitingConfirmation,
+        // SUMMARIZE ALL BALANCE — computed by the SERVER over every counterparty
+        // (the-summary-is-tiles-on-the-list). ⚠ Never re-derive these from `positions`: that is one
+        // page, and reducing it is the exact bug these fields exist to retire.
+        summary: {
+          totalReceivable: res.totalReceivable,
+          totalPayable: res.totalPayable,
+          oldestCounterpartyId: res.oldestUnsettledCounterpartyId,
+          oldestUnsettledAtUnix: res.oldestUnsettledAtUnix,
+        },
       };
     },
   });

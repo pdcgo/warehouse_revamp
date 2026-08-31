@@ -45,7 +45,7 @@ func (s *Service) LiabilityPaymentRecord(
 		// internal, scope-skipping path that a-payment-must-carry-proof exists to avoid. The failure
 		// mode is benign and self-correcting: a creditor who cannot open the proof REJECTS the payment,
 		// which is a state the flow already has.
-		Documents:      proofDocuments(req.Msg.GetDocumentIds()),
+		Documents: proofDocuments(req.Msg.GetDocumentIds()),
 		// WHO claimed it, not just which team. This is the record that says a person moved money.
 		RecordedBy: actorUserID(ctx),
 	}

@@ -8,8 +8,8 @@ import (
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
 
 func rejectPayment(

@@ -198,9 +198,22 @@ func TestShareDocument_AShareStopsTheDocumentBeingDeleted(t *testing.T) {
 		t.Fatalf("ShareDocument: %v", err)
 	}
 
+	// ⚠ THE FAILING DELETE NEEDS A SAVEPOINT, and this is not test ceremony. A constraint violation
+	// ABORTS the enclosing Postgres transaction — every later statement then fails with 25P02 — and
+	// `san_testdb.DB(t)` hands the whole test ONE transaction so it can roll back. Without the
+	// savepoint the assertion below reports "the proof is gone" for a document that is perfectly fine,
+	// which is a false failure describing the opposite of what happened.
+	if spErr := db.SavePoint("before_delete").Error; spErr != nil {
+		t.Fatalf("savepoint: %v", spErr)
+	}
+
 	err := db.Exec("DELETE FROM documents WHERE id = ?", docID).Error
 	if err == nil {
 		t.Fatal("a shared document was deleted, taking the creditor's evidence with it")
+	}
+
+	if rbErr := db.RollbackTo("before_delete").Error; rbErr != nil {
+		t.Fatalf("rollback to savepoint: %v", rbErr)
 	}
 
 	// It must still be readable by both sides afterwards.

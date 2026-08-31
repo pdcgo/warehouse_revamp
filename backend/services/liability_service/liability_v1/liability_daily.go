@@ -72,9 +72,9 @@ func (s *Service) LiabilityDaily(
 			// UTC, explicitly. A bare `created_at::date` converts using the session's TimeZone, which
 			// nothing here sets — so two machines could bucket differently while the bounds above, parsed
 			// as UTC midnight, stayed put. A day whose row disagreed with the total beside it is unreadable.
-			"(created_at AT TIME ZONE 'UTC')::date AS day, "+
-				"source_type, "+
-				"COUNT(*) AS entries, "+
+			"(created_at AT TIME ZONE 'UTC')::date AS day, " +
+				"source_type, " +
+				"COUNT(*) AS entries, " +
 				// REVERSALS ARE INCLUDED, not filtered. A cancelled order's fee is undone by an
 				// equal-and-opposite leg, so a plain SUM nets the pair to zero — which is the honest
 				// number. Excluding them would report income the ledger has already taken back.

@@ -686,16 +686,26 @@ export const transport = createRouterTransport(({ service }) => {
     // One row per counterparty — what each of them owes this team, which is what a credit limit is
     // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
     // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
-    liabilityPositionList: (req) =>
-      ({
-        ...pagedColumnarBy(
-          "position",
-          liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n),
-          (p) => p.counterpartyId,
-          req.page,
-        ),
+    liabilityPositionList: (req) => {
+      const set = liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
+
+      // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
+      // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
+      // that summed the page would make the bug they retire untestable.
+      const oldest = set
+        .filter((p) => p.oldestUnsettledAtUnix > 0n)
+        .sort((a, b) => Number(a.oldestUnsettledAtUnix - b.oldestUnsettledAtUnix))[0];
+
+      return {
+        ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
         awaitingConfirmation: 0,
-      }),
+        totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
+        // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
+        totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),
+        oldestUnsettledCounterpartyId: oldest?.counterpartyId ?? 0n,
+        oldestUnsettledAtUnix: oldest?.oldestUnsettledAtUnix ?? 0n,
+      };
+    },
 
     // The pair ledger — what the pair detail page reads.
     //

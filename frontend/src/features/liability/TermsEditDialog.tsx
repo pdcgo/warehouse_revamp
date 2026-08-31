@@ -15,10 +15,10 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 
-import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
-import { rpcError } from "../../../api/clients";
-import { useSetTerms } from "../../../features/liability/queries";
-import type { LiabilityTerms } from "../../../gen/warehouse/liability/v1/liability_pb";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { rpcError } from "../../api/clients";
+import { useSetTerms } from "./queries";
+import type { LiabilityTerms } from "../../gen/warehouse/liability/v1/liability_pb";
 import { limitStateOf, type LimitState } from "./CreditMeter";
 
 export interface CounterpartyOption {
@@ -34,6 +34,17 @@ interface TermsEditDialogProps {
   editing?: LiabilityTerms;
   /** Only used when adding — the teams this creditor trades with that have no terms yet. */
   options: CounterpartyOption[];
+  /**
+   * PIN the counterparty and hide the picker.
+   *
+   * ⚠ THIS IS WHAT GIVES THE DEFAULT ROW A HOME (the-default-terms-row-is-a-dialog-on-the-list).
+   * `counterparty_id = 0` is terms for every team without their own, and it is NOT A PAIR — so it can
+   * never appear on `/liability/:counterpartyId`. The list opens this dialog with `0n` pinned.
+   *
+   * Without it a first-time default would fall back to `options[0]`, i.e. an actual team, and
+   * somebody setting "the house rate" would quietly set one counterparty's instead.
+   */
+  fixedCounterpartyId?: bigint;
   /**
    * TRUE when the caller is ROOT or ADMIN — writing somebody else's terms.
    *
@@ -69,12 +80,16 @@ export function TermsEditDialog({
   teamId,
   editing,
   options,
+  fixedCounterpartyId,
   overrideWriter,
 }: TermsEditDialogProps) {
   const { t } = useTranslation();
   const setTerms = useSetTerms();
 
   const isEdit = !!editing;
+  // The counterparty is shown rather than chosen when we are editing an existing row OR when the
+  // caller has pinned one. Both mean the same thing to the form: there is nothing to pick.
+  const pinned = fixedCounterpartyId !== undefined;
 
   const [counterpartyId, setCounterpartyId] = useState<string>("0");
   const [limitMode, setLimitMode] = useState<LimitState>("unlimited");
@@ -101,12 +116,12 @@ export function TermsEditDialog({
       return;
     }
 
-    setCounterpartyId(options[0]?.id.toString() ?? "0");
+    setCounterpartyId(fixedCounterpartyId?.toString() ?? options[0]?.id.toString() ?? "0");
     setLimitMode("unlimited");
     setLimit("");
     setHandlingFee("");
     setMarkup("");
-  }, [open, editing, options]);
+  }, [open, editing, options, fixedCounterpartyId]);
 
   const busy = setTerms.isPending;
   const needsReason = overrideWriter;
@@ -153,11 +168,11 @@ export function TermsEditDialog({
                 <Stack gap="field">
                   <Field.Root required>
                     <Field.Label>{t("terms.counterparty")}</Field.Label>
-                    {isEdit ? (
+                    {isEdit || pinned ? (
                       <Text data-testid="terms-counterparty-fixed">
-                        {editing!.counterpartyId === 0n
+                        {BigInt(counterpartyId) === 0n
                           ? t("terms.defaultRow")
-                          : t("terms.teamFallback", { id: editing!.counterpartyId.toString() })}
+                          : t("terms.teamFallback", { id: counterpartyId })}
                       </Text>
                     ) : (
                       <NativeSelect.Root>

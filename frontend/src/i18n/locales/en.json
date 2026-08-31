@@ -59,6 +59,8 @@
     "kindOther": "Team",
     "awaitingOnly": "Awaiting my confirmation",
     "unsettledOnly": "Unsettled only",
+    "defaultTerms": "Default Terms",
+    "nearLimit": "{{percent}}% of the limit you set",
     "colCounterparty": "Counterparty",
     "colPayable": "Payable",
     "colReceivable": "Receivable",

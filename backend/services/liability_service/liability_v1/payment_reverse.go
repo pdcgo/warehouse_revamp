@@ -57,8 +57,8 @@ func (s *Service) LiabilityPaymentReverse(
 				"status": found.Status,
 				// ⚠ `confirmed_at` and `confirmed_by` SURVIVE. When it was agreed, and by whom, are
 				// facts; the reversal is a later one. Clearing them would erase who to ask about it.
-				"reason":          found.Reason,
-				"updated_at":      now,
+				"reason":     found.Reason,
+				"updated_at": now,
 			}).Error
 		if updateErr != nil {
 			return updateErr

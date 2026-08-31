@@ -1109,8 +1109,21 @@ type LiabilityPositionListResponse struct {
 	PageInfo *v1.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	// Every payment awaiting this team's confirmation, across all counterparties, the nav badge.
 	AwaitingConfirmation uint32 `protobuf:"varint,4,opt,name=awaiting_confirmation,json=awaitingConfirmation,proto3" json:"awaiting_confirmation,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Σ of every POSITIVE balance — what the whole world owes this team.
+	TotalReceivable int64 `protobuf:"varint,5,opt,name=total_receivable,json=totalReceivable,proto3" json:"total_receivable,omitempty"`
+	// Σ of every NEGATIVE balance, AS A POSITIVE MAGNITUDE. Direction is words on this screen, never a
+	// sign (features/liability/direction.ts), so the wire hands the screen the number it renders
+	// rather than one it must remember to negate.
+	TotalPayable int64 `protobuf:"varint,6,opt,name=total_payable,json=totalPayable,proto3" json:"total_payable,omitempty"`
+	// WHOSE debt is the oldest, across every counterparty — 0 when nothing is outstanding. The tile
+	// renders that team's name beneath the day count, so the id has to travel with the timestamp;
+	// sending only the age would leave the screen unable to say who it belongs to.
+	OldestUnsettledCounterpartyId uint64 `protobuf:"varint,7,opt,name=oldest_unsettled_counterparty_id,json=oldestUnsettledCounterpartyId,proto3" json:"oldest_unsettled_counterparty_id,omitempty"`
+	// When that debt was posted, or 0. Read together with the id above — same value the matching
+	// LiabilityPosition carries, so the tile and the row can never disagree.
+	OldestUnsettledAtUnix int64 `protobuf:"varint,8,opt,name=oldest_unsettled_at_unix,json=oldestUnsettledAtUnix,proto3" json:"oldest_unsettled_at_unix,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *LiabilityPositionListResponse) Reset() {
@@ -1167,6 +1180,34 @@ func (x *LiabilityPositionListResponse) GetPageInfo() *v1.PageInfo {
 func (x *LiabilityPositionListResponse) GetAwaitingConfirmation() uint32 {
 	if x != nil {
 		return x.AwaitingConfirmation
+	}
+	return 0
+}
+
+func (x *LiabilityPositionListResponse) GetTotalReceivable() int64 {
+	if x != nil {
+		return x.TotalReceivable
+	}
+	return 0
+}
+
+func (x *LiabilityPositionListResponse) GetTotalPayable() int64 {
+	if x != nil {
+		return x.TotalPayable
+	}
+	return 0
+}
+
+func (x *LiabilityPositionListResponse) GetOldestUnsettledCounterpartyId() uint64 {
+	if x != nil {
+		return x.OldestUnsettledCounterpartyId
+	}
+	return 0
+}
+
+func (x *LiabilityPositionListResponse) GetOldestUnsettledAtUnix() int64 {
+	if x != nil {
+		return x.OldestUnsettledAtUnix
 	}
 	return 0
 }
@@ -3812,12 +3853,16 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"!LiabilityPositionListResponseItem\x12?\n" +
 	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12N\n" +
 	"\bposition\x18\x02 \x01(\v20.warehouse.liability.v1.LiabilityPositionMapItemH\x00R\bpositionB\x03\n" +
-	"\x01d\"\xf3\x01\n" +
+	"\x01d\"\xc5\x03\n" +
 	"\x1dLiabilityPositionListResponse\x12O\n" +
 	"\x05items\x18\x01 \x03(\v29.warehouse.liability.v1.LiabilityPositionListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x123\n" +
-	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\"J\n" +
+	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\x12)\n" +
+	"\x10total_receivable\x18\x05 \x01(\x03R\x0ftotalReceivable\x12#\n" +
+	"\rtotal_payable\x18\x06 \x01(\x03R\ftotalPayable\x12G\n" +
+	" oldest_unsettled_counterparty_id\x18\a \x01(\x04R\x1doldestUnsettledCounterpartyId\x127\n" +
+	"\x18oldest_unsettled_at_unix\x18\b \x01(\x03R\x15oldestUnsettledAtUnix\"J\n" +
 	"\x16LiabilityLogListFilter\x120\n" +
 	"\x0fcounterparty_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecounterpartyId\"\xb5\x02\n" +
 	"\x17LiabilityLogListRequest\x12$\n" +

@@ -191,3 +191,110 @@ func TestPositionList_ACounterpartyFilterIsNotAScope(t *testing.T) {
 			len(positionRows(res.Msg)))
 	}
 }
+
+// summarizeOnePage asks for a deliberately SMALL page, which is the whole point: the tiles must
+// report the set, not the window.
+func summarizeOnePage(
+	t *testing.T,
+	svc *liability_v1.Service,
+	teamID uint64,
+	page, limit uint32,
+) *liabilityv1.LiabilityPositionListResponse {
+	t.Helper()
+
+	res, err := svc.LiabilityPositionList(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityPositionListRequest{
+			TeamId: teamID,
+			Page:   &commonv1.CommonPagination{Page: page, Limit: limit},
+		}))
+	if err != nil {
+		t.Fatalf("LiabilityPositionList(team=%d, page=%d): %v", teamID, page, err)
+	}
+
+	return res.Msg
+}
+
+// ⛔ THE BUG THIS EXISTS TO PREVENT. The screen used to reduce the rows it had loaded, so a creditor
+// with more counterparties than fit on a page read a headline that silently omitted the rest — and
+// turning to page 2 changed the "total". the-summary-is-tiles-on-the-list fixes the summary on a
+// PAGINATED list, so it can never compute its own scope and the server has to hand it the whole set.
+func TestPositionList_TheSummaryIsTheWHOLESetNotThePage(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db)
+
+	// Three counterparties owe the selling team 1000, 2000 and 3000.
+	for i, amount := range []int64{1000, 2000, 3000} {
+		_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
+			DebtorTeamID: uint64(100 + i), CreditorTeamID: selling, Amount: amount,
+			SourceType: liability_v1.SourceTypeOrderFee, SourceID: uint64(500 + i),
+		})
+		if err != nil {
+			t.Fatalf("fee %d: %v", i, err)
+		}
+	}
+
+	// …and the selling team owes the warehouse 400.
+	_, err := svc.PostEntry(context.Background(), db, codFee(400, 901))
+	if err != nil {
+		t.Fatalf("payable: %v", err)
+	}
+
+	// ONE ROW PER PAGE. Every page must report the same totals.
+	for page := uint32(1); page <= 4; page++ {
+		msg := summarizeOnePage(t, svc, selling, page, 1)
+
+		if got := msg.GetTotalReceivable(); got != 6000 {
+			t.Fatalf("page %d: total_receivable = %d, want 6000 — the summary is reading the page",
+				page, got)
+		}
+
+		// ⚠ A POSITIVE MAGNITUDE. Direction is words on this screen, never a sign, so the wire hands
+		// the tile the number it renders rather than one it must remember to negate.
+		if got := msg.GetTotalPayable(); got != 400 {
+			t.Fatalf("page %d: total_payable = %d, want 400 (a magnitude, not -400)", page, got)
+		}
+	}
+}
+
+// The oldest tile names a TEAM, not just an age — so the id has to travel with the timestamp.
+func TestPositionList_TheOldestTileKnowsWhoseDebtItIs(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db)
+
+	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
+		DebtorTeamID: 101, CreditorTeamID: selling, Amount: 1000,
+		SourceType: liability_v1.SourceTypeOrderFee, SourceID: 601,
+	})
+	if err != nil {
+		t.Fatalf("fee: %v", err)
+	}
+
+	msg := summarizeOnePage(t, svc, selling, 1, 50)
+
+	if got := msg.GetOldestUnsettledCounterpartyId(); got != 101 {
+		t.Fatalf("oldest counterparty = %d, want 101", got)
+	}
+
+	if msg.GetOldestUnsettledAtUnix() == 0 {
+		t.Fatal("oldest_unsettled_at = 0 with an outstanding debt")
+	}
+}
+
+// A team that owes nobody reports zeros rather than failing. `SUM` over no rows is NULL, and the
+// oldest lookup finds nothing — both are ordinary, and neither is an error.
+func TestPositionList_AnEmptySetSummarizesToZero(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db)
+
+	msg := summarizeOnePage(t, svc, 4242, 1, 50)
+
+	if msg.GetTotalReceivable() != 0 || msg.GetTotalPayable() != 0 {
+		t.Fatalf("receivable = %d, payable = %d, want 0/0",
+			msg.GetTotalReceivable(), msg.GetTotalPayable())
+	}
+
+	if msg.GetOldestUnsettledCounterpartyId() != 0 || msg.GetOldestUnsettledAtUnix() != 0 {
+		t.Fatalf("oldest = %d/%d, want 0/0 — nothing is outstanding",
+			msg.GetOldestUnsettledCounterpartyId(), msg.GetOldestUnsettledAtUnix())
+	}
+}

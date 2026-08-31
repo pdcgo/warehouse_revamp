@@ -5,6 +5,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	"gorm.io/gorm"
+
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -25,20 +27,34 @@ func (s *Service) LiabilityPositionList(
 	teamID := req.Msg.GetTeamId()
 	page := req.Msg.GetPage()
 
-	query := s.db.
-		WithContext(ctx).
-		Model(&liability_service_models.LiabilityBalance{}).
-		Where("team_id = ?", teamID)
+	// ⚠ THE FILTER IS A FUNCTION, CALLED THREE TIMES, rather than one `*gorm.DB` passed around. GORM's
+	// chain methods MUTATE the shared Statement, so a query handed on after `.Order(…)` carries that
+	// ordering — and an aggregate then fails on Postgres because the ordered column is not grouped.
+	// `Session` does not save you: it changes how later calls clone, not the statement already shared.
+	//
+	// Rebuilding from one function is what keeps the count, the rows and the summary talking about the
+	// same set. A second hand-written WHERE would be a second definition, and they would disagree the
+	// first time somebody edited one.
+	scope := func() *gorm.DB {
+		q := s.db.
+			WithContext(ctx).
+			Model(&liability_service_models.LiabilityBalance{}).
+			Where("team_id = ?", teamID)
 
-	if counterparty := req.Msg.GetFilter().GetCounterpartyId(); counterparty != 0 {
-		query = query.Where("counterparty_id = ?", counterparty)
+		if counterparty := req.Msg.GetFilter().GetCounterpartyId(); counterparty != 0 {
+			q = q.Where("counterparty_id = ?", counterparty)
+		}
+
+		// A settled pair keeps its row forever — the ledger never deletes anything — so the default view
+		// would otherwise fill with zeros and bury the rows a manager opened the screen for.
+		if req.Msg.GetFilter().GetUnsettledOnly() {
+			q = q.Where("balance <> 0")
+		}
+
+		return q
 	}
 
-	// A settled pair keeps its row forever — the ledger never deletes anything — so the default view
-	// would otherwise fill with zeros and bury the rows a manager opened the screen for.
-	if req.Msg.GetFilter().GetUnsettledOnly() {
-		query = query.Where("balance <> 0")
-	}
+	query := scope()
 
 	var total int64
 
@@ -65,6 +81,14 @@ func (s *Service) LiabilityPositionList(
 	}
 
 	waiting, err := s.awaitingConfirmation(ctx, teamID)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	// SUMMARIZE ALL BALANCE — over the whole filtered set, never over `balances`, which is one page.
+	// It reuses the same filters the rows came from, so the tiles and the rows cannot disagree about
+	// which pairs are being talked about.
+	summary, err := summarizePositions(scope)
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -103,7 +127,11 @@ func (s *Service) LiabilityPositionList(
 			TotalPage:   totalPages(total, page.GetLimit()),
 			TotalItems:  uint64(total),
 		},
-		AwaitingConfirmation: totalWaiting,
+		AwaitingConfirmation:          totalWaiting,
+		TotalReceivable:               summary.TotalReceivable,
+		TotalPayable:                  summary.TotalPayable,
+		OldestUnsettledCounterpartyId: summary.OldestCounterpartyID,
+		OldestUnsettledAtUnix:         summary.OldestUnsettledAtUnix,
 	}), nil
 }
 
