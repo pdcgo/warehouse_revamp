@@ -72,6 +72,26 @@ Answered points are **deleted**, so this is always the current open set.
 > says a balance is never due, so `oldest_unsettled_at` is information that triggers nothing — which is
 > exactly what the code does. Code and doc agree.
 
+> # 🔍 Frontend re-analysed against `balance_context.md`, requirement by requirement
+>
+> Every line of the business doc that names something a person SEES or DOES, mapped to the screen
+> that carries it. Full table in [§The requirement map](#the-requirement-map).
+>
+> ⛔ **The finding that matters: §About Thresholds 1 names TWO homes and has NEITHER.**
+> *"there is warning on the balance screen and daily report if thresholds 80% reached"* — the 80%
+> warning exists only inside the pair detail's **Terms tab**, which is neither of the two places the
+> requirement names. ⚠ And [terms-live-on-the-pair-detail](./team_balance_design_decision.md#terms-live-on-the-pair-detail)
+> made it **less** visible, not more: it used to be a column on a screen of its own, and it is now
+> behind a tab on a page you reach by clicking a row.
+>
+> ⚠ **It is not one warning — it is two, on opposite sides**, which is why it is a question and not
+> just build work ([Q9](#question)). On the pair LIST a creditor watches debtors approach the limits
+> *they* set; on the DAILY REPORT a team watches its own debt approach a limit *somebody else* set.
+> Same number, different reader, different sentence.
+>
+> ✅ **What the pass confirms is right:** three screens exist as §Frontend Requirements names them,
+> the pair detail carries both logs, and the five receivable/payable kinds each have their own label
+> since the vocabulary migration.
 > # ✅ `liability_entries` → `liability_logs` — DECIDED, and the migration is unblocked
 >
 > A second naming idea, and a much smaller one — it keeps the `liability` prefix, so it does **not**
@@ -398,6 +418,53 @@ sequenceDiagram
   other reversal here. ⚠ Shipped code goes further and flips the payment's own status to `REVERSED` —
   which your lifecycle does not have. [business Q11](../../business/balance/context_clarify.md#question).
 
+## The requirement map
+
+🔍 Re-analysed 2026-08-31. Every line of `balance_context.md` that names something a person sees or
+does, against the screen that carries it.
+
+| the business says | the screen | state |
+| --- | --- | --- |
+| §General 3 — the grain is **per pair team** | `/liability` list, `/liability/:id` detail | ✅ |
+| §General 2 — **two mirrored rows** | the detail's receivable / payable tabs | ✅ one signed figure, rendered as words per side |
+| §General 4 — **no overdue, only threshold** | — | ✅ nothing on any screen implies a due date. `oldest_unsettled_at` is shown and triggers nothing |
+| §Responsbility 1 — **manage balance** | list + detail | ✅ |
+| §Responsbility 2 — **serve daily report** | `/daily-statement` | ⚠ **warehouse only** — a selling team is refused at the door ([business Q8](../../business/balance/context_clarify.md#question)) |
+| §Responsbility 3 — **manage payments** | the detail's payment tabs | ⚠ record ✅ · confirm ✅ · **reject ❌** · reverse has no screen ([business Q11](../../business/balance/context_clarify.md#question)) |
+| §Payment Flow — the payer **brings proof** | `MakePaymentDialog` | ✅ required, uploaded and shared |
+| §Payment Flow — the creditor **checks it manually** | the payment row | ⛔ **the proof has NO VIEWER.** It is attached and readable by contract, and nothing on the screen opens it |
+| §Payment Flow — the creditor **rejects** | the payment row | ⛔ **not built.** Decided, spec'd in [§Reject, as build work](#reject-as-build-work), and the only refusal available today is confirm-then-reverse |
+| §What Warehouse Can Receivable / Payable — five named kinds | the detail's entry rows | ✅ five distinct labels since the vocabulary migration — they shared one until this week |
+| §Balance Policy 1 — threshold **set by team owner, overridden by admin/root** | the detail's Terms tab | ⚠ built, and the **DEFAULT row is settable nowhere** ([Q6](#question)) |
+| §About Thresholds 1 — **warning at 80% on the BALANCE SCREEN** | `/liability` list | ⛔ **absent.** Four tiles: payable, receivable, awaiting, oldest. None is about a limit |
+| §About Thresholds 1 — **warning at 80% on the DAILY REPORT** | `/daily-statement` | ⛔ **absent entirely.** The page has no notion of a credit limit |
+| §About Thresholds 2 — **default unlimited** | Terms tab | ✅ absent / `NULL` reads as unlimited, `0` as frozen, and the two are never conflated |
+| technical §FR 1 — **Summarize All Balance** | the list's four tiles | ⚠ computed over ONE PAGE ([C16](#critique)) · and whether it is a separate screen is [Q7](#question) |
+| technical §FR 2 — **List Of Pair Team Balance** | `/liability` | ✅ **and it has no stories** — the entry point to the context cannot be previewed at `design_accept` |
+| technical §FR 3 — **detail + the change log** | `/liability/:id` | ✅ both logs, kept separate |
+
+### ⛔ Where the 80% warning would go
+
+```mermaid
+flowchart TB
+  R["§About Thresholds 1 — warn at 80%"] --> A["the BALANCE SCREEN"]
+  R --> B["the DAILY REPORT"]
+  A --> A1["/liability — the creditor watches DEBTORS approach limits THEY set"]
+  B --> B1["/daily-statement — a team watches ITS OWN debt approach a limit SOMEBODY ELSE set"]
+  C["today: the pair detail Terms tab"] -.->|"neither of the two named homes"| R
+```
+
+**They are two different warnings**, which is why this is [Q9](#question) rather than a build item:
+same threshold, opposite reader. The creditor's is *"Toko Melati is at 87% of the limit you set"*;
+the debtor's is *"you are at 87% of the limit Gudang Utama set for you"* — and only the second is
+actionable by the person reading the daily report.
+
+⚠ **The list cannot render it from what it loads.** `LiabilityPosition` carries `counterparty_id`,
+`balance` and `oldest_unsettled_at_unix` — no limit. Either the list reads terms alongside positions
+(one extra call, the terms table is small) or `LiabilityPosition` gains the limit. **→ Recommend the
+extra read**: a position is what is OWED, and a limit is a rule about it — putting the rule on the
+position would make every future rule change a contract change.
+
 ## The two logs, named
 
 🆕 Proposed against `liability_entries` → `liability_logs`. The point is not the one table — it is
@@ -645,6 +712,7 @@ it has no control over. No action — recorded so it is not re-litigated.
 | ~~**21**~~ | ✅ **CLOSED — `liability_logs` + `liability_terms_logs`** ([two-logs-two-names](./team_balance_design_decision.md#two-logs-two-names)). Kept one round for the withdrawal, which is the part worth remembering: the structural objection to *log* was wrong because `group_id` ships and `post_entry.go` is the single write path — **the invariant is held by code, not by a noun**, and I leaned on a noun without checking. Original: **`liability_logs` is cheap and defensible — the one cost left is that it claims the bare word "log", and you have TWO of them.** ⚠ **My structural objection is withdrawn**: `group_id` shipped and `post_entry.go` is the single write path, so *two legs are one posting* is enforced by code rather than by a noun. ✅ It is also small — **153 occurrences across 38 files** outside generated code, against 2350 for the rename you cancelled — and it keeps the `liability` prefix, so it does not disturb [liability-stays](./team_balance_design_decision.md#liability-stays). ❌ **What survives is an argument you handed me last week.** [the-pair-detail-shows-both-logs](./team_balance_design_decision.md#the-pair-detail-shows-both-logs) says that page carries **two** logs — the **limit** log and the **balance** log — and that they must never merge. Name this table `liability_logs` and the generic word belongs to one of them, while the other ends up `liability_terms_changes`. Then *"the log"* is ambiguous in exactly the place you insisted the two are different things. | **Take the rename, and name the SIBLING in the same breath** so *log* never needs disambiguating: `liability_logs` for the balance one, **`liability_terms_logs`** for the limit one (unbuilt, so it costs nothing to name now). Both are logs, both are qualified by what they log, and neither owns the bare word. ⚠ **One precision you are trading away, worth knowing once:** *entry* means one side of a double-entry posting — which is exactly what a row is, and the model's own comment says so (*"ONE LEG of one movement"*). *Log* says *"a record of something that happened"*, and a leg is not a thing that happened — the **movement** is. Small, real, and probably worth trading for your own vocabulary. **→ Put it in the pending migration** ([the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) + [every-entry-names-who-posted-it](./team_balance_design_decision.md#every-entry-names-who-posted-it)) — same table, so the rename is free there and a second pass otherwise. |
 | **22** | **🆕 The rate and the charge it produces now have DIFFERENT NAMES, and I am the one who split them.** `the-ledger-speaks-the-business-words` renamed the ledger's source type `handling_fee` → `order_fee`, and its mapping table covers source types only — so `liability_terms.handling_fee`, the column that sets that fee's rate, still carries the old word. The Credit Terms screen therefore labels a field *Handling fee* while the pair detail one click away calls every row it produces an *Order fee*. ⚠ **It is not a bug and that is the problem**: both names are internally consistent, so nothing fails, and the drift only shows up to a person reading two screens. | **Rename it** ([Q8](#question)) — `liability_terms.handling_fee` → `order_fee`, one migration, one proto field, one locale key. ⚠ **Do it as its own small change, not folded into something else**: the vocabulary migration has already run, so this no longer rides anything, and a rename hidden inside an unrelated commit is one nobody can find later. |
 | **23** | **🆕 A section of the pair detail cannot express the DEFAULT row, and the default is the rule the others are exceptions to.** [terms-live-on-the-pair-detail](./team_balance_design_decision.md#terms-live-on-the-pair-detail) settles the placement. But [terms-are-team-scoped-root-is-global](../../business/balance/context_decision.md#terms-are-team-scoped-root-is-global) stores the default as `counterparty_id = 0`, and a pair detail is reached at `/liability/:counterpartyId` — **team 0 is not a team**, so that section can never be shown for it. The shipped page sorted the default row FIRST precisely because it is what every other row varies from, and folding the page into a pair loses the only place it could be read or written. | **Put the default on the CREDITOR's settings, not on a pair** ([Q6](#question)) — it is a property of the team granting credit, not of any relationship. One field group on the team page, and the pair detail's section shows the inherited value with a *"using the default"* marker until overridden. ⚠ **The alternative — a synthetic `/liability/0` route — should be refused**: it puts a page in the pair namespace for something that is not a pair, and every list, breadcrumb and back-link on that screen would have to special-case it. |
+| **24** | **🔍 §About Thresholds names TWO homes for the 80% warning and it is in NEITHER.** *"there is warning on the balance screen and daily report if thresholds 80% reached"* — it exists only inside the pair detail's Terms tab, and [terms-live-on-the-pair-detail](./team_balance_design_decision.md#terms-live-on-the-pair-detail) made it **less** visible rather than more: it was a column on a screen of its own, and it is now behind a tab on a page reached by clicking a row. ⚠ **The threshold is the only control this design has** ([no-overdue-only-the-threshold](../../business/balance/context_decision.md#no-overdue-only-the-threshold)) — there is no cycle, no due date and no overdue state — so a warning nobody passes on their way to anything is the whole early-warning system, hidden. ⛔ And the daily report has no notion of a credit limit at all. | **Build both, and they are DIFFERENT warnings** — see [§Where the 80% warning would go](#-where-the-80-warning-would-go) and [Q9](#question). On the list: a badge per row, the creditor watching debtors approach limits they set. On the daily report: one notice, a team watching its own debt approach a limit somebody else set. ⚠ The list cannot render it from what it loads — `LiabilityPosition` carries no limit. **→ Read terms alongside positions rather than putting the limit on the position**: a position is what is OWED and a limit is a rule about it, so merging them makes every later rule change a contract change. |
 
 # Question
 
@@ -720,6 +788,18 @@ new**, and all three come from re-reading the code rather than the docs.
 > **change log** whose logged limit is **nullable** — `NULL`, `0` and a number being three different
 > acts. Nothing about it is still open. ⚠ **It is BUILD work now**, and none of it exists: a migration
 > on `liability_terms`, and a screen — `liabilityTermsClient` still has **zero callers**.
+9. **🔍 The 80% warning has TWO homes and two readers — what does each one SAY?**
+   ([Critique 24](#critique)) §About Thresholds 1 puts it on *the balance screen and daily report*, and
+   it is in neither. The two are not the same warning: on the pair LIST a creditor watches debtors
+   approach limits **they** set, on the DAILY REPORT a team watches its own debt approach a limit
+   **somebody else** set.
+   **→ I recommend both, worded from the reader's side** — the list gets a per-row badge
+   (*"87% of the limit you set"*), the daily report one notice (*"you are at 87% of the limit Gudang
+   Utama set for you"*). Only the second is actionable by the person reading it, which is probably why
+   you named the daily report at all.
+   ⚠ **Confirm the debtor's half is intended.** A team seeing a limit set *for* them is the only place
+   in this design where one team's private rule about another becomes visible to the other — worth
+   saying out loud rather than assuming.
 8. **🆕 Does `liability_terms.handling_fee` rename to `order_fee` too?** ([Critique 22](#critique))
    ⚠ **I created this inconsistency and did not fix it**, deliberately: the mapping in
    [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)

@@ -10,7 +10,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**91 open questions across 16 files.** The seven below are shown; **84 are not** — they are not
+**92 open questions across 16 files.** The seven below are shown; **85 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 > **Driven by `balance_context.md` §Payment Flow** — two diagrams that specify the payment lifecycle
@@ -21,8 +21,16 @@ closed, only smaller. The per-file counts are at the bottom.
 > ([the-debtor-claims-the-creditor-decides](business/balance/context_decision.md#the-debtor-claims-the-creditor-decides)).
 > It is **build work** now, not a question.
 >
-> **Driven by three answers in one message**, all three now BUILT — the cost-line note rule, Credit
-> Terms as a section of the pair detail, and payment proof.
+> **Driven by a frontend re-analysis against `balance_context.md`**, requirement by requirement, on
+> top of three answers that are all now BUILT.
+>
+> ⛔ **§About Thresholds 1 names TWO homes for the 80% warning and it is in NEITHER** — *"there is
+> warning on the balance screen and daily report if thresholds 80% reached"*. It lives only inside the
+> pair detail's Terms tab, and moving terms onto that page made it LESS visible, not more. The
+> threshold is the only control this design has, so a warning nobody passes on their way to anything
+> is the whole early-warning system, hidden. It is two DIFFERENT warnings on opposite sides, which is
+> why it is a question ([technical balance Q9](technical/balance/team_balance_design_clarify.md#question))
+> and not just build work.
 >
 > ✅ **#3 IS DONE AND #7 IS GONE.** The ledger migration ran as code (vocabulary, `actor_id`, the
 > rename to `liability_logs`), the cost-kind collapse completed it, and *is Credit Terms a screen or
@@ -66,7 +74,7 @@ closed, only smaller. The per-file counts are at the bottom.
 
 ---
 
-## Where the other 84 are
+## Where the other 85 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -77,7 +85,7 @@ Every file's full open count — the seven above are drawn from these, not addit
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 10 | ▼ was 12 — proof required, and the cost-line note rule |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | the rename closed, the terms-column split opened |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 7 | ▲ the 80% warning has two homes and neither exists |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
