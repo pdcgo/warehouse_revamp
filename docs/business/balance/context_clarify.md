@@ -502,7 +502,7 @@ flowchart LR
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **⚠ MOSTLY WITHDRAWN — the unboundedness is DELIBERATE.** This critique argued for a closed list of chargeable cost kinds. §Why `cod_fee` Exists answers it: the courier's ask is *accidental*, so no list can enumerate it, and `restock_cost_lines` already carries a typed `kind`, positive-only amounts, an `actor_id` and a required note. **What survives is smaller and different**: `COD_SHIPPING` and `OTHER` are one thing described twice ([Q2](#question)), and the fee's *accounting treatment* is disproportionate to its nature — a tip freezing into `UnitPrice` forever ([product Q6](../product/context_clarify.md#question)). `product_context.md` §Unit Price Components puts *AdditionalWarehouseFee* **inside the goods' unit price**. So one number typed by the warehouse both raises what another team owes **and** permanently changes the value of their stock, which is what a later reimbursement pays out on. | A **closed list of chargeable cost kinds**, decided by you, with anything outside it not chargeable — and each line frozen at accept. Keep the warehouse's **own service fee** on cause 1: cause 1 is what the warehouse *earns*, cause 2 is what it *fronted*, and merging them makes both the warehouse's margin and the goods' cost unreadable. |
-| **2** | **Cause 5 lets one team create a debt on another team's books with no acknowledgement.** Cause 6 got *"Create / Accepting"* — a handshake — because a payment is a claim. Cause 5 is the same shape: the warehouse says *"we found it"* weeks later and the owner owes money back on the warehouse's word alone. Cause 4 needs no handshake (the warehouse types a debt against itself), but 5 is its mirror — and it can now push a team **through** its threshold. | Give cause 5 the same two-phase shape as cause 6, or at minimum **notify the owner and let them dispute it**. |
+| ~~**2**~~ | ⛔ **CLOSED — no acknowledgement** ([found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake)), against this recommendation. Kept one round because the asymmetry it names is now a **standing property of the design**, not a gap awaiting a fix: cause 4 is safe unilaterally because the warehouse types a debt against itself, and cause 5 is that entry running backwards in the warehouse's own favour, with nothing bounding it to the loss it repays ([technical Critique 10](../../technical/balance/team_balance_design_clarify.md#critique)). Original: **Cause 5 lets one team create a debt on another team's books with no acknowledgement.** Cause 6 got *"Create / Accepting"* — a handshake — because a payment is a claim. Cause 5 is the same shape: the warehouse says *"we found it"* weeks later and the owner owes money back on the warehouse's word alone. Cause 4 needs no handshake (the warehouse types a debt against itself), but 5 is its mirror — and it can now push a team **through** its threshold. | Give cause 5 the same two-phase shape as cause 6, or at minimum **notify the owner and let them dispute it**. |
 | **3** | **Cause 4 is still written flat here, while the phase rule now lives in another doc.** [stock_context §Stock loss](../stock/context_clarify.md#the-rules-named) says in-custody losses and count shortfalls are the warehouse's and receiving losses are the selling team's — so whether cause 4 posts at all depends on a phase this list does not mention. And *return* receiving is not clearly on either side of that line. | Cause 4 should **link** to `stock_context.md` §Stock loss rather than restate it — the two lists have already drifted once in this requirement set ([Contradiction](#contradiction)). And the return-receiving case needs an explicit word, because it is a whole phase currently answered by inference. |
 | **4** | **[debt-threshold-limits-liability](#debt-threshold-limits-liability) is now the ONLY control, and the override is now the only way a block ever ends by itself.** ⚠ **Sharpened by [no-overdue-only-the-threshold](./context_decision.md#no-overdue-only-the-threshold)**, not weakened by it. Block-or-warn and whose-owner are answered in shipped code (blocks · creditor) though not yet by you. What is genuinely open is narrower and heavier: **which acts stop**, and whether the admin/root override is **recorded** and **expires**. §Admin Team is *"manage all resource"*, so an unrecorded permanent override is the difference between a supervisor and a back door — and it is now the door every blocked team has to walk through. | **It blocks only debt-increasing acts · the override is recorded with an actor and a reason · the override is temporary.** And it must never block **cause 6** — a team that cannot pay because it owes too much is a deadlock, and with no cycle nothing else would ever break it. |
 | **5** | **Operating costs are missing entirely, and `business_level.md` §covered 7 asks for them.** Electricity, ads and payroll are tracked somewhere. If any is ever recharged to a team, that is a seventh cause and it is not here. If none ever is, that is worth saying — two ledgers keyed by team that never touch is a much simpler world. | Say plainly: **does an operating cost ever move a team balance?** I would say **no for v1**. The same question is open downstream in [`cost_design_clarity.md`](../../technical/cost/design_clarify.md#question). |
@@ -538,11 +538,13 @@ flowchart LR
 
 1. **Does an operating cost ever move a team balance?** ([Critique 5](#critique))
    **→ I recommend no for v1.**
-2. **Does the `found` charge need the owner's acknowledgement?** ([Critique 2](#critique))
-   ✅ Its *existence* is settled — it is a named receivable now. What is open is the handshake: the
-   warehouse says *"we found it"* weeks later and the owner owes money back on its word alone.
-   **→ I recommend yes** — it is a debt asserted on someone else's books, and it can push them
-   through their threshold.
+> ⛔ **Q2 is DELETED — `found` posts with NO acknowledgement**, and it closed **against** this file's
+> recommendation:
+> [found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake). ✅ It
+> ratifies shipped code — `found` is a `StockDamageKind` on a stock adjust, posted in that adjust's
+> transaction, so there was never a place a handshake could go. ✅ **It unblocks the frontend**: an
+> acknowledgement would have needed a fourth screen. ⚠ **It hands the whole weight to [Q5](#question)**
+> — dispute is now the owning team's only recourse, and behind it there is nothing.
 3. **Is repayment IN GOODS allowed** — may a borrowing team clear cause 3 by restocking the owner with
    equivalent units instead of paying? ([Critique 9](#critique))
    **→ I recommend no: a goods repayment is a restock plus a payment, not a second instrument.**
@@ -553,6 +555,13 @@ flowchart LR
    restock works reads as done.
 5. **🆕 Is an entry disputable forever?** ([Critique 10](#critique)) No cycle means no moment at which a
    charge becomes final, and causes 4 and 5 are the ones people argue about.
+   ⛔ **PROMOTED — this is now the heaviest open question in the context.**
+   [found-posts-without-a-handshake](./context_decision.md#found-posts-without-a-handshake) refused
+   cause 5 an acknowledgement, so dispute is the owning team's **only** recourse against a charge
+   asserted on their books in the asserter's favour — and today there is nothing behind it. ⚠ Sharper
+   still because a `found` is not bound to the loss it repays
+   ([technical Critique 10](../../technical/balance/team_balance_design_clarify.md#critique)), and
+   because the resulting balance can push a team through its threshold and stop their orders.
    **→ I recommend a window on the ENTRY — disputable for N days, agreed by silence after** — which
    needs no statement, no due date and no overdue state.
 6. **How does a creditor CHASE?** ([Critique 11](#critique)) Today the only lever is lowering the

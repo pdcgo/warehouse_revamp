@@ -1,7 +1,31 @@
 # Development state — balance
 
 **Pass:** `agent_analysis`, `implementation_analysis` for the THRESHOLD slice, three
-re-examinations after owner edits, and **implementation of three answered decisions** (2026-08-31).
+re-examinations after owner edits, **implementation of three answered decisions**, and a
+**frontend-blocker triage answered by the owner in chat** (2026-08-31).
+
+## ✅ The three questions that blocked the FRONTEND are answered — and none of them blocks it now
+
+The owner asked *"is any question blocked to frontend analysis?"*, was given the triage, and answered
+all three in one line. **No open question in this context now changes what a balance screen IS.**
+
+| the question | the answer | recorded |
+| --- | --- | --- |
+| *Summarize All Balance* — a screen, or the tiles? | **the tiles on `/liability`** | [the-summary-is-tiles-on-the-list](../../technical/balance/team_balance_design_decision.md#the-summary-is-tiles-on-the-list) |
+| where is the DEFAULT terms row edited? | **a dedicated dialog opened from the list** ⚠ against recommendation | [the-default-terms-row-is-a-dialog-on-the-list](../../technical/balance/team_balance_design_decision.md#the-default-terms-row-is-a-dialog-on-the-list) |
+| does `found` need the owner's acknowledgement? | **no** ⚠ against recommendation | [found-posts-without-a-handshake](../../business/balance/context_decision.md#found-posts-without-a-handshake) |
+
+**Open questions: business 9 → 8, technical 7 → 5.** What is left in both files is a control on a
+screen that already exists (the 80% badge, a payment method, a reverse action), a label, a filter, or
+a backend rule — never a screen's shape. ⚠ **The gate did not move**: `design_accept` is still
+unpreviewed. What changed is that it is now waiting on a PREVIEW and on BUILD, not on an answer.
+
+### ⚠ One answer moved weight rather than removing it
+
+Refusing `found` a handshake makes **dispute** the owning team's only recourse against a charge
+asserted in the asserter's favour — and it does not exist. That is now **#7 in
+[biggest_question.md](../../biggest_question.md)**, promoted by an answer rather than by an edit. It
+does not block the frontend; it blocks the business lane's `clarity` gate as much as before.
 
 **Lifecycle position:** ⛔ **`design_accept`, for THREE slices, and none has been previewed.**
 
@@ -31,7 +55,7 @@ next pass must not.
 | | |
 | --- | --- |
 | **four migrations, none applied** | Docker was never up here, so `san migrate up` never ran and every DB-backed test skipped. **Nothing below the contract is verified** — this gates all three implementations equally |
-| **the DEFAULT row is set nowhere** | ⚠ **a live regression, created by implementing the answer correctly.** The terms LIST was the only place `counterparty_id = 0` could be read or written, and it is deleted. [technical Q6](../../technical/balance/team_balance_design_clarify.md#question) — one sentence settles it |
+| ~~the DEFAULT row is set nowhere~~ | ✅ **ANSWERED — a dialog on the list** ([the-default-terms-row-is-a-dialog-on-the-list](../../technical/balance/team_balance_design_decision.md#the-default-terms-row-is-a-dialog-on-the-list)). ⚠ **Still a live regression until built** — but it is now BUILD work with a written spec, and it needs **no proto change and no new route**: `LiabilityTermsList` returns the default row first and `LiabilityTermsSet` accepts `counterparty_id = 0` today |
 | ~~the selling team's daily report~~ | ⛔ **DEFERRED** ([the-daily-report-is-deferred](../../business/balance/context_decision.md#the-daily-report-is-deferred)) — parked, not fixed. The shipped page still refuses every non-warehouse team, which §Responsbility 2 promises them |
 
 ### ⚠ Two lifecycle steps have not run AT ALL for the new work
@@ -78,6 +102,8 @@ settlement cycle" as a statement about `settlement_service`.
 | | cost |
 | --- | --- |
 | **the terms screen** | `liabilityTermsClient` has **zero callers**. The debt threshold — fully decided — is configurable only by direct database access |
+| **the DEFAULT-terms dialog** | 🆕 decided this pass. A toolbar action on `/liability` opening `TermsEditDialog` with the counterparty fixed at 0. ✅ **Frontend only** — no proto, no migration, no route — so it is the one item here that belongs INSIDE `implementation_analysis` rather than past it. ⚠ `TermsEditDialog` + `CreditMeter` move from `pages/liability-detail/components/` to `features/liability/` when the list becomes their second importer |
+| **a whole-set summary** | 🆕 decided this pass. Three fields on `LiabilityPositionListResponse` — `total_receivable`, `total_payable`, `oldest_unsettled_counterparty_id` — beside the `awaiting_confirmation` that already ships as a whole-set number. ⛔ **This one is proto + backend**, so it runs PAST the `design_accept` gate, exactly as the two slices above did |
 | **the 80% warning** | needs that screen, and a place on the daily report |
 | **`actor_id` on `liability_entries`** | ✅ **DECIDED, not built** — [every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it). It records the **human**, not a system sentinel: `restock_request_fulfill.go:191` already computes the actor and `PostRestockOutlay`'s signature drops it. Two parameters plus a NOT NULL column. ⚠ Rows written before it are **permanently unattributable** and every day adds more |
 | **the terms change log** | [a-limit-change-is-recorded](../../business/balance/context_decision.md#a-limit-change-is-recorded) requires actor + reason + a log with a **nullable** limit. None of it is built |

@@ -21,6 +21,11 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-block-stops-orders-only](#the-block-stops-orders-only) | the threshold refuses **order creation** and nothing else — never a restock accept, never a payment, never a ledger posting |
 | [the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words) | the source types become `order_fee` · **`incidental_fee`** · `broken_good` · `lost_good` · `found`. ✅ **unblocked — local codegen plugins** |
 | [the-warehouse-payable-is-broken-and-lost](#the-warehouse-payable-is-broken-and-lost) | the warehouse owes the owner in two named cases — `broken_good` and `lost_good`. ⚠ the code has **one** type for both |
+| [the-debtor-claims-the-creditor-decides](#the-debtor-claims-the-creditor-decides) | a payment is **claimed by the payer and confirmed by the creditor** — and `reject` is terminal, posting nothing |
+| [an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for) | every incidental cost line carries a **required note**. The kind stopped carrying the meaning, so the words must |
+| [a-payment-must-carry-proof](#a-payment-must-carry-proof) | a payment with **no attached document is refused** — the creditor's manual check needs something to look at |
+| [the-daily-report-is-deferred](#the-daily-report-is-deferred) | ⛔ **parked, not cancelled.** ⚠ §Responsbility 2 goes on promising selling teams a screen that refuses them |
+| [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
 
 ---
 
@@ -948,3 +953,87 @@ not lost, and it no longer runs as a test.
 
 ⚠ **The tag is the deferral made visible in the code**, and it must come off when the daily report
 comes back. It is not a fix.
+
+## found-posts-without-a-handshake
+
+> The owner, in chat — *"q2 no"*, answering [Q2](./context_clarify.md#question).
+
+**The verdict.** Cause 5 — `found`, a lost good turning up again — posts **unilaterally**. No
+acknowledgement, no accept step, no two-phase shape. The warehouse says *"we found it"* and the
+owning team's balance moves back the same instant.
+
+⚠ **This closes against the recommendation**, which asked for cause 6's handshake or at minimum a
+notify-and-dispute. Recorded as decided; the argument it overrules is kept below because one half of
+it is now load-bearing rather than merely unaddressed.
+
+### ✅ It ratifies the shipped code exactly
+
+`found` is not a screen anybody visits — it is a **`StockDamageKind` on a stock adjust**, posted
+inside that adjust's transaction from
+[stock_adjust.go:259](../../../backend/services/inventory_service/inventory_v1/stock_adjust.go#L259).
+There was never a place for a handshake to go, and now there does not need to be one.
+
+```mermaid
+sequenceDiagram
+participant W as Warehouse person
+participant I as inventory_service
+participant L as liability ledger
+participant O as Owning team
+
+W->>I: StockAdjust — 3 units found
+I->>L: PostStockDamage(kind found) — same transaction
+L-->>O: balance moves. No consent, no notice
+Note over O: The owner learns of it by reading the pair detail
+```
+
+### ✅ What it settles for the frontend
+
+**No fourth screen.** An acknowledgement would have needed an inbox of asserted charges with
+accept/reject — the same shape as §Payment Flow. §Frontend Requirements stays at three requirements
+on two pages, and the balance context's `implementation_analysis` is unblocked by this answer.
+
+### ⚠ What it makes load-bearing — and this is the half that got heavier
+
+Cause 4 is safe unilaterally because the warehouse is typing a debt **against itself**. Cause 5 is
+that entry running **backwards**, in the warehouse's own favour. With the handshake refused, the
+owning team's only remaining recourse is to **dispute** — which is
+[Q5](./context_clarify.md#question), still open, and which no longer has a fallback behind it.
+
+```mermaid
+flowchart TB
+  F["warehouse posts 'found'"] --> B["owner's balance rises. No consent"]
+  B --> Q{"owner disagrees"}
+  Q -->|"handshake — REFUSED"| X["nothing to refuse"]
+  Q -->|"dispute — Q5, still open"| Y["undesigned"]
+  Q -->|"today"| Z["nothing at all"]
+```
+
+⛔ **And it can push a team through its threshold.** Per
+[the-block-stops-orders-only](#the-block-stops-orders-only) that refuses their next order — so one
+warehouse's unilateral assertion can stop another team trading, with no step at which they were
+asked. That is the cost of this decision stated plainly, not an objection to it.
+
+### ⚠ It promotes a reporting gap into a control gap
+
+The decision would be self-limiting if a find could only give back what the warehouse had previously
+conceded. **It cannot be checked that it does.**
+[technical Critique 10](../../technical/balance/team_balance_design_clarify.md#critique) established
+that `reversal` is a **boolean** and the find posts under its **own** movement id, so nothing in the
+ledger ties a find to the loss it repays — *"how much of loss #91 is still outstanding"* is
+unanswerable today.
+
+**→ `reverses_group_id` was a traceability nicety while a handshake existed. It is now the only thing
+that could bound a find to its loss** — and it remains unbuilt.
+
+### What this does NOT settle
+
+| | |
+| --- | --- |
+| whether the owner is **notified** | refusing an acknowledgement is not the same as refusing a notice. Nothing notifies anybody today |
+| [Q5](./context_clarify.md#question) — the dispute window | untouched, and now carrying the weight this decision set down |
+| the **stock** side of a find | the goods return to the owner ([technical Q3](../../technical/balance/team_balance_design_clarify.md#question)), which is a separate question and still open |
+
+**✅ RULE 11 re-examination: no contradictions.** The doc never promised cause 5 a handshake —
+§What Warehouse Can Receivable lists `found` flatly, and §Payment Flow's two-phase shape is written
+about payments alone. [Critique 2](./context_clarify.md#critique) was an argument *for* one, not a
+record that the doc claimed one.

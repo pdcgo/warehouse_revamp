@@ -10,8 +10,24 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**91 open questions across 16 files.** The seven below are shown; **84 are not** — they are not
+**88 open questions across 16 files.** The seven below are shown; **81 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+> ✅ **THREE ANSWERED THIS ROUND, all three of them frontend blockers**, which is what the owner asked
+> for: *is any question blocking the frontend analysis?* The balance context's `implementation_analysis`
+> is no longer waiting on a design answer.
+>
+> | | | |
+> | --- | --- | --- |
+> | *Summarize All Balance* — screen or tiles? | **the tiles** | [the-summary-is-tiles-on-the-list](technical/balance/team_balance_design_decision.md#the-summary-is-tiles-on-the-list) |
+> | where is the DEFAULT terms row edited? | **a dialog on the list** ⚠ against recommendation | [the-default-terms-row-is-a-dialog-on-the-list](technical/balance/team_balance_design_decision.md#the-default-terms-row-is-a-dialog-on-the-list) |
+> | does `found` need the owner's acknowledgement? | **no** ⚠ against recommendation | [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) |
+>
+> ⛔ **AND ONE OF THEM MOVED THE WEIGHT RATHER THAN REMOVING IT, straight into the new #7.** Refusing
+> `found` a handshake makes **dispute** the only recourse a team has against a charge asserted on its
+> books in the asserter's favour — and nothing in the ledger binds a find to the loss it repays, so
+> nothing caps it. The resulting balance can push that team through its threshold and stop their
+> orders.
 
 > **Driven by `balance_context.md` §Payment Flow** — two diagrams that specify the payment lifecycle
 > end to end, the third owner edit to the balance context in a day.
@@ -49,12 +65,11 @@ closed, only smaller. The per-file counts are at the bottom.
 > a section* was answered — a section — so the `design_accept` gate that had been holding a finished
 > prototype is passed.
 >
-> ⛔ **AND ONE OF THE ANSWERS CREATED A NEW BLOCKER, at #6.** The terms LIST was the only place the
-> DEFAULT row (`counterparty_id = 0`) could be read or written, and implementing *a section of the
-> pair detail* deleted it. A pair page lives at `/liability/:counterpartyId` and **team 0 is not a
-> team**, so the rule every other row is an exception to is now settable **nowhere**
-> ([technical balance Q6](technical/balance/team_balance_design_clarify.md#question)). This is a
-> live regression, not a design gap, and one sentence settles it.
+> ✅ **THE DEFAULT-ROW REGRESSION IS ANSWERED AND IS NOW BUILD WORK.** It was #7 last round. The
+> default lives in a **dedicated dialog opened from `/liability`**, and it needs no proto change and
+> no new route — `LiabilityTermsList` already returns the default row first and `LiabilityTermsSet`
+> already accepts `counterparty_id = 0`. ⚠ It is still settable nowhere in the running app until
+> somebody builds the dialog.
 >
 > ⛔ **NOTHING BELOW THE CONTRACT IS VERIFIED.** Four migrations are written and none has run —
 > Docker was never up on this machine, so every DB-backed test skipped. That gates all three
@@ -66,9 +81,12 @@ closed, only smaller. The per-file counts are at the bottom.
 > had no actor field at all, so the two highest-volume causes had no channel to carry one — the column
 > would have read 0 for most rows, which is the shrug the decision said it must not become.
 >
-> ⚠ **Not a question, and still true: "Summarize All Balance" is computed over ONE PAGE.** The four
-> tiles on `/liability` reduce the loaded 20 rows, so a creditor with 21 counterparties reads a
-> headline that silently omits one. A defect with a known fix
+> ⚠ **Still true, and the answer made it MORE binding: "Summarize All Balance" is computed over ONE
+> PAGE.** Three of the four tiles on `/liability` reduce the loaded 20 rows, so a creditor with 21
+> counterparties reads a headline that silently omits one — and now that the summary is fixed as
+> **tiles on a paginated list** rather than a screen, it can never run a whole-set query of its own.
+> The fourth tile, *awaiting confirmation*, already comes from the server and is the precedent for
+> the other three. A defect with a written spec
 > ([technical balance C16](technical/balance/team_balance_design_clarify.md#critique)), not something
 > to rank here.
 
@@ -82,11 +100,11 @@ closed, only smaller. The per-file counts are at the bottom.
 | **4** | **What moment consumes a FIFO layer, and which service stores the frozen cost?** Layers are inventory's, COGS is ledger's — the answer sets a service boundary, not just a timing. | the inventory/ledger split, COGS correctness, order lines | [product Q5](business/product/context_clarify.md#question) · [architecture Q3](technical/architecture/context_clarify.md#question) | **At commitment, both frozen on the line.** |
 | **5** | **Can one ORDER's true result be read anywhere?** ⚠ **Halved by the deferral.** This row merged two gaps opened by `0d4cbc4`; the first — whose job is the selling team's money screen — is now parked with [the-daily-report-is-deferred](business/balance/context_decision.md#the-daily-report-is-deferred), and the shipped page goes on refusing selling teams. What survives is the second: the marketplace money is settlement's at **order** grain and the `order_fee` is balance's at **pair** grain, so *"what did order 1 make"* has no reader — `order_fees.go` writes `SourceID = orderID` and `LiabilityLogListFilter` accepts `counterparty_id` and nothing else. | order-level profitability — the fee is recorded, attributable, and unaskable | [balance Q9](business/balance/context_clarify.md#question) | **One `order_id` filter on `LiabilityLogListFilter`, never a second copy of the fee** in settlement's ledger — one movement written as two rows in two services with no shared transaction is the failure [technical balance C4](technical/balance/team_balance_design_clarify.md#critique) already names. ⚠ Assembling the order's P&L on the SCREEN from settlement + the frozen COGS + the fee is what keeps each number owned by one service. |
 | **6** | **Which PRE-CHECKS does a draft run — does it touch the reserve, the shared lock, the debt threshold?** ✅ The ledger half is closed; the moment is fixed at finalize. What is unstated is which of the checks a *draft* runs before it. | the ledger's write moment, the threshold's trigger, the lock and reserve checks | [order Q4](business/order/context_clarify.md#question) | **None of it at draft** — your own section forces it: a draft holds an *external* SKU, so it has no product, no owner and no cost, and none of the four are computable. The price is that **finalize must re-check and may refuse**. |
-| **7** | **🆕 Where is the DEFAULT row edited?** `counterparty_id = 0` is terms for every team without their own — the rule every other row is an exception to. It was set on the terms LIST, and [terms-live-on-the-pair-detail](technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail) deleted that list in favour of a section on each pair. A pair page is `/liability/:counterpartyId` and **team 0 is not a team**, so there is no page the section can appear on. ⚠ **A live regression, not a design gap**: it is settable nowhere in the running app right now. | ⛔ the default credit limit, fee and markup for every counterparty without their own · §Balance Policy's threshold for teams nobody has configured | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) | **The CREDITOR's own settings** — the default belongs to the team granting credit, not to any pair. One field group on the team page reading *"terms for any team without their own"*, and the pair detail's section shows the inherited value with a *"using the default"* marker until overridden. ⚠ **Refuse a synthetic `/liability/0` route**: it puts a page in the pair namespace for something that is not a pair, and every list, breadcrumb and back-link would special-case it. |
+| **7** | **🆕 Can a team CONTEST a charge posted on its books — and does a charge ever become final?** ⛔ **Promoted by an answer, not by an edit.** [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) refused cause 5 an acknowledgement, so a warehouse posts *"found it"* and the owning team's balance moves the same instant, with no consent and no notice. Dispute was the fallback behind that handshake; it does not exist. ⚠ **Three things compound it and each is verified in code, not supposed:** nothing binds a find to the loss it repays (`reversal` is a boolean and the entry posts under the find's own movement id, [technical C10](technical/balance/team_balance_design_clarify.md#critique)) · there is no cycle, so no entry ever becomes final ([no-overdue-only-the-threshold](business/balance/context_decision.md#no-overdue-only-the-threshold)) · and the resulting balance refuses the team's next order ([the-block-stops-orders-only](business/balance/context_decision.md#the-block-stops-orders-only)). | ⛔ every team's only recourse against a charge asserted in the asserter's favour — and, through the threshold, whether one team can stop another trading with no step at which it was asked | [balance Q5](business/balance/context_clarify.md#question) · [balance Q6](business/balance/context_clarify.md#question) | **A window on the ENTRY — disputable for N days, agreed by silence after.** It needs no statement object, no due date and no overdue state, so it does not reopen the no-cycle decision, and it gives both sides the moment of finality the cycle would have supplied. ⚠ **Build `reverses_group_id` with it**: it was a traceability nicety while a handshake existed and it is now the only thing that could bound a find to what was conceded. |
 
 ---
 
-## Where the other 84 are
+## Where the other 81 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -94,10 +112,10 @@ Every file's full open count — the seven above are drawn from these, not addit
 | --- | ---: | --- |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 13 | |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 11 | |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 9 | ▼ was 10 — the daily report is deferred |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 | ▼ was 9 — `found` needs no handshake |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 7 | ▲ the 80% warning has two homes and neither exists |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 5 | ▼▼ was 7 — the summary is tiles, the default row is a dialog |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
