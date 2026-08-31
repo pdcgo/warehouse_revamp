@@ -34,7 +34,7 @@ second time will be slightly different. That drift is the actual cost.
 | --- | --- |
 | [getting-started.md](getting-started.md) | first day — what to read, running it locally, logging in, ports |
 | [workflow.md](workflow.md) | branches, issues, the board, which docs a change must carry, serving the repo to an agent |
-| [backend.md](backend.md) | services, RPCs, Wire, tests, the audits, authorization |
+| [backend.md](backend.md) | services, RPCs, Wire, tests, the audits, authorization, proto nil-safety, GORM timestamps |
 | [contract.md](contract.md) | the proto: generation, pagination, who may call what |
 | [database.md](database.md) | migrations, the local database, the test database, Redis |
 | [frontend.md](frontend.md) | where files go, the design system, freshness, Storybook, e2e |

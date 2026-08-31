@@ -236,3 +236,65 @@ if err != nil {
 Break long method chains one step per line. One handler method per file as a service grows. Never
 use `golang.org/x/net/http2/h2c` — it is deprecated; `net/http` speaks unencrypted HTTP/2 natively
 through `http.Protocols`.
+
+## What is the difference between rejecting a payment and reversing one?
+
+**They are different failures and they must never share a code path.**
+
+| | refuses | posts to the ledger | when |
+| --- | --- | --- | --- |
+| `LiabilityPaymentReject` | a **claim** | **nothing** | the creditor checked the proof and the money is not there |
+| `LiabilityPaymentReverse` | a **confirmation** | a **compensating entry** | the creditor already agreed, in error |
+
+Both are terminal, and both are drawn in `balance_context.md` §Payment Flow — the `no` arm of *"Is
+Payment Correct?"* is a reject.
+
+⛔ **Why it matters.** Before `rejected` existed, a creditor facing a payment that never landed could
+only leave it at `recorded` forever, or **confirm it and then reverse it** — which writes two real
+ledger movements for money that never moved, and leaves the pair's history telling a story that did
+not happen.
+
+They share one `reason` column, because the `status` already says which act filled it. A reject also
+leaves `confirmed_by` / `confirmed_at` **empty** — borrowing them would make every *"when was this
+agreed"* query count refusals as agreements.
+
+Details: [docs/services/liability_service/rpc.md](../services/liability_service/rpc.md).
+
+## Why does my nil check on a proto filter still panic?
+
+Because **`GetFilter()` is nil-safe and the field access after it is not.**
+
+```go
+req.Msg.GetFilter().CounterpartyId    // ⛔ panics when the filter is absent
+```
+
+Generated getters return a zero value for a nil message; reading a **raw struct field** off that nil
+pointer is an ordinary nil dereference. Almost every filter in this repo is safe because it chains
+getters all the way down (`GetFilter().GetProductId()`), so the trap only appears where you *cannot*
+use the getter:
+
+⚠ **An `optional` field is exactly that case.** `GetCounterpartyId()` returns `0` for both *"omitted"*
+and *"the default row"*, and those are different questions — so the pointer has to be read directly:
+
+```go
+if f := req.Msg.GetFilter(); f != nil && f.CounterpartyId != nil {
+    q = q.Where("counterparty_id = ?", *f.CounterpartyId)
+}
+```
+
+This reached a running server in `LiabilityTermsHistoryList` and six unit tests missed it, because
+every one of them sent a filter **object** with a nil field inside — while the ordinary caller omits
+the filter entirely.
+
+## My timestamp column is stamped year 1
+
+GORM fills timestamps **by name** — `CreatedAt` and `UpdatedAt`. A column called anything else
+(`changed_at`, `posted_at`, `confirmed_at`) gets Go's zero time inserted **explicitly**, so the
+column's `DEFAULT NOW()` never fires.
+
+```go
+ChangedAt time.Time `gorm:"autoCreateTime"`   // ← required
+```
+
+⚠ **It is worse than a wrong date.** A list ordered `ORDER BY changed_at DESC` over a table of
+identical year-1 stamps is ordered by nothing at all, and it looks sorted.
