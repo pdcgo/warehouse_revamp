@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -31,11 +32,43 @@ func (s *Service) LiabilityTermsDelete(
 	ctx context.Context,
 	req *connect.Request[liabilityv1.LiabilityTermsDeleteRequest],
 ) (*connect.Response[liabilityv1.LiabilityTermsDeleteResponse], error) {
-	err := s.db.
-		WithContext(ctx).
-		Where("team_id = ? AND counterparty_id = ?", req.Msg.GetTeamId(), req.Msg.GetCounterpartyId()).
-		Delete(&liability_service_models.LiabilityTerms{}).
-		Error
+	teamID := req.Msg.GetTeamId()
+	counterpartyID := req.Msg.GetCounterpartyId()
+
+	// ⚠ THE DELETE AND ITS LOG ENTRY ARE ONE TRANSACTION (a-limit-change-is-recorded). Removing a
+	// pair's terms is a limit change like any other — arguably the biggest one, since it lifts a
+	// ceiling entirely — and it must not be the one act that leaves no trace.
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var before liability_service_models.LiabilityTerms
+
+		found := tx.
+			Where("team_id = ? AND counterparty_id = ?", teamID, counterpartyID).
+			Limit(1).
+			Find(&before)
+		if found.Error != nil {
+			return found.Error
+		}
+
+		// ⚠ DELETING WHAT IS NOT THERE LOGS NOTHING. The RPC still succeeds — the caller asked for a
+		// state and that state holds — but nothing CHANGED, and a history full of no-ops is a history
+		// nobody reads. A retry after a timeout must not write a second entry either.
+		if found.RowsAffected == 0 {
+			return nil
+		}
+
+		delErr := tx.
+			Where("team_id = ? AND counterparty_id = ?", teamID, counterpartyID).
+			Delete(&liability_service_models.LiabilityTerms{}).
+			Error
+		if delErr != nil {
+			return delErr
+		}
+
+		// `after` is nil: there are no terms now. The new limit stays NULL rather than 0, which is the
+		// whole reason that column is nullable — this act REMOVED a ceiling, and recording 0 would say
+		// it froze the team instead.
+		return recordTermsChange(ctx, tx, teamID, counterpartyID, &before, nil, req.Msg.GetReason())
+	})
 	if err != nil {
 		return nil, dbError(err)
 	}

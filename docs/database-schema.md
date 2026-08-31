@@ -1103,6 +1103,7 @@ erDiagram
 erDiagram
     liability_logs }o--|| liability_balances : "projected into"
     liability_payments ||--o{ liability_logs : "a CONFIRMED one posts"
+    liability_terms ||--o{ liability_terms_logs : "every change to it is recorded"
     liability_terms {
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
@@ -1143,14 +1144,30 @@ erDiagram
         bigint      payer_team_id    "who paid — NOT interchangeable with the creditor"
         bigint      creditor_team_id "who was paid, and the ONLY team that may confirm"
         bigint      amount           "whole rupiah, ALWAYS POSITIVE — direction is the two ids"
-        text        status           "recorded, confirmed or reversed"
+        text        status           "recorded, confirmed, rejected or reversed"
         text        note             "the payers hint for the human confirming"
-        text        reversal_reason  "why a confirmation was undone"
+        text        reason           "why it was REJECTED or REVERSED — the status says which"
         bigint      recorded_by      "who claimed it — opaque user id"
         bigint      confirmed_by     "who agreed — opaque user id"
         timestamptz created_at
-        timestamptz confirmed_at     "NULL until confirmed; SURVIVES a reversal"
+        timestamptz confirmed_at     "NULL until confirmed; SURVIVES a reversal. STAYS NULL on a reject"
         timestamptz updated_at
+    }
+
+    liability_terms_logs {
+        bigserial   id                    PK
+        bigint      team_id               "the CREDITOR whose terms changed"
+        bigint      counterparty_id       "0 IS THE DEFAULT ROW, as in liability_terms"
+        bigint      actor_id              "WHO changed it — opaque user id, 0 when unattended"
+        bigint      old_credit_limit      "NULLABLE — NULL unlimited, 0 frozen, n a ceiling"
+        bigint      new_credit_limit      "NULLABLE, for the same three-way reason"
+        bigint      old_handling_fee
+        bigint      new_handling_fee
+        bigint      old_product_markup_bp
+        bigint      new_product_markup_bp
+        text        reason                "required by the app when override is true"
+        boolean     override              "the actor held no role in the creditor team"
+        timestamptz changed_at
     }
 ```
 
@@ -1211,6 +1228,27 @@ erDiagram
   - Created with #186 rather than #189, because the order fees have to READ it before anything writes
     it. #189 added the RPCs that write it — until then every row was absent, so every fee was 0 and
     every credit limit unlimited.
+- **`liability_terms_logs`** — WHO changed a limit, when, and why
+  ([a-limit-change-is-recorded](business/balance/context_decision.md#a-limit-change-is-recorded)).
+  The threshold is the ONLY control this design has — no cycle, no due date, no overdue state — so
+  lowering one is the most consequential act in this context: it stops a team trading. An unrecorded
+  override is the difference between a supervisor and a back door.
+  - ⚠ **BOTH limit columns are NULLABLE, and that is the entire point of the table.** `NULL`, `0` and
+    a number are three different acts — unlimited, frozen, a real ceiling — and a NOT NULL column
+    flattens the first into the second, recording *"they removed the limit"* as *"they froze the
+    team"*. Those are opposites, and the wrong one of the two is the one that stops a team trading.
+  - **`override` is DERIVED BY THE SERVER** from the role the access interceptor resolved: it is true
+    when the actor held **no role in the creditor team**, i.e. they were let in by the root-team
+    bypass. Never sent by the caller — whether a write was an override is a fact about who made it,
+    and the caller is the one party with a reason to misreport it.
+  - **A DELETE is logged as a removal**, with `new_credit_limit` NULL rather than 0. Deleting a pair's
+    terms lifts the ceiling entirely, so recording 0 would say the act froze the team it freed.
+  - **A no-op delete logs nothing.** The RPC still succeeds — the caller asked for a state and it
+    holds — but nothing changed, and a history full of no-ops is one nobody reads.
+  - ⚠ **It is NOT `liability_logs`, and the two must never merge**
+    ([two-logs-two-names](technical/balance/team_balance_design_decision.md#two-logs-two-names)). This
+    is a RULE that changed; that one is MONEY that moved. They appear on the same page because
+    somebody asking *"why is this team blocked"* needs both, and only one of them is a ledger.
 - **`liability_payments`** — one team's claim that it paid another, and the creditor's agreement that
   the money arrived (#188). **Liability is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
   only the confirm posts to the ledger.
@@ -1220,6 +1258,16 @@ erDiagram
     counterparties are teams only: an external party has no account and could never confirm.
   - **`amount` is always POSITIVE**; direction lives in the two team columns. A negative payment would be
     a refund, which is a different thing and is not modelled.
+  - ⚠ **`rejected` AND `reversed` ARE DIFFERENT FAILURES.** Rejecting refuses a CLAIM and posts
+    **nothing**; reversing undoes a CONFIRMATION with a compensating entry. Only the second ever
+    touched the ledger. Before `rejected` existed, a creditor facing a payment that never landed could
+    only leave it pending forever or confirm-then-reverse — two real movements for money that never
+    moved. `balance_context.md` §Payment Flow draws both arms and the lifecycle makes both terminal.
+  - **One `reason` column serves both**, because the `status` already says which act filled it. Two
+    columns would leave one permanently NULL on every row. It was `reversal_reason` while only one act
+    could write it (migration `00007`).
+  - **A reject leaves `confirmed_by` / `confirmed_at` empty.** Borrowing them to record who refused
+    would make every *"when was this agreed"* query count refusals as agreements.
   - **A reversal is a compensating entry, never an edit.** The confirmation stays and an
     equal-and-opposite entry joins it — "it was briefly settled" is what an audit needs to see.
     `confirmed_at` / `confirmed_by` SURVIVE a reversal: when it was agreed, and by whom, are facts.

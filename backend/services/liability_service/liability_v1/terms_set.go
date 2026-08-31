@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	liabilityv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
@@ -40,10 +41,31 @@ func (s *Service) LiabilityTermsSet(
 
 	var row liability_service_models.LiabilityTerms
 
-	err := s.db.
-		WithContext(ctx).
-		Raw(`
-			INSERT INTO liability_terms
+	// ⚠ THE UPSERT AND ITS LOG ENTRY ARE ONE TRANSACTION (a-limit-change-is-recorded). A limit that
+	// changed with no record of who changed it is the back door that decision exists to close — and it
+	// is worse than either half failing, because nobody would know to look.
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// WHAT IT WAS, read inside the transaction and BEFORE the write. Nil when this pair has never
+		// had terms, which the log renders as "nothing set" — because that is what it was.
+		var before *liability_service_models.LiabilityTerms
+
+		var existing liability_service_models.LiabilityTerms
+
+		found := tx.
+			Where("team_id = ? AND counterparty_id = ?", teamID, counterpartyID).
+			Limit(1).
+			Find(&existing)
+		if found.Error != nil {
+			return found.Error
+		}
+
+		if found.RowsAffected > 0 {
+			before = &existing
+		}
+
+		upsertErr := tx.
+			Raw(`
+				INSERT INTO liability_terms
 			    (team_id, counterparty_id, handling_fee, product_markup_bp, credit_limit,
 			     created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, NOW(), NOW())
@@ -57,15 +79,21 @@ func (s *Service) LiabilityTermsSet(
 			    updated_at        = NOW()
 			RETURNING id, team_id, counterparty_id, handling_fee, product_markup_bp, credit_limit,
 			          created_at, updated_at`,
-			teamID,
-			counterpartyID,
-			req.Msg.GetHandlingFee(),
-			req.Msg.GetProductMarkupBp(),
-			// NOT GetCreditLimit() — see the note above. nil must reach SQL as NULL.
-			req.Msg.CreditLimit,
-		).
-		Scan(&row).
-		Error
+				teamID,
+				counterpartyID,
+				req.Msg.GetHandlingFee(),
+				req.Msg.GetProductMarkupBp(),
+				// NOT GetCreditLimit() — see the note above. nil must reach SQL as NULL.
+				req.Msg.CreditLimit,
+			).
+			Scan(&row).
+			Error
+		if upsertErr != nil {
+			return upsertErr
+		}
+
+		return recordTermsChange(ctx, tx, teamID, counterpartyID, before, &row, req.Msg.GetReason())
+	})
 	if err != nil {
 		return nil, dbError(err)
 	}

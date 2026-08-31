@@ -301,15 +301,13 @@ after a timeout must not fail because the first attempt worked.
 **A rate change never rewrites history.** Terms decide what FUTURE postings charge; entries already
 written are immutable facts about money that moved.
 
-### The change log — `LiabilityTermsHistoryList`, declared and NOT implemented
+### The change log — `LiabilityTermsHistoryList`
 
-⛔ **The handler refuses with `Unimplemented`.** It exists because the contract is derived from the
-screen and accepted at the same gate as it (HARD RULE 6): the Credit Terms screen is a Storybook
-prototype awaiting `design_accept`, and a service is mounted WHOLE — so the moment the proto grew an
-RPC, every method of that interface had to exist or the build breaks.
-
-⚠ **It refuses rather than returning an empty page.** An empty list is indistinguishable from *"nobody
-has ever changed a limit"*, which is exactly the false reassurance an audit surface must not give.
+✅ **Implemented**, backed by `liability_terms_logs` (migration `00008`). It was declared and refusing
+with `Unimplemented` for as long as the table did not exist — the contract is derived from the screen
+and accepted at the same gate as it (HARD RULE 6), and a service is mounted WHOLE, so the moment the
+proto grew an RPC every method had to exist or the build breaks. The frontend was already built
+against it: `ChangeLogPanel` and `useTermsHistory` needed no change when the backend landed.
 
 Why a LOG and not two more columns on the terms row — both reasons come from decisions already made:
 
@@ -320,12 +318,20 @@ Why a LOG and not two more columns on the terms row — both reasons come from d
   makes 80% the only signal this design has. A team at 87% whose limit doubles drops to 43% and the
   badge vanishes — with columns alone, nothing anywhere shows it was ever warning.
 
-What it needs before it can be written, and neither is the handler's decision:
+How it is built:
 
 | | |
 | --- | --- |
-| a `liability_terms_changes` table | ⚠ **both limit columns NULLABLE.** `NULL`, `0` and a number are three different acts, and an integer column flattens the first into the second — turning *"they removed the limit"* into *"they froze the team"* |
-| the actor, stamped at write time | in `LiabilityTermsSet` / `LiabilityTermsDelete`, from the TOKEN — along with whether the writer was outside the creditor team. A caller cannot be trusted to report that its own write was an override |
+| `liability_terms_logs` | ⚠ **both limit columns NULLABLE.** `NULL`, `0` and a number are three different acts, and an integer column flattens the first into the second — turning *"they removed the limit"* into *"they froze the team"* |
+| the actor, stamped at write time | `LiabilityTermsSet` / `LiabilityTermsDelete` read it from the TOKEN, never the request |
+| `override`, derived by the server | `san_auth.GetCallerRole` returns the role the access interceptor resolved **for the scoped team**. `ROLE_UNSPECIFIED` means the caller holds none there — so the request was authorized by the root-team bypass, which is exactly what an override is. ⚠ It is not an authorization check and must never be used as one: the interceptor has already decided *whether*, this answers *on whose behalf* |
+| the write and its log are ONE TRANSACTION | a limit that changed with no record of who changed it is the back door this exists to close — worse than either half failing, because nobody would know to look |
+| a DELETE logs a REMOVAL | `new_credit_limit` NULL, not 0. Deleting a pair's terms lifts the ceiling, so 0 would say the act froze the team it freed |
+| a no-op delete logs NOTHING | the RPC still succeeds, but nothing changed — and a history full of no-ops is one nobody reads |
+
+⚠ **The counterparty filter is `optional`, because `0` is a real value here** — the default row. Omit
+it for every counterparty's history; send `0` for the house rate's alone. A plain `uint64` could not
+tell those two questions apart.
 
 `reason` is already on both write requests: **required when the actor is outside the creditor team**,
 optional when they are. A creditor setting its own terms owes nobody an explanation; somebody else
@@ -337,14 +343,14 @@ sequenceDiagram
     participant U as an owner or an admin
     participant S as LiabilityTermsSet
     participant T as liability_terms
-    participant L as liability_terms_changes
+    participant L as liability_terms_logs
 
     U->>S: new limit, and a reason
-    S->>S: read the actor from the TOKEN, never the request
-    alt the actor is outside the creditor team
-        S->>S: the reason is required — an override
+    S->>S: read the actor and their ROLE from the token, never the request
+    alt the actor holds no role in the creditor team
+        S->>S: override — the reason is required
     end
-    S->>T: upsert the row
+    S->>T: read what it was, then upsert — one transaction
     S->>L: old and new limits, the actor, the reason, the override flag
     Note over L: NULL, 0 and a number stay three distinct values
 ```
@@ -426,14 +432,22 @@ sequenceDiagram
     participant S as liability_service
     participant C as Creditor team
 
-    P->>S: LiabilityPaymentRecord — amount, note
+    P->>S: LiabilityPaymentRecord — amount, note, PROOF
     Note over S: status = recorded. NO ledger effect.
     S-->>C: appears in the badge and the awaiting_my_confirmation list
 
-    C->>S: LiabilityPaymentConfirm
-    Note over S: lock FOR UPDATE, demand status = recorded
-    S->>S: status = confirmed AND PostEntry — one transaction
-    Note over S: the debt is settled
+    C->>C: open the proof and check it manually
+
+    alt the money is there
+        C->>S: LiabilityPaymentConfirm
+        Note over S: lock FOR UPDATE, demand status = recorded
+        S->>S: status = confirmed AND PostEntry — one transaction
+        Note over S: the debt is settled
+    else the money is not there
+        C->>S: LiabilityPaymentReject — reason required
+        Note over S: status = rejected. NOTHING is posted.
+        S-->>P: the payer reads the reason and re-records
+    end
 
     opt confirmed in error
         C->>S: LiabilityPaymentReverse — reason required
@@ -442,6 +456,46 @@ sequenceDiagram
         Note over S: the debt is back, and both entries stay
     end
 ```
+
+### `reject` and `reverse` are DIFFERENT FAILURES
+
+`balance_context.md` §Payment Flow draws *"Is Payment Correct?"* with two arms and its lifecycle
+diagram makes both terminal. They must never share a path:
+
+| | refuses | posts | when |
+| --- | --- | --- | --- |
+| `Reject` | a **claim** | **nothing** | the creditor looked and the money is not there |
+| `Reverse` | a **confirmation** | a **compensating entry** | the creditor already agreed, in error |
+
+⛔ **Before `rejected` existed** the shipped statuses were `recorded · confirmed · reversed`, so a
+creditor facing a payment that never landed could only leave it pending forever — or confirm it and
+then reverse it, writing **two real ledger movements for money that never moved** and leaving the
+pair's history telling a story that did not happen.
+
+- **The status needed no migration** — the column is `TEXT`, for the same reason
+  `liability_logs.source_type` is: the set of states is a design decision, not a database one.
+- **`reversal_reason` became `reason`** (migration `00007`). Two acts fill it now and the STATUS says
+  which, so one column serves both; two would leave one permanently NULL on every row.
+- **A reject leaves `confirmed_by` / `confirmed_at` empty.** Borrowing them to record who refused
+  would make every *"when was this agreed"* query count refusals as agreements.
+- **The row is still locked FOR UPDATE** even though nothing posts: confirm and reject race each
+  other by design — two managers, one payment, one second — and without the lock one would post the
+  money while the other marked it refused.
+
+### The proof, and who can read it
+
+§Payment Flow's middle step is *"Team B check manually"*, which needs something to look at. A payment
+carries **at least one document id** (`a-payment-must-carry-proof`), and the read works because the
+**payer grants the share themselves**, in their own scope, before recording:
+
+```
+RequestUpload → PUT the bytes → ConfirmUpload → ShareDocument → LiabilityPaymentRecord
+```
+
+⚠ **No service ever asks another for permission.** `document_service` scopes every read to the owning
+team plus its `document_shares` rows, and that invariant stays intact. The alternative — an internal
+signing path letting `liability_service` vouch for the reader — would make one bug in a relation
+check a leak of every private file in the system.
 
 ### Why recording posts nothing
 
@@ -456,6 +510,7 @@ confirm.
 | --- | --- | --- |
 | `Record` | the **payer** | you may only assert a movement of your own money |
 | `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
+| `Reject` | the **creditor** | only the team that was supposedly paid can say the money did not arrive |
 | `Reverse` | the **creditor** | whoever confirmed is who un-confirms |
 
 The scope is in the `WHERE` of the lookup, not a check after loading, so somebody else's payment

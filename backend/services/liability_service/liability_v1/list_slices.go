@@ -199,3 +199,49 @@ func paymentListItems(
 
 	return items, ids
 }
+
+// termsChangeListItems wraps the LIMIT HISTORY, keyed by the change's own id.
+//
+// ⚠ KEYED BY `id`, NOT BY COUNTERPARTY — unlike termsListItems above. Terms are one row per pair, so
+// the pair identifies them; a history has MANY changes for the same pair, and keying by counterparty
+// would silently keep only the newest of each and drop the log to one row per debtor. The very thing
+// the screen exists to show is the sequence.
+func termsChangeListItems(
+	changes []*liabilityv1.LiabilityTermsChange,
+	types []liabilityv1.LiabilityTermsHistoryListDataType,
+) ([]*liabilityv1.LiabilityTermsHistoryListResponseItem, []uint64) {
+	if len(types) == 0 {
+		types = []liabilityv1.LiabilityTermsHistoryListDataType{
+			liabilityv1.LiabilityTermsHistoryListDataType_LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_CHANGE,
+		}
+	}
+
+	ids := make([]uint64, 0, len(changes))
+	for _, c := range changes {
+		ids = append(ids, c.GetId())
+	}
+
+	items := make([]*liabilityv1.LiabilityTermsHistoryListResponseItem, 0, len(types))
+	for _, t := range types {
+		switch t {
+		case liabilityv1.LiabilityTermsHistoryListDataType_LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_UNSPECIFIED:
+			m := make(map[uint64]*commonv1.GeneralItem, len(changes))
+			for _, c := range changes {
+				m[c.GetId()] = &commonv1.GeneralItem{Id: c.GetId()}
+			}
+			items = append(items, &liabilityv1.LiabilityTermsHistoryListResponseItem{
+				D: &liabilityv1.LiabilityTermsHistoryListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
+			})
+		case liabilityv1.LiabilityTermsHistoryListDataType_LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_CHANGE:
+			m := make(map[uint64]*liabilityv1.LiabilityTermsChange, len(changes))
+			for _, c := range changes {
+				m[c.GetId()] = c
+			}
+			items = append(items, &liabilityv1.LiabilityTermsHistoryListResponseItem{
+				D: &liabilityv1.LiabilityTermsHistoryListResponseItem_Change{Change: &liabilityv1.LiabilityTermsChangeMapItem{MapData: m}},
+			})
+		}
+	}
+
+	return items, ids
+}
