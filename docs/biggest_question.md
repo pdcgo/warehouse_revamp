@@ -10,7 +10,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**93 open questions across 16 files.** The seven below are shown; **86 are not** — they are not
+**91 open questions across 16 files.** The seven below are shown; **84 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 > **Driven by `balance_context.md` §Payment Flow** — two diagrams that specify the payment lifecycle
@@ -21,75 +21,34 @@ closed, only smaller. The per-file counts are at the bottom.
 > ([the-debtor-claims-the-creditor-decides](business/balance/context_decision.md#the-debtor-claims-the-creditor-decides)).
 > It is **build work** now, not a question.
 >
-> ✅ **#3 HAS RUN — the ledger migration is BUILT** (2026-08-31), carrying all three approved
-> changes at once: the business vocabulary, `actor_id`, and the rename to `liability_logs`. It fixed
-> a live bug on the way past — the daily statement read `COD_FEE`, which posts nothing, so that
-> column reported 0 every day while the warehouse outlay appeared in none. ⛔ **NOT APPLIED**: Docker
-> was not running, so the migration never executed and the DB-backed tests skipped.
+> **Driven by three answers in one message**, all three now BUILT — the cost-line note rule, Credit
+> Terms as a section of the pair detail, and payment proof.
 >
-> ⛔ **ONE STEP OF IT IS STILL BLOCKED.** Collapsing the two restock cost kinds into `INCIDENTAL`
-> removes what the note rule keys on — optional for `COD_SHIPPING`, required for `OTHER`, and with one
-> kind every line is the `OTHER` case. It needs a rule only the owner can set, because it adds a
-> required field to what a warehouse person types at acceptance
-> ([balance Q12](business/balance/context_clarify.md#question)).
+> ✅ **#3 IS DONE AND #7 IS GONE.** The ledger migration ran as code (vocabulary, `actor_id`, the
+> rename to `liability_logs`), the cost-kind collapse completed it, and *is Credit Terms a screen or
+> a section* was answered — a section — so the `design_accept` gate that had been holding a finished
+> prototype is passed.
 >
-> ✅ **`actor_id` is DECIDED — the third of the three biggest for balance closes.**
-> [every-entry-names-who-posted-it](technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it).
-> ⚠ **Its second half closed against my recommendation, from evidence in the code.** I proposed a
-> *"posted by the system"* sentinel for the five event-driven causes; `restock_request_fulfill.go:191`
-> already computes the human actor and writes it onto four things, then calls `PostRestockOutlay`,
-> whose signature has no actor. The person is **dropped at the boundary**, not absent. Two parameters,
-> not a sentinel — and a column reading *"system"* for five of six causes would have cost a migration
-> and answered nothing.
+> ⛔ **AND ONE OF THE ANSWERS CREATED A NEW BLOCKER, at #6.** The terms LIST was the only place the
+> DEFAULT row (`counterparty_id = 0`) could be read or written, and implementing *a section of the
+> pair detail* deleted it. A pair page lives at `/liability/:counterpartyId` and **team 0 is not a
+> team**, so the rule every other row is an exception to is now settable **nowhere**
+> ([technical balance Q6](technical/balance/team_balance_design_clarify.md#question)). This is a
+> live regression, not a design gap, and one sentence settles it.
 >
-> 🆕 **A SECOND naming idea, much smaller: `liability_entries` → `liability_logs`.** It keeps the
-> `liability` prefix, so it does not reopen the decision below, and it is **153 occurrences across 38
-> files** against 2350. ⚠ **I had to withdraw my own structural objection**: I said *log* invites
-> treating a row as standing alone and breaking *two legs are one posting* — `group_id` shipped and
-> `post_entry.go` is the single write path, so the invariant is held by code, not by a noun. What
-> survives is an argument the owner handed me: the pair detail carries **two** logs, and this name
-> would give one of them the bare word. **→ `liability_logs` and `liability_terms_logs`**
-> ([technical Q8](technical/balance/team_balance_design_clarify.md#question)). It rides #3 like the
-> others — same table.
+> ⛔ **NOTHING BELOW THE CONTRACT IS VERIFIED.** Four migrations are written and none has run —
+> Docker was never up on this machine, so every DB-backed test skipped. That gates all three
+> implementations equally and is not a question anybody has to answer.
 >
-> ⛔ **The earlier, bigger rename is CANCELLED, one message after it was floated.**
-> [liability-stays](technical/balance/team_balance_design_decision.md#liability-stays). `balance_logs`
-> would have forced a whole-context rename — 141 files, and two tables left with names worse than they
-> started (`balance_balances`, `balance_terms`). ⚠ **The objection was accepted, not refuted**: the
-> name still describes one leg of a mirrored pair, and that is now a **known cost** rather than an open
-> point. #3 goes back to carrying two changes.
+> ⚠ **A decision was corrected by the code while being built.**
+> [the-actor-was-dropped-at-every-boundary](technical/balance/team_balance_design_decision.md#the-actor-was-dropped-at-every-boundary):
+> I wrote that the human actor was available at every call site, having checked one. `OrderPlacedEvent`
+> had no actor field at all, so the two highest-volume causes had no channel to carry one — the column
+> would have read 0 for most rows, which is the shrug the decision said it must not become.
 >
-> ⚠ **RETRACTED: payment proof entered at #6 and has been taken back out.** I ranked it there on the
-> claim that fixing it needs the system's **first service-to-service trust path**. It does not. The
-> payer can **grant the share themselves**, in their own scope, before creating the payment — a
-> `document_shares` row, a `ShareDocument` RPC scoped to the file's owner, and one extra clause in
-> `GetDownloadUrl`. No service asks another for permission, and `document_service` keeps its
-> invariant: *no read without a row saying you may.* What is left is ordinary build work behind one
-> small answer ([balance Q10](business/balance/context_clarify.md#question)), so it ranks where a
-> small answer ranks — **#8, not shown**. ⚠ It is still true that the flow's middle step cannot be
-> executed today.
->
-> ⚠ **A defect I reported last round INVERTED.** I called *"`PaymentReverse` has no screen"* a defect.
-> The lifecycle makes `accept` terminal, which makes the same RPC an **unasked-for path** instead. It
-> is now a question, not a defect ([balance Q11](business/balance/context_clarify.md#question)) — and
-> it is small, so it is not shown here. Its sibling, the missing `rejected` state, is **confirmed** as
-> a defect.
->
-> ▲ **#6 is *which PRE-CHECKS does a draft run* again**, restored by that retraction. Unchanged and
-> unanswered throughout ([order Q4](business/order/context_clarify.md#question)).
->
-> **Earlier rebuilds, still standing:** #7 Credit Terms was narrowed but not answered by
-> [the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs)
-> · `balance-manages-and-reports` was **renamed** to
-> [balance-manages-reports-and-takes-payments](business/balance/context_decision.md#balance-manages-reports-and-takes-payments)
-> when payments became a third responsibility (RULE 12) · the count corrected from 71 to 89 when this
-> rollup started matching `# Question` as well as `## Question`, which had been hiding 17 real
-> questions.
->
-> ⚠ **Not a question, and worth more than most of them: "Summarize All Balance" is computed over ONE
-> PAGE.** The four tiles on `/liability` reduce the loaded 20 rows, so a creditor with 21
-> counterparties reads a headline that silently omits one — and turning the page changes the
-> "total". A defect with a known fix
+> ⚠ **Not a question, and still true: "Summarize All Balance" is computed over ONE PAGE.** The four
+> tiles on `/liability` reduce the loaded 20 rows, so a creditor with 21 counterparties reads a
+> headline that silently omits one. A defect with a known fix
 > ([technical balance C16](technical/balance/team_balance_design_clarify.md#critique)), not something
 > to rank here.
 
@@ -103,11 +62,11 @@ closed, only smaller. The per-file counts are at the bottom.
 | **4** | **What moment consumes a FIFO layer, and which service stores the frozen cost?** Layers are inventory's, COGS is ledger's — the answer sets a service boundary, not just a timing. | the inventory/ledger split, COGS correctness, order lines | [product Q5](business/product/context_clarify.md#question) · [architecture Q3](technical/architecture/context_clarify.md#question) | **At commitment, both frozen on the line.** |
 | **5** | **🆕 Whose job is the SELLING team's money screen — and can one ORDER's true result be read anywhere?** Two halves of one gap opened by `0d4cbc4`. **(a)** `revenue_service` was removed and it held the selling team's income, so the daily statement is `StatementMode = "warehouse"` alone and **refuses** a selling team — while `balance_context.md` §Responsbility 2 still claims *"Serve Balance Daily Report"*. **(b)** The marketplace money is settlement's at **order** grain and the `order_fee` is balance's at **pair** grain, so *"what did order 1 make"* has no reader: `order_fees.go` writes `SourceID = orderID`, but `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. | every selling team's view of its own money — a shipped page refuses them today · the meaning of balance's second stated responsibility · order-level profitability | [balance Q8](business/balance/context_clarify.md#question) · [balance Q9](business/balance/context_clarify.md#question) | **(a) Two screens — balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things, and only the warehouse's is a pair-ledger read. §Responsbility 2 should then say *warehouse*. **(b) One `order_id` filter on `LiabilityEntryListFilter`, never a second copy of the fee** in settlement's ledger — one movement written as two rows in two services with no shared transaction is the failure [technical balance C4](technical/balance/team_balance_design_clarify.md#critique) already names. |
 | **6** | **Which PRE-CHECKS does a draft run — does it touch the reserve, the shared lock, the debt threshold?** ✅ The ledger half is closed; the moment is fixed at finalize. What is unstated is which of the checks a *draft* runs before it. | the ledger's write moment, the threshold's trigger, the lock and reserve checks | [order Q4](business/order/context_clarify.md#question) | **None of it at draft** — your own section forces it: a draft holds an *external* SKU, so it has no product, no owner and no cost, and none of the four are computable. The price is that **finalize must re-check and may refuse**. |
-| **7** | **Is Credit Terms a SCREEN of its own, or a section of the pair detail?** `team_balance_design.md` §Frontend Requirements names three screens and Credit Terms — where the limit, the handling fee and the markup are SET — is not one of them. ⚠ **Narrowed, not answered**, by [the-pair-detail-shows-both-logs](technical/balance/team_balance_design_decision.md#the-pair-detail-shows-both-logs): the pair detail now READS that pair's limit history, which says nothing about where a limit is WRITTEN. | ⛔ `design_accept` on a finished prototype · the only place §Balance Policy's threshold is configurable outside the database | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) | **A screen, kept.** The DEFAULT row (`counterparty_id = 0`) is terms for every team without their own and has no pair detail page to live on — that alone forces a list. Terms as a section of the pair detail cannot express it at all. |
+| **7** | **🆕 Where is the DEFAULT row edited?** `counterparty_id = 0` is terms for every team without their own — the rule every other row is an exception to. It was set on the terms LIST, and [terms-live-on-the-pair-detail](technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail) deleted that list in favour of a section on each pair. A pair page is `/liability/:counterpartyId` and **team 0 is not a team**, so there is no page the section can appear on. ⚠ **A live regression, not a design gap**: it is settable nowhere in the running app right now. | ⛔ the default credit limit, fee and markup for every counterparty without their own · §Balance Policy's threshold for teams nobody has configured | [technical balance Q6](technical/balance/team_balance_design_clarify.md#question) | **The CREDITOR's own settings** — the default belongs to the team granting credit, not to any pair. One field group on the team page reading *"terms for any team without their own"*, and the pair detail's section shows the inherited value with a *"using the default"* marker until overridden. ⚠ **Refuse a synthetic `/liability/0` route**: it puts a page in the pair namespace for something that is not a pair, and every list, breadcrumb and back-link would special-case it. |
 
 ---
 
-## Where the other 86 are
+## Where the other 84 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -115,7 +74,7 @@ Every file's full open count — the seven above are drawn from these, not addit
 | --- | ---: | --- |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 13 | |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 11 | |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 12 | ▲ was 11 — the cost-line note rule, filed out of a state report |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 10 | ▼ was 12 — proof required, and the cost-line note rule |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | the rename closed, the terms-column split opened |

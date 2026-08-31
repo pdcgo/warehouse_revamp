@@ -1,15 +1,23 @@
 # Development state — balance
 
-**Pass:** `agent_analysis` re-examination, `implementation_analysis` for the THRESHOLD slice, and
-**three** re-examinations after three owner edits to `balance_context.md` and
-`team_balance_design.md` in one day — all **COMPLETE** (2026-08-29).
-**Lifecycle position:** ⛔ **waiting at `design_accept`** for the Credit Terms screen. That gate
-blocks, so nothing behind it has run. ⚠ **And the owner's doc has since named three frontend
-requirements that do not include this screen** — so the gate now has a question in front of it:
-[technical balance Q7](../../technical/balance/team_balance_design_clarify.md#question), *is Credit
-Terms a screen or a section?*
-**The context as a whole does not advance** — the business lane's `clarity` gate answers **yes** with
-9 open questions. One slice moved because none of them touched it.
+**Pass:** `agent_analysis`, `implementation_analysis` for the THRESHOLD slice, three
+re-examinations after owner edits, and **implementation of three answered decisions** (2026-08-31).
+
+**Lifecycle position:** ✅ **the `design_accept` gate that blocked this context is PASSED.** *Is
+Credit Terms a screen or a section* is answered
+([terms-live-on-the-pair-detail](../../technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail))
+and rebuilt as a section, so the finished prototype is no longer waiting on anything.
+
+⛔ **What blocks NOW is different, and one of it is self-inflicted:**
+
+| | |
+| --- | --- |
+| **four migrations, none applied** | Docker was never up here, so `san migrate up` never ran and every DB-backed test skipped. **Nothing below the contract is verified** — this gates all three implementations equally |
+| **the DEFAULT row is set nowhere** | ⚠ **a live regression, created by implementing the answer correctly.** The terms LIST was the only place `counterparty_id = 0` could be read or written, and it is deleted. [technical Q6](../../technical/balance/team_balance_design_clarify.md#question) — one sentence settles it |
+| **the selling team's daily report** | unchanged: a shipped page refuses every non-warehouse team, and the 10 failing story tests are downstream of it. [business Q8](../../business/balance/context_clarify.md#question) |
+
+**The context as a whole still does not advance** — the business lane's `clarity` gate answers **yes**
+with 10 open questions. Individual slices move because none of them touch it.
 
 ⚠ **This context was built BEFORE it was designed.** `liability_service` shipped; the technical doc
 [team_balance_design.md](../../technical/balance/team_balance_design.md) is still **0 bytes**. That is

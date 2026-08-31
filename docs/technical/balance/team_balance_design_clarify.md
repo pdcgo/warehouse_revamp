@@ -708,12 +708,6 @@ new**, and all three come from re-reading the code rather than the docs.
 > `liability_terms_logs`. ✅ **All three riders on the pending migration are now decided and nothing
 > gates it.**
 
-8. **🆕 Does `liability_terms.handling_fee` rename to `order_fee` too?** ([Critique 22](#critique))
-   ⚠ **I created this inconsistency and did not fix it**, deliberately: the mapping in
-   [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
-   lists source types only, and widening a migration on my own judgement is not mine to do.
-   **→ I recommend renaming it.** One column, one proto field, one label — and the alternative is a
-   screen that says *Handling fee* for money the pair detail beside it calls an *Order fee*.
 7. **Does "Summarize All Balance" mean a SEPARATE screen, or the tiles on the list page?**
    ([Critique 16](#critique)) You listed it as its own item, before the list — which reads as a
    separate screen, and today it is four tiles on top of the list.
@@ -726,6 +720,12 @@ new**, and all three come from re-reading the code rather than the docs.
 > **change log** whose logged limit is **nullable** — `NULL`, `0` and a number being three different
 > acts. Nothing about it is still open. ⚠ **It is BUILD work now**, and none of it exists: a migration
 > on `liability_terms`, and a screen — `liabilityTermsClient` still has **zero callers**.
+8. **🆕 Does `liability_terms.handling_fee` rename to `order_fee` too?** ([Critique 22](#critique))
+   ⚠ **I created this inconsistency and did not fix it**, deliberately: the mapping in
+   [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
+   lists source types only, and widening a migration on my own judgement is not mine to do.
+   **→ I recommend renaming it.** One column, one proto field, one label — and the alternative is a
+   screen that says *Handling fee* for money the pair detail beside it calls an *Order fee*.
 
 ---
 
