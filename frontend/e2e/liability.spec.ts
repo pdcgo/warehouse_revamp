@@ -51,6 +51,62 @@ async function call(page: Page, method: string, body: unknown) {
   );
 }
 
+// uploadProof runs the WHOLE four-step proof flow the payer performs before recording a payment
+// (a-payment-must-carry-proof):
+//
+//   RequestUpload → PUT the bytes → ConfirmUpload → ShareDocument
+//
+// ⚠ THE SHARE IS THE STEP THAT MATTERS and the reason this is a helper rather than three inline
+// lines. `GetDownloadUrl` scopes every read to the owning team, so without the fourth call the
+// CREDITOR — the one person who has to look at the slip — gets NotFound on it. The payer grants it
+// themselves, in their own scope, which is what keeps document_service from ever having to trust
+// another service's word about who may read a file.
+async function uploadProof(page: Page, ownerTeam: string, shareWith: string, filename: string) {
+  const requested = await call(page, "document.v1.DocumentService/RequestUpload", {
+    teamId: ownerTeam,
+    filename,
+    contentType: "image/png",
+    sizeBytes: "70",
+    resourceType: "DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF",
+  });
+  expect(requested.status).toBe(200);
+
+  // The bytes go to the signed URL, with the headers echoed exactly as the response gave them.
+  const put = await page.evaluate(
+    async ([url, method, headers]) => {
+      // A one-pixel PNG — the store validates the content type, and a thumbnail attempt on garbage
+      // logs a warning that reads like a failure.
+      const png = Uint8Array.from(atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      ), (c) => c.charCodeAt(0));
+
+      const res = await fetch(url as string, {
+        method: method as string,
+        headers: headers as Record<string, string>,
+        body: png,
+      });
+
+      return res.status;
+    },
+    [requested.body.uploadUrl, requested.body.method, requested.body.headers ?? {}] as const,
+  );
+  expect(put).toBeLessThan(300);
+
+  const confirmed = await call(page, "document.v1.DocumentService/ConfirmUpload", {
+    uploadToken: requested.body.uploadToken,
+  });
+  expect(confirmed.status).toBe(200);
+
+  const shared = await call(page, "document.v1.DocumentService/ShareDocument", {
+    teamId: ownerTeam,
+    documentId: confirmed.body.document.id,
+    withTeamId: shareWith,
+  });
+  expect(shared.status).toBe(200);
+
+  return confirmed.body.document.id as string;
+}
+
 // A COD restock, accepted — the one obligation this system creates today. Team 1 (root) plays the
 // requesting team; team 1 cannot owe itself, so the warehouse is a separate id.
 const WAREHOUSE_TEAM = 1;
@@ -91,7 +147,17 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
   const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestFulfill", {
     teamId: warehouseId,
     requestId: String(request.id),
-    costLines: [{ kind: "RESTOCK_COST_KIND_COD_SHIPPING", amount: String(COD_FEE) }],
+    // ⚠ `INCIDENTAL`, and the NOTE IS REQUIRED. The kinds collapsed to one
+    // (the-ledger-speaks-the-business-words) and the note rule stopped being conditional with them:
+    // every line is now the untyped case, so the words are the only thing saying what the money was
+    // (an-incidental-line-must-say-what-it-was-for).
+    costLines: [
+      {
+        kind: "RESTOCK_COST_KIND_INCIDENTAL",
+        amount: String(COD_FEE),
+        note: "courier asked at the door",
+      },
+    ],
     lines: request.items.map((item: { id: string; quantity: number }) => ({
       itemId: item.id,
       receivedQuantity: item.quantity,
@@ -181,4 +247,105 @@ test("Liability redesign: the counterparty detail opens with the ledger and its 
   // Make Payment opens the two-phase form (recording alone moves nothing until they confirm).
   await page.getByTestId("liability-detail-make-payment").click();
   await expect(page.getByTestId("record-amount")).toBeVisible();
+});
+
+// §Payment Flow, end to end — the diagram in `balance_context.md`:
+//
+//   Team A sees what it owes → creates a Payment WITH PROOF → Team B checks manually
+//     → correct?  yes → Accept    no → Reject
+//
+// ⚠ THE REJECT ARM IS THE ONE THAT DID NOT EXIST. Before it, a creditor facing a claim that never
+// landed could only leave it pending forever, or CONFIRM and then REVERSE — two real ledger movements
+// for money that never moved.
+test("Liability: a payment is claimed with proof, refused, then paid again and accepted", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // The debt the earlier tests created runs the other way: the warehouse is owed by team 1. So team 1
+  // is the PAYER here and the warehouse is the CREDITOR — which is also why every act below is scoped
+  // to whichever of the two is entitled to it.
+  const proofId = await uploadProof(page, String(WAREHOUSE_TEAM), warehouseId, "transfer.png");
+
+  // ⚠ A PAYMENT WITHOUT PROOF IS REFUSED BY THE CONTRACT (a-payment-must-carry-proof), so the
+  // negative case is worth asserting before the happy one: the creditor's check is a MANUAL look at a
+  // document, and a claim with nothing attached asks them to accept on the payer's word.
+  const noProof = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+    teamId: String(WAREHOUSE_TEAM),
+    creditorTeamId: warehouseId,
+    amount: "5000",
+    note: "no slip attached",
+    documentIds: [],
+  });
+  expect(noProof.status).toBe(400);
+
+  // A claim the creditor will refuse.
+  const claimed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+    teamId: String(WAREHOUSE_TEAM),
+    creditorTeamId: warehouseId,
+    amount: "5000",
+    note: "transfer BCA",
+    documentIds: [proofId],
+  });
+  expect(claimed.status).toBe(200);
+  expect(claimed.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_RECORDED");
+
+  const before = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
+    teamId: String(WAREHOUSE_TEAM),
+    page: { page: 1, limit: 50 },
+  });
+  expect(before.status).toBe(200);
+
+  // ⚠ RECORDING MOVED NOTHING. One side asserting a transfer is not evidence that it landed.
+  const owedBefore = before.body.totalPayable;
+
+  const rejected = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentReject", {
+    teamId: warehouseId,
+    paymentId: claimed.body.payment.id,
+    reason: "no transfer of this amount reached our account",
+  });
+  expect(rejected.status).toBe(200);
+  expect(rejected.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_REJECTED");
+  // The payer has to be able to READ why, or they cannot tell whether to re-send the slip or the money.
+  expect(rejected.body.payment.reason).toContain("reached our account");
+
+  const afterReject = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
+    teamId: String(WAREHOUSE_TEAM),
+    page: { page: 1, limit: 50 },
+  });
+  // ⛔ THE WHOLE POINT: a rejection posts NOTHING, so the debt is exactly what it was.
+  expect(afterReject.body.totalPayable).toBe(owedBefore);
+
+  // Rejection is TERMINAL — the payer records a new claim rather than amending this one.
+  const reconfirm = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
+    teamId: warehouseId,
+    paymentId: claimed.body.payment.id,
+  });
+  expect(reconfirm.status).toBe(400);
+
+  // The money really does arrive the second time.
+  const proofId2 = await uploadProof(page, String(WAREHOUSE_TEAM), warehouseId, "transfer-2.png");
+
+  const second = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+    teamId: String(WAREHOUSE_TEAM),
+    creditorTeamId: warehouseId,
+    amount: "5000",
+    note: "transfer BCA, again",
+    documentIds: [proofId2],
+  });
+  expect(second.status).toBe(200);
+
+  const confirmed = await call(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
+    teamId: warehouseId,
+    paymentId: second.body.payment.id,
+  });
+  expect(confirmed.status).toBe(200);
+  expect(confirmed.body.payment.status).toBe("LIABILITY_PAYMENT_STATUS_CONFIRMED");
+
+  // ✅ THIS one posted. The debt fell by exactly the amount paid.
+  const afterConfirm = await call(page, "liability.v1.LiabilityService/LiabilityPositionList", {
+    teamId: String(WAREHOUSE_TEAM),
+    page: { page: 1, limit: 50 },
+  });
+  expect(Number(afterConfirm.body.totalPayable)).toBe(Number(owedBefore) - 5000);
 });

@@ -531,7 +531,10 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
         teamId: wh.team.id,
         requestId: created.request.id,
         // What the delivery cost the warehouse — known only to it, and only now.
-        costLines: [{ kind: "RESTOCK_COST_KIND_COD_SHIPPING", amount: 25000 }],
+        // `INCIDENTAL` with a required note — see the liability spec for why the pair rule went.
+        costLines: [
+          { kind: "RESTOCK_COST_KIND_INCIDENTAL", amount: 25000, note: "courier asked at the door" },
+        ],
         lines: [
           {
             itemId: created.request.items[0].id,
