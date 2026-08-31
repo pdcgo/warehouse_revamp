@@ -253,8 +253,8 @@ as authoritative.
 
 | | |
 | --- | --- |
-| **`liability_terms.handling_fee`** | the ledger line is `order_fee` and the terms column that sets its rate is still `handling_fee` — so the Credit Terms screen says *Handling fee* for money the pair detail calls an *Order fee*. The decision's mapping covered source types only, so this was left alone rather than widened on my own judgement. **→ Recommend renaming it to `order_fee`**: one column, one proto field, one label |
-| **the restock cost-kind collapse** | `RESTOCK_COST_KIND_COD_SHIPPING` + `OTHER` → one `INCIDENTAL` is decided and **not done**. It is a different service's migration, and it has an unanswered sub-question: the note is currently *optional for COD_SHIPPING, required for OTHER*, and with one kind that pair-rule has nothing to key on. **→ Recommend required always** — with one kind, the kind no longer says what the money was |
+| **`liability_terms.handling_fee`** | the ledger line is `order_fee` and the terms column that sets its rate is still `handling_fee` — so the Credit Terms screen says *Handling fee* for money the pair detail calls an *Order fee*. Now filed as [technical Q8](../../technical/balance/team_balance_design_clarify.md#question), same reason as above |
+| **the restock cost-kind collapse** | `RESTOCK_COST_KIND_COD_SHIPPING` + `OTHER` → one `INCIDENTAL` is decided and **not done** — the only unbuilt step of an otherwise-complete migration. Now filed as [Q12](../../business/balance/context_clarify.md#question) rather than living only here: a state report is written for the next agent, and an open question belongs in the clarify file of the doc that can answer it (HARD RULE 7b) |
 
 ## ⚠ SUPERSEDED — what this section planned is BUILT (see above)
 
@@ -277,9 +277,9 @@ cheap inside this migration, a second pass outside it. What it really settles is
 > named after the wrong side) is **accepted as a known cost**, not unheard. The cost that settled it
 > was 141 files, and two tables left worse off — `balance_balances` and `balance_terms`.
 
-## Open questions — 17, and only three of them gate work
+## Open questions — 18, and FOUR of them gate work
 
-Business: [context_clarify.md](../../business/balance/context_clarify.md#question) — **11**.
+Business: [context_clarify.md](../../business/balance/context_clarify.md#question) — **12**.
 Technical: [team_balance_design_clarify.md](../../technical/balance/team_balance_design_clarify.md#question) — **6**.
 
 | gates work | |
@@ -287,6 +287,7 @@ Technical: [team_balance_design_clarify.md](../../technical/balance/team_balance
 | [Q8](../../business/balance/context_clarify.md#question) whose job is the selling daily report | a shipped page **refuses** selling teams today. Balance's §Responsbility 2 claims it |
 | [Q2](../../business/balance/context_clarify.md#question) does `found` need the owner's acknowledgement | if yes, `found` becomes two-phase like a payment — a state machine and a screen that do not exist |
 | [Q10](../../business/balance/context_clarify.md#question) is payment proof REQUIRED | the flow's middle step is unexecutable without it. ⚠ The fix is **ordinary build work**, not an architecture decision — an earlier claim that it needed a service-to-service trust path is retracted |
+| [Q12](../../business/balance/context_clarify.md#question) must an incidental cost line carry a NOTE | ⛔ **the sharpest one**: it is the LAST step of a migration that has otherwise already run, and it waits on a rule only the owner can set because it adds a required field to what a warehouse person types |
 
 The rest are real but gate nothing shipped: operating costs, repayment in goods, the return half of
 `cod_fee`, dispute finality, the chase instrument, external payables, the cost-line enum, `offset` as

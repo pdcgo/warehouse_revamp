@@ -10,7 +10,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**92 open questions across 16 files.** The seven below are shown; **85 are not** — they are not
+**93 open questions across 16 files.** The seven below are shown; **86 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 > **Driven by `balance_context.md` §Payment Flow** — two diagrams that specify the payment lifecycle
@@ -20,6 +20,18 @@ closed, only smaller. The per-file counts are at the bottom.
 > — yes, terminal, posting nothing
 > ([the-debtor-claims-the-creditor-decides](business/balance/context_decision.md#the-debtor-claims-the-creditor-decides)).
 > It is **build work** now, not a question.
+>
+> ✅ **#3 HAS RUN — the ledger migration is BUILT** (2026-08-31), carrying all three approved
+> changes at once: the business vocabulary, `actor_id`, and the rename to `liability_logs`. It fixed
+> a live bug on the way past — the daily statement read `COD_FEE`, which posts nothing, so that
+> column reported 0 every day while the warehouse outlay appeared in none. ⛔ **NOT APPLIED**: Docker
+> was not running, so the migration never executed and the DB-backed tests skipped.
+>
+> ⛔ **ONE STEP OF IT IS STILL BLOCKED.** Collapsing the two restock cost kinds into `INCIDENTAL`
+> removes what the note rule keys on — optional for `COD_SHIPPING`, required for `OTHER`, and with one
+> kind every line is the `OTHER` case. It needs a rule only the owner can set, because it adds a
+> required field to what a warehouse person types at acceptance
+> ([balance Q12](business/balance/context_clarify.md#question)).
 >
 > ✅ **`actor_id` is DECIDED — the third of the three biggest for balance closes.**
 > [every-entry-names-who-posted-it](technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it).
@@ -95,7 +107,7 @@ closed, only smaller. The per-file counts are at the bottom.
 
 ---
 
-## Where the other 85 are
+## Where the other 86 are
 
 Every file's full open count — the seven above are drawn from these, not additional to them.
 
@@ -103,10 +115,10 @@ Every file's full open count — the seven above are drawn from these, not addit
 | --- | ---: | --- |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 13 | |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 11 | |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 11 | ▲ was 9 — payment proof, and whether a confirm is final |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 12 | ▲ was 11 — the cost-line note rule, filed out of a state report |
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ was 5 — `liability_logs`, and what the limit log is called |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | the rename closed, the terms-column split opened |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
