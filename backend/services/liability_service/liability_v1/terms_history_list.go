@@ -40,8 +40,14 @@ func (s *Service) LiabilityTermsHistoryList(
 
 		// NOT GetCounterpartyId() — that flattens "every counterparty" and "the default row" into the
 		// same 0, and they are different questions.
-		if id := req.Msg.GetFilter().CounterpartyId; id != nil {
-			q = q.Where("counterparty_id = ?", *id)
+		//
+		// ⚠ THE FILTER ITSELF MUST BE NIL-CHECKED FIRST. `GetFilter()` is nil-safe, but the FIELD access
+		// after it is not — reading `.CounterpartyId` off a nil filter panics, and a caller omitting the
+		// whole filter ("every counterparty") is the ordinary case rather than an odd one. Generated
+		// getters are the nil-safe half of protobuf; raw fields are not, and mixing them is exactly how
+		// this reached a running server.
+		if f := req.Msg.GetFilter(); f != nil && f.CounterpartyId != nil {
+			q = q.Where("counterparty_id = ?", *f.CounterpartyId)
 		}
 
 		return q

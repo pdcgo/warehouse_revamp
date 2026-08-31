@@ -41,7 +41,12 @@ type LiabilityTermsLog struct {
 	// resolved, never from anything the caller sent.
 	Override bool
 
-	ChangedAt time.Time
+	// ⚠ `autoCreateTime` IS REQUIRED, and its absence is not a style slip — it writes the WRONG DATA.
+	// GORM fills timestamps by NAME (`CreatedAt` / `UpdatedAt`), and this column is called `changed_at`
+	// because a terms change is not a row being created. Without the tag GORM inserts Go's zero time
+	// EXPLICITLY, so the column's `DEFAULT NOW()` never fires and every entry is stamped year 1 — which
+	// also silently reverses `ORDER BY changed_at DESC`, the ordering the whole screen depends on.
+	ChangedAt time.Time `gorm:"autoCreateTime"`
 }
 
 func (LiabilityTermsLog) TableName() string {

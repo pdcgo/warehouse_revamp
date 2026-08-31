@@ -71,6 +71,24 @@ ordering and the new oldest-lookup sort without one. Bounded by how many counter
 teams, not customers — so it is not a problem now. It is the first thing to look at if it ever becomes
 one.
 
+## ⛔ Two of MY bugs that only RUNNING the app found
+
+Every layer was green — 1412 story tests, the whole Go suite, 5 e2e — and both of these were still
+there. They were found by calling the RPC against the dev server, in the space of two minutes.
+
+| | |
+| --- | --- |
+| **a nil-pointer panic** | `req.Msg.GetFilter().CounterpartyId` — `GetFilter()` is nil-safe, the FIELD access after it is not, and a caller omitting the filter (*"every counterparty"*) is the ORDINARY call. Six tests missed it because they all passed a filter OBJECT with a nil field inside. ⚠ It is the only raw-field access in the service — every other site uses the nil-safe getter chain — and it was forced by `optional`, which has no nil-safe getter that can tell absent from 0 |
+| **every log row stamped year 1** | GORM fills timestamps by NAME (`CreatedAt`/`UpdatedAt`) and the column is `changed_at`, so it inserted Go's zero time EXPLICITLY and the column's `DEFAULT NOW()` never fired. Worse than a wrong date: the list is `ORDER BY changed_at DESC`, so a table of identical zero timestamps orders by nothing. Six tests missed it because none of them looked at the timestamp |
+
+**→ The lesson, and it is the same one as the skipped tests above:** a test asserts what somebody
+thought to assert. Both of these are in the gap between *what the handler was tested for* and *what a
+caller actually sends*. Each now has a regression test.
+
+⚠ **The dev database has a default-terms row for team 13** (`counterparty_id = 0`, fee 15.000, markup
+20%, no limit) and one log entry, left deliberately so the preview has something to look at. The one
+row written before the timestamp fix was deleted.
+
 ## ⛔ One pre-existing failure, NOT fixed and NOT mine
 
 `restock.spec.ts:154` — *"tick two products in the picker and save"* fails on the product picker's

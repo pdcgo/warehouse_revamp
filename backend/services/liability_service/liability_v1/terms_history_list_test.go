@@ -3,6 +3,7 @@ package liability_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -195,6 +196,33 @@ func TestTermsHistory_ZeroIsTheDefaultRowNotEveryone(t *testing.T) {
 	}
 }
 
+// ⛔ A SECOND BUG THAT ONLY A RUNNING SERVER SHOWED. GORM fills timestamps by NAME, and this column
+// is `changed_at` — so without an explicit tag it inserted Go's ZERO TIME, the column default never
+// fired, and every entry came back stamped year 1. Worse than a cosmetic date: the list is ordered
+// `changed_at DESC`, so a table of identical zero timestamps orders by nothing at all.
+//
+// ⚠ Five tests passed over it because none of them looked at the timestamp.
+func TestTermsHistory_StampsWhenTheChangeHappened(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db)
+
+	const creditor uint64 = 11
+
+	before := time.Now().Add(-time.Minute).Unix()
+
+	writeTerms(t, svc, creditor, 12, i64(5_000_000), "")
+
+	changes := termsHistory(t, svc, creditor, nil)
+	if len(changes) != 1 {
+		t.Fatalf("%d changes, want 1", len(changes))
+	}
+
+	if at := changes[0].GetChangedAtUnix(); at < before {
+		t.Fatalf("changed_at = %d, want a time after %d — the zero time means GORM inserted it "+
+			"explicitly and the column default never fired", at, before)
+	}
+}
+
 // A HISTORY IS SCOPED TO THE CREDITOR. Another team's limit decisions are not readable by naming them.
 func TestTermsHistory_IsScopedToTheCreditor(t *testing.T) {
 	db := san_testdb.DB(t)
@@ -204,5 +232,34 @@ func TestTermsHistory_IsScopedToTheCreditor(t *testing.T) {
 
 	if changes := termsHistory(t, svc, 99, nil); len(changes) != 0 {
 		t.Fatalf("%d changes visible to a team that made none", len(changes))
+	}
+}
+
+// ⛔ THE REGRESSION TEST FOR A PANIC THAT REACHED A RUNNING SERVER. Every other test here passes a
+// filter OBJECT with a nil field inside it; a caller asking for every counterparty omits the filter
+// ENTIRELY, and `GetFilter()` then returns nil. The getter is nil-safe, the field access after it is
+// not — so `req.Msg.GetFilter().CounterpartyId` panicked on the most ordinary call the RPC has.
+//
+// ⚠ It survived five tests, `go vet` and the whole e2e suite. It took calling the RPC for real.
+func TestTermsHistory_AnOmittedFilterDoesNotPanic(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := liability_v1.NewService(db)
+
+	const creditor uint64 = 11
+
+	writeTerms(t, svc, creditor, 12, i64(5_000_000), "")
+
+	// NO Filter field at all — not an empty one.
+	res, err := svc.LiabilityTermsHistoryList(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityTermsHistoryListRequest{
+			TeamId: creditor,
+			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
+		}))
+	if err != nil {
+		t.Fatalf("LiabilityTermsHistoryList with no filter: %v", err)
+	}
+
+	if len(res.Msg.GetIds()) != 1 {
+		t.Fatalf("%d changes, want 1 — an omitted filter means EVERY counterparty", len(res.Msg.GetIds()))
 	}
 }
