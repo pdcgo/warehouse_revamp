@@ -522,7 +522,7 @@ flowchart LR
 
 | | Problem *(found by re-examining after `settlement_service` landed)* | → Recommend |
 | --- | --- | --- |
-| **16** | **§Responsbility 2 now serves ONE of the two team types.** `revenue_service` was removed with the settlement work and it held the selling team's income, so `StatementMode` is `"warehouse"` alone and the page **refuses** a non-warehouse team rather than show it a subtraction with no income term. ⚠ [balance-manages-reports-and-takes-payments](./context_decision.md#balance-manages-reports-and-takes-payments) reasoned that a warehouse's statement income *"exists nowhere else"* — still true, and it is now the only half that exists at all. | **Say whose report it is.** → I recommend **two screens: balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things — fees − expenses against payout − COGS − fees — and only the warehouse's is a pair-ledger read. Then §Responsbility 2 should say *warehouse* daily report, so the doc stops promising a selling team a screen this ledger cannot give it. |
+| ~~**16**~~ | ⛔ **DEFERRED** ([the-daily-report-is-deferred](./context_decision.md#the-daily-report-is-deferred)) — not resolved. Kept one round because the gap it names is still real and now has no question in front of it: a selling team is refused by a page §Responsbility 2 promises them. Original: **§Responsbility 2 now serves ONE of the two team types.** `revenue_service` was removed with the settlement work and it held the selling team's income, so `StatementMode` is `"warehouse"` alone and the page **refuses** a non-warehouse team rather than show it a subtraction with no income term. ⚠ [balance-manages-reports-and-takes-payments](./context_decision.md#balance-manages-reports-and-takes-payments) reasoned that a warehouse's statement income *"exists nowhere else"* — still true, and it is now the only half that exists at all. | **Say whose report it is.** → I recommend **two screens: balance serves the WAREHOUSE statement, settlement serves the SELLING one.** They subtract different things — fees − expenses against payout − COGS − fees — and only the warehouse's is a pair-ledger read. Then §Responsbility 2 should say *warehouse* daily report, so the doc stops promising a selling team a screen this ledger cannot give it. |
 | **17** | **Nothing can answer *"what did order 1 actually make"*.** Settlement holds that order's marketplace money at **order** grain, and the `order_fee` it also cost sits here at **pair** grain. The join exists in the data and not in the contract: [`order_fees.go:165`](../../../backend/services/liability_service/liability_v1/order_fees.go) writes `SourceID = orderID`, while `LiabilityEntryListFilter` accepts `counterparty_id` and nothing else. So the fee is recorded, attributable, and **unaskable**. | **One filter field, never a second copy of the fee.** → I recommend adding an `order_id` (`source_id`) filter to `LiabilityEntryListFilter` and assembling the order's P&L on the screen from settlement + the frozen COGS + the fee. Posting the fee into `settlement_entries` as well would make one movement two rows in two services with no shared transaction — [technical Critique 4](../../technical/balance/team_balance_design_clarify.md#critique) is that exact failure. |
 
 ---
@@ -564,12 +564,12 @@ flowchart LR
 7. **🆕 Are external payables — suppliers, couriers — in scope for this ledger?**
    ([Critique 12](#critique)) They cannot use cause 6, because an outsider cannot confirm a payment.
    **→ I recommend no for v1, but name where they DO live** — the current answer is "nowhere".
-8. **🆕 Whose job is the SELLING team's daily report?** ([Critique 16](#critique)) §Responsbility 2
-   claims *"Serve Balance Daily Report"*, and since `revenue_service` was removed that page serves
-   warehouses only — a selling team is refused at the door.
-   **→ I recommend two screens — balance serves the warehouse statement, settlement serves the selling
-   one** — and §Responsbility 2 saying *warehouse*, so the doc stops promising what this ledger cannot
-   give.
+> ⛔ **Q8 is DEFERRED and leaves this file** —
+> [the-daily-report-is-deferred](./context_decision.md#the-daily-report-is-deferred). Parked is not
+> open, so it stops being counted here; the decision file holds it for when it comes back.
+> ⚠ **What it leaves broken is deliberate**: §Responsbility 2 promises every team a daily report and
+> the shipped page refuses all but warehouses.
+
 9. **🆕 Should one ORDER's warehouse fee be readable beside its settlement?** ([Critique 17](#critique))
    The entry knows the `order_id`, the filter does not, so an order's true P&L exists in no screen.
    **→ I recommend one `order_id` filter on `LiabilityEntryListFilter`** — and explicitly **not** a
