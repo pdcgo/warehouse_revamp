@@ -3,10 +3,28 @@
 **Pass:** `agent_analysis`, `implementation_analysis` for the THRESHOLD slice, three
 re-examinations after owner edits, and **implementation of three answered decisions** (2026-08-31).
 
-**Lifecycle position:** ✅ **the `design_accept` gate that blocked this context is PASSED.** *Is
-Credit Terms a screen or a section* is answered
-([terms-live-on-the-pair-detail](../../technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail))
-and rebuilt as a section, so the finished prototype is no longer waiting on anything.
+**Lifecycle position:** ⛔ **`design_accept`, for THREE slices, and none has been previewed.**
+
+⚠ **A previous revision of this file said the gate was "passed". That was wrong and is corrected
+here.** What is answered is the *question standing in front of* the gate — *is Credit Terms a screen
+or a section* ([terms-live-on-the-pair-detail](../../technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail)).
+Answering a question is not the gate; the gate is the owner **previewing the prototype**, and the
+prototype they last saw was the SCREEN, which no longer exists.
+
+⛔ **AND THE GATE WAS OVERRUN.** `docs/development_lifecycle.md` §What Happen in Implementation
+Analysis is explicit: the phase *"produce a previewable prototype and nothing else — no backend, no
+migration — so a reject at `design_accept` only costs the prototype"*. Two of the three slices went
+straight from a decision to migrations and RPCs:
+
+| slice | should be at | actually built |
+| --- | --- | --- |
+| Credit Terms as a section | `design_accept` | the section, and the deleted screen — frontend only ✅ |
+| the cost-line note rule | `design_accept` | proto + `inventory_service` 00022 + the picker deleted ⛔ |
+| payment proof | `design_accept` | proto + 2 migrations + `ShareDocument` + 6 tests ⛔ |
+
+**The cost of that is now real rather than theoretical**: a reject on either of the bottom two costs
+a migration to unpick, not just a prototype. It should not have run ahead of the preview, and the
+next pass must not.
 
 ⛔ **What blocks NOW is different, and one of it is self-inflicted:**
 
@@ -15,6 +33,17 @@ and rebuilt as a section, so the finished prototype is no longer waiting on anyt
 | **four migrations, none applied** | Docker was never up here, so `san migrate up` never ran and every DB-backed test skipped. **Nothing below the contract is verified** — this gates all three implementations equally |
 | **the DEFAULT row is set nowhere** | ⚠ **a live regression, created by implementing the answer correctly.** The terms LIST was the only place `counterparty_id = 0` could be read or written, and it is deleted. [technical Q6](../../technical/balance/team_balance_design_clarify.md#question) — one sentence settles it |
 | **the selling team's daily report** | unchanged: a shipped page refuses every non-warehouse team, and the 10 failing story tests are downstream of it. [business Q8](../../business/balance/context_clarify.md#question) |
+
+### ⚠ Two lifecycle steps have not run AT ALL for the new work
+
+| step | state |
+| --- | --- |
+| `Run Testing` — unit → integration → e2e | **unit only, and skipped.** `san_testdb` skips with no database, so the 6 `ShareDocument` tests and every other DB-backed test have never executed. No e2e was run |
+| `Audit RPC` — performance, and concurrency for a WRITE rpc | **none.** `audits/services/` holds one file, for `inventory_service`. `ShareDocument` is a write RPC and has no `raceaudit` test — the service's only one is `payment_confirm_race_test.go` |
+
+⚠ **`ShareDocument` is the one most worth auditing**: it is a write, it is reached concurrently by a
+payer attaching several files at once, and its idempotency rests on an `ON CONFLICT DO NOTHING`
+against a unique index — exactly the shape `audit-sql` exists to prove rather than assume.
 
 **The context as a whole still does not advance** — the business lane's `clarity` gate answers **yes**
 with 10 open questions. Individual slices move because none of them touch it.
