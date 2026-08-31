@@ -831,7 +831,20 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
 // the record, #78 built the screen, and until #153 nothing connected them — the table stayed empty and
 // the report had nothing to show. Placing an order here goes through the real publisher, the real
 // event, and the real push handler.
-test("Revenue: placing an order records its expected revenue (#153)", async ({ page }) => {
+// ⛔ SKIPPED — IT TESTS A SCREEN THAT WAS DELETED, NOT A BUG.
+//
+// `/revenue` went with `revenue_service` in `0d4cbc4`, and [router.tsx] says so out loud: *"/revenue
+// and /profit are GONE with `revenue_service`, and there is deliberately no redirect"*. The route
+// 404s, so every assertion below is about a page that cannot render.
+//
+// ⚠ SKIPPED RATHER THAN DELETED, because the capability is DEFERRED and not cancelled
+// (the-daily-report-is-deferred): `revenue_service` held the SELLING team's income, which is exactly
+// what §Responsbility 2 still promises them. This test is the specification of what has to work again
+// when it returns — throwing it away would mean rewriting it from scratch.
+//
+// ⚠ It must be un-skipped in the same change that brings the report back. A permanently skipped test
+// is one nobody ever reads again.
+test.skip("Revenue: placing an order records its expected revenue (#153)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   const customer = `${CUSTOMER} revenue`;
@@ -973,6 +986,13 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   const before = await hpp.innerText();
   await page.getByTestId("accept-cod-fee").fill("8000");
   await expect(hpp).not.toHaveText(before);
+
+  // ⚠ THE NOTE IS REQUIRED, and without it Accept stays disabled
+  // (an-incidental-line-must-say-what-it-was-for). It used to be a PAIR rule — optional for the COD
+  // kind because the kind said what the money was, required for OTHER — and collapsing the kinds took
+  // away the thing it keyed on: every line is the untyped case now, so the words are the only thing
+  // saying what the courier was paid for. This test predates that and typed an amount alone.
+  await page.getByTestId("accept-cost-note-0").fill("courier asked at the door");
 
   await expect(page.getByTestId("accept-submit")).toBeEnabled();
   await page.getByTestId("accept-submit").click();
@@ -1140,7 +1160,11 @@ test("Warehouse product: the stock view shows placement, valuation and history (
 // The bug: a row is written when an order is placed (#153), an order can be cancelled right up to
 // SHIPPED (#150), and nothing told revenue — so the report counted money from orders that fell
 // through. This walks the whole path: place, read the total, cancel, read it again.
-test("Revenue: cancelling an order stops it counting, but the row stays visible (#164)", async ({
+// ⛔ SKIPPED FOR THE SAME REASON as the revenue test above: `/revenue` went with `revenue_service`
+// in `0d4cbc4` and the route deliberately 404s. Skipped rather than deleted — it is the specification
+// of what has to work again when the deferred selling report returns, and it must be un-skipped in
+// the same change that brings it back.
+test.skip("Revenue: cancelling an order stops it counting, but the row stays visible (#164)", async ({
   page,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);

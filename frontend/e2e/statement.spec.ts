@@ -43,11 +43,30 @@ async function money(page: Page, testId: string): Promise<number> {
   return (text.includes("-") ? -1 : 1) * Number(digits);
 }
 
-// One cell of one day's row, as a number. In selling mode the columns are
-// Date · Orders · Revenue · COGS · Shipping · Margin · Stock loss · Other expenses · Profit · Running.
-const OTHER_EXPENSES_CELL = 7;
+// One column's cell on one day's row, as a number — FOUND BY ITS HEADER, never by a fixed index.
+//
+// ⛔ IT USED TO BE `const OTHER_EXPENSES_CELL = 7`, counted for the SELLING layout
+// (Date · Orders · Revenue · COGS · Shipping · Margin · Stock loss · Other expenses · Profit ·
+// Running). Selling mode went with `revenue_service`, so the page now draws seven cells and `nth(7)`
+// waited for one that does not exist — a 60s timeout that reads as a hung page rather than as a
+// stale index. ⚠ Swapping 7 for 4 would only move the rot: the columns differ per mode and will
+// change again. Reading the header is the only version of this that survives a layout change.
+async function rowCell(page: Page, date: string, header: string): Promise<number> {
+  const headers = page.getByTestId("statement-table").locator("thead th");
+  const count = await headers.count();
 
-async function rowCell(page: Page, date: string, index: number): Promise<number> {
+  let index = -1;
+  for (let i = 0; i < count; i++) {
+    if (((await headers.nth(i).innerText()) ?? "").trim() === header) {
+      index = i;
+      break;
+    }
+  }
+
+  if (index < 0) {
+    throw new Error(`no "${header}" column on the statement table`);
+  }
+
   const text = await page.getByTestId(`statement-row-${date}`).locator("td").nth(index).innerText();
   const digits = text.replace(/[^0-9]/g, "");
 
@@ -101,8 +120,14 @@ test("Statement: every day of the window has a row, including the quiet ones", a
   await expect(page.getByTestId("statement-summary")).toBeVisible();
   await expect(page.getByTestId("statement-table")).toBeVisible();
 
-  // Half of every subtraction below is an EXPECTATION, not cash.
-  await expect(page.getByTestId("statement-expected-notice")).toContainText("EXPECTED");
+  // ⛔ THE "EXPECTED" NOTICE ASSERTION IS GONE, and deliberately. It belonged to the SELLING mode of
+  // this page, whose income came from `revenue_service` — removed in `0d4cbc4`. `StatementMode` is
+  // `"warehouse"` alone now and the page refuses a selling team at the door, so there is no
+  // expectation half of the subtraction left to warn about.
+  //
+  // ⚠ IT COMES BACK WITH THE REPORT, not on its own. The daily report is DEFERRED, not cancelled
+  // (the-daily-report-is-deferred) — the same deferral that tagged DailyStatementPage.stories.tsx out
+  // of the story run. Restore this line when the selling statement returns.
 
   await expect(page.getByTestId("statement-day-count")).toHaveText("Showing 30 of 30 days");
   await expect(page.locator('[data-testid="statement-table"] tbody tr')).toHaveCount(30);
@@ -133,7 +158,7 @@ test("Statement: a cost recorded today comes off today's row and the footer, rup
     // TODAY'S ROW, as a delta like everything else here. expenses.spec.ts and profit.spec.ts also
     // record costs against root's team 1 dated today, so this cell is a SUM the moment more than one
     // spec has run — an absolute expectation would pass only while this file happened to go first.
-    todayExpenses: await rowCell(page, today(), OTHER_EXPENSES_CELL),
+    todayExpenses: await rowCell(page, today(), "Other expenses"),
   };
 
   // The header's three numbers agree with each other, and the table's footer agrees with the header —
@@ -167,7 +192,7 @@ test("Statement: a cost recorded today comes off today's row and the footer, rup
   await expect(row).toBeVisible();
   await expect(row).not.toHaveAttribute("data-quiet", "true");
 
-  expect(await rowCell(page, today(), OTHER_EXPENSES_CELL)).toBe(before.todayExpenses + COST);
+  expect(await rowCell(page, today(), "Other expenses")).toBe(before.todayExpenses + COST);
 });
 
 // THE RUNNING TOTAL is what makes this a statement rather than a table of days, and the one thing that

@@ -264,11 +264,22 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
     .filter({ hasText: skuA });
   await expect(picked).toHaveCount(1);
 
-  await expect(picked.locator('[data-testid^="product-list-item-ongoing-"]')).toContainText("4");
+  // ⚠ `product-picker-ongoing-`, NOT `product-list-item-ongoing-`. ProductPickerShell has TWO
+  // layouts and this picker asks for `layout="table"`: the list layout renders a ProductListItem
+  // (whose badge carries the other testid), the table layout renders its own cell. The badge never
+  // stopped working — this assertion was reading the layout the picker no longer uses, so it failed
+  // with "element not found" and looked like a missing number.
+  await expect(picked.locator('[data-testid^="product-picker-ongoing-"]')).toContainText("4");
 
-  // And the scope is stated on screen, because ready and ongoing count different sets of warehouses
-  // and two badges side by side would otherwise read as one number about one place.
-  await expect(page.getByTestId("product-picker-stock-scope")).toBeVisible();
+  // And the two numbers are LABELLED on screen, because ready and ongoing count different sets of
+  // warehouses and two bare figures side by side would read as one number about one place.
+  //
+  // ⚠ This used to assert a `product-picker-stock-scope` note, which no longer exists — the table
+  // layout says it with NAMED COLUMNS instead, and a sticky header so the labels survive scrolling.
+  // That is the same claim, made better; the assertion just outlived the element.
+  const head = page.getByTestId("product-picker-list").locator("thead");
+  await expect(head).toContainText("On the way");
+  await expect(head).toContainText("Ready stock");
 
   // skuB was ordered on the SAME request (2 of them), so it is on the way too — proof the badge
   // reflects the line rather than the request.
@@ -278,7 +289,7 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
     .locator('[data-testid^="product-picker-option-"]')
     .filter({ hasText: skuB });
   await expect(pickedB).toHaveCount(1);
-  await expect(pickedB.locator('[data-testid^="product-list-item-ongoing-"]')).toContainText("2");
+  await expect(pickedB.locator('[data-testid^="product-picker-ongoing-"]')).toContainText("2");
 });
 
 // THE REGRESSION THIS CHANGE COULD MOST EASILY CAUSE, and the reason pickProducts reconciles rather

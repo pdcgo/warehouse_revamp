@@ -90,12 +90,25 @@ caller actually sends*. Each now has a regression test.
 20%, no limit) and one log entry, left deliberately so the preview has something to look at. The one
 row written before the timestamp fix was deleted.
 
-## ⛔ One pre-existing failure, NOT fixed and NOT mine
+## ✅ The e2e suite is GREEN — 100 pass, 2 skipped, 0 fail
 
-`restock.spec.ts:154` — *"tick two products in the picker and save"* fails on the product picker's
-"ongoing" badge. **Verified by stashing this pass's changes and re-running: it fails identically
-without them.** It is outside the balance context, so it was reported rather than folded into this
-work. `dev` is not fully green because of it.
+It had **4 failures**, all pre-existing (proved by re-running them in a worktree at `62ac73b`, before
+any of this work — they failed identically there). Fixing them revealed **6 more that had never run**:
+the specs are `serial`, so a failure at the top stops everything below it.
+
+| was failing | why | fix |
+| --- | --- | --- |
+| `restock.spec.ts:154` | asserted `product-list-item-ongoing-`, the **list** layout's testid — the picker asks for `layout="table"`, which renders its own cell | read the table testid |
+| …then `product-picker-stock-scope` | that note is gone: the table says the scope with **named columns** and a sticky header | assert the column headers |
+| `language.spec.ts:22` | asserted a `/products` **heading** that was deliberately removed (the breadcrumb already said it) | assert an in-page control instead — the test's real claim is that CONTENT translates |
+| `statement.spec.ts:97` | asserted the *EXPECTED* notice, which belonged to the SELLING mode removed with `revenue_service` | dropped, with a note to restore it when the report returns |
+| …then `statement.spec.ts` cost row | `OTHER_EXPENSES_CELL = 7`, counted for the **selling** column layout; warehouse mode draws 7 cells so `nth(7)` waited 60s for one that does not exist | **resolve the column from its header** — swapping 7 for 4 would only move the rot |
+| `orders.spec.ts` accept flow | typed a COD amount with **no note**, and the note became unconditional when the cost kinds collapsed | fill the note |
+| `orders.spec.ts` ×2 revenue | `/revenue` went with `revenue_service` and the route deliberately 404s | **`test.skip`**, not deleted — they are the spec of what must work when the deferred report returns |
+
+⚠ **The two skips must be un-skipped in the same change that brings the selling report back**, exactly
+like `DailyStatementPage.stories.tsx`'s `tags: ["!test"]`. A permanently skipped test is one nobody
+reads again.
 
 ## What is left, and why
 

@@ -36,9 +36,16 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
   await expect(page.getByRole("link", { name: "Beranda" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "id");
 
-  // Page CONTENT translates too, not only the shell: the Products page heading is Indonesian (#97).
+  // Page CONTENT translates too, not only the shell (#97).
+  //
+  // ⚠ NOT THE HEADING — the products page deliberately has none. The shell's breadcrumb already reads
+  // "Dev Selling › My Product", so a heading was the same two words a second time and was removed;
+  // this assertion outlived it and failed with "element not found", which reads as a broken
+  // translation rather than a deleted element. Asserting an in-page CONTROL keeps the test's real
+  // claim — that content translates, not just the chrome — without depending on a layout choice.
   await page.goto("/products");
-  await expect(page.getByRole("heading", { name: "Produk" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Produk baru" })).toBeVisible();
+  await expect(page.getByPlaceholder("Cari SKU atau nama")).toBeVisible();
   await page.goto("/");
 
   // Persists across a reload.
