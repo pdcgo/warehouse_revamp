@@ -68,18 +68,20 @@ const (
 )
 
 // What kind of outlay a cost line is, as stored in `restock_cost_lines.kind` (00021). Mapped here,
-// not by a DB CHECK IN-list (cf. #80) — this enum starts at two and is expected to grow.
+// not by a DB CHECK IN-list (cf. #80).
+//
+// ⚠ THERE IS EXACTLY ONE. It held `cod_shipping` and `other`, which described the same money
+// (the-ledger-speaks-the-business-words): what the warehouse had to pay to get one delivery in. That
+// money is INCIDENTAL by nature, so no list of kinds can enumerate it — the NOTE says what a line
+// was, and it is now required for exactly that reason.
 const (
-	restockCostCODShipping = "cod_shipping"
-	restockCostOther       = "other"
+	restockCostIncidental = "incidental"
 )
 
 func restockCostKindToText(k inventoryv1.RestockCostKind) string {
 	switch k {
-	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING:
-		return restockCostCODShipping
-	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER:
-		return restockCostOther
+	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL:
+		return restockCostIncidental
 	default:
 		return ""
 	}
@@ -110,10 +112,8 @@ func restockCostLinesToProto(lines []inventory_service_models.RestockCostLine) [
 
 func restockCostKindFromText(text string) inventoryv1.RestockCostKind {
 	switch text {
-	case restockCostCODShipping:
-		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING
-	case restockCostOther:
-		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER
+	case restockCostIncidental:
+		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL
 	default:
 		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED
 	}
@@ -191,9 +191,6 @@ var (
 	// mapper cannot read back — an unrecognised kind would still be charged to the requesting team
 	// while showing as "unspecified" on the screen that has to justify it.
 	errCostLineKind = errors.New("a cost line must name a known kind")
-	// 00021: OTHER is the escape hatch, and the note is what stops it being a black hole. An untyped
-	// amount with no words beside it is a number the team being charged cannot argue with.
-	errCostLineNote = errors.New("an 'other' cost line must say what it was for")
 )
 
 // restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.

@@ -30,7 +30,6 @@ import {
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
-import { CostKindSelect } from "../../components/pickers/CostKindSelect";
 import { DamageTypeSelect } from "../../components/pickers/DamageTypeSelect";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
@@ -134,7 +133,7 @@ export function RestockAcceptPage() {
   // WHAT THIS DELIVERY COST THE WAREHOUSE (00021). One row per outlay, starting with the fee at the
   // door because that is the one almost every COD delivery has — the rest are added when they happen.
   const [costs, setCosts] = useState<CostDraft[]>(() => [
-    { key: nextKey(), kind: RestockCostKind.COD_SHIPPING, amount: "0", note: "" },
+    { key: nextKey(), kind: RestockCostKind.INCIDENTAL, amount: "0", note: "" },
   ]);
 
   const fulfill = useFulfillRestockRequest();
@@ -217,13 +216,11 @@ export function RestockAcceptPage() {
   // fresh row starts in, not a cost — and the same rule decides what is sent.
   const outlay = costs.reduce((sum, row) => sum + toRupiah(row.amount), 0n);
 
-  // OTHER without a note is refused by the handler, so the button is disabled rather than letting
-  // someone submit a delivery they have finished counting and be told no.
+  // EVERY cost line needs a note now (an-incidental-line-must-say-what-it-was-for) — the kind used
+  // to say what half of them were and there is only one kind left. The button is disabled rather
+  // than letting someone submit a delivery they have finished counting and be told no.
   const costsIncomplete = costs.some(
-    (row) =>
-      toRupiah(row.amount) > 0n &&
-      row.kind === RestockCostKind.OTHER &&
-      row.note.trim() === "",
+    (row) => toRupiah(row.amount) > 0n && row.note.trim() === "",
   );
 
   const freight = (request?.shippingCost ?? 0n) + outlay;
@@ -313,7 +310,7 @@ export function RestockAcceptPage() {
   function addCost() {
     setCosts((prev) => [
       ...prev,
-      { key: nextKey(), kind: RestockCostKind.OTHER, amount: "0", note: "" },
+      { key: nextKey(), kind: RestockCostKind.INCIDENTAL, amount: "0", note: "" },
     ]);
   }
 
@@ -712,25 +709,22 @@ export function RestockAcceptPage() {
 
         {costs.map((row, index) => (
           <Flex key={row.key} align="flex-end" gap="field" wrap="wrap">
-            <CostKindSelect
-              value={row.kind}
-              onChange={(kind) => updateCost(row.key, { kind })}
-            />
-
+            {/* ⚠ THE KIND PICKER IS GONE. It offered two options that described the same money, and
+                the-ledger-speaks-the-business-words collapsed them into one — a select with a single
+                entry is not a control, it is a click between the person at the door and the number
+                they came to type. Every line is INCIDENTAL, set below without asking. */}
             <CurrencyInput
               value={row.amount}
-              // The COD row keeps the id it had as a single field: it is still literally the COD fee
-              // input, and the tests that reach for it are asking the same question.
-              data-testid={
-                row.kind === RestockCostKind.COD_SHIPPING
-                  ? "accept-cod-fee"
-                  : `accept-cost-amount-${index}`
-              }
+              // ⚠ THE FIRST ROW KEEPS `accept-cod-fee`. It used to be keyed on the COD kind, which no
+              // longer exists — but it is still the box the person at the door types the courier's ask
+              // into, and every test that reaches for it is asking that same question.
+              data-testid={index === 0 ? "accept-cod-fee" : `accept-cost-amount-${index}`}
               onChange={(amount) => updateCost(row.key, { amount })}
             />
 
-            {/* The note is REQUIRED for OTHER and pointless for COD, where the kind already says what
-                it was. Shown either way so the row does not change shape as the kind is picked. */}
+            {/* REQUIRED on every row. It used to be required only for OTHER, because the kind said
+                what a COD line was — with one kind, the note is the only thing that says what the
+                money was, and it is what the team being charged reads. */}
             <Input
               value={row.note}
               placeholder={t("restock.cost.note")}

@@ -683,9 +683,9 @@ erDiagram
     restock_cost_lines {
         bigserial   id                 PK
         bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        text        kind               "cod_shipping | other (mapper-guarded, #80); starts at two and grows"
+        text        kind               "incidental — the ONLY kind (mapper-guarded, #80); 00022 collapsed two into one"
         bigint      amount             "whole rupiah the WAREHOUSE laid out, CHECK > 0"
-        text        note               "why; required for 'other' by the handler, '' otherwise"
+        text        note               "why — REQUIRED by the contract; rows before 00022 may be empty"
         bigint      actor_id           "who typed it, opaque user_service id, no FK"
         timestamptz created_at
     }

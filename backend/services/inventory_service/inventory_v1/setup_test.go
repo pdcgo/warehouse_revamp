@@ -54,16 +54,20 @@ type recordingPoster struct {
 }
 
 // codLines is the cost-line form of what these tests used to write as `CodShippingFee: n` (00021):
-// one COD_SHIPPING line, which is what every one of them means by "this delivery cost the warehouse
-// n at the door". A zero is no lines at all — not a line of zero, which the handler refuses.
+// one INCIDENTAL line, which is what every one of them means by "this delivery cost the warehouse n
+// at the door". A zero is no lines at all — not a line of zero, which the handler refuses.
+//
+// ⚠ THE NOTE IS NO LONGER OPTIONAL (an-incidental-line-must-say-what-it-was-for). It used to be, for
+// the kind that no longer exists, so every fixture here has to say what the money was.
 func codLines(amount int64) []*inventoryv1.RestockCostLine {
 	if amount == 0 {
 		return nil
 	}
 
 	return []*inventoryv1.RestockCostLine{{
-		Kind:   inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING,
+		Kind:   inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL,
 		Amount: amount,
+		Note:   "courier at the door",
 	}}
 }
 

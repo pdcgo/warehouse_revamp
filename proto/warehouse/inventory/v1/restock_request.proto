@@ -616,17 +616,25 @@ message RestockRequestFulfillRequest {
 
 // What kind of outlay a RestockCostLine is. APPEND ONLY, like every enum here.
 //
-// Deliberately SHORT (owner): the two that exist today, with OTHER as the escape hatch. A kind is a
-// one-line, non-breaking addition, so starting narrow costs nothing — while a long speculative list
-// costs a dropdown nobody can read and buckets nobody fills.
+// ⚠ THERE IS EXACTLY ONE KIND, and that is the answer rather than a stub
+// (the-ledger-speaks-the-business-words). It held two — COD_SHIPPING and OTHER — and they described
+// the same money: what the warehouse had to pay to get one delivery in. The distinction bought a
+// dropdown with two entries and cost the ledger a real one.
 enum RestockCostKind {
   RESTOCK_COST_KIND_UNSPECIFIED = 0;
-  // Paid to the courier AT THE DOOR (#155) — the fee that had its own column until cost lines
-  // existed. The requesting team cannot know it in advance, which is why it is typed at acceptance.
-  RESTOCK_COST_KIND_COD_SHIPPING = 1;
-  // Anything else the warehouse paid to get this delivery in. Requires a note — an untyped amount
-  // with no words beside it is a number the team being charged cannot argue with.
-  RESTOCK_COST_KIND_OTHER = 2;
+
+  // WHAT THE WAREHOUSE PAID TO GET THIS DELIVERY IN — the courier's ask at the door, a porter, a
+  // toll. The requesting team cannot know it in advance, which is why it is typed at acceptance.
+  //
+  // It is INCIDENTAL by nature — `balance_context.md` §Why `cod_fee` Exists calls it the courier's
+  // accidental ask — so no closed list of kinds could ever enumerate it, and the note is what says
+  // what a given line was.
+  RESTOCK_COST_KIND_INCIDENTAL = 1;
+
+  // ⚠ 2 WAS `OTHER`, the escape hatch beside COD_SHIPPING. With one kind every line is that case, so
+  // the number is reserved rather than reused.
+  reserved 2;
+  reserved "RESTOCK_COST_KIND_OTHER";
 }
 
 // RestockCostLine — one thing the accepting warehouse paid for this delivery.
@@ -646,9 +654,17 @@ message RestockCostLine {
   // happened — and it would post a debt of nothing to the requesting team.
   int64 amount = 3 [(buf.validate.field).int64.gt = 0];
 
-  // WHY. Optional for COD_SHIPPING, where the kind already says it; the handler REQUIRES it for
-  // OTHER, which is a constraint on the pair of fields and so cannot be expressed here.
-  string note = 4 [(buf.validate.field).string.max_len = 200];
+  // WHY — REQUIRED (an-incidental-line-must-say-what-it-was-for).
+  //
+  // ⚠ IT USED TO BE A PAIR RULE, optional for COD_SHIPPING because the kind said what the money was
+  // and required for OTHER, enforced in the handler because a constraint across two fields cannot be
+  // written here. Collapsing the kinds took away the thing it keyed on: every line is now the OTHER
+  // case, so the rule is unconditional — and an unconditional rule belongs in the CONTRACT, where a
+  // reader of the proto can see it.
+  string note = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
 }
 
 // One line's count at acceptance (#133): the warehouse says how many of this line actually turned up,

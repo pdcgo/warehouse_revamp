@@ -2,8 +2,10 @@ package inventory_v1_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
@@ -74,8 +76,8 @@ func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
 	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, "porter at the gate"),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, "courier at the door"),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter at the gate"),
 	})
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -92,12 +94,12 @@ func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
 		t.Fatalf("%d cost lines stored, want 2 — a delivery can cost more than one thing", len(stored))
 	}
 
-	if stored[0].Kind != "cod_shipping" || stored[0].Amount != 25000 {
-		t.Fatalf("first line = %+v, want cod_shipping 25000", stored[0])
+	if stored[0].Kind != "incidental" || stored[0].Amount != 25000 {
+		t.Fatalf("first line = %+v, want incidental 25000", stored[0])
 	}
 
 	// The NOTE is the whole reason `other` is allowed: it is what the team being charged reads.
-	if stored[1].Kind != "other" || stored[1].Amount != 5000 || stored[1].Note != "porter at the gate" {
+	if stored[1].Kind != "incidental" || stored[1].Amount != 5000 || stored[1].Note != "porter at the gate" {
 		t.Fatalf("second line = %+v, want other 5000 'porter at the gate'", stored[1])
 	}
 
@@ -118,8 +120,8 @@ func TestRestockFulfil_PostsOneObligationForTheWholeOutlay(t *testing.T) {
 	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, "porter"),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter"),
 	})
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -155,8 +157,8 @@ func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
 	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, "porter"),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter"),
 	})
 	if err != nil {
 		t.Fatalf("fulfil: %v", err)
@@ -184,19 +186,30 @@ func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
 // AN 'OTHER' WITH NO NOTE IS REFUSED. It is the escape hatch, and the note is what stops it being a
 // black hole: an untyped amount with no words beside it is a number the team being charged cannot
 // argue with. The pair rule cannot be expressed in protovalidate, so it is the handler's.
-func TestRestockFulfil_RefusesAnOtherCostWithNoNote(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &recordingPoster{})
-
-	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, ""),
+// ⚠ IT ASSERTS AGAINST THE CONTRACT, NOT THE HANDLER, and that is the point.
+//
+// The rule used to be `kind == other && note == ""` in `restock_request_fulfill.go` — a constraint
+// across two fields, which protovalidate cannot express. Collapsing the kinds made it unconditional
+// (an-incidental-line-must-say-what-it-was-for), so it moved into the proto as `min_len: 1` and the
+// handler's copy was deleted rather than left as a second place to drift.
+//
+// ⚠ A HANDLER CALLED DIRECTLY GETS NO VALIDATION INTERCEPTOR, so calling `acceptWithCosts` here would
+// prove nothing — the empty note would sail through. This validates the request the way
+// `service_api.go` does before the handler ever sees it.
+func TestRestockFulfil_RefusesACostWithNoNote(t *testing.T) {
+	err := protovalidate.GlobalValidator.Validate(&inventoryv1.RestockRequestFulfillRequest{
+		TeamId:    1,
+		RequestId: 1,
+		CostLines: []*inventoryv1.RestockCostLine{
+			costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, ""),
+		},
 	})
 	if err == nil {
-		t.Fatal("an unexplained cost was accepted and charged to another team")
+		t.Fatal("an unexplained cost passed validation and would be charged to another team")
 	}
 
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("refused with %v, want InvalidArgument", connect.CodeOf(err))
+	if !strings.Contains(err.Error(), "note") {
+		t.Fatalf("refused for %v, want a complaint about the note", err)
 	}
 }
 
@@ -224,11 +237,14 @@ func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
+	// ⚠ AN UNKNOWN KIND, not an empty note. The note rule is the contract's now, and this test is
+	// about the HANDLER's transaction boundary — so it has to use a refusal the handler still makes
+	// itself, or it would be asserting on a call that never failed.
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_OTHER, 5000, ""),
+		{Kind: inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED, Amount: 5000, Note: "n"},
 	})
 	if err == nil {
-		t.Fatal("the acceptance succeeded with an unexplained cost on it")
+		t.Fatal("the acceptance succeeded with an unusable cost on it")
 	}
 
 	var stored inventory_service_models.RestockRequest
@@ -299,7 +315,7 @@ func TestRestockFulfil_AFailedPostingRollsBackTheCostLines(t *testing.T) {
 	svc := newServiceWithLiability(t, db, poster)
 
 	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING, 25000, ""),
+		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
 	})
 	if err == nil {
 		t.Fatal("the acceptance succeeded while its obligation failed")

@@ -829,3 +829,88 @@ becomes a path the design does not ask for. This log is append-only, so the earl
 written and this one is the correction — the reverse is now **[Q11](./context_clarify.md#question)**,
 not a defect. Its sibling, the missing `rejected` state, is **confirmed** as a defect and is now
 build work.
+
+---
+
+## an-incidental-line-must-say-what-it-was-for
+
+> The owner, in chat — *"yes"*, answering [Q12](./context_clarify.md#question): must an incidental
+> cost line carry a note?
+
+**The verdict.** Every `restock_cost_lines` row **requires a note**. The rule stops being conditional
+on the kind, because after
+[the-ledger-speaks-the-business-words](#the-ledger-speaks-the-business-words) there is only one kind.
+
+| before | after |
+| --- | --- |
+| `COD_SHIPPING` — note **optional**, the kind said what the money was | one `INCIDENTAL` kind — note **always required** |
+| `OTHER` — note **required**, an untyped amount is unarguable | |
+
+**Why it lands on required rather than optional.** The kind was carrying the meaning for half the
+rows and has stopped. §Why `cod_fee` Exists describes this money as the courier's *accidental* ask —
+*"coffe tip or other"* — which is exactly the charge a team cannot argue with unless somebody wrote
+down what it was for. Optional-always would make every incidental charge a bare number on another
+team's books.
+
+⚠ **It costs a required field** at acceptance, typed by a warehouse person with a courier waiting.
+That is the price, and it is why this was not settled without asking.
+
+### The spec
+
+| | |
+| --- | --- |
+| proto | `RESTOCK_COST_KIND_INCIDENTAL = 1`, `2` **reserved**. The note gets `min_len: 1` — it is no longer a pair rule, so it can finally be expressed in the contract instead of in the handler |
+| migration | `restock_cost_lines.kind`: `cod_shipping` and `other` both become `incidental` |
+| ⚠ existing rows | a `cod_shipping` line written before today may have an **empty** note, and no migration can invent one. Validation binds new writes only |
+| handler | the pair rule in `restock_request_fulfill.go` goes — `protovalidate` covers it |
+
+
+---
+
+## a-payment-must-carry-proof
+
+> The owner, in chat — *"yes"*, answering [Q10](./context_clarify.md#question): is proof of transfer
+> required, or a convention?
+
+**The verdict.** A payment is **refused without at least one attached document**. §Payment Flow's
+*"bring image/doc/screenshot Proof of bank transfer"* is a rule the system enforces, not a habit it
+hopes for.
+
+**Why.** The creditor's confirmation is a *manual* check — the whole two-phase design rests on a
+human looking at something. A payment with nothing attached asks them to accept on the payer's word,
+which is precisely what
+[the-debtor-claims-the-creditor-decides](#the-debtor-claims-the-creditor-decides) declines to trust.
+
+```mermaid
+flowchart LR
+  A["Team A — payer"] -->|"1. uploads"| D["document, owned by team A"]
+  A -->|"2. shares with B"| S["share row — A owns D, so A may"]
+  A -->|"3. creates, naming D"| P["payment"]
+  B["Team B — creditor"] -->|"reads by id"| D
+  P -.->|"refused with no document"| X["not a payment"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the rule | `PaymentRecordRequest.document_ids` — `repeated string`, **min 1** |
+| who uploads | the **payer**. The file belongs to the payer's team |
+| how the creditor reads it | a **share grant**: `document_shares(document_id, team_id, granted_by)`, and `GetDownloadUrl` gains one clause — *owner **or** shared-with* |
+| what authorizes the share | the payer owns the file, so the payer may share it. **No service asks another service for permission** |
+| ⚠ two rules it needs | a shared document **cannot be hard-deleted**, and a share is **permanent** — the creditor acted on that evidence. A share must NOT put the file in the recipient's document **list**, only make a read by id succeed |
+| the type | `DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF`, **private** — a transfer slip names an account number |
+
+⚠ **The share-grant plumbing is the recommendation this answer was given against**, not a second
+decision. It is recorded here so it is visible and correctable rather than buried in a clarify: an
+earlier proposal had `liability_service` vouching and `document_service` signing, which needed an
+internal non-team-scoped signing path — retracted, because one bug in the vouching service's
+relation check would leak every private file in the system.
+
+### ⚠ What it does NOT cover
+
+A bank transfer is the only payment kind that **has** a slip. If `offset`
+([technical Q2](../../technical/balance/team_balance_design_clarify.md#question)) is ever allowed, or
+cash changes hands in the building, there is nothing to attach and this rule has to be relaxed for
+that kind. Relaxing a validation later is a compatible change — which is why no `kind` enum was
+added now for a feature that has not been approved.

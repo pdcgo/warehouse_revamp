@@ -318,32 +318,32 @@ func (RestockRequestListDataType) EnumDescriptor() ([]byte, []int) {
 
 // What kind of outlay a RestockCostLine is. APPEND ONLY, like every enum here.
 //
-// Deliberately SHORT (owner): the two that exist today, with OTHER as the escape hatch. A kind is a
-// one-line, non-breaking addition, so starting narrow costs nothing — while a long speculative list
-// costs a dropdown nobody can read and buckets nobody fills.
+// ⚠ THERE IS EXACTLY ONE KIND, and that is the answer rather than a stub
+// (the-ledger-speaks-the-business-words). It held two — COD_SHIPPING and OTHER — and they described
+// the same money: what the warehouse had to pay to get one delivery in. The distinction bought a
+// dropdown with two entries and cost the ledger a real one.
 type RestockCostKind int32
 
 const (
 	RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED RestockCostKind = 0
-	// Paid to the courier AT THE DOOR (#155) — the fee that had its own column until cost lines
-	// existed. The requesting team cannot know it in advance, which is why it is typed at acceptance.
-	RestockCostKind_RESTOCK_COST_KIND_COD_SHIPPING RestockCostKind = 1
-	// Anything else the warehouse paid to get this delivery in. Requires a note — an untyped amount
-	// with no words beside it is a number the team being charged cannot argue with.
-	RestockCostKind_RESTOCK_COST_KIND_OTHER RestockCostKind = 2
+	// WHAT THE WAREHOUSE PAID TO GET THIS DELIVERY IN — the courier's ask at the door, a porter, a
+	// toll. The requesting team cannot know it in advance, which is why it is typed at acceptance.
+	//
+	// It is INCIDENTAL by nature — `balance_context.md` §Why `cod_fee` Exists calls it the courier's
+	// accidental ask — so no closed list of kinds could ever enumerate it, and the note is what says
+	// what a given line was.
+	RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL RestockCostKind = 1
 )
 
 // Enum value maps for RestockCostKind.
 var (
 	RestockCostKind_name = map[int32]string{
 		0: "RESTOCK_COST_KIND_UNSPECIFIED",
-		1: "RESTOCK_COST_KIND_COD_SHIPPING",
-		2: "RESTOCK_COST_KIND_OTHER",
+		1: "RESTOCK_COST_KIND_INCIDENTAL",
 	}
 	RestockCostKind_value = map[string]int32{
-		"RESTOCK_COST_KIND_UNSPECIFIED":  0,
-		"RESTOCK_COST_KIND_COD_SHIPPING": 1,
-		"RESTOCK_COST_KIND_OTHER":        2,
+		"RESTOCK_COST_KIND_UNSPECIFIED": 0,
+		"RESTOCK_COST_KIND_INCIDENTAL":  1,
 	}
 )
 
@@ -2091,8 +2091,13 @@ type RestockCostLine struct {
 	// Whole rupiah, and it must be POSITIVE. A line of zero is not a cost, it is a claim that nothing
 	// happened — and it would post a debt of nothing to the requesting team.
 	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	// WHY. Optional for COD_SHIPPING, where the kind already says it; the handler REQUIRES it for
-	// OTHER, which is a constraint on the pair of fields and so cannot be expressed here.
+	// WHY — REQUIRED (an-incidental-line-must-say-what-it-was-for).
+	//
+	// ⚠ IT USED TO BE A PAIR RULE, optional for COD_SHIPPING because the kind said what the money was
+	// and required for OTHER, enforced in the handler because a constraint across two fields cannot be
+	// written here. Collapsing the kinds took away the thing it keyed on: every line is now the OTHER
+	// case, so the rule is unconditional — and an unconditional rule belongs in the CONTRACT, where a
+	// reader of the proto can see it.
 	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2954,13 +2959,14 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.RestockRequestReceivedLineB\b\xbaH\x05\x92\x01\x02\b\x01R\x05lines\x12F\n" +
 	"\n" +
 	"cost_lines\x18\x05 \x03(\v2'.warehouse.inventory.v1.RestockCostLineR\tcostLines:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\bJ\x04\b\x04\x10\x05R\x10cod_shipping_fee\"\xa9\x01\n" +
+	"\x05\x01\x02\x06\t\bJ\x04\b\x04\x10\x05R\x10cod_shipping_fee\"\xab\x01\n" +
 	"\x0fRestockCostLine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12G\n" +
 	"\x04kind\x18\x02 \x01(\x0e2'.warehouse.inventory.v1.RestockCostKindB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04kind\x12\x1f\n" +
-	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12\x1c\n" +
-	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note\"\x8b\x01\n" +
+	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12\x1e\n" +
+	"\x04note\x18\x04 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04note\"\x8b\x01\n" +
 	"\x10RestockPlacement\x12\"\n" +
 	"\arack_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00H\x00R\x06rackId\x12%\n" +
 	"\bunplaced\x18\x02 \x01(\bB\a\xbaH\x04j\x02\b\x01H\x00R\bunplaced\x12#\n" +
@@ -3036,9 +3042,8 @@ const file_warehouse_inventory_v1_restock_request_proto_rawDesc = "" +
 	"&RESTOCK_REQUEST_LIST_DATA_TYPE_GENERAL\x10\x01\x122\n" +
 	".RESTOCK_REQUEST_LIST_DATA_TYPE_RESTOCK_REQUEST\x10\x02*u\n" +
 	"\x0fRestockCostKind\x12!\n" +
-	"\x1dRESTOCK_COST_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
-	"\x1eRESTOCK_COST_KIND_COD_SHIPPING\x10\x01\x12\x1b\n" +
-	"\x17RESTOCK_COST_KIND_OTHER\x10\x02*v\n" +
+	"\x1dRESTOCK_COST_KIND_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cRESTOCK_COST_KIND_INCIDENTAL\x10\x01\"\x04\b\x02\x10\x02*\x17RESTOCK_COST_KIND_OTHER*v\n" +
 	"\x11RestockDamageType\x12#\n" +
 	"\x1fRESTOCK_DAMAGE_TYPE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aRESTOCK_DAMAGE_TYPE_BROKEN\x10\x01\x12\x1c\n" +

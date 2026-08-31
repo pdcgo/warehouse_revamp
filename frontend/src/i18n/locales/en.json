@@ -914,11 +914,6 @@
       "remove": "Remove this cost",
       "note": "What it was for",
       "noteRequired": "Say what this cost was for.",
-      "kind": {
-        "codShipping": "COD fee at the door",
-        "other": "Other",
-        "unknown": "Cost"
-      },
       "total": "Warehouse outlay"
     }
   },

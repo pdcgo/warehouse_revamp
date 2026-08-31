@@ -909,11 +909,6 @@
       "remove": "Hapus biaya ini",
       "note": "Untuk apa",
       "noteRequired": "Sebutkan biaya ini untuk apa.",
-      "kind": {
-        "codShipping": "Biaya COD di tempat",
-        "other": "Lainnya",
-        "unknown": "Biaya"
-      },
       "total": "Pengeluaran gudang"
     }
   },

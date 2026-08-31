@@ -47,15 +47,14 @@ func (s *Service) RestockRequestFulfill(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errCostLineKind)
 		}
 
-		note := line.GetNote()
-		if kind == restockCostOther && note == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errCostLineNote)
-		}
-
+		// ⚠ THE NOTE CHECK IS GONE FROM HERE ON PURPOSE. It was `kind == other && note == ""` — a rule
+		// across two fields, which protovalidate cannot express. With one kind it is unconditional, so
+		// it lives in the proto (`min_len: 1`) and re-typing it as an `if` here would be a second copy
+		// to drift (an-incidental-line-must-say-what-it-was-for).
 		costLines = append(costLines, inventory_service_models.RestockCostLine{
 			Kind:   kind,
 			Amount: line.GetAmount(),
-			Note:   note,
+			Note:   line.GetNote(),
 		})
 		costLineTotal += line.GetAmount()
 	}

@@ -20,7 +20,6 @@ import {
 } from "../../../features/restock/summary";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
-import { costKindLabel } from "../../../components/pickers/CostKindSelect";
 import { DamageCell } from "../../../features/restock/DamageCell";
 import { formatRupiah } from "../../../lib/money";
 
@@ -257,11 +256,14 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
             {/* ONE ROW PER COST, and nothing at all when there are none: most deliveries cost the
                 warehouse nothing, and a "Rp 0" row would invite the reader to wonder what they had
                 missed. Each row carries its own note, because this is the screen where the team being
-                charged finds out what for. */}
+                charged finds out what for.
+
+                ⚠ THE KIND IS NO LONGER SHOWN. It was `Kind — note: amount`, and with one kind the
+                prefix was the same word on every row (an-incidental-line-must-say-what-it-was-for).
+                The note is what says what the money was, which is why it is required. */}
             {request.costLines.map((line) => (
               <Text key={line.id.toString()} fontSize="sm" color="fg.muted">
-                {costKindLabel(t, line.kind)}
-                {line.note ? ` — ${line.note}` : ""}:{" "}
+                {line.note}:{" "}
                 <Text
                   as="span"
                   data-testid={`restock-detail-cost-${costKindSlug(line.kind)}`}

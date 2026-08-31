@@ -39,7 +39,6 @@ import {
   receivedQuantity,
   warehouseOutlay,
 } from "../../features/restock/summary";
-import { costKindLabel } from "../../components/pickers/CostKindSelect";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { formatUnixDate } from "../../lib/datetime";
@@ -462,8 +461,7 @@ export function RestockWarehouseDetailPage() {
                   and none at all when it paid nothing, which is most deliveries. */}
               {(request?.costLines ?? []).map((line) => (
                 <Text key={line.id.toString()} fontSize="sm" color="fg.muted">
-                  {costKindLabel(t, line.kind)}
-                  {line.note ? ` — ${line.note}` : ""}:{" "}
+                  {line.note}:{" "}
                   <Text
                     as="span"
                     data-testid={`restock-detail-cost-${costKindSlug(line.kind)}`}

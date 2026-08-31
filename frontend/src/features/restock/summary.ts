@@ -61,14 +61,16 @@ export function goodsTotal(items: RestockRequestItem[]): bigint {
   return items.reduce((sum, item) => sum + item.totalPrice, 0n);
 }
 
-// The slug the tests reach for. The LABEL lives with the picker (CostKindSelect) the way
-// damageTypeLabel does — this is only an id, and it must stay stable even if the wording changes.
+// The slug the tests reach for — only an id, stable even if the wording changes.
+//
+// ⚠ THERE IS ONE KIND NOW (an-incidental-line-must-say-what-it-was-for), so this no longer
+// distinguishes one cost row from another. It was already ambiguous for two `other` lines and is now
+// ambiguous for all of them; what tells a row apart is its NOTE, which is required for exactly that
+// reason.
 export function costKindSlug(kind: RestockCostKind): string {
   switch (kind) {
-    case RestockCostKind.COD_SHIPPING:
-      return "cod-shipping";
-    case RestockCostKind.OTHER:
-      return "other";
+    case RestockCostKind.INCIDENTAL:
+      return "incidental";
     default:
       return "unknown";
   }

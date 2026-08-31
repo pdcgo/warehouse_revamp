@@ -283,3 +283,49 @@ flowchart LR
 `OrderCancelledEvent.actor_id` is whoever cancelled, not whoever placed. A reversal is a second act
 and often a second person, and the ledger records who caused **each** movement — not who caused the
 one being undone.
+
+---
+
+## terms-live-on-the-pair-detail
+
+> The owner, in chat — *"is section of pair detail"*, answering [Q6](./team_balance_design_clarify.md#question).
+
+**The verdict.** Credit Terms is **a section of the pair detail page**, not a screen of its own.
+`team_balance_design.md` §Frontend Requirements names three screens and it stays three.
+
+⚠ **This closes against the recommendation**, which argued for a screen. The argument was not
+rhetorical and its consequence survives the answer — see below.
+
+```mermaid
+flowchart TB
+  P["/liability/:counterpartyId — the pair detail"]
+  P --> S1["summary"]
+  P --> S2["the four entry tabs — money that moved"]
+  P --> S3["limit history — a rule that changed"]
+  P --> S4["TERMS — where the limit, fee and markup are SET"]
+  D["the DEFAULT row, counterparty_id = 0"] -.->|"has no pair, so no page"| P
+```
+
+### What moves
+
+| | |
+| --- | --- |
+| `pages/liability-terms/` | folds into the pair detail. `CreditMeter` and `TermsEditDialog` become `pages/liability-detail/components/` |
+| the route `/liability/terms` | goes |
+| `ChangeLogPanel` | **stays in `features/liability/`** — it was promoted there when a second page imported it, and it is still read by the terms section and the limit tab |
+| the list of every team's terms | goes with the page. Terms are read where the pair is read |
+
+### ⛔ The default row now has no home — and that is a NEW question, not the old one
+
+[terms-are-team-scoped-root-is-global](../../business/balance/context_decision.md#terms-are-team-scoped-root-is-global)
+sets the threshold *"per pair, with a **default row** for every counterparty without one"*, stored as
+`counterparty_id = 0`. It is the rule every other row is an exception to.
+
+A pair detail page is reached at `/liability/:counterpartyId`, and **team 0 is not a team** — there
+is no pair to open, so the section that edits terms can never be shown for it.
+
+**→ Recommend:** the default belongs to the CREDITOR, not to a pair, so it belongs on the creditor's
+own settings — one field group on the team page, labelled *"terms for any team without their own"*.
+The pair detail's terms section then shows the inherited value with an *"using the default"* marker
+until somebody overrides it, which is what an exception-to-a-rule should look like. Filed as
+[Q6](./team_balance_design_clarify.md#question) rather than assumed.
