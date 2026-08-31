@@ -1818,8 +1818,16 @@ type LiabilityPayment struct {
 	ConfirmedBy     uint64 `protobuf:"varint,8,opt,name=confirmed_by,json=confirmedBy,proto3" json:"confirmed_by,omitempty"`
 	CreatedAtUnix   int64  `protobuf:"varint,9,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	ConfirmedAtUnix int64  `protobuf:"varint,10,opt,name=confirmed_at_unix,json=confirmedAtUnix,proto3" json:"confirmed_at_unix,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// PROOF THAT THE MONEY LEFT A BANK (a-payment-must-carry-proof) — document_service ids, opaque
+	// here. The payer uploads them and shares each with the creditor before recording the payment, so
+	// `GetDownloadUrl` answers for both sides.
+	//
+	// ⚠ THE CREDITOR'S CONFIRMATION IS A MANUAL CHECK, and this is what they check. A payment with
+	// nothing attached asks them to accept on the payer's word — which is exactly what the two-phase
+	// design declines to trust.
+	DocumentIds   []string `protobuf:"bytes,11,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LiabilityPayment) Reset() {
@@ -1922,6 +1930,13 @@ func (x *LiabilityPayment) GetConfirmedAtUnix() int64 {
 	return 0
 }
 
+func (x *LiabilityPayment) GetDocumentIds() []string {
+	if x != nil {
+		return x.DocumentIds
+	}
+	return nil
+}
+
 type LiabilityPaymentRecordRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The PAYER — and the scope. You may only ever record your own payment: recording somebody else's
@@ -1930,8 +1945,21 @@ type LiabilityPaymentRecordRequest struct {
 	CreditorTeamId uint64 `protobuf:"varint,2,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
 	Amount         int64  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	Note           string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// AT LEAST ONE, always (a-payment-must-carry-proof). `balance_context.md` §Payment Flow has the
+	// payer *bring* proof of the bank transfer and the creditor *check it manually* — a rule the system
+	// enforces, not a habit it hopes for.
+	//
+	// ⚠ EACH MUST ALREADY BE SHARED WITH THE CREDITOR. The payer calls `ShareDocument` first, as
+	// themselves: this service does not — and must not — reach into document_service to grant it, which
+	// would need an internal path that skips the document scope check.
+	//
+	// ⚠ A BANK TRANSFER IS THE ONLY PAYMENT KIND THAT HAS A SLIP. If `offset` is ever allowed, or cash
+	// changes hands in the building, this constraint has to be relaxed for that kind — relaxing a
+	// validation later is a compatible change, which is why no `kind` enum was added now for a feature
+	// that has not been approved.
+	DocumentIds   []string `protobuf:"bytes,5,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LiabilityPaymentRecordRequest) Reset() {
@@ -1990,6 +2018,13 @@ func (x *LiabilityPaymentRecordRequest) GetNote() string {
 		return x.Note
 	}
 	return ""
+}
+
+func (x *LiabilityPaymentRecordRequest) GetDocumentIds() []string {
+	if x != nil {
+		return x.DocumentIds
+	}
+	return nil
 }
 
 type LiabilityPaymentRecordResponse struct {
@@ -3693,7 +3728,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x9c\x01\n" +
 	"\x16LiabilityDailyResponse\x12<\n" +
 	"\x04days\x18\x01 \x03(\v2(.warehouse.liability.v1.LiabilityDayItemR\x04days\x12D\n" +
-	"\x06totals\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyTotalsR\x06totals\"\xfc\x02\n" +
+	"\x06totals\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyTotalsR\x06totals\"\x9f\x03\n" +
 	"\x10LiabilityPayment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
@@ -3706,12 +3741,15 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\fconfirmed_by\x18\b \x01(\x04R\vconfirmedBy\x12&\n" +
 	"\x0fcreated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix\x12*\n" +
 	"\x11confirmed_at_unix\x18\n" +
-	" \x01(\x03R\x0fconfirmedAtUnix\"\xc5\x01\n" +
+	" \x01(\x03R\x0fconfirmedAtUnix\x12!\n" +
+	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\"\xfc\x01\n" +
 	"\x1dLiabilityPaymentRecordRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x121\n" +
 	"\x10creditor_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecreditorTeamId\x12\x1f\n" +
 	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12\x1c\n" +
-	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\f\x92\xb5\x18\b\n" +
+	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note\x125\n" +
+	"\fdocument_ids\x18\x05 \x03(\tB\x12\xbaH\x0f\x92\x01\f\b\x01\x10\n" +
+	"\"\x06r\x04\x10\x01\x18@R\vdocumentIds:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"d\n" +
 	"\x1eLiabilityPaymentRecordResponse\x12B\n" +
 	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"|\n" +

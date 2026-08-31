@@ -51,6 +51,10 @@ const (
 	resourceProductImage   = "product_image"
 	// An order's shipping receipt — image or PDF, and PRIVATE (see isPublic below).
 	resourceOrderReceipt = "order_receipt"
+	// Proof that a payment between two teams left a bank (a-payment-must-carry-proof). PRIVATE — a
+	// transfer slip names an account number — and the ONE type routinely read by a team that does not
+	// own it, through a share.
+	resourcePaymentProof = "payment_proof"
 )
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
@@ -63,6 +67,8 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourceProductImage, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT:
 		return resourceOrderReceipt, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF:
+		return resourcePaymentProof, nil
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -78,6 +84,8 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE
 	case resourceOrderReceipt:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT
+	case resourcePaymentProof:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}
@@ -87,7 +95,9 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 // than a short-lived signed one. Product images and avatars are shown inline, so they are public.
 //
 // An ORDER RECEIPT is NOT: it names a buyer and an address, so it is read through a signed URL by
-// somebody who belongs to the team, exactly as a GENERAL document is.
+// somebody who belongs to the team, exactly as a GENERAL document is. Neither is a PAYMENT PROOF —
+// a transfer slip names an account number, and it is reachable by a second team through a share,
+// which a stable public URL would make meaningless.
 func isPublic(text string) bool {
 	return text == resourceProfilePicture || text == resourceProductImage
 }

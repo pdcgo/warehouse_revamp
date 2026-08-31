@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/document/v1/document.proto.
  */
 export const file_warehouse_document_v1_document: GenFile = /*@__PURE__*/
-  fileDesc("CiR3YXJlaG91c2UvZG9jdW1lbnQvdjEvZG9jdW1lbnQucHJvdG8SFXdhcmVob3VzZS5kb2N1bWVudC52MSLPAQoIRG9jdW1lbnQSCgoCaWQYASABKAkSDwoHdGVhbV9pZBgCIAEoBBJCCg1yZXNvdXJjZV90eXBlGAMgASgOMisud2FyZWhvdXNlLmRvY3VtZW50LnYxLkRvY3VtZW50UmVzb3VyY2VUeXBlEhAKCGZpbGVuYW1lGAQgASgJEhEKCW1pbWVfdHlwZRgFIAEoCRISCgpzaXplX2J5dGVzGAYgASgDEhIKCnB1YmxpY191cmwYByABKAkSFQoNdGh1bWJuYWlsX3VybBgIIAEoCSLxAQoUUmVxdWVzdFVwbG9hZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESTgoNcmVzb3VyY2VfdHlwZRgCIAEoDjIrLndhcmVob3VzZS5kb2N1bWVudC52MS5Eb2N1bWVudFJlc291cmNlVHlwZUIKukgHggEEEAEgABIgCgxjb250ZW50X3R5cGUYAyABKAlCCrpIB3IFEAEYgAESGwoKc2l6ZV9ieXRlcxgEIAEoA0IHukgEIgIgABIcCghmaWxlbmFtZRgFIAEoCUIKukgHcgUQARj/AToOkrUYCgoIAQIDBAUGCQgi5gEKFVJlcXVlc3RVcGxvYWRSZXNwb25zZRISCgp1cGxvYWRfdXJsGAEgASgJEg4KBm1ldGhvZBgCIAEoCRJKCgdoZWFkZXJzGAMgAygLMjkud2FyZWhvdXNlLmRvY3VtZW50LnYxLlJlcXVlc3RVcGxvYWRSZXNwb25zZS5IZWFkZXJzRW50cnkSFAoMdXBsb2FkX3Rva2VuGAQgASgJEhcKD2V4cGlyZXNfYXRfdW5peBgFIAEoAxouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASI9ChRDb25maXJtVXBsb2FkUmVxdWVzdBIdCgx1cGxvYWRfdG9rZW4YASABKAlCB7pIBHICEAE6BpK1GAIgASJKChVDb25maXJtVXBsb2FkUmVzcG9uc2USMQoIZG9jdW1lbnQYASABKAsyHy53YXJlaG91c2UuZG9jdW1lbnQudjEuRG9jdW1lbnQiYwoVR2V0RG93bmxvYWRVcmxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhwKC2RvY3VtZW50X2lkGAIgASgJQge6SARyAhABOg6StRgKCggBAgMEBQYJCCJOChZHZXREb3dubG9hZFVybFJlc3BvbnNlEgsKA3VybBgBIAEoCRIXCg9leHBpcmVzX2F0X3VuaXgYAiABKAMSDgoGcHVibGljGAMgASgIKuIBChREb2N1bWVudFJlc291cmNlVHlwZRImCiJET0NVTUVOVF9SRVNPVVJDRV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9HRU5FUkFMEAESKgomRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9QUk9GSUxFX1BJQ1RVUkUQAhIoCiRET0NVTUVOVF9SRVNPVVJDRV9UWVBFX1BST0RVQ1RfSU1BR0UQAxIoCiRET0NVTUVOVF9SRVNPVVJDRV9UWVBFX09SREVSX1JFQ0VJUFQQBDLYAgoPRG9jdW1lbnRTZXJ2aWNlEmoKDVJlcXVlc3RVcGxvYWQSKy53YXJlaG91c2UuZG9jdW1lbnQudjEuUmVxdWVzdFVwbG9hZFJlcXVlc3QaLC53YXJlaG91c2UuZG9jdW1lbnQudjEuUmVxdWVzdFVwbG9hZFJlc3BvbnNlEmoKDUNvbmZpcm1VcGxvYWQSKy53YXJlaG91c2UuZG9jdW1lbnQudjEuQ29uZmlybVVwbG9hZFJlcXVlc3QaLC53YXJlaG91c2UuZG9jdW1lbnQudjEuQ29uZmlybVVwbG9hZFJlc3BvbnNlEm0KDkdldERvd25sb2FkVXJsEiwud2FyZWhvdXNlLmRvY3VtZW50LnYxLkdldERvd25sb2FkVXJsUmVxdWVzdBotLndhcmVob3VzZS5kb2N1bWVudC52MS5HZXREb3dubG9hZFVybFJlc3BvbnNlQlBaTmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvZG9jdW1lbnQvdjE7ZG9jdW1lbnR2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
+  fileDesc("CiR3YXJlaG91c2UvZG9jdW1lbnQvdjEvZG9jdW1lbnQucHJvdG8SFXdhcmVob3VzZS5kb2N1bWVudC52MSLPAQoIRG9jdW1lbnQSCgoCaWQYASABKAkSDwoHdGVhbV9pZBgCIAEoBBJCCg1yZXNvdXJjZV90eXBlGAMgASgOMisud2FyZWhvdXNlLmRvY3VtZW50LnYxLkRvY3VtZW50UmVzb3VyY2VUeXBlEhAKCGZpbGVuYW1lGAQgASgJEhEKCW1pbWVfdHlwZRgFIAEoCRISCgpzaXplX2J5dGVzGAYgASgDEhIKCnB1YmxpY191cmwYByABKAkSFQoNdGh1bWJuYWlsX3VybBgIIAEoCSLxAQoUUmVxdWVzdFVwbG9hZFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESTgoNcmVzb3VyY2VfdHlwZRgCIAEoDjIrLndhcmVob3VzZS5kb2N1bWVudC52MS5Eb2N1bWVudFJlc291cmNlVHlwZUIKukgHggEEEAEgABIgCgxjb250ZW50X3R5cGUYAyABKAlCCrpIB3IFEAEYgAESGwoKc2l6ZV9ieXRlcxgEIAEoA0IHukgEIgIgABIcCghmaWxlbmFtZRgFIAEoCUIKukgHcgUQARj/AToOkrUYCgoIAQIDBAUGCQgi5gEKFVJlcXVlc3RVcGxvYWRSZXNwb25zZRISCgp1cGxvYWRfdXJsGAEgASgJEg4KBm1ldGhvZBgCIAEoCRJKCgdoZWFkZXJzGAMgAygLMjkud2FyZWhvdXNlLmRvY3VtZW50LnYxLlJlcXVlc3RVcGxvYWRSZXNwb25zZS5IZWFkZXJzRW50cnkSFAoMdXBsb2FkX3Rva2VuGAQgASgJEhcKD2V4cGlyZXNfYXRfdW5peBgFIAEoAxouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASI9ChRDb25maXJtVXBsb2FkUmVxdWVzdBIdCgx1cGxvYWRfdG9rZW4YASABKAlCB7pIBHICEAE6BpK1GAIgASJKChVDb25maXJtVXBsb2FkUmVzcG9uc2USMQoIZG9jdW1lbnQYASABKAsyHy53YXJlaG91c2UuZG9jdW1lbnQudjEuRG9jdW1lbnQiYwoVR2V0RG93bmxvYWRVcmxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhwKC2RvY3VtZW50X2lkGAIgASgJQge6SARyAhABOg6StRgKCggBAgMEBQYJCCJOChZHZXREb3dubG9hZFVybFJlc3BvbnNlEgsKA3VybBgBIAEoCRIXCg9leHBpcmVzX2F0X3VuaXgYAiABKAMSDgoGcHVibGljGAMgASgIIoEBChRTaGFyZURvY3VtZW50UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIcCgtkb2N1bWVudF9pZBgCIAEoCUIHukgEcgIQARIdCgx3aXRoX3RlYW1faWQYAyABKARCB7pIBDICIAA6DpK1GAoKCAECAwQFBgkIIhcKFVNoYXJlRG9jdW1lbnRSZXNwb25zZSqMAgoURG9jdW1lbnRSZXNvdXJjZVR5cGUSJgoiRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9VTlNQRUNJRklFRBAAEiIKHkRPQ1VNRU5UX1JFU09VUkNFX1RZUEVfR0VORVJBTBABEioKJkRPQ1VNRU5UX1JFU09VUkNFX1RZUEVfUFJPRklMRV9QSUNUVVJFEAISKAokRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9QUk9EVUNUX0lNQUdFEAMSKAokRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9PUkRFUl9SRUNFSVBUEAQSKAokRE9DVU1FTlRfUkVTT1VSQ0VfVFlQRV9QQVlNRU5UX1BST09GEAUyxAMKD0RvY3VtZW50U2VydmljZRJqCg1SZXF1ZXN0VXBsb2FkEisud2FyZWhvdXNlLmRvY3VtZW50LnYxLlJlcXVlc3RVcGxvYWRSZXF1ZXN0Giwud2FyZWhvdXNlLmRvY3VtZW50LnYxLlJlcXVlc3RVcGxvYWRSZXNwb25zZRJqCg1Db25maXJtVXBsb2FkEisud2FyZWhvdXNlLmRvY3VtZW50LnYxLkNvbmZpcm1VcGxvYWRSZXF1ZXN0Giwud2FyZWhvdXNlLmRvY3VtZW50LnYxLkNvbmZpcm1VcGxvYWRSZXNwb25zZRJtCg5HZXREb3dubG9hZFVybBIsLndhcmVob3VzZS5kb2N1bWVudC52MS5HZXREb3dubG9hZFVybFJlcXVlc3QaLS53YXJlaG91c2UuZG9jdW1lbnQudjEuR2V0RG93bmxvYWRVcmxSZXNwb25zZRJqCg1TaGFyZURvY3VtZW50Eisud2FyZWhvdXNlLmRvY3VtZW50LnYxLlNoYXJlRG9jdW1lbnRSZXF1ZXN0Giwud2FyZWhvdXNlLmRvY3VtZW50LnYxLlNoYXJlRG9jdW1lbnRSZXNwb25zZUJQWk5naXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2RvY3VtZW50L3YxO2RvY3VtZW50djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.document.v1.Document
@@ -236,6 +236,65 @@ export const GetDownloadUrlResponseSchema: GenMessage<GetDownloadUrlResponse> = 
   messageDesc(file_warehouse_document_v1_document, 6);
 
 /**
+ * ShareDocument — the OWNER grants one other team read access to one document.
+ *
+ * ⚠ WHY THIS EXISTS RATHER THAN A SERVICE VOUCHING. A payment's proof is uploaded by the payer and
+ * must be read by the creditor, and `GetDownloadUrl` scopes every read to the owning team — on
+ * purpose, so an id-holder cannot fetch another team's private file. The alternative was an internal
+ * signing path that skipped the scope check and let `liability_service` decide who may read: that
+ * makes one bug in one service's relation check a leak of every private file in the system.
+ *
+ * This keeps the invariant instead: THERE IS NO READ WITHOUT A ROW SAYING YOU MAY. The document's
+ * owner grants the share, in their own scope, so no service ever asks another for permission — and
+ * `document_service` learns "shared with team X", never "this is a payment proof".
+ *
+ * ⚠ A SHARE IS PERMANENT AND THERE IS NO UNSHARE. The creditor accepted or rejected a payment by
+ * looking at this file, and evidence for a decision somebody may be asked about later cannot be
+ * withdrawn by the party who supplied it.
+ *
+ * @generated from message warehouse.document.v1.ShareDocumentRequest
+ */
+export type ShareDocumentRequest = Message<"warehouse.document.v1.ShareDocumentRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: string document_id = 2;
+   */
+  documentId: string;
+
+  /**
+   * WHO MAY NOW READ IT. Not "everyone" and not a list — one team per call, because a share is a
+   * deliberate act about a named counterparty rather than a visibility setting.
+   *
+   * @generated from field: uint64 with_team_id = 3;
+   */
+  withTeamId: bigint;
+};
+
+/**
+ * Describes the message warehouse.document.v1.ShareDocumentRequest.
+ * Use `create(ShareDocumentRequestSchema)` to create a new message.
+ */
+export const ShareDocumentRequestSchema: GenMessage<ShareDocumentRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_document_v1_document, 7);
+
+/**
+ * @generated from message warehouse.document.v1.ShareDocumentResponse
+ */
+export type ShareDocumentResponse = Message<"warehouse.document.v1.ShareDocumentResponse"> & {
+};
+
+/**
+ * Describes the message warehouse.document.v1.ShareDocumentResponse.
+ * Use `create(ShareDocumentResponseSchema)` to create a new message.
+ */
+export const ShareDocumentResponseSchema: GenMessage<ShareDocumentResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_document_v1_document, 8);
+
+/**
  * DocumentResourceType drives the public-vs-private split. PUBLIC types are images served at a
  * stable URL (an <img src>); PRIVATE types are viewed on demand via a short-lived signed URL.
  * Kept minimal on purpose — more types get added when real domains (products, payments) need them.
@@ -282,6 +341,18 @@ export enum DocumentResourceType {
    * @generated from enum value: DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT = 4;
    */
   ORDER_RECEIPT = 4,
+
+  /**
+   * PRIVATE: proof that a payment between two teams actually left a bank
+   * (a-payment-must-carry-proof) — a transfer screenshot, or the PDF the bank prints.
+   *
+   * ⚠ IT IS THE ONE TYPE READ BY SOMEBODY OUTSIDE THE OWNING TEAM. The payer uploads it and the
+   * CREDITOR is the person who has to look at it, which is what `ShareDocument` exists for. Private
+   * for an obvious reason: a transfer slip names an account number.
+   *
+   * @generated from enum value: DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF = 5;
+   */
+  PAYMENT_PROOF = 5,
 }
 
 /**
@@ -324,6 +395,16 @@ export const DocumentService: GenService<{
     methodKind: "unary";
     input: typeof GetDownloadUrlRequestSchema;
     output: typeof GetDownloadUrlResponseSchema;
+  },
+  /**
+   * Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
+   *
+   * @generated from rpc warehouse.document.v1.DocumentService.ShareDocument
+   */
+  shareDocument: {
+    methodKind: "unary";
+    input: typeof ShareDocumentRequestSchema;
+    output: typeof ShareDocumentResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_document_v1_document, 0);

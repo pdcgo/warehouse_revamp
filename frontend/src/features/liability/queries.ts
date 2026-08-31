@@ -130,12 +130,16 @@ export function useRecordPayment() {
       creditorTeamId: bigint;
       amount: bigint;
       note: string;
+      // ⚠ AT LEAST ONE, and the server refuses without (a-payment-must-carry-proof). Each must
+      // already be SHARED with the creditor — see useProofUpload, which does both.
+      documentIds: string[];
     }) =>
       liabilityPaymentClient.liabilityPaymentRecord({
         teamId: args.teamId,
         creditorTeamId: args.creditorTeamId,
         amount: args.amount,
         note: args.note,
+        documentIds: args.documentIds,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });

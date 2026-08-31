@@ -44,6 +44,10 @@ func (s *Service) LiabilityPaymentList(
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
 	err = query.
+		// ⚠ PRELOADED, NOT LAZY (a-payment-must-carry-proof). Every row on this list shows whether it
+		// carries proof, and a list that forgot this would render every payment as having none — which
+		// reads as the payer skipping a required step rather than as a missing join.
+		Preload("Documents").
 		// Newest first: the thing somebody just recorded is the thing somebody is asking about.
 		Order("id DESC").
 		Offset(offset).

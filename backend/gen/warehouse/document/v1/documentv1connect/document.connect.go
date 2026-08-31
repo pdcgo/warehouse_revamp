@@ -42,6 +42,9 @@ const (
 	// DocumentServiceGetDownloadUrlProcedure is the fully-qualified name of the DocumentService's
 	// GetDownloadUrl RPC.
 	DocumentServiceGetDownloadUrlProcedure = "/warehouse.document.v1.DocumentService/GetDownloadUrl"
+	// DocumentServiceShareDocumentProcedure is the fully-qualified name of the DocumentService's
+	// ShareDocument RPC.
+	DocumentServiceShareDocumentProcedure = "/warehouse.document.v1.DocumentService/ShareDocument"
 )
 
 // DocumentServiceClient is a client for the warehouse.document.v1.DocumentService service.
@@ -49,6 +52,8 @@ type DocumentServiceClient interface {
 	RequestUpload(context.Context, *connect.Request[v1.RequestUploadRequest]) (*connect.Response[v1.RequestUploadResponse], error)
 	ConfirmUpload(context.Context, *connect.Request[v1.ConfirmUploadRequest]) (*connect.Response[v1.ConfirmUploadResponse], error)
 	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
+	// Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
+	ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error)
 }
 
 // NewDocumentServiceClient constructs a client for the warehouse.document.v1.DocumentService
@@ -80,6 +85,12 @@ func NewDocumentServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(documentServiceMethods.ByName("GetDownloadUrl")),
 			connect.WithClientOptions(opts...),
 		),
+		shareDocument: connect.NewClient[v1.ShareDocumentRequest, v1.ShareDocumentResponse](
+			httpClient,
+			baseURL+DocumentServiceShareDocumentProcedure,
+			connect.WithSchema(documentServiceMethods.ByName("ShareDocument")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -88,6 +99,7 @@ type documentServiceClient struct {
 	requestUpload  *connect.Client[v1.RequestUploadRequest, v1.RequestUploadResponse]
 	confirmUpload  *connect.Client[v1.ConfirmUploadRequest, v1.ConfirmUploadResponse]
 	getDownloadUrl *connect.Client[v1.GetDownloadUrlRequest, v1.GetDownloadUrlResponse]
+	shareDocument  *connect.Client[v1.ShareDocumentRequest, v1.ShareDocumentResponse]
 }
 
 // RequestUpload calls warehouse.document.v1.DocumentService.RequestUpload.
@@ -105,11 +117,18 @@ func (c *documentServiceClient) GetDownloadUrl(ctx context.Context, req *connect
 	return c.getDownloadUrl.CallUnary(ctx, req)
 }
 
+// ShareDocument calls warehouse.document.v1.DocumentService.ShareDocument.
+func (c *documentServiceClient) ShareDocument(ctx context.Context, req *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error) {
+	return c.shareDocument.CallUnary(ctx, req)
+}
+
 // DocumentServiceHandler is an implementation of the warehouse.document.v1.DocumentService service.
 type DocumentServiceHandler interface {
 	RequestUpload(context.Context, *connect.Request[v1.RequestUploadRequest]) (*connect.Response[v1.RequestUploadResponse], error)
 	ConfirmUpload(context.Context, *connect.Request[v1.ConfirmUploadRequest]) (*connect.Response[v1.ConfirmUploadResponse], error)
 	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
+	// Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
+	ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error)
 }
 
 // NewDocumentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -137,6 +156,12 @@ func NewDocumentServiceHandler(svc DocumentServiceHandler, opts ...connect.Handl
 		connect.WithSchema(documentServiceMethods.ByName("GetDownloadUrl")),
 		connect.WithHandlerOptions(opts...),
 	)
+	documentServiceShareDocumentHandler := connect.NewUnaryHandler(
+		DocumentServiceShareDocumentProcedure,
+		svc.ShareDocument,
+		connect.WithSchema(documentServiceMethods.ByName("ShareDocument")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.document.v1.DocumentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case DocumentServiceRequestUploadProcedure:
@@ -145,6 +170,8 @@ func NewDocumentServiceHandler(svc DocumentServiceHandler, opts ...connect.Handl
 			documentServiceConfirmUploadHandler.ServeHTTP(w, r)
 		case DocumentServiceGetDownloadUrlProcedure:
 			documentServiceGetDownloadUrlHandler.ServeHTTP(w, r)
+		case DocumentServiceShareDocumentProcedure:
+			documentServiceShareDocumentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -164,4 +191,8 @@ func (UnimplementedDocumentServiceHandler) ConfirmUpload(context.Context, *conne
 
 func (UnimplementedDocumentServiceHandler) GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.document.v1.DocumentService.GetDownloadUrl is not implemented"))
+}
+
+func (UnimplementedDocumentServiceHandler) ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.document.v1.DocumentService.ShareDocument is not implemented"))
 }

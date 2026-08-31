@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -136,5 +136,27 @@ export const TheTermsTabWarnsWhenTheLimitIsNearlyUsed: Story = {
       timeout: 3000,
     });
     await expect(canvas.getByTestId("terms-panel-meter")).toHaveTextContent("87");
+  },
+};
+
+// ── PROOF IS REQUIRED (a-payment-must-carry-proof) ──────────────────────────────────────────────
+//
+// §Payment Flow has the payer BRING proof of the transfer and the creditor CHECK IT MANUALLY. A
+// payment with nothing attached asks the creditor to accept on the payer's word, which is exactly
+// what two-phase confirmation declines to trust — so the send is disabled rather than refused after
+// the fact.
+export const APaymentCannotBeSentWithoutProof: Story = {
+  play: async ({ canvasElement }) => {
+    await loaded(canvasElement);
+
+    // The dialog portals, so it is queried from the document rather than the canvas.
+    await userEvent.click(within(canvasElement).getByTestId("liability-detail-make-payment"));
+
+    const amount = await screen.findByTestId("record-amount");
+    await userEvent.type(amount, "500000", { delay: 40 });
+
+    // A valid amount is not enough on its own.
+    await waitFor(() => expect(screen.getByTestId("record-submit")).toBeDisabled());
+    await expect(screen.getByTestId("record-proof-input")).toBeInTheDocument();
   },
 };

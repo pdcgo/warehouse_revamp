@@ -212,7 +212,44 @@ Every input the screen needed was already decided. ⚠ **What was NOT decided an
 from the screen is the contract** — the `reason` field and the change-log RPC — which is why those go
 through `design_accept` with the pages rather than being settled separately.
 
-## ✅ THE MIGRATION IS BUILT (2026-08-31) — and NOT YET APPLIED
+## ✅ THREE ANSWERS BUILT (2026-08-31) — and NONE of the migrations applied
+
+The owner answered three questions in one message. All three are built.
+
+| answered | built |
+| --- | --- |
+| [an-incidental-line-must-say-what-it-was-for](../../business/balance/context_decision.md#an-incidental-line-must-say-what-it-was-for) | one `INCIDENTAL` cost kind, the note required **in the proto**, the picker deleted, `inventory_service` 00022 |
+| [terms-live-on-the-pair-detail](../../technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail) | `/liability/terms` gone, `TermsPanel` as a sixth tab on the pair detail |
+| [a-payment-must-carry-proof](../../business/balance/context_decision.md#a-payment-must-carry-proof) | `document_shares` + `ShareDocument`, `liability_payment_documents`, and an upload in the payment dialog |
+
+⛔ **FOUR MIGRATIONS ARE WRITTEN AND NONE HAS RUN** — Docker was never up on this machine, so
+`san migrate up` never executed and every DB-backed test skipped:
+`liability_service` 00005 and 00006, `inventory_service` 00022, `document_service` 00005. The next
+agent must run them and re-run `go test ./...` with Postgres up before trusting any of it.
+
+### 🆕 The proof plumbing, and the invariant it protects
+
+The creditor has to read a file the payer owns, and `GetDownloadUrl` scopes every read to the owning
+team. **The payer grants the share themselves**, as themselves — so no service ever asks another for
+permission and `document_service` keeps *there is no read without a row saying you may*.
+
+```
+RequestUpload(team=payer) → PUT → ConfirmUpload → ShareDocument(with=creditor) → PaymentRecord
+```
+
+| | |
+| --- | --- |
+| `document_shares` | unique on (document, team); **ON DELETE RESTRICT** on the document, because evidence for a decision cannot be withdrawn by the party who supplied it. There is no unshare |
+| `liability_payment_documents` | a child table, **not** a `text[]` — that would have been this system's first array column and a new driver dependency for one field |
+| the contract | `document_ids` `min_items: 1` on record. Neither table has a NOT-EMPTY constraint: payments and cost lines written before today legitimately have none, and no migration can invent a bank slip |
+| 6 unit tests | on `ShareDocument` — including that a stranger still gets NotFound, and that a shared document cannot be deleted |
+
+### ⚠ What is NOT covered
+
+The creditor's screen shows that proof exists; **it has no viewer yet** — no call to
+`GetDownloadUrl` from the payment row. The share makes it possible; the button is not built.
+
+## ✅ THE LEDGER MIGRATION IS BUILT (2026-08-31) — and NOT YET APPLIED
 
 All three approved changes landed in one pass, as
 [00005_rename_entries_to_logs_and_business_words.sql](../../../backend/services/liability_service/db_migrations/00005_rename_entries_to_logs_and_business_words.sql).

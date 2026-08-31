@@ -130,7 +130,10 @@
     "causeBrokenGood": "Goods broken · movement #{{id}}",
     "causeLostGood": "Goods lost · movement #{{id}}",
     "causeFound": "Goods found again · movement #{{id}}",
-    "tabTerms": "Terms"
+    "tabTerms": "Terms",
+    "recordProof": "Proof of transfer",
+    "recordProofHelp": "Required — an image or PDF of the transfer. It is shared with them so they can check it.",
+    "recordProofRemove": "Remove this file"
   },
   "common": {
     "perPage": "Per page",

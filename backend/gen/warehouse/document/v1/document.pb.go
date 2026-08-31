@@ -42,6 +42,13 @@ const (
 	// to serve from a URL that works for anyone who ever holds it — it is read through a short-lived
 	// signed URL by somebody who belongs to the team.
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT DocumentResourceType = 4
+	// PRIVATE: proof that a payment between two teams actually left a bank
+	// (a-payment-must-carry-proof) — a transfer screenshot, or the PDF the bank prints.
+	//
+	// ⚠ IT IS THE ONE TYPE READ BY SOMEBODY OUTSIDE THE OWNING TEAM. The payer uploads it and the
+	// CREDITOR is the person who has to look at it, which is what `ShareDocument` exists for. Private
+	// for an obvious reason: a transfer slip names an account number.
+	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF DocumentResourceType = 5
 )
 
 // Enum value maps for DocumentResourceType.
@@ -52,6 +59,7 @@ var (
 		2: "DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE",
 		3: "DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE",
 		4: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
+		5: "DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF",
 	}
 	DocumentResourceType_value = map[string]int32{
 		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":     0,
@@ -59,6 +67,7 @@ var (
 		"DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE": 2,
 		"DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE":   3,
 		"DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT":   4,
+		"DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF":   5,
 	}
 )
 
@@ -547,6 +556,119 @@ func (x *GetDownloadUrlResponse) GetPublic() bool {
 	return false
 }
 
+// ShareDocument — the OWNER grants one other team read access to one document.
+//
+// ⚠ WHY THIS EXISTS RATHER THAN A SERVICE VOUCHING. A payment's proof is uploaded by the payer and
+// must be read by the creditor, and `GetDownloadUrl` scopes every read to the owning team — on
+// purpose, so an id-holder cannot fetch another team's private file. The alternative was an internal
+// signing path that skipped the scope check and let `liability_service` decide who may read: that
+// makes one bug in one service's relation check a leak of every private file in the system.
+//
+// This keeps the invariant instead: THERE IS NO READ WITHOUT A ROW SAYING YOU MAY. The document's
+// owner grants the share, in their own scope, so no service ever asks another for permission — and
+// `document_service` learns "shared with team X", never "this is a payment proof".
+//
+// ⚠ A SHARE IS PERMANENT AND THERE IS NO UNSHARE. The creditor accepted or rejected a payment by
+// looking at this file, and evidence for a decision somebody may be asked about later cannot be
+// withdrawn by the party who supplied it.
+type ShareDocumentRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	TeamId     uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	DocumentId string                 `protobuf:"bytes,2,opt,name=document_id,json=documentId,proto3" json:"document_id,omitempty"`
+	// WHO MAY NOW READ IT. Not "everyone" and not a list — one team per call, because a share is a
+	// deliberate act about a named counterparty rather than a visibility setting.
+	WithTeamId    uint64 `protobuf:"varint,3,opt,name=with_team_id,json=withTeamId,proto3" json:"with_team_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShareDocumentRequest) Reset() {
+	*x = ShareDocumentRequest{}
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShareDocumentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShareDocumentRequest) ProtoMessage() {}
+
+func (x *ShareDocumentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShareDocumentRequest.ProtoReflect.Descriptor instead.
+func (*ShareDocumentRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_document_v1_document_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ShareDocumentRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ShareDocumentRequest) GetDocumentId() string {
+	if x != nil {
+		return x.DocumentId
+	}
+	return ""
+}
+
+func (x *ShareDocumentRequest) GetWithTeamId() uint64 {
+	if x != nil {
+		return x.WithTeamId
+	}
+	return 0
+}
+
+type ShareDocumentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShareDocumentResponse) Reset() {
+	*x = ShareDocumentResponse{}
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShareDocumentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShareDocumentResponse) ProtoMessage() {}
+
+func (x *ShareDocumentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShareDocumentResponse.ProtoReflect.Descriptor instead.
+func (*ShareDocumentResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_document_v1_document_proto_rawDescGZIP(), []int{8}
+}
+
 var File_warehouse_document_v1_document_proto protoreflect.FileDescriptor
 
 const file_warehouse_document_v1_document_proto_rawDesc = "" +
@@ -598,17 +720,28 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"\x16GetDownloadUrlResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12&\n" +
 	"\x0fexpires_at_unix\x18\x02 \x01(\x03R\rexpiresAtUnix\x12\x16\n" +
-	"\x06public\x18\x03 \x01(\bR\x06public*\xe2\x01\n" +
+	"\x06public\x18\x03 \x01(\bR\x06public\"\xa1\x01\n" +
+	"\x14ShareDocumentRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12(\n" +
+	"\vdocument_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
+	"documentId\x12)\n" +
+	"\fwith_team_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\n" +
+	"withTeamId:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x17\n" +
+	"\x15ShareDocumentResponse*\x8c\x02\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
 	"&DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE\x10\x02\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE\x10\x03\x12(\n" +
-	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x042\xd8\x02\n" +
+	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x04\x12(\n" +
+	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x052\xc4\x03\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
 	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +
-	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
+	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\x12j\n" +
+	"\rShareDocument\x12+.warehouse.document.v1.ShareDocumentRequest\x1a,.warehouse.document.v1.ShareDocumentResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
 
 var (
 	file_warehouse_document_v1_document_proto_rawDescOnce sync.Once
@@ -623,7 +756,7 @@ func file_warehouse_document_v1_document_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_document_v1_document_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_document_v1_document_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_warehouse_document_v1_document_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_warehouse_document_v1_document_proto_goTypes = []any{
 	(DocumentResourceType)(0),      // 0: warehouse.document.v1.DocumentResourceType
 	(*Document)(nil),               // 1: warehouse.document.v1.Document
@@ -633,24 +766,28 @@ var file_warehouse_document_v1_document_proto_goTypes = []any{
 	(*ConfirmUploadResponse)(nil),  // 5: warehouse.document.v1.ConfirmUploadResponse
 	(*GetDownloadUrlRequest)(nil),  // 6: warehouse.document.v1.GetDownloadUrlRequest
 	(*GetDownloadUrlResponse)(nil), // 7: warehouse.document.v1.GetDownloadUrlResponse
-	nil,                            // 8: warehouse.document.v1.RequestUploadResponse.HeadersEntry
+	(*ShareDocumentRequest)(nil),   // 8: warehouse.document.v1.ShareDocumentRequest
+	(*ShareDocumentResponse)(nil),  // 9: warehouse.document.v1.ShareDocumentResponse
+	nil,                            // 10: warehouse.document.v1.RequestUploadResponse.HeadersEntry
 }
 var file_warehouse_document_v1_document_proto_depIdxs = []int32{
-	0, // 0: warehouse.document.v1.Document.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
-	0, // 1: warehouse.document.v1.RequestUploadRequest.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
-	8, // 2: warehouse.document.v1.RequestUploadResponse.headers:type_name -> warehouse.document.v1.RequestUploadResponse.HeadersEntry
-	1, // 3: warehouse.document.v1.ConfirmUploadResponse.document:type_name -> warehouse.document.v1.Document
-	2, // 4: warehouse.document.v1.DocumentService.RequestUpload:input_type -> warehouse.document.v1.RequestUploadRequest
-	4, // 5: warehouse.document.v1.DocumentService.ConfirmUpload:input_type -> warehouse.document.v1.ConfirmUploadRequest
-	6, // 6: warehouse.document.v1.DocumentService.GetDownloadUrl:input_type -> warehouse.document.v1.GetDownloadUrlRequest
-	3, // 7: warehouse.document.v1.DocumentService.RequestUpload:output_type -> warehouse.document.v1.RequestUploadResponse
-	5, // 8: warehouse.document.v1.DocumentService.ConfirmUpload:output_type -> warehouse.document.v1.ConfirmUploadResponse
-	7, // 9: warehouse.document.v1.DocumentService.GetDownloadUrl:output_type -> warehouse.document.v1.GetDownloadUrlResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: warehouse.document.v1.Document.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
+	0,  // 1: warehouse.document.v1.RequestUploadRequest.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
+	10, // 2: warehouse.document.v1.RequestUploadResponse.headers:type_name -> warehouse.document.v1.RequestUploadResponse.HeadersEntry
+	1,  // 3: warehouse.document.v1.ConfirmUploadResponse.document:type_name -> warehouse.document.v1.Document
+	2,  // 4: warehouse.document.v1.DocumentService.RequestUpload:input_type -> warehouse.document.v1.RequestUploadRequest
+	4,  // 5: warehouse.document.v1.DocumentService.ConfirmUpload:input_type -> warehouse.document.v1.ConfirmUploadRequest
+	6,  // 6: warehouse.document.v1.DocumentService.GetDownloadUrl:input_type -> warehouse.document.v1.GetDownloadUrlRequest
+	8,  // 7: warehouse.document.v1.DocumentService.ShareDocument:input_type -> warehouse.document.v1.ShareDocumentRequest
+	3,  // 8: warehouse.document.v1.DocumentService.RequestUpload:output_type -> warehouse.document.v1.RequestUploadResponse
+	5,  // 9: warehouse.document.v1.DocumentService.ConfirmUpload:output_type -> warehouse.document.v1.ConfirmUploadResponse
+	7,  // 10: warehouse.document.v1.DocumentService.GetDownloadUrl:output_type -> warehouse.document.v1.GetDownloadUrlResponse
+	9,  // 11: warehouse.document.v1.DocumentService.ShareDocument:output_type -> warehouse.document.v1.ShareDocumentResponse
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_document_v1_document_proto_init() }
@@ -664,7 +801,7 @@ func file_warehouse_document_v1_document_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_document_v1_document_proto_rawDesc), len(file_warehouse_document_v1_document_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

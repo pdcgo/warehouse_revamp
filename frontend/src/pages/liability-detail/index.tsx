@@ -1,11 +1,12 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
   Button,
+  Input,
   CloseButton,
   Dialog,
   Field,
@@ -24,11 +25,12 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Paperclip, Plus, X } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
+import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
@@ -576,15 +578,19 @@ function MakePaymentDialog({
 }: MakePaymentDialogProps) {
   const { t } = useTranslation();
   const record = useRecordPayment();
-  const busy = record.isPending;
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [proofs, setProofs] = useState<UploadedProof[]>([]);
 
-  // The contract requires amount > 0, so this mirrors the server rather than inventing a second idea
-  // of "ready to send".
-  const ready = amount !== "" && Number(amount) > 0;
+  const proof = useProofUpload({ teamId: payerTeamId, shareWithTeamId: creditorTeamId });
+  const busy = record.isPending || proof.uploading;
+
+  // ⚠ PROOF IS PART OF "READY", not a nicety. The contract requires amount > 0 AND at least one
+  // document (a-payment-must-carry-proof) — this mirrors the server rather than inventing a second
+  // idea of ready, so the button is disabled instead of the send being refused after the fact.
+  const ready = amount !== "" && Number(amount) > 0 && proofs.length > 0;
 
   function change(next: boolean) {
     onOpenChange(next);
@@ -592,6 +598,20 @@ function MakePaymentDialog({
       setAmount("");
       setNote("");
       setError("");
+      // ⚠ THE UPLOADED FILES ARE NOT DELETED, only forgotten. They are already shared with the
+      // creditor and a share cannot be withdrawn; a cancelled dialog leaves an orphan document, which
+      // is the cheap side of that trade.
+      setProofs([]);
+      proof.setError("");
+    }
+  }
+
+  async function pick(file: File | undefined) {
+    if (!file) return;
+
+    const uploaded = await proof.upload(file);
+    if (uploaded) {
+      setProofs((prev) => [...prev, uploaded]);
     }
   }
 
@@ -601,7 +621,13 @@ function MakePaymentDialog({
     setError("");
 
     record.mutate(
-      { teamId: payerTeamId, creditorTeamId, amount: BigInt(amount), note },
+      {
+        teamId: payerTeamId,
+        creditorTeamId,
+        amount: BigInt(amount),
+        note,
+        documentIds: proofs.map((p) => p.id),
+      },
       {
         onSuccess: () => change(false),
         onError: (err) => setError(rpcError(err)),
@@ -651,6 +677,54 @@ function MakePaymentDialog({
                       onChange={(e) => setNote(e.target.value)}
                     />
                     <Field.HelperText>{t("liabilityDetail.recordNoteHelp")}</Field.HelperText>
+                  </Field.Root>
+
+                  {/* PROOF OF THE TRANSFER — required (a-payment-must-carry-proof).
+                      `balance_context.md` §Payment Flow has the payer BRING it and the creditor CHECK
+                      IT MANUALLY, so a payment with nothing attached asks them to accept on your
+                      word. Uploading also SHARES the file with them: without that they would get
+                      NotFound on the one thing they have to look at. */}
+                  <Field.Root required>
+                    <Field.Label>{t("liabilityDetail.recordProof")}</Field.Label>
+
+                    <Input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      disabled={busy}
+                      data-testid="record-proof-input"
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                        void pick(e.target.files?.[0]);
+                        // Cleared so picking the SAME file twice still fires a change event.
+                        e.target.value = "";
+                      }}
+                    />
+
+                    <Field.HelperText>{t("liabilityDetail.recordProofHelp")}</Field.HelperText>
+
+                    {proofs.length > 0 && (
+                      <Stack gap="0.5" pt="1" data-testid="record-proof-list">
+                        {proofs.map((p) => (
+                          <Flex key={p.id} align="center" gap="field">
+                            <Icon as={Paperclip} boxSize="4" color="fg.muted" />
+                            <Text fontSize="sm">{p.filename}</Text>
+                            <IconButton
+                              size="xs"
+                              variant="ghost"
+                              aria-label={t("liabilityDetail.recordProofRemove")}
+                              disabled={busy}
+                              data-testid={`record-proof-remove-${p.id}`}
+                              onClick={() => setProofs((prev) => prev.filter((x) => x.id !== p.id))}
+                            >
+                              <Icon as={X} boxSize="4" />
+                            </IconButton>
+                          </Flex>
+                        ))}
+                      </Stack>
+                    )}
+
+                    {proof.error && (
+                      <Field.ErrorText data-testid="record-proof-error">{proof.error}</Field.ErrorText>
+                    )}
                   </Field.Root>
 
                   {error && (

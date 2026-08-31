@@ -513,10 +513,12 @@ erDiagram
 
 ```mermaid
 erDiagram
+    documents ||--o{ document_shares : "may be read by"
+
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -529,6 +531,14 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    document_shares {
+        bigserial   id          PK
+        text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted"
+        bigint      team_id     "the team that may now read it, opaque, no FK"
+        bigint      granted_by  "who granted it, opaque user id"
+        timestamptz created_at
+    }
 ```
 
 - **`documents`** — metadata for one stored file; the bytes live in object storage, not the DB.
@@ -537,7 +547,24 @@ erDiagram
   set only for public resource types (`profile_picture`, `product_image`); an image upload also gets
   a generated thumbnail. `order_receipt` (an order's courier slip or the marketplace's PDF) is
   **private** like `general` — it names a buyer and an address, so it is read through a short-lived
-  signed URL rather than a stable public one.
+  signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
+  transfer slip names an account number.
+
+- **`document_shares`** — the ONE way a document is readable outside the team that owns it
+  ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).
+  `GetDownloadUrl` matches the owning team **OR** a share row, and nothing else.
+  - **The grant is made by the OWNER, in the owner's scope.** No service asks another service for
+    permission, and `document_service` never learns what a payment is — it learns *"team X may read
+    document D"*, which the owner is entitled to assert about their own file.
+  - ⚠ **The alternative was rejected and is worth not re-proposing**: an internal, non-team-scoped
+    signing path so `liability_service` could vouch for the reader. It works, and it replaces *there
+    is no read without a row saying you may* with *trust that service* — one bug in its relation
+    check would leak every private file in the system.
+  - ⚠ **`ON DELETE RESTRICT` is the point, not a default.** A creditor accepted or rejected a payment
+    by looking at the file, so evidence for a decision somebody may be asked about later cannot be
+    withdrawn by the party who supplied it. **There is no unshare** for the same reason.
+  - Unique on `(document_id, team_id)`: granting twice is the same fact, so a retry is a no-op rather
+    than a second row or an error.
 
 ---
 

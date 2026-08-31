@@ -17,6 +17,9 @@ service DocumentService {
   rpc RequestUpload(RequestUploadRequest) returns (RequestUploadResponse);
   rpc ConfirmUpload(ConfirmUploadRequest) returns (ConfirmUploadResponse);
   rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse);
+
+  // Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
+  rpc ShareDocument(ShareDocumentRequest) returns (ShareDocumentResponse);
 }
 
 // DocumentResourceType drives the public-vs-private split. PUBLIC types are images served at a
@@ -37,6 +40,14 @@ enum DocumentResourceType {
   // to serve from a URL that works for anyone who ever holds it — it is read through a short-lived
   // signed URL by somebody who belongs to the team.
   DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT = 4;
+
+  // PRIVATE: proof that a payment between two teams actually left a bank
+  // (a-payment-must-carry-proof) — a transfer screenshot, or the PDF the bank prints.
+  //
+  // ⚠ IT IS THE ONE TYPE READ BY SOMEBODY OUTSIDE THE OWNING TEAM. The payer uploads it and the
+  // CREDITOR is the person who has to look at it, which is what `ShareDocument` exists for. Private
+  // for an obvious reason: a transfer slip names an account number.
+  DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF = 5;
 }
 
 message Document {
@@ -111,9 +122,12 @@ message ConfirmUploadResponse {
 }
 
 message GetDownloadUrlRequest {
-  // Reading is team-scoped: the caller must belong to the document's team. This is deliberately
-  // NOT authenticated-only — it closes the cross-team read gap where any id-holder could fetch
-  // another team's private file.
+  // Reading is team-scoped: the caller must belong to the document's team, OR to a team the owner
+  // has SHARED it with (a-payment-must-carry-proof). This is deliberately NOT authenticated-only —
+  // it closes the cross-team read gap where any id-holder could fetch another team's private file.
+  //
+  // ⚠ THE SHARE IS THE ONLY WAY OUT OF THE OWNING TEAM, and it is a row, not a rule: there is no
+  // read without something recording that you may.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
@@ -139,3 +153,47 @@ message GetDownloadUrlResponse {
   int64 expires_at_unix = 2; // 0 for public (stable) URLs
   bool public = 3;
 }
+
+// ShareDocument — the OWNER grants one other team read access to one document.
+//
+// ⚠ WHY THIS EXISTS RATHER THAN A SERVICE VOUCHING. A payment's proof is uploaded by the payer and
+// must be read by the creditor, and `GetDownloadUrl` scopes every read to the owning team — on
+// purpose, so an id-holder cannot fetch another team's private file. The alternative was an internal
+// signing path that skipped the scope check and let `liability_service` decide who may read: that
+// makes one bug in one service's relation check a leak of every private file in the system.
+//
+// This keeps the invariant instead: THERE IS NO READ WITHOUT A ROW SAYING YOU MAY. The document's
+// owner grants the share, in their own scope, so no service ever asks another for permission — and
+// `document_service` learns "shared with team X", never "this is a payment proof".
+//
+// ⚠ A SHARE IS PERMANENT AND THERE IS NO UNSHARE. The creditor accepted or rejected a payment by
+// looking at this file, and evidence for a decision somebody may be asked about later cannot be
+// withdrawn by the party who supplied it.
+message ShareDocumentRequest {
+  // The OWNING team, and the scope: you may only share a document that is yours.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  string document_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // WHO MAY NOW READ IT. Not "everyone" and not a list — one team per call, because a share is a
+  // deliberate act about a named counterparty rather than a visibility setting.
+  uint64 with_team_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShareDocumentResponse {}

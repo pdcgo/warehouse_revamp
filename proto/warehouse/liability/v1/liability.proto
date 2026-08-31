@@ -506,6 +506,15 @@ message LiabilityPayment {
 
   int64 created_at_unix = 9;
   int64 confirmed_at_unix = 10;
+
+  // PROOF THAT THE MONEY LEFT A BANK (a-payment-must-carry-proof) — document_service ids, opaque
+  // here. The payer uploads them and shares each with the creditor before recording the payment, so
+  // `GetDownloadUrl` answers for both sides.
+  //
+  // ⚠ THE CREDITOR'S CONFIRMATION IS A MANUAL CHECK, and this is what they check. A payment with
+  // nothing attached asks them to accept on the payer's word — which is exactly what the two-phase
+  // design declines to trust.
+  repeated string document_ids = 11;
 }
 
 message LiabilityPaymentRecordRequest {
@@ -530,6 +539,29 @@ message LiabilityPaymentRecordRequest {
   uint64 creditor_team_id = 2 [(buf.validate.field).uint64.gt = 0];
   int64 amount = 3 [(buf.validate.field).int64.gt = 0];
   string note = 4 [(buf.validate.field).string.max_len = 500];
+
+  // AT LEAST ONE, always (a-payment-must-carry-proof). `balance_context.md` §Payment Flow has the
+  // payer *bring* proof of the bank transfer and the creditor *check it manually* — a rule the system
+  // enforces, not a habit it hopes for.
+  //
+  // ⚠ EACH MUST ALREADY BE SHARED WITH THE CREDITOR. The payer calls `ShareDocument` first, as
+  // themselves: this service does not — and must not — reach into document_service to grant it, which
+  // would need an internal path that skips the document scope check.
+  //
+  // ⚠ A BANK TRANSFER IS THE ONLY PAYMENT KIND THAT HAS A SLIP. If `offset` is ever allowed, or cash
+  // changes hands in the building, this constraint has to be relaxed for that kind — relaxing a
+  // validation later is a compatible change, which is why no `kind` enum was added now for a feature
+  // that has not been approved.
+  repeated string document_ids = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    }
+  }];
 }
 
 message LiabilityPaymentRecordResponse {

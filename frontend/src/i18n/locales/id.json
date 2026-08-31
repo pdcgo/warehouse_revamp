@@ -130,7 +130,10 @@
     "causeBrokenGood": "Barang rusak · pergerakan #{{id}}",
     "causeLostGood": "Barang hilang · pergerakan #{{id}}",
     "causeFound": "Barang ditemukan lagi · pergerakan #{{id}}",
-    "tabTerms": "Ketentuan"
+    "tabTerms": "Ketentuan",
+    "recordProof": "Bukti transfer",
+    "recordProofHelp": "Wajib — gambar atau PDF bukti transfer. File ini dibagikan ke mereka untuk diperiksa.",
+    "recordProofRemove": "Hapus file ini"
   },
   "common": {
     "perPage": "Per halaman",

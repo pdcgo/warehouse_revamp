@@ -146,6 +146,25 @@ func paymentStatusProto(text string) liabilityv1.LiabilityPaymentStatus {
 	}
 }
 
+// documentIDs flattens the proof association to the ids the wire carries.
+//
+// ⚠ NIL RATHER THAN AN EMPTY SLICE when there are none, which protobuf renders as an absent field.
+// "No proof" and "the caller did not load it" look identical here on purpose: the distinction that
+// matters to a reader is whether the payment HAS proof, and a payment recorded since
+// a-payment-must-carry-proof always does.
+func documentIDs(docs []liability_service_models.LiabilityPaymentDocument) []string {
+	if len(docs) == 0 {
+		return nil
+	}
+
+	out := make([]string, 0, len(docs))
+	for i := range docs {
+		out = append(out, docs[i].DocumentID)
+	}
+
+	return out
+}
+
 // paymentToProto carries the nil ConfirmedAt through as 0 — "not confirmed yet" rather than a date at
 // the epoch. The status already says which, so a caller never has to read 0 as a timestamp.
 func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.LiabilityPayment {
@@ -165,5 +184,6 @@ func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.L
 		ConfirmedBy:     p.ConfirmedBy,
 		CreatedAtUnix:   p.CreatedAt.Unix(),
 		ConfirmedAtUnix: confirmedAt,
+		DocumentIds:     documentIDs(p.Documents),
 	}
 }

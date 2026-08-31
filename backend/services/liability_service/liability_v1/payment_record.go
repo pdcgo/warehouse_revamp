@@ -37,6 +37,15 @@ func (s *Service) LiabilityPaymentRecord(
 		Amount:         req.Msg.GetAmount(),
 		Status:         paymentRecorded,
 		Note:           req.Msg.GetNote(),
+		// PROOF, written in the same INSERT as the payment — GORM creates the association with the
+		// parent, so a payment can never exist for a moment with its proof missing.
+		//
+		// ⚠ TAKEN ON TRUST, and it has to be. This service cannot check that these ids exist, or that
+		// the creditor may read them, without reaching into document_service — which would need the
+		// internal, scope-skipping path that a-payment-must-carry-proof exists to avoid. The failure
+		// mode is benign and self-correcting: a creditor who cannot open the proof REJECTS the payment,
+		// which is a state the flow already has.
+		Documents:      proofDocuments(req.Msg.GetDocumentIds()),
 		// WHO claimed it, not just which team. This is the record that says a person moved money.
 		RecordedBy: actorUserID(ctx),
 	}
@@ -61,4 +70,22 @@ func actorUserID(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// proofDocuments turns the request's ids into the rows written beside the payment.
+//
+// ⚠ DUPLICATES ARE NOT FILTERED HERE. The unique index on (payment_id, document_id) is what makes
+// attaching the same file twice the same fact rather than two of them — a check in Go would be a
+// second copy of a rule the database already enforces, and the one that drifts.
+func proofDocuments(ids []string) []liability_service_models.LiabilityPaymentDocument {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	out := make([]liability_service_models.LiabilityPaymentDocument, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, liability_service_models.LiabilityPaymentDocument{DocumentID: id})
+	}
+
+	return out
 }

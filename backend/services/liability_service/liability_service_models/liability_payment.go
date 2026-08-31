@@ -28,6 +28,15 @@ type LiabilityPayment struct {
 	// The payer's hint for the human confirming: a transfer reference, a bank, a date.
 	Note string
 
+	// PROOF THAT THE MONEY LEFT A BANK (a-payment-must-carry-proof). The creditor's confirmation is a
+	// MANUAL check, and these are what they check — see LiabilityPaymentDocument for why the ids carry
+	// no foreign key and why the share that makes them readable is not recorded here.
+	//
+	// ⚠ PRELOADED, NEVER LAZY. Every screen that shows a payment shows its proof, so a list that
+	// forgot the Preload would render "no proof attached" for payments that have it — which reads as
+	// the payer having skipped a required step.
+	Documents []LiabilityPaymentDocument `gorm:"foreignKey:PaymentID"`
+
 	// Why a confirmation was undone. Empty unless Status is reversed.
 	ReversalReason string
 
