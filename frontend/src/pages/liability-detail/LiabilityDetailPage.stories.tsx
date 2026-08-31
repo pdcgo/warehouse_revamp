@@ -100,3 +100,41 @@ export const TheLimitLogIsScopedToThisPair: Story = {
     await expect(canvas.queryByTestId("terms-change-1")).not.toBeInTheDocument();
   },
 };
+
+// ── WHERE THE LIMIT IS SET (terms-live-on-the-pair-detail) ──────────────────────────────────────
+//
+// It was a screen of its own listing every counterparty. The owner's answer is that terms belong
+// beside the pair they govern, so this is the same controls with the list taken away.
+export const TheTermsTabSetsThisPairsLimit: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-terms"));
+
+    await waitFor(() => expect(canvas.getByTestId("terms-panel")).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+
+    // Toko Melati has its OWN row: a 30.000 fee and 7.5% markup, not the default's 25.000 / 5%.
+    await expect(canvas.getByTestId("terms-panel-fee")).toHaveTextContent("30.000");
+    await expect(canvas.getByTestId("terms-panel-markup")).toHaveTextContent("7.5%");
+
+    // Its own row, so nothing is inherited and the row can be removed.
+    await expect(canvas.queryByTestId("terms-inherited")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("terms-delete")).toBeInTheDocument();
+  },
+};
+
+// THE METER IS THE POINT OF PUTTING TERMS HERE. On the old screen a limit sat in a table beside every
+// other team's; here it is one click from the entries that filled it, and 8.700.000 of 10.000.000 is
+// past the 80% warning.
+export const TheTermsTabWarnsWhenTheLimitIsNearlyUsed: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-terms"));
+
+    await waitFor(() => expect(canvas.getByTestId("terms-panel-meter")).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+    await expect(canvas.getByTestId("terms-panel-meter")).toHaveTextContent("87");
+  },
+};

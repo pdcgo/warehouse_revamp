@@ -70,8 +70,7 @@
     "selectTeamView": "Pilih tim untuk melihat posisinya.",
     "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
     "youOweThem": "Anda berhutang {{amount}} kepada mereka",
-    "square": "Lunas",
-    "termsLink": "Ketentuan kredit"
+    "square": "Lunas"
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -130,7 +129,8 @@
     "causeIncidentalFee": "Biaya penerimaan · restock #{{id}}",
     "causeBrokenGood": "Barang rusak · pergerakan #{{id}}",
     "causeLostGood": "Barang hilang · pergerakan #{{id}}",
-    "causeFound": "Barang ditemukan lagi · pergerakan #{{id}}"
+    "causeFound": "Barang ditemukan lagi · pergerakan #{{id}}",
+    "tabTerms": "Ketentuan"
   },
   "common": {
     "perPage": "Per halaman",
@@ -2027,7 +2027,7 @@
     "remove": "Hapus Ketentuan",
     "removeDialog": {
       "title": "Hapus Ketentuan untuk {{name}}",
-      "message": "Ini MENAIKKAN batas mereka menjadi tanpa batas — satu-satunya cara menyatakan 'tanpa batas' setelah batas pernah diisi. Biaya penanganan dan markup kembali ke baris bawaan Anda.",
+      "message": "Pasangan ini kembali ke ketentuan BAWAAN Anda — batas, biaya, dan markup sekaligus, karena yang berlaku adalah satu baris utuh. Jika belum ada baris bawaan, artinya kredit tanpa batas.",
       "confirm": "Hapus"
     },
     "empty": "Belum ada ketentuan. Semua tim yang Anda layani tanpa batas dan tidak ditagih.",
@@ -2050,6 +2050,8 @@
     "colWhen": "Waktu",
     "colWho": "Siapa",
     "colLimitChange": "Batas",
-    "colReason": "Alasan"
+    "colReason": "Alasan",
+    "usingDefault": "Memakai ketentuan bawaan",
+    "noneSet": "Belum ada ketentuan — kredit tanpa batas, tanpa biaya, tanpa markup"
   }
 }

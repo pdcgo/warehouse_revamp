@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
-  Button,
   Checkbox,
   Flex,
   Heading,
@@ -19,7 +18,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
@@ -191,17 +190,9 @@ export function LiabilityListPage() {
           <Checkbox.Label>{t("liability.unsettledOnly")}</Checkbox.Label>
         </Checkbox.Root>
         <Spacer />
-        {/* The way into the terms screen. Deliberately NOT a menu entry: only six roles may write
-            terms, and the menu is read by everyone who can read a balance. */}
-        <Button
-          size="xs"
-          variant="outline"
-          data-testid="liability-terms-link"
-          onClick={() => navigate("/liability/terms")}
-        >
-          <Icon as={SlidersHorizontal} boxSize="4" />
-          {t("liability.termsLink")}
-        </Button>
+        {/* ⚠ THE TERMS BUTTON IS GONE, and nothing replaces it here (terms-live-on-the-pair-detail).
+            Terms are set on the pair they govern, which is one row-click away — a second way in from
+            this screen would be a link to a page that no longer exists. */}
       </Flex>
 
       {query.isPending ? (

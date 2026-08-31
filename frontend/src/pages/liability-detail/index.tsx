@@ -28,6 +28,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
+import { TermsPanel } from "./components/TermsPanel";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
@@ -440,6 +441,14 @@ export function LiabilityDetailPage() {
             <Tabs.Trigger value="limits" data-testid="liability-detail-tab-limits">
               {t("liabilityDetail.tabLimits")}
             </Tabs.Trigger>
+            {/* WHERE THE LIMIT IS SET — terms-live-on-the-pair-detail.
+                ⚠ It was a screen of its own at `/liability/terms`, listing every counterparty in one
+                table. Terms belong beside the pair they govern, so the list is gone and each pair
+                carries its own. The tab beside this one is the same limit's HISTORY: one writes the
+                rule, the other shows how it changed. */}
+            <Tabs.Trigger value="terms" data-testid="liability-detail-tab-terms">
+              {t("liabilityDetail.tabTerms")}
+            </Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="receivable">
@@ -488,6 +497,18 @@ export function LiabilityDetailPage() {
                 onPageChange={setPaymentPage}
               />
             </Stack>
+          </Tabs.Content>
+
+          <Tabs.Content value="terms">
+            <TermsPanel
+              teamId={current.teamId}
+              counterpartyId={counterpartyId}
+              counterpartyName={name}
+              role={current.role}
+              // The page holds a SIGNED balance from this team's side; a meter wants a magnitude, and
+              // a counterparty in credit owes nothing rather than a negative amount.
+              debt={balance > 0n ? balance : 0n}
+            />
           </Tabs.Content>
 
           <Tabs.Content value="limits">

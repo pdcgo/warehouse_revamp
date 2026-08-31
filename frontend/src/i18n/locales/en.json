@@ -70,8 +70,7 @@
     "selectTeamView": "Select a team to view its position.",
     "theyOweYou": "They owe you {{amount}}",
     "youOweThem": "You owe them {{amount}}",
-    "square": "Square",
-    "termsLink": "Credit terms"
+    "square": "Square"
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -130,7 +129,8 @@
     "causeIncidentalFee": "Delivery costs · restock #{{id}}",
     "causeBrokenGood": "Goods broken · movement #{{id}}",
     "causeLostGood": "Goods lost · movement #{{id}}",
-    "causeFound": "Goods found again · movement #{{id}}"
+    "causeFound": "Goods found again · movement #{{id}}",
+    "tabTerms": "Terms"
   },
   "common": {
     "perPage": "Per page",
@@ -2037,7 +2037,7 @@
     "remove": "Remove Terms",
     "removeDialog": {
       "title": "Remove Terms for {{name}}",
-      "message": "This RAISES their limit to unlimited — it is the only way to express 'no limit' once one is set. Their handling fee and markup fall back to your default row.",
+      "message": "This pair falls back to your DEFAULT terms — limit, fee and markup together, because the whole row is what resolves. With no default row set, that means unlimited credit.",
       "confirm": "Remove"
     },
     "empty": "No terms set. Every team you trade with is unlimited and charged nothing.",
@@ -2060,6 +2060,8 @@
     "colWhen": "When",
     "colWho": "Who",
     "colLimitChange": "Limit",
-    "colReason": "Reason"
+    "colReason": "Reason",
+    "usingDefault": "Using the default terms",
+    "noneSet": "No terms set — unlimited credit, no fee, no markup"
   }
 }

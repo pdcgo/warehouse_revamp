@@ -65,12 +65,6 @@ const SettlementListRoute = lazy(() =>
 const LiabilityDetailPage = lazy(() =>
   import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
 );
-// A creditor's rates and credit limits (#189). Reached from the Liability screen rather than the
-// menu: only six roles may write it, and a menu entry would offer it to everyone who can READ a
-// balance.
-const LiabilityTermsPage = lazy(() =>
-  import("./pages/liability-terms").then((m) => ({ default: m.LiabilityTermsPage })),
-);
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
@@ -282,7 +276,6 @@ export const router = createBrowserRouter([
       // ⚠ BEFORE the :counterpartyId route. React Router ranks a static segment above a dynamic
       // one so the order is not load-bearing today — but reading it in this order is, because
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.
-      { path: "liability/terms", element: <LiabilityTermsPage /> },
       // A detail view is a PAGE, not a dialog (CLAUDE.md), reached by clicking a row (#222).
       { path: "liability/:counterpartyId", element: <LiabilityDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
