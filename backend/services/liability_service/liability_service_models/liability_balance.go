@@ -13,7 +13,7 @@ type LiabilityBalance struct {
 	TeamID         uint64
 	CounterpartyID uint64
 
-	// Positive = they owe you. Same convention as LiabilityEntry.Amount.
+	// Positive = they owe you. Same convention as LiabilityLog.Amount.
 	Balance int64
 
 	// When the current run of debt began; nil when the pair is square. Set as the balance leaves

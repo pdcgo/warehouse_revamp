@@ -147,9 +147,13 @@ opposites. The cancel event carries only ids and needs no more: **the ledger alr
 charged.** Re-deriving from rates would disagree with the original the moment a rate changed between
 placement and cancellation.
 
-It reverses only `handling_fee` and `product_fee`. ⚠ **The COD obligation is left alone** — that debt
-is for goods the warehouse paid for at the door, and an order falling through does not give the
-warehouse its money back.
+It reverses only `order_fee` and `product_fee`. ⚠ **The incidental obligation is left alone** — that
+debt is what the warehouse paid at the door for goods it does not own, and an order falling through
+does not give the warehouse its money back.
+
+⚠ **The reversal names WHO CANCELLED**, not who placed. It is a second act, often by a second person,
+and `OrderCancelledEvent` now carries its own `actor_id` for exactly that reason
+([every-entry-names-who-posted-it](../../technical/balance/team_balance_design_decision.md#every-entry-names-who-posted-it)).
 
 Only the **debtor's legs** are read. Both sides of every movement are stored, so reading every row
 for the order would find each fee twice and reverse it twice — refused as a duplicate, but by luck

@@ -49,9 +49,18 @@ message OrderPlacedEvent {
   // revenue row has to be able to say so.
   bool cost_known = 6;
 
-  // WHICH WAREHOUSE fulfilled it (#186). liability_service charges the handling fee to this team —
+  // WHICH WAREHOUSE fulfilled it (#186). liability_service charges the order fee to this team —
   // the order cannot say who to bill without it.
   uint64 warehouse_id = 7;
+
+  // WHO PLACED IT (every-entry-names-who-posted-it). The ledger records the person behind every
+  // movement, and the two fees this event causes are posted by a consumer that has no other way to
+  // learn who acted — an event is the only channel, so the actor travels on it.
+  //
+  // ⚠ It is the ORDER's actor, not the consumer's. A redelivery six hours later must still name the
+  // person who placed the order, which is why this is on the event and not read from the request
+  // context on the receiving side.
+  uint64 actor_id = 9;
 
   // The lines, for liability's PRODUCT FEE (#186): an order selling another team's product owes that
   // team money.
@@ -117,6 +126,11 @@ message OrderCancelledEvent {
 
   uint64 team_id = 1;
   uint64 order_id = 2;
+
+  // WHO CANCELLED IT (every-entry-names-who-posted-it). The reversal this event causes is a real
+  // ledger movement, and it is a different person's act from the placement it undoes — so it carries
+  // its own actor rather than reusing the one on the entries being reversed.
+  uint64 actor_id = 3;
 
   // The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
   // apart from the domain fields and read the same on every event in the system.

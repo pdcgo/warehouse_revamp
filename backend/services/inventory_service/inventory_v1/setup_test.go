@@ -71,13 +71,14 @@ type codPosting struct {
 	sellingTeamID    uint64
 	warehouseID      uint64
 	restockRequestID uint64
+	actorID          uint64
 	amount           int64
 }
 
 func (p *recordingPoster) PostRestockOutlay(
 	_ context.Context,
 	_ *gorm.DB,
-	sellingTeamID, warehouseID, restockRequestID uint64,
+	sellingTeamID, warehouseID, restockRequestID, actorID uint64,
 	amount int64,
 ) error {
 	if p.fail != nil {
@@ -88,6 +89,7 @@ func (p *recordingPoster) PostRestockOutlay(
 		sellingTeamID:    sellingTeamID,
 		warehouseID:      warehouseID,
 		restockRequestID: restockRequestID,
+		actorID:          actorID,
 		amount:           amount,
 	})
 
@@ -127,8 +129,16 @@ type damagePosting struct {
 	ownerTeamID uint64
 	warehouseID uint64
 	movementID  uint64
+	actorID     uint64
 	amount      int64
-	reversal    bool
+	kind        inventory_v1.StockDamageKind
+}
+
+// reversal is what the kind used to be: a boolean saying only whether the money was going back. Kept
+// as a derived helper so the assertions that only care about direction still read the same, while
+// the ones that care WHICH loss can now ask.
+func (d damagePosting) reversal() bool {
+	return d.kind == inventory_v1.StockDamageFound
 }
 
 // PostStockDamage records the debt side of a damaged/lost/found adjust. Kept on recordingPoster
@@ -136,9 +146,9 @@ type damagePosting struct {
 func (p *recordingPoster) PostStockDamage(
 	_ context.Context,
 	_ *gorm.DB,
-	ownerTeamID, warehouseID, movementID uint64,
+	ownerTeamID, warehouseID, movementID, actorID uint64,
 	amount int64,
-	reversal bool,
+	kind inventory_v1.StockDamageKind,
 ) error {
 	if p.fail != nil {
 		return p.fail
@@ -148,8 +158,9 @@ func (p *recordingPoster) PostStockDamage(
 		ownerTeamID: ownerTeamID,
 		warehouseID: warehouseID,
 		movementID:  movementID,
+		actorID:     actorID,
 		amount:      amount,
-		reversal:    reversal,
+		kind:        kind,
 	})
 
 	return nil

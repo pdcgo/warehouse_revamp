@@ -16,17 +16,17 @@ func history(
 	t *testing.T,
 	svc *liability_v1.Service,
 	teamID, counterpartyID uint64,
-) *liabilityv1.LiabilityEntryListResponse {
+) *liabilityv1.LiabilityLogListResponse {
 	t.Helper()
 
-	res, err := svc.LiabilityEntryList(context.Background(),
-		connect.NewRequest(&liabilityv1.LiabilityEntryListRequest{
+	res, err := svc.LiabilityLogList(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityLogListRequest{
 			TeamId: teamID,
-			Filter: &liabilityv1.LiabilityEntryListFilter{CounterpartyId: counterpartyID},
+			Filter: &liabilityv1.LiabilityLogListFilter{CounterpartyId: counterpartyID},
 			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {
-		t.Fatalf("LiabilityEntryList(%d -> %d): %v", teamID, counterpartyID, err)
+		t.Fatalf("LiabilityLogList(%d -> %d): %v", teamID, counterpartyID, err)
 	}
 
 	return res.Msg
@@ -51,7 +51,7 @@ func TestEntryList_EachLineSaysWhatCausedIt(t *testing.T) {
 	}
 
 	entry := entryRows(msg)[0]
-	if entry.GetSourceType() != liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_COD_FEE {
+	if entry.GetSourceType() != liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE {
 		t.Fatalf("source_type = %v, want COD_FEE", entry.GetSourceType())
 	}
 
@@ -124,17 +124,17 @@ func TestEntryList_CannotReadTwoOtherTeamsPair(t *testing.T) {
 
 	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
 		DebtorTeamID: outsider, CreditorTeamID: warehouse, Amount: 99000,
-		SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+		SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 	})
 	if err != nil {
 		t.Fatalf("outsiders' debt: %v", err)
 	}
 
 	// The caller is `selling`, which has nothing to do with (outsider, warehouse).
-	res, err := svc.LiabilityEntryList(context.Background(),
-		connect.NewRequest(&liabilityv1.LiabilityEntryListRequest{
+	res, err := svc.LiabilityLogList(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityLogListRequest{
 			TeamId: selling,
-			Filter: &liabilityv1.LiabilityEntryListFilter{CounterpartyId: outsider},
+			Filter: &liabilityv1.LiabilityLogListFilter{CounterpartyId: outsider},
 			Page:   &commonv1.CommonPagination{Page: 1, Limit: 50},
 		}))
 	if err != nil {

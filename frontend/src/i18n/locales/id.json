@@ -100,11 +100,8 @@
     "colStatus": "Status",
     "reversal": "Pembalikan",
     "confirm": "Konfirmasi",
-    "causeCodFee": "Biaya COD · restock #{{id}}",
-    "causeHandlingFee": "Biaya penanganan · pesanan #{{id}}",
     "causeProductFee": "Biaya produk · pesanan #{{id}}",
     "causePayment": "Pembayaran #{{id}}",
-    "causeStockDamage": "Kerusakan stok · pergerakan #{{id}}",
     "causeUnknown": "Tidak diketahui #{{id}}",
     "statusRecorded": "Dicatat",
     "statusConfirmed": "Dikonfirmasi",
@@ -128,8 +125,12 @@
     "recordNoteOptional": "(opsional)",
     "recordNoteHelp": "Petunjuk untuk orang yang mengonfirmasi — buku besar mencatat penyebab bertipe, bukan catatan ini.",
     "recordSubmit": "Buat Pembayaran",
-    "causeRestockOutlay": "Biaya penerimaan · restock #{{id}}",
-    "tabLimits": "Perubahan batas"
+    "tabLimits": "Perubahan batas",
+    "causeOrderFee": "Biaya pesanan · pesanan #{{id}}",
+    "causeIncidentalFee": "Biaya penerimaan · restock #{{id}}",
+    "causeBrokenGood": "Barang rusak · pergerakan #{{id}}",
+    "causeLostGood": "Barang hilang · pergerakan #{{id}}",
+    "causeFound": "Barang ditemukan lagi · pergerakan #{{id}}"
   },
   "common": {
     "perPage": "Per halaman",

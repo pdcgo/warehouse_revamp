@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/selling/v1/events.proto.
  */
 export const file_warehouse_selling_v1_events: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIp0CChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSNAoFbGluZXMYCCADKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBsYWNlZExpbmUSGQoIZXZlbnRfaWQYYiABKAlCB7pIBHICEAESIQoQb2NjdXJyZWRfYXRfdW5peBhjIAEoA0IHukgEIgIgADoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyKNAQoTT3JkZXJDYW5jZWxsZWRFdmVudBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhkKCGV2ZW50X2lkGGIgASgJQge6SARyAhABEiEKEG9jY3VycmVkX2F0X3VuaXgYYyABKANCB7pIBCICIAA6FYq1GBEKD29yZGVyLWNhbmNlbGxlZEJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_event_base_v1_event]);
+  fileDesc("CiF3YXJlaG91c2Uvc2VsbGluZy92MS9ldmVudHMucHJvdG8SFHdhcmVob3VzZS5zZWxsaW5nLnYxIq8CChBPcmRlclBsYWNlZEV2ZW50Eg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSEAoIYWN0b3JfaWQYCSABKAQSNAoFbGluZXMYCCADKAsyJS53YXJlaG91c2Uuc2VsbGluZy52MS5PcmRlclBsYWNlZExpbmUSGQoIZXZlbnRfaWQYYiABKAlCB7pIBHICEAESIQoQb2NjdXJyZWRfYXRfdW5peBhjIAEoA0IHukgEIgIgADoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyKfAQoTT3JkZXJDYW5jZWxsZWRFdmVudBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhAKCGFjdG9yX2lkGAMgASgEEhkKCGV2ZW50X2lkGGIgASgJQge6SARyAhABEiEKEG9jY3VycmVkX2F0X3VuaXgYYyABKANCB7pIBCICIAA6FYq1GBEKD29yZGVyLWNhbmNlbGxlZEJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NlbGxpbmcvdjE7c2VsbGluZ3YxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_event_base_v1_event]);
 
 /**
  * OrderPlacedEvent announces that an order was placed and COMMITTED (#153).
@@ -83,12 +83,25 @@ export type OrderPlacedEvent = Message<"warehouse.selling.v1.OrderPlacedEvent"> 
   costKnown: boolean;
 
   /**
-   * WHICH WAREHOUSE fulfilled it (#186). liability_service charges the handling fee to this team —
+   * WHICH WAREHOUSE fulfilled it (#186). liability_service charges the order fee to this team —
    * the order cannot say who to bill without it.
    *
    * @generated from field: uint64 warehouse_id = 7;
    */
   warehouseId: bigint;
+
+  /**
+   * WHO PLACED IT (every-entry-names-who-posted-it). The ledger records the person behind every
+   * movement, and the two fees this event causes are posted by a consumer that has no other way to
+   * learn who acted — an event is the only channel, so the actor travels on it.
+   *
+   * ⚠ It is the ORDER's actor, not the consumer's. A redelivery six hours later must still name the
+   * person who placed the order, which is why this is on the event and not read from the request
+   * context on the receiving side.
+   *
+   * @generated from field: uint64 actor_id = 9;
+   */
+  actorId: bigint;
 
   /**
    * The lines, for liability's PRODUCT FEE (#186): an order selling another team's product owes that
@@ -207,6 +220,15 @@ export type OrderCancelledEvent = Message<"warehouse.selling.v1.OrderCancelledEv
    * @generated from field: uint64 order_id = 2;
    */
   orderId: bigint;
+
+  /**
+   * WHO CANCELLED IT (every-entry-names-who-posted-it). The reversal this event causes is a real
+   * ledger movement, and it is a different person's act from the placement it undoes — so it carries
+   * its own actor rather than reusing the one on the entries being reversed.
+   *
+   * @generated from field: uint64 actor_id = 3;
+   */
+  actorId: bigint;
 
   /**
    * The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit

@@ -1074,8 +1074,8 @@ erDiagram
 
 ```mermaid
 erDiagram
-    liability_entries }o--|| liability_balances : "projected into"
-    liability_payments ||--o{ liability_entries : "a CONFIRMED one posts"
+    liability_logs }o--|| liability_balances : "projected into"
+    liability_payments ||--o{ liability_logs : "a CONFIRMED one posts"
     liability_terms {
         bigserial   id                PK
         bigint      team_id           "the CREDITOR who set these terms"
@@ -1087,16 +1087,17 @@ erDiagram
         timestamptz updated_at
     }
 
-    liability_entries {
+    liability_logs {
         bigserial   id              PK
         bigint      team_id         "whose books this leg is in, opaque, no FK"
         bigint      counterparty_id "the other side"
         bigint      amount          "signed — receivable positive, payable negative; whole rupiah"
-        text        source_type     "cod_fee / handling_fee / product_fee / payment; no CHECK"
+        text        source_type     "order_fee / product_fee / payment / incidental_fee / broken_good / lost_good / found; no CHECK"
         bigint      source_id       "opaque id in the service that owns the cause, no FK"
         boolean     reversal        "undoes an earlier leg — part of the idempotency key"
         bigint      group_id        "both legs of one movement share it"
-        bigint      balance_after   "derived; the entries stay the truth"
+        bigint      balance_after   "derived; the log rows stay the truth"
+        bigint      actor_id        "WHO caused it — 0 is unattended, or a row older than the column"
         timestamptz created_at
     }
 
@@ -1126,7 +1127,7 @@ erDiagram
     }
 ```
 
-- **`liability_entries`** — the ledger of what teams owe each other (#183). Immutable and
+- **`liability_logs`** — the ledger of what teams owe each other (#183). Immutable and
   append-only: a correction is a
   **compensating entry**, never an update or delete, because a ledger you can edit is not evidence of
   anything.
@@ -1186,7 +1187,7 @@ erDiagram
 - **`liability_payments`** — one team's claim that it paid another, and the creditor's agreement that
   the money arrived (#188). **Liability is two-phase**: the payer RECORDS, the creditor CONFIRMS, and
   only the confirm posts to the ledger.
-  - ⚠ **It is NOT the ledger.** This table holds the claim; `liability_entries` holds what moved. A payment
+  - ⚠ **It is NOT the ledger.** This table holds the claim; `liability_logs` holds what moved. A payment
     sitting at `recorded` has changed no balance at all — one side asserting a transfer is not evidence
     that it landed, and only the creditor can see the money arrive. That asymmetry is also why
     counterparties are teams only: an external party has no account and could never confirm.

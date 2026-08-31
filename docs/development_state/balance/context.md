@@ -212,7 +212,51 @@ Every input the screen needed was already decided. ⚠ **What was NOT decided an
 from the screen is the contract** — the `reason` field and the change-log RPC — which is why those go
 through `design_accept` with the pages rather than being settled separately.
 
-## ⚠ The next migration carries TWO approved changes — do not run it piecemeal
+## ✅ THE MIGRATION IS BUILT (2026-08-31) — and NOT YET APPLIED
+
+All three approved changes landed in one pass, as
+[00005_rename_entries_to_logs_and_business_words.sql](../../../backend/services/liability_service/db_migrations/00005_rename_entries_to_logs_and_business_words.sql).
+
+| | |
+| --- | --- |
+| the source-type vocabulary | `order_fee` · `product_fee` · `payment` · `incidental_fee` · `broken_good` · `lost_good` · `found`. `COD_FEE`'s number is **reserved**, not reused |
+| `actor_id` | `BIGINT NOT NULL DEFAULT 0` on the log table, threaded from four origins |
+| the rename | `liability_entries` → `liability_logs`, with its indexes, constraint and sequence renamed explicitly — Postgres does not follow the table |
+
+⛔ **NOT RUN. Docker was not running on this machine**, so `san migrate up` never executed and the
+DB-backed tests skipped. The next agent must run it and re-run `go test ./...` with Postgres up
+before trusting any of it. Everything that can be checked without a database was:
+`go build` · `go vet` · `buf lint` · `tsc` · **1428/1438 stories** (the 10 are the pre-existing
+daily-statement failures) · 208 mermaid diagrams.
+
+### ✅ A live bug is fixed on the way past
+
+The daily statement read `COD_FEE`, superseded and posting nothing since — so **its column reported 0
+every day while the warehouse's outlay appeared in no column at all.** It now reads
+`INCIDENTAL_FEE`.
+
+### ⚠ What the migration CANNOT recover
+
+`stock_damage` carried three business movements under one name. `reversal = TRUE` is recoverably
+`found`; everything else was broken **or** lost and no column says which, so it lands on
+`broken_good` — **a documented guess**, written into the migration so nobody later reads those rows
+as authoritative.
+
+### 🆕 Two things the build surfaced
+
+| | |
+| --- | --- |
+| **the actor was dropped at EVERY boundary** | not just the poster's. `OrderPlacedEvent` had no actor field at all, so the two highest-volume causes had no channel to carry one. Both order events gained `actor_id`. Recorded as [the-actor-was-dropped-at-every-boundary](../../technical/balance/team_balance_design_decision.md#the-actor-was-dropped-at-every-boundary) |
+| **a count shortfall is now `lost_good`** | `stock_opname` posted shrinkage under the same type as breakage. It is shrinkage, and it now says so |
+
+## ⚠ Still undecided, and now visible in the code
+
+| | |
+| --- | --- |
+| **`liability_terms.handling_fee`** | the ledger line is `order_fee` and the terms column that sets its rate is still `handling_fee` — so the Credit Terms screen says *Handling fee* for money the pair detail calls an *Order fee*. The decision's mapping covered source types only, so this was left alone rather than widened on my own judgement. **→ Recommend renaming it to `order_fee`**: one column, one proto field, one label |
+| **the restock cost-kind collapse** | `RESTOCK_COST_KIND_COD_SHIPPING` + `OTHER` → one `INCIDENTAL` is decided and **not done**. It is a different service's migration, and it has an unanswered sub-question: the note is currently *optional for COD_SHIPPING, required for OTHER*, and with one kind that pair-rule has nothing to key on. **→ Recommend required always** — with one kind, the kind no longer says what the money was |
+
+## ⚠ SUPERSEDED — what this section planned is BUILT (see above)
 
 | | |
 | --- | --- |

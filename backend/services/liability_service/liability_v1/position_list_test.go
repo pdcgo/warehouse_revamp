@@ -51,7 +51,7 @@ func TestPositionList_ShowsBothDirectionsWithTheSignIntact(t *testing.T) {
 	// …and another team owes the selling team.
 	_, err = svc.PostEntry(context.Background(), db, liability_v1.Posting{
 		DebtorTeamID: other, CreditorTeamID: selling, Amount: 4000,
-		SourceType: liability_v1.SourceTypeHandlingFee, SourceID: 1,
+		SourceType: liability_v1.SourceTypeOrderFee, SourceID: 1,
 	})
 	if err != nil {
 		t.Fatalf("second fee: %v", err)
@@ -103,7 +103,7 @@ func TestPositionList_OrdersTheOldestDebtFirst(t *testing.T) {
 
 	_, err = svc.PostEntry(context.Background(), db, liability_v1.Posting{
 		DebtorTeamID: selling, CreditorTeamID: newer, Amount: 4000,
-		SourceType: liability_v1.SourceTypeHandlingFee, SourceID: 1,
+		SourceType: liability_v1.SourceTypeOrderFee, SourceID: 1,
 	})
 	if err != nil {
 		t.Fatalf("new debt: %v", err)
@@ -170,7 +170,7 @@ func TestPositionList_ACounterpartyFilterIsNotAScope(t *testing.T) {
 	// A debt between two teams the caller has nothing to do with.
 	_, err := svc.PostEntry(context.Background(), db, liability_v1.Posting{
 		DebtorTeamID: outsider, CreditorTeamID: warehouse, Amount: 99000,
-		SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+		SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 	})
 	if err != nil {
 		t.Fatalf("outsiders' debt: %v", err)

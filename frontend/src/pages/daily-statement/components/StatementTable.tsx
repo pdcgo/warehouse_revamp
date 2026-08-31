@@ -78,7 +78,7 @@ export function StatementTable({
 
   const spent = expenses?.total ?? 0n;
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = liability?.bySource[LiabilitySourceType.COD_FEE] ?? 0n;
+  const codFees = liability?.bySource[LiabilitySourceType.INCIDENTAL_FEE] ?? 0n;
 
   if (rows.length === 0) {
     return (

@@ -62,6 +62,7 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				WarehouseID: event.GetWarehouseId(),
 				OrderID:     event.GetOrderId(),
 				Lines:       lines,
+				ActorID:     event.GetActorId(),
 			})
 
 		case OrderCancelledSubscription:
@@ -75,7 +76,7 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 			// The cancel carries only ids, and needs no more: the ledger already knows what it
 			// charged, so reversing reads its own entries rather than recomputing fees from rates
 			// that may have changed since.
-			return svc.ReverseOrder(ctx, event.GetTeamId(), event.GetOrderId())
+			return svc.ReverseOrder(ctx, event.GetTeamId(), event.GetOrderId(), event.GetActorId())
 
 		default:
 			// A subscription this build does not know. ACKed rather than NACKed: redelivering a

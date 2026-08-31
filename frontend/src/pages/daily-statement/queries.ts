@@ -77,8 +77,13 @@ export interface Statement {
   expenses: ExpenseTotals | undefined;
 }
 
-const HANDLING_FEE = LiabilitySourceType.HANDLING_FEE;
-const COD_FEE = LiabilitySourceType.COD_FEE;
+const HANDLING_FEE = LiabilitySourceType.ORDER_FEE;
+
+// ⚠ THIS COLUMN WAS PERMANENTLY ZERO. It read `COD_FEE`, which was superseded by what is now
+// INCIDENTAL_FEE and has posted nothing since — so the warehouse's outlay appeared in NO column at
+// all while this one reported 0 every day. Repointing it is the live bug that
+// the-ledger-speaks-the-business-words fixed for free.
+const COD_FEE = LiabilitySourceType.INCIDENTAL_FEE;
 
 // The daily statement's read.
 //

@@ -27,16 +27,16 @@ func positionRows(res *liabilityv1.LiabilityPositionListResponse) []*liabilityv1
 	return out
 }
 
-func entryRows(res *liabilityv1.LiabilityEntryListResponse) []*liabilityv1.LiabilityEntry {
-	var m map[uint64]*liabilityv1.LiabilityEntry
+func entryRows(res *liabilityv1.LiabilityLogListResponse) []*liabilityv1.LiabilityLog {
+	var m map[uint64]*liabilityv1.LiabilityLog
 	for _, it := range res.GetItems() {
-		e := it.GetEntry()
+		e := it.GetLog()
 		if e != nil {
 			m = e.GetMapData()
 		}
 	}
 
-	out := make([]*liabilityv1.LiabilityEntry, 0, len(res.GetIds()))
+	out := make([]*liabilityv1.LiabilityLog, 0, len(res.GetIds()))
 	for _, id := range res.GetIds() {
 		r, ok := m[id]
 		if ok {

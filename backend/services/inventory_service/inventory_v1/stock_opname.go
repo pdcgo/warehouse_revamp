@@ -266,7 +266,12 @@ func (s *Service) countOne(
 				continue
 			}
 
-			postErr := s.liability.PostStockDamage(ctx, tx, ownerTeamID, warehouseID, mv.ID, amount, false)
+			// A COUNT SHORTFALL IS SHRINKAGE, not breakage — nobody recorded breaking these, they are
+			// simply not there. It used to post as the one `stock_damage` type shared with breakage,
+			// which is exactly what made "how much went to breakage versus shrinkage" unanswerable
+			// (the-ledger-speaks-the-business-words).
+			postErr := s.liability.PostStockDamage(ctx, tx, ownerTeamID, warehouseID, mv.ID,
+				actor, amount, StockDamageLost)
 			if postErr != nil {
 				return nil, postErr
 			}

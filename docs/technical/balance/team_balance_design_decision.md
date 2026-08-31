@@ -177,3 +177,109 @@ does not spend the argument again:
 The next migration carries **two** approved changes, not three: the source-type vocabulary and
 [every-entry-names-who-posted-it](#every-entry-names-who-posted-it). Both land on
 `liability_entries`, which keeps its name.
+
+---
+
+## two-logs-two-names
+
+> The owner, in chat — *"liability_logs + liability_terms_logs, yes"*.
+
+**The verdict.** The ledger table is **`liability_logs`**, and the credit-limit history — which does
+not exist yet — is **`liability_terms_logs`**. Both names say *what they log*; neither takes the bare
+word, in a design where [the-pair-detail-shows-both-logs](#the-pair-detail-shows-both-logs) put two of
+them on one screen and said they must never merge.
+
+```mermaid
+flowchart TB
+  P["pair detail"] --> B["balance log — liability_logs"]
+  P --> L["limit log — liability_terms_logs"]
+  B -.->|"different grain, never merged"| L
+  B --> B1["a row is ONE LEG. group_id pairs the two"]
+  L --> L1["a row is one WHOLE change"]
+```
+
+⚠ **They are not the same shape**, which is why both names are qualified: a balance row is **half** a
+movement, a limit row is a **whole** change.
+
+### The spec
+
+| renames | to |
+| --- | --- |
+| table `liability_entries` | **`liability_logs`** |
+| model `LiabilityEntry` · `liability_entry.go` | `LiabilityLog` · `liability_log.go` |
+| proto `LiabilityEntry` · `LiabilityEntryList*` | `LiabilityLog` · `LiabilityLogList*` |
+| rpc `LiabilityEntryList` | `LiabilityLogList` |
+| handler `entry_list.go` | `log_list.go` |
+| frontend `useLiabilityEntries` | `useLiabilityLogs` |
+| the unbuilt limit history | **`liability_terms_logs`** — named now because there is one moment to make the pair consistent, and it is before the table exists |
+
+⚠ **The API renames with the table.** Leaving the RPC saying `Entry` over a table called
+`liability_logs` is the half-rename that was argued against when the whole-context rename was on the
+table. It is breaking, and there is no external consumer — one `buf generate` moves both sides.
+
+| does NOT change | |
+| --- | --- |
+| the `liability` prefix | [liability-stays](#liability-stays) — this decision is about the suffix |
+| `liability_balances` · `liability_payments` · `liability_terms` | untouched |
+| the source-type **values** | a separate decision — [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words) renames what the rows SAY |
+| the *"Change Log"* UI label | never in question |
+
+### ⚠ What was traded, recorded once
+
+**"Entry" means one side of a double-entry posting** — which is exactly what a row is, and the
+model's own comment says so (*"ONE LEG of one movement"*). **"Log" says "a record of something that
+happened"**, and a leg is not a thing that happened; the movement is. That precision is given up
+deliberately, in exchange for the schema speaking the words the design docs use.
+
+⚠ **The objection that was WITHDRAWN, so it is not re-raised**: *log* was argued to invite treating a
+row as standing alone and breaking *two legs are one posting*. It does not, because the invariant is
+held by code rather than by a noun — `group_id` ships (*"Shared by both legs of one movement"*) and
+`post_entry.go` is the single construction site, writing both legs in one transaction.
+
+### It rides the pending migration
+
+Third and last rider on the same pass, with
+[the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
+and [every-entry-names-who-posted-it](#every-entry-names-who-posted-it). All three touch this one
+table and this one proto. **Nothing gates them now.**
+
+---
+
+## the-actor-was-dropped-at-every-boundary
+
+> A correction to [every-entry-names-who-posted-it](#every-entry-names-who-posted-it), found while
+> building it. This log is append-only, so the earlier entry stands as written and this one is the
+> amendment.
+
+**What that entry claimed.** *"The person is already at hand and is dropped at the boundary"* — true
+of the restock path, which is the one I checked.
+
+**What is actually true.** It is dropped at **every** boundary, and for the two highest-volume causes
+there was no channel to carry it at all.
+
+| cause | the actor was… |
+| --- | --- |
+| `order_fee` · `product_fee` | ⛔ **not available.** `OrderPlacedEvent` had no actor field. `order_place.go` computes one for its own records and the event dropped it |
+| `incidental_fee` | ✅ computed in `restock_request_fulfill.go`, dropped by the poster signature |
+| `broken_good` · `lost_good` · `found` | ✅ computed in `stock_adjust.go`, dropped by the poster signature |
+| `payment` | ✅ on the request |
+
+⚠ **So the fix was bigger than two parameters**: `OrderPlacedEvent` and `OrderCancelledEvent` each
+gained an `actor_id`, and selling_service populates both from the `eventActor(ctx)` it was already
+computing. Had this not been caught, the column would have read 0 for the two causes that produce
+the most rows — which is precisely the shrug the decision said it must not become.
+
+```mermaid
+flowchart LR
+  O["order_place.go — eventActor(ctx)"] -->|"own records"| R1["order_events"]
+  O -.->|"WAS dropped — no field"| E["OrderPlacedEvent"]
+  E --> C["liability push handler"] --> L["the ledger"]
+  F2["restock_request_fulfill.go — actorFrom(ctx)"] -->|"own records"| R2["4 other columns"]
+  F2 -.->|"WAS dropped — no parameter"| P["PostRestockOutlay"] --> L
+```
+
+### ⚠ The cancel carries its OWN actor
+
+`OrderCancelledEvent.actor_id` is whoever cancelled, not whoever placed. A reversal is a second act
+and often a second person, and the ledger records who caused **each** movement — not who caused the
+one being undone.

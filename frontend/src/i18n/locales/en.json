@@ -100,11 +100,8 @@
     "colStatus": "Status",
     "reversal": "Reversal",
     "confirm": "Confirm",
-    "causeCodFee": "COD fee · restock #{{id}}",
-    "causeHandlingFee": "Handling fee · order #{{id}}",
     "causeProductFee": "Product fee · order #{{id}}",
     "causePayment": "Payment #{{id}}",
-    "causeStockDamage": "Stock damage · movement #{{id}}",
     "causeUnknown": "Unknown #{{id}}",
     "statusRecorded": "Recorded",
     "statusConfirmed": "Confirmed",
@@ -128,8 +125,12 @@
     "recordNoteOptional": "(optional)",
     "recordNoteHelp": "A hint for the person confirming — the ledger records the typed cause, never this note.",
     "recordSubmit": "Make Payment",
-    "causeRestockOutlay": "Delivery costs · restock #{{id}}",
-    "tabLimits": "Limit changes"
+    "tabLimits": "Limit changes",
+    "causeOrderFee": "Order fee · order #{{id}}",
+    "causeIncidentalFee": "Delivery costs · restock #{{id}}",
+    "causeBrokenGood": "Goods broken · movement #{{id}}",
+    "causeLostGood": "Goods lost · movement #{{id}}",
+    "causeFound": "Goods found again · movement #{{id}}"
   },
   "common": {
     "perPage": "Per page",

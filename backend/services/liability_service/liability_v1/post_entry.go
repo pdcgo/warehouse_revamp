@@ -45,6 +45,15 @@ type Posting struct {
 	// Set it rather than swapping debtor and creditor: the swap would produce the right arithmetic
 	// with the wrong idempotency key, so a double cancel would reverse twice.
 	Reversal bool
+
+	// WHO CAUSED THIS MOVEMENT — a user id (every-entry-names-who-posted-it). Both legs carry it: a
+	// posting is one act by one person, and the two rows are two views of that act.
+	//
+	// ⚠ 0 IS A GENUINELY UNATTENDED POSTING and nothing writes it today. It is deliberately NOT
+	// refused here: PostEntry is policy-free, and a ledger that declines to record a real movement
+	// because a caller failed to thread an id is a ledger that loses money to a plumbing bug. The
+	// callers are where the id is required.
+	ActorID uint64
 }
 
 // PostEntry writes BOTH LEGS of one movement, in one transaction.
@@ -153,7 +162,7 @@ func (s *Service) postLeg(
 		return err
 	}
 
-	entry := liability_service_models.LiabilityEntry{
+	entry := liability_service_models.LiabilityLog{
 		TeamID:         teamID,
 		CounterpartyID: counterpartyID,
 		Amount:         amount,
@@ -162,6 +171,7 @@ func (s *Service) postLeg(
 		Reversal:       p.Reversal,
 		GroupID:        groupID,
 		BalanceAfter:   balance,
+		ActorID:        p.ActorID,
 	}
 
 	err = tx.Create(&entry).Error

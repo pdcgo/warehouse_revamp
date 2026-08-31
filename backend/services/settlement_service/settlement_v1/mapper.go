@@ -5,7 +5,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_service_models"
 )
 
-// The enums are stored as TEXT, matching `orders.status` and `liability_entries`. The mapping lives
+// The enums are stored as TEXT, matching `orders.status` and `liability_logs`. The mapping lives
 // here and nowhere else, so a value can only drift in one file.
 //
 // ⚠ The text is the CONTRACT with the database. Renaming a constant in the proto is free; changing

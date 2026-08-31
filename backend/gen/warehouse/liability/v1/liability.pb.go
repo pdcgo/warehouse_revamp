@@ -34,16 +34,12 @@ type LiabilitySourceType int32
 
 const (
 	LiabilitySourceType_LIABILITY_SOURCE_TYPE_UNSPECIFIED LiabilitySourceType = 0
-	// The warehouse paid the courier at the door for goods it does not own (#155/#184). `source_id` is
-	// the restock request.
-	//
-	// ⚠ SUPERSEDED BY RESTOCK_OUTLAY, and kept because history is not rewritten: every entry posted
-	// before a delivery could carry more than one kind of cost still reads as what it was. Nothing
-	// posts under it any more.
-	LiabilitySourceType_LIABILITY_SOURCE_TYPE_COD_FEE LiabilitySourceType = 1
 	// The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
 	// the order.
-	LiabilitySourceType_LIABILITY_SOURCE_TYPE_HANDLING_FEE LiabilitySourceType = 2
+	//
+	// The business word says WHEN it is charged — at order creation — where `handling_fee`, the name
+	// this had, said only that some handling happened.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_ORDER_FEE LiabilitySourceType = 2
 	// The order sold a product belonging to ANOTHER team, so the selling team owes that team (#186).
 	// `source_id` is the order. One order can post several of these — one per distinct owning team.
 	LiabilitySourceType_LIABILITY_SOURCE_TYPE_PRODUCT_FEE LiabilitySourceType = 3
@@ -57,46 +53,62 @@ const (
 	// single delivery, and the breakdown of why lives on the restock beside the goods it belongs to.
 	// Posting per line would also make `source_id` ambiguous — it would have to name a cost line while
 	// every other source type names the business object.
-	LiabilitySourceType_LIABILITY_SOURCE_TYPE_RESTOCK_OUTLAY LiabilitySourceType = 5
+	//
+	// ⚠ IT WAS `RESTOCK_OUTLAY`, and before that `COD_FEE`. The money is the courier's unplanned ask on
+	// arrival plus whatever else the warehouse had to pay to get the delivery in — incidental by
+	// nature, which is why no closed list of kinds can enumerate it.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE LiabilitySourceType = 5
 	// STOCK THE WAREHOUSE BROKE OR LOST while holding it, valued at the batch's frozen cost.
 	// `source_id` is the ADJUST MOVEMENT that recorded it.
 	//
 	// The warehouse owes the OWNING TEAM, because the goods were never the warehouse's: it holds them,
-	// the selling team owns them (business_level Â§Warehouse 4/5). Recording only the write-off would say
+	// the selling team owns them (business_level §Warehouse 4/5). Recording only the write-off would say
 	// the warehouse lost value and leave the owner's goods simply gone.
 	//
 	// ⚠ THIS IS NOT THE SAME RECORD AS THE EXPENSE. `EXPENSE_KIND_STOCK_WRITE_OFF` is the warehouse's
 	// own P&L view of the same event; this is who it now owes. Both are correct and neither replaces
 	// the other — one answers "what did our losses cost us", the other "who do we have to pay".
 	//
-	// Goods FOUND again post the same source type as a REVERSAL against the found movement, so the
-	// history reads as one story: reimbursed, then given back.
-	//
-	// ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level Â§Warehouse 6). Those
+	// ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level §Warehouse 6). Those
 	// never enter the warehouse's custody, and they travel a different path — a restock damage line,
 	// not an adjust.
-	LiabilitySourceType_LIABILITY_SOURCE_TYPE_STOCK_DAMAGE LiabilitySourceType = 6
+	//
+	// ⚠ 6 WAS `STOCK_DAMAGE`, one type carrying three business movements
+	// (the-ledger-speaks-the-business-words). "How much went to breakage versus shrinkage" was
+	// unanswerable, and `StockAdjustReason` was already capturing the distinction and throwing it away.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_BROKEN_GOOD LiabilitySourceType = 6
+	// Stock the warehouse LOST while holding it — shrinkage, not breakage. Same direction, same
+	// valuation, a different thing to answer for.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_LOST_GOOD LiabilitySourceType = 7
+	// Goods reimbursed as broken or lost and then FOUND AGAIN. Posted with `reversal = true` against
+	// the find's own movement, so the history reads as one story: reimbursed, then given back.
+	//
+	// ⚠ The TYPE carries the cause and the FLAG carries the direction — they are not redundant, and
+	// both stay in the idempotency key.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_FOUND LiabilitySourceType = 8
 )
 
 // Enum value maps for LiabilitySourceType.
 var (
 	LiabilitySourceType_name = map[int32]string{
 		0: "LIABILITY_SOURCE_TYPE_UNSPECIFIED",
-		1: "LIABILITY_SOURCE_TYPE_COD_FEE",
-		2: "LIABILITY_SOURCE_TYPE_HANDLING_FEE",
+		2: "LIABILITY_SOURCE_TYPE_ORDER_FEE",
 		3: "LIABILITY_SOURCE_TYPE_PRODUCT_FEE",
 		4: "LIABILITY_SOURCE_TYPE_PAYMENT",
-		5: "LIABILITY_SOURCE_TYPE_RESTOCK_OUTLAY",
-		6: "LIABILITY_SOURCE_TYPE_STOCK_DAMAGE",
+		5: "LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE",
+		6: "LIABILITY_SOURCE_TYPE_BROKEN_GOOD",
+		7: "LIABILITY_SOURCE_TYPE_LOST_GOOD",
+		8: "LIABILITY_SOURCE_TYPE_FOUND",
 	}
 	LiabilitySourceType_value = map[string]int32{
 		"LIABILITY_SOURCE_TYPE_UNSPECIFIED":    0,
-		"LIABILITY_SOURCE_TYPE_COD_FEE":        1,
-		"LIABILITY_SOURCE_TYPE_HANDLING_FEE":   2,
+		"LIABILITY_SOURCE_TYPE_ORDER_FEE":      2,
 		"LIABILITY_SOURCE_TYPE_PRODUCT_FEE":    3,
 		"LIABILITY_SOURCE_TYPE_PAYMENT":        4,
-		"LIABILITY_SOURCE_TYPE_RESTOCK_OUTLAY": 5,
-		"LIABILITY_SOURCE_TYPE_STOCK_DAMAGE":   6,
+		"LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE": 5,
+		"LIABILITY_SOURCE_TYPE_BROKEN_GOOD":    6,
+		"LIABILITY_SOURCE_TYPE_LOST_GOOD":      7,
+		"LIABILITY_SOURCE_TYPE_FOUND":          8,
 	}
 )
 
@@ -225,52 +237,52 @@ func (LiabilityPositionSort) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{2}
 }
 
-type LiabilityEntryListDataType int32
+type LiabilityLogListDataType int32
 
 const (
-	LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_UNSPECIFIED LiabilityEntryListDataType = 0
-	LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_GENERAL     LiabilityEntryListDataType = 1
-	LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY       LiabilityEntryListDataType = 2
+	LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_UNSPECIFIED LiabilityLogListDataType = 0
+	LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_GENERAL     LiabilityLogListDataType = 1
+	LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_LOG         LiabilityLogListDataType = 2
 )
 
-// Enum value maps for LiabilityEntryListDataType.
+// Enum value maps for LiabilityLogListDataType.
 var (
-	LiabilityEntryListDataType_name = map[int32]string{
-		0: "LIABILITY_ENTRY_LIST_DATA_TYPE_UNSPECIFIED",
-		1: "LIABILITY_ENTRY_LIST_DATA_TYPE_GENERAL",
-		2: "LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY",
+	LiabilityLogListDataType_name = map[int32]string{
+		0: "LIABILITY_LOG_LIST_DATA_TYPE_UNSPECIFIED",
+		1: "LIABILITY_LOG_LIST_DATA_TYPE_GENERAL",
+		2: "LIABILITY_LOG_LIST_DATA_TYPE_LOG",
 	}
-	LiabilityEntryListDataType_value = map[string]int32{
-		"LIABILITY_ENTRY_LIST_DATA_TYPE_UNSPECIFIED": 0,
-		"LIABILITY_ENTRY_LIST_DATA_TYPE_GENERAL":     1,
-		"LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY":       2,
+	LiabilityLogListDataType_value = map[string]int32{
+		"LIABILITY_LOG_LIST_DATA_TYPE_UNSPECIFIED": 0,
+		"LIABILITY_LOG_LIST_DATA_TYPE_GENERAL":     1,
+		"LIABILITY_LOG_LIST_DATA_TYPE_LOG":         2,
 	}
 )
 
-func (x LiabilityEntryListDataType) Enum() *LiabilityEntryListDataType {
-	p := new(LiabilityEntryListDataType)
+func (x LiabilityLogListDataType) Enum() *LiabilityLogListDataType {
+	p := new(LiabilityLogListDataType)
 	*p = x
 	return p
 }
 
-func (x LiabilityEntryListDataType) String() string {
+func (x LiabilityLogListDataType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (LiabilityEntryListDataType) Descriptor() protoreflect.EnumDescriptor {
+func (LiabilityLogListDataType) Descriptor() protoreflect.EnumDescriptor {
 	return file_warehouse_liability_v1_liability_proto_enumTypes[3].Descriptor()
 }
 
-func (LiabilityEntryListDataType) Type() protoreflect.EnumType {
+func (LiabilityLogListDataType) Type() protoreflect.EnumType {
 	return &file_warehouse_liability_v1_liability_proto_enumTypes[3]
 }
 
-func (x LiabilityEntryListDataType) Number() protoreflect.EnumNumber {
+func (x LiabilityLogListDataType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use LiabilityEntryListDataType.Descriptor instead.
-func (LiabilityEntryListDataType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogListDataType.Descriptor instead.
+func (LiabilityLogListDataType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{3}
 }
 
@@ -478,7 +490,11 @@ func (LiabilityTermsHistoryListDataType) EnumDescriptor() ([]byte, []int) {
 
 // One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating
 // entry, never an update or a delete — a ledger you can edit is not evidence of anything.
-type LiabilityEntry struct {
+// ⚠ ITS ROWS ARE NOT INDEPENDENT, whatever the name suggests (two-logs-two-names). Every posting
+// writes TWO of these and `group_id` pairs them, so one row is half a movement and never a whole
+// event. The name is the word the design docs use for what the screen shows; the invariant is held
+// by `post_entry.go` being the only writer, not by the noun.
+type LiabilityLog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// WHOSE side of the movement this leg is. Every posting writes two legs, one per team, in one
@@ -512,26 +528,40 @@ type LiabilityEntry struct {
 	// The balance after this entry, from `team_id`'s side. A convenience for the history screen, NOT a
 	// second source of truth: the balance is a projection and must stay recomputable from the entries
 	// alone (§4.8), or the ledger cannot be audited.
-	BalanceAfter  int64 `protobuf:"varint,9,opt,name=balance_after,json=balanceAfter,proto3" json:"balance_after,omitempty"`
-	CreatedAtUnix int64 `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	BalanceAfter int64 `protobuf:"varint,9,opt,name=balance_after,json=balanceAfter,proto3" json:"balance_after,omitempty"`
+	// WHO CAUSED THIS — a user id, opaque to this service (every-entry-names-who-posted-it). Not the
+	// service and not the event: the human whose act produced the movement, which is what a team
+	// disputing a charge has to be able to see.
+	//
+	// ⚠ IT IS CAPTURED AT THE ORIGIN AND WAS BEING DROPPED AT EVERY BOUNDARY. Both services that
+	// cause postings already compute an actor for their own records — `restock_request_fulfill.go` and
+	// `order_place.go` — and neither passed it on: the poster interface had no parameter for it, and
+	// `OrderPlacedEvent` / `OrderCancelledEvent` had no field. Both now carry it. It is passed in,
+	// never inferred here.
+	//
+	// ⚠ 0 IS RESERVED FOR A GENUINELY UNATTENDED POSTING — a scheduled job. Nothing writes it today,
+	// and it must not become a shrug: a row that cannot name a person is a row that cannot answer the
+	// question this field exists for.
+	ActorId       uint64 `protobuf:"varint,11,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	CreatedAtUnix int64  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LiabilityEntry) Reset() {
-	*x = LiabilityEntry{}
+func (x *LiabilityLog) Reset() {
+	*x = LiabilityLog{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntry) String() string {
+func (x *LiabilityLog) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntry) ProtoMessage() {}
+func (*LiabilityLog) ProtoMessage() {}
 
-func (x *LiabilityEntry) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLog) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -543,75 +573,82 @@ func (x *LiabilityEntry) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntry.ProtoReflect.Descriptor instead.
-func (*LiabilityEntry) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLog.ProtoReflect.Descriptor instead.
+func (*LiabilityLog) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *LiabilityEntry) GetId() uint64 {
+func (x *LiabilityLog) GetId() uint64 {
 	if x != nil {
 		return x.Id
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetTeamId() uint64 {
+func (x *LiabilityLog) GetTeamId() uint64 {
 	if x != nil {
 		return x.TeamId
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetCounterpartyId() uint64 {
+func (x *LiabilityLog) GetCounterpartyId() uint64 {
 	if x != nil {
 		return x.CounterpartyId
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetAmount() int64 {
+func (x *LiabilityLog) GetAmount() int64 {
 	if x != nil {
 		return x.Amount
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetSourceType() LiabilitySourceType {
+func (x *LiabilityLog) GetSourceType() LiabilitySourceType {
 	if x != nil {
 		return x.SourceType
 	}
 	return LiabilitySourceType_LIABILITY_SOURCE_TYPE_UNSPECIFIED
 }
 
-func (x *LiabilityEntry) GetSourceId() uint64 {
+func (x *LiabilityLog) GetSourceId() uint64 {
 	if x != nil {
 		return x.SourceId
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetReversal() bool {
+func (x *LiabilityLog) GetReversal() bool {
 	if x != nil {
 		return x.Reversal
 	}
 	return false
 }
 
-func (x *LiabilityEntry) GetGroupId() uint64 {
+func (x *LiabilityLog) GetGroupId() uint64 {
 	if x != nil {
 		return x.GroupId
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetBalanceAfter() int64 {
+func (x *LiabilityLog) GetBalanceAfter() int64 {
 	if x != nil {
 		return x.BalanceAfter
 	}
 	return 0
 }
 
-func (x *LiabilityEntry) GetCreatedAtUnix() int64 {
+func (x *LiabilityLog) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *LiabilityLog) GetCreatedAtUnix() int64 {
 	if x != nil {
 		return x.CreatedAtUnix
 	}
@@ -623,7 +660,7 @@ type LiabilityPosition struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CounterpartyId uint64                 `protobuf:"varint,1,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
 	// Signed, from the requesting team's side: positive = they owe you, negative = you owe them. Same
-	// convention as LiabilityEntry.amount, deliberately — see the warning there.
+	// convention as LiabilityLog.amount, deliberately — see the warning there.
 	Balance int64 `protobuf:"varint,2,opt,name=balance,proto3" json:"balance,omitempty"`
 	// WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
 	//
@@ -1121,7 +1158,7 @@ func (x *LiabilityPositionListResponse) GetAwaitingConfirmation() uint32 {
 	return 0
 }
 
-type LiabilityEntryListFilter struct {
+type LiabilityLogListFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// WHOSE history. Required here (the counterparty detail page). Still NOT the scope.
 	CounterpartyId uint64 `protobuf:"varint,1,opt,name=counterparty_id,json=counterpartyId,proto3" json:"counterparty_id,omitempty"`
@@ -1129,20 +1166,20 @@ type LiabilityEntryListFilter struct {
 	sizeCache      protoimpl.SizeCache
 }
 
-func (x *LiabilityEntryListFilter) Reset() {
-	*x = LiabilityEntryListFilter{}
+func (x *LiabilityLogListFilter) Reset() {
+	*x = LiabilityLogListFilter{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntryListFilter) String() string {
+func (x *LiabilityLogListFilter) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntryListFilter) ProtoMessage() {}
+func (*LiabilityLogListFilter) ProtoMessage() {}
 
-func (x *LiabilityEntryListFilter) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLogListFilter) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1154,42 +1191,42 @@ func (x *LiabilityEntryListFilter) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntryListFilter.ProtoReflect.Descriptor instead.
-func (*LiabilityEntryListFilter) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogListFilter.ProtoReflect.Descriptor instead.
+func (*LiabilityLogListFilter) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *LiabilityEntryListFilter) GetCounterpartyId() uint64 {
+func (x *LiabilityLogListFilter) GetCounterpartyId() uint64 {
 	if x != nil {
 		return x.CounterpartyId
 	}
 	return 0
 }
 
-type LiabilityEntryListRequest struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	TeamId        uint64                       `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Filter        *LiabilityEntryListFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
-	DataRequest   []LiabilityEntryListDataType `protobuf:"varint,3,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.liability.v1.LiabilityEntryListDataType" json:"data_request,omitempty"`
-	Page          *v1.CommonPagination         `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
+type LiabilityLogListRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	TeamId        uint64                     `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *LiabilityLogListFilter    `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	DataRequest   []LiabilityLogListDataType `protobuf:"varint,3,rep,packed,name=data_request,json=dataRequest,proto3,enum=warehouse.liability.v1.LiabilityLogListDataType" json:"data_request,omitempty"`
+	Page          *v1.CommonPagination       `protobuf:"bytes,4,opt,name=page,proto3" json:"page,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LiabilityEntryListRequest) Reset() {
-	*x = LiabilityEntryListRequest{}
+func (x *LiabilityLogListRequest) Reset() {
+	*x = LiabilityLogListRequest{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntryListRequest) String() string {
+func (x *LiabilityLogListRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntryListRequest) ProtoMessage() {}
+func (*LiabilityLogListRequest) ProtoMessage() {}
 
-func (x *LiabilityEntryListRequest) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLogListRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1201,60 +1238,60 @@ func (x *LiabilityEntryListRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntryListRequest.ProtoReflect.Descriptor instead.
-func (*LiabilityEntryListRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogListRequest.ProtoReflect.Descriptor instead.
+func (*LiabilityLogListRequest) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *LiabilityEntryListRequest) GetTeamId() uint64 {
+func (x *LiabilityLogListRequest) GetTeamId() uint64 {
 	if x != nil {
 		return x.TeamId
 	}
 	return 0
 }
 
-func (x *LiabilityEntryListRequest) GetFilter() *LiabilityEntryListFilter {
+func (x *LiabilityLogListRequest) GetFilter() *LiabilityLogListFilter {
 	if x != nil {
 		return x.Filter
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListRequest) GetDataRequest() []LiabilityEntryListDataType {
+func (x *LiabilityLogListRequest) GetDataRequest() []LiabilityLogListDataType {
 	if x != nil {
 		return x.DataRequest
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListRequest) GetPage() *v1.CommonPagination {
+func (x *LiabilityLogListRequest) GetPage() *v1.CommonPagination {
 	if x != nil {
 		return x.Page
 	}
 	return nil
 }
 
-type LiabilityEntryMapItem struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	MapData       map[uint64]*LiabilityEntry `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+type LiabilityLogMapItem struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	MapData       map[uint64]*LiabilityLog `protobuf:"bytes,1,rep,name=map_data,json=mapData,proto3" json:"map_data,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LiabilityEntryMapItem) Reset() {
-	*x = LiabilityEntryMapItem{}
+func (x *LiabilityLogMapItem) Reset() {
+	*x = LiabilityLogMapItem{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntryMapItem) String() string {
+func (x *LiabilityLogMapItem) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntryMapItem) ProtoMessage() {}
+func (*LiabilityLogMapItem) ProtoMessage() {}
 
-func (x *LiabilityEntryMapItem) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLogMapItem) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1266,43 +1303,43 @@ func (x *LiabilityEntryMapItem) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntryMapItem.ProtoReflect.Descriptor instead.
-func (*LiabilityEntryMapItem) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogMapItem.ProtoReflect.Descriptor instead.
+func (*LiabilityLogMapItem) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *LiabilityEntryMapItem) GetMapData() map[uint64]*LiabilityEntry {
+func (x *LiabilityLogMapItem) GetMapData() map[uint64]*LiabilityLog {
 	if x != nil {
 		return x.MapData
 	}
 	return nil
 }
 
-type LiabilityEntryListResponseItem struct {
+type LiabilityLogListResponseItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to D:
 	//
-	//	*LiabilityEntryListResponseItem_General
-	//	*LiabilityEntryListResponseItem_Entry
-	D             isLiabilityEntryListResponseItem_D `protobuf_oneof:"d"`
+	//	*LiabilityLogListResponseItem_General
+	//	*LiabilityLogListResponseItem_Log
+	D             isLiabilityLogListResponseItem_D `protobuf_oneof:"d"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LiabilityEntryListResponseItem) Reset() {
-	*x = LiabilityEntryListResponseItem{}
+func (x *LiabilityLogListResponseItem) Reset() {
+	*x = LiabilityLogListResponseItem{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntryListResponseItem) String() string {
+func (x *LiabilityLogListResponseItem) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntryListResponseItem) ProtoMessage() {}
+func (*LiabilityLogListResponseItem) ProtoMessage() {}
 
-func (x *LiabilityEntryListResponseItem) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLogListResponseItem) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1314,77 +1351,77 @@ func (x *LiabilityEntryListResponseItem) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntryListResponseItem.ProtoReflect.Descriptor instead.
-func (*LiabilityEntryListResponseItem) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogListResponseItem.ProtoReflect.Descriptor instead.
+func (*LiabilityLogListResponseItem) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *LiabilityEntryListResponseItem) GetD() isLiabilityEntryListResponseItem_D {
+func (x *LiabilityLogListResponseItem) GetD() isLiabilityLogListResponseItem_D {
 	if x != nil {
 		return x.D
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListResponseItem) GetGeneral() *v1.GeneralMapItem {
+func (x *LiabilityLogListResponseItem) GetGeneral() *v1.GeneralMapItem {
 	if x != nil {
-		if x, ok := x.D.(*LiabilityEntryListResponseItem_General); ok {
+		if x, ok := x.D.(*LiabilityLogListResponseItem_General); ok {
 			return x.General
 		}
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListResponseItem) GetEntry() *LiabilityEntryMapItem {
+func (x *LiabilityLogListResponseItem) GetLog() *LiabilityLogMapItem {
 	if x != nil {
-		if x, ok := x.D.(*LiabilityEntryListResponseItem_Entry); ok {
-			return x.Entry
+		if x, ok := x.D.(*LiabilityLogListResponseItem_Log); ok {
+			return x.Log
 		}
 	}
 	return nil
 }
 
-type isLiabilityEntryListResponseItem_D interface {
-	isLiabilityEntryListResponseItem_D()
+type isLiabilityLogListResponseItem_D interface {
+	isLiabilityLogListResponseItem_D()
 }
 
-type LiabilityEntryListResponseItem_General struct {
+type LiabilityLogListResponseItem_General struct {
 	General *v1.GeneralMapItem `protobuf:"bytes,1,opt,name=general,proto3,oneof"`
 }
 
-type LiabilityEntryListResponseItem_Entry struct {
-	Entry *LiabilityEntryMapItem `protobuf:"bytes,2,opt,name=entry,proto3,oneof"`
+type LiabilityLogListResponseItem_Log struct {
+	Log *LiabilityLogMapItem `protobuf:"bytes,2,opt,name=log,proto3,oneof"`
 }
 
-func (*LiabilityEntryListResponseItem_General) isLiabilityEntryListResponseItem_D() {}
+func (*LiabilityLogListResponseItem_General) isLiabilityLogListResponseItem_D() {}
 
-func (*LiabilityEntryListResponseItem_Entry) isLiabilityEntryListResponseItem_D() {}
+func (*LiabilityLogListResponseItem_Log) isLiabilityLogListResponseItem_D() {}
 
-type LiabilityEntryListResponse struct {
-	state    protoimpl.MessageState            `protogen:"open.v1"`
-	Items    []*LiabilityEntryListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Ids      []uint64                          `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
-	PageInfo *v1.PageInfo                      `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
+type LiabilityLogListResponse struct {
+	state    protoimpl.MessageState          `protogen:"open.v1"`
+	Items    []*LiabilityLogListResponseItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Ids      []uint64                        `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	PageInfo *v1.PageInfo                    `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
 	// The pair's current balance, so the header needs no second call.
 	Balance       int64 `protobuf:"varint,4,opt,name=balance,proto3" json:"balance,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *LiabilityEntryListResponse) Reset() {
-	*x = LiabilityEntryListResponse{}
+func (x *LiabilityLogListResponse) Reset() {
+	*x = LiabilityLogListResponse{}
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *LiabilityEntryListResponse) String() string {
+func (x *LiabilityLogListResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*LiabilityEntryListResponse) ProtoMessage() {}
+func (*LiabilityLogListResponse) ProtoMessage() {}
 
-func (x *LiabilityEntryListResponse) ProtoReflect() protoreflect.Message {
+func (x *LiabilityLogListResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_warehouse_liability_v1_liability_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1396,33 +1433,33 @@ func (x *LiabilityEntryListResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use LiabilityEntryListResponse.ProtoReflect.Descriptor instead.
-func (*LiabilityEntryListResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LiabilityLogListResponse.ProtoReflect.Descriptor instead.
+func (*LiabilityLogListResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_liability_v1_liability_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *LiabilityEntryListResponse) GetItems() []*LiabilityEntryListResponseItem {
+func (x *LiabilityLogListResponse) GetItems() []*LiabilityLogListResponseItem {
 	if x != nil {
 		return x.Items
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListResponse) GetIds() []uint64 {
+func (x *LiabilityLogListResponse) GetIds() []uint64 {
 	if x != nil {
 		return x.Ids
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListResponse) GetPageInfo() *v1.PageInfo {
+func (x *LiabilityLogListResponse) GetPageInfo() *v1.PageInfo {
 	if x != nil {
 		return x.PageInfo
 	}
 	return nil
 }
 
-func (x *LiabilityEntryListResponse) GetBalance() int64 {
+func (x *LiabilityLogListResponse) GetBalance() int64 {
 	if x != nil {
 		return x.Balance
 	}
@@ -3561,8 +3598,8 @@ var File_warehouse_liability_v1_liability_proto protoreflect.FileDescriptor
 
 const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\n" +
-	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\"\xe9\x02\n" +
-	"\x0eLiabilityEntry\x12\x0e\n" +
+	"&warehouse/liability/v1/liability.proto\x12\x16warehouse.liability.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a!warehouse/role_base/v1/role.proto\"\x82\x03\n" +
+	"\fLiabilityLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12'\n" +
 	"\x0fcounterparty_id\x18\x03 \x01(\x04R\x0ecounterpartyId\x12\x16\n" +
@@ -3572,7 +3609,8 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\tsource_id\x18\x06 \x01(\x04R\bsourceId\x12\x1a\n" +
 	"\breversal\x18\a \x01(\bR\breversal\x12\x19\n" +
 	"\bgroup_id\x18\b \x01(\x04R\agroupId\x12#\n" +
-	"\rbalance_after\x18\t \x01(\x03R\fbalanceAfter\x12&\n" +
+	"\rbalance_after\x18\t \x01(\x03R\fbalanceAfter\x12\x19\n" +
+	"\bactor_id\x18\v \x01(\x04R\aactorId\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
 	" \x01(\x03R\rcreatedAtUnix\"\xc4\x01\n" +
 	"\x11LiabilityPosition\x12'\n" +
@@ -3608,26 +3646,26 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v29.warehouse.liability.v1.LiabilityPositionListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x123\n" +
-	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\"L\n" +
-	"\x18LiabilityEntryListFilter\x120\n" +
-	"\x0fcounterparty_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecounterpartyId\"\xbb\x02\n" +
-	"\x19LiabilityEntryListRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12P\n" +
-	"\x06filter\x18\x02 \x01(\v20.warehouse.liability.v1.LiabilityEntryListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12U\n" +
-	"\fdata_request\x18\x03 \x03(\x0e22.warehouse.liability.v1.LiabilityEntryListDataTypeR\vdataRequest\x12A\n" +
+	"\x15awaiting_confirmation\x18\x04 \x01(\rR\x14awaitingConfirmation\"J\n" +
+	"\x16LiabilityLogListFilter\x120\n" +
+	"\x0fcounterparty_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecounterpartyId\"\xb5\x02\n" +
+	"\x17LiabilityLogListRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
+	"\x06filter\x18\x02 \x01(\v2..warehouse.liability.v1.LiabilityLogListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12S\n" +
+	"\fdata_request\x18\x03 \x03(\x0e20.warehouse.liability.v1.LiabilityLogListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x04 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"\xd2\x01\n" +
-	"\x15LiabilityEntryMapItem\x12U\n" +
-	"\bmap_data\x18\x01 \x03(\v2:.warehouse.liability.v1.LiabilityEntryMapItem.MapDataEntryR\amapData\x1ab\n" +
+	"\x06\x01\x02\x03\x04\x06\t\"\xcc\x01\n" +
+	"\x13LiabilityLogMapItem\x12S\n" +
+	"\bmap_data\x18\x01 \x03(\v28.warehouse.liability.v1.LiabilityLogMapItem.MapDataEntryR\amapData\x1a`\n" +
 	"\fMapDataEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\x04R\x03key\x12<\n" +
-	"\x05value\x18\x02 \x01(\v2&.warehouse.liability.v1.LiabilityEntryR\x05value:\x028\x01\"\xad\x01\n" +
-	"\x1eLiabilityEntryListResponseItem\x12?\n" +
-	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12E\n" +
-	"\x05entry\x18\x02 \x01(\v2-.warehouse.liability.v1.LiabilityEntryMapItemH\x00R\x05entryB\x03\n" +
-	"\x01d\"\xd2\x01\n" +
-	"\x1aLiabilityEntryListResponse\x12L\n" +
-	"\x05items\x18\x01 \x03(\v26.warehouse.liability.v1.LiabilityEntryListResponseItemR\x05items\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x04R\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.warehouse.liability.v1.LiabilityLogR\x05value:\x028\x01\"\xa5\x01\n" +
+	"\x1cLiabilityLogListResponseItem\x12?\n" +
+	"\ageneral\x18\x01 \x01(\v2#.warehouse.common.v1.GeneralMapItemH\x00R\ageneral\x12?\n" +
+	"\x03log\x18\x02 \x01(\v2+.warehouse.liability.v1.LiabilityLogMapItemH\x00R\x03logB\x03\n" +
+	"\x01d\"\xce\x01\n" +
+	"\x18LiabilityLogListResponse\x12J\n" +
+	"\x05items\x18\x01 \x03(\v24.warehouse.liability.v1.LiabilityLogListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12\x18\n" +
 	"\abalance\x18\x04 \x01(\x03R\abalance\"\xad\x01\n" +
@@ -3794,15 +3832,16 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"!LiabilityTermsHistoryListResponse\x12S\n" +
 	"\x05items\x18\x01 \x03(\v2=.warehouse.liability.v1.LiabilityTermsHistoryListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xa3\x02\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xe7\x02\n" +
 	"\x13LiabilitySourceType\x12%\n" +
-	"!LIABILITY_SOURCE_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
-	"\x1dLIABILITY_SOURCE_TYPE_COD_FEE\x10\x01\x12&\n" +
-	"\"LIABILITY_SOURCE_TYPE_HANDLING_FEE\x10\x02\x12%\n" +
+	"!LIABILITY_SOURCE_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fLIABILITY_SOURCE_TYPE_ORDER_FEE\x10\x02\x12%\n" +
 	"!LIABILITY_SOURCE_TYPE_PRODUCT_FEE\x10\x03\x12!\n" +
 	"\x1dLIABILITY_SOURCE_TYPE_PAYMENT\x10\x04\x12(\n" +
-	"$LIABILITY_SOURCE_TYPE_RESTOCK_OUTLAY\x10\x05\x12&\n" +
-	"\"LIABILITY_SOURCE_TYPE_STOCK_DAMAGE\x10\x06*\xb1\x01\n" +
+	"$LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE\x10\x05\x12%\n" +
+	"!LIABILITY_SOURCE_TYPE_BROKEN_GOOD\x10\x06\x12#\n" +
+	"\x1fLIABILITY_SOURCE_TYPE_LOST_GOOD\x10\a\x12\x1f\n" +
+	"\x1bLIABILITY_SOURCE_TYPE_FOUND\x10\b\"\x04\b\x01\x10\x01*\x1dLIABILITY_SOURCE_TYPE_COD_FEE*\xb1\x01\n" +
 	"\x1dLiabilityPositionListDataType\x121\n" +
 	"-LIABILITY_POSITION_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")LIABILITY_POSITION_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +
@@ -3810,11 +3849,11 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x15LiabilityPositionSort\x12'\n" +
 	"#LIABILITY_POSITION_SORT_UNSPECIFIED\x10\x00\x12,\n" +
 	"(LIABILITY_POSITION_SORT_OLDEST_UNSETTLED\x10\x01\x12#\n" +
-	"\x1fLIABILITY_POSITION_SORT_BALANCE\x10\x02*\xa2\x01\n" +
-	"\x1aLiabilityEntryListDataType\x12.\n" +
-	"*LIABILITY_ENTRY_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12*\n" +
-	"&LIABILITY_ENTRY_LIST_DATA_TYPE_GENERAL\x10\x01\x12(\n" +
-	"$LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY\x10\x02*\xb8\x01\n" +
+	"\x1fLIABILITY_POSITION_SORT_BALANCE\x10\x02*\x98\x01\n" +
+	"\x18LiabilityLogListDataType\x12,\n" +
+	"(LIABILITY_LOG_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12(\n" +
+	"$LIABILITY_LOG_LIST_DATA_TYPE_GENERAL\x10\x01\x12$\n" +
+	" LIABILITY_LOG_LIST_DATA_TYPE_LOG\x10\x02*\xb8\x01\n" +
 	"\x16LiabilityPaymentStatus\x12(\n" +
 	"$LIABILITY_PAYMENT_STATUS_UNSPECIFIED\x10\x00\x12%\n" +
 	"!LIABILITY_PAYMENT_STATUS_RECORDED\x10\x01\x12&\n" +
@@ -3830,10 +3869,10 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"$LIABILITY_TERMS_LIST_DATA_TYPE_TERMS\x10\x02*\x8e\x01\n" +
 	"!LiabilityTermsHistoryListDataType\x126\n" +
 	"2LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x121\n" +
-	"-LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_CHANGE\x10\x012\x87\x03\n" +
+	"-LIABILITY_TERMS_HISTORY_LIST_DATA_TYPE_CHANGE\x10\x012\x81\x03\n" +
 	"\x10LiabilityService\x12\x84\x01\n" +
-	"\x15LiabilityPositionList\x124.warehouse.liability.v1.LiabilityPositionListRequest\x1a5.warehouse.liability.v1.LiabilityPositionListResponse\x12{\n" +
-	"\x12LiabilityEntryList\x121.warehouse.liability.v1.LiabilityEntryListRequest\x1a2.warehouse.liability.v1.LiabilityEntryListResponse\x12o\n" +
+	"\x15LiabilityPositionList\x124.warehouse.liability.v1.LiabilityPositionListRequest\x1a5.warehouse.liability.v1.LiabilityPositionListResponse\x12u\n" +
+	"\x10LiabilityLogList\x12/.warehouse.liability.v1.LiabilityLogListRequest\x1a0.warehouse.liability.v1.LiabilityLogListResponse\x12o\n" +
 	"\x0eLiabilityDaily\x12-.warehouse.liability.v1.LiabilityDailyRequest\x1a..warehouse.liability.v1.LiabilityDailyResponse2\xc1\x04\n" +
 	"\x17LiabilityPaymentService\x12\x87\x01\n" +
 	"\x16LiabilityPaymentRecord\x125.warehouse.liability.v1.LiabilityPaymentRecordRequest\x1a6.warehouse.liability.v1.LiabilityPaymentRecordResponse\x12\x8a\x01\n" +
@@ -3864,12 +3903,12 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(LiabilitySourceType)(0),                      // 0: warehouse.liability.v1.LiabilitySourceType
 	(LiabilityPositionListDataType)(0),            // 1: warehouse.liability.v1.LiabilityPositionListDataType
 	(LiabilityPositionSort)(0),                    // 2: warehouse.liability.v1.LiabilityPositionSort
-	(LiabilityEntryListDataType)(0),               // 3: warehouse.liability.v1.LiabilityEntryListDataType
+	(LiabilityLogListDataType)(0),                 // 3: warehouse.liability.v1.LiabilityLogListDataType
 	(LiabilityPaymentStatus)(0),                   // 4: warehouse.liability.v1.LiabilityPaymentStatus
 	(LiabilityPaymentListDataType)(0),             // 5: warehouse.liability.v1.LiabilityPaymentListDataType
 	(LiabilityTermsListDataType)(0),               // 6: warehouse.liability.v1.LiabilityTermsListDataType
 	(LiabilityTermsHistoryListDataType)(0),        // 7: warehouse.liability.v1.LiabilityTermsHistoryListDataType
-	(*LiabilityEntry)(nil),                        // 8: warehouse.liability.v1.LiabilityEntry
+	(*LiabilityLog)(nil),                          // 8: warehouse.liability.v1.LiabilityLog
 	(*LiabilityPosition)(nil),                     // 9: warehouse.liability.v1.LiabilityPosition
 	(*LiabilityPositionListFilter)(nil),           // 10: warehouse.liability.v1.LiabilityPositionListFilter
 	(*LiabilityPositionListFilterSort)(nil),       // 11: warehouse.liability.v1.LiabilityPositionListFilterSort
@@ -3877,11 +3916,11 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(*LiabilityPositionMapItem)(nil),              // 13: warehouse.liability.v1.LiabilityPositionMapItem
 	(*LiabilityPositionListResponseItem)(nil),     // 14: warehouse.liability.v1.LiabilityPositionListResponseItem
 	(*LiabilityPositionListResponse)(nil),         // 15: warehouse.liability.v1.LiabilityPositionListResponse
-	(*LiabilityEntryListFilter)(nil),              // 16: warehouse.liability.v1.LiabilityEntryListFilter
-	(*LiabilityEntryListRequest)(nil),             // 17: warehouse.liability.v1.LiabilityEntryListRequest
-	(*LiabilityEntryMapItem)(nil),                 // 18: warehouse.liability.v1.LiabilityEntryMapItem
-	(*LiabilityEntryListResponseItem)(nil),        // 19: warehouse.liability.v1.LiabilityEntryListResponseItem
-	(*LiabilityEntryListResponse)(nil),            // 20: warehouse.liability.v1.LiabilityEntryListResponse
+	(*LiabilityLogListFilter)(nil),                // 16: warehouse.liability.v1.LiabilityLogListFilter
+	(*LiabilityLogListRequest)(nil),               // 17: warehouse.liability.v1.LiabilityLogListRequest
+	(*LiabilityLogMapItem)(nil),                   // 18: warehouse.liability.v1.LiabilityLogMapItem
+	(*LiabilityLogListResponseItem)(nil),          // 19: warehouse.liability.v1.LiabilityLogListResponseItem
+	(*LiabilityLogListResponse)(nil),              // 20: warehouse.liability.v1.LiabilityLogListResponse
 	(*LiabilityDailyFilter)(nil),                  // 21: warehouse.liability.v1.LiabilityDailyFilter
 	(*LiabilityDailyRequest)(nil),                 // 22: warehouse.liability.v1.LiabilityDailyRequest
 	(*LiabilityDayItem)(nil),                      // 23: warehouse.liability.v1.LiabilityDayItem
@@ -3915,7 +3954,7 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(*LiabilityTermsHistoryListResponseItem)(nil), // 51: warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
 	(*LiabilityTermsHistoryListResponse)(nil),     // 52: warehouse.liability.v1.LiabilityTermsHistoryListResponse
 	nil,                         // 53: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry
-	nil,                         // 54: warehouse.liability.v1.LiabilityEntryMapItem.MapDataEntry
+	nil,                         // 54: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
 	nil,                         // 55: warehouse.liability.v1.LiabilityDayItem.BySourceEntry
 	nil,                         // 56: warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
 	nil,                         // 57: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry
@@ -3928,7 +3967,7 @@ var file_warehouse_liability_v1_liability_proto_goTypes = []any{
 	(*v1.PageInfo)(nil),         // 64: warehouse.common.v1.PageInfo
 }
 var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
-	0,  // 0: warehouse.liability.v1.LiabilityEntry.source_type:type_name -> warehouse.liability.v1.LiabilitySourceType
+	0,  // 0: warehouse.liability.v1.LiabilityLog.source_type:type_name -> warehouse.liability.v1.LiabilitySourceType
 	60, // 1: warehouse.liability.v1.LiabilityPositionListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
 	61, // 2: warehouse.liability.v1.LiabilityPositionListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	2,  // 3: warehouse.liability.v1.LiabilityPositionListFilterSort.position:type_name -> warehouse.liability.v1.LiabilityPositionSort
@@ -3941,14 +3980,14 @@ var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	13, // 10: warehouse.liability.v1.LiabilityPositionListResponseItem.position:type_name -> warehouse.liability.v1.LiabilityPositionMapItem
 	14, // 11: warehouse.liability.v1.LiabilityPositionListResponse.items:type_name -> warehouse.liability.v1.LiabilityPositionListResponseItem
 	64, // 12: warehouse.liability.v1.LiabilityPositionListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	16, // 13: warehouse.liability.v1.LiabilityEntryListRequest.filter:type_name -> warehouse.liability.v1.LiabilityEntryListFilter
-	3,  // 14: warehouse.liability.v1.LiabilityEntryListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityEntryListDataType
-	62, // 15: warehouse.liability.v1.LiabilityEntryListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	54, // 16: warehouse.liability.v1.LiabilityEntryMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityEntryMapItem.MapDataEntry
-	63, // 17: warehouse.liability.v1.LiabilityEntryListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	18, // 18: warehouse.liability.v1.LiabilityEntryListResponseItem.entry:type_name -> warehouse.liability.v1.LiabilityEntryMapItem
-	19, // 19: warehouse.liability.v1.LiabilityEntryListResponse.items:type_name -> warehouse.liability.v1.LiabilityEntryListResponseItem
-	64, // 20: warehouse.liability.v1.LiabilityEntryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	16, // 13: warehouse.liability.v1.LiabilityLogListRequest.filter:type_name -> warehouse.liability.v1.LiabilityLogListFilter
+	3,  // 14: warehouse.liability.v1.LiabilityLogListRequest.data_request:type_name -> warehouse.liability.v1.LiabilityLogListDataType
+	62, // 15: warehouse.liability.v1.LiabilityLogListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	54, // 16: warehouse.liability.v1.LiabilityLogMapItem.map_data:type_name -> warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry
+	63, // 17: warehouse.liability.v1.LiabilityLogListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	18, // 18: warehouse.liability.v1.LiabilityLogListResponseItem.log:type_name -> warehouse.liability.v1.LiabilityLogMapItem
+	19, // 19: warehouse.liability.v1.LiabilityLogListResponse.items:type_name -> warehouse.liability.v1.LiabilityLogListResponseItem
+	64, // 20: warehouse.liability.v1.LiabilityLogListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	21, // 21: warehouse.liability.v1.LiabilityDailyRequest.filter:type_name -> warehouse.liability.v1.LiabilityDailyFilter
 	55, // 22: warehouse.liability.v1.LiabilityDayItem.by_source:type_name -> warehouse.liability.v1.LiabilityDayItem.BySourceEntry
 	56, // 23: warehouse.liability.v1.LiabilityDailyTotals.by_source:type_name -> warehouse.liability.v1.LiabilityDailyTotals.BySourceEntry
@@ -3983,12 +4022,12 @@ var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	51, // 52: warehouse.liability.v1.LiabilityTermsHistoryListResponse.items:type_name -> warehouse.liability.v1.LiabilityTermsHistoryListResponseItem
 	64, // 53: warehouse.liability.v1.LiabilityTermsHistoryListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	9,  // 54: warehouse.liability.v1.LiabilityPositionMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPosition
-	8,  // 55: warehouse.liability.v1.LiabilityEntryMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityEntry
+	8,  // 55: warehouse.liability.v1.LiabilityLogMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityLog
 	26, // 56: warehouse.liability.v1.LiabilityPaymentMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityPayment
 	38, // 57: warehouse.liability.v1.LiabilityTermsMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTerms
 	47, // 58: warehouse.liability.v1.LiabilityTermsChangeMapItem.MapDataEntry.value:type_name -> warehouse.liability.v1.LiabilityTermsChange
 	12, // 59: warehouse.liability.v1.LiabilityService.LiabilityPositionList:input_type -> warehouse.liability.v1.LiabilityPositionListRequest
-	17, // 60: warehouse.liability.v1.LiabilityService.LiabilityEntryList:input_type -> warehouse.liability.v1.LiabilityEntryListRequest
+	17, // 60: warehouse.liability.v1.LiabilityService.LiabilityLogList:input_type -> warehouse.liability.v1.LiabilityLogListRequest
 	22, // 61: warehouse.liability.v1.LiabilityService.LiabilityDaily:input_type -> warehouse.liability.v1.LiabilityDailyRequest
 	27, // 62: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:input_type -> warehouse.liability.v1.LiabilityPaymentRecordRequest
 	29, // 63: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:input_type -> warehouse.liability.v1.LiabilityPaymentConfirmRequest
@@ -3999,7 +4038,7 @@ var file_warehouse_liability_v1_liability_proto_depIdxs = []int32{
 	45, // 68: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsDelete:input_type -> warehouse.liability.v1.LiabilityTermsDeleteRequest
 	50, // 69: warehouse.liability.v1.LiabilityTermsService.LiabilityTermsHistoryList:input_type -> warehouse.liability.v1.LiabilityTermsHistoryListRequest
 	15, // 70: warehouse.liability.v1.LiabilityService.LiabilityPositionList:output_type -> warehouse.liability.v1.LiabilityPositionListResponse
-	20, // 71: warehouse.liability.v1.LiabilityService.LiabilityEntryList:output_type -> warehouse.liability.v1.LiabilityEntryListResponse
+	20, // 71: warehouse.liability.v1.LiabilityService.LiabilityLogList:output_type -> warehouse.liability.v1.LiabilityLogListResponse
 	25, // 72: warehouse.liability.v1.LiabilityService.LiabilityDaily:output_type -> warehouse.liability.v1.LiabilityDailyResponse
 	28, // 73: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentRecord:output_type -> warehouse.liability.v1.LiabilityPaymentRecordResponse
 	30, // 74: warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentConfirm:output_type -> warehouse.liability.v1.LiabilityPaymentConfirmResponse
@@ -4030,8 +4069,8 @@ func file_warehouse_liability_v1_liability_proto_init() {
 		(*LiabilityPositionListResponseItem_Position)(nil),
 	}
 	file_warehouse_liability_v1_liability_proto_msgTypes[11].OneofWrappers = []any{
-		(*LiabilityEntryListResponseItem_General)(nil),
-		(*LiabilityEntryListResponseItem_Entry)(nil),
+		(*LiabilityLogListResponseItem_General)(nil),
+		(*LiabilityLogListResponseItem_Log)(nil),
 	}
 	file_warehouse_liability_v1_liability_proto_msgTypes[28].OneofWrappers = []any{
 		(*LiabilityPaymentListResponseItem_General)(nil),

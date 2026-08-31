@@ -40,9 +40,9 @@ const (
 	// LiabilityServiceLiabilityPositionListProcedure is the fully-qualified name of the
 	// LiabilityService's LiabilityPositionList RPC.
 	LiabilityServiceLiabilityPositionListProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityPositionList"
-	// LiabilityServiceLiabilityEntryListProcedure is the fully-qualified name of the LiabilityService's
-	// LiabilityEntryList RPC.
-	LiabilityServiceLiabilityEntryListProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityEntryList"
+	// LiabilityServiceLiabilityLogListProcedure is the fully-qualified name of the LiabilityService's
+	// LiabilityLogList RPC.
+	LiabilityServiceLiabilityLogListProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityLogList"
 	// LiabilityServiceLiabilityDailyProcedure is the fully-qualified name of the LiabilityService's
 	// LiabilityDaily RPC.
 	LiabilityServiceLiabilityDailyProcedure = "/warehouse.liability.v1.LiabilityService/LiabilityDaily"
@@ -77,7 +77,7 @@ type LiabilityServiceClient interface {
 	// The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
 	LiabilityPositionList(context.Context, *connect.Request[v1.LiabilityPositionListRequest]) (*connect.Response[v1.LiabilityPositionListResponse], error)
 	// The counterparty detail's running history (#185).
-	LiabilityEntryList(context.Context, *connect.Request[v1.LiabilityEntryListRequest]) (*connect.Response[v1.LiabilityEntryListResponse], error)
+	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
 	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
 }
@@ -99,10 +99,10 @@ func NewLiabilityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityPositionList")),
 			connect.WithClientOptions(opts...),
 		),
-		liabilityEntryList: connect.NewClient[v1.LiabilityEntryListRequest, v1.LiabilityEntryListResponse](
+		liabilityLogList: connect.NewClient[v1.LiabilityLogListRequest, v1.LiabilityLogListResponse](
 			httpClient,
-			baseURL+LiabilityServiceLiabilityEntryListProcedure,
-			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityEntryList")),
+			baseURL+LiabilityServiceLiabilityLogListProcedure,
+			connect.WithSchema(liabilityServiceMethods.ByName("LiabilityLogList")),
 			connect.WithClientOptions(opts...),
 		),
 		liabilityDaily: connect.NewClient[v1.LiabilityDailyRequest, v1.LiabilityDailyResponse](
@@ -117,7 +117,7 @@ func NewLiabilityServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // liabilityServiceClient implements LiabilityServiceClient.
 type liabilityServiceClient struct {
 	liabilityPositionList *connect.Client[v1.LiabilityPositionListRequest, v1.LiabilityPositionListResponse]
-	liabilityEntryList    *connect.Client[v1.LiabilityEntryListRequest, v1.LiabilityEntryListResponse]
+	liabilityLogList      *connect.Client[v1.LiabilityLogListRequest, v1.LiabilityLogListResponse]
 	liabilityDaily        *connect.Client[v1.LiabilityDailyRequest, v1.LiabilityDailyResponse]
 }
 
@@ -126,9 +126,9 @@ func (c *liabilityServiceClient) LiabilityPositionList(ctx context.Context, req 
 	return c.liabilityPositionList.CallUnary(ctx, req)
 }
 
-// LiabilityEntryList calls warehouse.liability.v1.LiabilityService.LiabilityEntryList.
-func (c *liabilityServiceClient) LiabilityEntryList(ctx context.Context, req *connect.Request[v1.LiabilityEntryListRequest]) (*connect.Response[v1.LiabilityEntryListResponse], error) {
-	return c.liabilityEntryList.CallUnary(ctx, req)
+// LiabilityLogList calls warehouse.liability.v1.LiabilityService.LiabilityLogList.
+func (c *liabilityServiceClient) LiabilityLogList(ctx context.Context, req *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error) {
+	return c.liabilityLogList.CallUnary(ctx, req)
 }
 
 // LiabilityDaily calls warehouse.liability.v1.LiabilityService.LiabilityDaily.
@@ -142,7 +142,7 @@ type LiabilityServiceHandler interface {
 	// The position list (#185) — one row per counterparty, BOTH DIRECTIONS in one list.
 	LiabilityPositionList(context.Context, *connect.Request[v1.LiabilityPositionListRequest]) (*connect.Response[v1.LiabilityPositionListResponse], error)
 	// The counterparty detail's running history (#185).
-	LiabilityEntryList(context.Context, *connect.Request[v1.LiabilityEntryListRequest]) (*connect.Response[v1.LiabilityEntryListResponse], error)
+	LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error)
 	// What the ledger moved PER DAY — a warehouse's income half of the daily statement.
 	LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error)
 }
@@ -160,10 +160,10 @@ func NewLiabilityServiceHandler(svc LiabilityServiceHandler, opts ...connect.Han
 		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityPositionList")),
 		connect.WithHandlerOptions(opts...),
 	)
-	liabilityServiceLiabilityEntryListHandler := connect.NewUnaryHandler(
-		LiabilityServiceLiabilityEntryListProcedure,
-		svc.LiabilityEntryList,
-		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityEntryList")),
+	liabilityServiceLiabilityLogListHandler := connect.NewUnaryHandler(
+		LiabilityServiceLiabilityLogListProcedure,
+		svc.LiabilityLogList,
+		connect.WithSchema(liabilityServiceMethods.ByName("LiabilityLogList")),
 		connect.WithHandlerOptions(opts...),
 	)
 	liabilityServiceLiabilityDailyHandler := connect.NewUnaryHandler(
@@ -176,8 +176,8 @@ func NewLiabilityServiceHandler(svc LiabilityServiceHandler, opts ...connect.Han
 		switch r.URL.Path {
 		case LiabilityServiceLiabilityPositionListProcedure:
 			liabilityServiceLiabilityPositionListHandler.ServeHTTP(w, r)
-		case LiabilityServiceLiabilityEntryListProcedure:
-			liabilityServiceLiabilityEntryListHandler.ServeHTTP(w, r)
+		case LiabilityServiceLiabilityLogListProcedure:
+			liabilityServiceLiabilityLogListHandler.ServeHTTP(w, r)
 		case LiabilityServiceLiabilityDailyProcedure:
 			liabilityServiceLiabilityDailyHandler.ServeHTTP(w, r)
 		default:
@@ -193,8 +193,8 @@ func (UnimplementedLiabilityServiceHandler) LiabilityPositionList(context.Contex
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityService.LiabilityPositionList is not implemented"))
 }
 
-func (UnimplementedLiabilityServiceHandler) LiabilityEntryList(context.Context, *connect.Request[v1.LiabilityEntryListRequest]) (*connect.Response[v1.LiabilityEntryListResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityService.LiabilityEntryList is not implemented"))
+func (UnimplementedLiabilityServiceHandler) LiabilityLogList(context.Context, *connect.Request[v1.LiabilityLogListRequest]) (*connect.Response[v1.LiabilityLogListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityService.LiabilityLogList is not implemented"))
 }
 
 func (UnimplementedLiabilityServiceHandler) LiabilityDaily(context.Context, *connect.Request[v1.LiabilityDailyRequest]) (*connect.Response[v1.LiabilityDailyResponse], error) {

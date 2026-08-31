@@ -47,7 +47,7 @@ import { directionCopy, directionPalette } from "../../features/liability/direct
 import {
   useConfirmPayment,
   useRecordPayment,
-  useLiabilityEntries,
+  useLiabilityLogs,
   useLiabilityPayments,
 } from "../../features/liability/queries";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
@@ -76,20 +76,24 @@ function teamKindKey(type: TeamType): string {
 // countable.
 function causeKey(type: LiabilitySourceType): string {
   switch (type) {
-    case LiabilitySourceType.COD_FEE:
-      return "liabilityDetail.causeCodFee";
-    case LiabilitySourceType.RESTOCK_OUTLAY:
-      return "liabilityDetail.causeRestockOutlay";
-    case LiabilitySourceType.HANDLING_FEE:
-      return "liabilityDetail.causeHandlingFee";
+    case LiabilitySourceType.ORDER_FEE:
+      return "liabilityDetail.causeOrderFee";
+    case LiabilitySourceType.INCIDENTAL_FEE:
+      return "liabilityDetail.causeIncidentalFee";
     case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
     case LiabilitySourceType.PAYMENT:
       return "liabilityDetail.causePayment";
-    // Cause 4 and 5 both post under STOCK_DAMAGE — a reimbursement, and its reversal when the goods
-    // turn up. The REVERSAL badge beside it is what tells the two apart, so one label serves both.
-    case LiabilitySourceType.STOCK_DAMAGE:
-      return "liabilityDetail.causeStockDamage";
+    // ⚠ CAUSES 4 AND 5 USED TO SHARE ONE LABEL, because they shared one source type. They no longer
+    // do: broken and lost are different questions to answer, and a find is a giving-back movement
+    // rather than a third kind of loss. The REVERSAL badge still marks the find — the type carries
+    // the cause and the flag carries the direction.
+    case LiabilitySourceType.BROKEN_GOOD:
+      return "liabilityDetail.causeBrokenGood";
+    case LiabilitySourceType.LOST_GOOD:
+      return "liabilityDetail.causeLostGood";
+    case LiabilitySourceType.FOUND:
+      return "liabilityDetail.causeFound";
     default:
       // A source this build does not know renders as "unknown" rather than breaking the page.
       return "liabilityDetail.causeUnknown";
@@ -154,7 +158,7 @@ export function LiabilityDetailPage() {
 
   const teamId = current?.teamId;
 
-  const entriesQuery = useLiabilityEntries({
+  const entriesQuery = useLiabilityLogs({
     teamId,
     counterpartyId,
     page: entryPage,
@@ -392,7 +396,7 @@ export function LiabilityDetailPage() {
           <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
         </Stat.Root>
       </SimpleGrid>
-      {/* The position row carries no oldest-unsettled timestamp — LiabilityEntryList returns only the
+      {/* The position row carries no oldest-unsettled timestamp — LiabilityLogList returns only the
           balance, so "oldest unsettled N days" is omitted here (it lives on the list's position row). */}
 
       {/* Date range — OUTSIDE the tabs: one filter over whichever tab is open. */}

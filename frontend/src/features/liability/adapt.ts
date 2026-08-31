@@ -1,7 +1,7 @@
 import {
-  type LiabilityEntry,
-  LiabilityEntryListDataType,
-  type LiabilityEntryListResponseItem,
+  type LiabilityLog,
+  LiabilityLogListDataType,
+  type LiabilityLogListResponseItem,
   type LiabilityPayment,
   LiabilityPaymentListDataType,
   type LiabilityPaymentListResponseItem,
@@ -17,13 +17,13 @@ import {
 } from "../../gen/warehouse/liability/v1/liability_pb";
 
 // The liability lists moved to the guideline shape; the POSITION / ENTRY / PAYMENT slices reuse the
-// LiabilityPosition / LiabilityEntry / LiabilityPayment messages directly (a position is keyed by
+// LiabilityPosition / LiabilityLog / LiabilityPayment messages directly (a position is keyed by
 // counterparty_id, the others by their id). These pull the row slices out at the query boundary.
 
 export const positionRowData = (): LiabilityPositionListDataType[] => [
   LiabilityPositionListDataType.POSITION,
 ];
-export const entryRowData = (): LiabilityEntryListDataType[] => [LiabilityEntryListDataType.ENTRY];
+export const logRowData = (): LiabilityLogListDataType[] => [LiabilityLogListDataType.LOG];
 export const paymentRowData = (): LiabilityPaymentListDataType[] => [
   LiabilityPaymentListDataType.PAYMENT,
 ];
@@ -39,15 +39,15 @@ export function positionsFromList(
   return ids.map((id) => m[id.toString()]).filter((p): p is LiabilityPosition => !!p);
 }
 
-export function entriesFromList(
-  items: LiabilityEntryListResponseItem[],
+export function logsFromList(
+  items: LiabilityLogListResponseItem[],
   ids: bigint[],
-): LiabilityEntry[] {
-  let m: { [key: string]: LiabilityEntry } = {};
+): LiabilityLog[] {
+  let m: { [key: string]: LiabilityLog } = {};
   for (const it of items) {
-    if (it.d.case === "entry") m = it.d.value.mapData;
+    if (it.d.case === "log") m = it.d.value.mapData;
   }
-  return ids.map((id) => m[id.toString()]).filter((e): e is LiabilityEntry => !!e);
+  return ids.map((id) => m[id.toString()]).filter((e): e is LiabilityLog => !!e);
 }
 
 export function paymentsFromList(

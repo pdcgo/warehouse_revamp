@@ -26,7 +26,7 @@ import (
 
 // The tables this audit writes. Entries and balances are the ledger; payments is the claim record.
 var paymentTables = []string{
-	"liability_entries",
+	"liability_logs",
 	"liability_balances",
 	"liability_payments",
 }
@@ -45,7 +45,7 @@ func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
 		Amount:         15000,
-		SourceType:     liability_v1.SourceTypeCODFee,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
 		SourceID:       9001,
 	})
 	if err != nil {
@@ -124,7 +124,7 @@ func TestRace_LiabilityPaymentConfirmAgainstReverse(t *testing.T) {
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
 		Amount:         15000,
-		SourceType:     liability_v1.SourceTypeCODFee,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
 		SourceID:       9002,
 	})
 	if err != nil {

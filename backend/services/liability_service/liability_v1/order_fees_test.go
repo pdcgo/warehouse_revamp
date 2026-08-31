@@ -13,6 +13,10 @@ import (
 
 const productOwner uint64 = 3
 
+// canceller is the person who cancelled — a DIFFERENT act from the placement it undoes, so the
+// reversal entries name them rather than reusing the placer (every-entry-names-who-posted-it).
+const canceller uint64 = 77
+
 // setTerms writes a creditor's terms toward one debtor. `counterparty = 0` is the DEFAULT row.
 func setTerms(t *testing.T, db *gorm.DB, creditor, debtor uint64, handling, markupBP int64) {
 	t.Helper()
@@ -112,7 +116,7 @@ func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 	var handling int64
 
 	err = db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ?", warehouse, selling).
 		Count(&handling).
 		Error
@@ -173,7 +177,7 @@ func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 	var entries int64
 
 	err = db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ?", productOwner, selling).
 		Count(&entries).
 		Error
@@ -204,7 +208,7 @@ func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 
 	var entries int64
 
-	err = db.Model(&liability_service_models.LiabilityEntry{}).Count(&entries).Error
+	err = db.Model(&liability_service_models.LiabilityLog{}).Count(&entries).Error
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -235,7 +239,7 @@ func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) 
 	var entries int64
 
 	err = db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ?", productOwner).
 		Count(&entries).
 		Error
@@ -264,7 +268,7 @@ func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 
 	var entries int64
 
-	err = db.Model(&liability_service_models.LiabilityEntry{}).Count(&entries).Error
+	err = db.Model(&liability_service_models.LiabilityLog{}).Count(&entries).Error
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -287,7 +291,7 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}
@@ -305,7 +309,7 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 	var entries int64
 
 	err = db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ?", selling).
 		Count(&entries).
 		Error
@@ -331,7 +335,7 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		err = svc.ReverseOrder(context.Background(), selling, 412)
+		err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
 		if err != nil {
 			t.Fatalf("cancel %d: %v", i, err)
 		}
@@ -360,7 +364,7 @@ func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 		t.Fatalf("charge: %v", err)
 	}
 
-	err = svc.ReverseOrder(context.Background(), selling, 412)
+	err = svc.ReverseOrder(context.Background(), selling, 412, canceller)
 	if err != nil {
 		t.Fatalf("reverse: %v", err)
 	}

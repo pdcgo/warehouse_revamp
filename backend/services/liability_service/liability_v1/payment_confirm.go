@@ -71,7 +71,7 @@ func (s *Service) LiabilityPaymentConfirm(
 			return updateErr
 		}
 
-		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, false))
+		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, false, found.ConfirmedBy))
 		if postErr != nil {
 			return postErr
 		}
@@ -100,7 +100,16 @@ func (s *Service) LiabilityPaymentConfirm(
 // `reversal` distinguishes the confirmation from its undoing in the ledger's idempotency key
 // (source_type, source_id, counterparty, reversal), which is what lets one payment be posted once and
 // un-posted once, and neither of them twice.
-func paymentPosting(p *liability_service_models.LiabilityPayment, reversal bool) Posting {
+// ⚠ `actorID` IS THE PERSON WHO DECIDED, NEVER THE ONE WHO CLAIMED. A recorded payment moves no
+// money, so the movement belongs to the creditor who confirmed it — and a reversal belongs to
+// whoever undid that, which is a third act by possibly a third person
+// (every-entry-names-who-posted-it). Passing the payer here would credit the debtor with a
+// settlement they did not make happen.
+func paymentPosting(
+	p *liability_service_models.LiabilityPayment,
+	reversal bool,
+	actorID uint64,
+) Posting {
 	return Posting{
 		DebtorTeamID:   p.CreditorTeamID,
 		CreditorTeamID: p.PayerTeamID,
@@ -108,6 +117,7 @@ func paymentPosting(p *liability_service_models.LiabilityPayment, reversal bool)
 		SourceType:     SourceTypePayment,
 		SourceID:       p.ID,
 		Reversal:       reversal,
+		ActorID:        actorID,
 	}
 }
 

@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { liabilityClient, liabilityPaymentClient, liabilityTermsClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
 import {
-  entriesFromList,
-  entryRowData,
+  logsFromList,
+  logRowData,
   paymentsFromList,
   paymentRowData,
   positionRowData,
@@ -48,7 +48,7 @@ export function useLiabilityPositions(args: {
   });
 }
 
-export function useLiabilityEntries(args: {
+export function useLiabilityLogs(args: {
   teamId: bigint | undefined;
   counterpartyId: bigint;
   page: number;
@@ -64,15 +64,15 @@ export function useLiabilityEntries(args: {
     }),
     enabled: teamId !== undefined && counterpartyId > 0n,
     queryFn: async () => {
-      const res = await liabilityClient.liabilityEntryList({
+      const res = await liabilityClient.liabilityLogList({
         teamId: teamId!,
         filter: { counterpartyId },
-        dataRequest: entryRowData(),
+        dataRequest: logRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
-        entries: entriesFromList(res.items, res.ids),
+        entries: logsFromList(res.items, res.ids),
         balance: res.balance,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };

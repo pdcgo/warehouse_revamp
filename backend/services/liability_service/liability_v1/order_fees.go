@@ -26,6 +26,12 @@ type PlacedOrder struct {
 	WarehouseID uint64
 	OrderID     uint64
 	Lines       []OrderLine
+
+	// WHO PLACED THE ORDER (every-entry-names-who-posted-it). It arrives on `OrderPlacedEvent`
+	// because this runs from a Pub/Sub push and there is no request context to read it from — and a
+	// redelivery hours later must still name the person who placed the order, not whoever happens to
+	// be around when it is retried.
+	ActorID uint64
 }
 
 // basisPoints is the denominator of a markup: 10.000 bp = 100%.
@@ -75,7 +81,7 @@ func (s *Service) chargeHandlingFee(ctx context.Context, order PlacedOrder) erro
 	}
 
 	return s.postOrderFee(ctx, order.TeamID, order.WarehouseID, terms.HandlingFee,
-		SourceTypeHandlingFee, order.OrderID)
+		SourceTypeOrderFee, order.ActorID, order.OrderID)
 }
 
 // chargeProductFees bills each OWNING TEAM for its goods that this order sold.
@@ -140,7 +146,8 @@ func (s *Service) chargeProductFees(ctx context.Context, order PlacedOrder) erro
 			continue
 		}
 
-		err = s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.OrderID)
+		err = s.postOrderFee(ctx, order.TeamID, owner, fee, SourceTypeProductFee, order.ActorID,
+			order.OrderID)
 		if err != nil {
 			return err
 		}
@@ -155,6 +162,7 @@ func (s *Service) postOrderFee(
 	debtorID, creditorID uint64,
 	amount int64,
 	sourceType SourceType,
+	actorID uint64,
 	orderID uint64,
 ) error {
 	_, err := s.PostEntry(ctx, nil, Posting{
@@ -163,6 +171,7 @@ func (s *Service) postOrderFee(
 		Amount:         amount,
 		SourceType:     sourceType,
 		SourceID:       orderID,
+		ActorID:        actorID,
 	})
 	if errors.Is(err, ErrAlreadyPosted) {
 		return nil
@@ -181,8 +190,11 @@ func (s *Service) postOrderFee(
 // A REVERSAL IS A COMPENSATING ENTRY, never a delete. The original stays, the balance nets to zero,
 // and the history shows the fee was charged and then returned — "the fee briefly existed" is exactly
 // what an audit needs to see.
-func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID uint64) error {
-	var charged []liability_service_models.LiabilityEntry
+// ⚠ `actorID` IS WHOEVER CANCELLED, not whoever placed. The reversal is a second act and often a
+// second person, and the ledger records who caused each movement rather than who caused the
+// original (every-entry-names-who-posted-it).
+func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID, actorID uint64) error {
+	var charged []liability_service_models.LiabilityLog
 
 	// The DEBTOR'S legs only. Both sides of a movement are stored, so reading every row for this
 	// order would find each fee twice and reverse it twice — the second one refused as a duplicate,
@@ -190,7 +202,7 @@ func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID uint64) erro
 	err := s.db.
 		WithContext(ctx).
 		Where("team_id = ? AND source_id = ? AND reversal = ?", teamID, orderID, false).
-		Where("source_type IN ?", []string{sourceHandlingFee, sourceProductFee}).
+		Where("source_type IN ?", []string{sourceOrderFee, sourceProductFee}).
 		Order("id").
 		Find(&charged).
 		Error
@@ -214,6 +226,7 @@ func (s *Service) ReverseOrder(ctx context.Context, teamID, orderID uint64) erro
 			SourceType:     sourceTypeFromText(entry.SourceType),
 			SourceID:       entry.SourceID,
 			Reversal:       true,
+			ActorID:        actorID,
 		})
 		if err != nil && !errors.Is(err, ErrAlreadyPosted) {
 			return err

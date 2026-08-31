@@ -96,6 +96,9 @@ func (s *Service) OrderCancel(
 
 		TeamId:  order.TeamID,
 		OrderId: order.ID,
+		// WHO CANCELLED IT — a different act from the placement it undoes, and often a different
+		// person, so the reversal entries name this one (every-entry-names-who-posted-it).
+		ActorId: eventActor(ctx),
 	})
 	if publishErr != nil {
 		slog.ErrorContext(ctx, "order cancelled but OrderCancelledEvent was not published — "+

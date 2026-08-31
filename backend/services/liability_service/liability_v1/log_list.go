@@ -12,7 +12,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_service_models"
 )
 
-// LiabilityEntryList is the counterparty detail's running history (#185): every entry between the
+// LiabilityLogList is the counterparty detail's running history (#185): every entry between the
 // scoped team and one counterparty, newest first, with the pair's current balance.
 //
 // This is what `(source_type, source_id)` was for. A line reads "COD fee, restock #412" — joinable,
@@ -23,17 +23,17 @@ import (
 // ⚠ `counterparty_id` is REQUIRED here and is still NOT the scope. The handler proves the caller
 // belongs to `team_id` and then reads the pair; a request naming somebody else's pair returns that
 // caller's own (empty) history rather than anybody else's.
-func (s *Service) LiabilityEntryList(
+func (s *Service) LiabilityLogList(
 	ctx context.Context,
-	req *connect.Request[liabilityv1.LiabilityEntryListRequest],
-) (*connect.Response[liabilityv1.LiabilityEntryListResponse], error) {
+	req *connect.Request[liabilityv1.LiabilityLogListRequest],
+) (*connect.Response[liabilityv1.LiabilityLogListResponse], error) {
 	teamID := req.Msg.GetTeamId()
 	counterpartyID := req.Msg.GetFilter().GetCounterpartyId()
 	page := req.Msg.GetPage()
 
 	query := s.db.
 		WithContext(ctx).
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ?", teamID, counterpartyID)
 
 	var total int64
@@ -43,7 +43,7 @@ func (s *Service) LiabilityEntryList(
 		return nil, dbError(err)
 	}
 
-	var entries []liability_service_models.LiabilityEntry
+	var entries []liability_service_models.LiabilityLog
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
@@ -71,14 +71,14 @@ func (s *Service) LiabilityEntryList(
 		return nil, dbError(err)
 	}
 
-	out := make([]*liabilityv1.LiabilityEntry, 0, len(entries))
+	out := make([]*liabilityv1.LiabilityLog, 0, len(entries))
 	for i := range entries {
 		out = append(out, entryToProto(&entries[i]))
 	}
 
 	items, ids := entryListItems(out, req.Msg.GetDataRequest())
 
-	return connect.NewResponse(&liabilityv1.LiabilityEntryListResponse{
+	return connect.NewResponse(&liabilityv1.LiabilityLogListResponse{
 		Items: items,
 		Ids:   ids,
 		PageInfo: &commonv1.PageInfo{
@@ -90,8 +90,8 @@ func (s *Service) LiabilityEntryList(
 	}), nil
 }
 
-func entryToProto(e *liability_service_models.LiabilityEntry) *liabilityv1.LiabilityEntry {
-	return &liabilityv1.LiabilityEntry{
+func entryToProto(e *liability_service_models.LiabilityLog) *liabilityv1.LiabilityLog {
+	return &liabilityv1.LiabilityLog{
 		Id:             e.ID,
 		TeamId:         e.TeamID,
 		CounterpartyId: e.CounterpartyID,

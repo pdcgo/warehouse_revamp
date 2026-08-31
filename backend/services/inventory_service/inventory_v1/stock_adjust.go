@@ -100,9 +100,9 @@ func (s *Service) StockAdjust(
 	// And the DEBT it creates toward the team that owns the goods (business_level Â§Warehouse 5).
 	// Posted inside the transaction, unlike the expense — see the call below.
 	var (
-		damageAmount   int64
-		damageOwner    uint64
-		damageReversal bool
+		damageAmount int64
+		damageOwner  uint64
+		damageKind   StockDamageKind
 	)
 
 	var (
@@ -179,7 +179,18 @@ func (s *Service) StockAdjust(
 				if owner.Valid && owner.Int64 > 0 {
 					damageAmount = value
 					damageOwner = uint64(owner.Int64)
-					damageReversal = reasonType == inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND
+
+					// ⚠ THE THREE-WAY DISTINCTION WAS ALREADY HERE AND WAS BEING THROWN AWAY. This used
+					// to compute a single `reversal` boolean, so DAMAGED and LOST reached the ledger as
+					// one indistinguishable source type (the-ledger-speaks-the-business-words).
+					switch reasonType {
+					case inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_FOUND:
+						damageKind = StockDamageFound
+					case inventoryv1.StockAdjustReason_STOCK_ADJUST_REASON_LOST:
+						damageKind = StockDamageLost
+					default:
+						damageKind = StockDamageBroken
+					}
 				}
 			}
 
@@ -246,7 +257,7 @@ func (s *Service) StockAdjust(
 		// travels this RPC: arrival breakage is a restock damage line, recorded before custody begins.
 		if damageAmount > 0 && damageOwner != 0 && damageOwner != warehouseID {
 			damageErr := s.liability.PostStockDamage(ctx, tx, damageOwner, warehouseID, mv.ID,
-				damageAmount, damageReversal)
+				actor, damageAmount, damageKind)
 			if damageErr != nil {
 				return damageErr
 			}

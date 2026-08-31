@@ -689,7 +689,7 @@ export const transport = createRouterTransport(({ service }) => {
     //
     // ⚠ `balance` is the pair's CURRENT net, not the sum of the returned window. The screen shows
     // both, and a stub deriving one from the other would hide a real difference between them.
-    liabilityEntryList: (req) => ({
+    liabilityLogList: (req) => ({
       ...pagedColumnar(
         "entry",
         liabilityEntries.filter((e) => e.counterpartyId === req.filter?.counterpartyId),
@@ -700,7 +700,7 @@ export const transport = createRouterTransport(({ service }) => {
     }),
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
-    // it treats as earnings. It picks HANDLING_FEE alone: COD reimburses cash already handed to a
+    // it treats as earnings. It picks ORDER_FEE alone: COD reimburses cash already handed to a
     // courier, so summing every source and calling it income counts money nobody earned.
     liabilityDaily: (req) => {
       const days = periodDays(liabilityDays, req.teamId, req.filter);
@@ -710,8 +710,8 @@ export const transport = createRouterTransport(({ service }) => {
         // A source with nothing that day is ABSENT rather than 0 — the contract's choice, and the
         // reason every reader of these maps has to default rather than index blindly.
         const sources: Record<number, bigint> = {};
-        if (d.handlingFee !== 0n) sources[LiabilitySourceType.HANDLING_FEE] = d.handlingFee;
-        if (d.codFee !== 0n) sources[LiabilitySourceType.COD_FEE] = d.codFee;
+        if (d.handlingFee !== 0n) sources[LiabilitySourceType.ORDER_FEE] = d.handlingFee;
+        if (d.codFee !== 0n) sources[LiabilitySourceType.INCIDENTAL_FEE] = d.codFee;
 
         addInto(bySource, sources);
 

@@ -65,7 +65,7 @@ func TestStockOpname_ShortfallReimbursesTheOwner(t *testing.T) {
 		t.Fatalf("amount = %d, want 200000 (5 × 40.000)", got.amount)
 	}
 
-	if got.reversal {
+	if got.reversal() {
 		t.Fatal("a shortfall was posted as a reversal — that credits the warehouse for losing things")
 	}
 }
@@ -224,7 +224,7 @@ func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 			ownerBalance.Balance)
 	}
 
-	var entry liability_service_models.LiabilityEntry
+	var entry liability_service_models.LiabilityLog
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).

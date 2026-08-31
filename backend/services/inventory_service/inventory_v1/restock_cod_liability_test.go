@@ -203,7 +203,7 @@ type txCapturingPoster struct {
 func (p *txCapturingPoster) PostRestockOutlay(
 	_ context.Context,
 	tx *gorm.DB,
-	_, _, _ uint64,
+	_, _, _, _ uint64,
 	_ int64,
 ) error {
 	p.onPost(tx)
@@ -216,9 +216,9 @@ func (p *txCapturingPoster) PostRestockOutlay(
 func (p *txCapturingPoster) PostStockDamage(
 	_ context.Context,
 	_ *gorm.DB,
-	_, _, _ uint64,
+	_, _, _, _ uint64,
 	_ int64,
-	_ bool,
+	_ inventory_v1.StockDamageKind,
 ) error {
 	return nil
 }
@@ -227,7 +227,7 @@ func (p *txCapturingPoster) PostStockDamage(
 //
 // The tests above use a fake poster, which proves inventory's half. This one wires the REAL
 // liability service through the same adapter shape the composition root uses, so the assertion is
-// about rows in `liability_entries` rather than about a call being made.
+// about rows in `liability_logs` rather than about a call being made.
 //
 // It is the only place in the test suite that knows about both services at once, and deliberately so:
 // in production that knowledge lives in exactly one file (cmd/app_development/liability_poster.go),
@@ -239,15 +239,16 @@ type realPoster struct {
 func (p *realPoster) PostRestockOutlay(
 	ctx context.Context,
 	tx *gorm.DB,
-	sellingTeamID, warehouseID, restockRequestID uint64,
+	sellingTeamID, warehouseID, restockRequestID, actorID uint64,
 	amount int64,
 ) error {
 	_, err := p.liability.PostEntry(ctx, tx, liability_v1.Posting{
 		DebtorTeamID:   sellingTeamID,
 		CreditorTeamID: warehouseID,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeCODFee,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
 		SourceID:       restockRequestID,
+		ActorID:        actorID,
 	})
 
 	// A movement already recorded is a normal answer — the acceptance must not fail over a debt that
@@ -264,18 +265,28 @@ func (p *realPoster) PostRestockOutlay(
 func (p *realPoster) PostStockDamage(
 	ctx context.Context,
 	tx *gorm.DB,
-	ownerTeamID, warehouseID, movementID uint64,
+	ownerTeamID, warehouseID, movementID, actorID uint64,
 	amount int64,
-	reversal bool,
+	kind inventory_v1.StockDamageKind,
 ) error {
+	sourceType := liability_v1.SourceTypeBrokenGood
+
+	switch kind {
+	case inventory_v1.StockDamageLost:
+		sourceType = liability_v1.SourceTypeLostGood
+	case inventory_v1.StockDamageFound:
+		sourceType = liability_v1.SourceTypeFound
+	}
+
 	_, err := p.liability.PostEntry(ctx, tx, liability_v1.Posting{
 		// ⚠ REVERSED against every other posting here: the WAREHOUSE owes the owner for goods it lost.
 		DebtorTeamID:   warehouseID,
 		CreditorTeamID: ownerTeamID,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeStockDamage,
+		SourceType:     sourceType,
 		SourceID:       movementID,
-		Reversal:       reversal,
+		Reversal:       kind == inventory_v1.StockDamageFound,
+		ActorID:        actorID,
 	})
 
 	if errors.Is(err, liability_v1.ErrAlreadyPosted) {
@@ -314,7 +325,7 @@ func TestRestockFulfil_TheLedgerActuallyRecordsTheDebt(t *testing.T) {
 	}
 
 	// And the entry says WHY, by id, so the history can read "COD fee, restock #N" rather than a note.
-	var entry liability_service_models.LiabilityEntry
+	var entry liability_service_models.LiabilityLog
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", codWarehouse, codSellingTeam).

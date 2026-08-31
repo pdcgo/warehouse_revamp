@@ -14,52 +14,62 @@ type SourceType int
 
 const (
 	SourceTypeUnspecified SourceType = iota
-	// The warehouse paid the courier at the door for goods it does not own (#155/#184). SourceID is
-	// the restock request.
-	SourceTypeCODFee
-	// The warehouse fulfilled an order (#186). SourceID is the order.
-	SourceTypeHandlingFee
+	// The warehouse fulfilled an order, so the selling team owes it a fee (#186). SourceID is the
+	// order. The business word says WHEN it is charged, where `handling_fee` said only that some
+	// handling happened.
+	SourceTypeOrderFee
 	// The order sold another team's product (#186). SourceID is the order — one per owning team.
 	SourceTypeProductFee
 	// A confirmed payment (#188). SourceID is the payment.
 	SourceTypePayment
-	// Everything the warehouse laid out to receive one delivery — the COD fee at the door and anything
-	// else it paid to get the goods in. SourceID is the restock request, and the amount is the sum of
-	// that request's cost lines. Supersedes SourceTypeCODFee, which nothing posts under any more.
-	SourceTypeRestockOutlay
-	// Stock the warehouse broke or lost while holding it (#211). SourceID is the ADJUST MOVEMENT.
-	// The warehouse owes the OWNING team: it holds the goods, the selling team owns them.
-	SourceTypeStockDamage
+	// Everything the warehouse laid out to receive one delivery — the courier's unplanned ask at the
+	// door and anything else it paid to get the goods in. SourceID is the restock request, and the
+	// amount is the sum of that request's cost lines.
+	//
+	// It was `restock_outlay`, and before that `cod_fee`. The money is INCIDENTAL by nature, which is
+	// why no closed list of kinds can enumerate it.
+	SourceTypeIncidentalFee
+	// Stock the warehouse BROKE while holding it (#211). SourceID is the ADJUST MOVEMENT. The
+	// warehouse owes the OWNING team: it holds the goods, the selling team owns them.
+	SourceTypeBrokenGood
+	// Stock the warehouse LOST while holding it — shrinkage, not breakage. Same direction and
+	// valuation, a different thing to answer for.
+	SourceTypeLostGood
+	// Goods reimbursed and then FOUND AGAIN. Posted as a REVERSAL against the find's own movement.
+	SourceTypeFound
 )
 
-// The text stored in `liability_entries.source_type`. No DB CHECK guards these (the mapper and the
+// The text stored in `liability_logs.source_type`. No DB CHECK guards these (the mapper and the
 // proto do), exactly as `orders.status` is handled — an IN-list is one more place to drift when the
 // enum grows.
 const (
-	sourceCODFee        = "cod_fee"
-	sourceHandlingFee   = "handling_fee"
+	sourceOrderFee      = "order_fee"
 	sourceProductFee    = "product_fee"
 	sourcePayment       = "payment"
-	sourceRestockOutlay = "restock_outlay"
-	sourceStockDamage   = "stock_damage"
+	sourceIncidentalFee = "incidental_fee"
+	sourceBrokenGood    = "broken_good"
+	sourceLostGood      = "lost_good"
+	sourceFound         = "found"
 )
 
 // sourceTypeText maps to storage. An UNSPECIFIED source returns "" and PostEntry refuses it: an entry
 // that cannot say what caused it is unanswerable to the first question anybody asks a balance.
 func sourceTypeText(t SourceType) string {
 	switch t {
-	case SourceTypeCODFee:
-		return sourceCODFee
-	case SourceTypeHandlingFee:
-		return sourceHandlingFee
+	case SourceTypeOrderFee:
+		return sourceOrderFee
 	case SourceTypeProductFee:
 		return sourceProductFee
 	case SourceTypePayment:
 		return sourcePayment
-	case SourceTypeRestockOutlay:
-		return sourceRestockOutlay
-	case SourceTypeStockDamage:
-		return sourceStockDamage
+	case SourceTypeIncidentalFee:
+		return sourceIncidentalFee
+	case SourceTypeBrokenGood:
+		return sourceBrokenGood
+	case SourceTypeLostGood:
+		return sourceLostGood
+	case SourceTypeFound:
+		return sourceFound
 	default:
 		return ""
 	}
@@ -70,18 +80,20 @@ func sourceTypeText(t SourceType) string {
 // carries a source this build does not know is worse than one line reading "unknown".
 func sourceTypeProto(text string) liabilityv1.LiabilitySourceType {
 	switch text {
-	case sourceCODFee:
-		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_COD_FEE
-	case sourceHandlingFee:
-		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_HANDLING_FEE
+	case sourceOrderFee:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_ORDER_FEE
 	case sourceProductFee:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_PRODUCT_FEE
 	case sourcePayment:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_PAYMENT
-	case sourceRestockOutlay:
-		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_RESTOCK_OUTLAY
-	case sourceStockDamage:
-		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_STOCK_DAMAGE
+	case sourceIncidentalFee:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE
+	case sourceBrokenGood:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_BROKEN_GOOD
+	case sourceLostGood:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_LOST_GOOD
+	case sourceFound:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_FOUND
 	default:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_UNSPECIFIED
 	}
@@ -91,18 +103,20 @@ func sourceTypeProto(text string) liabilityv1.LiabilitySourceType {
 // recorded — the reversal path reads a stored entry and posts its opposite (#186).
 func sourceTypeFromText(text string) SourceType {
 	switch text {
-	case sourceCODFee:
-		return SourceTypeCODFee
-	case sourceHandlingFee:
-		return SourceTypeHandlingFee
+	case sourceOrderFee:
+		return SourceTypeOrderFee
 	case sourceProductFee:
 		return SourceTypeProductFee
 	case sourcePayment:
 		return SourceTypePayment
-	case sourceRestockOutlay:
-		return SourceTypeRestockOutlay
-	case sourceStockDamage:
-		return SourceTypeStockDamage
+	case sourceIncidentalFee:
+		return SourceTypeIncidentalFee
+	case sourceBrokenGood:
+		return SourceTypeBrokenGood
+	case sourceLostGood:
+		return SourceTypeLostGood
+	case sourceFound:
+		return SourceTypeFound
 	default:
 		return SourceTypeUnspecified
 	}

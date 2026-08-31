@@ -448,7 +448,7 @@ func (s *Service) RestockRequestFulfill(
 		// of nothing rather than the absence of one.
 		if costLineTotal > 0 {
 			return s.liability.PostRestockOutlay(
-				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, costLineTotal)
+				ctx, tx, rr.RequestingTeamID, rr.WarehouseID, rr.ID, actor, costLineTotal)
 		}
 
 		return nil

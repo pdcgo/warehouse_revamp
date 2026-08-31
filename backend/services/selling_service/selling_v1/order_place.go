@@ -303,6 +303,10 @@ func (s *Service) placeOrder(
 		CostKnown:    costKnown(order.Items, costs),
 		WarehouseId:  order.WarehouseID,
 		Lines:        s.placedLines(ctx, order.TeamID, order.Items),
+		// WHO PLACED IT. The ledger records a person behind every movement, and the two fees this
+		// event causes are posted by a consumer with no request context to read one from
+		// (every-entry-names-who-posted-it).
+		ActorId: eventActor(ctx),
 	})
 	if publishErr != nil {
 		slog.ErrorContext(ctx, "order placed but OrderPlacedEvent was not published — "+

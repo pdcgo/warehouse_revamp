@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	handlingFeeSource = int32(liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_HANDLING_FEE)
-	codFeeSource      = int32(liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_COD_FEE)
+	handlingFeeSource = int32(liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_ORDER_FEE)
+	codFeeSource      = int32(liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_INCIDENTAL_FEE)
 )
 
 func daily(
@@ -44,7 +44,7 @@ func handling(amount int64, sourceID uint64) liability_v1.Posting {
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeHandlingFee,
+		SourceType:     liability_v1.SourceTypeOrderFee,
 		SourceID:       sourceID,
 	}
 }
@@ -69,7 +69,7 @@ func postOn(
 		t.Fatalf("post %v #%d: %v", p.SourceType, p.SourceID, err)
 	}
 
-	err = db.Exec(`UPDATE liability_entries SET created_at = ? WHERE group_id = ?`, at, group).Error
+	err = db.Exec(`UPDATE liability_logs SET created_at = ? WHERE group_id = ?`, at, group).Error
 	if err != nil {
 		t.Fatalf("backdate group %d: %v", group, err)
 	}

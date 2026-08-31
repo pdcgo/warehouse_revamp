@@ -18,7 +18,7 @@ type SettlementLog struct {
 	// machine rows.
 	ActorID uint64
 
-	// The enums as text (see mapper.go), matching `orders.status` and `liability_entries`.
+	// The enums as text (see mapper.go), matching `orders.status` and `liability_logs`.
 	SourceType     string
 	SettlementType string
 

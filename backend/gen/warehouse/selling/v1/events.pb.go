@@ -61,9 +61,17 @@ type OrderPlacedEvent struct {
 	// guessed at by the consumer. A margin computed over an unknown cost reads as pure profit, and the
 	// revenue row has to be able to say so.
 	CostKnown bool `protobuf:"varint,6,opt,name=cost_known,json=costKnown,proto3" json:"cost_known,omitempty"`
-	// WHICH WAREHOUSE fulfilled it (#186). liability_service charges the handling fee to this team —
+	// WHICH WAREHOUSE fulfilled it (#186). liability_service charges the order fee to this team —
 	// the order cannot say who to bill without it.
 	WarehouseId uint64 `protobuf:"varint,7,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// WHO PLACED IT (every-entry-names-who-posted-it). The ledger records the person behind every
+	// movement, and the two fees this event causes are posted by a consumer that has no other way to
+	// learn who acted — an event is the only channel, so the actor travels on it.
+	//
+	// ⚠ It is the ORDER's actor, not the consumer's. A redelivery six hours later must still name the
+	// person who placed the order, which is why this is on the event and not read from the request
+	// context on the receiving side.
+	ActorId uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	// The lines, for liability's PRODUCT FEE (#186): an order selling another team's product owes that
 	// team money.
 	//
@@ -161,6 +169,13 @@ func (x *OrderPlacedEvent) GetCostKnown() bool {
 func (x *OrderPlacedEvent) GetWarehouseId() uint64 {
 	if x != nil {
 		return x.WarehouseId
+	}
+	return 0
+}
+
+func (x *OrderPlacedEvent) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
 	}
 	return 0
 }
@@ -285,6 +300,10 @@ type OrderCancelledEvent struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	TeamId  uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	OrderId uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	// WHO CANCELLED IT (every-entry-names-who-posted-it). The reversal this event causes is a real
+	// ledger movement, and it is a different person's act from the placement it undoes — so it carries
+	// its own actor rather than reusing the one on the entries being reversed.
+	ActorId uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	// The san_event contract (guidelines/architectures/event_library.md). High tag numbers so they sit
 	// apart from the domain fields and read the same on every event in the system.
 	//
@@ -343,6 +362,13 @@ func (x *OrderCancelledEvent) GetOrderId() uint64 {
 	return 0
 }
 
+func (x *OrderCancelledEvent) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
 func (x *OrderCancelledEvent) GetEventId() string {
 	if x != nil {
 		return x.EventId
@@ -361,7 +387,7 @@ var File_warehouse_selling_v1_events_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"\n" +
-	"!warehouse/selling/v1/events.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a#warehouse/event_base/v1/event.proto\"\x83\x03\n" +
+	"!warehouse/selling/v1/events.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a#warehouse/event_base/v1/event.proto\"\x9e\x03\n" +
 	"\x10OrderPlacedEvent\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x18\n" +
@@ -370,7 +396,8 @@ const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"\rshipping_cost\x18\x05 \x01(\x03R\fshippingCost\x12\x1d\n" +
 	"\n" +
 	"cost_known\x18\x06 \x01(\bR\tcostKnown\x12!\n" +
-	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12;\n" +
+	"\fwarehouse_id\x18\a \x01(\x04R\vwarehouseId\x12\x19\n" +
+	"\bactor_id\x18\t \x01(\x04R\aactorId\x12;\n" +
 	"\x05lines\x18\b \x03(\v2%.warehouse.selling.v1.OrderPlacedLineR\x05lines\x12\"\n" +
 	"\bevent_id\x18b \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x121\n" +
 	"\x10occurred_at_unix\x18c \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x0eoccurredAtUnix:\x12\x8a\xb5\x18\x0e\n" +
@@ -380,10 +407,11 @@ const file_warehouse_selling_v1_events_proto_rawDesc = "" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12$\n" +
 	"\x0eowning_team_id\x18\x02 \x01(\x04R\fowningTeamId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\rR\bquantity\x12\x1b\n" +
-	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"\xb7\x01\n" +
+	"\tunit_cost\x18\x04 \x01(\x03R\bunitCost\"\xd2\x01\n" +
 	"\x13OrderCancelledEvent\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\"\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x19\n" +
+	"\bactor_id\x18\x03 \x01(\x04R\aactorId\x12\"\n" +
 	"\bevent_id\x18b \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x121\n" +
 	"\x10occurred_at_unix\x18c \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x0eoccurredAtUnix:\x15\x8a\xb5\x18\x11\n" +
 	"\x0forder-cancelledBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"

@@ -64,7 +64,7 @@ func (s *Service) LiabilityPaymentReverse(
 			return updateErr
 		}
 
-		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, true))
+		_, postErr := s.PostEntry(ctx, tx, paymentPosting(found, true, actorUserID(ctx)))
 		if postErr != nil {
 			return postErr
 		}

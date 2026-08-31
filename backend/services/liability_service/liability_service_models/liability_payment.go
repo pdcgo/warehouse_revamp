@@ -5,7 +5,7 @@ import "time"
 // LiabilityPayment is a row of `liability_payments` (#188) — one team's claim that it paid another,
 // and the creditor's agreement that the money arrived.
 //
-// ⚠ IT IS NOT THE LEDGER. This table records the claim; `liability_entries` records what moved. A
+// ⚠ IT IS NOT THE LEDGER. This table records the claim; `liability_logs` records what moved. A
 // payment sitting at RECORDED has changed no balance at all — only CONFIRMED posts, because only the
 // creditor can see the money land, and one side asserting a transfer is not evidence that it did.
 //
@@ -22,7 +22,7 @@ type LiabilityPayment struct {
 	Amount int64
 
 	// recorded | confirmed | reversed — see the mapper. Text rather than an enum column for the same
-	// reason `liability_entries.source_type` is.
+	// reason `liability_logs.source_type` is.
 	Status string
 
 	// The payer's hint for the human confirming: a transfer reference, a bank, a date.

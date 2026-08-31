@@ -51,7 +51,7 @@ export function StatementSummary({
   const profit = income - spent;
 
   const stockLoss = expenses?.byKind[ExpenseKind.STOCK_LOSS] ?? 0n;
-  const codFees = liability?.bySource[LiabilitySourceType.COD_FEE] ?? 0n;
+  const codFees = liability?.bySource[LiabilitySourceType.INCIDENTAL_FEE] ?? 0n;
 
   // AN AVERAGE PER ROW, because that is the number a statement is for: "we clear about 400.000 a day" is
   // a sentence somebody can act on, where a period total is only comparable against another period of

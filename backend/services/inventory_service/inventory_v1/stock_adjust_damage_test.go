@@ -107,7 +107,7 @@ func TestStockAdjust_DamageMakesTheWarehouseOweTheOwner(t *testing.T) {
 		t.Fatalf("amount = %d, want 200000 (5 × the batch's frozen 40.000)", got.amount)
 	}
 
-	if got.reversal {
+	if got.reversal() {
 		t.Fatal("a damage was posted as a reversal — that credits the warehouse for breaking things")
 	}
 }
@@ -152,7 +152,7 @@ func TestStockAdjust_FoundReversesTheReimbursement(t *testing.T) {
 
 	found := poster.damaged[1]
 
-	if !found.reversal {
+	if !found.reversal() {
 		t.Fatal("the find was posted as a NEW debt rather than a reversal — the warehouse now owes twice")
 	}
 
@@ -308,7 +308,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	}
 
 	// And the entry says WHY, by id.
-	var entry liability_service_models.LiabilityEntry
+	var entry liability_service_models.LiabilityLog
 
 	err = db.
 		Where("team_id = ? AND counterparty_id = ?", damageOwnerTeam, warehouse).
@@ -340,7 +340,7 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 
 	var entries int64
 
-	err = db.Model(&liability_service_models.LiabilityEntry{}).
+	err = db.Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ? AND source_type = ?",
 			damageOwnerTeam, warehouse, "stock_damage").
 		Count(&entries).Error

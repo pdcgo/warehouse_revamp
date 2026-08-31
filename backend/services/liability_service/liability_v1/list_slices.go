@@ -6,7 +6,7 @@ import (
 )
 
 // The guideline list slice builders (guidelines/service-guideline.md). The POSITION / ENTRY slices
-// reuse the LiabilityPosition / LiabilityEntry messages directly. A position is keyed by
+// reuse the LiabilityPosition / LiabilityLog messages directly. A position is keyed by
 // counterparty_id (it has no id of its own); an entry by its id.
 
 func positionOrderClause(sort *liabilityv1.LiabilityPositionListFilterSort) string {
@@ -74,12 +74,12 @@ func positionListItems(
 
 // entryListItems wraps already-built entries (keyed by id, in display order).
 func entryListItems(
-	entries []*liabilityv1.LiabilityEntry,
-	types []liabilityv1.LiabilityEntryListDataType,
-) ([]*liabilityv1.LiabilityEntryListResponseItem, []uint64) {
+	entries []*liabilityv1.LiabilityLog,
+	types []liabilityv1.LiabilityLogListDataType,
+) ([]*liabilityv1.LiabilityLogListResponseItem, []uint64) {
 	if len(types) == 0 {
-		types = []liabilityv1.LiabilityEntryListDataType{
-			liabilityv1.LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY,
+		types = []liabilityv1.LiabilityLogListDataType{
+			liabilityv1.LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_LOG,
 		}
 	}
 
@@ -88,24 +88,24 @@ func entryListItems(
 		ids = append(ids, e.GetId())
 	}
 
-	items := make([]*liabilityv1.LiabilityEntryListResponseItem, 0, len(types))
+	items := make([]*liabilityv1.LiabilityLogListResponseItem, 0, len(types))
 	for _, t := range types {
 		switch t {
-		case liabilityv1.LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_GENERAL:
+		case liabilityv1.LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_GENERAL:
 			m := make(map[uint64]*commonv1.GeneralItem, len(entries))
 			for _, e := range entries {
 				m[e.GetId()] = &commonv1.GeneralItem{Id: e.GetId()}
 			}
-			items = append(items, &liabilityv1.LiabilityEntryListResponseItem{
-				D: &liabilityv1.LiabilityEntryListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
+			items = append(items, &liabilityv1.LiabilityLogListResponseItem{
+				D: &liabilityv1.LiabilityLogListResponseItem_General{General: &commonv1.GeneralMapItem{MapData: m}},
 			})
-		case liabilityv1.LiabilityEntryListDataType_LIABILITY_ENTRY_LIST_DATA_TYPE_ENTRY:
-			m := make(map[uint64]*liabilityv1.LiabilityEntry, len(entries))
+		case liabilityv1.LiabilityLogListDataType_LIABILITY_LOG_LIST_DATA_TYPE_LOG:
+			m := make(map[uint64]*liabilityv1.LiabilityLog, len(entries))
 			for _, e := range entries {
 				m[e.GetId()] = e
 			}
-			items = append(items, &liabilityv1.LiabilityEntryListResponseItem{
-				D: &liabilityv1.LiabilityEntryListResponseItem_Entry{Entry: &liabilityv1.LiabilityEntryMapItem{MapData: m}},
+			items = append(items, &liabilityv1.LiabilityLogListResponseItem{
+				D: &liabilityv1.LiabilityLogListResponseItem_Log{Log: &liabilityv1.LiabilityLogMapItem{MapData: m}},
 			})
 		}
 	}

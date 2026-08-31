@@ -32,7 +32,7 @@ func NewLiabilityPoster(liability *liability_v1.Service) inventory_v1.LiabilityP
 func (p *liabilityPoster) PostRestockOutlay(
 	ctx context.Context,
 	tx *gorm.DB,
-	sellingTeamID, warehouseID, restockRequestID uint64,
+	sellingTeamID, warehouseID, restockRequestID, actorID uint64,
 	amount int64,
 ) error {
 	_, err := p.liability.PostEntry(ctx, tx, liability_v1.Posting{
@@ -40,8 +40,11 @@ func (p *liabilityPoster) PostRestockOutlay(
 		DebtorTeamID:   sellingTeamID,
 		CreditorTeamID: warehouseID,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeRestockOutlay,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
 		SourceID:       restockRequestID,
+		// The warehouse person who accepted the delivery — computed by the fulfil handler for its own
+		// records, and until now dropped at this boundary (every-entry-names-who-posted-it).
+		ActorID: actorID,
 	})
 
 	// ALREADY POSTED IS A NORMAL ANSWER, not a failure — and swallowing it here rather than in the
@@ -64,20 +67,32 @@ func (p *liabilityPoster) PostRestockOutlay(
 func (p *liabilityPoster) PostStockDamage(
 	ctx context.Context,
 	tx *gorm.DB,
-	ownerTeamID, warehouseID, movementID uint64,
+	ownerTeamID, warehouseID, movementID, actorID uint64,
 	amount int64,
-	reversal bool,
+	kind inventory_v1.StockDamageKind,
 ) error {
+	sourceType := liability_v1.SourceTypeBrokenGood
+
+	switch kind {
+	case inventory_v1.StockDamageLost:
+		sourceType = liability_v1.SourceTypeLostGood
+	case inventory_v1.StockDamageFound:
+		sourceType = liability_v1.SourceTypeFound
+	}
+
 	_, err := p.liability.PostEntry(ctx, tx, liability_v1.Posting{
 		// The warehouse broke it, so the warehouse owes; the team that owns the goods is owed.
 		DebtorTeamID:   warehouseID,
 		CreditorTeamID: ownerTeamID,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeStockDamage,
+		SourceType:     sourceType,
 		SourceID:       movementID,
 		// A FOUND adjust gives the reimbursement back as a compensating entry against its own
-		// movement, never by deleting the one that charged it.
-		Reversal: reversal,
+		// movement, never by deleting the one that charged it. ⚠ The TYPE carries the cause and the
+		// FLAG carries the direction — both stay in the idempotency key, so they are not redundant.
+		Reversal: kind == inventory_v1.StockDamageFound,
+		// The warehouse person who recorded the adjust.
+		ActorID: actorID,
 	})
 
 	// Already posted is a normal answer here for the same reason it is above: an adjust that somehow

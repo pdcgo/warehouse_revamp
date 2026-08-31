@@ -34,7 +34,7 @@ func codFee(amount int64, sourceID uint64) liability_v1.Posting {
 		DebtorTeamID:   selling,
 		CreditorTeamID: warehouse,
 		Amount:         amount,
-		SourceType:     liability_v1.SourceTypeCODFee,
+		SourceType:     liability_v1.SourceTypeIncidentalFee,
 		SourceID:       sourceID,
 	}
 }
@@ -66,7 +66,7 @@ func TestPostEntry_WritesBothLegs(t *testing.T) {
 		t.Fatalf("PostEntry: %v", err)
 	}
 
-	var entries []liability_service_models.LiabilityEntry
+	var entries []liability_service_models.LiabilityLog
 
 	err = db.Where("group_id = ?", groupID).Order("id").Find(&entries).Error
 	if err != nil {
@@ -140,7 +140,7 @@ func TestPostEntry_AReversalIsNotADuplicate(t *testing.T) {
 	var entries int64
 
 	err = db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ?", warehouse, selling).
 		Count(&entries).
 		Error
@@ -169,7 +169,7 @@ func TestPostEntry_OneSourceCanOweSeveralCounterparties(t *testing.T) {
 
 	_, err := post(t, svc, db, liability_v1.Posting{
 		DebtorTeamID: selling, CreditorTeamID: warehouse, Amount: 12000,
-		SourceType: liability_v1.SourceTypeHandlingFee, SourceID: 412,
+		SourceType: liability_v1.SourceTypeOrderFee, SourceID: 412,
 	})
 	if err != nil {
 		t.Fatalf("handling fee: %v", err)
@@ -208,7 +208,7 @@ func TestPostEntry_TheBalanceIsRecomputableFromTheEntries(t *testing.T) {
 	var summed int64
 
 	err := db.
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		Where("team_id = ? AND counterparty_id = ?", warehouse, selling).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&summed).
@@ -308,24 +308,24 @@ func TestPostEntry_RefusesPostingsThatCannotMeanAnything(t *testing.T) {
 	}{
 		{"a team owing itself", liability_v1.Posting{
 			DebtorTeamID: selling, CreditorTeamID: selling, Amount: 100,
-			SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+			SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 		}},
 		// A zero would change nothing while consuming the pair's idempotency key for that source, so
 		// the real fee would later be swallowed as a duplicate.
 		{"a zero amount", liability_v1.Posting{
 			DebtorTeamID: selling, CreditorTeamID: warehouse, Amount: 0,
-			SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+			SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 		}},
 		{"a negative amount", liability_v1.Posting{
 			DebtorTeamID: selling, CreditorTeamID: warehouse, Amount: -100,
-			SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+			SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 		}},
 		{"no stated cause", liability_v1.Posting{
 			DebtorTeamID: selling, CreditorTeamID: warehouse, Amount: 100, SourceID: 1,
 		}},
 		{"only one side", liability_v1.Posting{
 			DebtorTeamID: selling, Amount: 100,
-			SourceType: liability_v1.SourceTypeCODFee, SourceID: 1,
+			SourceType: liability_v1.SourceTypeIncidentalFee, SourceID: 1,
 		}},
 	}
 
@@ -362,7 +362,7 @@ func TestPostEntry_RollsBackWithItsCallersTransaction(t *testing.T) {
 
 	var entries int64
 
-	err = db.Model(&liability_service_models.LiabilityEntry{}).Count(&entries).Error
+	err = db.Model(&liability_service_models.LiabilityLog{}).Count(&entries).Error
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}

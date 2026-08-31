@@ -46,7 +46,7 @@ type LiabilityPoster interface {
 	PostRestockOutlay(
 		ctx context.Context,
 		tx *gorm.DB,
-		sellingTeamID, warehouseID, restockRequestID uint64,
+		sellingTeamID, warehouseID, restockRequestID, actorID uint64,
 		amount int64,
 	) error
 
@@ -70,9 +70,9 @@ type LiabilityPoster interface {
 	PostStockDamage(
 		ctx context.Context,
 		tx *gorm.DB,
-		ownerTeamID, warehouseID, movementID uint64,
+		ownerTeamID, warehouseID, movementID, actorID uint64,
 		amount int64,
-		reversal bool,
+		kind StockDamageKind,
 	) error
 }
 
@@ -86,12 +86,32 @@ type LiabilityPoster interface {
 // runs in production is the day COD obligations stop being recorded. That is what #187 exists to catch.
 type noLiability struct{}
 
-func (noLiability) PostRestockOutlay(context.Context, *gorm.DB, uint64, uint64, uint64, int64) error {
+
+// StockDamageKind — WHICH custody movement a posting records, in this service's own terms.
+//
+// ⚠ IT REPLACED A BOOLEAN. The parameter used to be `reversal`, which said only whether the money was
+// going back — so broken and lost arrived at the ledger as one indistinguishable thing and "how much
+// went to breakage versus shrinkage" was unanswerable (the-ledger-speaks-the-business-words). The
+// distinction was already here: `StockAdjustReason` carries DAMAGED, LOST and FOUND, and this call
+// site was collapsing all three.
+type StockDamageKind int
+
+const (
+	// Goods the warehouse BROKE while holding them. The warehouse owes the owner.
+	StockDamageBroken StockDamageKind = iota
+	// Goods the warehouse LOST while holding them — shrinkage. Same direction, different question.
+	StockDamageLost
+	// Goods reimbursed and then FOUND AGAIN. It is the giving-back movement, so it posts as a
+	// reversal — the flag the ledger still keeps, now carried by the kind rather than by the caller.
+	StockDamageFound
+)
+
+func (noLiability) PostRestockOutlay(context.Context, *gorm.DB, uint64, uint64, uint64, uint64, int64) error {
 	return nil
 }
 
 func (noLiability) PostStockDamage(
-	context.Context, *gorm.DB, uint64, uint64, uint64, int64, bool,
+	context.Context, *gorm.DB, uint64, uint64, uint64, uint64, int64, StockDamageKind,
 ) error {
 	return nil
 }

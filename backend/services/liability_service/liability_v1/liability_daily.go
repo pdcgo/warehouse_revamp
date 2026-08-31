@@ -53,7 +53,7 @@ func (s *Service) LiabilityDaily(
 
 	query := s.db.
 		WithContext(ctx).
-		Model(&liability_service_models.LiabilityEntry{}).
+		Model(&liability_service_models.LiabilityLog{}).
 		// The team_id clause IS the scope check — one team can never read another's earnings by id.
 		Where("team_id = ?", req.Msg.GetTeamId()).
 		// The SAME half-open upper bound the other two daily series use: `created_at` is a TIMESTAMPTZ,
