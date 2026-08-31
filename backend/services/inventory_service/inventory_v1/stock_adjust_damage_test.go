@@ -318,8 +318,10 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("read the entry: %v", err)
 	}
 
-	if entry.SourceType != "stock_damage" {
-		t.Fatalf("entry source = %q, want stock_damage", entry.SourceType)
+	// ⚠ `broken_good`, NOT `stock_damage`. the-ledger-speaks-the-business-words split one source type
+	// into three, so the ledger now says WHICH loss this was instead of leaving it to a boolean.
+	if entry.SourceType != "broken_good" {
+		t.Fatalf("entry source = %q, want broken_good", entry.SourceType)
 	}
 
 	// FINDING THE GOODS SQUARES IT — the debt nets back to zero, and both entries remain.
@@ -338,18 +340,29 @@ func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("balance = %d after the goods turned up, want 0", ownerBalance.Balance)
 	}
 
-	var entries int64
+	// BOTH ENTRIES REMAIN, and since the vocabulary split they no longer share a source type: the loss
+	// is `broken_good` and the find is `found`. Counting them separately is a STRONGER check than the
+	// old `stock_damage = 2` — that count could have been satisfied by two losses and no find at all.
+	for _, want := range []struct {
+		sourceType string
+		count      int64
+	}{
+		{"broken_good", 1},
+		{"found", 1},
+	} {
+		var entries int64
 
-	err = db.Model(&liability_service_models.LiabilityLog{}).
-		Where("team_id = ? AND counterparty_id = ? AND source_type = ?",
-			damageOwnerTeam, warehouse, "stock_damage").
-		Count(&entries).Error
-	if err != nil {
-		t.Fatalf("count entries: %v", err)
-	}
+		err = db.Model(&liability_service_models.LiabilityLog{}).
+			Where("team_id = ? AND counterparty_id = ? AND source_type = ?",
+				damageOwnerTeam, warehouse, want.sourceType).
+			Count(&entries).Error
+		if err != nil {
+			t.Fatalf("count %s entries: %v", want.sourceType, err)
+		}
 
-	if entries != 2 {
-		t.Fatalf("%d stock_damage entries, want 2 — the reimbursement was edited rather than "+
-			"compensated", entries)
+		if entries != want.count {
+			t.Fatalf("%d %s entries, want %d — the reimbursement was edited rather than "+
+				"compensated", entries, want.sourceType, want.count)
+		}
 	}
 }

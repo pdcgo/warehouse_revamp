@@ -17,6 +17,7 @@
 import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 
 import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
+import { DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
@@ -176,8 +177,19 @@ function pagedColumnarBy<C extends string, R>(
 type StubTerms = (typeof liabilityTerms)[number];
 let termsTable: StubTerms[] = [...liabilityTerms];
 
+// The payments the stub serves — WRITEABLE, because rejecting one changes it. Reset per story.
+let paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+
 export function resetLiabilityTerms() {
   termsTable = [...liabilityTerms];
+}
+
+// ⚠ SAME REASON, AND A DEEP COPY. `liabilityPaymentReject` writes `status` and `reason` onto the row
+// itself, so a shallow spread of the array would still hand the next story the mutated object — and
+// a claim another story already refused would render as terminal, making "there is a Reject button"
+// depend on which story ran first.
+export function resetLiabilityPayments() {
+  paymentsTable = liabilityPayments.map((p) => ({ ...p }));
 }
 
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
@@ -734,7 +746,7 @@ export const transport = createRouterTransport(({ service }) => {
     liabilityPaymentList: (req) =>
       pagedColumnar(
         "payment",
-        liabilityPayments.filter(
+        paymentsTable.filter(
           (p) =>
             (p.payerTeamId === req.filter?.counterpartyId ||
               p.creditorTeamId === req.filter?.counterpartyId) &&
@@ -742,6 +754,33 @@ export const transport = createRouterTransport(({ service }) => {
         ),
         req.page,
       ),
+
+    // REJECT — the `no` arm of §Payment Flow. ⚠ IT POSTS NOTHING, so unlike confirm the stub mutates
+    // only the claim's own row: a stub that also moved a balance would be modelling the bug this
+    // state exists to prevent.
+    liabilityPaymentReject: (req) => {
+      const row = paymentsTable.find((p) => p.id === req.paymentId);
+
+      if (!row) {
+        throw new ConnectError("payment not found", Code.NotFound);
+      }
+
+      if (row.status !== 1) {
+        throw new ConnectError("only a recorded payment can be rejected", Code.FailedPrecondition);
+      }
+
+      row.status = 4;
+      row.reason = req.reason;
+
+      return { payment: row };
+    },
+  });
+
+  // Proof is uploaded by the PAYER and read by the CREDITOR (a-payment-must-carry-proof). The stub
+  // only needs the READ half: `useProofUpload` PUTs bytes to a signed URL, which no in-process fake
+  // can stand in for, so the upload path is exercised by e2e rather than here.
+  service(DocumentService, {
+    getDownloadUrl: (req) => ({ url: `https://example.invalid/proof/${req.documentId}` }),
   });
 
   service(LiabilityTermsService, {

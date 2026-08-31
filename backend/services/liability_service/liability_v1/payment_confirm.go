@@ -152,7 +152,9 @@ func paymentError(err error) error {
 	switch {
 	case errors.Is(err, errPaymentMissing):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, errPaymentNotWaiting), errors.Is(err, errPaymentNotConfirmed):
+	case errors.Is(err, errPaymentNotWaiting),
+		errors.Is(err, errPaymentNotRejectable),
+		errors.Is(err, errPaymentNotConfirmed):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, ErrAlreadyPosted):
 		// The status guard above should make this unreachable. If it fires anyway the debt is already

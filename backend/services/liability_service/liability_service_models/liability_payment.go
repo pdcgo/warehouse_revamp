@@ -21,8 +21,12 @@ type LiabilityPayment struct {
 	// Whole rupiah, always positive. Direction lives in the two ids above, never in a sign.
 	Amount int64
 
-	// recorded | confirmed | reversed — see the mapper. Text rather than an enum column for the same
-	// reason `liability_logs.source_type` is.
+	// recorded | confirmed | rejected | reversed — see the mapper. Text rather than an enum column for
+	// the same reason `liability_logs.source_type` is.
+	//
+	// ⚠ `rejected` AND `reversed` ARE DIFFERENT FAILURES. Rejected refuses a CLAIM and posts nothing;
+	// reversed undoes a CONFIRMATION with a compensating entry. Only the second one ever touched the
+	// ledger, so code that treats them alike will report money as having moved when it never did.
 	Status string
 
 	// The payer's hint for the human confirming: a transfer reference, a bank, a date.
@@ -37,8 +41,12 @@ type LiabilityPayment struct {
 	// the payer having skipped a required step.
 	Documents []LiabilityPaymentDocument `gorm:"foreignKey:PaymentID"`
 
-	// Why a confirmation was undone. Empty unless Status is reversed.
-	ReversalReason string
+	// Why a creditor refused or undid this payment. Empty unless Status is rejected or reversed.
+	//
+	// ⚠ ONE COLUMN FOR BOTH ACTS, on purpose: the STATUS says which one filled it. Two columns would
+	// leave one permanently null on every row and make every reader coalesce them. It was named
+	// `reversal_reason` while only one act could write it (migration 00007 renamed it).
+	Reason string
 
 	// Opaque user ids; 0 when unknown. Who claimed and who agreed.
 	RecordedBy  uint64

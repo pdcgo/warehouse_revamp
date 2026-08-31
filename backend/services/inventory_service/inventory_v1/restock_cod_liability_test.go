@@ -335,7 +335,9 @@ func TestRestockFulfil_TheLedgerActuallyRecordsTheDebt(t *testing.T) {
 		t.Fatalf("read the entry: %v", err)
 	}
 
-	if entry.SourceType != "cod_fee" || entry.SourceID != reqID {
-		t.Fatalf("entry source = %q/%d, want cod_fee/%d", entry.SourceType, entry.SourceID, reqID)
+	// ⚠ `incidental_fee`, NOT `cod_fee`. the-ledger-speaks-the-business-words renamed it: the money is
+	// the courier's unplanned ask at the door, which is not "cash on delivery" and never was.
+	if entry.SourceType != "incidental_fee" || entry.SourceID != reqID {
+		t.Fatalf("entry source = %q/%d, want incidental_fee/%d", entry.SourceType, entry.SourceID, reqID)
 	}
 }

@@ -160,3 +160,68 @@ export const APaymentCannotBeSentWithoutProof: Story = {
     await expect(screen.getByTestId("record-proof-input")).toBeInTheDocument();
   },
 };
+
+// §Payment Flow's MIDDLE STEP — *"Team B check manually"*. The creditor has to be able to LOOK at
+// the proof, and until this landed there was nowhere on any screen that showed it: the payer's
+// upload half shipped, the ids reached the client, and the table drew four columns without them.
+export const TheCreditorCanOpenTheProof: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // The "team" tab is the one holding payments THEY recorded and this team must act on.
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-team"));
+
+    const proof = await canvas.findByTestId("liability-detail-proof-doc-602a");
+    await expect(proof).toBeInTheDocument();
+
+    // Two files on that claim, and both are reachable — a creditor checking a transfer often has a
+    // slip and a screenshot, and showing only the first would hide half the evidence.
+    await expect(canvas.getByTestId("liability-detail-proof-doc-602b")).toBeInTheDocument();
+  },
+};
+
+// §Payment Flow's `no` arm, and the lifecycle diagram's second terminal state. Before it existed a
+// creditor could only leave a bad claim pending forever, or CONFIRM and then REVERSE — two real
+// ledger movements for money that never moved.
+export const RejectingNeedsAReasonAndPostsNothing: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-team"));
+
+    // The balance before, so the assertion below is about THIS act rather than about the fixture.
+    const balanceBefore = canvas.getByTestId("liability-detail-balance").textContent;
+
+    await userEvent.click(await canvas.findByTestId("liability-detail-reject-602"));
+
+    // ⚠ THE REASON IS REQUIRED — the submit stays disabled until there is one. A refusal the payer
+    // cannot read is a debt they cannot fix.
+    const submit = await screen.findByTestId("liability-detail-reject-submit");
+    await waitFor(() => expect(submit).toBeDisabled());
+
+    const reason = screen.getByTestId("liability-detail-reject-reason");
+    await userEvent.type(reason, "the slip is for last month", { delay: 20 });
+
+    await waitFor(() => expect(submit).toBeEnabled());
+    await userEvent.click(submit);
+
+    // ⚠ THE BALANCE DOES NOT MOVE. That is the whole point of the state, and the one thing a
+    // rejection must never do.
+    await waitFor(() =>
+      expect(canvas.getByTestId("liability-detail-balance").textContent).toBe(balanceBefore),
+    );
+  },
+};
+
+// A refusal the payer cannot read is a debt they cannot fix, so the reason travels with the row —
+// on the payer's own screen, not only on the creditor's.
+export const ARejectedClaimShowsWhy: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-team"));
+
+    const reason = await canvas.findByTestId("liability-detail-reason-603");
+    await expect(reason).toHaveTextContent("no transfer of this amount reached our account");
+  },
+};

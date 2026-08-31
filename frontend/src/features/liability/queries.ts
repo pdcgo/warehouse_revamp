@@ -165,6 +165,31 @@ export function useConfirmPayment() {
   });
 }
 
+// Reject a payment the counterparty recorded — the `no` arm of `balance_context.md` §Payment Flow.
+//
+// ⚠ IT POSTS NOTHING, which is why it is a separate mutation from `useConfirmPayment` rather than a
+// flag on it. Rejecting refuses a CLAIM that never reached the ledger; reversing undoes a
+// CONFIRMATION that did. Sharing one hook would invite sharing one code path, and the two failures
+// must not.
+//
+// It still invalidates every liability read: the row's status changes, and so does the creditor's
+// awaiting-confirmation count and the nav badge that shows it.
+export function useRejectPayment() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { teamId: bigint; paymentId: bigint; reason: string }) =>
+      liabilityPaymentClient.liabilityPaymentReject({
+        teamId: args.teamId,
+        paymentId: args.paymentId,
+        reason: args.reason,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["liability"] });
+    },
+  });
+}
+
 // ─── terms (#189) ───────────────────────────────────────────────────────────────────────────────
 
 // Every row of terms this team has SET — one per debtor, plus the DEFAULT row at counterparty 0.

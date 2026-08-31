@@ -234,8 +234,10 @@ func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 		t.Fatalf("read the entry: %v", err)
 	}
 
-	if entry.SourceType != "stock_damage" {
-		t.Fatalf("entry source = %q, want stock_damage", entry.SourceType)
+	// ⚠ `lost_good`, NOT `stock_damage`. An opname shortfall is stock that is GONE rather than broken,
+	// and the-ledger-speaks-the-business-words gave the two their own names.
+	if entry.SourceType != "lost_good" {
+		t.Fatalf("entry source = %q, want lost_good", entry.SourceType)
 	}
 }
 

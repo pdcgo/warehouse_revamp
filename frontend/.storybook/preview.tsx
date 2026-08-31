@@ -10,7 +10,7 @@ import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
-import { resetLiabilityTerms } from "./stubTransport";
+import { resetLiabilityPayments, resetLiabilityTerms } from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { system } from "../src/theme";
 import "../src/i18n/config";
@@ -235,6 +235,9 @@ const preview: Preview = {
     // The credit-terms table in the stub transport is WRITEABLE, so a story that freezes a team
     // would otherwise decide what every later story renders.
     resetLiabilityTerms();
+    // …and the payments table, which a story that REJECTS a claim writes to. Without this, whether a
+    // pending payment still offers Confirm/Reject would depend on story order.
+    resetLiabilityPayments();
     stubClipboard();
   },
   parameters: {

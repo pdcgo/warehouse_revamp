@@ -60,6 +60,7 @@ service LiabilityService {
 service LiabilityPaymentService {
   rpc LiabilityPaymentRecord(LiabilityPaymentRecordRequest) returns (LiabilityPaymentRecordResponse);
   rpc LiabilityPaymentConfirm(LiabilityPaymentConfirmRequest) returns (LiabilityPaymentConfirmResponse);
+  rpc LiabilityPaymentReject(LiabilityPaymentRejectRequest) returns (LiabilityPaymentRejectResponse);
   rpc LiabilityPaymentReverse(LiabilityPaymentReverseRequest) returns (LiabilityPaymentReverseResponse);
   rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse);
 }
@@ -478,6 +479,18 @@ enum LiabilityPaymentStatus {
   // A confirmation made in error, undone by a compensating entry — the confirmation itself is never
   // deleted.
   LIABILITY_PAYMENT_STATUS_REVERSED = 3;
+
+  // THE CREDITOR LOOKED AND THE MONEY WAS NOT THERE. `balance_context.md` §Payment Flow ends its
+  // *"Is Payment Correct?"* branch here, and the lifecycle diagram makes it terminal.
+  //
+  // ⚠ IT POSTS NOTHING, and that is the entire point of the state. Before it existed a creditor faced
+  // with a claim that never landed could only leave it at RECORDED forever, or CONFIRM and then
+  // REVERSE — which writes two real ledger movements for money that never moved and leaves the pair's
+  // history telling a story that did not happen.
+  //
+  // ⚠ NOT THE SAME AS REVERSED. Rejecting refuses a CLAIM (nothing was ever posted); reversing undoes
+  // a CONFIRMATION (a posting is compensated). Two different failures, and they must not share a path.
+  LIABILITY_PAYMENT_STATUS_REJECTED = 4;
 }
 
 message LiabilityPayment {
@@ -515,6 +528,14 @@ message LiabilityPayment {
   // nothing attached asks them to accept on the payer's word — which is exactly what the two-phase
   // design declines to trust.
   repeated string document_ids = 11;
+
+  // WHY a creditor refused or undid this payment. Empty while the payment is RECORDED or CONFIRMED —
+  // the status says which act filled it, which is why REJECTED and REVERSED share one column rather
+  // than owning two that are each always null for the other.
+  //
+  // ⚠ IT IS SHOWN TO THE PAYER. A refusal a debtor cannot read is a debt they cannot fix — they would
+  // see a claim marked wrong with no way to learn whether to re-send the slip or the money.
+  string reason = 12;
 }
 
 message LiabilityPaymentRecordRequest {
@@ -624,6 +645,40 @@ message LiabilityPaymentReverseRequest {
 }
 
 message LiabilityPaymentReverseResponse {
+  LiabilityPayment payment = 1;
+}
+
+// The creditor checked the proof and the money is not there (balance_context.md §Payment Flow).
+message LiabilityPaymentRejectRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  // The CREDITOR — the same scope as confirm, for the same reason. Only the team that was supposedly
+  // paid can say the money did not arrive.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // REQUIRED. A rejection is terminal and the payer must re-record from scratch, so *why* is the only
+  // thing that tells them whether to fix the slip or send the money.
+  string reason = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+}
+
+message LiabilityPaymentRejectResponse {
   LiabilityPayment payment = 1;
 }
 

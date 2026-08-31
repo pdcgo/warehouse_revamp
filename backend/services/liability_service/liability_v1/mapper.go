@@ -127,6 +127,7 @@ func sourceTypeFromText(text string) SourceType {
 const (
 	paymentRecorded  = "recorded"
 	paymentConfirmed = "confirmed"
+	paymentRejected  = "rejected"
 	paymentReversed  = "reversed"
 )
 
@@ -139,6 +140,8 @@ func paymentStatusProto(text string) liabilityv1.LiabilityPaymentStatus {
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_RECORDED
 	case paymentConfirmed:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_CONFIRMED
+	case paymentRejected:
+		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REJECTED
 	case paymentReversed:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REVERSED
 	default:
@@ -185,5 +188,6 @@ func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.L
 		CreatedAtUnix:   p.CreatedAt.Unix(),
 		ConfirmedAtUnix: confirmedAt,
 		DocumentIds:     documentIDs(p.Documents),
+		Reason:          p.Reason,
 	}
 }

@@ -30,6 +30,8 @@ import { ArrowLeft, Paperclip, Plus, X } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
+import { PaymentProof } from "./components/PaymentProof";
+import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
 import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -111,6 +113,8 @@ function statusKey(status: LiabilityPaymentStatus): string {
       return "liabilityDetail.statusConfirmed";
     case LiabilityPaymentStatus.REVERSED:
       return "liabilityDetail.statusReversed";
+    case LiabilityPaymentStatus.REJECTED:
+      return "liabilityDetail.statusRejected";
     default:
       return "liabilityDetail.statusUnknown";
   }
@@ -122,6 +126,11 @@ function statusPalette(status: LiabilityPaymentStatus): string {
       return "orange";
     case LiabilityPaymentStatus.CONFIRMED:
       return "green";
+    // ⚠ RED, and REVERSED stays grey. A refusal is an outcome the payer has to act on — re-send the
+    // slip, or the money — while a reversal is a correction already made. Giving them one colour
+    // would flatten "you must do something" into "something happened".
+    case LiabilityPaymentStatus.REJECTED:
+      return "red";
     default:
       return "gray";
   }
@@ -158,6 +167,10 @@ export function LiabilityDetailPage() {
 
   const [recordOpen, setRecordOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<LiabilityPayment | null>(null);
+  // ⚠ A SEPARATE TARGET from confirm, not a mode flag on one. The two acts are different failures —
+  // reject refuses a claim and posts nothing, confirm posts money — and one piece of state holding
+  // both is how a mis-click becomes a settlement.
+  const [rejectTarget, setRejectTarget] = useState<LiabilityPayment | null>(null);
 
   const teamId = current?.teamId;
 
@@ -300,6 +313,11 @@ export function LiabilityDetailPage() {
     );
   }
 
+  // ⚠ NARROWED ONCE, HERE. `current` is guarded above, but TypeScript drops that narrowing inside a
+  // closure, and the proof links need a concrete reader team — a `?? 0n` fallback would send a
+  // GetDownloadUrl for team 0 rather than fail loudly.
+  const readerTeamId = current.teamId;
+
   function renderPaymentTable(rows: LiabilityPayment[], emptyKey: string, withConfirm: boolean) {
     if (rows.length === 0) {
       return (
@@ -316,6 +334,8 @@ export function LiabilityDetailPage() {
             <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("liabilityDetail.colNote")}</Table.ColumnHeader>
+            {/* §Payment Flow's middle step — *"Team B check manually"* — needs something to look at. */}
+            <Table.ColumnHeader>{t("liabilityDetail.colProof")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("liabilityDetail.colStatus")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
@@ -326,19 +346,45 @@ export function LiabilityDetailPage() {
               <Table.Cell textAlign="end" whiteSpace="nowrap">
                 {formatRupiah(p.amount)}
               </Table.Cell>
-              <Table.Cell color="fg.muted">{p.note || "—"}</Table.Cell>
+              <Table.Cell color="fg.muted">
+                <Stack gap="0">
+                  <Text>{p.note || "—"}</Text>
+                  {/* ⚠ THE REASON IS SHOWN ON BOTH SIDES, and to the payer above all: a refusal they
+                      cannot read is a debt they cannot fix. */}
+                  {p.reason !== "" && (
+                    <Text fontSize="xs" color="red.fg" data-testid={`liability-detail-reason-${p.id}`}>
+                      {p.reason}
+                    </Text>
+                  )}
+                </Stack>
+              </Table.Cell>
+              <Table.Cell>
+                <PaymentProof teamId={readerTeamId} documentIds={p.documentIds} />
+              </Table.Cell>
               <Table.Cell>
                 <Flex align="center" gap="2">
                   <Badge colorPalette={statusPalette(p.status)}>{t(statusKey(p.status))}</Badge>
+                  {/* TWO actions, so they stay inline — an overflow menu is for three or more. */}
                   {withConfirm && p.status === LiabilityPaymentStatus.RECORDED && (
-                    <Button
-                      size="xs"
-                      colorPalette="green"
-                      data-testid={`liability-detail-confirm-${p.id}`}
-                      onClick={() => setConfirmTarget(p)}
-                    >
-                      {t("liabilityDetail.confirm")}
-                    </Button>
+                    <>
+                      <Button
+                        size="xs"
+                        colorPalette="green"
+                        data-testid={`liability-detail-confirm-${p.id}`}
+                        onClick={() => setConfirmTarget(p)}
+                      >
+                        {t("liabilityDetail.confirm")}
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        colorPalette="red"
+                        data-testid={`liability-detail-reject-${p.id}`}
+                        onClick={() => setRejectTarget(p)}
+                      >
+                        {t("liabilityDetail.reject")}
+                      </Button>
+                    </>
                   )}
                 </Flex>
               </Table.Cell>
@@ -546,6 +592,12 @@ export function LiabilityDetailPage() {
           await confirmPayment.mutateAsync({ teamId: current.teamId, paymentId: confirmTarget.id });
           setConfirmTarget(null);
         }}
+      />
+
+      <RejectPaymentDialog
+        target={rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        teamId={current.teamId}
       />
 
       <MakePaymentDialog

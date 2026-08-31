@@ -49,7 +49,7 @@ func (s *Service) LiabilityPaymentReverse(
 		now := time.Now()
 
 		found.Status = paymentReversed
-		found.ReversalReason = req.Msg.GetReason()
+		found.Reason = req.Msg.GetReason()
 
 		updateErr := tx.Model(&liability_service_models.LiabilityPayment{}).
 			Where("id = ?", found.ID).
@@ -57,7 +57,7 @@ func (s *Service) LiabilityPaymentReverse(
 				"status": found.Status,
 				// ⚠ `confirmed_at` and `confirmed_by` SURVIVE. When it was agreed, and by whom, are
 				// facts; the reversal is a later one. Clearing them would erase who to ask about it.
-				"reversal_reason": found.ReversalReason,
+				"reason":          found.Reason,
 				"updated_at":      now,
 			}).Error
 		if updateErr != nil {
