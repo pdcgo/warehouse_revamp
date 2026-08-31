@@ -2031,8 +2031,6 @@
     "limitHelp": "Tanpa batas dan Dibekukan itu berlawanan, bukan bertingkat. Dibekukan menolak order berikutnya berapa pun saldonya.",
     "handlingFee": "Biaya penanganan",
     "handlingFeeHelp": "Tetap, per order. Tidak diisi berarti Anda tidak menagih apa pun.",
-    "markup": "Markup",
-    "markupHelp": "Persen di atas harga pokok saat tim lain menjual produk Anda.",
     "reason": "Alasan",
     "reasonRequired": "Wajib — Anda mengubah ketentuan tim lain.",
     "reasonOptional": "Opsional. Tetap dicatat di log perubahan.",

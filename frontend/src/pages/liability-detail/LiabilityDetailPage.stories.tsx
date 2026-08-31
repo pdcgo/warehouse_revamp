@@ -114,9 +114,12 @@ export const TheTermsTabSetsThisPairsLimit: Story = {
       timeout: 3000,
     });
 
-    // Toko Melati has its OWN row: a 30.000 fee and 7.5% markup, not the default's 25.000 / 5%.
+    // Toko Melati has its OWN row: a 30.000 fee, not the default's 25.000.
     await expect(canvas.getByTestId("terms-panel-fee")).toHaveTextContent("30.000");
-    await expect(canvas.getByTestId("terms-panel-markup")).toHaveTextContent("7.5%");
+
+    // ⛔ AND NO MARKUP. The cross-product markup is the PRODUCT's (owner) — `cross_markup_bps` in
+    // product_service — so a credit-terms panel must not present it as a property of this pair.
+    await expect(canvas.queryByTestId("terms-panel-markup")).not.toBeInTheDocument();
 
     // Its own row, so nothing is inherited and the row can be removed.
     await expect(canvas.queryByTestId("terms-inherited")).not.toBeInTheDocument();
@@ -225,3 +228,4 @@ export const ARejectedClaimShowsWhy: Story = {
     await expect(reason).toHaveTextContent("no transfer of this amount reached our account");
   },
 };
+

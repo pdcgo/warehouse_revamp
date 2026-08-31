@@ -6,7 +6,6 @@ import {
   CloseButton,
   Dialog,
   Field,
-  Input,
   NativeSelect,
   Portal,
   RadioGroup,
@@ -57,16 +56,6 @@ interface TermsEditDialogProps {
   overrideWriter: boolean;
 }
 
-// Basis points ↔ the percent a person types. 2000bp = 20%.
-//
-// ⚠ ONE DECIMAL PLACE, and the rate is stored in bp rather than as a float for the same reason money
-// is an integer: a percentage that cannot be represented exactly is a fee that drifts.
-const bpToPercent = (bp: bigint): string => (Number(bp) / 100).toFixed(2).replace(/\.?0+$/, "");
-const percentToBp = (pct: string): bigint => {
-  const n = Number(pct);
-  return Number.isFinite(n) && n >= 0 ? BigInt(Math.round(n * 100)) : 0n;
-};
-
 // TermsEditDialog sets one pair's terms (#189).
 //
 // ⚠ THE LIMIT IS A THREE-WAY CHOICE, NOT A NUMBER FIELD, and that is the entire point of this
@@ -95,7 +84,6 @@ export function TermsEditDialog({
   const [limitMode, setLimitMode] = useState<LimitState>("unlimited");
   const [limit, setLimit] = useState("");
   const [handlingFee, setHandlingFee] = useState("");
-  const [markup, setMarkup] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -112,7 +100,6 @@ export function TermsEditDialog({
       setLimitMode(limitStateOf(editing.creditLimit));
       setLimit(editing.creditLimit && editing.creditLimit > 0n ? editing.creditLimit.toString() : "");
       setHandlingFee(editing.handlingFee > 0n ? editing.handlingFee.toString() : "");
-      setMarkup(editing.productMarkupBp > 0n ? bpToPercent(editing.productMarkupBp) : "");
       return;
     }
 
@@ -120,7 +107,6 @@ export function TermsEditDialog({
     setLimitMode("unlimited");
     setLimit("");
     setHandlingFee("");
-    setMarkup("");
   }, [open, editing, options, fixedCounterpartyId]);
 
   const busy = setTerms.isPending;
@@ -142,7 +128,16 @@ export function TermsEditDialog({
         teamId,
         counterpartyId: BigInt(counterpartyId),
         handlingFee: BigInt(handlingFee || "0"),
-        productMarkupBp: percentToBp(markup || "0"),
+        // ⚠ PASSED THROUGH UNCHANGED, NEVER 0 — and this is not tidiness, it is what stops this dialog
+        // silently wiping a fee. The cross-product markup is `product_service`'s (owner), so it is no
+        // longer EDITED here; but `LiabilityTermsSet` is an upsert that writes
+        // `product_markup_bp = EXCLUDED.product_markup_bp` unconditionally, and `order_fees.go` still
+        // charges the cross fee from that column. Sending 0 because the field left the form would
+        // zero the markup on every unrelated limit edit.
+        //
+        // ⚠ DELETE THIS LINE ONLY WHEN THE COLUMN GOES. It is a bridge, and it is load-bearing until
+        // the charge is moved to the product's own `cross_markup_bps`.
+        productMarkupBp: editing?.productMarkupBp ?? 0n,
         creditLimit,
         reason: reason.trim(),
       });
@@ -247,18 +242,10 @@ export function TermsEditDialog({
                     <Field.HelperText>{t("terms.handlingFeeHelp")}</Field.HelperText>
                   </Field.Root>
 
-                  <Field.Root>
-                    <Field.Label>{t("terms.markup")}</Field.Label>
-                    <Input
-                      value={markup}
-                      inputMode="decimal"
-                      disabled={busy}
-                      placeholder="0"
-                      data-testid="terms-markup"
-                      onChange={(e) => setMarkup(e.target.value)}
-                    />
-                    <Field.HelperText>{t("terms.markupHelp")}</Field.HelperText>
-                  </Field.Root>
+                  {/* ⛔ THE CROSS-PRODUCT MARKUP IS GONE FROM THIS FORM (owner): it is a property of
+                      the PRODUCT, not of a credit relationship, and `products.cross_markup_bps`
+                      already exists in product_service. Setting it here made a rate that varies
+                      per product look like one rate per counterparty. */}
 
                   <Field.Root required={needsReason}>
                     <Field.Label>{t("terms.reason")}</Field.Label>

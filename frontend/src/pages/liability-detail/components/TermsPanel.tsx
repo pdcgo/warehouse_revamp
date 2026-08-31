@@ -54,7 +54,7 @@ export interface TermsPanelProps {
   debt: bigint;
 }
 
-// TermsPanel — where this pair's credit limit, order fee and markup are SET
+// TermsPanel — where this pair's credit limit and order fee are SET
 // (terms-live-on-the-pair-detail).
 //
 // ⚠ IT WAS A SCREEN, AND IT IS NOW A SECTION. `/liability/terms` listed every counterparty's terms in
@@ -167,18 +167,10 @@ export function TermsPanel({
             </Stat.ValueText>
           </Stat.Root>
 
-          <Stat.Root>
-            <Stat.Label>{t("terms.markup")}</Stat.Label>
-            <Stat.ValueText data-testid="terms-panel-markup">
-              {effective && effective.productMarkupBp > 0n ? (
-                `${(Number(effective.productMarkupBp) / 100).toFixed(2).replace(/\.?0+$/, "")}%`
-              ) : (
-                <Text as="span" color="fg.subtle">
-                  {t("terms.chargesNothing")}
-                </Text>
-              )}
-            </Stat.ValueText>
-          </Stat.Root>
+          {/* ⛔ THE CROSS-PRODUCT MARKUP IS NOT SHOWN HERE ANY MORE (owner). It belongs to the
+              PRODUCT — `products.cross_markup_bps`, already in product_service and already rendered
+              on the product detail Price tab. Showing it beside a credit limit made a per-product
+              rate read as a property of the relationship. */}
         </SimpleGrid>
       </Stack>
 

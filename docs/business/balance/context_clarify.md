@@ -598,6 +598,39 @@ flowchart LR
 
 # Contradiction
 
+## two markups exist, and the screen and the ledger read different ones
+
+**Found while acting on [the-cross-markup-belongs-to-the-product](./context_decision.md#the-cross-markup-belongs-to-the-product).** It is not a doc-vs-doc drift like the one below — it is a **doc-vs-code** one, and it is live.
+
+The cross-product markup is stored **twice**, in two services, and nothing keeps the two equal:
+
+| | where | who reads it |
+| --- | --- | --- |
+| `products.cross_markup_bps` | `product_service` migration `00003` | the product detail's **Price tab** — what a borrowing team is SHOWN it will pay |
+| `liability_terms.product_markup_bp` | `liability_service` | [`order_fees.go:144`](../../../backend/services/liability_service/liability_v1/order_fees.go) — what it is actually CHARGED |
+
+```mermaid
+flowchart TB
+  O["the owning team sets a markup"] --> P["products.cross_markup_bps"]
+  O --> L["liability_terms.product_markup_bp"]
+  P --> S["Price tab — the quoted price"]
+  L --> C["order_fees.go — the posted fee"]
+  S -.->|"nothing keeps these equal"| C
+```
+
+⛔ **The failure is silent and it favours nobody predictably.** Set the product to 20% and leave the
+pair row at 5%, and the borrowing team is quoted a price it is not charged — in either direction,
+depending which was edited last. Neither screen can show that the other exists.
+
+**→ Recommend: ONE number, and it is the product's.** The owner has decided the rate belongs to
+`product_service`, so `order_fees.go` should read the product's `cross_markup_bps` at the moment it
+freezes the fee, and `liability_terms.product_markup_bp` should go. Balance is then told the amount
+rather than asked to compute the rate — which is what it already does for every other cause.
+
+⚠ **What stops it recurring is the same rule as the causes list below: one definition, and every other
+site links to it.** This one is sharper because the second copy is not prose — it is a column that
+something charges from, so the drift bills people.
+
 ## the causes list exists in two requirement docs and they no longer agree
 
 Recorded in full, with the diagram, under

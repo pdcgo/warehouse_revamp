@@ -25,6 +25,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for) | every incidental cost line carries a **required note**. The kind stopped carrying the meaning, so the words must |
 | [a-payment-must-carry-proof](#a-payment-must-carry-proof) | a payment with **no attached document is refused** — the creditor's manual check needs something to look at |
 | [the-daily-report-is-deferred](#the-daily-report-is-deferred) | ⛔ **parked, not cancelled.** ⚠ §Responsbility 2 goes on promising selling teams a screen that refuses them |
+| [the-cross-markup-belongs-to-the-product](#the-cross-markup-belongs-to-the-product) | the cross-product markup is **`product_service`'s**. ⚠ removed from the balance frontend; the ledger still CHARGES from balance's column |
 | [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
 
 ---
@@ -1037,3 +1038,65 @@ that could bound a find to its loss** — and it remains unbuilt.
 §What Warehouse Can Receivable lists `found` flatly, and §Payment Flow's two-phase shape is written
 about payments alone. [Critique 2](./context_clarify.md#critique) was an argument *for* one, not a
 record that the doc claimed one.
+
+## the-cross-markup-belongs-to-the-product
+
+> The owner, in chat — *"lets talk about markup cross product in balance, its not should be there, its
+> product service responsbility"*, then *"remove from balance frontend"*.
+
+**The verdict.** The cross-product markup is **`product_service`'s**, not balance's. It is a property
+of a PRODUCT, not of a credit relationship, and it stops being presented on the balance screens.
+
+⚠ **The scope of this pass is the FRONTEND**, because that is what was asked. The column, the proto
+field and the posting still exist — see [§What is NOT done](#-what-is-not-done-and-it-is-the-load-bearing-half).
+
+### ✅ The argument is stronger than it was made — the markup ALREADY lives in product_service
+
+This was not a preference between two homes. **Both homes are built**, and they disagree:
+
+| | where | who reads it |
+| --- | --- | --- |
+| `products.cross_markup_bps` | `product_service`, migration `00003`, with its own RPCs and tests | the product detail's **Price tab** — what a cross-selling team is SHOWN it will pay |
+| `liability_terms.product_markup_bp` | `liability_service` | [`order_fees.go:144`](../../../backend/services/liability_service/liability_v1/order_fees.go) — what that team is actually CHARGED |
+
+```mermaid
+flowchart TB
+  P["products.cross_markup_bps — per PRODUCT"] --> S["Price tab — what the team is SHOWN"]
+  L["liability_terms.product_markup_bp — per PAIR"] --> C["order_fees.go — what the team is CHARGED"]
+  S -.->|"can differ, silently"| C
+```
+
+⛔ **So the price a cross-selling team reads and the fee it is billed come from two different
+numbers, and nothing keeps them equal.** That is the contradiction, and it is recorded in full in
+[the clarify file](./context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones).
+
+### Why the product is the right owner, in this system's own terms
+
+| | |
+| --- | --- |
+| a rate that varies **per product** cannot be one number per counterparty | a team lending a 2% commodity and a 30% specialty item has one `liability_terms` row for both |
+| the fee is a **cost transfer**, not credit | the goods left the owner's stock and do not come back — that is a fact about the goods, and it does not change because the borrower's credit limit does |
+| balance's job is what teams **owe each other** | it should be told the amount, not asked to compute the rate |
+
+### The spec — what was removed from the frontend
+
+| | |
+| --- | --- |
+| `TermsEditDialog` | the Markup field, its state, and the bp↔percent helpers |
+| `TermsPanel` | the Markup stat |
+| locales | `terms.markup` / `terms.markupHelp`, both languages |
+| the story | now asserts the markup is **NOT** on the panel, rather than asserting its value |
+
+### ⛔ What is NOT done, and it is the load-bearing half
+
+**The ledger still charges from `liability_terms.product_markup_bp`.** Removing the field from the
+form does not move the number, and `LiabilityTermsSet` is an **upsert that writes that column on every
+call** — so a form that stopped sending it would have zeroed the cross fee on every unrelated credit-limit
+edit.
+
+**→ The dialog therefore passes the stored value through unchanged.** It is a deliberate bridge,
+commented as one at the call site, and covered by an e2e that asserts a fee edit leaves the markup
+alone. ⚠ **It must be deleted in the same change that moves the charge**, or it becomes a mystery.
+
+**→ What is still open is the backend move**, and it is not mine to pick:
+[technical Q10](../../technical/balance/team_balance_design_clarify.md#question).

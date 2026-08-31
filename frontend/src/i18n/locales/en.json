@@ -2041,8 +2041,6 @@
     "limitHelp": "Unlimited and Frozen are opposites, not degrees. Frozen refuses the next order whatever the balance.",
     "handlingFee": "Handling fee",
     "handlingFeeHelp": "Flat, per order. Nothing set means you charge nothing.",
-    "markup": "Markup",
-    "markupHelp": "Percent over the goods' cost when another team sells your product.",
     "reason": "Reason",
     "reasonRequired": "Required — you are changing another team's terms.",
     "reasonOptional": "Optional. Recorded in the change log either way.",

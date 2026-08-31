@@ -184,6 +184,7 @@ export function resetLiabilityTerms() {
   termsTable = [...liabilityTerms];
 }
 
+
 // ⚠ SAME REASON, AND A DEEP COPY. `liabilityPaymentReject` writes `status` and `reason` onto the row
 // itself, so a shallow spread of the array would still hand the next story the mutated object — and
 // a claim another story already refused would render as terminal, making "there is a Reject button"

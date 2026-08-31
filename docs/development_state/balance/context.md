@@ -25,6 +25,7 @@ time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at th
 | §What Warehouse Can Receivable — `order_fee` · `cod_fee` · `found` | ✅ `cod_fee` is `incidental_fee` in the ledger |
 | §What Warehouse Can Payable — `broken_good` · `lost_good` | ✅ |
 | §Balance Policy 1 — threshold set by team owner, overridable by admin/root | ✅ and every change is **recorded** with actor, reason and override flag |
+| §What Things Affect The Balance 3 — Cross/Shared Product | ⚠ the CHARGE is balance's, but the **rate is `product_service`'s** ([the-cross-markup-belongs-to-the-product](../../business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)). Removed from the balance screens; the ledger still reads balance's column — [technical Q10](../../technical/balance/team_balance_design_clarify.md#question) |
 | §Balance Policy 2 — cross products compared to the committed pair row only | ✅ `CheckCredit` checks each creditor against **its own** pair row |
 | §About Thresholds 1 — 80% warning on the balance screen | ✅ per-row badge on `/liability`. ⚠ the daily-report home is deferred with the report |
 | §About Thresholds 2 — default unlimited, edited by owner/admin/root | ✅ including the **default row**, which had no home at all until this pass |

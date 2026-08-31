@@ -716,7 +716,7 @@ it has no control over. No action — recorded so it is not re-litigated.
 
 # Question
 
-**Five are open — 1, 2, 3, 9, 8.** Everything else below is a deleted-pointer to the decision that
+**Six are open — 1, 2, 3, 9, 8, 10.** Everything else below is a deleted-pointer to the decision that
 closed it, kept rather than removed because the `_decision.md` files cite these ordinals and a silent
 renumber would repoint them.
 
@@ -796,6 +796,21 @@ renumber would repoint them.
    until the daily report returns, the warning tells the person who is *fine* and not the person who
    is about to stop trading. **→ Recommend a second home on the pair DETAIL**, which a debtor can
    open: same badge, worded from their side.
+10. **🆕 Which markup does the LEDGER charge from, now the rate is the product's?**
+    [the-cross-markup-belongs-to-the-product](../../business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)
+    settles the OWNERSHIP and this pass removed the field from the balance screens — but
+    `order_fees.go:144` still computes the cross fee from `liability_terms.product_markup_bp`, and
+    `products.cross_markup_bps` is what the Price tab quotes. Two numbers, one charge
+    ([Contradiction](../../business/balance/context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones)).
+    **→ I recommend `order_fees.go` reads the PRODUCT's rate at the moment it freezes the fee, and
+    `liability_terms.product_markup_bp` is dropped in the same migration.** Balance is then told the
+    amount rather than asked to compute the rate — which is already true of every other cause.
+    ⚠ **Three things must land together or the fee breaks**: the read moves, the column goes, and the
+    frontend's pass-through bridge is deleted. Leaving the bridge with the column gone is a compile
+    error; leaving it with the column present is a mystery for the next reader.
+    ⚠ **It changes what a HISTORIC fee means.** The rate is frozen into the posted entry today, so old
+    entries are unaffected — but there is no record of WHICH rate produced them, and after the move
+    there are two plausible sources. Worth a line in the migration.
 8. **🆕 Does `liability_terms.handling_fee` rename to `order_fee` too?** ([Critique 22](#critique))
    ⚠ **I created this inconsistency and did not fix it**, deliberately: the mapping in
    [the-ledger-speaks-the-business-words](../../business/balance/context_decision.md#the-ledger-speaks-the-business-words)
