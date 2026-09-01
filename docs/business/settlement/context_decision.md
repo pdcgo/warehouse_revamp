@@ -42,6 +42,18 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-cancel-key-is-order-plus-act-date](#the-cancel-key-is-order-plus-act-date) | a cancel's `unique_id` is `hash(order_id + act_date + "cancel")` — derived from the ACT date, so a retry is absorbed |
 | [only-machines-post-the-cancel](#only-machines-post-the-cancel) | `initial_total_cancel` is machine-only — `manualTypesFor` stays at six types |
 | [the-third-source-is-order](#the-third-source-is-order) | `source_type` has THREE values — `order_service` writes as `order`, so the cancel rule is enforceable by the data |
+| [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) | a report row is `sales`, `net_received` and `gap` (+ take rate), explained by one column per type — never a single "net". ⚠ its *fold-at-read* clause is OVERTAKEN by [the-report-follows-the-analytic-principle](#the-report-follows-the-analytic-principle) |
+| [the-report-is-movement-dated](#the-report-is-movement-dated) | every row folds into the window its OWN date falls in — cohort attribution is a later `basis` mode, not built. ⚠ **COMPLETED** by [posted-on-buckets-the-report](#posted-on-buckets-the-report) — the date is `posted_on` |
+| [posted-on-buckets-the-report](#posted-on-buckets-the-report) | a report window slices on `posted_on`, the day we LEARNED it — so a past window is final and never moves. ⚠ against recommendation |
+| ~~[the-report-follows-the-analytic-principle](#the-report-follows-the-analytic-principle)~~ | ⛔ **WITHDRAWN** by [the-analytic-pointer-is-withdrawn-until-it-is-mature](#the-analytic-pointer-is-withdrawn-until-it-is-mature) — not in force |
+| [the-analytic-pointer-is-withdrawn-until-it-is-mature](#the-analytic-pointer-is-withdrawn-until-it-is-mature) | settlement does NOT bind its report to `analytic/context.md` while that design is immature |
+| ~~[the-report-ships-as-a-query-first](#the-report-ships-as-a-query-first)~~ | ⛔ **REVERSED** by [the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) — not in force |
+| [the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) | there is **no `GROUP BY` phase** — the report table is built off the log through the broker from the start |
+| [the-smallest-grain-is-the-shop-day-statement](#the-smallest-grain-is-the-shop-day-statement) | `shop_settlement_daily_report` — one row per (day, shop, team), per-type movements PLUS open and close balances |
+| [the-user-grain-is-a-second-table](#the-user-grain-is-a-second-table) | `user_settlement_daily_reports` — a SECOND grain table keyed (day, user, team), not a wider key on the first |
+| [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries) | the two balances are SNAPSHOTS aggregated from the log at the day boundaries, never carried forward |
+| [the-user-is-the-order-creator](#the-user-is-the-order-creator) | the user dimension is who CREATED the order, not who wrote the row — so shape 4 is a sales report and the snapshot partitions |
+| [the-fourth-shape-groups-by-user](#the-fourth-shape-groups-by-user) | shape 4 groups by USER, not by a customer-service role — so it is `actor_id`, a column settlement already has |
 
 ---
 
@@ -1590,3 +1602,592 @@ are available if `order_service`'s rows are labelled as the exporter's:
 
 ⚠ This **widens** [entries-arrive-by-api-or-by-hand](#entries-arrive-by-api-or-by-hand) from two write
 paths to three. The two it named are unchanged — this adds the one it explicitly deferred.
+
+---
+
+## the-measure-is-sales-received-and-gap
+
+> Owner, in chat (2026-09-01) — *"im follow your recomendation in question 1"*, answering the clarify's
+> *"what NUMBER does a report show?"*, raised by `# Settlement Reports.` naming four report shapes and
+> no measure.
+
+**The verdict.** A report row is **three headline numbers plus the per-type breakdown that explains
+them**. There is no single "net" figure anywhere on these screens.
+
+```mermaid
+flowchart LR
+  L["settlement_logs — one row per movement"]
+  L -->|"−Σ change over the two initial types"| S["sales — what buyers paid, live"]
+  L -->|"Σ change over everything else"| N["net_received — what the platform actually moved"]
+  S --> G["gap = sales − net_received"]
+  N --> G
+  G --> T["take_rate = gap ÷ sales"]
+  L -->|"Σ change per type"| B["fund · ads · affiliate · adjustment · other"]
+  B -.->|"explains"| N
+```
+
+### The spec
+
+| column | definition | 04-01-2026, worked example |
+| --- | --- | ---: |
+| `orders` | distinct `order_id` with a live sale in the window | 1 |
+| **`sales`** | `−Σ change` over `initial_total` + `initial_total_cancel` — cancels already netted, so this is the **live** sale | 120.000 |
+| **`net_received`** | `Σ change` over **every other type** — what the platform actually moved | 110.000 |
+| **`gap`** | `sales − net_received` | 10.000 |
+| `take_rate` | `gap ÷ sales` | 8,3% |
+| `fund` | `Σ change` where type = `fund` | +100.000 |
+| `external_ads_fee` | `Σ change` of that type | −10.000 |
+| `affiliate_fee` | `Σ change` of that type | 0 |
+| `marketplace_adjustment` | `Σ change` of that type | +20.000 |
+| `other` | `Σ change` of that type | 0 |
+
+**The identity that makes it auditable: `gap = −Σ change` over every row in the window.** On the
+example, `−(−120.000 + 100.000 − 10.000 + 20.000) = 10.000`, and the order's own
+`order_settlements.last_balance` is `−10.000`. So a report row reconciles against the accounts it was
+folded from, one order at a time — which no bespoke measure would.
+
+### Why this shape
+
+1. **`gap` is the only number nothing else in the system can produce.** It is
+   [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) at a grain a person can
+   act on: per shop per month it is the platform's unstated cut, which is what
+   [marketplace-total-is-a-fact-not-an-estimate](#marketplace-total-is-a-fact-not-an-estimate) turned
+   from a variance into a real measurement.
+2. **The per-type columns are the explanation, not decoration.** A month eaten by ads and a month
+   eaten by adjustments have the same `gap` and completely different answers, and splitting by type is
+   the whole reason the ledger has seven of them
+   ([the-log-is-order-scoped-with-six-types](#the-log-is-order-scoped-with-six-types), widened to
+   seven).
+3. **`sales` nets the cancels by construction.** Summing both initial types is the same rule
+   [cancel-zeroes-the-live-sale](#cancel-zeroes-the-live-sale) applies per order, applied to a window
+   — so a cancelled order contributes 0 to `sales` without a status, a flag or a special case.
+4. **A single "net" would be wrong in both directions.** `Σ change` over everything is the gap with the
+   sign flipped, not revenue, and it trends to a small negative on a healthy order — a screen labelling
+   that "net" reports every good month as a loss.
+
+### What it binds
+
+- **The report reads the LOG, not `order_settlements`.** The state table carries no date and cannot
+  answer a period question at any grain. The projection stays what the order page reads.
+- **It is a fold over facts, not a stored table.** No new store, no new write path — see
+  [the-report-is-movement-dated](#the-report-is-movement-dated) for the fold's date rule.
+
+⚠ **What it does NOT settle**, and both are still open in the clarify: **which** of the row's two dates
+a window slices on, and **which** column is the headline and the default sort.
+
+---
+
+## the-report-is-movement-dated
+
+> Owner, in chat (2026-09-01), same answer — the recommendation accepted included *"build movement
+> first"*.
+
+**The verdict.** Every log row folds into the window **its own date** falls in. A row is never
+re-attributed to the day its ORDER opened.
+
+```mermaid
+flowchart TB
+  subgraph "movement — CHOSEN"
+    M1["the sale, 01-01"] --> MD1["01-01 row"]
+    M2["its ads fee, 04-01"] --> MD2["04-01 row"]
+  end
+  subgraph "cohort — a later mode, not built"
+    C1["the sale, 01-01"] --> CD["01-01 row"]
+    C2["its ads fee, 04-01"] --> CD
+  end
+```
+
+### The spec
+
+| | movement — **in force** | cohort — deferred |
+| --- | --- | --- |
+| a row folds into | the window its own date falls in | the window its ORDER's sale falls in |
+| `gap` means | how much less arrived than was sold **in that window** | how much of **that window's sales** never arrived |
+| needs | nothing — the dates are already on the row | a `cohort_date` frozen on every log row |
+| is it stable? | yes — a past window never changes once its rows exist | no — it keeps moving as late fees land, forever |
+
+**Why movement first.** Cohort attribution would need the order's open date on every settlement row,
+and settlement may not read `orders` (HARD RULE 3) — so it is a schema change *and* another field
+every caller must supply, including `export_service`, which does not exist yet. Movement runs on the
+shipped schema. And at the monthly and yearly grains the two converge, because `§3` says the late
+charges arrive *"in next day"*, not in the next month.
+
+**The price, stated so it is not discovered on a screen.** At the **daily** grain a `gap` mixes
+cohorts — day 1 holds a sale whose fee lands on day 4 — so a single day's `gap` is not any order's
+loss. Read daily as cash movement, monthly and above as a take rate.
+
+**If a true per-day take rate is ever wanted**, it is a `basis` enum on the same RPC, never a second
+report.
+
+⚠ **This is not the answer to *which* date.** A row carries `occurred_on` and `posted_on`
+([two dates](./context_clarify.md#question)) — "its own date" means whichever of those the still-open
+question picks. Movement vs cohort and occurred vs posted are two decisions, and only the first is
+taken here.
+
+---
+
+## posted-on-buckets-the-report
+
+> Owner, in chat (2026-09-01) — *"date is posted_on"*, answering the clarify's *"which DATE does a
+> report bucket by?"*. ⚠ **Against my recommendation**, which was `occurred_on`.
+
+**The verdict.** A report window slices on **`posted_on`** — the day we learned about the movement.
+This completes [the-report-is-movement-dated](#the-report-is-movement-dated), which fixed *that* a row
+folds on its own date and deliberately left *which* one open.
+
+```mermaid
+flowchart TB
+  R1["the sale — occurred 01-01, posted 01-01"] --> B1["01-01"]
+  R2["a fund — occurred 01-02, posted 01-02"] --> B2["01-02"]
+  R3["an ads fee — occurred 01-04, POSTED 01-06"] --> B3["01-06 — the day we learned it"]
+  B3 --> F["so the 01-04 figure was final on 01-04, and never moves again"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the `from` / `to` of every report | compare against `posted_on` |
+| the daily / monthly / yearly bucket | keyed on `posted_on` |
+| `occurred_on` | ⚠ **read by no aggregate** — it stays on the row as evidence, and it is what the ledger panel shows to tell a **late charge** from a **backdated** one |
+
+### What it buys, and it is the property I was arguing for the wrong way round
+
+**A past window is FINAL.** Once a day closes, nothing that arrives afterwards can change its number —
+so a figure quoted in a meeting, exported to a spreadsheet or acted on stays true. My `occurred_on`
+recommendation had the report silently answering differently tomorrow than today, and dressed that up
+as "restatement" when in a fold-at-read design there is nothing to restate: the number simply changes
+under the reader. `posted_on` removes that entirely.
+
+It also makes the report **reconcilable against what actually landed** — the money we heard about in a
+window, which is the thing a person can check against a wallet or a statement.
+
+### The price, stated so it is not discovered on a screen
+
+**A window will not match the marketplace's own statement for the same window** when a charge for the
+31st reaches us on the 2nd. That boundary effect is permanent and is the exact mirror of what
+`occurred_on` would have cost. **It is the better half of the trade for the same reason the event
+publish is after the commit and not inside it: the failure it keeps is the repairable one** — a reader
+who needs the marketplace's own view has `occurred_on` on every row and can ask for it, where a number
+that quietly moves after being read leaves nobody anything to reconcile.
+
+⚠ A day's `gap` still mixes cohorts — the sale in one bucket, its fee in another — which
+[the-report-is-movement-dated](#the-report-is-movement-dated) already priced. `posted_on` widens that
+gap slightly (by the reporting lag on top of the fee lag), so the reading stands: **daily is cash
+movement, monthly and above is a take rate.**
+
+---
+
+## the-report-follows-the-analytic-principle
+
+> `settlement_context.md` `# Settlement Reports.` → `## General.` 1 — *"Design Analytic Principle is
+> follow [this](../analytic/context.md)"*.
+>
+> ⛔ **REVERSES my recommendation.** I argued for settlement's own `GROUP BY` over `settlement_logs`,
+> on the precedent that `revenue_service` was the pipeline version of exactly this and was deleted.
+
+**The verdict.** The settlement report is built the way [analytic/context.md](../analytic/context.md)
+prescribes — **source log → broker → stream processing → report table** — not as an aggregate computed
+when somebody opens the screen.
+
+```mermaid
+flowchart LR
+  L["settlement_logs — the source truth log"] -->|"publishes"| B["message broker"]
+  B --> S["stream processing — dedup, then fold"]
+  S --> R["report table — period x team | shop | cs"]
+  R --> UI["the four report shapes"]
+  L -.->|"⛔ this publisher does not exist"| B
+```
+
+### What it does NOT change
+
+The three decisions taken hours earlier all survive, because every one of them is about **what the
+numbers are**, not where they are computed:
+
+| | still in force |
+| --- | --- |
+| [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) | ✅ the columns and the arithmetic. ⚠ its *"a fold over facts, not a stored table"* clause is **overtaken** — see the clarify's Contradiction |
+| [the-report-is-movement-dated](#the-report-is-movement-dated) | ✅ a row folds into the window its own date falls in |
+| [posted-on-buckets-the-report](#posted-on-buckets-the-report) | ✅ and it fits this design **better** than the alternative would: a stream processor learns of a row when the event arrives, which is what `posted_on` already means |
+
+**And the owner's own `## Whats Number to be reported.` is consistent with the measure decision, not a
+replacement for it.** The seven types listed there are an **additive basis** — the three headline
+numbers are all derivable from them, so the report table stores seven columns and the screen computes
+the rest:
+
+| derived | from the seven |
+| --- | --- |
+| `sales` | `−(initial_total + initial_total_cancel)` |
+| `net_received` | `fund + external_ads_fee + affiliate_fee + marketplace_adjustment + other` |
+| `gap` | `sales − net_received` |
+
+### What it requires, none of which exists
+
+| | state |
+| --- | --- |
+| settlement PUBLISHES its log rows | ⛔ `settlement_v1.Service` takes only a `*gorm.DB` — no `EventSender`, and there is no settlement event message in the proto. [settlement-publishes-to-the-book](#settlement-publishes-to-the-book) was decided and never built |
+| a consumer that folds | ⛔ nothing consumes anything but `order-placed` / `order-cancelled` |
+| a report table | ⛔ no migration anywhere |
+| a service to own them | ⛔ there is no analytic or report service in `backend/services/` |
+
+⚠ **What this decision does not say**, and the clarify asks: **which service owns the table**, and
+whether the settlement report **waits** for that pipeline or ships as a query first.
+
+---
+
+## the-report-ships-as-a-query-first
+
+> Owner, in chat (2026-09-01) — *"for 1, yes, query first"*, answering the clarify's sequencing
+> question. ⚠ **Neither of the two things I recommended** — I argued for the publisher first, then the
+> table.
+
+**The verdict.** The report RPC is built **now**, as an aggregate over `settlement_logs`.
+[the-report-follows-the-analytic-principle](#the-report-follows-the-analytic-principle) is unchanged and
+still the target: the pipeline is where this **goes**, not where it **starts**.
+
+```mermaid
+flowchart LR
+  subgraph "now"
+    L1["settlement_logs"] -->|"GROUP BY posted_on and the dimension"| Q1["the report RPC"]
+  end
+  subgraph "later — the SAME RPC, a different source"
+    L2["settlement_logs"] --> B["broker"]
+    B --> S["stream fold"]
+    S --> T["report table"]
+    T --> Q2["the report RPC"]
+  end
+```
+
+### Why this is safe here, and it is a property of the schema rather than a hope
+
+**`posted_on` is server-stamped** — [post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)
+writes `time.Now()`, and the write API has no field for it. So **no row can ever land in a past
+bucket**: once a day closes, the set of rows in it is final, and the same query re-run next year returns
+the same number.
+
+Fold-at-read is only dangerous when a late row can change a window somebody already read.
+[posted-on-buckets-the-report](#posted-on-buckets-the-report) forbids exactly that — so the two answers
+compound, and this one is only cheap **because** that one was taken first.
+
+### The three things that make the migration cheap, and they are owed now
+
+| | |
+| --- | --- |
+| **1 · the contract never says which it is** | same request, same response, whether the numbers come from a `GROUP BY` or a table read. No cursor, no fold detail, no "as of" flag leaking into the proto |
+| **2 · the query becomes the ORACLE** | when the folded table lands, a test asserts **table == query** over the same window. Two definitions of one measure is the classic drift, and building the query first is what makes the check possible at all |
+| **3 · the migration has a named trigger** | when a year-scale window misses the `audit-rpc-performance` threshold — not "someday". A fold-at-read cost grows with the log, and that is the only thing wrong with it |
+
+### What it does NOT change
+
+- **[settlement-publishes-to-the-book](#settlement-publishes-to-the-book) is deferred, not cancelled.**
+  The report no longer waits on it, but the ledger doc's other consumers still do, and the pipeline
+  cannot start without it.
+- **Every number is already decided** — [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap),
+  [the-report-is-movement-dated](#the-report-is-movement-dated),
+  [posted-on-buckets-the-report](#posted-on-buckets-the-report). Nothing about what the report SAYS
+  changes with this; only where the sum happens.
+- ⚠ **The report still returns zeros until something opens an account.** That is the order seam, and it
+  is now the only thing between this decision and a working screen.
+
+---
+
+## the-fourth-shape-groups-by-user
+
+> `settlement_context.md` `## Shape of Reports.` 4 — renamed from *"Group by Customer Service Shape"*
+> to **"Group by User Shape"** (2026-09-01), answering the clarify's *"who is the customer service of
+> an order, and which table holds them?"*.
+
+**The verdict.** The fourth shape groups by **user**, not by a customer-service role. That removes the
+blocker: settlement already records a user on every single row —
+[every-entry-names-its-actor](#every-entry-names-its-actor) and
+[actor-id-is-the-pic](#actor-id-is-the-pic) put `actor_id` on machine rows too. **No new column in
+another service, and no cross-service read.**
+
+```mermaid
+flowchart LR
+  A["actor_id — on every settlement_logs row, NOT NULL"] --> R["group by user"]
+  X["a cs_user_id frozen on orders — what I recommended"] -.->|"no longer needed"| R
+  R --> S["and it makes shape 4 team-scopable, unlike shape 2"]
+```
+
+### What it settles, and what it costs
+
+| | |
+| --- | --- |
+| the dimension | `settlement_logs.actor_id` — already present, already NOT NULL, already resolved to a name by the detail handler |
+| the scope | ✅ **shape 4 stops being an admin screen.** Users belong to a team, so a by-user report sits inside the ordinary `team_id` scope — only shape 2, by team, still crosses it |
+| the cost | ⚠ `actor_id` is **who recorded the movement**, which is not the same person for every row of one order — see the clarify's open question |
+
+⚠ **What it does NOT settle.** An `exporter` row carries the importer's PIC, so on a by-user report
+every imported fee lands on one machine user while the sale lands on whoever placed the order. Whether
+the report means *the person who wrote the row* or *the person whose order it was* is the question that
+replaces the one this answered.
+
+---
+
+## the-report-is-the-pipeline-from-day-one
+
+> Owner, in chat (2026-09-01) — *"for question 1, cancel ships as query first"*, answering the clarify's
+> *"which of THREE architectures builds the report table?"*.
+>
+> ⛔ **REVERSES [the-report-ships-as-a-query-first](#the-report-ships-as-a-query-first)**, taken hours
+> earlier. That decision is **not in force**: there is no `GROUP BY` phase.
+
+**The verdict.** The report table is built the way `## General.` 1 points — off the log, through the
+broker — **from the start**. Nothing ships as a query first.
+
+```mermaid
+flowchart LR
+  L["settlement_logs"] --> B["broker"]
+  B --> S["the fold"]
+  S --> T["report table"]
+  T --> RPC["the report RPC"]
+  Q["a GROUP BY phase"] -.->|"cancelled"| X["not built"]
+```
+
+### What it costs, stated because nothing else records it
+
+The report now **cannot exist until four missing pieces do**, and the first is settlement's own:
+
+| | state today |
+| --- | --- |
+| settlement publishes its log rows | ⛔ `settlement_v1.Service` holds a `*gorm.DB` and no `EventSender`, and no settlement event message exists. The protocol's `Dispatch Event` is the drawn path, not a built one |
+| a broker | ⚠ the dev server has **none** — [event_sender.go](backend/cmd/app_development/event_sender.go) is a synchronous in-process loopback with *"no retries, no redelivery, no dead-lettering"* |
+| a consumer that folds | ⛔ nothing consumes anything but `order-placed` / `order-cancelled` |
+| a report table, and a service to own it | ⛔ no migration, and no analytic or report service in `backend/services/` |
+
+**→ Two things are owed BECAUSE the query phase is gone**, and both are cheap now and expensive later:
+
+1. **Keep the query as a TEST ORACLE even though it is never an RPC.** The cancelled plan's real value
+   was not the shipping order — it was that a `GROUP BY` over the log is an independent second opinion
+   the folded table can be asserted against. Written as a test helper it costs an afternoon and it is
+   the only thing that can catch a fold that is quietly wrong.
+2. **The fold must be re-runnable from the log by cursor**, not only from the broker
+   ([log-is-the-source-broker-is-the-trigger](../analytic/context_clarify.md#log-is-the-source-broker-is-the-trigger)).
+   With no query to fall back on, a fold bug or a definition change has **no other way to produce
+   correct history** — and Pub/Sub retains messages for days, not years.
+
+⚠ **It does not narrow the architecture to one.** Two of the three remain: the fold adding the numbers,
+and the WRITER maintaining them synchronously, which `# Settlement Ledger.` also draws. Which of those
+owns the numbers is still open — see the clarify.
+
+⚠ **Every number decision survives untouched** — [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap),
+[the-report-is-movement-dated](#the-report-is-movement-dated),
+[posted-on-buckets-the-report](#posted-on-buckets-the-report). This changes who computes them and when,
+never what they are.
+
+---
+
+## the-smallest-grain-is-the-shop-day-statement
+
+> `settlement_context.md` `## Smallest Grain Reports.` 1 *(2026-09-01)* — `shop_settlement_daily_report`,
+> unique on `(day, shop_id, team_id)`, tracking the movement types plus `open_balance` and
+> `close_balance`.
+>
+> Answers the clarify's *"what is the opening balance, and does it make the daily report a STATEMENT?"*
+
+**The verdict.** It is **both**, and that is a coherent answer rather than a compromise: the row carries
+**per-type movements** *and* an **opening and closing balance**, so one table serves the additive
+questions and the running-position one.
+
+```mermaid
+flowchart LR
+  O["open_balance — carried from this shop's last row"] --> M["the movement columns, one per type"]
+  M --> C["close_balance"]
+  C -.->|"becomes the next day's open"| O
+  M --> A["and the additive shapes sum these columns over a window"]
+```
+
+### The spec, as written
+
+| | |
+| --- | --- |
+| grain | one row per `(day, shop_id, team_id)` — composite unique |
+| identity | `id`, plus `last_updated` |
+| movements | `initial_total`, `initial_total_cancel`, `fund`, `external_ads_fee`, `marketplace_adjustment`, `other` |
+| position | `open_balance`, `close_balance`, and a third field named `balance` |
+
+**Why the statement shape earns its place.** `posted_on` already guarantees a closed day never changes
+([posted-on-buckets-the-report](#posted-on-buckets-the-report)), so a closing balance written today stays
+true — which is exactly the property a carried-forward figure needs and the reason this shape would have
+been unsafe under the alternative. **The two decisions fit.**
+
+⚠ **`open_balance` is the LAST ROW's close, not yesterday's.** A shop with no activity writes no row, so
+the bootstrap has to find the most recent row for that shop rather than `day - 1`. Stated here because
+the diagram of `InitOpeningBalance` does not say which it does.
+
+⚠ **What it does not cover**, and all three are in the clarify: the column list is **missing
+`affiliate_fee`**, so the statement does not reconcile\; there is no **user** dimension, so two of the
+four report shapes have no source\; and it does not say **who writes the row** — the fold or the writer.
+
+---
+
+## the-user-grain-is-a-second-table
+
+> `settlement_context.md` `## Smallest Grain Reports.` 2 *(2026-09-01)* — `user_settlement_daily_reports`,
+> unique on `(day, user_id, team_id)`, added beside the shop table.
+>
+> Answers the clarify's *"the smallest grain has no user dimension"*. ✅ **The shape I recommended** — a
+> second table rather than a wider key on the first.
+
+**The verdict.** Two grain tables, not one: `(day, shop, team)` and `(day, user, team)`. Shapes 1–3 fold
+off the shop table, shape 4 off the user table, and neither has to distort the other.
+
+```mermaid
+flowchart TB
+  L["settlement_logs"] --> F["the fold"]
+  F --> S["shop_settlement_daily_reports — day, shop, team"]
+  F --> U["user_settlement_daily_reports — day, user, team"]
+  S --> R123["shapes 1, 2 and 3"]
+  U --> R4["shape 4 — group by user"]
+```
+
+**Why the second table beats a wider key**, recorded because the alternative looks cheaper and is not:
+`(day, shop, user, team)` multiplies the shop table's rows by its contributors, and every shop-level
+question then has to remember to sum across users first. Two tables keep each one's row count equal to
+what its screen actually shows.
+
+⚠ **It does NOT adopt the other half of that recommendation.** The user table carries `open_balance` and
+`close_balance`, which I argued cannot be meaningful per user — an account's later movements are posted
+by different people, so no user holds the position those two columns describe. That is now the narrower
+open question in the clarify, and it is the only part of this table I would still change.
+
+---
+
+## open-and-close-are-log-sums-at-the-day-boundaries
+
+> Owner, in chat (2026-09-01) — *"open and close balance is sum of balance log of start and end of the
+> day"*, answering what the two columns mean.
+
+**The verdict.** They are **snapshots aggregated from the log**, not accumulators carried forward.
+`open_balance` is the summed position at the start of the day and `close_balance` the summed position
+at the end — each computed from `settlement_logs.balance`, the running per-order position
+([the-log-is-order-scoped-with-six-types](#the-log-is-order-scoped-with-six-types)), by taking each
+account's latest row at or before that instant and summing.
+
+```mermaid
+flowchart LR
+  L["settlement_logs.balance — the running position, per order"]
+  L -->|"each account's latest row at 00:00"| O["open_balance"]
+  L -->|"each account's latest row at 23:59"| C["close_balance"]
+  O --> I["close − open = Σ of the day's movement columns"]
+  C --> I
+```
+
+### What this changes, and it simplifies more than it adds
+
+| | |
+| --- | --- |
+| **no carry** | a day does not read the previous day's row, so a shop with no activity for a week costs nothing and the *"which previous row?"* problem never arises. Every row is derivable from the log alone |
+| **rebuildable** | any day can be recomputed at any time from `settlement_logs` and nothing else — which is what [the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) needs, having cancelled the aggregate that would otherwise have been the second opinion |
+| **an identity, not a convention** | `close_balance − open_balance = Σ movement columns` now follows from the definition. ⚠ Which makes the missing `affiliate_fee` a **provable** defect rather than a suspicion — the two sides cannot balance while a seventh type moves the position and no column names it |
+
+### ⚠ It is only computable because the date is `posted_on`
+
+`balance` is stamped **in write order** — each row's running total is computed as it is inserted. So
+*"the position as of the end of day D"* means *"the last row written on or before D"*, which is
+`posted_on` and could not be `occurred_on`: a backdated row carries a `balance` from its write moment,
+not from the day it belongs to. **[posted-on-buckets-the-report](#posted-on-buckets-the-report) is what
+makes this definition well-formed** — the third time those two answers have turned out to depend on
+each other.
+
+⚠ **The cost, named for the pass that writes the fold**: a snapshot is *"each account's latest row at or
+before T"*, which is a `DISTINCT ON` / window query over the log, not a plain `SUM`. Cheap per day,
+expensive if run over a year of days in one statement.
+
+⚠ **What it does not answer: over WHICH SET the user table sums.** Every order has exactly one shop, so
+the shop snapshot partitions cleanly. A user does not own an account — see the clarify.
+
+---
+
+## the-user-is-the-order-creator
+
+> `settlement_context.md` `## Smallest Grain Reports.` 2 *(2026-09-01)* — *"the user is **who created the
+> order**"*.
+>
+> ✅ **The branch I recommended**, and it is the only one under which the table already written is
+> internally consistent.
+
+**The verdict.** The user dimension is the person who **created the order**, not the person who wrote
+each row. Shape 4 is a **sales report**, not an audit of who typed what.
+
+```mermaid
+flowchart TB
+  A["order 1 — created by Ani"] --> R1["initial_total, posted by order_service"]
+  A --> R2["fund, posted by the importer"]
+  A --> R3["ads fee, posted by the importer"]
+  R1 --> U["all three count to ANI"]
+  R2 --> U
+  R3 --> U
+  U --> P["so the snapshot partitions — one account, one owner, summed once"]
+```
+
+### Why this is the consistent branch
+
+[open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries)
+makes the two balance columns a **snapshot of positions**, and a position belongs to an account. Only a
+per-account owner partitions: sum every user's `close_balance` and you get the book exactly once. Under
+the other reading — the row's writer — one order's position would land in several users' sums, and every
+imported fee would pile onto the importer's PIC.
+
+### ⚠ It names a person settlement does not currently record
+
+`settlement_logs.actor_id` is **who wrote the row** ([actor-id-is-the-pic](#actor-id-is-the-pic)), and
+that stays what it is: the person answerable for that entry. It is **not** this dimension, and a fold
+that groups on it would be wrong in exactly the way this decision rules out.
+
+| where the creator could live | |
+| --- | --- |
+| a column on every `settlement_logs` row | ⚠ every caller must supply it, on every row, forever — and two rows of one account could disagree |
+| **`order_settlements.creator_user_id`, stamped by the opening row** | ✅ one column, set once, no caller burden, and the fold joins log → state **inside one service**, which HARD RULE 3 permits |
+
+⚠ **The hole it leaves**, and it is real rather than theoretical: an account whose `initial_total` never
+arrives has **no creator**. Settlement ignores order status and rows may arrive in any order
+([settlement-ignores-our-order-status](#settlement-ignores-our-order-status)), the exporter can post a
+`fund` first, and an order with `marketplace_total = 0` opens no account at all. Those rows are real
+money with no user to attribute them to. See the clarify.
+
+---
+
+## the-analytic-pointer-is-withdrawn-until-it-is-mature
+
+> Owner, in chat (2026-09-01) — *"for 1, because its not mature"*, explaining why `## General.` 1
+> (*"Design Analytic Principle is follow this"*) was **deleted** from `settlement_context.md`.
+
+**The verdict.** The deletion was deliberate. Settlement does **not** bind its report to
+`analytic/context.md` while that design is immature — so
+[the-report-follows-the-analytic-principle](#the-report-follows-the-analytic-principle) is **withdrawn**,
+and with it the reason [the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one)
+was taken.
+
+```mermaid
+flowchart TB
+  A["analytic/context.md — a capability, not yet mature"]
+  S["settlement's report"]
+  A -.->|"pointer REMOVED — this decision"| S
+  W["# Settlement Ledger. — InitOpeningBalance, create-today-from-last-close"] -->|"what the doc actually specifies"| S
+  S --> Q["so the write path is the only architecture still standing"]
+```
+
+### What it leaves standing, and it is self-consistent
+
+Three architectures were in play. Two are now struck: the `GROUP BY` phase was cancelled
+([the-report-ships-as-a-query-first](#the-report-ships-as-a-query-first)), and the pipeline is withdrawn
+here. **The third is the one the doc actually specifies in detail** — `# Settlement Ledger.` and
+`## How `*_settlement_daily_reports` Created` describe the daily row being created and maintained on
+the ledger's own write path.
+
+⚠ **That reading is an INFERENCE, not something the owner said**, and it is the one line still worth
+confirming: *does the write path own the report?* If yes, settlement needs no publisher, no broker and
+no consumer to have a working report — a much smaller build than the last two rounds assumed — and my
+[Critique B and C](./context_clarify.md#the-ledger-write-protocol--read-against-the-two-decisions-taken-today)
+become the whole of the remaining argument, because the ledger's transaction is then genuinely doing
+report work.
+
+### It also costs a sibling context its example
+
+`analytic/context_decision.md` records
+[reports-belong-to-the-consumer](../analytic/context_decision.md#reports-belong-to-the-consumer) —
+*"a consumer names its own reports"* — citing settlement as the proof, on the strength of settlement
+pointing at analytic for the principle. **That pointer is the line withdrawn here.** The decision may
+still be right, but its evidence is gone and it should be re-argued on its own terms.

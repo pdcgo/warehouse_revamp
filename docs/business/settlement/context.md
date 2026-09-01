@@ -33,6 +33,67 @@
 ## Access Role.
 1. for now, there is no specific role for this service. [defer later].
 
+# Settlement Ledger.
+in settlement ledger we have 3 things.
+- `logs` that named `settlement_logs`
+- `state` that named `settlement_states`
+
+## How Ledger Behave when ledger updated.
+1. when `InitOpeningBalance` called, its bring data `state` and `time.Now()` that after locked.
+```mermaid
+flowchart TD
+s(("start"))
+e(("end"))
+txstart["Open Database Transaction"]
+txend["Close Database Transaction"]
+rollback["Rollback Database Transaction"]
+
+rollback-->err
+err["Return Error"]-->e
+
+
+
+s-->ops[/"operation happen (create/cancel order on user manual input or external call)"/]
+
+ops-->txstart
+
+txstart-->check_state
+check_state-->|no|create_state["Create State"]
+    create_state-->lock_state["Lock State"]
+check_state-->|yes|lock_state
+
+lock_state-->call_stat_rpc["Call Rpc Stat `InitOpeningBalance`"]
+call_stat_rpc-->init_check{"Call Success ?"}
+init_check-->|no|rollback
+init_check-->|yes|write_log["Writing Logs"]
+write_log-->update_state["Update State"]
+update_state-->txend
+
+txend-->event["Dispatch Event"]
+event-->e
+
+```
+2. What happen when call `InitOpeningBalance`
+```mermaid
+flowchart TD
+s(("start"))
+e(("end"))
+
+s-->calle[/" `InitOpeningBalance` Called"/]
+
+calle-->check_cache{"Is Cache Exist ?"}
+check_cache-->|yes|e
+check_cache-->|no|check_daily_shop{"check daily shop report exist ?"}
+
+check_daily_shop-->|no|create_daily_shop["create daily shop report"]
+    create_daily_shop-->update_cache["Update Cache"]
+
+check_daily_shop-->|yes|update_cache
+
+update_cache-->e
+
+```
+
 
 
 ## Settlement Log Ledger Shapes
@@ -89,6 +150,131 @@
 
 
 
-# Type `initial_total` and `initial_total_cancel`
+## Type `initial_total` and `initial_total_cancel`
 1. its trigered on order created, `order_service` calling --> `settlement_service`
 2. when order cancel, its create `initial_total_cancel` and make opposite of `initial_total`, `order_service` calling --> `settlement_service`
+
+## The Reason `InitOpeningBalance` is existed.
+1. It's to prevent race condition, because we calculate window aggregation of `open_balance` and `open_balance`.
+
+## Smallest Grain Reports.
+1. `shop_settlement_daily_reports`
+    
+    field must exists.
+    - `id`, for primary key
+    - `day`
+    - `shop_id`
+    - `team_id`
+    - `last_updated`
+    - `balance`
+
+    there is composite unique.
+    - `day`
+    - `shop_id`
+    - `team_id`
+
+    field that tracked:
+    - `initial_total`
+    - `initial_total_cancel`
+    - `other`
+    - `fund`
+    - `external_ads_fee`
+    - `affiliate_fee`
+    - `marketplace_adjustment`
+    - `open_balance`
+    - `close_balance`
+
+1. `user_settlement_daily_reports`
+    the user is **who created the order**
+    
+    field must exists.
+    - `id`, for primary key
+    - `day`
+    - `user_id`
+    - `team_id`
+    - `last_updated`
+    - `balance`
+
+    there is composite unique.
+    - `day`
+    - `user_id`
+    - `team_id`
+
+    field that tracked:
+    - `initial_total`
+    - `initial_total_cancel`
+    - `other`
+    - `fund`
+    - `external_ads_fee`
+    - `affiliate_fee`
+    - `marketplace_adjustment`
+    - `open_balance`
+    - `close_balance`
+
+## How `*_settlement_daily_reports` Created
+```mermaid
+flowchart TD
+
+s(("Start"))
+e(("End"))
+
+s-->init[" `InitOpeningBalance` called"]
+
+init-->not_created["today *_settlement_daily_reports need created"]
+not_created-->is_last{"is last *_settlement_daily_reports exist ?"}
+is_last-->|yes|last_close["get last close_balance"]
+    last_close-->new_open["new open_balance"]
+is_last-->|no|empty_open["close_balance = 0"]
+    empty_open-->new_open
+
+new_open-->close_balance["close_balance = open_balance"]
+close_balance-->create_today["create *_settlement_daily_reports"]
+
+create_today-->today["today *_settlement_daily_reports"]
+today-->e
+
+s-->event["Event Received"]
+event-->is_late{"is Event Received late ?"}
+is_late-->|no|log_delta["Delta / Change"]  
+    log_delta-->update_close["update close balance and tracked field"]
+    update_close-->today
+
+is_late-->|yes|reconcile["schedule to reconcile"]
+reconcile-->e
+
+```
+
+
+
+# Settlement Reports.
+we serve analitical report of settlements.
+
+## Shape of Reports.
+
+1. Timeframe Shape.
+
+    its have mode:
+    - daily
+    - monthly
+    - yearly
+
+    its have filter:
+    - daterange filter
+    - team filter
+    - shop filter
+    - customer service filter
+
+2. Group by Team Shape.
+
+    its have filter:
+    - daterange filter
+
+3. Group by Shop Shape.
+
+    its have filter:
+    - daterange filter
+
+4. Group by User Shape.
+
+    its have filter:
+    - daterange filter
