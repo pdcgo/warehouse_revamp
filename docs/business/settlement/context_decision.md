@@ -54,6 +54,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries) | the two balances are SNAPSHOTS aggregated from the log at the day boundaries, never carried forward |
 | [the-user-is-the-order-creator](#the-user-is-the-order-creator) | the user dimension is who CREATED the order, not who wrote the row — so shape 4 is a sales report and the snapshot partitions |
 | [the-fourth-shape-groups-by-user](#the-fourth-shape-groups-by-user) | shape 4 groups by USER, not by a customer-service role — so it is `actor_id`, a column settlement already has |
+| [the-fold-owns-the-report-not-the-writer](#the-fold-owns-the-report-not-the-writer) | the daily tables are built by a CONSUMER of the event, not by the transaction that writes the ledger row |
 
 ---
 
@@ -2191,3 +2192,39 @@ report work.
 *"a consumer names its own reports"* — citing settlement as the proof, on the strength of settlement
 pointing at analytic for the principle. **That pointer is the line withdrawn here.** The decision may
 still be right, but its evidence is gone and it should be re-argued on its own terms.
+
+---
+
+## the-fold-owns-the-report-not-the-writer
+
+> `analytic_context.md` `## How We Calculate the Analytical Reports.` *(2026-09-02)* — the reports moved
+> into their own doc, and the flow was drawn end to end: `Ledger Updated → Event → Message Broker →
+> http push → Service Webhook`.
+
+**The verdict.** The daily report tables are built by a **consumer of the event**, not by the
+transaction that writes the ledger row. This closes the last of the three architectures that
+[the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) left standing — it
+cancelled the `GROUP BY` phase but explicitly did **not** choose between the fold and a writer
+maintaining the table synchronously. The drawn path chooses the fold.
+
+```mermaid
+flowchart LR
+  W["the settlement write — its own transaction, its own row"] --> EV["event"]
+  EV --> MB["message broker"]
+  MB --> HK["webhook — /event/sub_id/push"]
+  HK --> F["the fold"]
+  F --> T["*_settlement_daily_reports"]
+  SYNC["a writer maintaining the table inside its transaction"] -.->|"not chosen"| X["not built"]
+```
+
+### What it settles, and what it leaves standing
+
+| | |
+| --- | --- |
+| ✅ **the report is never on the write's critical path** | which is what [Critique A](./context_clarify.md#the-ledger-write-protocol--read-against-the-two-decisions-taken-today) argued for: a derived thing is built by reading the source, never by the source stopping to build it |
+| ✅ **a report failure cannot refuse money** | the ledger commits, the fold catches up — the same answer given one seam up, where a publish failure must not fail an order |
+| ⛔ **`InitOpeningBalance` is NOT settled by this** | `context.md` still draws it as a cross-service call held inside the ledger's transaction, with `init_check → no → rollback`. If the fold owns the numbers, the thing that call protects is the fold's row, not the ledger's — see [context Q8](./context_clarify.md#question) and [analytic Critique 4](./analytic_context_clarify.md#critique) |
+| ⛔ **four parts still do not exist** | settlement publishes no event, there is no settlement event message in the proto, nothing consumes one, and there is no report table migration. The path is drawn, not built |
+
+⚠ **It also makes the webhook a first-class part of the design**, and the webhook is the one write path
+in this system the proto-based ACL does not cover — [analytic Q3](./analytic_context_clarify.md#question).

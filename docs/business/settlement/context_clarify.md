@@ -644,88 +644,21 @@ flowchart TD
   cur --> fold
 ```
 
-### `open_balance` — snapshot, carry, and what I would actually build
+### The reports and the fold — MOVED
 
-The two definitions and where they part. Written out because the difference is invisible until the day
-it is not.
+> `## Smallest Grain Reports.`, `## How *_settlement_daily_reports Created` and `## Shape of Reports.`
+> left this doc on 2026-09-02 and are now [analytic_context.md](./analytic_context.md). Everything I had
+> written about the reconcile, the fold, the daily tables and the four report shapes went with them —
+> **[analytic_context_clarify.md](./analytic_context_clarify.md)** (RULE 7b: a question goes in the
+> clarify of the doc that can answer it).
+>
+> ✅ One of them was answered by the move itself: the drawn `Ledger Updated → Event → Broker → webhook`
+> path settles that **the fold owns the report, not the writer** —
+> [the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer).
+>
+> **What stays here** is only what `context.md` itself can answer: the log, the state, the order seam,
+> and `InitOpeningBalance` — which is still drawn in this doc, inside the ledger's transaction.
 
-| | the SNAPSHOT (owner, in chat) | the CARRY (`## How … Created`) |
-| --- | --- | --- |
-| definition | `Σ` over this scope's accounts of each account's balance as at the boundary | the previous row's `close_balance` |
-| computed from | `settlement_logs` / `order_settlements` | the report table itself |
-| day 200 needs | day 200 | days 1 … 199 |
-
-**They agree by induction — but only while every link holds.** If every active day has a row, each row's
-`close = open + Σ movements`, and the first row's `open` was the true position, then carry ≡ snapshot.
-Three of those preconditions are reachable failures and one is not:
-
-| | |
-| --- | --- |
-| ⛔ **genesis** | `open_balance = 0` is true only for a scope that has never traded. On the day these tables ship, **every live shop already holds accounts with balances** — [a-residual-balance-is-normal](./context_decision.md#a-residual-balance-is-normal) guarantees it, since an account never closes. So every chain starts wrong by exactly the accumulated position, and stays wrong. ⚠ And it is **silent**: `close − open = Σ movements` still holds on every row while every absolute number is offset |
-| ⛔ **a missed day** | the publish is after the commit, so a crash between them loses a movement. Day 6 then reads *"last row"* = day 4 and carries day 4's close: day 5's net is gone from the chain **forever**, and every later row is understated by it. Under the snapshot, day 5 is simply a missing row and day 6 is still correct. **The carry converts a transient loss into permanent corruption** |
-| ⛔ **any re-fold** | a definition change or a fold bug means recomputing history — in order, day by day, from genesis. The snapshot recomputes any day, or any range, independently and in parallel. ⚠ This matters more since [the-report-is-the-pipeline-from-day-one](./context_decision.md#the-report-is-the-pipeline-from-day-one) cancelled the aggregate that would have been the second opinion |
-| ✅ **a backdated row** | **cannot happen**, and `posted_on` is why: it is server-stamped at write ([post_entry.go:201](backend/services/settlement_service/settlement_v1/post_entry.go#L201)), so no row can land in a day whose row already closed. The append-only rule closes the other half — nothing is ever edited or deleted. **The carry is safe against the failure that usually kills carries** |
-
-**And the snapshot dissolves the race that `InitOpeningBalance` exists to prevent.** Two writers
-computing a snapshot get the **same number** — the computation is idempotent, so a lost update is
-harmless and the only real conflict is the insert, which `UNIQUE (day, shop_id, team_id)` already
-resolves. Under a carry, what they read depends on what the other has written, which is what makes a
-cross-service lock feel necessary.
-
-```mermaid
-flowchart TB
-  L["settlement_logs / order_settlements"] -->|"the DEFINITION"| S["snapshot at the boundary"]
-  P["yesterday's close_balance"] -->|"the FAST PATH"| S
-  S --> G["genesis — never 0 unless the log is empty"]
-  S --> R["reconcile — recompute and compare"]
-  P --> D["the daily path — one read, no aggregate"]
-  D -.->|"if the previous row is missing or stale"| S
-```
-
-**→ What I would build.** Snapshot is the definition, carry is the implementation, and three rules keep
-them equal:
-
-1. **Genesis is a snapshot, never `0`.** `0` only when the log genuinely has nothing before this
-   boundary.
-2. **The carry is valid only if the previous row is the scope's most recent one and is complete.**
-   Otherwise fall back to the snapshot rather than skipping a link.
-3. **A periodic reconcile recomputes the snapshot and compares.** This is the midnight reconcile
-   `mutation_and_ledger.md` already promises elsewhere, and it is the only thing that can notice rule 2
-   failing.
-
-⚠ **Compute the snapshot from `order_settlements`, not from a window over the log.** The position *now*
-is `SUM(order_settlements.last_balance)` for the scope — one indexed aggregate over one row per account,
-exact by construction, where *"each account's latest row at or before T"* over `settlement_logs` is a
-`DISTINCT ON` over every row ever written. The state table is the projection that already answers this.
-⚠ **But it only answers it for NOW**, so genesis (taken at the moment the day opens) is cheap and a
-*historical* boundary is not — another reason the carry should stay the daily path.
-
-⚠ **One cost that grows and should be said out loud**: an account never closes, so the set of accounts
-with a non-zero balance grows without bound, and so does the cost of any snapshot over it. That is
-tolerable at once-per-scope-per-day and would not be at once-per-read.
-
-### The reports — proposed shape
-
-> ✅ **The report is SETTLED** (owner, 2026-09-01) — the measure
-> ([the-measure-is-sales-received-and-gap](./context_decision.md#the-measure-is-sales-received-and-gap)), the fold
-> ([the-report-is-movement-dated](./context_decision.md#the-report-is-movement-dated)) and the date
-> ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)). What is left here is not
-> the report’s design: it is **one missing column** and **two shapes the scope forbids**.
-
-One aggregate over `settlement_logs`, folded at read time. Not a new store — the ledger is at order
-grain and already carries every dimension but one.
-
-| the shape | one row per | can it be built today? |
-| --- | --- | --- |
-| 1 · Timeframe | period (day / month / year) | ✅ **buildable** — measure, fold, date and architecture all settled. ⚠ its filter list still says *customer service* where the group-by now says *user* |
-| 2 · Group by Team | team | ⛔ **the only one that crosses the scope** — `team_id` is `use_scope` and required, so this is an ADMIN screen or it is nothing ([Q6](#question)) |
-| 3 · Group by Shop | shop | ✅ `shop_id` is frozen on every row for exactly this |
-| 4 · Group by User | user | ✅ `actor_id`, already on every row — ⚠ but *which* user is [Q5](#question) |
-
-**The measure is no longer proposed — it is decided.** The column set, the arithmetic and the
-`gap = −Σ change` reconciliation live in
-[the-measure-is-sales-received-and-gap](./context_decision.md#the-measure-is-sales-received-and-gap), and the
-fold in [the-report-is-movement-dated](./context_decision.md#the-report-is-movement-dated). Not restated here.
 
 ## Critique
 
@@ -742,7 +675,15 @@ fold in [the-report-is-movement-dated](./context_decision.md#the-report-is-movem
 
 ## Question
 
-**Seven open.** ✅ The architecture question is answered — the analytic pointer is withdrawn as immature, leaving the write path as the only design still standing. ⛔ The three that matter: **does the write path own the report**, **which `open_balance` definition is the truth**, and the order seam that still opens no account.
+**Five open here** — the reports took four of them with them. ✅ **Q7 is answered**: the drawn
+`Ledger Updated → Event → Broker → webhook` path settles that the fold owns the report
+([the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer)).
+➡ **Q6, Q9 and Q10 moved** to [analytic_context_clarify.md](./analytic_context_clarify.md) with the doc
+that can answer them. ⛔ What is left is what `context.md` alone decides: the order seam that still opens
+no account, the person the report needs and settlement does not record, and `InitOpeningBalance` — which
+[the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer)
+makes **harder** to justify, not easier: if the fold owns the numbers, the row that call protects is not
+this transaction's.
 [initial-total-is-stored-positive](./context_decision.md#initial-total-is-stored-positive),
 [every-entry-names-an-order](./context_decision.md#every-entry-names-an-order),
 [the-cancel-key-is-order-plus-act-date](./context_decision.md#the-cancel-key-is-order-plus-act-date) and
@@ -800,28 +741,15 @@ longer blocked** — what remains is contract shape and two type questions.
    to attribute it to. **→ Recommend the report keeps them under an explicit *unattributed* bucket**
    rather than dropping them: a user report whose columns silently fail to sum to the shop report is the
    worse failure, and the bucket is also the queue somebody works through.
-6. ⛔ **Are the cross-team report shapes ADMIN screens?** `## Shape of Reports.` **shape 2** — shape 4 left this
-   question when it became a by-user report ([the-fourth-shape-groups-by-user](./context_decision.md#the-fourth-shape-groups-by-user))
-   — asks for one row **per team**, and `team_id` is `use_scope` and required `> 0` on every settlement request — which
-   is exactly what stops one team reading another’s money. So the shape as written cannot be authorized
-   for a team user at all.
-   **→ I recommend declaring it an ADMIN screen.** ROOT/ADMIN in team 1 already bypass every scope check,
-   so the mechanism exists and nothing new is built — what is needed is the sentence saying a cross-team
-   payout report is not team-facing. ⚠ The alternative is a `repeated team_id` the interceptor checks per
-   element, which is a **new authorization primitive** and should be chosen deliberately or not at all.
-
-7. ⛔ **Does the WRITE PATH own the report?** ✅ The deleted line is explained — the analytic design is
-   not mature, so settlement does not bind to it
-   ([the-analytic-pointer-is-withdrawn-until-it-is-mature](./context_decision.md#the-analytic-pointer-is-withdrawn-until-it-is-mature)).
-   Two of the three architectures are now struck: the `GROUP BY` phase was cancelled, the pipeline is
-   withdrawn. **The third is the one your doc specifies in detail** — `# Settlement Ledger.` and
-   `## How `*_settlement_daily_reports` Created` describe the daily row being made on the ledger’s own
-   write path.
-   **→ I recommend confirming that in one line**, because it is an inference and it changes the size of
-   the build enormously: if the write path owns the report, settlement needs **no publisher, no broker and
-   no consumer** to have a working report. ⚠ And then [Question 8](#question) becomes the whole remaining
-   argument — the ledger’s transaction really would be doing report work, so where the guard sits and
-   whether a report failure can roll back money stop being hypothetical.
+6. ➡ **MOVED — `## Shape of Reports.` now lives in [analytic_context.md](./analytic_context.md).**
+   *"Are the cross-team report shapes ADMIN screens?"* is asked where it can be answered:
+   [analytic Awaiting](./analytic_context_clarify.md#awaiting).
+7. ✅ **ANSWERED by the split.** *"Does the WRITE PATH own the report?"* — no. `analytic_context.md`
+   draws `Ledger Updated → Event → Message Broker → http push → Service Webhook`, so a **consumer**
+   builds the tables. Recorded as
+   [the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer).
+   ⚠ It sharpens [Question 8](#question) rather than closing it: the row `InitOpeningBalance` protects
+   belongs to the fold, and the fold is in another process.
 8. ⛔ **The RACE is real — but must the guard be a cross-service call inside the ledger’s transaction?**
    ✅ `## The Reason `InitOpeningBalance` is existed.` answers *why* it is there: two writers computing a
    window aggregation of `open_balance` / `close_balance` for one `(day, shop)` would interleave, and one
@@ -837,46 +765,16 @@ longer blocked** — what remains is contract shape and two type questions.
    ⚠ **Either way the ledger must not roll back for it.** The write that is being protected is the
    report’s, not settlement’s — and one seam up, the same question was answered *the order still commits*.
    ([Critique B, C](#the-ledger-write-protocol--read-against-the-two-decisions-taken-today))
+9. ➡ **MOVED** — *"does a reconcile RECORD the difference it finds, or repair silently?"* is a
+   question about the fold: [analytic Q2 and the fold contract](./analytic_context_clarify.md#question).
+10. ➡ **MOVED** — *"are `open_balance` / `close_balance` STORED or DERIVED?"* is now
+    [analytic Q4](./analytic_context_clarify.md#question), where the drawn `recount upper date` branch
+    makes it concrete.
 
 
 ---
 
 # Contradiction
-
-## `open_balance` has two definitions, and only one of them is rebuildable
-
-> Owner, in chat (2026-09-01) — *"open and close balance is **sum of balance log** of start and end of the
-> day"*, recorded as [open-and-close-are-log-sums-at-the-day-boundaries](./context_decision.md#open-and-close-are-log-sums-at-the-day-boundaries).
->
-> `settlement_context.md` `## How `*_settlement_daily_reports` Created` *(this round)* — *"is last
-> `*_settlement_daily_reports` exist? → yes → **get last `close_balance`** → new `open_balance`"*, and
-> **`open_balance = 0`** when there is none.
-
-**They are not the same number.** One is aggregated from `settlement_logs`; the other is copied from the
-previous report row. They agree only while every day’s row exists, was written exactly once, and nothing
-arrived late — and they diverge in three ways that are all reachable:
-
-| | |
-| --- | --- |
-| **the first row is wrong for any existing shop** | `open_balance = 0` is true only for a shop that has never traded. Every shop with accounts open on the day these tables ship starts from its accumulated position, not zero — and the identity `close − open = Σ movements` breaks at that seam |
-| **a chain cannot be rebuilt from one end** | the snapshot made **any day recomputable from the log alone**, which is the rebuild path [the-report-is-the-pipeline-from-day-one](./context_decision.md#the-report-is-the-pipeline-from-day-one) needs, having cancelled the aggregate that would have been the second opinion. A carry re-introduces exactly the dependency the snapshot removed: recomputing day 200 means recomputing days 1–199 |
-| **one missed row poisons everything after it** | a fold that misses a day (a lost publish, a crash between commit and dispatch) makes every subsequent `open_balance` wrong, silently and permanently. Under the snapshot definition a missed day is just a missing row, and the next day is still correct |
-
-**Which I think is wrong: the carry.** → **RECOMMEND** keep the snapshot as the definition and treat the
-*"get last `close_balance`"* step as a **cheap path, not the truth** — it is a correct shortcut whenever
-the previous row exists and is complete, and the snapshot is what it must fall back to and be checkable
-against. What stops this recurring is naming the property: **a derived column needs ONE definition, and
-if an optimisation computes it a second way, the two must be stated as equal and something must check
-that they are.**
-
-```mermaid
-flowchart TB
-  L["settlement_logs"] -->|"the DEFINITION — snapshot at the boundary"| O["open_balance"]
-  P["yesterday's row close_balance"] -.->|"a shortcut, correct only when the chain is intact"| O
-  O --> D1["day 200 recomputes alone"]
-  P --> D2["day 200 needs days 1 to 199"]
-  P --> D3["and a missed day is wrong forever after"]
-```
 
 ## the state table is named twice, and the second name is the one that shipped
 

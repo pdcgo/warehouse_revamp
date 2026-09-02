@@ -1,5 +1,8 @@
 # Settlement Contexts.
 
+## Reference.
+1. for analytical design, [read this](./analytic_context.md)
+2. other info, [read this](./meta_context.md)
 
 
 ## The Existing Problems.
@@ -20,6 +23,7 @@
 
 ## Responsbility
 1. Its cover order settlement, for owe and balance across teams, its `liability_service`
+2. Provide Analitical data reports. Read [this](./analytic_context.md) for more information. 
 
 
 ## General Brief.
@@ -108,6 +112,7 @@ update_cache-->e
     - `settlement_type`
     - `change`, it can -/+
     - `balance`
+    - `created_at`
 
 2. what is `settlement_type`
     - `initial_total`, its estimated revenue marketplace platform total
@@ -157,124 +162,8 @@ update_cache-->e
 ## The Reason `InitOpeningBalance` is existed.
 1. It's to prevent race condition, because we calculate window aggregation of `open_balance` and `open_balance`.
 
-## Smallest Grain Reports.
-1. `shop_settlement_daily_reports`
-    
-    field must exists.
-    - `id`, for primary key
-    - `day`
-    - `shop_id`
-    - `team_id`
-    - `last_updated`
-    - `balance`
-
-    there is composite unique.
-    - `day`
-    - `shop_id`
-    - `team_id`
-
-    field that tracked:
-    - `initial_total`
-    - `initial_total_cancel`
-    - `other`
-    - `fund`
-    - `external_ads_fee`
-    - `affiliate_fee`
-    - `marketplace_adjustment`
-    - `open_balance`
-    - `close_balance`
-
-1. `user_settlement_daily_reports`
-    the user is **who created the order**
-    
-    field must exists.
-    - `id`, for primary key
-    - `day`
-    - `user_id`
-    - `team_id`
-    - `last_updated`
-    - `balance`
-
-    there is composite unique.
-    - `day`
-    - `user_id`
-    - `team_id`
-
-    field that tracked:
-    - `initial_total`
-    - `initial_total_cancel`
-    - `other`
-    - `fund`
-    - `external_ads_fee`
-    - `affiliate_fee`
-    - `marketplace_adjustment`
-    - `open_balance`
-    - `close_balance`
-
-## How `*_settlement_daily_reports` Created
-```mermaid
-flowchart TD
-
-s(("Start"))
-e(("End"))
-
-s-->init[" `InitOpeningBalance` called"]
-
-init-->not_created["today *_settlement_daily_reports need created"]
-not_created-->is_last{"is last *_settlement_daily_reports exist ?"}
-is_last-->|yes|last_close["get last close_balance"]
-    last_close-->new_open["new open_balance"]
-is_last-->|no|empty_open["close_balance = 0"]
-    empty_open-->new_open
-
-new_open-->close_balance["close_balance = open_balance"]
-close_balance-->create_today["create *_settlement_daily_reports"]
-
-create_today-->today["today *_settlement_daily_reports"]
-today-->e
-
-s-->event["Event Received"]
-event-->is_late{"is Event Received late ?"}
-is_late-->|no|log_delta["Delta / Change"]  
-    log_delta-->update_close["update close balance and tracked field"]
-    update_close-->today
-
-is_late-->|yes|reconcile["schedule to reconcile"]
-reconcile-->e
-
-```
 
 
 
-# Settlement Reports.
-we serve analitical report of settlements.
 
-## Shape of Reports.
 
-1. Timeframe Shape.
-
-    its have mode:
-    - daily
-    - monthly
-    - yearly
-
-    its have filter:
-    - daterange filter
-    - team filter
-    - shop filter
-    - customer service filter
-
-2. Group by Team Shape.
-
-    its have filter:
-    - daterange filter
-
-3. Group by Shop Shape.
-
-    its have filter:
-    - daterange filter
-
-4. Group by User Shape.
-
-    its have filter:
-    - daterange filter
