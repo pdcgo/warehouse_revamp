@@ -51,10 +51,25 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) | there is **no `GROUP BY` phase** — the report table is built off the log through the broker from the start |
 | [the-smallest-grain-is-the-shop-day-statement](#the-smallest-grain-is-the-shop-day-statement) | `shop_settlement_daily_report` — one row per (day, shop, team), per-type movements PLUS open and close balances |
 | [the-user-grain-is-a-second-table](#the-user-grain-is-a-second-table) | `user_settlement_daily_reports` — a SECOND grain table keyed (day, user, team), not a wider key on the first |
-| [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries) | the two balances are SNAPSHOTS aggregated from the log at the day boundaries, never carried forward |
+| [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries) | ⚠ **HALF REVERSED** by [the-carry-is-stored-not-derived](#the-carry-is-stored-not-derived) — the DEFINITION stands (the summed position at the boundary, now the invariant a reconcile checks), the MECHANISM does not: they are carried, not aggregated 
 | [the-user-is-the-order-creator](#the-user-is-the-order-creator) | the user dimension is who CREATED the order, not who wrote the row — so shape 4 is a sales report and the snapshot partitions |
 | [the-fourth-shape-groups-by-user](#the-fourth-shape-groups-by-user) | shape 4 groups by USER, not by a customer-service role — so it is `actor_id`, a column settlement already has |
 | [the-fold-owns-the-report-not-the-writer](#the-fold-owns-the-report-not-the-writer) | the daily tables are built by a CONSUMER of the event, not by the transaction that writes the ledger row |
+| [dedup-and-compute-share-one-transaction](#dedup-and-compute-share-one-transaction) | the idempotency insert and the fold live in ONE transaction, so a failure rolls the mark back with it |
+| [the-event-webhook-is-open](#the-event-webhook-is-open) | `/event/[sub_id]/push` authenticates nobody — accepted, because it can only corrupt a rebuildable projection |
+| [the-carry-is-stored-not-derived](#the-carry-is-stored-not-derived) | `open_balance` / `close_balance` are real columns maintained by increment — ⛔ reverses the "no carry" half of [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries). ✅ **Reconciled** by [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) — this is the STORAGE, that one is the MEANING |
+| [init-opening-balance-is-deleted](#init-opening-balance-is-deleted) | the RPC, its section and its rollback branch go — the fold's `INSERT … ON CONFLICT` is the only creator of a daily row |
+| [genesis-is-seeded-from-the-state-table](#genesis-is-seeded-from-the-state-table) | the migration writes a day-zero row per scope from `SUM(order_settlements.last_balance)`, so no live shop opens at a false `0` |
+| [a-replay-deletes-its-range-first](#a-replay-deletes-its-range-first) | `AnalyticReplayCompute` clears `day >= @start_date` and rebuilds — it never folds on top of what is there |
+| [the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row) | `order_settlements.created_by_user_id`, written once when the account opens — so genesis and replay can both attribute |
+| [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling |
+| [the-order-commits-without-settlement](#the-order-commits-without-settlement) | a failed `SettlementPost` never fails the order — a missing account is repairable, a lost order is not |
+| [the-creator-is-read-from-the-token-at-placement](#the-creator-is-read-from-the-token-at-placement) | `orders.created_by_user_id` comes from `san_auth.GetIdentity(ctx)` at `OrderPlace` — never client-supplied |
+| [a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand) | a person repairs it on the order detail page — no flag, no repair command, no reconcile job |
+| [the-replay-cuts-three-tables-on-one-line](#the-replay-cuts-three-tables-on-one-line) | `settlement_event_logs` gains `day`, and a replay deletes from all three tables under `day >= @start_date` in one transaction |
+| [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) | the day-boundary position is what the number MEANS, the carry is how it is KEPT — reconciling the two decisions above, and closing the "two definitions" contradiction |
+| [a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen) | `open_balance` / `close_balance` STAY — a screen reads a shop's position at a past date, so the cascade, the genesis seed, the floor and the reseed are all paid for |
+| [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
 
 ---
 
@@ -2057,6 +2072,12 @@ open question in the clarify, and it is the only part of this table I would stil
 
 ## open-and-close-are-log-sums-at-the-day-boundaries
 
+> ⚠ **HALF REVERSED (2026-09-02) by [the-carry-is-stored-not-derived](#the-carry-is-stored-not-derived).**
+> The **definition** below still holds and is now the invariant a reconcile verifies. The **mechanism**
+> does not: "no carry" and "any day rebuildable alone" were the properties of a derived reading, and the
+> owner chose stored. Read everything below as *what the stored numbers must equal*, not as how they are
+> produced.
+
 > Owner, in chat (2026-09-01) — *"open and close balance is sum of balance log of start and end of the
 > day"*, answering what the two columns mean.
 
@@ -2228,3 +2249,754 @@ flowchart LR
 
 ⚠ **It also makes the webhook a first-class part of the design**, and the webhook is the one write path
 in this system the proto-based ACL does not cover — [analytic Q3](./analytic_context_clarify.md#question).
+
+---
+
+## dedup-and-compute-share-one-transaction
+
+> Owner, in chat (2026-09-02) — *"for q 1, yes"*, answering
+> [analytic Q1](./analytic_context_clarify.md#question): are the dedup insert and the compute one
+> transaction?
+
+**The verdict.** The webhook opens ONE transaction. The `settlement_event_logs` insert, the daily-row
+upsert and the later-day shift all live inside it, and a failure rolls back all three together.
+
+```mermaid
+flowchart TD
+  s(("push")) --> tx["BEGIN"]
+  tx --> dd{"INSERT settlement_event_logs ON CONFLICT DO NOTHING"}
+  dd -->|"0 rows — duplicate"| c["COMMIT"]
+  dd -->|"1 row — new"| up["upsert the day"]
+  up --> sh["shift every later day"]
+  sh --> c
+  c --> ok[/"200"/]
+  fail["any error"] --> rb["ROLLBACK — the mark goes with it"]
+  rb --> e5[/"500 — Pub/Sub redelivers, and it WILL be reprocessed"/]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the dedup insert | `INSERT INTO settlement_event_logs (id, raw, created_at) VALUES (…) ON CONFLICT DO NOTHING` |
+| how a duplicate is detected | **rows affected = 0**, never a caught error |
+| ⚠ **why not a caught PK violation** | in Postgres a raw constraint error **aborts the whole transaction** — every later statement fails with *"current transaction is aborted"*. The catch-and-continue shape cannot work inside the transaction that also computes. A `SAVEPOINT` would work and is strictly more machinery for the same result |
+| on duplicate | commit (nothing was written) and return **200** — a duplicate must ACK |
+| on any failure | rollback and return **5xx** — the mark is rolled back with the compute, so the redelivery genuinely reprocesses |
+
+### What it fixes
+
+**The event can no longer be silently swallowed.** Under mark-then-compute, a compute that failed after
+the mark committed was redelivered, recognised as *already processed*, ACKed — and the movement was
+never folded, with the log holding the row, the report not, and nothing disagreeing. That was the last
+correctness hole in the live fold.
+
+⚠ **One thing it requires**: `pg_advisory_xact_lock` per scope, taken in a **fixed order** (shop, then
+user), because one event writes both report tables and the shift statement takes an unbounded row range.
+Two events taking those locks in different orders is a deadlock that only appears under load.
+
+---
+
+## the-event-webhook-is-open
+
+> Owner, in chat (2026-09-02) — *"for q2 its all allow"*, answering
+> [analytic Q2](./analytic_context_clarify.md#question): who may POST `/event/[sub_id]/push`?
+>
+> ⛔ **Against my recommendation**, which was OIDC verification in `event_source`.
+
+**The verdict.** The push webhook authenticates nobody. Any caller that can reach the path may POST an
+event, and the fold will process it.
+
+```mermaid
+flowchart LR
+  PS["Pub/Sub push"] --> EP["/event/sub_id/push"]
+  ANY["any other caller"] --> EP
+  EP --> F["the fold — writes both daily report tables"]
+  ACL["the roling ACL — request_policy on a Connect message"] -.->|"cannot reach a webhook"| EP
+```
+
+### What this accepts, recorded so it is a decision rather than a discovery
+
+| | |
+| --- | --- |
+| **the ACL does not cover it** | authorization in this system is `request_policy` read by reflection off a **Connect request message**. A webhook is not one, so `use_scope` and the deny-by-default rule do not apply here and cannot be made to |
+| **a Pub/Sub push endpoint is public by construction** | push delivers over the internet to an HTTPS URL, so this is not an internal-only path unless something outside the app makes it one |
+| **`sub_id` is not a secret** | it is a URL segment — in logs, proxy records, and this doc |
+| **what a forged POST can do** | move any shop's or user's reported balance on any day, in either direction. It cannot touch `settlement_logs` — the ledger stays intact, which is what makes the damage **repairable** |
+
+### Why it is survivable, and what makes it so
+
+**The reports are derived, and the ledger is not reachable from here.** A forged event corrupts a
+projection that `AnalyticReplayCompute` can rebuild from `settlement_logs`. That is the difference
+between this and an open write to the ledger itself, and it is worth stating because it is the whole
+basis on which the risk is acceptable.
+
+⚠ **→ Recommend one non-app mitigation, since the app layer is now settled**: restrict the path at the
+ingress — Cloud Run/IAP/load-balancer rule allowing only Pub/Sub's ranges or a service account. It
+changes no code, contradicts nothing here, and it is the layer this decision leaves free.
+⚠ **And `AnalyticReplayCompute` becomes load-bearing** — it is now the repair path for a real, reachable
+failure rather than a maintenance convenience.
+
+---
+
+## the-carry-is-stored-not-derived
+
+> Owner, in chat (2026-09-02) — *"for 3, its stored"*, answering
+> [analytic Q3](./analytic_context_clarify.md#question): are `open_balance` / `close_balance` stored or
+> derived?
+>
+> ⛔ **Against my recommendation**, which was derived. ⚠ **And it reverses half of
+> [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries)** —
+> see below.
+
+**The verdict.** Both columns are **stored on the row and maintained by increment**. A day's
+`open_balance` is the previous day's `close_balance`, written when the row is created; a movement
+increments `close_balance`, and a late movement shifts every later day's pair.
+
+```mermaid
+flowchart LR
+  D1["01-01 — open 0, close −120.000"] --> D2["01-02 — open −120.000, close −20.000"]
+  D2 --> D3["01-03 — open −20.000, close −30.000"]
+  L["a late movement on 01-01"] --> S["shift 01-02 and 01-03 by the change"]
+  S --> D2
+  S --> D3
+```
+
+### What it settles
+
+| | |
+| --- | --- |
+| the columns | `open_balance` and `close_balance` are **real columns**, not computed at read |
+| the maintenance | statement 1 increments `close_balance`, statement 2 shifts both on every later day |
+| the cascade | **stays** — it is what makes the carry survive a late movement |
+| the `prev` lookup | **stays** — `WHERE … AND day < @day ORDER BY day DESC LIMIT 1` is how a new row opens |
+| replay | must **DELETE the range then re-fold**, because the statements increment. A replay that only re-folds doubles every movement in its range |
+
+### ⚠ It reverses the "no carry" half of an earlier decision, and keeps the other half
+
+[open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries)
+said two things. **The DEFINITION survives** — the numbers still *mean* the scope's summed position at
+the day boundary. **The MECHANISM is reversed** — that decision explicitly listed *"no carry — a day does
+not read the previous day's row"* and *"rebuildable — any day can be recomputed from `settlement_logs`
+alone"*, and neither is true of a stored carry.
+
+**→ The old definition becomes the INVARIANT the stored carry must satisfy**, which is the useful thing
+to keep: `close_balance` on day D must equal `Σ change` over every log row with `posted_on ≤ D`. That is
+what a reconcile checks, and it is now a property to be *verified* rather than one that holds by
+construction.
+
+### What it costs, stated so it is not discovered later
+
+| | |
+| --- | --- |
+| ⛔ **genesis** | `open_balance = 0` is true only for a scope that has never traded. On the day these tables ship, every live shop already holds accounts with balances, so every chain starts wrong by the accumulated position and stays wrong — **silently**, because `close − open = Σ movements` still holds on every row. **This needs an answer before the migration** — see the clarify |
+| ⛔ **a missed day** | if a movement is ever lost, every later row is understated by it forever. Under a derived reading it would have been one gap |
+| ⚠ **a re-fold is ordered** | history must be rebuilt from a boundary forward, not per-day in parallel |
+| ⚠ **the index order matters now** | the `prev` lookup and the cascade both filter equality on `shop_id, team_id` with a range on `day`, so the composite unique should be `(shop_id, team_id, day)` |
+| ✅ **the read is one row** | which is the point, and it is why `InitOpeningBalance` was drawn in the first place |
+
+---
+
+## init-opening-balance-is-deleted
+
+> Owner, in chat (2026-09-02) — *"for q1, no"*, answering
+> [context Q8](./context_clarify.md#question): does `InitOpeningBalance` still exist?
+
+**The verdict.** It does not. `InitOpeningBalance`, `## The Reason `InitOpeningBalance` is existed.` and
+the `init_check → no → rollback` branch all go. The daily row is created by the fold's own
+`INSERT … ON CONFLICT`, and by nothing else.
+
+```mermaid
+flowchart TD
+  s(("start")) --> ops[/"a settlement write"/]
+  ops --> tx["open transaction"]
+  tx --> st["find or create the state, then LOCK it"]
+  st --> log["write the log row"]
+  log --> upd["update the state"]
+  upd --> commit["commit"]
+  commit --> ev["dispatch the event"]
+  ev --> fold["the fold — INSERT ON CONFLICT creates the daily row"]
+  fold --> e(("end"))
+  gone["Call Rpc Stat InitOpeningBalance, and its rollback"] -.->|"deleted"| X["not built"]
+```
+
+### What it removes, and each was a real cost
+
+| | |
+| --- | --- |
+| **a network call inside a transaction** | the ledger's transaction was as long as another service's worst latency, with the state row locked for all of it — the exact shape `san_race` exists to catch |
+| **a rollback for a downstream failure** | `init_check → no → rollback` meant money that genuinely arrived could not be recorded because a *report* row could not be made. That inverted source and derived |
+| **a per-process cache on the correctness path** | `Is Cache Exist? → yes → end` skipped the check, and the memory `CacheManager` evicts per process, so two instances held different answers with no invalidation |
+| **the second creator of one row** | `context.md` and `analytic_context.md` both created `shop_settlement_daily_reports`. Now one does |
+
+**The race it guarded is still real and is now solved better.** Two writers computing one `(day, shop)`
+row would interleave — and `UNIQUE (day, shop_id, team_id)` with `ON CONFLICT DO UPDATE` is race-free
+with **no lock and no cross-service call at all**.
+
+⚠ **What survives**: the state row is still found-or-created and **locked** inside the ledger's
+transaction. That lock serialises concurrent posts *to one order* and is unrelated to the report.
+
+---
+
+## genesis-is-seeded-from-the-state-table
+
+> Owner, in chat (2026-09-02) — *"for question 2, yes"*, accepting the recommendation on
+> [analytic Q1](./analytic_context_clarify.md#question): what does `open_balance` hold on day one?
+
+**The verdict.** The migration that creates the report tables **writes a genesis row per scope**, whose
+`close_balance` is that scope's accumulated position taken from `order_settlements`. Nothing opens at a
+false `0`.
+
+```mermaid
+flowchart LR
+  OS["order_settlements — one row per account, last_balance"]
+  OS -->|"SUM(last_balance) GROUP BY shop_id, team_id"| G["genesis row — day zero"]
+  G --> D1["the first real day opens from it via the prev lookup"]
+  Z["open_balance = 0"] -.->|"true only for a scope that never traded"| N["not the default"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| when | in the migration that creates the tables — it is cheap at exactly this one moment |
+| the source | `SELECT shop_id, team_id, SUM(last_balance) FROM order_settlements GROUP BY shop_id, team_id`. ✅ **`order_settlements` carries `ShopID` and `TeamID`** ([order_settlement.go](backend/services/settlement_service/settlement_service_models/order_settlement.go)), so this is one indexed aggregate with no join |
+| `day` | the day **before** the tables go live, so the first real day's `prev` lookup (`day < @day`) finds it |
+| ⚠ **the row's own columns** | `open_balance = close_balance = SUM(last_balance)`, and **every movement column 0**. Setting `open = 0, close = SUM` would break `close − open = Σ movements` on the seed row itself — no movements happened on a synthetic day |
+| why the state table and not the log | `order_settlements.last_balance` is one row per account, exact by construction. The equivalent over `settlement_logs` is a `DISTINCT ON` across every row ever written |
+
+⚠ **It seeds the SHOP table only.** `order_settlements` has no user column, so
+`user_settlement_daily_reports` has no genesis source — the third place the unpersisted order creator
+bites. See the clarify.
+
+---
+
+## a-replay-deletes-its-range-first
+
+> Owner, in chat (2026-09-02) — *"for q3 yes"*, accepting the recommendation on
+> [analytic Q2](./analytic_context_clarify.md#question): does `AnalyticReplayCompute` delete before it
+> re-folds?
+
+**The verdict.** A replay **clears its range and rebuilds it**. It does not fold on top of what is there.
+
+```mermaid
+flowchart TD
+  s(("start")) --> lock["take process_event_lock"]
+  lock --> del["DELETE both daily tables WHERE day >= @start_date"]
+  del --> read["read settlement_logs WHERE posted_on >= @start_date"]
+  read --> fold["apply the same two statements per row"]
+  fold --> unlock["release the lock"]
+  unlock --> e(("end"))
+  keep["rows before @start_date — untouched"] --> anchor["so prev finds start_date minus 1, and the carry is intact"]
+```
+
+### Why the delete is what makes it correct
+
+| | |
+| --- | --- |
+| ⛔ **without it, a replay DOUBLES** | the fold increments and dedup is keyed on the broker's message id, so a replay publishes new ids and is deliberately not deduped |
+| ✅ **the carry survives** | `@start_date − 1` is not deleted, so the rebuilt range opens from the true position and genesis is never re-created |
+| ✅ **order does not matter** | every write is a delta, so the log can be replayed in any order and compose to the same answer |
+| ✅ **it is re-runnable** | an interrupted replay is repaired by running it again — the property the RPC exists for |
+| ✅ **it is now the recovery path** | [the-event-webhook-is-open](#the-event-webhook-is-open) means a forged event is repaired by this or not at all |
+
+### ⚠ Two ways it can destroy what it cannot rebuild
+
+| | |
+| --- | --- |
+| ⛔ **the genesis row** | if `@start_date ≤` the genesis day, the DELETE removes the anchor and every rebuilt day opens at `0`. **The replay needs a floor** — see the clarify |
+| ⛔ **`user_settlement_daily_reports`** | the log carries no order creator, so the delete removes rows the re-fold cannot reproduce. **Permanent loss, caused by the repair tool** — see the clarify |
+
+---
+
+## the-creator-is-stamped-on-the-state-row
+
+> Owner, in chat (2026-09-02) — *"`order_settlements` should have `created_by_user_id`"*, answering
+> [analytic Q1](./analytic_context_clarify.md#question): where is the order's creator persisted?
+
+**The verdict.** `order_settlements` gains **`created_by_user_id`**, written when the account is opened
+and never changed. The event may still carry it; the state row is the copy that lasts.
+
+```mermaid
+flowchart LR
+  OPEN["the opening entry — initial_total"] -->|"stamps once"| ST["order_settlements.created_by_user_id"]
+  EV["the event — order_created_by_user_id"] --> FOLD["the fold"]
+  ST -->|"join by order_id, inside one service"| FOLD
+  FOLD --> UT["user_settlement_daily_reports"]
+  ST --> G["genesis — SUM(last_balance) GROUP BY created_by_user_id, team_id"]
+  ST --> RP["replay — the state row survives the DELETE, so the user is still available"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| column | `created_by_user_id uint64` on `order_settlements`, beside the `ShopID` / `TeamID` it already carries |
+| written | **once**, by the entry that opens the account. Never updated afterwards |
+| `0` | **not recorded**, never user zero — an account opened by an exporter's `fund` before any `initial_total` has no creator |
+| read by | the fold, joining log → state **inside settlement_service** (HARD RULE 3 clean — no cross-service join) |
+| the event | keeps `order_created_by_user_id`. It is no longer the only copy, which is the whole point |
+
+### What it unblocks — three things, and one of them was destructive
+
+| | before | after |
+| --- | --- | --- |
+| the live fold | ✅ worked from the event | unchanged |
+| **genesis** | ⛔ the seed groups by shop and team — no user to group by, so every user chain opened at a false `0` | ✅ `SUM(last_balance) GROUP BY created_by_user_id, team_id` |
+| **replay** | ⛔ [a-replay-deletes-its-range-first](#a-replay-deletes-its-range-first) deleted user rows and rebuilt from a log with no user — **permanent loss, caused by the repair tool** | ✅ the DELETE touches report rows only, so the state row survives and the user is available on every replayed row |
+| every writer | ⚠ had to supply the creator forever, on a request with no such field | only the **opening** call needs it |
+
+### ⚠ What it still needs, and it is in another lane
+
+`selling_service` has to record an author on the order — [`orders`](backend/services/selling_service/selling_service_models/order.go)
+has no creator column at all, and `AuthorUserID` lives on `order_drafts`, so an order placed without a
+draft has none. **Two migrations in two lanes**, and until both land the opening call has nothing to pass.
+`SettlementPostRequest` also needs the field.
+
+⚠ **Set-once is deliberate and has a cost worth naming.** If an account opens unattributed and the
+creator becomes known later, updating the row would make a replay attribute differently from the live
+fold — the same number computed twice, two answers. Freezing it keeps replay honest, and leaves an
+**unattributed bucket** the report must show rather than drop.
+
+---
+
+## the-replay-seeks-the-broker
+
+> Owner, in chat (2026-09-02) — *"for q1 is seek from message broker"*, answering
+> [analytic Q1](./analytic_context_clarify.md#question): does the replay re-fold from the log, or seek
+> the broker?
+>
+> ⛔ **Against my recommendation**, which was a `settlement_logs` re-fold inside the RPC.
+
+**The verdict.** `AnalyticReplayCompute` rebuilds by **seeking settlement's own subscription** to
+`start_date`, so the rebuild arrives through the same webhook as live traffic. One path into the fold,
+not two.
+
+```mermaid
+flowchart LR
+  RPC["AnalyticReplayCompute"] --> DEL["DELETE the daily rows in range"]
+  DEL --> SEEK["seek the subscription to start_date"]
+  SEEK --> MB["message broker redelivers"]
+  MB --> HK["/event/sub_id/push — the same webhook"]
+  HK --> FOLD["the same two statements"]
+```
+
+### What it buys
+
+| | |
+| --- | --- |
+| **one code path** | the rebuild runs the identical handler as live traffic, so a fold bug cannot exist in one and not the other — a second re-fold path is a second thing to keep correct |
+| **no second reader of the log** | the fold's SQL stays the only thing that reads `settlement_logs` for the report |
+
+### ⛔ What it REQUIRES, and none of it is optional
+
+Four things must be built or configured, or the replay deletes its range and rebuilds nothing.
+
+| | why | → what to do |
+| --- | --- | --- |
+| **1 · the dedup must be generation-scoped** | `settlement_event_logs.id` **is** the broker's message id, and a seek redelivers the **same** ids — so every replayed message reads as *already processed* and is ACKed without computing | **`(id, run_id)` as the key**, with the current run id in `settlement_service_metadata`, bumped by each replay. A replay is then a new generation that legitimately re-reads, and ordinary redelivery inside a generation is still dropped. ⚠ The cheaper alternative — deleting dedup rows in the range — keys on `created_at` (when *received*), which is not the axis the seek uses, so it leaks |
+| **2 · `retain_acked_messages` must be TRUE on the subscription** | it defaults to **false**, and a seek backwards over already-acknowledged messages then delivers **nothing**. The replay becomes a pure delete, silently | set it, and state it in the doc — it is a subscription property, invisible from the code |
+| **3 · the lock must not reject the replay's own traffic** | redelivered messages arrive at the webhook, which checks `process_event_lock` first — held by the replay itself. Each one 500s, NACKs and burns a delivery attempt toward the dead-letter policy | **the replay must not take the maintenance lock.** With deltas and generation-scoped dedup it does not need one: a live event during a rebuild is folded once and deduped on redelivery. `process_event_lock` stays what it is — a developer's switch |
+| **4 · the RPC cannot know when the rebuild finished** | a seek is asynchronous; the messages arrive over the following minutes | either the RPC returns *"started"* and completion is observed elsewhere, or it waits on the subscription backlog. **It must not report success on a trigger** |
+
+### ⚠ The ceiling this accepts, permanently
+
+**A replay can never reach further back than the subscription's message retention** — 7 days by default,
+**31 at most**. This is exactly the property
+[the-report-is-the-pipeline-from-day-one](#the-report-is-the-pipeline-from-day-one) flagged when it owed
+*"re-runnable from the log … Pub/Sub retains messages for days and a definition change needs years"*.
+
+**→ So a full historical rebuild is not possible, and that is now a design fact rather than an
+oversight.** It makes two things load-bearing that were previously prudent: the **genesis row**, which is
+the only record of everything older than the retention window, and the **floor** that stops a replay
+deleting it. Set retention to its 31-day maximum, and keep dedup retention ≥ it.
+
+---
+
+## the-order-commits-without-settlement
+
+> Owner, in chat (2026-09-02) — *"for q 1, no"*, answering
+> [context Q1](./context_clarify.md#question): does a failed `SettlementPost` fail the order?
+
+**The verdict.** No. The order commits whether or not settlement accepts `initial_total`. A failure is
+recorded and repaired, never propagated backwards into the sale.
+
+```mermaid
+flowchart TD
+  s(("start")) --> place["OrderPlace — validate, reserve stock, write the order"]
+  place --> commit["COMMIT — the order EXISTS from here on"]
+  commit --> post["SettlementPost — initial_total"]
+  post -->|"ok"| done(("done"))
+  post -->|"fails"| log["record the failure — the order is untouched"]
+  log --> repair["repairable: marketplace_total is frozen on the order"]
+  repair --> done
+```
+
+### Why, stated so it is not re-argued
+
+`initial_total` records something that **already happened on the marketplace** — a buyer paid. Refusing
+the order does not un-happen it; it loses the only record we have of it. **A missing account is
+repairable and a lost order is not**, and the repair needs nothing we would not already have:
+`marketplace_total` is frozen on the order, and the idempotency key is derived from the order id, so a
+retry cannot double-open the account.
+
+⚠ **This is the same answer the neighbouring publish already gives** — [order_place.go:285](backend/services/selling_service/selling_v1/order_place.go#L285),
+*"A publish failure does NOT fail the order"* — but it is now **decided for the call**, not inherited from
+an argument about an event. The two differ in what they leave behind; they agree on what to do about it.
+
+### The spec
+
+| | |
+| --- | --- |
+| when | **after** the order's transaction commits, never inside it |
+| `unique_id` | derived from the order — the same recipe the event already uses, `"order-placed:" + order_id`. A retry collides instead of opening a second account |
+| on failure | log loudly, do not return an error to the caller placing the order |
+| ⛔ **what is NOT yet decided** | **how a missing account is FOUND.** Both this and the existing publish end at *"logged loudly"*, and nothing lists the orders whose account never opened — see the clarify |
+
+---
+
+## the-creator-is-read-from-the-token-at-placement
+
+> Owner, in chat (2026-09-02) — *"its from `san_auth.GetIdentity(ctx)` when order created"*, answering
+> [context Q2](./context_clarify.md#question): where does `created_by_user_id` come from?
+
+**The verdict.** `orders.created_by_user_id` is read from the **authenticated caller** at `OrderPlace`
+and stored on the order. It is not supplied by the client, and it is not inferred later.
+
+```mermaid
+flowchart LR
+  T["the request's token"] --> ID["san_auth.GetIdentity(ctx)"]
+  ID --> O["orders.created_by_user_id — stored at placement"]
+  O --> S["SettlementPost — passes it on"]
+  S --> ST["order_settlements.created_by_user_id — stamped once"]
+  ST --> R["user_settlement_daily_reports — foldable AND rebuildable"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| source | `san_auth.GetIdentity(ctx).GetIdentityId()` — ✅ the pattern already used by [document_service](backend/services/document_service/document_v1/request_upload.go#L45) and [expense_service](backend/services/expense_service/expense_v1/service.go#L75) |
+| stored | `orders.created_by_user_id`, at placement, never updated |
+| ⚠ **not client-supplied** | a client-provided creator is a client that can attribute someone else's sales. Reading the token is what makes it trustworthy |
+| passed to | `SettlementPost`, which stamps `order_settlements.created_by_user_id` once ([the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row)) |
+| `0` | still means **not recorded** — an account opened by an exporter's `fund` before any `initial_total` has no creator, and the report needs an explicit *unattributed* bucket |
+
+### What it completes
+
+**This was the last missing input to the settlement chain.** With it, every piece the fold and the
+replay need exists or has an owner:
+
+| | |
+| --- | --- |
+| the amount | ✅ `orders.marketplace_total`, already on the model and in the proto |
+| the creator | ✅ this decision |
+| the idempotency key | ✅ derived from the order id, the recipe the event already uses |
+| the call | ⛔ still to be written — nothing in `selling_service` imports `settlement_v1` |
+
+⚠ **It is a `selling_service` migration**, so the settlement work depends on another lane landing first.
+
+---
+
+## a-missing-account-is-fixed-by-hand
+
+> Owner, in chat (2026-09-02) — *"its okay, user can manualy edited it, no need complex thinking"*,
+> answering [context Q1](./context_clarify.md#question): how is a missing account found and repaired?
+
+**The verdict.** By a person, on the order detail page. **No flag, no repair command, no reconcile job.**
+
+```mermaid
+flowchart LR
+  F["SettlementPost fails — the order commits anyway"] --> L["logged"]
+  L --> P["a person notices while reconciling a payout"]
+  P --> S["order detail — add the entry by hand"]
+  S --> A["the account opens"]
+```
+
+### Why this is enough, and it is not a shortcut
+
+**The repair path already exists and is already permitted.** [order-detail-manages-the-ledger](#order-detail-manages-the-ledger)
+put the ledger on the order's own page, and [initial-total-is-postable-by-cs-and-owners](#initial-total-is-postable-by-cs-and-owners)
+lets CS and owners post `initial_total` from it. Nothing new is built — the failure lands in a screen that
+was designed for it.
+
+**And discovery is human by nature here.** The people doing settlement work against the marketplace's own
+payout report; an order that is missing from the ledger surfaces the moment they reconcile against it.
+A queue, a metric and a retry job would automate a signal that a person already gets from the work itself.
+
+### What is accepted, stated so it is a choice rather than an omission
+
+| | |
+| --- | --- |
+| **nothing tells anyone** | the gap is found by a person doing the reconciliation, not by the system announcing it. At this scale that is the same day; it would not be at ten times the volume |
+| **no queue** | there is no list of orders whose account never opened. `settlement_opened_at`, a `san` repair command and a cross-service reconcile were all considered and **declined** |
+| **the cancel has the same shape** | a failed `initial_total_cancel` leaves a live sale on a cancelled order, and is corrected the same way — by hand, from the same page |
+
+⚠ **One thing this makes load-bearing.** A person repairing by hand can post an `initial_total` for an
+account that *did* open — so **the handler must refuse a second LIVE `initial_total`**, not just the form.
+That was already noted as owed (the form hides the option, which is a convenience and not a control) and
+it stops being a nicety now that manual posting **is** the repair path.
+
+---
+
+## the-replay-cuts-three-tables-on-one-line
+
+> Owner, in chat (2026-09-02) — *"okay, im follow the recomendation"*, answering
+> [analytic Q1](./analytic_context_clarify.md#question): what exactly does the replay delete?
+
+**The verdict.** `settlement_event_logs` gains a **`day`** column, and a replay deletes from **three
+tables under one predicate, in one transaction**. The dedup table is cut on the same line as the report
+tables, so the two cannot disagree.
+
+```sql
+BEGIN;
+  DELETE FROM shop_settlement_daily_reports WHERE day >= @start_date;
+  DELETE FROM user_settlement_daily_reports WHERE day >= @start_date;
+  DELETE FROM settlement_event_logs         WHERE day >= @start_date;
+COMMIT;
+-- then seek the subscription to @start_date 00:00 WIB
+```
+
+```mermaid
+flowchart TB
+  R["AnalyticReplayCompute — start_date"] --> P["one predicate — day >= start_date"]
+  P --> A["shop_settlement_daily_reports"]
+  P --> B["user_settlement_daily_reports"]
+  P --> C["settlement_event_logs — so the range is re-foldable"]
+  P --> G["genesis excluded BY THE FLOOR, not by a clause"]
+  C --> S["seek — in-range messages are no longer duplicates, out-of-range ones still are"]
+```
+
+### ⛔ It REPLACES two earlier recommendations of mine
+
+| | |
+| --- | --- |
+| a generation counter (`run_id`) on the dedup key | **not built.** It was a schema dimension doing what a column does |
+| a handler-side *"drop what is outside the run"* filter | **not built.** The dedup row's `day` already answers it |
+
+### ✅ Why the straddler needs no special handling
+
+A movement whose transaction starts before Jakarta midnight and **publishes after** is redelivered by a
+seek at that midnight, but belongs to the previous day. Cutting both tables on one line settles it:
+
+| the redelivered message | its dedup row | outcome | |
+| --- | --- | --- | --- |
+| `day >= start_date` | deleted with the range | not a duplicate → **recomputed** | ✅ its report row was deleted too |
+| a straddler, `day = start_date − 1` | survives — outside the predicate | duplicate → **dropped** | ✅ its report row was never deleted |
+| a live event arriving mid-replay | none yet | folded once | ✅ the seek's later copy is then dropped |
+| an ordinary NACK retry in range | deleted | reprocessed | ✅ its report row is gone too |
+
+### The spec
+
+| | |
+| --- | --- |
+| **`settlement_event_logs.day`** | `DATE NOT NULL`, written by the handler from the log row it folded — the same Jakarta day the report row uses |
+| **one transaction** | ⛔ not optional. Report rows deleted with the dedup delete failed = the seek redelivers into a table that still says *already processed*, and **the range stays empty** |
+| **an index on `(day)`** | the dedup delete is the largest of the three by far |
+| **retention stays on `created_at`** | ⚠ **the two axes are deliberately different and it is not an inconsistency.** The *replay* cuts on `day`, because that is what the report rows are cut on. *Retention* cuts on `created_at`, because the guard must outlive the broker's ability to redeliver, which is measured from receipt. A late event received today for a day last month must keep its guard — cutting retention on `day` would delete it immediately |
+| **retention length** | **45 days**, against a broker retention of 31. ⛔ They are both ~1 month today, which is the one value they must not share: a message still redeliverable after its dedup row is gone is folded **twice**, with no replay involved |
+| **genesis** | excluded by the floor (`start_date > genesis_day`), never by a clause. One rule, not two |
+| **never deleted** | `settlement_logs` — the evidence · `order_settlements` — the replay depends on it surviving, since the log carries no creator |
+
+### ⚠ Included on the reading that "the recommendation" covered the question beside it
+
+**`replay_in_progress`** — a marker that refuses a **second** replay while one is in flight, without
+rejecting webhook traffic. The seek is asynchronous and the replay deliberately does not hold
+`process_event_lock` ([the-replay-seeks-the-broker](#the-replay-seeks-the-broker)), so nothing else stops
+a second call deleting a range that is mid-rebuild. It cannot be the maintenance lock, because blocking
+the webhook is precisely what must not happen here. **Say so if a narrower reading was meant.**
+
+---
+
+## the-carry-materialises-the-day-boundary-position
+
+> Owner, in chat (2026-09-07) — *"open balance is start balance of the day, and close balance is end
+> balance of the day"*, restating the definition while
+> [Q1](./analytic_context_clarify.md#question) was open.
+
+**The verdict.** The two prior decisions are **not in conflict — they answer different questions**, and
+this says which is which. The **meaning** is the day-boundary position; the **storage** is the carry;
+the cascade is what keeps the second equal to the first.
+
+```mermaid
+flowchart TB
+  D["the DEFINITION — the position at the day's boundary"]
+  D --> M["open(D) = Σ change over every row before D"]
+  D --> N["close(D) = Σ change over every row up to and including D"]
+  M --> I["so open(D) = close(D−1) is an IDENTITY, not a copy"]
+  S["the STORAGE — a stored column maintained by increment"]
+  I --> S
+  S --> C["the cascade, the genesis seed and the floor exist to keep the stored copy equal to the definition"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| `open_balance(D)` | `Σ change` over every log row with `posted_on < D` |
+| `close_balance(D)` | `Σ change` over every log row with `posted_on <= D` |
+| the identity | `close(D) − open(D) = change(D)` on every row, and `open(D) = close(D−1)` across the gap of days that have no row |
+| the mechanism | stored and incremented ([the-carry-is-stored-not-derived](#the-carry-is-stored-not-derived)) — unchanged by this |
+| what the mechanism owes | the cascade, the genesis seed and the replay floor are the **cost of keeping the stored copy equal to the definition** — they are not features of their own |
+
+### ✅ What this closes
+
+**The contradiction *"`open_balance` has two definitions, and the new doc chose the one that cannot be
+rebuilt"*** ([analytic clarify](./analytic_context_clarify.md#contradiction)). It read the drawn flow's
+*"get last `close_balance` → new `open_balance`"* as a **second definition** competing with the chat
+answer. It is not a definition at all — it is the increment that maintains the one definition. **The
+snapshot is what the number MEANS; the carry is how it is KEPT.**
+
+⚠ **Which makes the difference between them a bug class, not a design choice.** Any path where the
+cascade does not run — a partial commit, a replay that skips a day, a genesis seeded wrong — leaves the
+stored copy **unequal to its own definition**, and `close − open = change` still holds on every row, so
+nothing detects it. That is the argument for a reconcile pass, and it is now stated in one place.
+
+### ⛔ What it does NOT settle
+
+**Whether the columns belong in the daily tables at all** — [Q1](./analytic_context_clarify.md#question)
+stays open. A definition being coherent is not the same as a reader existing, and the open question is
+still: *is there a screen that shows a shop's position at a past date?* ⚠ It also leaves untouched the
+finding that on any day with an order mid-flight the boundary position is **two quantities added
+together** — what has not arrived yet, and the cut that never will
+([hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance): *"NOT expected to reach
+zero"*).
+
+---
+
+## a-past-date-position-is-a-real-screen
+
+> Owner, in chat (2026-09-07) — *"yes, there is a screen that shows a shop's position at a past date"*,
+> answering the one question [Q1](./analytic_context_clarify.md#question) turned on. ⚠ **Against my
+> recommendation**, which was to drop both columns.
+
+**The verdict.** `open_balance` / `close_balance` **stay** in `shop_settlement_daily_reports`, and with
+them the cascade, the genesis seed, the replay floor and `AnalyticReseedGenesis`. There is a reader, so
+the apparatus is paid for.
+
+```mermaid
+flowchart TB
+  S["a screen — this shop's position on 5 January"]
+  S --> Q["read the daily row at or before that day"]
+  Q --> G["no row that day means NO MOVEMENT, not no position — fall back to the last row before it"]
+  S --> L["label it hidden cost, never outstanding or owed"]
+  S --> R["so the stored copy must be RECONCILABLE against the log"]
+  R --> B["because close minus open equals change on every row even after the copy has drifted"]
+```
+
+### What it confirms — five mechanisms, no longer on probation
+
+| | |
+| --- | --- |
+| the cascade (statement 2) | ✅ stays — a late event must shift every later day, or the screen shows a stale position |
+| the `prev` lookup | ✅ stays |
+| the genesis seed | ✅ stays — without it every absolute figure is offset by the pre-launch position |
+| the replay floor · `AnalyticReseedGenesis` | ✅ **promoted from prudent to mandatory** ([Q1](./analytic_context_clarify.md#question), was Q2) — a destroyed anchor is now a wrong number in front of a person, not just a wrong row |
+| `retain_acked_messages` · 31-day retention | ✅ load-bearing for the same reason |
+
+### What it BINDS — three requirements the screen creates
+
+**1 · The gap day.** A day with no movement has **no row**, and that is correct
+([What is NOT deleted](./analytic_context_clarify.md#what-is-not-deleted)). A position query must
+therefore fall back, never return "no data":
+
+```sql
+SELECT day, open_balance, close_balance
+  FROM shop_settlement_daily_reports
+ WHERE shop_id = @shop_id AND team_id = @team_id AND day <= @as_of
+ ORDER BY day DESC LIMIT 1;
+```
+
+**2 · The label, and it is already decided.** The number is **two quantities added together** and
+nothing separates them:
+
+```mermaid
+flowchart LR
+  P["the position shown for 5 January"] --> A["part still in flight — it will arrive"]
+  P --> B["part already lost — the platform's unitemised cut"]
+  A --> N["the screen cannot split them"]
+  B --> N
+  N --> L["so the label must not promise a receivable"]
+```
+
+[hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) already ruled on this —
+*"name it on screen: the balance is **hidden cost**, not 'outstanding' or 'unpaid'. A label implying the
+platform owes us would be wrong, since nobody is going to collect it."* **That instruction was written
+for the order page and now binds this screen too.**
+
+**3 · A reconcile pass, because the invariant cannot detect drift.**
+[the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position)
+named the bug class: any path where the cascade does not run leaves the stored copy unequal to its own
+definition, and `close − open = change` still holds on every row. **With a screen reading the number, an
+undetected drift is a wrong figure a person acts on.** The check is the definition itself:
+
+```sql
+-- for one scope, at one day: the stored copy against the log it materialises
+SELECT d.close_balance,
+       (SELECT COALESCE(SUM(l.change), 0) FROM settlement_logs l
+         WHERE l.shop_id = d.shop_id AND l.team_id = d.team_id AND l.posted_on <= d.day)
+  FROM shop_settlement_daily_reports d
+ WHERE d.shop_id = @shop_id AND d.team_id = @team_id AND d.day = @day;
+```
+
+⚠ **It reads `settlement_logs`, which is the same service** — no HARD RULE 3 problem. It is the one
+query the eager path cannot check itself with.
+
+### ⛔ What it does NOT settle
+
+| | |
+| --- | --- |
+| **the user table** | the answer was about a **shop's** position. `user_settlement_daily_reports.close_balance` is a lifetime running total of one person's share of hidden cost, so the newest CS always looks best — still open, and asked in the clarify |
+| **`orders`** | the measure names it, neither table has it. Independent of this decision and still owed |
+
+---
+
+## the-position-is-the-shortfall-not-the-wallet
+
+> Owner, in chat (2026-09-07) — *"we dont care about shop wallet, `shop_settlement_daily_reports` is
+> enough"*, answering [analytic Q1](./analytic_context_clarify.md#question): which of two numbers the
+> past-date screen shows.
+
+**The verdict.** *"A shop's position"* is the **cumulative shortfall** — what buyers paid minus what
+reached us, summed to shop grain. The marketplace **wallet is out of scope entirely**: not tracked, not
+derived, not a screen. `shop_settlement_daily_reports` is the whole source.
+
+```mermaid
+flowchart TB
+  L["settlement_logs — order-grain movements"] --> S["sum change per shop per day"]
+  S --> C["close_balance — the cumulative shortfall. IN SCOPE"]
+  C --> V["the past-date screen reads this and nothing else"]
+  W["the marketplace wallet — what the platform still holds"] --> X["OUT OF SCOPE. Not a table, not a query, not a screen"]
+```
+
+### ✅ What it confirms — the tension was apparent, not real
+
+[the-grain-is-the-order](#the-grain-is-the-order) said *"the shop wallet balance is derived, not stored
+— a reconciliation query, not a ledger state"* and *"the shop wallet is not a settlement state"*. **That
+stands unweakened.** `close_balance` was never the wallet, and now nothing claims it is. **There is no
+contradiction to record** — one phrase had two possible referents and the owner picked the one already
+in the table.
+
+### The spec
+
+| | |
+| --- | --- |
+| **what the screen shows** | `close_balance` at the requested date — `Σ change` over every log row of that shop with `posted_on <= @as_of` |
+| **the gap day** | a day with no movement has **no row**, so read `WHERE day <= @as_of ORDER BY day DESC LIMIT 1` — never "no data" ([a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen)) |
+| **the label** | **hidden cost** — never *outstanding*, *unpaid*, *wallet* or *receivable*, per [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance). ⚠ **And avoid the bare word "balance"** on this screen: it was the one term naming two different shop-level numbers, and dropping the wallet is what makes it safe to use precisely — so use it precisely or not at all |
+| **what it is NOT** | not a wallet balance, not a receivable, and not reconcilable against a marketplace statement — it deliberately contains the platform's unitemised take, which nobody will collect |
+
+### ✅ What it DE-ESCALATES
+
+**The withdrawal question drops back to a small gap.** It had been about to become blocking: a
+withdrawal is money leaving the wallet, so under the other reading this screen could not have been built
+without it. With the wallet out of scope, **settlement is not waiting on it** —
+[context Q1](./context_clarify.md#question) and
+[architecture Q7](../../technical/architecture/context_clarify.md#question) stay open on their own
+merits, at their own pace.
+
+⚠ **And `fund`'s destination stops mattering here.**
+[fund-is-not-the-final-figure](#fund-is-not-the-final-figure) settled *when* more arrives and never
+*where* — into the marketplace wallet, or into our bank. Under the shortfall reading the shortfall is
+the same either way, so that ambiguity is no longer load-bearing on this screen. ⛔ **It is not
+answered**, only unblocked — a future wallet feature would need it.

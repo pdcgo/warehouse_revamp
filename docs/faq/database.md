@@ -163,3 +163,25 @@ Two things that bite:
 Run the conformance suite against real Redis with
 `REDIS_ADDR=localhost:6380 go test ./pkgs/san_caches/...` — the same suite runs against both
 implementations.
+
+## What timezone is a `DATE` column in?
+
+**Jakarta — WIB, UTC+7.** One calendar for the whole system: every `DATE`, every day boundary, every
+report window and every "today" means the Jakarta day
+([the-system-runs-on-jakarta-time](../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
+
+Instants are unaffected — they stay `TIMESTAMPTZ` and absolute. The decision is about how an instant
+becomes a **day**, not how it is stored.
+
+**The conversion happens once, at the database session** — `TimeZone=Asia/Jakarta` in the DSN. Then
+`CURRENT_DATE`, `now()::date` and every `timestamptz → date` cast are already Jakarta, and no handler
+converts anything. In Go, never use `time.Local`: it is whatever the host is set to, and a container is
+UTC.
+
+⚠ WIB has **no daylight saving**, so a Jakarta day is always exactly 24 hours and `day + 1` is never
+ambiguous. Most single-timezone standards carry a DST caveat; this one does not.
+
+⚠ **Not applied yet — deferred by the owner.** The DSN sets no timezone today, so a fresh checkout is on
+**UTC**. The ordered change list is
+[development_state/architecture](../development_state/architecture/context.md), including the one thing
+to decide first: a session-timezone change does **not** rewrite existing `DATE` values.

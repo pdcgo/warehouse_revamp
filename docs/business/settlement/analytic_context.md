@@ -4,7 +4,7 @@ we serve analitical report of settlements.
 ## What rpc that Settlement Service Must be Exposed.
 ### Rpc for Manage Streaming Report.
 1. `AnalyticReplayCompute`, When error happen and root need to recompute.
-3. `AnalyticMaintenanceRun`, run data maintenance. its used in [maintain table](#idempotency-layer)
+2. `AnalyticMaintenanceRun`, run data maintenance. its used in [maintain table](#idempotency-layer)
 
 ### Webhook.
 Webhook is used by `Messsage Broker` to trigger event. And further to calculate Analytical Reports.
@@ -80,94 +80,60 @@ success-->e
 
 How we computed balance when event arrived. We use `fund` for example.
 1. extract `created_at` from `settlement_logs`. convert to GMT+7 and get the date as `day`.
-2. update `day` row and return the id.
+
+2. the day's own row — one atomic statement, no branch, no race
+
     ```sql
-    update shop_settlement_daily_reports d
-    set 
-        d.fund += @fund_change,
-        d.close_balance = (
-            d.fund +
-            d.initial_total +
-            d.initial_total_cancel +
-            d.other +
-            d.fund +
-            d.external_ads_fee +
-            d.affiliate_fee +
-            d.marketplace_adjustment +
-            
-            @fund_change
-        ),
-        d.last_updated = now()
-
-
-    where 
-        d.day = @day
-        and d.shop_id = @shop_id
-        and d.team_id = @team_id
+    INSERT INTO shop_settlement_daily_reports AS d
+        (day, shop_id, team_id, fund, change, open_balance, close_balance, last_updated)
+    VALUES (@day, @shop_id, @team_id, @change, @change,
+            COALESCE((SELECT close_balance FROM shop_settlement_daily_reports
+                    WHERE shop_id = @shop_id AND team_id = @team_id AND day < @day
+                    ORDER BY day DESC LIMIT 1), 0),
+            COALESCE((SELECT close_balance FROM shop_settlement_daily_reports
+                    WHERE shop_id = @shop_id AND team_id = @team_id AND day < @day
+                    ORDER BY day DESC LIMIT 1), 0) + @change,
+            now())
+    ON CONFLICT (day, shop_id, team_id) DO UPDATE
+    SET fund          = d.fund          + @change,
+        change        = d.change        + @change,
+        close_balance = d.close_balance + @change,
+        last_updated  = now();
     ```
-3. when in step 2 returning row is 0, its mean there is no row `day` exists, so we create it.
+
+3. every later day — a SHIFT, never a recomputation
+
     ```sql
-    with prev as (
-        select d.close_balance
-        from shop_settlement_daily_reports d
-        where
-            d.shop_id = @shop_id
-            and d.team_id = @team_id
-        order by d.day desc
-        limit 1
-    )
-    insert into shop_settlement_daily_reports (day, shop_id, team_id, fund, open_balance, close_balance)
-    values (
-        @day, 
-        @shop_id, 
-        @team_id, 
-        @fund,
-        coalesce(prev.close_balance, 0),
-        coalesce(prev.close_balance, 0) + @fund
-    )
-
-    RETURNING id;
+    UPDATE shop_settlement_daily_reports
+    SET open_balance  = open_balance  + @change,
+        close_balance = close_balance + @change,
+        last_updated  = now()
+    WHERE shop_id = @shop_id AND team_id = @team_id AND day > @day;
     ```
-4. for consistency if event late.
-    ```sql
-    update shop_settlement_daily_reports d
-    set 
-        d.close_balance = (
-            d.fund +
-            d.initial_total +
-            d.initial_total_cancel +
-            d.other +
-            d.fund +
-            d.external_ads_fee +
-            d.affiliate_fee +
-            d.marketplace_adjustment +
-            @fund_change
-        ),
-
-        d.open_balance = (
-            d.fund +
-            d.initial_total +
-            d.initial_total_cancel +
-            d.other +
-            d.fund +
-            d.external_ads_fee +
-            d.affiliate_fee +
-            d.marketplace_adjustment +
-            @fund_change
-        ),
-        d.last_updated = now()
-
-
-    where 
-        d.day > @day
-        and d.shop_id = @shop_id
-        and d.team_id = @team_id
-
-    ```
+4. update `shop_settlement_reports` with latest from daily reports.
 5. For other type like `initial_total`, `initial_total_cancel` and other is same. And for `user_settlement_daily_reports` is same too.
 
 
+
+## How `AnalyticReplayCompute` works.
+```mermaid
+flowchart TD
+s(("Start"))
+e(("End"))
+
+s-->lock["lock `process_event_lock`"]
+
+lock-->delete_rep["delete *_settlement_daily_reports row"]
+delete_rep-->delete_idem["delete `settlement_event_logs` > date"]
+delete_idem-->replay["replay event in message broker at date"]
+replay-->unlock["unlock `process_event_lock`"]
+
+unlock-->e
+```
+
+
 ## Smallest Grain Reports.
+### Daily Reports.
 1. `shop_settlement_daily_reports`
 
     field must exists.
@@ -188,18 +154,9 @@ How we computed balance when event arrived. We use `fund` for example.
     - `shop_id`
     - `team_id`
 
-    field that tracked:
-    - `initial_total`
-    - `initial_total_cancel`
-    - `other`
-    - `fund`
-    - `external_ads_fee`
-    - `affiliate_fee`
-    - `marketplace_adjustment`
-    - `open_balance`
-    - `close_balance`
+    field that tracked read [this](#field-that-tracked)
 
-1. `user_settlement_daily_reports`
+2. `user_settlement_daily_reports`
     the user is **who created the order**
     
     field must exists.
@@ -220,24 +177,67 @@ How we computed balance when event arrived. We use `fund` for example.
     - `user_id`
     - `team_id`
 
+    field that tracked read [this](#field-that-tracked)
+
+### Field that tracked.
+- `initial_total`
+- `initial_total_cancel`
+- `other`
+- `fund`
+- `external_ads_fee`
+- `affiliate_fee`
+- `marketplace_adjustment`
+- `open_balance`
+- `close_balance`
+
+### Balance State Reports.
+1. `shop_settlement_reports`
+
+    field must exists.
+    - `id`, for primary key
+    - `shop_id`
+    - `team_id`
+    - `last_updated`
+
+    field that must indexed:
+    - `shop_id`
+    - `team_id`
+    and its composite unique index.
+
+    there is composite unique.
+    - `shop_id`
+    - `team_id`
+
     field that tracked:
-    - `initial_total`
-    - `initial_total_cancel`
-    - `other`
-    - `fund`
-    - `external_ads_fee`
-    - `affiliate_fee`
-    - `marketplace_adjustment`
-    - `open_balance`
     - `close_balance`
 
-## How we do `AnalyticReplayCompute`.
-Payload:
-- `start_date`, date with GMT+7
+2. `user_settlement_reports`
+    the user is **who created the order**
+    
+    field must exists.
+    - `id`, for primary key
+    - `user_id`
+    - `team_id`
+    - `last_updated`
 
-Flow:
-1. define `start
+    field that must indexed:
+    - `user_id`
+    - `team_id`
+    and its composite unique index.
 
+    there is composite unique.
+    - `user_id`
+    - `team_id`
+
+    field that tracked:
+    - `close_balance`
+
+
+
+
+
+
+## How Rpc Api Deliver The Data.
 
 
 ## [defer development] Shape of Reports.

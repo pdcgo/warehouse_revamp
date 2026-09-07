@@ -159,10 +159,6 @@ update_cache-->e
 1. its trigered on order created, `order_service` calling --> `settlement_service`
 2. when order cancel, its create `initial_total_cancel` and make opposite of `initial_total`, `order_service` calling --> `settlement_service`
 
-## The Reason `InitOpeningBalance` is existed.
-1. It's to prevent race condition, because we calculate window aggregation of `open_balance` and `open_balance`.
-
-
 
 
 

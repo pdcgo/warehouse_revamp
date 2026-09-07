@@ -545,72 +545,70 @@ replacing it, so the type is withheld — from every role — once a live one ex
 **reverse, then repost**. See the decision for the diagram.
 
 
-### The order seam — what Q1 is actually asking
+### The order seam — what is actually missing, checked in code
 
-The decided arrow ([order-service-calls-settlement](./context_decision.md#order-service-calls-settlement))
-**is not built**, so this is not a question about error handling — it is the whole write path for the
-type every other number is measured against. Until it exists, `sales` on the new report is 0 for every
-order nobody typed an entry for.
-
-**Three patterns for a cross-service write are already shipped, all three in one file**
-([order_place.go](backend/services/selling_service/selling_v1/order_place.go)):
-
-| pattern | the shipped example | what it guarantees | if the far side is down |
-| --- | --- | --- | --- |
-| **in-transaction + compensate** | `stock.Pick`, undone by `stock.Return` | the order does not exist without it | ⛔ **no order** — correct for stock, because you cannot sell what is not there |
-| **call after commit** | *decided for settlement — unbuilt* | nothing | order exists, account missing, **and nothing retries or records that it is missing** |
-| **event after commit** | `OrderPlacedEvent` · `OrderCancelledEvent` | at-least-once, once a broker exists | order exists, account missing, **redelivery repairs it** — and it is rebuildable from the order |
-
-**The two events already fire at exactly the two moments settlement needs**, and both carry `actor_id`,
-`event_id` (derived, so a replay collides) and `occurred_at_unix`. `OrderCancelledEvent.occurred_at_unix`
-**is** the `act_date` that [the-cancel-key-is-order-plus-act-date](./context_decision.md#the-cancel-key-is-order-plus-act-date)
-prescribes. What is missing is **one field**: `OrderPlacedEvent` carries `revenue = order.Total`, not
-`marketplace_total`.
+[order-service-calls-settlement](./context_decision.md#order-service-calls-settlement) decided the shape
+a while ago and nothing has been built. Re-checked against the code, **the gap is three things, and two
+of them already have a pattern in this repo.**
 
 ```mermaid
 flowchart TB
-  subgraph "inside the order transaction"
-    A["insert order and its items"] --> B["record the first order_event"]
-    B --> C["stock.Pick — GATES the order"]
-  end
-  C --> D{"did the transaction commit?"}
-  D -->|"no"| E["stock.Return — explicit compensation"]
-  D -->|"yes"| F["publish OrderPlacedEvent — after commit, never inside"]
-  F --> G["liability_service — charges the order fee"]
-  F -.->|"the seat nobody sits in"| H["settlement — open the account"]
-  H -.->|"needs one field the event does not carry"| M["marketplace_total"]
+  P["OrderPlace — the order commits"] --> ID["san_auth.GetIdentity(ctx) — ALREADY AVAILABLE, never read here"]
+  ID --> COL["orders.created_by_user_id — MISSING"]
+  P --> MT["orders.marketplace_total — ✅ EXISTS, model and proto"]
+  COL --> CALL["SettlementPost — initial_total"]
+  MT --> CALL
+  CALL --> Q{"the call FAILS — then what ?"}
+  Q -->|"the open question"| E(("?"))
 ```
 
-**→ Recommend: settlement SUBSCRIBES, and `marketplace_total` is added to `OrderPlacedEvent`.**
-⚠ This re-opens a decision you already took against me, so it rests only on what has been read since:
+| | state today | |
+| --- | --- | --- |
+| **the amount** | ✅ **`orders.MarketplaceTotal` exists** — on the model ([order.go:71](backend/services/selling_service/selling_service_models/order.go#L71)) and in the contract ([order.proto:228](proto/warehouse/selling/v1/order.proto#L228)). Nothing to build | |
+| **the creator** | ⛔ **`OrderPlace` never reads who is calling** — no actor, no identity, nothing. But `san_auth.GetIdentity(ctx)` is right there and **three services already use it** ([document_service](backend/services/document_service/document_v1/request_upload.go#L45), [expense_service](backend/services/expense_service/expense_v1/service.go#L75)) | it is one read and one column, following a pattern already established |
+| **the idempotency key** | ✅ **already solved by accident.** `SettlementPostRequest.unique_id` is caller-supplied ([the-recipe-is-the-callers-problem](./context_decision.md#the-recipe-is-the-callers-problem)), and `order_place.go` already derives a stable one for its event — `"order-placed:" + order_id`, explicitly *"DERIVED from the order, never a fresh UUID: a redelivery and a replay are the same logical fact and must collide"* | **use the same recipe** — a retry then cannot double-open an account |
+| **the call** | ⛔ does not exist. Nothing in `selling_service` imports `settlement_v1` | |
+| **the failure rule** | ⛔ **unwritten — this is the question** | |
 
-1. **The event was BUILT for this job.** Its own comment says it exists so *"revenue can record what it
-   was expected to make"* — and revenue is settlement's now
-   ([settlement-owns-revenue](./context_decision.md#settlement-owns-revenue),
-   [revenue-service-is-removed-and-statistics-deferred](./context_decision.md#revenue-service-is-removed-and-statistics-deferred)).
-   It is currently published for a consumer that was **deleted**, under a comment reading *"Do not stop
-   publishing it because nothing listens."*
-2. **A call has the IDENTICAL failure and no repair.** Both leave an order with no account. The event
-   route already owns redelivery, `event_id` dedup and settlement's own `unique_id` idempotency — two
-   independent guards. The call route needs a retry, a repair screen and a backfill command written by
-   hand.
-3. **The cancel leg comes free**, with the actor and the act date the prescribed key needs.
-4. **It is one proto field against a new cross-service client.**
+#### The failure rule, and why the neighbour's answer is not automatically the right one
 
-⚠ **The honest counter-argument, stated because it is real.** There is no broker in the dev server —
-[event_sender.go](backend/cmd/app_development/event_sender.go) is a synchronous in-process loopback with
-*"no retries, no redelivery, no dead-lettering"*. So **today the event route is not retried either**;
-the advantage arrives with the broker, and what the choice really buys now is that the shape does not
-have to change when it does. A call is also *synchronous*, so the account exists the instant the order
-page can be opened — with a real broker there is a lag a person could notice on the ledger tab.
+`order_place.go` already takes a position **for its event**, in a long comment: *"A publish failure does
+NOT fail the order … it is logged loudly instead, because the alternative — swallowing it — is how a
+month-end report quietly goes wrong."* ⚠ **That is an argument about an EVENT, and the decision made
+this a CALL.** The two differ in what the failure leaves behind:
 
-**If the call stands, it needs three things stated**, none of which the decision covers: it happens
-**after** the commit (never inside — the settlement row would survive a rolled-back order), a failure
-**logs and does not fail the order**, and something has to make the missing account **visible and
-repairable** — otherwise it is the one failure in this system with no retry and no record.
+| | a lost publish | a failed call |
+| --- | --- | --- |
+| what is missing | a consumer never heard | the account was never opened |
+| who can repair it | a backfill from the order, which still holds every figure | ✅ the same — `marketplace_total` is frozen on the order |
+| how anyone finds out | a log line | a log line |
 
-⚠ **And either way, a rule from [Critique 1](#critique) applies at this seam**: `marketplace_total = 0`
-means *not recorded*, so a phone order opens **no account at all** rather than one at zero.
+**→ Recommend the same answer for the same reason, but state it rather than inherit it**: the order
+commits. `initial_total` records a fact that already happened on the marketplace — refusing the order
+loses it, and **a missing account is repairable where a lost order is not**.
+
+⚠ **What a log line is not, is a queue.** Both paths currently end at *"logged loudly"*, and nothing
+lists the orders whose account never opened. **→ Recommend a nullable
+`orders.settlement_opened_at`** — set when the call succeeds, `NULL` meaning *not yet*. Then the repair
+is a query rather than a grep, a retry job has something to iterate, and a screen can show it. One
+column, and it is the difference between a repairable failure and a theoretically repairable one.
+
+### A missing account — SETTLED, and the section is pruned
+
+✅ **A person fixes it on the order detail page**
+([a-missing-account-is-fixed-by-hand](./context_decision.md#a-missing-account-is-fixed-by-hand)). The
+flag, the `san` repair command and the cross-service reconcile I worked through were all **declined**,
+and the argument for them is deleted rather than left standing (RULE 8b.9).
+
+**Nothing new is built** — [order-detail-manages-the-ledger](./context_decision.md#order-detail-manages-the-ledger)
+already put the ledger on the order page and
+[initial-total-is-postable-by-cs-and-owners](./context_decision.md#initial-total-is-postable-by-cs-and-owners)
+already permits the entry. Discovery is human: the gap surfaces when somebody reconciles against the
+marketplace payout report.
+
+⚠ **The one consequence worth keeping**: manual posting is now the repair path, so **the handler must
+refuse a second LIVE `initial_total`** — the form hiding the option is a convenience, not a control. It
+was already owed and it stops being optional.
 
 ### The ledger write protocol — read against the two decisions taken today
 
@@ -675,106 +673,111 @@ flowchart TD
 
 ## Question
 
-**Five open here** — the reports took four of them with them. ✅ **Q7 is answered**: the drawn
-`Ledger Updated → Event → Broker → webhook` path settles that the fold owns the report
-([the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer)).
-➡ **Q6, Q9 and Q10 moved** to [analytic_context_clarify.md](./analytic_context_clarify.md) with the doc
-that can answer them. ⛔ What is left is what `context.md` alone decides: the order seam that still opens
-no account, the person the report needs and settlement does not record, and `InitOpeningBalance` — which
-[the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer)
-makes **harder** to justify, not easier: if the fold owns the numbers, the row that call protects is not
-this transaction's.
-[initial-total-is-stored-positive](./context_decision.md#initial-total-is-stored-positive),
-[every-entry-names-an-order](./context_decision.md#every-entry-names-an-order),
-[the-cancel-key-is-order-plus-act-date](./context_decision.md#the-cancel-key-is-order-plus-act-date) and
-[only-machines-post-the-cancel](./context_decision.md#only-machines-post-the-cancel). **The schema is no
-longer blocked** — what remains is contract shape and two type questions.
+**Three open here**, and none is about the ledger's mechanics — those are all settled. 🆕 The third arrived by re-routing: the analytic doc was scoped to RECEIVING, so publishing lands here. ⚠ **Numbering was
+compacted** when eight questions were answered or moved in one week; older references in this file's
+narrative point at the numbers they had then, and every answer lives in
+[context_decision.md](./context_decision.md).
 
-1. **What does a FAILED call to settlement do to the order?** ([Critique 3](#critique) · elaborated in
-   [the order seam](#the-order-seam--what-q1-is-actually-asking))
-   [order-service-calls-settlement](./context_decision.md#order-service-calls-settlement) puts settlement
-   on the critical path of order creation, which was the cost I flagged and you accepted.
-   ⛔ **Checked against the code (2026-09-01), and it enlarges the question: THE CALL DOES NOT EXIST.**
-   Nothing in `selling_service` imports `settlement_v1` — the only importers in the repo are the wiring
-   and settlement itself — so **no account is opened for any order today**, and `initial_total` exists
-   only where a person typed it. ⚠ The shipped neighbour has already taken the position I am
-   recommending: [order_place.go:285](backend/services/selling_service/selling_v1/order_place.go#L285)
-   publishes `OrderPlacedEvent` fire-and-forget under the comment *"A publish failure does NOT fail the
-   order"*. ⚠ But it is not a shortcut — that event carries `Revenue: order.Total`, **not**
-   `marketplace_total`, so settlement cannot open an account from it as it stands.
-   **→ I recommend the order still commits.** `initial_total` records a fact that has already happened on
-   the marketplace — refusing to record the order loses it, and a missing account is repairable where a
-   lost order is not. That means a retry and a visible *"account not opened"* state, not a rollback.
-2. ✅ **BUILT AS RECOMMENDED — this is a ratification, not an open design question.**
-   `SettlementPostResponse.created` exists in the proto and is documented there. Left here only because
-   the code taking a position is not the owner deciding one (HARD RULE 8). **Does the write response say
-   whether the row was CREATED or ALREADY EXISTED?**
-   ([a-repeat-is-reported-not-just-absorbed](#a-repeat-is-reported-not-just-absorbed)) The recipe is the
-   caller's problem — but a caller with a broken recipe gets no feedback from anywhere unless the
-   response tells it. ⚠ [the-cancel-key-is-order-plus-act-date](./context_decision.md#the-cancel-key-is-order-plus-act-date)
-   makes this sharper, not smaller: `order_service` now follows a prescribed recipe, and a silent absorb
-   is exactly how it would never learn it got the recipe wrong.
-   **→ I recommend a `created` flag on the response.** One field, and it is the only thing that lets a
-   caller find its own bug.
-3. **Where does a platform WITHDRAWAL live?** Wallet to bank, naming no order — so it is not one of the
-   seven types. [architecture Q7](../../technical/architecture/context_clarify.md#question) asks the same
-   thing. ⚠ **Raised by [every-entry-names-an-order](./context_decision.md#every-entry-names-an-order)**:
-   `order_id NOT NULL` now forbids the obvious workaround, so this needs a real home.
-   **→ I recommend answering it once, in the architecture clarify, and having settlement follow.**
-4. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your example uses that type
-   for a *reimbursement*, which is what I would call problem funding.
-   **→ I recommend yes, one type covers both** — but if it is a claim WE file rather than one the
-   platform pays unprompted, it needs a screen to file it from.
-5. ⛔ **WHERE does "who created the order" live — and what is the user of an account that has no
-   creator?** ✅ The attribution itself is settled and settled the consistent way:
-   [the-user-is-the-order-creator](./context_decision.md#the-user-is-the-order-creator). ⛔ But settlement
-   does not record that person anywhere — `actor_id` is **who wrote the row**
-   ([actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic)) and a fold grouping on it would be
-   wrong in exactly the way that decision rules out.
-   **→ I recommend `order_settlements.creator_user_id`, stamped by the opening row** — one column, set
-   once, no caller burden, and the fold joins log → state inside one service, which HARD RULE 3 permits.
-   Carrying it on every log row instead means every caller supplies it forever and two rows of one
-   account can disagree.
-   ⛔ **And the hole underneath it is real, not theoretical:** an account whose `initial_total` never
-   arrives has no creator. Settlement ignores order status, the exporter may post a `fund` first, and an
-   order with `marketplace_total = 0` opens no account at all — so those rows are real money with nobody
-   to attribute it to. **→ Recommend the report keeps them under an explicit *unattributed* bucket**
-   rather than dropping them: a user report whose columns silently fail to sum to the shop report is the
-   worse failure, and the bucket is also the queue somebody works through.
-6. ➡ **MOVED — `## Shape of Reports.` now lives in [analytic_context.md](./analytic_context.md).**
-   *"Are the cross-team report shapes ADMIN screens?"* is asked where it can be answered:
-   [analytic Awaiting](./analytic_context_clarify.md#awaiting).
-7. ✅ **ANSWERED by the split.** *"Does the WRITE PATH own the report?"* — no. `analytic_context.md`
-   draws `Ledger Updated → Event → Message Broker → http push → Service Webhook`, so a **consumer**
-   builds the tables. Recorded as
-   [the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer).
-   ⚠ It sharpens [Question 8](#question) rather than closing it: the row `InitOpeningBalance` protects
-   belongs to the fold, and the fold is in another process.
-8. ⛔ **The RACE is real — but must the guard be a cross-service call inside the ledger’s transaction?**
-   ✅ `## The Reason `InitOpeningBalance` is existed.` answers *why* it is there: two writers computing a
-   window aggregation of `open_balance` / `close_balance` for one `(day, shop)` would interleave, and one
-   would overwrite the other. That is a genuine lost update and it does need a guard.
-   ⛔ What is still open is the SHAPE of the guard. As drawn it is a network call held inside the ledger’s
-   transaction while the state row is locked, and `init_check → no → rollback` means money that genuinely
-   arrived cannot be recorded because a report row could not be made.
-   **→ I recommend the guard live where the contended row lives, not in the ledger.** Two ways, both
-   cheaper than a distributed one: **serialize the FOLD per key** — the broker’s ordering key is
-   `(shop_id, day)`, so one worker touches one row at a time and the race cannot occur — or, if a row must
-   be created eagerly, do it in the report’s own transaction with `INSERT … ON CONFLICT DO NOTHING`,
-   which is race-free without any lock at all.
-   ⚠ **Either way the ledger must not roll back for it.** The write that is being protected is the
-   report’s, not settlement’s — and one seam up, the same question was answered *the order still commits*.
-   ([Critique B, C](#the-ledger-write-protocol--read-against-the-two-decisions-taken-today))
-9. ➡ **MOVED** — *"does a reconcile RECORD the difference it finds, or repair silently?"* is a
-   question about the fold: [analytic Q2 and the fold contract](./analytic_context_clarify.md#question).
-10. ➡ **MOVED** — *"are `open_balance` / `close_balance` STORED or DERIVED?"* is now
-    [analytic Q4](./analytic_context_clarify.md#question), where the drawn `recount upper date` branch
-    makes it concrete.
+1. **Where does a platform WITHDRAWAL live?** Wallet to bank, naming no order — so it is none of
+   settlement's seven types, and [every-entry-names-an-order](./context_decision.md#every-entry-names-an-order)
+   made `order_id NOT NULL`, which forbids the obvious workaround. It needs a real home.
+   ⚠ **The same question is asked in [architecture Q7](../../technical/architecture/context_clarify.md#question)**,
+   which is the one this file is waiting on.
+   ✅ **It was briefly about to become blocking, and is not.**
+   [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
+   confirmed a screen showing *"a shop's position"*, and that phrase had two referents — under the
+   **wallet** reading a withdrawal is money leaving that wallet, so the screen could not have been built
+   without answering this.
+   [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
+   settled it as the **shortfall**, so **settlement is not waiting on this** — it stays open on its own
+   merits, at its own pace. ⚠ `fund`'s undecided destination (the wallet, or our bank) is unblocked the
+   same way, and equally unanswered.
+   **→ I recommend answering it once, in the architecture clarify, and having settlement follow** —
+   `order_service`, because the wallet is fed by that shop's orders and a withdrawal is reconciled
+   against them.
 
+2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
+   type for a *reimbursement*, which is what I would call problem funding.
+   **→ I recommend yes, one type covers both** — but if it is a claim **we file** rather than one the
+   platform pays unprompted, it needs a screen to file it from, and that is a different thing to build.
 
----
+3. ⛔ **Who publishes a ledger change, and does `SettlementPost` become the publisher?** ➡ **Re-routed
+   here** (RULE 7b) from [analytic Q1](./analytic_context_clarify.md#question) — the owner scoped that
+   doc to *receiving*: *"who send it is other service responsbility and out of this context topic"*. This
+   is the doc for the write path, so the question lands here.
+   ⛔ **Checked in the checkout: nothing publishes anything.** There is no event message in
+   [settlement.proto](../../../proto/warehouse/settlement/v1/settlement.proto), no `EventSender` in
+   `settlement_v1.Service`, and nothing emitted from
+   [post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go).
+   ⚠ **And *"other service"* is worth confirming** — **nothing but `SettlementPost` writes
+   `settlement_logs`**, so if a service outside settlement is meant to publish ledger changes, that is new
+   and belongs in the architecture clarify.
+   **→ I recommend `SettlementPost` publish, after commit, carrying the `settlement_logs` row id and
+   nothing else.** That is what the fold asks for
+   ([the receiver's contract](./analytic_context_clarify.md#-the-receiver-side-once-publishing-is-out-of-scope)):
+   everything else is readable in-process, so a **thin** event keeps the log the source of truth instead
+   of making it a cache the broker holds a stale copy of.
+   ⚠ **Same precedent as `OrderPlacedEvent`** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285) already
+   publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
+   is what makes the reconcile pass ([analytic Q5](./analytic_context_clarify.md#question)) necessary
+   rather than optional: a dropped publish is a movement the report never sees.
+
 
 # Contradiction
+
+## the daily row now has TWO creators, and the older one can refuse money
+
+> ✅ **RESOLVED (2026-09-02) by [init-opening-balance-is-deleted](./context_decision.md#init-opening-balance-is-deleted)** —
+> the fold's upsert is the only creator. **Kept here because the record is the point** (HARD RULE 11):
+> this is the second time a decision moved work between `context.md` and `analytic_context.md` and only
+> one file followed. ⚠ **`context.md` has not been edited yet** — it still draws the call, the rollback
+> and `## The Reason `InitOpeningBalance` is existed.`
+
+> `context.md` `## How Ledger Behave when ledger updated.` *(unchanged)* — inside the ledger's
+> transaction, with the state row locked: *"Call Rpc Stat `InitOpeningBalance`"* → *"Call Success ?"* →
+> **no → Rollback Database Transaction**. And `InitOpeningBalance` itself: *"check daily shop report
+> exist ? → no → **create daily shop report**"*.
+>
+> `analytic_context.md` `### Flow` *(adopted 2026-09-02)* — the fold's own statement creates it:
+> `INSERT INTO shop_settlement_daily_reports … ON CONFLICT (day, shop_id, team_id) DO UPDATE`.
+
+**Both create the same row, and only one of them can exist.** This was not a conflict when it was
+written — it became one when
+[the-fold-owns-the-report-not-the-writer](./context_decision.md#the-fold-owns-the-report-not-the-writer)
+made the consumer the owner of the daily tables, and again when the upsert made row creation atomic and
+race-free without any lock at all.
+
+```mermaid
+flowchart TB
+  W["the settlement write — its own transaction"] --> IOB["InitOpeningBalance — a cross-service call, inside the transaction, state row locked"]
+  IOB --> RB["call fails — ROLLBACK the ledger write"]
+  IOB --> ROW["creates the daily row"]
+  W --> C["commit"] --> EV["event"] --> F["the fold"]
+  F --> UP["INSERT … ON CONFLICT — creates the SAME row"]
+  RB --> X["money that really arrived is not recorded, because a REPORT row could not be made"]
+```
+
+| | `InitOpeningBalance` | the adopted upsert |
+| --- | --- | --- |
+| who runs it | the ledger's transaction, synchronously | the fold, after the commit |
+| what it costs the write | the transaction is as long as another service's worst latency, with the state row **locked** for all of it | nothing |
+| on failure | ⛔ **rolls back the ledger** | the fold retries — the ledger already committed |
+| the race it exists to prevent | two writers computing one `(day, shop)` row | ⛔ **already solved** — `UNIQUE (day, shop_id, team_id)` + `ON CONFLICT` is race-free with no lock |
+| what created the row | a cache-guarded check-then-create across a service boundary — and the cache is **per-process** in the memory implementation, so two instances hold different answers | one atomic statement |
+
+**→ Recommend `InitOpeningBalance` be DELETED**, along with `## The Reason InitOpeningBalance is
+existed.` and the `init_check → rollback` branch. Everything it does is now done by the statement the
+doc already adopted, and done better: no network call inside a transaction, no lock held across it, no
+cache on the correctness path, and no way for a report to refuse a payment that genuinely arrived.
+
+**→ What stops it recurring**: the ledger's write protocol and the fold's write path are **two
+descriptions of one flow living in two files**. A decision that moves work from one side to the other has
+to be applied to both in the same pass — the same rule as HARD RULE 3's *"a migration updates
+`docs/database-schema.md` in the same commit"*.
+
+⚠ **If it stays**, one thing must change regardless of everything above: `init_check → no` must **not**
+roll back. That is the answer already given one seam upstream — a publish failure must not fail the
+order — and it is the same argument: the ledger is evidence, the report is a view of it.
 
 ## the state table is named twice, and the second name is the one that shipped
 
@@ -948,6 +951,13 @@ flowchart LR
 ---
 
 # Awaiting
+
+- ⛔ **`context.md` still contains three things that are now DELETED by decision** —
+  [init-opening-balance-is-deleted](./context_decision.md#init-opening-balance-is-deleted). The
+  `## How Ledger Behave when ledger updated.` flowchart still calls `InitOpeningBalance` inside the
+  transaction and still branches `init_check → no → rollback`, the second diagram still describes what
+  the call does, and `## The Reason `InitOpeningBalance` is existed.` is still there. **Yours to remove**
+  (RULE 7b) — noted so the doc and the decision do not drift.
 
 - ⚠ **`balance` is still undefined, in both grain tables.** It sits beside `open_balance` and
   `close_balance` under *"field must exists"* with no stated meaning. If it is the closing figure it is a

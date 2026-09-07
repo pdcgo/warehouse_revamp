@@ -110,6 +110,7 @@ second time will be slightly different. That drift is the actual cost.
 - [How do I seed categories?](database.md#how-do-i-seed-categories)
 - [Where is my data actually stored?](database.md#where-is-my-data-actually-stored)
 - [Which database do automated tests use?](database.md#which-database-do-automated-tests-use)
+- [What timezone is a `DATE` column in?](database.md#what-timezone-is-a-date-column-in)
 - [What about Redis?](database.md#what-about-redis)
 
 ### Frontend
