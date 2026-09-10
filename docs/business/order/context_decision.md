@@ -77,3 +77,62 @@ typing one picks it. A draft with no shop is refused at creation, not carried an
 **What it closes.** Critique 15, deleted from the clarify file. **What it does not touch:** the shop is not
 in the owner's §Responsbility list, so the list and this decision have to be read together until the
 list gains it.
+
+---
+
+## ensuring-an-order-is-whole-is-order-services-job
+
+> Owner, in chat (2026-09-10) — *"this question should be in order context section, not in settlement,
+> for ensure order half success or not its order service responsbility"*.
+
+**The verdict.** Detecting and repairing a **half-succeeded order** belongs to `order_service`. The
+question *"how is a half-succeeded order found afterwards"* is asked here, not in the settlement or
+architecture clarifies.
+
+```mermaid
+flowchart TB
+  C["the order COMMITTED — it exists and it is correct"]
+  C --> L1["publish OrderPlacedEvent"]
+  C --> L2["SettlementPost"]
+  C --> L3["resolve the product owners"]
+  L1 --> F["the order row is the only thing that survives ALL of these failing"]
+  L2 --> F
+  L3 --> F
+  F --> O["so the order is the only place the absence is detectable — and therefore its owner"]
+```
+
+### Why the order, and not the consumers
+
+Each downstream service can only see what it **received**. None of them can see what it **should have**
+received and did not — settlement cannot enumerate the orders that never opened an account, because it
+never learned they existed. **The order row is the one record that survives every one of these failures**,
+which makes it both the only detector and the right owner.
+
+### Where the question moved
+
+| from | to |
+| --- | --- |
+| `technical/architecture/context_clarify.md` Q2 | a pointer |
+| `business/settlement/context_clarify.md` Awaiting | a pointer |
+| — | **[order Q14](./context_clarify.md#question)** |
+
+### ⚠ What the routing exposed, which the split had hidden
+
+Asked in three places it read as three problems. In one place it is **one gap at three sites**, and the
+third is the worst — and had gone unremarked while it sat in settlement's file:
+
+| site | what is lost | does it look like a failure? |
+| --- | --- | --- |
+| `OrderPlacedEvent` not published | liability never charges the order fee | a log line |
+| `SettlementPost` fails | no settlement account opens | a log line ([the-order-commits-without-settlement](../settlement/context_decision.md#the-order-commits-without-settlement) flagged the finding as its own open half) |
+| ⛔ **product owners unresolved** | the product fee, permanently | ⛔ **no** — `0` is written and read downstream as *"nobody to pay"*, so a transient catalogue blip is indistinguishable from a legitimately unowned line |
+
+### ⛔ What is NOT decided by this
+
+**How** the finder works. The recommendation in [order Q14](./context_clarify.md#question) is a nullable
+timestamp per leg on the order's own row (`WHERE settlement_posted_at IS NULL`), chosen because it needs
+no RPC from another service and over-reports only in the safe direction — a false positive costs one
+idempotent retry. **That is a recommendation, not this decision.**
+
+⚠ And it carries one precondition the stamp alone does not meet: `0` must stop meaning both *unresolved*
+and *nobody to pay*, or the finder reports every legitimate case forever.

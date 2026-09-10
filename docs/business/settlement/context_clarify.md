@@ -4,6 +4,240 @@ What I read out of [settlement_context.md](./context.md), and what has to be set
 can exist. **That doc is yours — this one is mine.** Answered points are **deleted**, so this file is
 always the current open set.
 
+> ## 🔁 The two-grain round — `order_id` is nullable now (2026-09-10)
+>
+> Four edits to `context.md` in one pass: `order_id` **nullable**, `unique_id` no longer scoped to it,
+> `system_adjustment` added as an **eighth type**, and a new `## Two Type Of Settlement.` naming the
+> second grain. ✅ **Three of my open points close here.**
+>
+> | | |
+> | --- | --- |
+> | ✅ **the second grain is NAMED** | *"settlement that addressed to `shop_id`"* — my recommendation was to name it rather than let it read as *"`order_id` happens to be null"*, and it is named |
+> | ✅ **`system_adjustment` reached BOTH lists** | the `settlement_type` list **and** `### Field that tracked.` — the HARD RULE 11 drift I recorded is closed in the same pass it was created |
+> | ✅ **the WITHDRAWAL has a home** | [superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order) said outright *"by this decision the answer cannot be a settlement row with no order"*. It can now — see [Q1](#question), which this may close outright |
+>
+> ⛔ **And it REVERSES two recorded decisions**, which is the owner's to record (RULE 7b) and mine to
+> flag (RULE 12 — a reversed decision is renamed and its references grepped):
+>
+> | decision | said | now |
+> | --- | --- | --- |
+> | [superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order) | *"`order_id` is **NOT NULL** on both settlement tables"* | nullable on the log |
+> | [superseded-the-grain-is-the-order](./context_decision.md#superseded-the-grain-is-the-order) | the grain is *"the order, **absolutely**"* | two grains, order and shop |
+
+## ✅ SETTLED — the idempotency key is GLOBAL
+
+[the-idempotency-key-is-global](./context_decision.md#the-idempotency-key-is-global) (owner,
+2026-09-10) — `UNIQUE (unique_id)`, shipped as
+[`00002_settlement_unique_id_is_global.sql`](../../../backend/services/settlement_service/db_migrations/).
+The finding was that `order_id` went nullable while the index stayed `(order_id, unique_id)`, and
+Postgres treats NULL as distinct from NULL — so shop-addressed rows would have lost the duplicate
+guarantee **silently**, which is the one property all three writers rest on.
+
+⚠ **One thing the fix required that the question did not raise**: the handler's idempotency lookup is
+now global too, so a hit on ANOTHER order would have been returned as this caller's own successful
+write. It is refused (`errUniqueIDTaken`) instead — a wrong success reads as correct, and an error
+does not.
+
+⚠ **Still open beside it**: `order_id` is nullable in the DOC and `NOT NULL` in `00001` and in the
+model. The index is now correct for a column that has not changed yet — safe in that order, and the
+reverse would not have been.
+
+## ⛔ `system_adjustment` in the LOG repairs one class of damage and cannot repair the other
+
+**Q5 is answered** — it is a `settlement_type`, so it is a ledger row, shop-addressed, and it reaches the
+report through the broker like everything else. ⚠ **My report-column recommendation is withdrawn as the
+default**, and what survives of it is a gap this design leaves open rather than an argument against it.
+
+**The adjustment moves the log AND the report by the same +X.** Whether that repairs anything depends on
+whether they were wrong *together*:
+
+```mermaid
+flowchart TB
+  S{"before the repair, do the log and the report AGREE ?"}
+  S -->|"both equally wrong — a fact we never recorded"| A["plus X to each — both become right, and they still agree"]
+  A --> OK["works, and the reconcile still passes"]
+  S -->|"log RIGHT, report behind"| B["the log becomes overstated by X, the report becomes right"]
+  B --> BAD["they now disagree by X, permanently"]
+```
+
+⛔ **The second column is what every known drift cause produces.** A dead-lettered event, a cascade that
+did not run, a genesis seeded wrong, a replay that skipped a day — in all four **the log already holds
+the truth and only the fold was lost**. Adding a log row there does not restore agreement, it destroys
+it: the reconcile (`close_balance(D) = Σ change`) then reports a difference forever, which is how a
+check gets switched off.
+
+| the damage | what actually repairs it |
+| --- | --- |
+| a fact was never recorded at all | ✅ `system_adjustment` — exactly what it is for |
+| a `SettlementPost` never landed | `SettlementPost`, idempotent on the key — not an adjustment |
+| ⛔ **the fold missed a row the log has** | ⛔ **nothing in the drawn flow** — the replay cannot reach it, and an adjustment breaks the reconcile |
+
+**→ Recommend a targeted DAY RE-FOLD from the log** for the third row — re-read one day's rows for one
+scope and rewrite that day. It reaches **any** date because the log has no retention limit, it needs no
+adjustment row, and it leaves the ledger true.
+⚠ **It is a second reader of the log**, which
+[the-replay-seeks-the-broker](./context_decision.md#the-replay-seeks-the-broker) deliberately avoided —
+but that decision was about a **range replay through the webhook**, and this is one day, on demand, for
+repair. Worth deciding on its own rather than inheriting that answer.
+
+## ⚠ Two smaller things the second grain opens
+
+| | |
+| --- | --- |
+| **what does `balance` hold on a shop-addressed row?** | it is *"the running position AFTER this row"*, and it runs inside an account. `order_settlements` is keyed by `order_id`, so a shop-addressed row has **no account to run in** and no state table of its own. `NULL` reads as *not applicable*, `0` reads as *a position of zero*, and only one of those is true |
+| **it appears on no panel** | `OrderSettlementDetail` is *"one order's whole log"*. A shop-addressed row folds into the daily reports (it still carries `shop_id` and `team_id`) but is visible on no screen — so a withdrawal or an adjustment can be posted and never read back |
+
+
+## ✅ `shop_settlements` landed — the lock finding closes, and the GENESIS SEED breaks
+
+`## Settlement State` gained a second table (`shop_id`, `team_id`, `last_balance`). ✅ **The lost-update
+path from the last round is gone** — a shop-addressed writer now has a row to lock, exactly as
+`order_settlements.order_id` serialises order posts.
+
+⚠ **One line still owed: which column is the KEY.** `order_settlements` states that `order_id` is the
+primary key *"enforced by the table's shape rather than by an index somebody could forget"*. This one
+lists two columns and names neither. **→ Recommend `shop_id` as the primary key**, `team_id`
+denormalised beside it — a shop belongs to one team, and a single-column key is what makes the row
+lockable by one value.
+
+### ⛔ The genesis seed reads one state table and there are now two
+
+> [superseded-genesis-is-seeded-from-the-state-table](./context_decision.md#superseded-genesis-is-seeded-from-the-state-table)
+> — *"`SELECT shop_id, team_id, SUM(last_balance) FROM order_settlements GROUP BY shop_id, team_id`"*
+
+Both state tables now back movements that fold into the **same** daily report row, and the seed reads
+only the first.
+
+```mermaid
+flowchart TB
+  O["order_settlements.last_balance — per order"] --> F["the daily fold buckets on shop_id"]
+  S["shop_settlements.last_balance — per shop"] --> F
+  F --> R["shop_settlement_daily_reports.close_balance"]
+  O --> G["the genesis seed reads THIS ONLY"]
+  S -.->|"not read"| G
+  G --> W["day zero opens short by every shop-addressed movement, for every shop"]
+  W --> X["and close minus open equals change still holds on every row"]
+```
+
+**→ Recommend the seed become `SUM(order_settlements.last_balance) + shop_settlements.last_balance`**
+per `(shop_id, team_id)`.
+
+⚠ **This is the worst shape of miss, for two reasons already recorded here:**
+
+| | |
+| --- | --- |
+| it is **cheap exactly once** | the seed runs in the migration and never again |
+| ⛔ **nothing can repair it afterwards** | the [replay floor](./analytic_context_clarify.md#the-replay-floor--elaborated) refuses any `start_date` at or below the genesis day, and `AnalyticReseedGenesis` is recommended but **not decided and not built**. A wrong genesis is therefore permanent and invisible |
+
+⚠ **And it is the third time this exact shape has appeared this week** — a new case added, and the one
+place that enumerates every case not updated with it (HARD RULE 11). Here the enumerating place is a
+**decision**, not a table, which is why a grep for lists would not have caught it.
+
+### ⚠ `last_balance` is narrower here than the name reads
+
+Per `### Settlement Behaviors` table 2, the shop chain runs over **shop-addressed rows only** — it opens
+at −20.000 rather than from the orders' accumulated position.
+
+| | holds |
+| --- | --- |
+| `shop_settlements.last_balance` | the shop's **own direct** movements |
+| `shop_settlement_daily_reports.close_balance` | the shop's **whole** position, order rows included |
+
+**→ Recommend one line saying which.** A reader meeting a table called `shop_settlements` will assume
+the first IS the second — and that assumption is precisely the one that produced the genesis bug above,
+so stating it is what makes the fix read as obvious rather than as a special case.
+
+
+## ✅ `### Settlement Behaviors` grew a second table — and it answers `balance`, then re-asks it
+
+The shop-addressed example carries a running `balance` (`−20.000 → −30.000 → −10.000`), so the question
+from the last round is answered: **it is not NULL, and each grain runs its own chain.**
+
+⛔ **Which means a shop-addressed write has nothing to serialise on.**
+
+An order-addressed write is safe by construction: `order_settlements.order_id` is the PRIMARY KEY and,
+per the migration, *"the row a writer LOCKS to serialise concurrent posts against the same order"*.
+`## Settlement State` still names only that table, so a shop-addressed writer has no equivalent — it must
+read the last shop row and compute the next `balance` with nothing held.
+
+```mermaid
+flowchart TB
+  A["writer A — shop 1"] --> R1["read last shop balance = −20.000"]
+  B["writer B — shop 1"] --> R2["read last shop balance = −20.000"]
+  R1 --> W1["write −10.000, balance −30.000"]
+  R2 --> W2["write +20.000, balance 0"]
+  W1 --> X["both commit — the second row's balance ignores the first"]
+  W2 --> X
+  X --> Y["and no constraint can see it — balance is a computed column, not a checked one"]
+```
+
+**→ Recommend a shop-level state row**, the same shape `order_settlements` has: keyed on `shop_id`,
+holding `last_balance`, created on first post. It gives the writer a row to lock and makes *"this shop's
+current position"* a one-row read rather than a scan to the end of the log.
+
+| | |
+| --- | --- |
+| ⚠ why it is not optional | this is the case the requirement set calls normal — two people on one shop at the same second. Order rows got a lock row for exactly this reason and shop rows did not |
+| ⚠ how to prove it | the `audit-sql` skill and `san_race`. **Not `san_testdb.DB(t)`** — two goroutines inside one transaction never block on each other, so the bug cannot reproduce there |
+| ⚠ the alternative | derive `balance` at read instead of storing it, and the lock disappears with the column. That is a bigger change and it contradicts the order side, which stores it |
+
+## ⛔ "The shop's balance" now names two different numbers, and neither is labelled
+
+Both grains carry `shop_id`, so the daily fold buckets **both kinds** into the same shop row. The log's
+own `balance` column does not.
+
+| | runs over | 01-01 in the doc's own example |
+| --- | --- | --- |
+| `settlement_logs.balance` on a shop-addressed row | **shop-addressed rows only** | −20.000 |
+| `shop_settlement_daily_reports.close_balance` | **every row carrying that `shop_id`** — the order-addressed ones too | −140.000, once `initial_total` folds in |
+
+```mermaid
+flowchart TB
+  O["order-addressed rows — initial_total −120.000"] --> F["the daily fold buckets on shop_id"]
+  S["shop-addressed rows — other −20.000"] --> F
+  S --> L["settlement_logs.balance — runs over these ONLY"]
+  F --> R["close_balance = −140.000"]
+  L --> B["balance = −20.000"]
+  R --> C["two numbers, both about shop 1, both called a balance"]
+  B --> C
+```
+
+**→ Recommend naming them apart in the doc** — the log column is the shop's **own direct movements**, the
+report column is the shop's **whole position**. ⚠ This is the trap already recorded here as
+[one concept, three service names](#one-concept-three-service-names-and-each-is-written-down-as-authoritative),
+and [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
+already warned that **the bare word "balance"** is the one term that had named two different shop-level
+numbers. It now names two again.
+
+⚠ **Also unchanged**: `fund | On Order Completed` in the first table still contradicts General Brief 5 —
+[recorded here](#fund-is-dated-by-an-order-status-the-same-doc-says-settlement-ignores). And the
+shop-addressed table does not use `system_adjustment`, though that is the shop-addressed type par
+excellence — worth one row, since the table is what a reader copies.
+
+
+> ## Re-examined against the SHIPPED code (2026-09-10)
+>
+> **The doc has not moved since 2026-09-07 — the CODE has.** So this pass checked `context.md` against
+> the migration, the models and the proto rather than against the decision log, and found **three things
+> stale, one of them inside this file**. All three are in [Contradiction](#contradiction), grouped by
+> cause (HARD RULE 11).
+>
+> | what is stale | where | worst consequence |
+> | --- | --- | --- |
+> | ⛔ **`source_type` is listed as TWO — three shipped** | doc §Log Shapes 3, §Idempotency — **and this file, twice** | the doc has `order_service` posting the cancel and gives it no source value to post under |
+> | ⛔ **both shape lists are behind the tables** | doc §Log Shapes 1, §Settlement State | `initial_total` is NEGATIVE on the log and POSITIVE on the state, and the doc that defines both says so nowhere |
+> | ⚠ **`fund` is dated *"On Order Completed"*** | doc §Settlement Behaviors row 2 | gated on a status the same doc forbids gating on |
+>
+> ✅ **Nothing in the ledger's MECHANICS moved.** The grain, the seven types, the caller-generated
+> idempotency key, the sign convention and the state-as-projection all match what shipped. This is
+> doc-lag behind decisions you already took — not a design fault, and none of it blocks a build.
+>
+> ⚠ **Two of the five stale sites were MINE and are fixed in this pass** — `### The schema` and
+> `### The proposed contract` both drew `source_type "exporter or manual"`, thirteen days after you
+> decided otherwise. Recorded rather than quietly corrected, because that is the whole point of
+> HARD RULE 11.
+
+
 > **Re-examined after §Idempotency Key, the `fund` clause and §Settlement State.** ✅ **My longest-standing
 > blocker is closed** — the duplicate-write hole. `unique_id` unique with `order_id`, generated by the
 > caller, and the recipe is explicitly out of settlement's scope (owner, in chat). Five recorded:
@@ -398,7 +632,7 @@ erDiagram
     uint64 shop_id
     uint64 team_id
     uint64 actor_id "the human accountable"
-    string source_type "exporter or manual"
+    string source_type "exporter, manual or order"
     string settlement_type "one of seven"
     int64 change "signed. plus is money to us"
     int64 balance "running, after this row"
@@ -485,7 +719,7 @@ erDiagram
     uint64 shop_id
     uint64 team_id
     uint64 actor_id
-    string source_type "exporter or manual"
+    string source_type "exporter, manual or order"
     string settlement_type "one of seven"
     int64 change
     int64 balance
@@ -679,7 +913,7 @@ narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
 
 1. **Where does a platform WITHDRAWAL live?** Wallet to bank, naming no order — so it is none of
-   settlement's seven types, and [every-entry-names-an-order](./context_decision.md#every-entry-names-an-order)
+   settlement's seven types, and [superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order)
    made `order_id NOT NULL`, which forbids the obvious workaround. It needs a real home.
    ⚠ **The same question is asked in [architecture Q7](../../technical/architecture/context_clarify.md#question)**,
    which is the one this file is waiting on.
@@ -724,6 +958,112 @@ narrative point at the numbers they had then, and every answer lives in
 
 
 # Contradiction
+
+## a third source was decided on 2026-08-28 and five sites still say two
+
+> [the-third-source-is-order](./context_decision.md#the-third-source-is-order) *(owner, 2026-08-28)* —
+> *"`source_type` has **three** values, not two. `order_service` writes as **`order`**."* Shipped in
+> [settlement.proto](../../../proto/warehouse/settlement/v1/settlement.proto): `SOURCE_TYPE_EXPORTER`,
+> `SOURCE_TYPE_MANUAL`, `SOURCE_TYPE_ORDER`.
+>
+> `context.md` §Settlement Log Ledger Shapes 3 *(unchanged)* — *"what is `source_type`, its for
+> determined how entry added: by external service, `exporter`, or by manual in frontend, `manual`."*
+
+**The doc contradicts ITSELF, and that is the provable half.** §`Type initial_total and
+initial_total_cancel` says *"when order cancel, its create `initial_total_cancel`, `order_service`
+calling → `settlement_service`"*. So the doc has `order_service` writing a row, and the doc's own list
+of sources holds no value that row could carry.
+
+| site | what it says | whose |
+| --- | --- | --- |
+| §Settlement Log Ledger Shapes 3 | two values | yours |
+| §Idempotency Key → Best Effort | *"so exporter and manual can decide"* — two generators | yours |
+| §Type `initial_total` / `initial_total_cancel` | `order_service` calls, source unstated | yours |
+| `### The schema` | `source_type "exporter or manual"` | ⛔ **mine — fixed this pass** |
+| `### The proposed contract` | the same | ⛔ **mine — fixed this pass** |
+
+**→ RECOMMEND the third value be written into §Log Shapes 3, and Best Effort name three generators.**
+⚠ The Best Effort clause needs more than a third bullet: it says the recipe is always the caller's, and
+that is now true of **two sources out of three**. `order_service`'s recipe is the one settlement DOES
+prescribe — `hash(order_id + act_date + "cancel")`
+([the-cancel-key-is-order-plus-act-date](./context_decision.md#the-cancel-key-is-order-plus-act-date)) —
+because a retried cancel on a fresh key credits the account twice.
+
+**→ What stops it recurring**: the source list and the type list are the two places an enum value has to
+be restated in prose, which is exactly the *"table where every case appears together"* HARD RULE 11
+names. The type list survived its widening (six to seven) because the cancel decision named this doc;
+the source list did not, because that decision named the enum only.
+
+```mermaid
+flowchart LR
+  D["the-third-source-is-order — 2026-08-28"] --> P["proto — 3 values"]
+  D --> M["migration — TEXT, no IN-list, absorbs it"]
+  D -.->|"never applied"| C1["context.md §Log Shapes 3"]
+  D -.->|"never applied"| C2["context.md §Idempotency"]
+  D -.->|"never applied"| C3["this file, twice — fixed"]
+  C1 --> X["the cancel has a writer and no source to write as"]
+  C2 --> Y["the one PRESCRIBED recipe reads as the caller's choice"]
+```
+
+## both shape lists are behind the tables, and the gap hides a SIGN FLIP
+
+> `context.md` §Settlement Log Ledger Shapes 1 — eleven fields: `id`, `unique_id`, `order_id`,
+> `shop_id`, `team_id`, `actor_id`, `source_type`, `settlement_type`, `change`, `balance`, `created_at`.
+>
+> [`00001_create_settlement_ledger.sql`](../../../backend/services/settlement_service/db_migrations/)
+> *(shipped)* — those eleven **plus `occurred_on`, `posted_on`, `reverses_id`, `note`**.
+>
+> `context.md` §Settlement State — three fields: `order_id`, `initial_total`, `last_balance`.
+>
+> Shipped — those three **plus `team_id`, `shop_id`, `created_at`, `updated_at`**. And
+> [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
+> owes it a sixth, `created_by_user_id`, which is **not built in either place**.
+
+**The dangerous one is not a missing column — it is one name meaning two opposite things.**
+
+| | `settlement_logs` | `order_settlements` |
+| --- | --- | --- |
+| `initial_total` | **NEGATIVE** — the account opens in deficit | **POSITIVE** — the sale as a person says it |
+
+The migration calls this *"the ONLY sign flip in the system"* and states it twice, in both tables.
+`context.md` defines **both tables** and states it **nowhere**: its Behaviors table shows `- 120.000`
+and §Settlement State lists `initial_total` bare. Read the owner's doc alone and
+`net received = last_balance + initial_total` computes as `−10.000 + −120.000` — the screens' headline
+figure, with the sign of a loss twice over.
+
+**→ RECOMMEND one line under §Settlement State** — *"`initial_total` is stored POSITIVE, the opposite of
+the log's sign, and the only place the convention inverts"*
+([initial-total-is-stored-positive](./context_decision.md#initial-total-is-stored-positive)).
+**→ And the four log columns added to §Log Shapes 1**, `posted_on` first:
+[posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report) made it the date every
+aggregate reads, and the doc that defines the row does not say it exists.
+
+```mermaid
+flowchart TB
+  L["settlement_logs.initial_total = −120.000"] --> F["the ONE sign flip"]
+  F --> S["order_settlements.initial_total = +120.000"]
+  S --> N["net received = last_balance + initial_total = −10.000 + 120.000 = 110.000"]
+  L -.->|"reading the doc alone"| W["−10.000 + −120.000 = −130.000"]
+```
+
+## `fund` is dated by an order status the same doc says settlement ignores
+
+> `context.md` §General Brief 5 — *"Settlement doesn't rely on our order status. its can be happen
+> anytime."* Recorded as
+> [settlement-ignores-our-order-status](./context_decision.md#settlement-ignores-our-order-status), and
+> the proto repeats it: *"Nothing is gated on `OrderStatus`."*
+>
+> `context.md` §Settlement Behaviors, row 2 — `fund | + 100.000 | `**`On Order Completed`**.
+
+**One line of the doc gates a row on order status and another forbids gating on it.** It is only the
+Desc column, so nothing downstream was built wrong — but this table is the doc's worked example, and a
+worked example is what a reader copies.
+
+**→ RECOMMEND the Desc read *"payout received from the platform"*** — the thing that actually causes the
+row. ⚠ **Row 1's *"On Order Created"* is correct and should stay**: that one IS our own event
+([the-account-opens-at-order-creation](./context_decision.md#the-account-opens-at-order-creation)), which
+is what makes row 2 the only one out of place rather than the table being written on the wrong axis.
+
 
 ## the daily row now has TWO creators, and the older one can refuse money
 
@@ -799,7 +1139,7 @@ new name is arguably the BETTER one — `settlement_states` reads as *this servi
 change, not a slip to correct silently.
 
 **→ RECOMMEND** keep `order_settlements` — it is shipped, it is the grain
-([the-grain-is-the-order](./context_decision.md#the-grain-is-the-order)), and the rename buys a word.
+([superseded-the-grain-is-the-order](./context_decision.md#superseded-the-grain-is-the-order)), and the rename buys a word.
 What stops this recurring is the property the last contradiction already named: **a thing is named
 once, and every later mention links to that line instead of restating it.** This is the second time in
 this context that one concept has been written down under two names.
@@ -951,6 +1291,41 @@ flowchart LR
 ---
 
 # Awaiting
+
+- ➡ **MOVED — *how is a missing settlement account FOUND?* is now [order Q14](../order/context_clarify.md#question).**
+  [the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) flagged
+  it as its own undecided half, and the owner routed it (2026-09-10): *"for ensure order half success or
+  not, its order service responsibility"*. ⚠ **It is one gap at three sites**, and settlement is only one
+  of them — the event publish and the product-owner resolution lose a fee the same way. Deciding it here
+  would have answered a third of it.
+
+
+- ⛔ **§Access Role still defers a policy that is decided AND shipped.** It reads *"for now, there is no
+  specific role for this service. [defer later]"*, but
+  [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up) fixed the set
+  (`ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, CS`, scoped on `team_id`),
+  [initial-total-is-postable-by-cs-and-owners](./context_decision.md#initial-total-is-postable-by-cs-and-owners)
+  fixed who may type `initial_total`, and the proto carries both on every request message.
+  ⚠ The deferral is not harmless wording: [no-role-policy-yet](./context_decision.md#no-role-policy-yet)
+  records that *"no policy" is not a buildable state* — a message with none is DENIED to everybody. A
+  reader following §Access Role literally ships an RPC nobody can call. **Yours to update** (RULE 7b).
+
+- ⛔ **`created_by_user_id` is decided, unbuilt, and it is THIS doc's table.**
+  [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
+  puts it on `order_settlements` — §Settlement State's table, not the analytic doc's — so the shape
+  belongs here even though the column exists for `user_settlement_daily_reports`. The model has no user
+  column, so that report cannot be folded at all. Re-routed from
+  [analytic_context_clarify.md](./analytic_context_clarify.md#awaiting) per RULE 7b: the doc that defines
+  the table is the doc that can answer its shape.
+  ⚠ **And `0` must read as *not recorded***: an account opened by an exporter's `fund` before any
+  `initial_total` has no creator, so the user report needs an explicit **unattributed** bucket or its
+  columns will silently fail to sum to the shop report.
+
+- ⚠ **§Settlement Ledger says *"we have 3 things"* and lists two** — `settlement_logs` and
+  `settlement_states`. ⚠ The name in that list is a third spelling: the table shipped as
+  `order_settlements`, which the doc's own §Settlement State calls it. Already recorded as
+  [the state table is named twice](#the-state-table-is-named-twice-and-the-second-name-is-the-one-that-shipped);
+  noted here only because the count says a third thing is missing and it may be the one that was dropped.
 
 - ⛔ **`context.md` still contains three things that are now DELETED by decision** —
   [init-opening-balance-is-deleted](./context_decision.md#init-opening-balance-is-deleted). The

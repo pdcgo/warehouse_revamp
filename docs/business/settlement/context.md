@@ -3,6 +3,7 @@
 ## Reference.
 1. for analytical design, [read this](./analytic_context.md)
 2. other info, [read this](./meta_context.md)
+3. for rpc context related, [read this](./rpc_context.md)
 
 
 ## The Existing Problems.
@@ -103,8 +104,8 @@ update_cache-->e
 ## Settlement Log Ledger Shapes
 1. It has field :
     - `id`, common primary key id
-    - `unique_id`, string type, custom idempotency key with `order_id`.
-    - `order_id`
+    - `unique_id`, string type, custom idempotency key
+    - `order_id`, its can be nullable
     - `shop_id`
     - `team_id`
     - `actor_id`
@@ -120,6 +121,7 @@ update_cache-->e
     - `external_ads_fee`
     - `affiliate_fee`
     - `marketplace_adjustment`
+    - `system_adjustment`, its used for repair report in our internal system.
     - `other`
     - `initial_total_cancel`
 
@@ -128,6 +130,10 @@ update_cache-->e
     - or by manual in frontend, `manual`
 
 4. `actor_id` is who create the entry, its pic
+
+## Two Type Of Settlement.
+1. settlement that addressed to `order_id`
+2. settlement that addressed to `shop_id`, so, its why `order_id` can be nullable
 
 ## Idempotency Key.
 ### The Problem.
@@ -139,12 +145,20 @@ update_cache-->e
  
 
 ### Settlement Behaviors
-| .. | Order ID | At | Type | Change | Desc | Balance | 
-| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-| .. | 1 | 01-01-2026 20:30 | `initial_total` | - 120.000  | On Order Created (write opposite from `order_marketplace_total` )  | - 120.000
-| .. | 1 | 02-01-2026 09:30 | `fund` | + 100.000  | On Order Completed  | - 20.000
-| .. | 1 | 04-01-2026 09:30 | `external_ads_fee` | - 10.000 | Ads Fee External Platform | - 30.000
-| .. | 1 | 04-01-2026 09:30 | `marketplace_adjustment` | + 20.000 | reimbursement | - 10.000
+1. Settlement That have `order_id`
+    | .. | Order ID | At | Type | Change | Desc | Balance | 
+    | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+    | .. | 1 | 01-01-2026 20:30 | `initial_total` | - 120.000  | On Order Created (write opposite from `order_marketplace_total` )  | - 120.000
+    | .. | 1 | 02-01-2026 09:30 | `fund` | + 100.000  | On Order Completed  | - 20.000
+    | .. | 1 | 04-01-2026 09:30 | `external_ads_fee` | - 10.000 | Ads Fee External Platform | - 30.000
+    | .. | 1 | 04-01-2026 09:30 | `marketplace_adjustment` | + 20.000 | reimbursement | - 10.000
+
+2. Settlement That have not `order_id`
+    | .. | Shop ID | At | Type | Change | Desc | Balance | 
+    | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+    | .. | 1 | 01-01-2026 20:30 | `other` | - 20.000  | unpredicated | - 20.000
+    | .. | 1 | 04-01-2026 09:30 | `external_ads_fee` | - 10.000 | Ads Fee External Platform | - 30.000
+    | .. | 1 | 04-01-2026 09:30 | `marketplace_adjustment` | + 20.000 | reimbursement | - 10.000
 
 
 ## Settlement State
@@ -153,6 +167,10 @@ update_cache-->e
     - `initial_total`
     - `last_balance`
 
+2. We have settlement state, we called `shop_settlements`. it has:
+    - `shop_id`
+    - `team_id`
+    - `last_balance`
 
 
 ## Type `initial_total` and `initial_total_cancel`

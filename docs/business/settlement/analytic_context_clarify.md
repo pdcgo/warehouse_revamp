@@ -4,7 +4,152 @@ What I read out of [analytic_context.md](./analytic_context.md). **That doc is y
 mine.** Answered points are deleted, so this file is always the current open set. Decisions go in
 [context_decision.md](./context_decision.md), one settlement decision log.
 
-## What this round adopted, and what it broke
+## 🔁 This round — two new sections, 2026-09-10
+
+The owner added `## How Rpc Api Deliver Analytical Data.` and
+`## How Developer Repairing Analytical Report if error happen.` Both answer things this file was asking.
+Both also introduce something new.
+
+### ✅ `system_adjustment` closes the hole the reach decision left open
+
+[the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)
+said damage older than the window is repaired *"by other means or not at all"* and did not say which.
+**This section says which**, and the shape is right: a replay for what the broker still holds, a written
+adjustment for what it does not.
+
+```mermaid
+flowchart LR
+  E["error found"] --> Q{"inside the broker window ?"}
+  Q -->|"yes"| R["AnalyticReplayCompute — rebuild it from the events"]
+  Q -->|"no"| A["system_adjustment — write the correction down"]
+```
+
+⛔ **But WHERE the adjustment is written is not stated, and the two readings are opposites.**
+
+| | a `settlement_logs` row | a REPORT-table row |
+| --- | --- | --- |
+| what gets corrected | the ledger | the projection |
+| the ledger stays true | ⛔ **no** — a fake movement is inserted to make a derived table look right | ✅ yes |
+| `order_id NOT NULL` ([superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order)) | ⛔ **which order?** A report-level error spans many. There is no legal value | ✅ not needed — the grain is shop-day / user-day |
+| `order_settlements.last_balance` | ⛔ **moves for an order that never moved**, and the order detail panel shows a phantom row somebody has to explain | ✅ untouched |
+| auditability | ⛔ the repair is indistinguishable from real money | ✅ its own column, visible in every report |
+
+✅ **DECIDED AGAINST THIS (owner, 2026-09-10)** — `system_adjustment` is an eighth `settlement_type`,
+so it is a ledger row. **The recommendation below is withdrawn**, kept because the table above still says
+what each reading costs — and the one cost that turned out to matter is in
+[context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other).
+
+**→ Recommend the REPORT-table reading, explicitly** — a `system_adjustment` column on
+`shop_settlement_daily_reports` and `user_settlement_daily_reports`, at the day grain, never a
+`settlement_logs` row. **The ledger is the truth and the report is the projection; a projection that is
+wrong is repaired in the projection.** Writing the ledger to fix the report inverts the one relationship
+the design rests on — and `order_id NOT NULL` already forbids it, so the ledger reading is not merely
+worse, it is unbuildable without reversing a decision.
+
+```mermaid
+flowchart TB
+  L["settlement_logs — the truth"] --> P["the daily report — a projection"]
+  P --> W["the projection is wrong and cannot be replayed"]
+  W --> G["repair the PROJECTION — a system_adjustment column"]
+  W -.->|"the other reading"| B["repair the TRUTH so the projection comes out right"]
+  B --> X["the ledger now says money moved that never moved"]
+  B --> Y["and it needs an order_id it does not have"]
+```
+
+⚠ **Three consequences that follow either way, and the doc states none of them:**
+
+| | |
+| --- | --- |
+| **it is not in `### Field that tracked.`** | nine entries, and `system_adjustment` is not one. The same drift again — a new case, and the list where every case appears together did not follow (HARD RULE 11) |
+| ⛔ **it breaks the reconcile pass by design** | [Q4](#question) proposes checking `close_balance(D) = Σ change WHERE posted_on <= D`. An adjustment living in the report and not the log makes that check fail **forever, on purpose**. It must become `Σ change + Σ system_adjustment` — otherwise the one mechanism that detects drift reports drift permanently and gets switched off |
+| **who may write it** | it moves reported money with no event behind it. `[ROLE_ROOT, ROLE_ADMIN]`, unscoped — the set [Critique 7](#critique) already asks for on the other two maintenance RPCs |
+
+### ⚠ *"30 days"* — right to be cautious, wrong to be written down
+
+`## How Developer Repairing…` 1 says *"pubsub that limit event can replay is 30 days"*. Pub/Sub's
+**maximum** retention is **31 days** and its **default is 7**. So 30 is safely inside the maximum and
+catastrophically outside the default: on a subscription nobody reconfigured, everything between 8 and 30
+days old routes to *"run the replay"*, and the replay finds nothing to replay.
+
+**→ Recommend the branch test read the CONFIGURED retention, not a literal** — the same
+`message_retention`-in-`settlement_service_metadata` the replay's ceiling already needs
+([Awaiting](#awaiting)). One value, two readers, and neither of them a number typed into prose.
+
+### ⛔ The 30-day branch does not cover GENESIS — and the gap is the first month
+
+The flowchart routes on age alone. That is sufficient **once genesis is older than the window**, and it
+is not sufficient before that — which is exactly the launch period, when the reports are most likely to
+look wrong and *"just rebuild it from the beginning"* is the most likely thing to type.
+
+```mermaid
+flowchart TB
+  D["day 10 after go-live — the reports look wrong"]
+  D --> T["operator: rebuild from the beginning"]
+  T --> C{"is out of 30 days ?"}
+  C -->|"no — D0 is only 11 days ago"| R["run AnalyticReplayCompute"]
+  R --> K["start_date is at or before genesis — the anchor is DELETED"]
+  K --> S["and it fails silently — every rebuilt row still passes close minus open equals change"]
+```
+
+**→ Recommend the floor be a bound on the RPC, not a step in the operator's flowchart.** The two bounds
+in [Awaiting](#awaiting) already cover it. What this section adds is that **the age test alone reads as
+if they were unnecessary** — and for the first month it is the age test that is wrong.
+
+### ⛔ `## How Rpc Api Deliver Analytical Data.` — the sketch collides with the governed shapes
+
+➡ **ROUTING WATCH — a `rpc_context.md` stub appeared beside these docs (2026-09-10, one heading, no
+content).** If the RPC design moves there, this critique moves with it into `rpc_context_clarify.md`
+(RULE 7b: a question goes in the clarify of the doc that can ANSWER it, and a doc that gains a
+downstream doc re-routes what is misfiled). **Nothing is moved yet** — the stub is empty, and *"RPC
+Context Related"* could as easily mean settlement's WRITE surface as the analytic reads. ⚠ One line from
+the owner settles which, and it is cheaper to ask than to move this twice.
+
+Not recorded before this round. The section is at the right level of detail; the shapes are a service's
+worth of divergence from what is already built and enforced.
+
+| | Problem | → Recommend |
+| --- | --- | --- |
+| **1** | ⛔ **`Filter { uint64 team_id }` — the server REFUSES TO BOOT.** `ValidateDescriptors()` asserts `use_scope` is a **top-level** uint field. [`list.proto`](../../../proto/warehouse/common/v1/list.proto) records this as a deliberate deviation from the guideline's own drawing, because a scope tag the interceptor cannot see leaves the RPC silently unscoped | **`uint64 team_id = 1 [(use_scope) = true]` on the request message.** `Filter` keeps `date_range`, `user_id`, `shop_id` |
+| **2** | ⛔ **Neither request declares `request_policy`, so both are DENIED — to everyone, root included.** [no-role-policy-yet](./context_decision.md#no-role-policy-yet) already recorded that *"no policy" is not a buildable state* | The six-role read set `ExpenseDailyRequest` carries |
+| **3** | ⛔ **`Pagination { int64 limit, int64 offset }` is a third pagination model.** `warehouse.common.v1.CommonPagination` is `uint32 page` + `uint32 limit`, capped at **200** by `buf.validate`. Offset appears nowhere in this repo | `CommonPagination`. And `SortType` → **`CommonSortType`**, which exists, with its numbering pinned to the guideline |
+| **4** | ⛔ **A paginated time series contradicts the shape the statement screen already reads.** `ExpenseDaily` / `LiabilityDaily` are deliberately UNPAGINATED — the span is the bound, capped at **366 days**, and the caps *"must be identical"* because the series are read side by side. Sorted `DESC` and paged, page 2 is *older days*, which no date spine can merge | **Drop `Pagination` and `SortType` from `AnalyticTimeSearch`** — `{from, to}`, ascending, sparse, one shared cap |
+| **5** | ⚠ **`google.protobuf.Timestamp At` on a daily bucket** re-opens [the timezone contradiction](#the-bucket-day-is-derived-twice-in-two-timezones-and-the-two-disagree-for-a-third-of-the-clock) — the table stores a DATE, and a Timestamp renders in the *viewer's* zone | **`string at`** — `2026-08-18` / `2026-08` / `2026`, as every other Daily RPC does |
+| **6** | ⚠ **The two-call grouped pattern re-invents `ListResponse`**, which already returns `repeated uint64 ids` **sorted** *and* `items`, in one call. Split, the two calls hit different snapshots under `staleTime: 0` — so a row can rank #1 on a number it no longer shows | **One `SettlementGroupList`** on the governed List shape, the group axis an enum, `data_request` selecting metrics. The split is right when the ids come from a DIFFERENT service — here both halves are one table in one service |
+| **7** | ⚠ **`Team Grouped` crosses team scope**, and `team_id` is `use_scope` and required. Only ROOT/ADMIN in team 1 bypass | Declare it an **admin screen** — no new mechanism needed. [Q6](#question) |
+
+### ⭐ And the tracked-field list does not aggregate uniformly — the grouped RPCs walk into it
+
+`### Field that tracked.` is one list of nine, and `TimeframeMetric` returns all nine under one implied
+rule. **Two different rules are needed:**
+
+```
+initial_total, fund, external_ads_fee, …   →  SUM     (movements)
+open_balance, close_balance                →  LAST    (carried positions)
+```
+
+⛔ **`Team Grouped` is where this breaks, and it has no table of its own** — it must aggregate the shop
+rows, and **those rows are SPARSE**. A shop with no movement on day D has no row on day D, so
+`SUM(close_balance) WHERE day = D` silently drops that shop's standing balance from the team total.
+Monthly and yearly hit the identical wall: a month's `close_balance` is the **last** row in the month,
+never the sum of its days.
+
+```mermaid
+flowchart TB
+  D["team total for day D"] --> S["SUM over the shop rows for day D"]
+  S --> A["shop A moved that day — row exists, close = −5.000.000"]
+  S --> B["shop B did not move — NO ROW"]
+  A --> T["team close = −5.000.000"]
+  B --> T
+  T --> W["shop B's own −3.000.000 standing balance is simply absent"]
+```
+
+**→ Recommend `### Field that tracked.` be split into `movement` (SUM) and `position` (LAST at-or-before)**,
+and every rollup — grain, group, range — state which rule it uses per column. The same HARD RULE 11
+shape as the source list and the type list: one table where every case appears together.
+
+---
+
+## What the PREVIOUS round adopted, and what it broke
 
 ✅ **The two statements went into the doc verbatim**, and with them **A1–A3, B1–B6, C1 and C2 are
 closed** — the syntax runs, `close_balance` has one definition, the cascade is a shift, `prev` filters
@@ -721,6 +866,109 @@ closes with them.
 ---
 ### The replay floor — elaborated
 
+#### Shown, with numbers
+
+⚠ **Corrected (owner, 2026-09-10).** An earlier draft of this said the delete reads *"all of history"*.
+It does not — it is `WHERE day >= @start_date`, bounded exactly as
+[a-replay-deletes-its-range-first](./context_decision.md#a-replay-deletes-its-range-first) specifies.
+**The narrower statement is the true one, and it makes the problem smaller:**
+
+> The DELETE always honours `start_date`, however far back it points.
+> The REBUILD cannot reach further than the broker retains.
+> They only disagree when `start_date` is OLD.
+
+```mermaid
+flowchart LR
+  SD["start_date"] --> DEL["DELETE WHERE day >= start_date — always honours it"]
+  SD --> REB["REBUILD — can only reach back to now minus retention"]
+  DEL --> M{"is start_date inside the retention window ?"}
+  REB --> M
+  M -->|"yes — the everyday case"| OK["both cover the SAME range — correct, and nothing below applies"]
+  M -->|"no"| BAD["the delete outruns the rebuild"]
+```
+
+**So there are three zones, and only the newest one is used in practice.**
+
+```mermaid
+flowchart TB
+  Z1["start_date at or before genesis D0"] --> R1["deletes the anchor — every rebuilt day reopens at 0"]
+  Z2["start_date after D0 but older than retention"] --> R2["deletes days the broker cannot resupply — a hole, and every later day opens too high"]
+  Z3["start_date inside the retention window"] --> R3["delete and rebuild cover the same range — CORRECT"]
+  R3 --> N["the normal operation, and it was never at risk"]
+  R1 --> S["both fail SILENTLY — see step 4"]
+  R2 --> S
+```
+
+⚠ **Zone 2 is the one that is easy to miss**, because genesis survives it and it still breaks: the days
+between `start_date` and the retention edge are deleted and never come back, so the first rebuilt day's
+`prev` lookup skips over the gap and picks up a position that predates the lost movements.
+
+**Step 1 — one shop, as it stands today.** Genesis is not a number someone chose: it is every log row
+from before go-live, added up and written as one row.
+
+```mermaid
+flowchart LR
+  G["genesis 2026-08-31 — close = −5.000.000 — all of 2025 to Aug 2026, compressed into one row"]
+  G --> S1["2026-09-01 — change −100.000 — close = −5.100.000"]
+  S1 --> S2["2026-09-02 — change −200.000 — close = −5.300.000"]
+```
+
+**Step 2 — an operator replays from 15 August**, meaning *"rebuild me the last few weeks"*. That date
+is BEFORE genesis, and nothing refuses it.
+
+```mermaid
+flowchart TB
+  OP[/"AnalyticReplayCompute — start_date = 2026-08-15"/]
+  OP --> DEL["DELETE WHERE day >= 2026-08-15"]
+  OP --> SEEK["seek the broker to 2026-08-15"]
+  DEL --> K1["genesis 08-31 — DELETED"]
+  DEL --> K2["09-01 and 09-02 — deleted, fine, they come back"]
+  SEEK --> M["the broker holds no message older than go-live — only 09-01 and 09-02 return"]
+  K1 --> LOST["the −5.000.000 is now in NEITHER the tables NOR the replay"]
+  M --> LOST
+```
+
+**Step 3 — what the shop reads afterwards.** `prev` finds nothing before 09-01, so the day opens at
+zero.
+
+```mermaid
+flowchart LR
+  S1["2026-09-01 — open = 0 — close = −100.000"]
+  S1 --> S2["2026-09-02 — close = −300.000"]
+  S2 --> W["was −5.300.000, now −300.000"]
+  W --> Q["the shop reads as almost healthy — it is not"]
+```
+
+**Step 4 — and this is why it is the dangerous kind of wrong.** The only check the tables can perform
+on themselves passes on every single row.
+
+```mermaid
+flowchart TB
+  C["the invariant — close minus open equals change"]
+  C --> R1["09-01 — −100.000 − 0 = −100.000 ✓"]
+  C --> R2["09-02 — −300.000 − −100.000 = −200.000 ✓"]
+  R1 --> P["every row passes"]
+  R2 --> P
+  P --> X["the rows agree with EACH OTHER, and every one of them is wrong by the same −5.000.000"]
+  X --> Y["no reconcile against these rows can see it — they are internally perfect"]
+```
+
+**Step 5 — and re-running the migration's seed to repair it makes it worse**, because that query
+returns the position NOW, not the position at `D0`.
+
+```mermaid
+flowchart TB
+  F["genesis is gone — re-run the seed to fix it"]
+  F --> SEED["SUM(last_balance) = −5.300.000 — today's position"]
+  SEED --> W2["written into 2026-08-31, a day BEFORE those movements happened"]
+  W2 --> ADD["the re-fold then adds 09-01 and 09-02 on top again"]
+  ADD --> R3["close = −5.600.000 — the September movements counted twice"]
+```
+
+**→ One comparison removes the whole failure**: refuse `start_date <= genesis_day`. Everything below is
+why that one line is the fix, and why the two obvious alternatives are not.
+
+
 The short form is *"a replay must not delete the genesis row"*. Working it through, the rule is sharper
 than that and one of the obvious fixes is wrong.
 
@@ -1018,9 +1266,182 @@ different column in the code.
 
 ---
 
+## Proposed Design — the reconcile
+
+> ⛔ **`folded_count` is DEFERRED** ([folded-count-is-deferred](./context_decision.md#folded-count-is-deferred),
+> owner 2026-09-10). Everything below about the **value** check stands and is the design. The
+> completeness column is not built, and my claim that *"neither substitutes"* was overstated — the value
+> check localises the failing day on its own. What is given up is the **compensating-error** case only
+> (two offsetting losses on one day), and that is permanent: `folded_count` cannot be backfilled.
+
+The concrete answer to [Q4](#question). Two mechanisms, and they answer different questions: one says
+*"this day is INCOMPLETE"*, the other says *"this chain is WRONG"*. Neither substitutes.
+
+```mermaid
+flowchart TB
+  L["settlement_logs — the truth, complete from day one"]
+  R["the daily report — a stored, incremented copy"]
+  L --> C1["COMPLETENESS: does the day hold every row the log has for it ?"]
+  R --> C1
+  L --> C2["VALUE: does close_balance equal the log's running sum ?"]
+  R --> C2
+  C1 --> W["a work list of days that disagree"]
+  C2 --> W
+```
+
+### ⚠ I am revising `folded_through` — it does not work
+
+My earlier recommendation was a **`folded_through`** column holding the highest `settlement_log.id`
+folded into the row. **That is unreliable, and the reason is ordinary Postgres.** `id` comes from a
+`BIGSERIAL`, which assigns at INSERT and not at COMMIT — so a higher id can commit *before* a lower one.
+A watermark set to the max id then claims to have passed rows it never saw, and the gap is invisible.
+
+```mermaid
+flowchart TB
+  A["txn A takes id 100"] --> B["txn B takes id 101"]
+  B --> C["B commits first — folded, folded_through = 101"]
+  C --> D["A commits later with id 100"]
+  D --> E["a check for id > 101 never looks at 100"]
+  E --> F["the row claims completeness it does not have"]
+```
+
+**→ Use `folded_count` instead** — how many log rows have been folded into this day. It compares against
+`COUNT(*)` from the log, which is exact and has no ordering assumption at all. It is also **symmetric**:
+too few means a lost movement, too many means one was folded twice (a redelivery past the dedup).
+
+| | `folded_through` (withdrawn) | `folded_count` |
+| --- | --- | --- |
+| assumption | ids commit in order — **false** | none |
+| catches a lost row | ⚠ only if its id is above the mark | ✅ always |
+| catches a double-fold | ⛔ no | ✅ yes |
+| cost | one BIGINT | one BIGINT |
+
+⛔ **It must be in the migration that CREATES the tables.** Added later it cannot be backfilled — the
+number of rows already folded into a given day is not recoverable from anything, so every pre-existing
+day would carry a value that is either wrong or unknown.
+
+### The schema
+
+```
+shop_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
+user_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
+```
+
+The fold's own statement already touches the row — it costs one more `SET`:
+
+```sql
+ON CONFLICT (shop_id, team_id, day) DO UPDATE
+SET ...,
+    folded_count = d.folded_count + 1
+```
+
+⚠ **The genesis row's `folded_count` is 0**, and correctly so — no log rows were folded into a synthetic
+day. The reconcile must know to skip the completeness check there while still checking its VALUE, which
+is the check that would have caught
+[the genesis seed reading one state table when there are two](../settlement/context_clarify.md#-the-genesis-seed-reads-one-state-table-and-there-are-now-two).
+
+### The check, as one query per scope
+
+**The log is complete from day one**, so its running sum is the definition — including the prehistory
+that genesis compresses. That is what makes this able to validate genesis itself rather than trusting it.
+
+```sql
+WITH truth AS (
+    SELECT posted_on                                   AS day,
+           COUNT(*)                                    AS rows_in_log,
+           SUM(SUM(change)) OVER (ORDER BY posted_on)  AS running
+    FROM settlement_logs
+    WHERE shop_id = @shop_id AND team_id = @team_id
+    GROUP BY posted_on
+)
+SELECT COALESCE(d.day, t.day) AS day,
+       d.close_balance, t.running,
+       d.folded_count,  t.rows_in_log
+FROM shop_settlement_daily_reports d
+FULL JOIN truth t
+       ON t.day = d.day AND d.shop_id = @shop_id AND d.team_id = @team_id
+WHERE d.close_balance IS DISTINCT FROM t.running
+   OR (d.folded_count IS DISTINCT FROM t.rows_in_log AND d.day > @genesis_day)
+ORDER BY day;
+```
+
+| | |
+| --- | --- |
+| `FULL JOIN` | a day in one and not the other is itself a finding — an inner join would hide exactly the missing-row case |
+| `IS DISTINCT FROM` | `NULL` compares correctly, so a missing side reports rather than silently passing |
+| the window sum | one pass over the scope's log, not one query per day |
+| the genesis guard | the seed row legitimately has no log rows behind it |
+
+### The RPC
+
+Governed shape, and deliberately **not** paginated — the span is the bound, capped at 366 days like every
+other period read, so the settlement reconcile cannot load part of a period and look complete.
+
+```proto
+message SettlementReconcileFilter {
+  string from = 1;          // YYYY-MM-DD, required
+  string to   = 2;          // YYYY-MM-DD, required
+  uint64 shop_id = 3;       // 0 = every shop in the team
+}
+
+message SettlementReconcileRequest {
+  option (warehouse.role_base.v1.request_policy) = { roles: [ROLE_ROOT, ROLE_ADMIN] };
+  uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
+  SettlementReconcileFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+message ReconcileFinding {
+  string date = 1;
+  uint64 shop_id = 2;
+  int64  stored_close = 3;
+  int64  log_close = 4;      // the truth
+  int64  drift = 5;          // stored − log, signed, so the sign says which way
+  int64  stored_rows = 6;
+  int64  log_rows = 7;
+}
+
+message SettlementReconcileResponse {
+  repeated ReconcileFinding findings = 1;   // SPARSE — only days that disagree
+  uint64 days_checked = 2;                  // so "nothing found" is distinguishable from "nothing ran"
+}
+```
+
+⛔ **SPARSE is the design, not an optimisation.** A reconcile that returns every day is a report nobody
+reads; one that returns only breaks is a work list. And `days_checked` is what stops an empty response
+meaning two different things.
+
+✅ **Read-only. It never repairs.** Same rule the performance and concurrency audits follow: the report
+is input to a decision. Repair is `AnalyticReplayCompute`, a day re-fold, or `AnalyticReseedGenesis` —
+each a deliberate act.
+
+### What it catches, and what it cannot
+
+| | |
+| --- | --- |
+| ✅ a lost movement (the dead-letter path) | value AND count disagree |
+| ✅ a cascade that did not run | value disagrees from that day forward |
+| ✅ **a wrong genesis** | every day's value is off by the same amount — the one check that can see it, since the floor makes it otherwise unrepairable |
+| ✅ a replay that skipped a day | count disagrees on that day |
+| ✅ a double-fold | count is too HIGH |
+| ⛔ **a log row that was never written** | — the log and the report agree, and both are short. That is [order Q14](../order/context_clarify.md#question)'s finder, not this |
+| ⚠ **a `system_adjustment` posted to repair a fold-only loss** | reports a difference **forever** — see [the note on system_adjustment](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other). Building this makes that problem visible, which is good, and makes answering it urgent, which is the point |
+
+### Cost, and when it runs
+
+| | |
+| --- | --- |
+| the fold | one extra `SET` on a row it already writes — immeasurable |
+| the reconcile | one window pass over a scope's log. On a shop-year that is thousands of rows, not millions |
+| when | **on demand**, not nightly, to start with. It is a diagnostic, and a nightly job that nobody reads is how a wrong number gets a green tick beside it |
+
+→ **Recommend both**, and `folded_count` **in the create-tables migration** — it is the only part with a
+deadline, because it cannot be backfilled.
+
+---
+
 ## Question
 
-**Five open — and NONE of them blocks starting the build.** ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). ✅ Three fixes landed this round: `user_settlement_reports` renamed, the state tables reduced to `close_balance` alone, and step 4 pointed at the right table. **The tables, the write path, the dedup layer and the replay are all fully specified** — what is left is one payload contract, one lock decision and three build tasks, none of which stops the first migration.
+**Five open.** ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1082,26 +1503,7 @@ built**.
    one transaction never block on each other.
    ([the working](#-balance-state-reports--now-coherent-and-one-real-finding-is-left))
 
-3. ⛔ **Does the replay refuse a `start_date` outside the range it can actually rebuild?** ⬆ **Promoted
-   by the carry decision, which made it worse rather than better** — with a screen reading the
-   position, a destroyed anchor is a wrong number in front of a person, not just a wrong row. Two bounds,
-   not one:
-   ```
-   start_date  >  genesis_day                  -- or the anchor is destroyed
-   start_date  >= now() - message_retention    -- or the seek cannot supply the range
-   ```
-   The ceiling follows from [the-replay-seeks-the-broker](./context_decision.md#the-replay-seeks-the-broker):
-   under a log re-fold a too-early `start_date` was at least *correct*; **under a seek it deletes rows the
-   broker can never redeliver.** ⚠ Two subscription settings are load-bearing and invisible from the
-   code: **`retain_acked_messages` must be `true`** or a backwards seek delivers nothing at all, and
-   retention should be set to its **31-day maximum**, which is then the true replay window.
-   **→ I recommend both bounds refused with named errors**, and `genesis_day` kept in
-   `settlement_service_metadata` rather than shared as folklore between a migration and an RPC.
-   ⚠ **And pair the floor with `AnalyticReseedGenesis`** — with a floor, nothing else can ever repair a
-   wrong genesis figure, and the only correct re-seed is `SUM(change) WHERE posted_on <= D0`, never
-   today's position.
-
-4. ⚠ **Does the past-date position screen exist per USER as well as per shop?** The answer that settled
+3. ⚠ **Does the past-date position screen exist per USER as well as per shop?** The answer that settled
    the carry was about a **shop**. On `user_settlement_daily_reports` the same two columns mean something
    different: *one CS person's lifetime running total of hidden platform cost*, which only ever grows —
    so **the newest CS always looks best and the longest-serving always looks worst**, regardless of
@@ -1113,7 +1515,7 @@ built**.
    Keep them if the same screen exists per person.
    ([the working](#-the-carry-is-settled--what-survives-is-two-smaller-things))
 
-5. ⚠ **A reconcile pass is now load-bearing — is it in scope?**
+4. ⚠ **A reconcile pass is now load-bearing — is it in scope?** ⭐ **Now written as a buildable spec** — [the reconcile design](#proposed-design--the-reconcile-and-the-column-it-needs-in-the-first-migration). ⚠ **It revises my own earlier `folded_through` recommendation**: a max-id watermark is unreliable because `BIGSERIAL` assigns at INSERT and not at COMMIT, so a lower id can commit after a higher one and be skipped forever. **`folded_count` replaces it** — exact, no ordering assumption, and it catches a double-fold too. ⛔ **`folded_count` must be in the migration that CREATES the tables**: it cannot be backfilled, because how many rows were folded into a past day is not recoverable from anything.
    [the-carry-materialises-the-day-boundary-position](./context_decision.md#the-carry-materialises-the-day-boundary-position)
    named the bug class: the stored copy can drift from its own definition and **`close − open = change`
    still holds on every row**, so no invariant on the table detects it. With a screen reading the number,
@@ -1121,6 +1523,29 @@ built**.
    **→ I recommend one RPC that checks a scope against the log it materialises** —
    `close_balance(D) = Σ change WHERE posted_on <= D`, same service, no HARD RULE 3 problem — run on
    demand rather than nightly to start with. It is the only check the eager write path cannot do itself.
+
+
+5. ⚠ **Does the GRAIN go on the wire, or stay a client rollup?** 🆕 `TimeframeType {DAILY, MONTHLY,
+   YEARLY}` puts it on the wire. **The app currently answers the other way**, and it already ships:
+   `ExpenseDaily` / `LiabilityDaily` return a flat daily series and
+   [`daily-statement`](../../../frontend/src/pages/daily-statement/index.tsx) rolls it up with
+   `PeriodGrainPicker` + `bucketOf`. [`period.ts`](../../../frontend/src/lib/period.ts) states the
+   position outright: *"THE SERIES UNDERNEATH IS ALWAYS DAILY … a coarser grain is a ROLLUP the client
+   does"*.
+   ⚠ **Your version fixes a limitation that file admits to** — the 366-day cap means a yearly view
+   reaches one year — so this is a real trade, not a style point.
+   ⛔ **But whichever wins has to win for BOTH screens.** Settlement's series and the statement's are read
+   side by side; if one buckets in SQL (`date_trunc`, in the database's timezone) and the other in the
+   browser (`date.slice`), *"August"* is computed two ways and they disagree exactly where
+   [the timezone contradiction](#the-bucket-day-is-derived-twice-in-two-timezones-and-the-two-disagree-for-a-third-of-the-clock)
+   already bites.
+   **→ I recommend keeping the grain client-side** and leaving the multi-year limitation open, because it
+   is one rollup definition instead of two and touches no other service. **→ If it goes on the wire, do it
+   as a SPAN-UNLOCK** — grain widens the cap (366 days / 60 months / 20 years) rather than being a display
+   preference — and change all three Daily RPCs together.
+   ⚠ **Beside it, one confirmation**: `Team Grouped` crosses team scope, which only ROOT/ADMIN in team 1
+   can do. **→ Declare it an admin screen** — no new mechanism needed, and it is the cheapest of the three
+   options.
 
 ⚠ **The order seam is no longer open here** — it was answered in full
 ([the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) ·
@@ -1331,6 +1756,20 @@ what the decision claimed: *no new fact can enter a closed day*, which is true a
 ---
 
 # Awaiting
+
+- ✅ **SETTLED — the replay has exactly ONE bound, read from Pub/Sub**
+  ([the-replay-is-bounded-by-the-subscription-retention](./context_decision.md#the-replay-is-bounded-by-the-subscription-retention),
+  owner 2026-09-10). `start_date` older than the subscription's `message_retention_duration` is refused
+  with a named error carrying the window.
+  ✅ **The FLOOR is gone entirely** — [genesis-is-not-needed-when-the-log-starts-empty](./context_decision.md#genesis-is-not-needed-when-the-log-starts-empty)
+  removed the anchor, so there is nothing at the beginning left to destroy. `genesis_day` in metadata and
+  `AnalyticReseedGenesis` are both **withdrawn** with it.
+  ⭐ **The bound is READ, not written down**, and that is what makes the doc's own
+  *"is out of 30 days ?"* branch correct too: Pub/Sub defaults retention to **7** days and caps it at
+  **31**, so a literal 30 is wrong in the dangerous direction on any subscription nobody configured. One
+  value, two readers, and neither can drift from the setting.
+  ⚠ **What remains is a build task**: read it at startup, cache it, and **refuse rather than fall back to
+  a default** if the admin API is unavailable — a guard that guesses is not a guard.
 
 - ⛔ **`settlement_event_logs` needs a `day` column, and the doc does not have it yet.**
   [the-replay-cuts-three-tables-on-one-line](./context_decision.md#the-replay-cuts-three-tables-on-one-line)

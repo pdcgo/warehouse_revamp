@@ -149,15 +149,25 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 
 		// IDEMPOTENCY. `.Find` rather than `.First` — a miss here is the NORMAL case, and First would
 		// turn it into an error to unwrap.
+		//
+		// ⚠ Keyed on `unique_id` ALONE (#00002). The index it mirrors is global rather than scoped to
+		// the order, because `order_id` is nullable — a shop-addressed row has no order to scope by,
+		// and Postgres would have let `(NULL, key)` insert twice.
 		var existing settlement_service_models.SettlementLog
 
 		err = tx.
-			Where("order_id = ? AND unique_id = ?", in.OrderID, in.UniqueID).
+			Where("unique_id = ?", in.UniqueID).
 			Limit(1).
 			Find(&existing).
 			Error
 		if err != nil {
 			return dbError(err)
+		}
+
+		// A hit on ANOTHER order is a collision, not a retry. Returning it would hand the caller a
+		// row from an account it never wrote to, labelled as its own successful (idempotent) write.
+		if existing.ID != 0 && existing.OrderID != in.OrderID {
+			return errUniqueIDTaken
 		}
 
 		if existing.ID != 0 {

@@ -28,7 +28,8 @@ type SettlementLog struct {
 	// The running position after this row. Derived; the log stays what it is derived from.
 	Balance int64
 
-	// The caller's idempotency key, unique with OrderID.
+	// The caller's idempotency key, unique across the WHOLE log (#00002) — not scoped to OrderID,
+	// which is nullable for a shop-addressed row and would have let Postgres admit the key twice.
 	UniqueID string
 
 	// The day the money belongs to, and the day we learned it. Apart on a late fee.

@@ -150,7 +150,7 @@ func (UnimplementedSettlementServiceHandler) OrderSettlementDetail(context.Conte
 // SettlementWriteServiceClient is a client for the warehouse.settlement.v1.SettlementWriteService
 // service.
 type SettlementWriteServiceClient interface {
-	// Append one row. IDEMPOTENT on `(order_id, unique_id)` — see SettlementPostRequest.
+	// Append one row. IDEMPOTENT on `unique_id` — see SettlementPostRequest.
 	SettlementPost(context.Context, *connect.Request[v1.SettlementPostRequest]) (*connect.Response[v1.SettlementPostResponse], error)
 }
 
@@ -188,7 +188,7 @@ func (c *settlementWriteServiceClient) SettlementPost(ctx context.Context, req *
 // SettlementWriteServiceHandler is an implementation of the
 // warehouse.settlement.v1.SettlementWriteService service.
 type SettlementWriteServiceHandler interface {
-	// Append one row. IDEMPOTENT on `(order_id, unique_id)` — see SettlementPostRequest.
+	// Append one row. IDEMPOTENT on `unique_id` — see SettlementPostRequest.
 	SettlementPost(context.Context, *connect.Request[v1.SettlementPostRequest]) (*connect.Response[v1.SettlementPostResponse], error)
 }
 

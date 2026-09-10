@@ -6,7 +6,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | decision | what it decided |
 | --- | --- |
 | [the-name-settlement-moves-to-the-payout](#the-name-settlement-moves-to-the-payout) | `settlement_service` is the ORDER settlement; owe-and-balance across teams is `liability_service` |
-| [the-grain-is-the-order](#the-grain-is-the-order) | the settlement ledger's scope is `order_id` — one account per order |
+| [superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order) | the settlement ledger's scope is `order_id` — one account per order |
 | ~~[every-marketplace-order-carries-a-unique-platform-ref](#every-marketplace-order-carries-a-unique-platform-ref)~~ | ⛔ **REVERSED** by [settlement-keys-on-our-order-id](#settlement-keys-on-our-order-id) — not in force |
 | [settlement-publishes-to-the-book](#settlement-publishes-to-the-book) | `settlement_entries` IS the `Settlement Log` — it publishes to the broker and the Financial Ledger projects from it |
 | [the-account-opens-at-order-creation](#the-account-opens-at-order-creation) | the first entry is `initial_total`, the marketplace total with the sign flipped, written when the order is created |
@@ -38,7 +38,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [cancel-zeroes-the-live-sale](#cancel-zeroes-the-live-sale) | `order_settlements.initial_total` holds the LIVE sale — the cancel row zeroes it. Closes the `net received` break above |
 | [revenue-service-is-removed-and-statistics-deferred](#revenue-service-is-removed-and-statistics-deferred) | `revenue_service` is DELETED and its statistics deferred — `/revenue` and `/profit` go, `/statement` becomes warehouse-only, and the order events keep publishing with no consumer |
 | [initial-total-is-stored-positive](#initial-total-is-stored-positive) | `order_settlements.initial_total` stores the sale POSITIVE — the log's `change` stays negative, and the projection holds the only sign flip |
-| [every-entry-names-an-order](#every-entry-names-an-order) | `order_id` is NOT NULL on both tables — an unattributable cost never reaches settlement |
+| [superseded-every-entry-names-an-order](#superseded-every-entry-names-an-order) | `order_id` is NOT NULL on both tables — an unattributable cost never reaches settlement |
 | [the-cancel-key-is-order-plus-act-date](#the-cancel-key-is-order-plus-act-date) | a cancel's `unique_id` is `hash(order_id + act_date + "cancel")` — derived from the ACT date, so a retry is absorbed |
 | [only-machines-post-the-cancel](#only-machines-post-the-cancel) | `initial_total_cancel` is machine-only — `manualTypesFor` stays at six types |
 | [the-third-source-is-order](#the-third-source-is-order) | `source_type` has THREE values — `order_service` writes as `order`, so the cancel rule is enforceable by the data |
@@ -59,7 +59,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-event-webhook-is-open](#the-event-webhook-is-open) | `/event/[sub_id]/push` authenticates nobody — accepted, because it can only corrupt a rebuildable projection |
 | [the-carry-is-stored-not-derived](#the-carry-is-stored-not-derived) | `open_balance` / `close_balance` are real columns maintained by increment — ⛔ reverses the "no carry" half of [open-and-close-are-log-sums-at-the-day-boundaries](#open-and-close-are-log-sums-at-the-day-boundaries). ✅ **Reconciled** by [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) — this is the STORAGE, that one is the MEANING |
 | [init-opening-balance-is-deleted](#init-opening-balance-is-deleted) | the RPC, its section and its rollback branch go — the fold's `INSERT … ON CONFLICT` is the only creator of a daily row |
-| [genesis-is-seeded-from-the-state-table](#genesis-is-seeded-from-the-state-table) | the migration writes a day-zero row per scope from `SUM(order_settlements.last_balance)`, so no live shop opens at a false `0` |
+| [superseded-genesis-is-seeded-from-the-state-table](#superseded-genesis-is-seeded-from-the-state-table) | the migration writes a day-zero row per scope from `SUM(order_settlements.last_balance)`, so no live shop opens at a false `0` |
 | [a-replay-deletes-its-range-first](#a-replay-deletes-its-range-first) | `AnalyticReplayCompute` clears `day >= @start_date` and rebuilds — it never folds on top of what is there |
 | [the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row) | `order_settlements.created_by_user_id`, written once when the account opens — so genesis and replay can both attribute |
 | [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling |
@@ -125,7 +125,12 @@ pages kept reachable during the #221/#222 redesign; the new payout screens want 
 
 ---
 
-## the-grain-is-the-order
+## superseded-the-grain-is-the-order
+
+> ⛔ **SUPERSEDED (2026-09-10) by [an-entry-names-an-order-or-a-shop](#an-entry-names-an-order-or-a-shop).**
+> The grain is no longer *"the order, absolutely"* — a row is addressed to an order OR to a shop. Kept,
+> renamed rather than deleted (RULE 12), because the scope reasoning below is what the new decision had
+> to answer.
 
 > `settlement_context.md` §General Brief 1 — *"its order grain."*
 
@@ -193,7 +198,7 @@ grain that charge has nowhere to post. It is the open question in
 **The verdict.** `Order.order_external_ref_id` stops being an optional note and becomes the **join key**.
 It is required for any order on a marketplace shop, and unique within that shop.
 
-This is what makes [the-grain-is-the-order](#the-grain-is-the-order) workable at all: `order_id` is the
+This is what makes [superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order) workable at all: `order_id` is the
 only scope a settlement entry has, so a statement line that cannot find its order cannot be posted. It
 also closes `§1`'s *"we record that twice in our system"* from the other end — **a duplicate becomes
 impossible to create**, rather than something to detect afterwards.
@@ -1055,7 +1060,7 @@ further row rather than removing one, which is why Reverse is a management actio
 
 ### Why the order page and not a settlement screen
 
-The ledger's grain IS the order ([the-grain-is-the-order](#the-grain-is-the-order)), so the order page
+The ledger's grain IS the order ([superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order)), so the order page
 is the only screen where the whole account is in scope at once. A person adding a fee is looking at the
 order to decide whether the fee is right — the lines, the shipping, what the buyer paid — and none of
 that is on a settlement list.
@@ -1474,7 +1479,12 @@ no sign.
 
 ---
 
-## every-entry-names-an-order
+## superseded-every-entry-names-an-order
+
+> ⛔ **SUPERSEDED (2026-09-10) by [an-entry-names-an-order-or-a-shop](#an-entry-names-an-order-or-a-shop).**
+> `order_id` is NULLABLE now. ⚠ Its closing warning — *"the answer cannot be a settlement row with no
+> order"* — is exactly what the reversal unblocks: the platform withdrawal and `system_adjustment` are
+> both shop-addressed.
 
 > Owner, in chat (2026-08-28), answering the clarify's Q6.
 
@@ -1496,7 +1506,7 @@ flowchart TD
 | `order_settlements.order_id` | `NOT NULL`, unique — one account per order |
 | unattributable cost | **rejected at the write API**, held by `export_service` until a person attributes it |
 
-This keeps [the-grain-is-the-order](#the-grain-is-the-order) absolute: every read is
+This keeps [superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order) absolute: every read is
 `WHERE order_id = ?` with no `OR order_id IS NULL` branch, and no screen has to invent a home for
 order-less rows.
 
@@ -2438,7 +2448,12 @@ transaction. That lock serialises concurrent posts *to one order* and is unrelat
 
 ---
 
-## genesis-is-seeded-from-the-state-table
+## superseded-genesis-is-seeded-from-the-state-table
+
+> ⛔ **SUPERSEDED (2026-09-10) by [genesis-is-not-needed-when-the-log-starts-empty](#genesis-is-not-needed-when-the-log-starts-empty).**
+> No genesis row is seeded: the fold's own `prev` lookup opens a new scope at 0, and 0 is the true
+> position when the log holds nothing older than the tables. ⚠ Its cost argument was also wrong — the log
+> equivalent is a plain `SUM(change) GROUP BY shop_id, team_id`, not the `DISTINCT ON` it claimed.
 
 > Owner, in chat (2026-09-02) — *"for question 2, yes"*, accepting the recommendation on
 > [analytic Q1](./analytic_context_clarify.md#question): what does `open_balance` hold on day one?
@@ -2971,7 +2986,7 @@ flowchart TB
 
 ### ✅ What it confirms — the tension was apparent, not real
 
-[the-grain-is-the-order](#the-grain-is-the-order) said *"the shop wallet balance is derived, not stored
+[superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order) said *"the shop wallet balance is derived, not stored
 — a reconciliation query, not a ledger state"* and *"the shop wallet is not a settlement state"*. **That
 stands unweakened.** `close_balance` was never the wallet, and now nothing claims it is. **There is no
 contradiction to record** — one phrase had two possible referents and the owner picked the one already
@@ -3000,3 +3015,429 @@ merits, at their own pace.
 *where* — into the marketplace wallet, or into our bank. Under the shortfall reading the shortfall is
 the same either way, so that ambiguity is no longer load-bearing on this screen. ⛔ **It is not
 answered**, only unblocked — a future wallet feature would need it.
+
+---
+
+## the-replay-reaches-31-days-and-that-is-accepted
+
+> Owner, in chat (2026-09-10), on *"a repair tool that reaches 31 days cannot repair anything older than
+> a month"* — **"yes, its okay"**.
+>
+> Asked after the owner's own premise that
+> **`AnalyticReplayCompute` is only ever used when something is already wrong**, which was raised as the
+> argument for revisiting [the-replay-seeks-the-broker](#the-replay-seeks-the-broker).
+
+**The verdict.** [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) **STANDS**, and its reach
+limit is accepted deliberately rather than inherited. A replay rebuilds what the broker still holds —
+31 days at most — and **damage older than that is repaired by other means or not at all**. The
+`settlement_logs` re-fold is not adopted.
+
+```mermaid
+flowchart LR
+  D["damage inside the retention window"] --> R["AnalyticReplayCompute — rebuilds it"]
+  O["damage older than the window"] --> N["out of the tool's scope, ACCEPTED"]
+  N --> G["genesis is the only record of that era, and nothing will ever rebuild it"]
+```
+
+### ⚠ The distinction this decision does NOT collapse
+
+**Accepting that the tool cannot REPAIR February is not accepting that asking it to may DESTROY March.**
+They are different events and only the first was decided.
+
+| | |
+| --- | --- |
+| *"I cannot rebuild February"* | ✅ **accepted here.** A stated limit, and an operator can plan around a limit |
+| *"typing February deletes March through today, reports success, and the rows still pass every self-check"* | ⛔ **not accepted, and not implied.** That is the tool corrupting data that was intact |
+
+**→ So the accepted limit makes the guard MORE necessary, not less.** Refusing an out-of-range
+`start_date` is precisely how a stated limit is honoured — the alternative is a tool that silently does
+part of what it was asked and calls it done.
+
+### The spec that now follows, and none of it is optional
+
+| | |
+| --- | --- |
+| **the floor** | `start_date > genesis_day`, refused with a named error. Genesis is now **permanently** the only record of everything older than the window — no later mechanism can recreate it |
+| **the ceiling** | `start_date >= now() − message_retention`, refused with a named error. This is the accepted limit, **stated to the caller** |
+| **`genesis_day`** | `settlement_service_metadata` — written by a migration, read by the RPC, and nothing links them otherwise |
+| **`message_retention`** | ⚠ the same shape: the ceiling's value lives on the SUBSCRIPTION and is assumed by the RPC. It belongs beside `genesis_day`, or the guard drifts from the thing it guards |
+| **`AnalyticReseedGenesis`** | a separate, deliberate operation — `SUM(change) WHERE posted_on <= D0`. With the floor in place nothing else can ever repair a wrong genesis figure, and it must never be reachable by a `start_date` typo |
+| **the four subscription properties** | `retain_acked_messages = true`, retention at its 31-day maximum, dedup cut on `day` (not `created_at`), and the replay not taking the maintenance lock — all from [the-replay-seeks-the-broker](#the-replay-seeks-the-broker), all invisible from the code, all discovered during an incident if wrong |
+
+### ✅ What it DE-ESCALATES
+
+**The archive subscription loses its deadline — for settlement.** It was proposed to extend the replay's
+reach past the broker's retention, and that reach is now declared unnecessary. So settlement no longer
+forces an archive to exist before the window closes.
+
+⛔ **It is not answered, only unforced.** The archive stays open in
+[event_architecture](../../technical/event_architecture/context_clarify.md#critique) on its own merits —
+audit, other services, a definition change needing years — and the *"an archive added later starts at
+now"* property is unchanged. Settlement simply stops being the thing with a clock on it.
+
+```mermaid
+flowchart TB
+  A["the archive question"] --> B["was: settlement's replay cannot reach past 31 days"]
+  A --> C["still: audit, other services, a definition change needing years"]
+  B --> D["RETIRED by this decision — 31 days is enough"]
+  C --> E["stands, and still cannot be added retroactively"]
+```
+
+---
+
+## the-idempotency-key-is-global
+
+> Owner, in chat (2026-09-10) — *"change unique index to unique_id, dont include order_id"*.
+
+**The verdict.** `settlement_logs.unique_id` is **UNIQUE across the whole log**. The index is
+`(unique_id)`, not `(order_id, unique_id)`. Shipped as
+[`00002_settlement_unique_id_is_global.sql`](../../../backend/services/settlement_service/db_migrations/).
+
+### Why it could not stay scoped
+
+`order_id` became **nullable** so a row can be addressed to a shop rather than an order
+(`## Two Type Of Settlement.`). **Postgres treats NULL as DISTINCT from NULL in a unique index**, so the
+scoped form would have admitted the same key twice on shop-addressed rows — silently, with no error and
+two rows.
+
+```mermaid
+flowchart TB
+  A["UNIQUE (order_id, unique_id)"] --> B["order row — (7, 'abc') twice is REFUSED"]
+  A --> C["shop row — (NULL, 'abc') twice is ACCEPTED"]
+  C --> D["the guarantee every writer rests on, gone for exactly the new rows"]
+  E["UNIQUE (unique_id)"] --> F["both refused — one rule, both grains"]
+```
+
+⚠ **The guarantee is what the whole write API rests on** — *"a retry produces the same key and this index
+absorbs it"* — and it is load-bearing for all three writers: the exporter re-imports an overlapping
+statement, a person double-submits, and `order_service` retries a cancel across a timeout, which is the
+dangerous one because a retried cancel on a fresh key **credits the account twice**.
+
+### The spec
+
+| | |
+| --- | --- |
+| the index | `CREATE UNIQUE INDEX settlement_logs_unique_idx ON settlement_logs (unique_id)` |
+| ⚠ **strictly stronger** | a key that was legal on two different orders is now a collision. Intended: every recipe already embeds the order id or the platform reference (`hash(date + order_ref_id)`, and `hash(order_id + act_date + "cancel")`), so all of them are globally unique in practice. A recipe that was not is a caller bug this index surfaces instead of hiding |
+| the handler's lookup | `WHERE unique_id = ?`, no longer `order_id = ? AND unique_id = ?` |
+| ⛔ **a hit on ANOTHER order is refused, not returned** | `errUniqueIDTaken`. Without it the idempotency check would hand the caller a row from an account it never wrote to, **labelled as its own successful write** — worse than an error, because it reads as success |
+| if the migration fails | that is the finding, not an obstacle: two rows already share a key across orders, and one writer's recipe does not identify what it records |
+
+### ✅ What it closes
+
+The clarify's finding that the index was left unstated while `order_id` went nullable — the one place
+where the doc's edit pointed at the right fix (*"custom idempotency key"*, with *"with `order_id`"*
+dropped) without making it.
+
+⚠ **What it does NOT close**: `order_id NOT NULL` is still in `00001` and still in the model. The index
+is now correct for a nullable column that is not yet nullable — safe in that order, and the reverse would
+not have been.
+
+---
+
+## a-shop-addressed-row-is-attributed-to-its-actor
+
+> Owner, in chat (2026-09-10) — *"for question 2, its from identity id"*, answering *who is the "user"
+> for a shop-addressed row, since it has no order and therefore no creator*.
+
+**The verdict.** A shop-addressed row is attributed in `user_settlement_daily_reports` to its
+**`actor_id`** — the identity on the token that posted it. Order-addressed rows keep
+[the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row).
+
+```mermaid
+flowchart LR
+  A["order-addressed row"] --> B["user = order_settlements.created_by_user_id"]
+  C["shop-addressed row — no order, no creator"] --> D["user = actor_id, from the token"]
+  B --> E["user_settlement_daily_reports"]
+  D --> E
+  E --> F["every row has a user — no unattributed bucket, and user totals still sum to shop totals"]
+```
+
+### Why it works without a new column
+
+| | |
+| --- | --- |
+| `actor_id` is already there | `NOT NULL` on `settlement_logs`, set on every row including machine ones |
+| it is already a PERSON | [actor-id-is-the-pic](#actor-id-is-the-pic) — the exporter runs *"under the person's login, no machine identity"*, so no service account appears in a user report |
+| the handler already sets it | `ActorID: actorFrom(ctx)` in `post_entry.go` — the identity id, exactly as named |
+| ⛔ **it removes the unattributed bucket** | which the clarify had recommended. Withdrawn: a bucket is only needed when a row genuinely has nobody answerable, and by `actor-id-is-the-pic` none does |
+
+### ⚠ What it changes about the report's MEANING
+
+`analytic_context.md` says *"the user is **who created the order**"*. That is now true of one grain only.
+The dimension is really **who is ANSWERABLE** — which is what `actor_id` was defined as, so the widening
+is coherent rather than a compromise.
+
+**→ The doc owes one line**, and a screen built on this must not be labelled *per salesperson*: half its
+rows are people who posted an adjustment, not people who sold anything.
+
+### ⛔ Why this is NOT widened to order rows as well
+
+Attributing **everything** to `actor_id` would remove `created_by_user_id` entirely — no unbuilt column,
+no second migration in `selling_service`, and the fold reading a field it already has. It is rejected
+because it splits the measure:
+
+| row | its actor is | |
+| --- | --- | --- |
+| `initial_total` | the order's PIC | ✅ the salesperson |
+| `fund`, posted by the exporter | the person whose login the exporter runs under | ⛔ an operations person |
+
+[the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) is
+`initial_total + fund`, so the two halves would land on **two different people** — a CS person's book
+would carry their sales' expectations and none of their receipts. The order's creator is the only
+attribution under which the gap means anything.
+
+⚠ **So `created_by_user_id` remains decided and unbuilt**, and remains a blocker for the order half of
+`user_settlement_daily_reports`. This decision closes the shop half only.
+
+---
+
+## an-entry-names-an-order-or-a-shop
+
+> Owner, in `context.md` (2026-09-10) — `order_id`, *"its can be nullable"*, and a new section
+> `## Two Type Of Settlement.`: *"1. settlement that addressed to `order_id` · 2. settlement that
+> addressed to `shop_id`, so, its why `order_id` can be nullable"*.
+
+**The verdict.** A settlement row is addressed to an **order** or to a **shop**. `order_id` is nullable;
+`shop_id` and `team_id` are on every row either way.
+
+⚠ **This RENAMES AND REVERSES two decisions** (RULE 12) — both kept below with a pointer here rather than
+deleted, because the reasoning they carried is still the reasoning this one had to answer:
+
+| was | said | now |
+| --- | --- | --- |
+| ~~`superseded-every-entry-names-an-order`~~ | *"`order_id` is **NOT NULL** on both settlement tables. A row that cannot name an order does not reach settlement"* | **this decision** |
+| ~~`superseded-the-grain-is-the-order`~~ | the grain is *"the order, **absolutely**"* | **this decision** |
+
+```mermaid
+flowchart LR
+  A["order-addressed row"] --> B["order_settlements — one account per order"]
+  C["shop-addressed row — order_id NULL"] --> D["shop_settlements — one account per shop"]
+  A --> E["both carry shop_id and team_id"]
+  C --> E
+  E --> F["so both fold into the same daily report row"]
+```
+
+### What it unblocks
+
+| | |
+| --- | --- |
+| ✅ **the platform WITHDRAWAL** | the old decision said outright *"the answer cannot be a settlement row with no order"*. It can now — wallet-to-bank names no order and is shop-addressed |
+| ✅ **`system_adjustment`** | see [system-adjustment-is-a-ledger-type](#system-adjustment-is-a-ledger-type) — a report-level repair spans many orders and could not have been written before |
+| ✅ **`export_service`'s unmatched tray shrinks** | a cost that names no order was previously held until a person attributed it. Some of those are legitimately shop-level and never needed an order |
+
+### What it cost, and what was done about it
+
+| | |
+| --- | --- |
+| ⛔ the idempotency index | `UNIQUE (order_id, unique_id)` admits duplicates when `order_id` is NULL — Postgres treats NULL as distinct from NULL. **Fixed**: [the-idempotency-key-is-global](#the-idempotency-key-is-global) |
+| ⛔ nothing to lock on a shop write | **Fixed**: `shop_settlements` (`context.md` §Settlement State) is the row a shop-addressed writer locks, mirroring `order_settlements` |
+| ⛔ no creator for the user report | **Fixed**: [a-shop-addressed-row-is-attributed-to-its-actor](#a-shop-addressed-row-is-attributed-to-its-actor) |
+| ⚠ **`balance` names two numbers** | the log's `balance` on a shop row runs over shop-addressed rows only; the daily report's `close_balance` folds both grains. Open — see the clarify |
+| ⛔ **not built** | `00001` still has `order_id BIGINT NOT NULL`, and there is no `shop_settlements` table. The doc is ahead of the schema |
+
+---
+
+## system-adjustment-is-a-ledger-type
+
+> Owner, in `context.md` (2026-09-10) — an eighth `settlement_type`: *"`system_adjustment`, its used for
+> repair report in our internal system"*, and in `analytic_context.md`
+> `## How Developer Repairing Analytical Report if error happen.`: out of 30 days → *"Create System
+> Adjustment"* → *"send to message broker"*.
+
+**The verdict.** `system_adjustment` is a **row in `settlement_logs`**, shop-addressed, reaching the
+report through the broker like every other row. It is not a report-table column.
+
+⛔ **Against the clarify's recommendation**, which was a report-only column. That proposal is
+**withdrawn**.
+
+```mermaid
+flowchart LR
+  E["damage found"] --> Q{"inside the broker window ?"}
+  Q -->|"yes"| R["AnalyticReplayCompute"]
+  Q -->|"no"| A["system_adjustment — a log row"]
+  A --> B["published to the broker"]
+  B --> F["the fold applies it, like any other row"]
+```
+
+### ⚠ The class it cannot repair, stated so it is not discovered later
+
+The adjustment moves the log **and** the report by the same amount, so it restores agreement only when
+both were wrong together.
+
+| the damage | log and report | can an adjustment fix it? |
+| --- | --- | --- |
+| a fact we never recorded at all | both short | ✅ yes — this is what it is for |
+| a `SettlementPost` that never landed | both short | ⚠ no — the repair is re-posting, idempotent on the key |
+| ⛔ **the fold missed a row the log has** | **log right, report short** | ⛔ **no** — it overstates the log by exactly what it corrects the report by, and they disagree permanently |
+
+⚠ **The third row is what every known drift cause produces** — a dead-lettered event, a cascade that did
+not run, a replay that skipped a day. **→ Open**: a targeted day re-fold from the log is the recommended
+answer, and it is board question #3.
+
+---
+
+## genesis-is-not-needed-when-the-log-starts-empty
+
+> Owner, in chat (2026-09-10) — *"what if we dont need genesis, read section sql after 'How we computed
+> balance when event arrived'. its covered right"*.
+
+**The verdict.** Correct, and **no genesis row is seeded**. The fold's own `prev` lookup already opens a
+new scope at 0 —
+`COALESCE((SELECT close_balance … WHERE day < @day ORDER BY day DESC LIMIT 1), 0)` — and **0 is the true
+position** for a shop whose log holds nothing before the daily tables existed.
+
+⛔ **This REVERSES [superseded-genesis-is-seeded-from-the-state-table](#superseded-genesis-is-seeded-from-the-state-table)**,
+and retires a cluster of machinery built on it.
+
+```mermaid
+flowchart TB
+  Q{"does settlement_logs hold rows from BEFORE the daily tables exist ?"}
+  Q -->|"no — the case today"| A["the first fold opens at 0, correctly. Genesis is dead weight"]
+  Q -->|"yes"| B["the first fold opens at 0 while the shop holds a real position"]
+  B --> C["every later day understated by the same amount, silently"]
+```
+
+**Why the left branch is where we are**: nothing writes to settlement in production — nothing in
+`selling_service` imports `settlement_v1`, so no order has ever opened an account, and nothing publishes
+events.
+
+### ✅ What it retires
+
+| | |
+| --- | --- |
+| the seed formula | including the bug that it read `order_settlements` and not `shop_settlements` — **dissolved rather than fixed** |
+| ⛔ **the replay's FLOOR** | zone 1 was *"a `start_date` at or below genesis deletes the anchor"*. No anchor, no zone 1 |
+| `AnalyticReseedGenesis` | it existed only because the floor made genesis unrepairable |
+| `genesis_day` in `settlement_service_metadata` | one fewer value defined in one place and assumed in another |
+
+⚠ **What SURVIVES**: the replay's **ceiling**. A `start_date` older than the broker's retention still
+deletes days it cannot rebuild, and the first rebuilt day's `prev` then skips the hole. That bound is
+still owed.
+
+### ⚠ The one guard worth keeping
+
+The conclusion depends on *"the log is empty when the tables are created"*, which is true in production
+and **not guaranteed in the review database** — `SettlementPost` is mounted and the order-detail panel
+can post by hand.
+
+**→ Recommend the create-tables migration run the log-based seed anyway**, because it is correct in both
+worlds and free in ours:
+
+```sql
+INSERT INTO shop_settlement_daily_reports (day, shop_id, team_id, open_balance, close_balance, ...)
+SELECT @cutoff, shop_id, team_id, SUM(change), SUM(change), ...
+FROM settlement_logs WHERE posted_on <= @cutoff
+GROUP BY shop_id, team_id;
+```
+
+| the log is | what happens |
+| --- | --- |
+| empty (production) | **zero rows inserted** — exactly this decision's design |
+| non-empty (a review DB) | a correct opening row, instead of a report that silently disagrees with its own log and reads as a fold bug |
+
+⚠ **And it is one query, not a mechanism**: no metadata key, no floor, no reseed RPC. That is the whole
+difference from what it replaces.
+
+---
+
+## folded-count-is-deferred
+
+> Owner, in chat (2026-09-10) — *"no need folded count for now, its okay"*, on the reconcile design's
+> completeness column.
+
+**The verdict.** The daily tables ship **without** `folded_count`. The reconcile keeps its **value**
+check only.
+
+⚠ **And my case for it was overstated** — recorded here rather than quietly dropped. I wrote that the two
+checks *"answer different questions"* and that *"neither substitutes"*. Re-examined, the value check does
+most of the second one's job as well:
+
+```mermaid
+flowchart LR
+  V["value check — stored close_balance vs the log's running sum, per day"]
+  V --> A["detects the drift"]
+  V --> B["and LOCALISES it — the FIRST day where they diverge is the day the movement was lost"]
+  B --> C["so folded_count was not needed to say WHICH day"]
+```
+
+### What deferring actually costs
+
+| | |
+| --- | --- |
+| ✅ every known drift cause | still caught by the value check — a dead-lettered event, a cascade that did not run, a replay that skipped a day |
+| ✅ which day | still localised — the first divergent day |
+| ⛔ **a COMPENSATING error** | two movements lost on one day that cancel (+50 and −50). The running sum matches and the value check passes. **Only a row count sees it** |
+| ⛔ **a double-fold that nets zero** | same shape |
+| ⚠ cheapness of the check | a count comparison is cheaper than a window sum. Not a correctness argument |
+
+**So the residual risk is compensating errors only**, which need two losses on one scope on one day with
+offsetting signs. Real, and rare enough to be a reasonable thing to not pay for.
+
+### ⚠ What is genuinely given up permanently
+
+`folded_count` **cannot be backfilled** — how many rows were folded into a past day is not recoverable
+from anything. So this is not *"later"*, it is **never, unless the daily tables are rebuilt from
+scratch**. Deferring it is choosing to live without the compensating-error check for the lifetime of
+those tables.
+
+**→ If it is ever wanted, the moment is a table rebuild**, not a follow-up migration.
+
+---
+
+## the-replay-is-bounded-by-the-subscription-retention
+
+> Owner, in chat (2026-09-10) — *"guard start_date is in retention pubsub scope"*.
+
+**The verdict.** `AnalyticReplayCompute` **refuses** a `start_date` older than what the subscription can
+still deliver, and the bound is read from **Pub/Sub's own configured retention** — never a constant in
+the code or a number in prose.
+
+```
+refuse when   start_date  <  now() − subscription.message_retention_duration
+```
+
+```mermaid
+flowchart TB
+  R["AnalyticReplayCompute — start_date"] --> Q{"inside the subscription's retention ?"}
+  Q -->|"yes"| GO["delete the range and seek — the rebuild can supply every day it removed"]
+  Q -->|"no"| NO["REFUSED, named error, nothing touched"]
+  NO --> A["the caller is told the window, and reaches for system_adjustment instead"]
+```
+
+### Why the value is READ and not written down
+
+Pub/Sub's retention **defaults to 7 days** and its maximum is **31**. A hardcoded 30 is therefore wrong
+in the dangerous direction on any subscription nobody configured: it would admit a `start_date` three
+weeks past what the broker can deliver, and the replay would delete days it cannot rebuild.
+
+⚠ **The same number backs `analytic_context.md`'s repair branch** — *"is out of 30 days ?"*. One value,
+two readers, and reading it from the subscription makes both correct at once:
+
+| retention actually set to | the guard | the repair branch |
+| --- | --- | --- |
+| 31 days (the maximum) | refuses older than 31 | routes >31 to `system_adjustment` |
+| 7 days (the untouched default) | refuses older than 7 | routes >7 to `system_adjustment` |
+| changed later | **both follow automatically** | ✅ no edit anywhere |
+
+**That self-correction is the point.** A literal has to be kept in step with a setting nobody looks at;
+a read cannot drift from it.
+
+### The spec
+
+| | |
+| --- | --- |
+| the source | the subscription's `message_retention_duration`, from the Pub/Sub admin API |
+| when read | at startup, cached — it is a configuration value, not a per-request fact. ⚠ A process that has run since before a retention change holds a stale bound until restart, which errs toward refusing |
+| the error | a **named** one carrying the window (*"the replay can reach back to 2026-08-10"*), never a bare `invalid_argument` — an operator reaching for this mid-incident needs to be told the limit, not that their input is malformed |
+| ⛔ **it replaces a literal, it does not add one** | if the admin API is unavailable, refuse rather than fall back to a default. A guard that guesses is not a guard |
+
+### ✅ What this completes
+
+The replay now has **exactly one bound**, not two. The floor died with
+[genesis-is-not-needed-when-the-log-starts-empty](#genesis-is-not-needed-when-the-log-starts-empty) —
+no anchor, nothing to destroy at the beginning — and this is the survivor.
+
+⚠ **What it does NOT do**: it prevents damage, it does not widen reach. Repairing something older than
+the window is still `system_adjustment` — with the class that cannot repair
+([system-adjustment-is-a-ledger-type](#system-adjustment-is-a-ledger-type)), which stays open.

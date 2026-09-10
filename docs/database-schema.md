@@ -1311,7 +1311,7 @@ erDiagram
     text settlement_type "one of seven"
     bigint change "signed. POSITIVE IS MONEY TOWARD US"
     bigint balance "running, after this row"
-    text unique_id "caller-generated. UNIQUE with order_id"
+    text unique_id "caller-generated. UNIQUE across the whole log"
     date occurred_on "the day the money belongs to"
     date posted_on "the day we learned it"
     bigint reverses_id "points BACKWARDS, or NULL"
@@ -1354,7 +1354,7 @@ sale's, so the running sum returns to zero on its own.
 
 | index | answers |
 | --- | --- |
-| `settlement_logs_unique_idx` (order_id, unique_id) | ⚠ **the idempotency key.** All three writers retry; this is what makes a retried cancel absorb instead of crediting twice |
+| `settlement_logs_unique_idx` (unique_id) | ⚠ **the idempotency key, GLOBAL** (`00002`). All three writers retry; this is what makes a retried cancel absorb instead of crediting twice. Scoped to `(order_id, unique_id)` until `order_id` became nullable — Postgres treats NULL as distinct from NULL, so the scoped form would have admitted a shop-addressed key twice, silently |
 | `settlement_logs_order_idx` (order_id, id) | the panel's running balance, oldest first |
 | `settlement_logs_team_occurred_idx` / `_shop_occurred_idx` | a period's movement for a team or a shop |
 | `order_settlements_team_balance_idx` (team_id, last_balance) | the list screen, ranked by loss |
@@ -1362,7 +1362,7 @@ sale's, so the running sum returns to zero on its own.
 
 ### Two things the schema deliberately does NOT hold
 
-- **`order_id` is NOT NULL** ([every-entry-names-an-order](business/settlement/context_decision.md#every-entry-names-an-order)).
+- **`order_id` is NOT NULL** ([superseded-every-entry-names-an-order](business/settlement/context_decision.md#superseded-every-entry-names-an-order)).
   A cost that cannot name an order never reaches settlement. ⚠ This is also why a platform
   **withdrawal** — wallet to bank, naming no order — has no home here and is still an open question.
 - **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the

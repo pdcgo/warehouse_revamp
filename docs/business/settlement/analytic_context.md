@@ -187,6 +187,7 @@ unlock-->e
 - `external_ads_fee`
 - `affiliate_fee`
 - `marketplace_adjustment`
+- `system_adjustment`, its used for repair report in our internal system.
 - `open_balance`
 - `close_balance`
 
@@ -237,37 +238,111 @@ unlock-->e
 
 
 
-## How Rpc Api Deliver The Data.
-
-
-## [defer development] Shape of Reports.
-
-1. Timeframe Shape.
-
-    its have mode:
+## How Rpc Api Deliver Analytical Data.
+### How We Handle Timeframe Related Metric
+1. `AnalyticTimeSearch`, This rpc for handle:
     - daily
     - monthly
     - yearly
 
-    its have filter:
-    - daterange filter
-    - team filter
-    - shop filter
-    - customer service filter
+    What requests shape:
+    ```proto
+    
+    enum SortType {
+        DESC
+        ASC
+    }
 
-2. Group by Team Shape.
+    enum TimeframeType {
+        DAILY
+        MONTHLY
+        YEARLY
+    }
 
-    its have filter:
-    - daterange filter
+    message DateRangeFilter {
+        google.protobuf.Timestamp start_date
+        google.protobuf.Timestamp end_date
+    }
 
-3. Group by Shop Shape.
+    message Pagination {
+        int64 limit
+        int64 offset
 
-    its have filter:
-    - daterange filter
+    }
 
-4. Group by User Shape.
+    message Filter {
+        DateRangeFilter date_range
+        uint64          user_id
+        uint64          shop_id
+        uint64          team_id
+    }
 
-    its have filter:
-    - daterange filter
+    message Request {
+        SortType        sort_type
+        TimeframeType   timeframe_type
+        Filter          filter
+        Pagination      pagination
+    }
+
+    message TimeframeMetric {
+        google.protobuf.Timestamp At
+        ... // all field in ### Field that tracked.
+    }
+
+    message Response {
+        repeated TimeframeMetric datas
+    }
+
+    ```
+    - `TimeframeMetric` contain [this](#field-that-tracked)
+
+
+
+
+### How We Handle Grouped Metric.
+
+We serve 3 grouped thing with contain [this field](#field-that-tracked):
+1. Team Grouped
+2. Shop Grouped
+3. User Grouped
+
+
+There is 2 rpc must exists.
+1. `AnalyticGroupSearch`
+2. `AnalyticGroupMetric`
+
+How Frontend Get Grouped Data.
+```mermaid
+sequenceDiagram
+participant fe as Frontend
+box Rpc Api Backend
+    participant search as AnalyticGroupSearch
+    participant metric as AnalyticGroupMetric
+end
+
+fe->>+search: request, send filter, sorting & what grouped
+search-->>-fe: return sorted grouped ids
+fe->>+metric: send grouped ids
+metric-->>-fe: return metric data of ids
+
+```
+
+
+## How Developer Repairing Analytical Report if error happen.
+1. Why 30 days ?, because we use pubsub that limit event can replay is 30 days.
+```mermaid
+flowchart TD
+s(("Start"))
+e(("End"))
+
+s-->err["Error Happen"]
+err-->isout30{"is out of 30 days ?"}
+isout30-->|yes|adj["Create System Adjustment with `system_adjustment`"]
+    adj-->event["send to message broker"]
+isout30-->|no|replay["run `AnalyticReplayCompute`"]
+
+event-->e
+replay-->e
+```
 
 

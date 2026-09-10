@@ -324,8 +324,13 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 
 1. **Is a payment between teams a FIFTH source into the book, or an Other Expense?** ([Critique 5](#critique))
    **→ I recommend a fifth source — a payment is neither a cost nor a sale.**
-2. **What should happen when one order half-succeeds across five services?** ([Critique 1](#critique))
-   **→ I recommend it exists completely or not at all — draw, gate, commit, release on failure.**
+2. ➡ **MOVED — *how is a half-succeeded order found?* is now [order Q14](../../business/order/context_clarify.md#question).**
+   (owner, 2026-09-10: *"for ensure order half success or not, its order service responsibility"*.) RULE 7b —
+   this doc cannot answer it: the order is what is half-done, and `order_service` owns the order.
+   ⚠ **What stays HERE is the architecture half, and it is a CONTRADICTION rather than a question** —
+   [the gate runs before the draw, and this doc says it cannot](#the-gate-runs-before-the-draw-and-this-doc-says-it-cannot).
+   My `draw → gate → commit → release` recommendation described an ordering the shipped code deliberately
+   inverted, so it is **withdrawn** as written.
 3. **Who enforces the reserve — the service owning the number, or the one owning the quantity?**
    ([Critique 3](#critique)) **→ I recommend the number is the product's, the check is inventory's.**
 4. **Is purchasing its own service, or the restock document?**
@@ -365,6 +370,60 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 ---
 
 # Contradiction
+
+## the gate runs before the draw, and this doc says it cannot
+
+> `context_clarify.md` [§One cross-team order, finalized](#one-cross-team-order-finalized) — *"Note over
+> O,I: **the amount is only known AFTER the draw, so the gate cannot run before it**"*, and immediately
+> below: *"**Step 7 is the whole design.** The draw must happen before the gate can run, so the draw must
+> be reversible."*
+>
+> [`order_place.go`](../../../backend/services/selling_service/selling_v1/order_place.go) *(shipped)* —
+> the gate runs **first**, on a plain read, and the code argues for it: *"Before the transaction, for the
+> same reason the cost read is — it is a read, and holding the order's row lock across another service's
+> call buys nothing. **The staleness that allows is exactly the overshoot the `debt < limit` rule already
+> permits.**"*
+
+**Which one I think is wrong: mine.** The premise *"the amount is only known after the draw"* is true of
+the EXACT amount and false of the amount the gate needs. `UnitCosts` gives a good-enough figure before
+anything is written, and the credit rule is a threshold with a permitted overshoot — so a gate evaluated
+on a slightly stale cost is within a tolerance the rule already grants.
+
+```mermaid
+flowchart TB
+  A["this doc: draw first, because only then is the amount known"]
+  A --> B["so the draw must be REVERSIBLE"]
+  B --> C["so a compensation is mandatory, and that is the whole design"]
+  D["the code: read UnitCosts, gate, THEN write"]
+  D --> E["nothing is drawn when the gate refuses"]
+  E --> F["no compensation needed on the refusal path at all"]
+  C -.->|"solves a problem"| G["that the shipped ordering does not have"]
+  F --> G
+```
+
+⚠ **The consequence is not cosmetic — it inflates the failure story.** `draw → gate → commit → release`
+makes a compensation the centrepiece, because a refusal happens *after* stock has moved. The shipped
+`gate → write → draw → commit` only needs a compensation for the rarer case where the pick committed and
+the transaction did not — which is exactly the one
+[order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go) implements, with
+`picked` set *before* the call so a timed-out pick is still undone.
+
+**→ RECOMMEND the sequence diagram be corrected to the shipped ordering, and my `draw → gate → commit →
+release` recommendation withdrawn.** What survives of it is one true sentence — *an order exists
+completely or not at all* — and the code already delivers that for everything inside the transaction.
+
+**→ What stops it recurring**: this doc drew a sequence for services that did not exist yet, and was
+never re-read against them once they did. ⚠ **It is the same failure this file's own rollup rule names**
+— *"the RANK is checked against the code, not only against the docs"* — applied to a diagram rather than
+a ranking. **A sequence diagram of a flow that is now built should be re-read the same way**, or it keeps
+arguing from a premise the implementation has already settled.
+
+⚠ **And the open half moved out.** *How a half-succeeded order is found* is
+[order Q14](../../business/order/context_clarify.md#question) now (owner, 2026-09-10) — it is
+`order_service`'s to answer, and it is about the POST-commit legs, which this diagram does not draw at
+all.
+
+
 
 ## the gate was left in a service that can no longer refuse
 

@@ -26,7 +26,7 @@ npx vitest run --project=storybook src/pages/order-settlement                   
 | decision | where it lives now |
 | --- | --- |
 | [initial-total-is-stored-positive](../../business/settlement/context_decision.md#initial-total-is-stored-positive) | the projection in `post_entry.go` — the ONLY sign flip |
-| [every-entry-names-an-order](../../business/settlement/context_decision.md#every-entry-names-an-order) | `order_id BIGINT NOT NULL` on both tables |
+| [superseded-every-entry-names-an-order](../../business/settlement/context_decision.md#superseded-every-entry-names-an-order) | `order_id BIGINT NOT NULL` on both tables |
 | [the-cancel-key-is-order-plus-act-date](../../business/settlement/context_decision.md#the-cancel-key-is-order-plus-act-date) | `settlement_logs_unique_idx`, proved by `TestRace_SettlementPost_AbsorbsConcurrentRetries` |
 | [only-machines-post-the-cancel](../../business/settlement/context_decision.md#only-machines-post-the-cancel) | `errCancelNotMachine`, enforceable because of [the-third-source-is-order](../../business/settlement/context_decision.md#the-third-source-is-order) |
 
@@ -130,7 +130,7 @@ specs. **One is ⛔ reversed** — read the index table there first. The load-be
 | --- | --- |
 | [the-name-settlement-moves-to-the-payout](../../business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout) | the shipped service renames to `liability_service` — folder, packages, proto package, 9 RPCs, 4 tables, goose version table, `features/settlement/`, i18n keys, and `/settlement*` routes **deleted**. ⚠ **must land before any `warehouse.settlement.v1` payout file exists** |
 | [settlement-owns-revenue](../../business/settlement/context_decision.md#settlement-owns-revenue) | `revenue_service` is RETIRED — it was the same subscription freezing the same fact twice |
-| [the-grain-is-the-order](../../business/settlement/context_decision.md#the-grain-is-the-order) · [the-state-holds-initial-total-and-last-balance](../../business/settlement/context_decision.md#the-state-holds-initial-total-and-last-balance) | `settlement_logs` scoped `order_id`; `order_settlements` holds `order_id`, `initial_total`, `last_balance` |
+| [superseded-the-grain-is-the-order](../../business/settlement/context_decision.md#superseded-the-grain-is-the-order) · [the-state-holds-initial-total-and-last-balance](../../business/settlement/context_decision.md#the-state-holds-initial-total-and-last-balance) | `settlement_logs` scoped `order_id`; `order_settlements` holds `order_id`, `initial_total`, `last_balance` |
 | [the-unique-id-is-generated-outside-settlement](../../business/settlement/context_decision.md#the-unique-id-is-generated-outside-settlement) · [the-recipe-is-the-callers-problem](../../business/settlement/context_decision.md#the-recipe-is-the-callers-problem) | `UNIQUE (order_id, unique_id)`. The recipe is the caller's, not settlement's |
 | [hidden-cost-is-left-in-the-balance](../../business/settlement/context_decision.md#hidden-cost-is-left-in-the-balance) | the unexplained gap is real loss, left aggregated. **No `platform_fee` type** — the platform never itemises it |
 | [a-residual-balance-is-normal](../../business/settlement/context_decision.md#a-residual-balance-is-normal) · [a-correction-is-a-new-row](../../business/settlement/context_decision.md#a-correction-is-a-new-row) | no settled flag, no worklist, no edit, no delete |

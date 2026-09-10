@@ -473,6 +473,89 @@ sequenceDiagram
     **→ I recommend "we do not manage the debt; we do consult it before placing" —** eight words that
     keep the gate from reading as a scope violation to the next person who tidies this.
 
+14. ⛔ **NEW — how is a HALF-SUCCEEDED order found afterwards?** ➡ **Re-routed here** (RULE 7b, owner
+    2026-09-10): *"for ensure order half success or not, its order service responsibility"*. It was asked
+    in [architecture Q2](../../technical/architecture/context_clarify.md#question) and tracked against
+    settlement; neither doc can answer it, because the order is what is half-done and `order_service` owns
+    the order.
+
+    ✅ **The PRE-COMMIT half is already answered, in code, and better than the docs credit.**
+    [order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go) runs the credit
+    gate before the transaction, writes the order and takes the stock pick **inside** it — *"the pick must
+    succeed before the order is committed, so not enough stock means this transaction rolls back and NO
+    ORDER EXISTS"* — and compensates with `stock.Return` when the pick committed but the transaction did
+    not. There is nothing open here.
+
+    ⛔ **What is open is the POST-COMMIT half, and it is ONE gap at THREE sites.**
+
+    ```mermaid
+    flowchart TB
+      C["ORDER COMMITTED — it exists, and it is correct"]
+      C --> E1["publish OrderPlacedEvent"]
+      C --> E2["SettlementPost — initial_total"]
+      C --> E3["catalog.Snapshots — resolve the product owners"]
+      E1 -->|"fails"| L1["logged loudly — liability never charges the order fee"]
+      E2 -->|"fails"| L2["logged loudly — no settlement account is opened"]
+      E3 -->|"fails"| L3["the owner rides as 0, and liability reads 0 as nobody to pay"]
+      L1 --> Q["nothing anywhere LISTS the orders in this state"]
+      L2 --> Q
+      L3 --> Q
+    ```
+
+    | site | what is lost | does it even look like a failure? |
+    | --- | --- | --- |
+    | `OrderPlacedEvent` not published | the order fee is never charged | a log line, and nothing else |
+    | `SettlementPost` fails | the marketplace account never opens | a log line ([the-order-commits-without-settlement](../settlement/context_decision.md#the-order-commits-without-settlement) decided this is correct, and flagged the finding as its own open half) |
+    | ⛔ **product owners unresolved** | the product fee is never charged, **permanently** | ⛔ **no.** `0` is written and read downstream as *"nobody to pay"* — a transient catalogue blip is indistinguishable from a legitimately unowned line |
+
+    **→ I recommend a FINDER per leg, not a saga** — one query listing committed orders with no
+    downstream row, run on demand. It needs no outbox, no distributed transaction and no new mechanism,
+    and all three legs already assume something like it exists. **The order is the right owner** because
+    it is the only row that survives every one of these failures and therefore the only place the
+    absence is detectable.
+
+    ⚠ **The third site needs one extra thing**: `0` must stop meaning two things. Either an unresolved
+    owner is stamped distinctly from a genuinely unowned line, or the finder cannot tell them apart and
+    will report every legitimate case forever.
+
+    #### ⚠ The finder needs both sides — and one design keeps it entirely order's
+
+    *"Which committed orders have no settlement account"* reads `orders` (selling_service) and
+    `order_settlements` (settlement_service), and **HARD RULE 3 forbids the join**. Settlement has no RPC
+    that answers it either: `OrderSettlementList` filters by shop, date and free text, never by a set of
+    order ids, and there is no `OrderSettlementByIds`.
+
+    | | ask settlement | **stamp the order** |
+    | --- | --- | --- |
+    | how | a new `OrderSettlementByIds` \u2014 order passes ids, settlement returns which have accounts | `orders.settlement_posted_at`, written after a successful post. The finder is `WHERE settlement_posted_at IS NULL` |
+    | new RPC on another service | \u26d4 yes | \u2705 none |
+    | cross-service call per check | \u26d4 yes | \u2705 never |
+    | accuracy | \u2705 authoritative | \u26a0 **over**-reports \u2014 the post succeeded, the stamp write did not |
+    | is that bad | \u2014 | \u2705 **no.** The repair is re-posting, idempotent on `(order_id, unique_id)`, so a false positive costs one wasted retry. It errs toward looking |
+
+    **\u2192 I recommend the STAMP** \u2014 one nullable timestamp per leg, on the order's own row. It over-reports
+    in the only direction that is safe, asks nothing of another service, and generalises to all three
+    sites at once. **That is what keeps this question answerable inside `order_service`**, which is why
+    it was routed here.
+
+    ```mermaid
+    flowchart LR
+      C["order committed"] --> L1["publish event"] --> S1["stamp event_published_at"]
+      C --> L2["SettlementPost"] --> S2["stamp settlement_posted_at"]
+      C --> L3["resolve owners"] --> S3["stamp owners_resolved_at"]
+      S1 --> F["the finder is a local WHERE ... IS NULL"]
+      S2 --> F
+      S3 --> F
+    ```
+
+    \u26a0 **The third leg needs one more thing than a stamp.** `0` currently means both *unresolved* and
+    *nobody to pay*, so the stamp says the resolution ran and still cannot say whether it succeeded.
+
+    ⚠ **And this is the same shape as two questions already on this board** — settlement's missing
+    account and the analytic reconcile pass. All three are *"the write succeeded, the follow-on did not,
+    and no invariant can see it"*. Worth deciding once.
+
+
 ---
 
 # Contradiction
