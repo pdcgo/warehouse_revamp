@@ -10,9 +10,27 @@ yours; this one is mine. Answered points are **deleted**, so this is always the 
 
 # Contradiction
 
+## ⛔ `# Statistic Design.` item 1 links to a file that no longer exists
+
+*"we rely [event_library](../event/library.md) for processing event."* — `mutation_and_ledger.md:154`.
+
+`docs/technical/event/library.md` was **deleted** on the owner's instruction
+([the-library-doc-is-absorbed](../event_architecture/context_decision.md#the-library-doc-is-absorbed)),
+and its content moves into
+[`event_architecture/context.md`](../event_architecture/context.md). This doc's link is now dead, and
+it is the only inbound one left in the tree.
+
+**→ Recommend: repoint it to `../event_architecture/context.md`.** ⚠ Yours to change, not mine
+(RULE 7b) — this is a report.
+
+⚠ **And the thing it relies on is not written there yet.** The delete ran before the merge, so the
+event-processing design it points at exists only in git (`git show
+d54b182:docs/technical/event/library.md`). Until that content lands, *"we rely on event_library"*
+names nothing a reader can open — which makes the contradiction below sharper, not milder.
+
 ## The doc says it relies on `event_library`, then re-specifies idempotency differently
 
-`# Statistic Design.` item 1: *"we rely [event_library](../event/library.md) for processing event."*
+`# Statistic Design.` item 1: *"we rely [event_library](../event_architecture/context.md) for processing event."*
 Then `## Idempotency Layer.` and its two subsections specify their own — and it disagrees with the
 library **and with the code already shipped in `pkgs/san_event`**:
 
@@ -83,7 +101,7 @@ decision and re-deriving it.
 
 Nothing — the doc has no empty headings left.
 
-**Sibling docs:** [stock_design.md](../stock/design.md) and [event_library.md](../event/library.md) have their
+**Sibling docs:** [stock_design.md](../stock/design.md) and [event_architecture/context.md](../event_architecture/context.md) have their
 own clarity files. A *stock* decision belongs in one, an *event delivery* decision in the other.
 
 **Clean:** every mermaid diagram parses (`npm run lint:mermaid`).

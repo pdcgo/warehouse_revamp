@@ -93,6 +93,19 @@ var (
 		errors.New("unique_id already names an entry on another order"),
 	)
 
+	// THE GRAIN IS DECIDED BY THE TYPE (#an-entry-names-an-order-or-a-shop). Both directions are
+	// refused because each produces a row nothing can read correctly — a sale with no account to open,
+	// or a shop-wide repair filed against one arbitrary order whose balance it then moves.
+	errInitialNeedsOrder = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("initial_total and initial_total_cancel must name an order"),
+	)
+
+	errAdjustmentIsShopWide = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("system_adjustment is shop-addressed and must not name an order"),
+	)
+
 	errUnknownType   = errors.New("unknown settlement_type")
 	errUnknownSource = errors.New("unknown source_type")
 )

@@ -892,6 +892,67 @@ flowchart TD
 > and `InitOpeningBalance` — which is still drawn in this doc, inside the ledger's transaction.
 
 
+## The settlement event set — ONE out, TWO in
+
+*"What events should settlement have"* has two halves, and the second is the one with something
+already built sitting unused in the tree.
+
+```mermaid
+flowchart LR
+  OP["selling_service — OrderPlacedEvent"] -->|"topic order-placed"| S["settlement_service"]
+  OC["selling_service — OrderCancelledEvent"] -->|"topic order-cancelled"| S
+  S --> SE["SettlementLogPosted"]
+  SE -->|"topic settlement-events"| F["its own fold"]
+  SE --> FL["the Financial Ledger — another service"]
+  OP -.->|"NOT WIRED — today this is an RPC call"| S
+  OC -.->|"NOT WIRED"| S
+```
+
+### Out — exactly one
+
+**`SettlementLogPosted`.** One variant, because every settlement fact has one shape: a new immutable
+row. `settlement_type` is a **field**, not eight variants — the fold runs the same statement for all
+of them. Specified in
+[analytic_context_clarify](./analytic_context_clarify.md#proposed-design--the-settlement-event).
+
+⚠ **A `oneof` with one arm still earns its place** — a genuinely different fact later (a maintenance
+signal, a replay marker) is then a free, non-breaking addition.
+
+⚠ **`settlement_type` must ride as a Pub/Sub ATTRIBUTE, not only a field.** With one variant every
+message carries the same `event_type`, so a subscription filter cannot discriminate at all. A
+consumer that wants only `fund`, or wants to exclude `system_adjustment`, needs it in the attributes
+— the broker cannot see inside `data`.
+
+### In — two, and both already exist with no consumer
+
+`context.md` says *"its trigered on order created, `order_service` calling --> `settlement_service`"*
+— a synchronous RPC. But `selling_service` **already publishes both facts** and the proto says
+outright that nothing listens:
+
+| shipped today | carries | settlement would write |
+| --- | --- | --- |
+| [`OrderPlacedEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-placed` | `team_id`, `order_id`, `revenue`, `cogs`, `shipping_cost`, `warehouse_id`, actor | `initial_total` |
+| [`OrderCancelledEvent`](../../../proto/warehouse/selling/v1/events.proto) — topic `order-cancelled` | `team_id`, `order_id`, `actor_id` | `initial_total_cancel` |
+
+> *"⚠ IT CURRENTLY HAS NO CONSUMER, AND IS PUBLISHED ANYWAY — deliberately … **Do not stop publishing
+> it because nothing listens.**"* — `events.proto`
+
+**→ Recommend settlement SUBSCRIBE rather than be called.** It is the same fact, already on the wire,
+and it replaces *"logged loudly and nobody knows which orders"* with at-least-once delivery plus a
+dead-letter topic — which is the thing [the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement)
+accepts the risk of and [a-missing-account-is-fixed-by-hand](./context_decision.md#a-missing-account-is-fixed-by-hand)
+answers with a person. ⚠ **Both were decided deliberately and I am not reopening them** — I am saying
+the mechanism that makes them unnecessary is already published, and nothing is built yet, so this is
+the cheapest moment it will ever be to choose.
+
+**Three things to check before it could work:**
+
+| ⛔ | |
+| --- | --- |
+| **`revenue` vs `marketplace_total`** | `initial_total` is *"a frozen copy of `order.marketplace_total` — what the buyer ACTUALLY PAID"*. `OrderPlacedEvent.revenue` is *"the order's total — what the buyer paid"*. They read as the same number under two names — **confirm it, do not assume it**. If they differ, the event needs the other field before it can feed settlement |
+| **two topics means NO ordering between them** | a cancel can be delivered before the placement it cancels — the exact sequence the guideline's `topic-per-context` diagram draws. ✅ **Settlement survives it**, because the ledger is a delta: `+120.000` then `−120.000` nets the same either way. ⛔ **But `order_settlements.initial_total` is a frozen copy, not a delta**, and a cancel arriving first has nothing to oppose — so the handler must decide whether that is an error or an open-then-close |
+| **`order_created_by_user_id`** | the fold needs it and **neither event carries it under that name**. `OrderPlacedEvent` has an actor; whether it is the same person is a question, not a given |
+
 ## Critique
 
 | | Problem | → Recommend |
@@ -946,11 +1007,19 @@ narrative point at the numbers they had then, and every answer lives in
    ⚠ **And *"other service"* is worth confirming** — **nothing but `SettlementPost` writes
    `settlement_logs`**, so if a service outside settlement is meant to publish ledger changes, that is new
    and belongs in the architecture clarify.
-   **→ I recommend `SettlementPost` publish, after commit, carrying the `settlement_logs` row id and
-   nothing else.** That is what the fold asks for
-   ([the receiver's contract](./analytic_context_clarify.md#-the-receiver-side-once-publishing-is-out-of-scope)):
-   everything else is readable in-process, so a **thin** event keeps the log the source of truth instead
-   of making it a cache the broker holds a stale copy of.
+   **→ I recommend `SettlementPost` publish, after commit, carrying the ROW.**
+   ⚠ **This REVERSES my own earlier recommendation of a thin id-only event**, which rested on *"everything
+   else is readable in-process"*. That is true of the fold and **false of every other consumer**: the
+   Financial Ledger (`context.md` §General Brief 2) is a **different service** and cannot read
+   `settlement_logs` at all (HARD RULE 3), so a thin event forces a cross-service RPC per event and
+   rebuilds the coupling the event removes. And `order_created_by_user_id` — which the user report keys
+   on — **is on no settlement table**, so it must ride regardless. Once one field must travel, the
+   log-is-the-source-of-truth purity is already spent, and Pub/Sub's **1 KB minimum per delivery** makes
+   the rest free.
+   ⚠ **What was RIGHT in the thin argument, and does not apply here**: a fat event normally risks a
+   replay folding *current* state — but `settlement_logs` is **append-only and immutable**, so reading a
+   row back later returns exactly what it said. That hazard is absent, which is why this had to be argued
+   on the other consumers rather than on the replay.
    ⚠ **Same precedent as `OrderPlacedEvent`** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285) already
    publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
    is what makes the reconcile pass ([analytic Q5](./analytic_context_clarify.md#question)) necessary
@@ -958,6 +1027,39 @@ narrative point at the numbers they had then, and every answer lives in
 
 
 # Contradiction
+
+## my own two clarify files specified the same event two different ways
+
+Not a contradiction in your docs — one in mine, recorded because RULE 11 asks for the *cause*, and the
+cause is worth naming.
+
+| file | said |
+| --- | --- |
+| this file, [Q3](#question) | *"carrying the `settlement_logs` row id and **nothing else**"* |
+| [analytic_context_clarify](./analytic_context_clarify.md#proposed-design--the-settlement-event) | the row, **whole** — fifteen fields |
+
+**The cause: each was written with a different consumer in view.** Q3 was written when the fold was
+the only reader, and the fold shares a process with the writer, so *"it can just read the row"* is
+true. The payload spec was written against the event architecture, where a consumer is assumed to be
+somewhere else.
+
+```mermaid
+flowchart TB
+  subgraph one ["assumed in Q3 — one consumer, same process"]
+    W1["SettlementPost"] --> E1["thin event: log_id"]
+    E1 --> F1["the fold — reads settlement_logs directly"]
+  end
+  subgraph two ["actually true — a consumer in ANOTHER service"]
+    W2["SettlementPost"] --> E2["thin event: log_id"]
+    E2 --> F2["the Financial Ledger"]
+    F2 -.->|"HARD RULE 3 — cannot read the table"| X["a cross-service RPC per event"]
+  end
+```
+
+**→ Resolved in favour of the row**, and Q3 is annotated rather than silently rewritten.
+**→ What stops it recurring**: an event's payload is decided against **the furthest consumer**, never
+the nearest. A same-process reader can always ignore fields it does not need — a reader in another
+service cannot fetch fields that were never sent.
 
 ## a third source was decided on 2026-08-28 and five sites still say two
 

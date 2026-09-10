@@ -2,6 +2,7 @@ package settlement_v1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -40,13 +41,17 @@ func list(
 }
 
 // settleOrder opens an account on `orderID` and moves it to `balance`.
+//
+// ⚠ The keys are per-order. `unique_id` is unique across the WHOLE log (#00002), not scoped to the
+// order, so a fixture reusing one literal for every order collides on the second one — which is the
+// same mistake a real caller makes when its recipe does not identify what it is recording.
 func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopID uint64, balance int64) {
 	t.Helper()
 
 	_, err := post(t, svc, settlement_v1.PostInput{
 		OrderID:        orderID,
 		ShopID:         shopID,
-		UniqueID:       "open",
+		UniqueID:       fmt.Sprintf("open-%d", orderID),
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL,
 		SourceType:     settlementv1.SourceType_SOURCE_TYPE_ORDER,
 		Change:         -sale,
@@ -58,7 +63,7 @@ func settleOrder(t *testing.T, svc *settlement_v1.Service, orderID uint64, shopI
 	_, err = post(t, svc, settlement_v1.PostInput{
 		OrderID:        orderID,
 		ShopID:         shopID,
-		UniqueID:       "fund",
+		UniqueID:       fmt.Sprintf("fund-%d", orderID),
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
 		SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
 		Change:         sale + balance,

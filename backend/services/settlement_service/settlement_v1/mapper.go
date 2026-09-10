@@ -19,6 +19,7 @@ const (
 	typeAffiliateFee         = "affiliate_fee"
 	typeMarketplaceAdjust    = "marketplace_adjustment"
 	typeOther                = "other"
+	typeSystemAdjustment     = "system_adjustment"
 
 	sourceExporter = "exporter"
 	sourceManual   = "manual"
@@ -33,6 +34,7 @@ var settlementTypeText = map[settlementv1.SettlementType]string{
 	settlementv1.SettlementType_SETTLEMENT_TYPE_AFFILIATE_FEE:          typeAffiliateFee,
 	settlementv1.SettlementType_SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT: typeMarketplaceAdjust,
 	settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER:                  typeOther,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT:      typeSystemAdjustment,
 }
 
 var settlementTypeEnum = reverseOf(settlementTypeText)
@@ -68,7 +70,7 @@ func entryToProto(
 	entry := settlementv1.SettlementEntry{
 		Id:             log.ID,
 		UniqueId:       log.UniqueID,
-		OrderId:        log.OrderID,
+		OrderId:        derefOrder(log.OrderID),
 		ShopId:         log.ShopID,
 		TeamId:         log.TeamID,
 		ActorId:        log.ActorID,

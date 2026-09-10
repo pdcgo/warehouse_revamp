@@ -49,7 +49,7 @@ mine. Answered points are **deleted**, so this file is always the current open s
 > ✅ **The diagrams parse** (`npm run lint:mermaid`).
 
 Siblings: [mutation_and_ledger](../../technical/ledger/mutation_and_ledger_clarify.md) — its
-`# Statistic Design.` is the *same pipeline in more detail* · [event_library](../../technical/event/library_clarify.md) ·
+`# Statistic Design.` is the *same pipeline in more detail* · [event_architecture](../../technical/event_architecture/context_clarify.md) ·
 [ledger_context](../ledger/context_clarify.md) · [member](../project/member_clarify.md) — analytic is
 Toni's lane, and this design is Heri's.
 

@@ -55,6 +55,16 @@ const (
 	// (#cancel-zeroes-the-live-sale). MACHINE ONLY — source must be `order`
 	// (#only-machines-post-the-cancel).
 	SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL SettlementType = 7
+	// ⚠ THE EIGHTH, and the only one that records no marketplace event
+	// (#system-adjustment-is-a-ledger-type). It repairs a report whose damage is older than the broker
+	// can replay, so it is SHOP-ADDRESSED: the error spans many orders and naming one would file the
+	// correction against an arbitrary sale.
+	//
+	// ⛔ IT CANNOT REPAIR EVERY KIND OF DRIFT. It moves the log AND the report by the same amount, so it
+	// restores agreement only where both were wrong together. Where the log is RIGHT and only the fold
+	// was lost — a dead-lettered event, a cascade that did not run — posting one overstates the log by
+	// exactly what it corrects the report by, and the two then disagree permanently.
+	SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT SettlementType = 8
 )
 
 // Enum value maps for SettlementType.
@@ -68,6 +78,7 @@ var (
 		5: "SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT",
 		6: "SETTLEMENT_TYPE_OTHER",
 		7: "SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL",
+		8: "SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT",
 	}
 	SettlementType_value = map[string]int32{
 		"SETTLEMENT_TYPE_UNSPECIFIED":            0,
@@ -78,6 +89,7 @@ var (
 		"SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT": 5,
 		"SETTLEMENT_TYPE_OTHER":                  6,
 		"SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL":   7,
+		"SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT":      8,
 	}
 )
 
@@ -276,9 +288,10 @@ type SettlementEntry struct {
 	// (#the-unique-id-is-generated-outside-settlement). Returned because it is the only thing that
 	// explains why a re-import wrote nothing.
 	UniqueId string `protobuf:"bytes,2,opt,name=unique_id,json=uniqueId,proto3" json:"unique_id,omitempty"`
-	OrderId  uint64 `protobuf:"varint,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	ShopId   uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
-	TeamId   uint64 `protobuf:"varint,5,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// 0 means this row is SHOP-ADDRESSED — it names no order (#an-entry-names-an-order-or-a-shop).
+	OrderId uint64 `protobuf:"varint,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	ShopId  uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	TeamId  uint64 `protobuf:"varint,5,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Who is ANSWERABLE — the person in charge, not the session that wrote the row
 	// (#actor-id-is-the-pic). Set even on machine rows: a human owns every entry.
 	ActorId        uint64         `protobuf:"varint,6,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
@@ -529,9 +542,16 @@ func (x *OrderSettlement) GetShopId() uint64 {
 // cancel's, because that is the one a retry would double-credit:
 // `unique_id = hash(order_id + act_date + "cancel")` (#the-cancel-key-is-order-plus-act-date).
 type SettlementPostRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	TeamId  uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	OrderId uint64                 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// THE GRAIN. Non-zero addresses an ORDER; **0 addresses the SHOP**
+	// (#an-entry-names-an-order-or-a-shop) and is stored as SQL NULL.
+	//
+	// ⚠ A shop-addressed row has no account keyed by order, so it never appears on
+	// OrderSettlementDetail and SettlementPostResponse.settlement is unset for it. What it does have is
+	// `shop_settlements`, its own balance chain, and the same `shop_id`/`team_id` — so it folds into the
+	// daily report exactly as an order-addressed row does.
+	OrderId uint64 `protobuf:"varint,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
 	// ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
 	// selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
 	// both rows so every list filters by shop without a cross-service call — the same denormalisation
@@ -657,6 +677,9 @@ type SettlementPostResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Entry *SettlementEntry       `protobuf:"bytes,1,opt,name=entry,proto3" json:"entry,omitempty"`
 	// The account AFTER this write, so a caller never needs a follow-up read.
+	//
+	// ⚠ UNSET for a shop-addressed row (`order_id = 0`): there is no per-order account to return. The
+	// row's own running position is on `entry.balance`.
 	Settlement *OrderSettlement `protobuf:"bytes,2,opt,name=settlement,proto3" json:"settlement,omitempty"`
 	// ⚠ WHETHER THIS CALL WROTE THE ROW, or found it already there and returned it unchanged.
 	//
@@ -1264,10 +1287,10 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\rinitial_total\x18\x02 \x01(\x03R\finitialTotal\x12!\n" +
 	"\flast_balance\x18\x03 \x01(\x03R\vlastBalance\x12\x17\n" +
 	"\ateam_id\x18\x04 \x01(\x04R\x06teamId\x12\x17\n" +
-	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\"\x86\x04\n" +
+	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\"\xfd\x03\n" +
 	"\x15SettlementPostRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
-	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId\x12 \n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x19\n" +
+	"\border_id\x18\x02 \x01(\x04R\aorderId\x12 \n" +
 	"\ashop_id\x18\n" +
 	" \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12'\n" +
 	"\tunique_id\x18\x03 \x01(\tB\n" +
@@ -1330,7 +1353,7 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
 	"settlement\x18\x01 \x01(\v2(.warehouse.settlement.v1.OrderSettlementR\n" +
 	"settlement\x12B\n" +
-	"\aentries\x18\x02 \x03(\v2(.warehouse.settlement.v1.SettlementEntryR\aentries*\xa8\x02\n" +
+	"\aentries\x18\x02 \x03(\v2(.warehouse.settlement.v1.SettlementEntryR\aentries*\xcf\x02\n" +
 	"\x0eSettlementType\x12\x1f\n" +
 	"\x1bSETTLEMENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dSETTLEMENT_TYPE_INITIAL_TOTAL\x10\x01\x12\x18\n" +
@@ -1339,7 +1362,8 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x1dSETTLEMENT_TYPE_AFFILIATE_FEE\x10\x04\x12*\n" +
 	"&SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT\x10\x05\x12\x19\n" +
 	"\x15SETTLEMENT_TYPE_OTHER\x10\x06\x12(\n" +
-	"$SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL\x10\a*r\n" +
+	"$SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL\x10\a\x12%\n" +
+	"!SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT\x10\b*r\n" +
 	"\n" +
 	"SourceType\x12\x1b\n" +
 	"\x17SOURCE_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +

@@ -9,10 +9,19 @@ import "time"
 type SettlementLog struct {
 	ID uint64 `gorm:"primaryKey"`
 
-	// THE SCOPE. Opaque selling_service ids; no FK, because those tables belong to another service.
-	OrderID uint64
-	ShopID  uint64
-	TeamID  uint64
+	// THE GRAIN (#an-entry-names-an-order-or-a-shop). Non-nil addresses an ORDER, nil addresses the
+	// SHOP — a platform withdrawal or a system adjustment names no order, and inventing one would file
+	// real money against an arbitrary sale.
+	//
+	// ⚠ A POINTER rather than 0-means-absent, deliberately: 0 already means "not recorded" on
+	// OrderSettlement.InitialTotal, and one sentinel meaning two things is the bug this ledger keeps
+	// finding elsewhere.
+	OrderID *uint64
+
+	// Opaque selling_service ids; no FK, because those tables belong to another service. On EVERY row
+	// regardless of grain, which is what lets both fold into the same daily report.
+	ShopID uint64
+	TeamID uint64
 
 	// Who is ANSWERABLE — the person in charge, not the session that wrote the row. Set even on
 	// machine rows.

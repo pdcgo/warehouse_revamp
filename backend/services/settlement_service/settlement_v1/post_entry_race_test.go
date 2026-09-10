@@ -35,6 +35,7 @@ import (
 var settlementTables = []string{
 	"settlement_logs",
 	"order_settlements",
+	"shop_settlements",
 }
 
 // ⚠ THE BUG THIS PROVES IS ABSENT: N DIFFERENT postings against one account must all land, and the
@@ -162,5 +163,77 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 	if balance != sale {
 		t.Fatalf("last_balance = %d after %d retries of one cancel, want %d — the retries were not "+
 			"absorbed", balance, retries, sale)
+	}
+}
+
+// ⚠ THE SAME BUG, ON THE SECOND GRAIN (#an-entry-names-an-order-or-a-shop).
+//
+// A shop-addressed row computes its balance from the previous one exactly as an order-addressed row
+// does, so it needs its own serialisation point. `shop_settlements` exists for that and nothing else —
+// before it, two concurrent posts on one shop both read the same `last_balance` and the second silently
+// erased the first. This is the test that says the row is doing its job.
+//
+// It matters more here than it looks: shop-addressed rows are written by the EXPORTER parsing a
+// statement, which posts many rows for one shop in a burst — the worst possible arrival pattern for a
+// read-modify-write.
+func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
+	h := san_race.New(t, settlementTables...)
+	db := h.DB()
+	svc := settlement_v1.NewService(db)
+	ctx := context.Background()
+
+	const posters = 8
+	const each int64 = -1_000
+
+	res := h.Race(t, posters, func(i int) error {
+		_, err := svc.PostEntry(ctx, settlement_v1.PostInput{
+			TeamID: team,
+			ShopID: shop,
+			// No OrderID — this is the shop grain.
+			UniqueID:       fmt.Sprintf("shop-racer-%d", i),
+			SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER,
+			SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+			Change:         each,
+			OccurredOn:     "2026-08-28",
+		})
+
+		return err
+	})
+
+	res.Report(t)
+
+	if res.Failed() != 0 {
+		t.Fatalf("%d of %d distinct shop posts failed — every one was a legitimate entry", res.Failed(), posters)
+	}
+
+	var balance int64
+
+	err := db.Raw(`SELECT last_balance FROM shop_settlements WHERE shop_id = ?`, shop).
+		Scan(&balance).
+		Error
+	if err != nil {
+		t.Fatalf("read the shop account: %v", err)
+	}
+
+	want := each * posters
+	if balance != want {
+		t.Fatalf("shop last_balance = %d after %d concurrent posts of %d, want %d — %d was lost to a "+
+			"read-modify-write race, which is exactly what shop_settlements exists to prevent",
+			balance, posters, each, want, want-balance)
+	}
+
+	// And the projection must equal the log it projects — the shop's DIRECT rows only.
+	var summed int64
+
+	err = db.Raw(`SELECT COALESCE(SUM(change), 0) FROM settlement_logs WHERE shop_id = ? AND order_id IS NULL`, shop).
+		Scan(&summed).
+		Error
+	if err != nil {
+		t.Fatalf("sum the shop's log rows: %v", err)
+	}
+
+	if summed != balance {
+		t.Fatalf("the shop's log rows sum to %d but the account says %d — the projection has drifted "+
+			"from its own source", summed, balance)
 	}
 }

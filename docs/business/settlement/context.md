@@ -4,6 +4,7 @@
 1. for analytical design, [read this](./analytic_context.md)
 2. other info, [read this](./meta_context.md)
 3. for rpc context related, [read this](./rpc_context.md)
+4. for event reference, [read this](../../technical/event_architecture/context.md)
 
 
 ## The Existing Problems.
@@ -28,7 +29,7 @@
 
 
 ## General Brief.
-1. its order grain.
+1. its order & shop grain.
 2. we have `Settlement Log` part of `ledger_context` and it publish to the broker and post to the Financial Ledger
 3. this `settlement_service` not covered automatic importing file. its `export_service` responsbility [defer for now, talk later]
 4. in many case settlement balance doesn't fully settle, always any urecorded adjustment for the order, its come from the platform and its okay.

@@ -1303,12 +1303,12 @@ platform never itemises. So the balance **never reaches zero, and that is correc
 erDiagram
   settlement_logs {
     bigserial id PK
-    bigint order_id "THE SCOPE — NOT NULL, always"
+    bigint order_id "THE GRAIN — NULLABLE. NULL means SHOP-ADDRESSED"
     bigint shop_id "denormalised, frozen"
     bigint team_id "denormalised, frozen"
     bigint actor_id "the human accountable, even on machine rows"
     text source_type "exporter, manual or order"
-    text settlement_type "one of seven"
+    text settlement_type "one of eight"
     bigint change "signed. POSITIVE IS MONEY TOWARD US"
     bigint balance "running, after this row"
     text unique_id "caller-generated. UNIQUE across the whole log"
@@ -1329,8 +1329,39 @@ erDiagram
     timestamptz updated_at
   }
 
+  shop_settlements {
+    bigint shop_id PK "the row a shop-addressed writer LOCKS"
+    bigint team_id
+    bigint last_balance "the shop DIRECT movements only — not its whole position"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
   order_settlements ||--|{ settlement_logs : projects
+  shop_settlements ||--|{ settlement_logs : projects
 ```
+
+### Two grains, and why there are two accounts
+
+A row is addressed to an **order** or to a **shop** (`an-entry-names-an-order-or-a-shop`). Both carry
+`shop_id` and `team_id`, so both fold into the same daily report — but only the order grain has an
+account keyed by order.
+
+| | order-addressed | shop-addressed |
+| --- | --- | --- |
+| `order_id` | set | **NULL** |
+| the account | `order_settlements` | `shop_settlements` |
+| what it is for | one order's payout | a platform **withdrawal**, a **system adjustment** — things that name no order |
+| `initial_total` | yes | — a sale belongs to an order, and the handler refuses one without |
+| on `OrderSettlementDetail` | yes | **never** — that panel is one order's log |
+
+⚠ **BOTH ACCOUNTS EXIST TO BE LOCKED**, not merely read. Each is a read-modify-write on a running
+balance, so without a row to take `FOR UPDATE` two concurrent posts read the same previous value and
+the second erases the first. Proven absent for both grains in `post_entry_race_test.go`.
+
+⛔ **`shop_settlements.last_balance` IS NOT THE SHOP'S POSITION.** It sums the shop's DIRECT rows only.
+The order-addressed rows carry the same `shop_id` and fold into the same daily report, so
+`shop_settlement_daily_reports.close_balance` is a different and larger number. Two figures, one word.
 
 ### The sign convention, and the one place it flips
 
@@ -1355,7 +1386,7 @@ sale's, so the running sum returns to zero on its own.
 | index | answers |
 | --- | --- |
 | `settlement_logs_unique_idx` (unique_id) | ⚠ **the idempotency key, GLOBAL** (`00002`). All three writers retry; this is what makes a retried cancel absorb instead of crediting twice. Scoped to `(order_id, unique_id)` until `order_id` became nullable — Postgres treats NULL as distinct from NULL, so the scoped form would have admitted a shop-addressed key twice, silently |
-| `settlement_logs_order_idx` (order_id, id) | the panel's running balance, oldest first |
+| `settlement_logs_order_idx` (order_id, id) **WHERE order_id IS NOT NULL** | the panel's running balance, oldest first. ⚠ **Partial** (`00003`): with the column nullable, every shop-addressed row would otherwise sit in this index under one NULL group the panel never reads |
 | `settlement_logs_team_occurred_idx` / `_shop_occurred_idx` | a period's movement for a team or a shop |
 | `order_settlements_team_balance_idx` (team_id, last_balance) | the list screen, ranked by loss |
 | `order_settlements_shop_idx` (shop_id, last_balance) | the same, narrowed to one shop |
