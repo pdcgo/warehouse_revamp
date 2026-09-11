@@ -1441,6 +1441,14 @@ deadline, because it cannot be backfilled.
 
 ## Proposed Design — the settlement event
 
+> 🔄 **Re-shaped for [one-event-one-topic-per-variant](../../technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)
+> (2026-09-11).** The per-context `SettlementEvent` envelope is gone: `SettlementLogPosted` is a variant of
+> the ONE global `warehouse.events.v1.Event`, and names its one topic. Every settlement answer in the
+> table below survives — one variant, the shop as the key, the derived id, the whole row, the date
+> strings. Only the wrapper moved. 🆕 And the id and the key below are now typed fields on `Event`, beside
+> the owner's `map<string, string> metadata` —
+> [typed-fields-for-what-the-library-reads](../../technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads).
+
 `### Events.` says the event contains *"changes of the ledger … new row inserted at `settlement_logs`"*
 plus `shop_id`, `team_id`, `order_created_by_user_id`. That is the right instinct and two of the four
 items are already **on the row** — so what it actually specifies is *the row, plus the creator*. This
@@ -1454,22 +1462,22 @@ answers are here. Written against the shipped model
 which carries five fields `context.md` does not list.
 
 ```protobuf
-// proto/warehouse/settlement/v1/events.proto — beside settlement.proto, same package
-message SettlementEvent {
-  option (warehouse.event_base.v1.event_config) = {
-    event_topic: "settlement-events"
-    ordering_key_field: "meta.aggregate_id"     // "shop:<shop_id>"
-  };
+// proto/warehouse/events/v1/ — a variant of the ONE global Event (one-event-one-topic-per-variant)
+message Event {
+  string event_id = 1;                           // "settlement-log:<log_id>" — decided: typed-fields-for-what-the-library-reads
+  google.protobuf.Timestamp occurred_at = 2;
+  string aggregate_id = 3;                       // "shop:<shop_id>"
+  map<string, string> metadata = 4;              // the owner's
 
-  warehouse.event_base.v1.EventMetadata meta = 1 [(buf.validate.field).required = true];
-
-  oneof payload {
-    SettlementLogPosted posted = 100;           // ONE variant today, deliberately
+  oneof message {
+    SettlementLogPosted settlement_log_posted = 100;   // settlement's block, 100–199 — proposed
   }
 }
 
-// One immutable row of settlement_logs, published whole.
+// One immutable row of settlement_logs, published whole. ONE variant today, deliberately.
 message SettlementLogPosted {
+  option (event_config) = { topics: "settlement" };    // one topic · no ordering key — ordering-is-each-services-job
+
   uint64 log_id    = 1;                          // settlement_logs.id
   string unique_id = 2;                          // the caller's key, unique across the whole log
 
@@ -1499,19 +1507,19 @@ message SettlementLogPosted {
 | settlement's answer | why |
 | --- | --- |
 | **ONE variant, not one per `settlement_type`** | `SettlementType` is already a proto enum with **eight** values, and the fold runs the **same** `INSERT … ON CONFLICT` for every one — only the incremented column differs. Eight variants would be eight near-identical messages and an eight-arm switch doing one thing, and a **ninth type would become a proto variant plus a handler arm** in every consumer instead of an enum value. Every settlement fact has one shape: *a new immutable row* — the doc says so itself (*"settlement just can adjustment by added record log, not updated the log"*) |
-| **`meta.aggregate_id = "shop:<shop_id>"`** — the shop, **not** the order | the model states the reason: `ShopID`/`TeamID` are on **every** row regardless of whether it addresses an order or a shop, *"which is what lets both fold into the same daily report"*. The fold's key is `(day, shop_id, team_id)` and `close_balance` reads the **previous day's row** — so the stream that must not reorder is the **shop's**. An order-keyed stream lets two rows for one shop interleave across a day boundary and the carry reads a value that was about to change. ⚠ Not to be confused with [Q5](#question)'s grain, which is the report's period |
-| **`meta.event_id = "settlement-log:<log_id>"`** | ⛔ **the retry, not the replay.** A publish that times out is **retried**, and the retry mints a **new broker message id for the same fact** — so dedup keyed on `settlement_event_logs.id` sees something new and folds the same row **twice**. That is a wrong number in a money report, and it is the one case a derived id exists for. ✅ **The replay half of this is already solved** by [the-replay-cuts-three-tables-on-one-line](./context_decision.md#the-replay-cuts-three-tables-on-one-line) — the `day` column lets the rebuild clear dedup by range, so a seek redelivering the same message ids is no longer a no-op. **My earlier claim that it was is withdrawn** |
+| **`aggregate_id = "shop:<shop_id>"`** — the shop, **not** the order · 🆕 **and no ordering key** | ✅ [ordering-is-each-services-job](../../technical/event_architecture/context_decision.md#ordering-is-each-services-job): nothing orders delivery, and the fold must not need it — **it already does not.** Every write is a delta and the cascade shifts every later day when a row arrives late, so any arrival order composes to the same report ([the replay](#analyticreplaycompute--the-algorithm-your-own-statements-already-imply) — *"order does not matter"*). The shop key this row used to argue for was a second guard, not the first. `aggregate_id` stays the shop — `ShopID`/`TeamID` are on **every** row, *"which is what lets both fold into the same daily report"* — and it is the key if one is ever added. ⚠ Not to be confused with [Q5](#question)'s grain, which is the report's period |
+| **`event_id = "settlement-log:<log_id>"`** | ⛔ **the retry, not the replay.** A publish that times out is **retried**, and the retry mints a **new broker message id for the same fact** — so dedup keyed on `settlement_event_logs.id` sees something new and folds the same row **twice**. That is a wrong number in a money report, and it is the one case a derived id exists for. ✅ **The replay half of this is already solved** by [the-replay-cuts-three-tables-on-one-line](./context_decision.md#the-replay-cuts-three-tables-on-one-line) — the `day` column lets the rebuild clear dedup by range, so a seek redelivering the same message ids is no longer a no-op. **My earlier claim that it was is withdrawn** |
 | **the event carries the ROW, not a pointer** | a thin event makes the webhook read `settlement_logs` back, so a **replay folds current state instead of the historical fact** — precisely what a rebuild must not do, and this design has a rebuild. ⚠ It saves nothing either: Pub/Sub bills a **1 KB minimum per delivery** and this message is well under it |
 | **`posted_on` / `occurred_on` are `YYYY-MM-DD` strings** | both are `DATE` columns. A `Timestamp` hands the consumer a timezone decision to re-derive, which is exactly [the bucket-day contradiction](#the-bucket-day-is-derived-twice-in-two-timezones-and-the-two-disagree-for-a-third-of-the-clock). The fold reads `posted_on` and never converts anything |
 
 ```mermaid
 flowchart LR
   W["SettlementPost — one transaction"] --> L[("settlement_logs row")]
-  L --> EV["SettlementEvent — the row, whole"]
-  EV -->|"OrderingKey shop:5"| T["topic settlement-events"]
+  L --> EV["Event.settlement_log_posted — the row, whole"]
+  EV -->|"no ordering key — the fold does not need one"| T["topic settlement"]
   T --> H["settlement webhook — the fold"]
   H --> R[("shop_settlement_daily_reports")]
-  T --> DL["settlement-events.dlq"]
+  T --> DL["settlement.dlq"]
 ```
 
 ⚠ **Nothing publishes this today.**

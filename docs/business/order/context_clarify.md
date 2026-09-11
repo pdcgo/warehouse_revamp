@@ -504,7 +504,7 @@ sequenceDiagram
 
     | site | what is lost | does it even look like a failure? |
     | --- | --- | --- |
-    | `OrderPlacedEvent` not published | the order fee is never charged | a log line, and nothing else |
+    | `OrderPlacedEvent` not published | the order fee is never charged | a log line, and nothing else. ⚠ The event architecture now **assumes this does not happen** — no outbox, [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted) — so if it does, this finder is the only thing that sees it |
     | `SettlementPost` fails | the marketplace account never opens | a log line ([the-order-commits-without-settlement](../settlement/context_decision.md#the-order-commits-without-settlement) decided this is correct, and flagged the finding as its own open half) |
     | ⛔ **product owners unresolved** | the product fee is never charged, **permanently** | ⛔ **no.** `0` is written and read downstream as *"nobody to pay"* — a transient catalogue blip is indistinguishable from a legitimately unowned line |
 

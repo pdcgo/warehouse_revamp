@@ -104,6 +104,16 @@ message OrderCreatedEvent {
 }
 ```
 
+⚠ **Decided 2026-09-11, not built yet:** new events are variants of ONE global `warehouse.events.v1.Event`,
+and each variant names ONE topic — `option (event_config) = { topics: "order" }`
+([one-event-one-topic-per-variant](../technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)).
+A second consumer is a second subscription on that topic, not a second topic on the event. The
+`warehouse.event_base.v1` option above is what ships today, on selling's two order events — and it is
+**decided to go** ([event-base-v1-is-removed](../technical/event_architecture/context_decision.md#event-base-v1-is-removed)):
+the option moves to `warehouse.events.v1`, in the same change that moves those two events. Until that change
+lands, the example above is still how the code works. The event guideline still describes the per-context
+envelope these decisions overrode.
+
 ⚠ **The generated option package must be linked into the binary**, or `proto.HasExtension` silently
 returns false and the option appears absent.
 

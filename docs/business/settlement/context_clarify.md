@@ -902,8 +902,8 @@ flowchart LR
   OP["selling_service — OrderPlacedEvent"] -->|"topic order-placed"| S["settlement_service"]
   OC["selling_service — OrderCancelledEvent"] -->|"topic order-cancelled"| S
   S --> SE["SettlementLogPosted"]
-  SE -->|"topic settlement-events"| F["its own fold"]
-  SE --> FL["the Financial Ledger — another service"]
+  SE -->|"its topic"| F["its own fold"]
+  SE -->|"its topic"| FL["the Financial Ledger — another service"]
   OP -.->|"NOT WIRED — today this is an RPC call"| S
   OC -.->|"NOT WIRED"| S
 ```

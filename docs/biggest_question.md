@@ -17,19 +17,251 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 **109 open questions across 20 files.** The seven below are shown; **102 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-⚠ **The count is 9 higher than last round and only 4 of that is new.** This rebuild counted
-mechanically — every numbered item under a `# Question` or `## Question` heading, in every
-`*_clarify.md` — and the previous figure was 5 short: `technical/cost` (2) was listed in the
-*what changed* table but never added to the roll-up, and the per-file table summed to 105 against a
-stated 102. **Nothing was answered to cause the rise.**
+⚠ **−1 this round** — event_architecture Q2 decided (against my recommendation) and Q5 (as recommended),
+and Q14 opened by the owner's new `identity` field. Recounted mechanically (every numbered item under a
+`# Question` or `## Question` heading, fenced code skipped): 110 items, less architecture Q2, which is a pointer to order Q14 rather than an open question. The per-file
+table sums to the header.
 
 > ## What changed this round
 >
+> ⛔ **event_architecture 6d decided** — *"stop publisher and close the client"* are the service's, recorded as
+> [publisher-and-client-shutdown-is-the-services](technical/event_architecture/context_decision.md#publisher-and-client-shutdown-is-the-services),
+> against my recommendation: `NewEventSender` returns no cleanup. It accepts one loss, stated: a send still retrying
+> when a deploy exits is gone with no log line — the dev binary drains for 10 s, the client retries for 60. Q6
+> narrows to 6e · 6f. No count change.
+>
+> 🆕 **The owner's `NewEventSender` now takes the client** (line 25, pseudocode type) — as 6d's sketch has it — but
+> still returns only `EventSender`, so 6d's cleanup has nowhere to go. Every line reference below it shifted by
+> one and is updated. No count change.
+>
+> 🆕 **event_architecture 6d elaborated** ([here](technical/event_architecture/context_clarify.md#6d--one-publisher-per-topic-and-a-cleanup)).
+> ⚠ **A correction of my own**: the shipped sender's per-event publishers are NOT a goroutine leak in the v2.6.1
+> client — each is garbage once its batch is sent. What is real: no batching, an ordering key made impossible,
+> and a deploy during a Pub/Sub slowdown killing batched events with no log line. 6d's cleanup is what waits for
+> them, and it changes `InitializeApp` to return one. No count change.
+>
+> ⛔ **event_architecture 6b decided** — *"return error as is"*, recorded as
+> [sender-returns-the-client-error-as-is](technical/event_architecture/context_decision.md#sender-returns-the-client-error-as-is),
+> against my recommendation: no wrapping, no sentinels. The caller's log line carries the `event_id`. Q6 narrows
+> to 6d · 6e · 6f. No count change.
+>
+> 🆕 **event_architecture 6b elaborated** (since decided — [the decision](technical/event_architecture/context_decision.md#sender-returns-the-client-error-as-is)) —
+> seven errors the sender can return, in three classes (bug · setup · outage), and three caller rules the live
+> producer already follows — above all, a send error after the commit never fails the RPC, or the person at the
+> shelf taps again and a second order exists. No count change.
+>
+> ✅ **event_architecture 6c decided** — *"ctx its used for bring custom and optional value if needed"*, recorded as
+> [sender-ctx-carries-values-not-cancel](technical/event_architecture/context_decision.md#sender-ctx-carries-values-not-cancel):
+> the sender keeps the `ctx`'s values and drops its cancel, which fixes the false *"not stored"* on a client
+> disconnect. It opens 6f — Go's `context` package keeps optional parameters OFF `ctx`, so a per-event option
+> belongs in `Event.metadata`. Q6 is now 6b · 6d · 6e · 6f. No count change.
+>
+> 🆕 **event_architecture Q6 elaborated part by part** ([here](technical/event_architecture/context_clarify.md#q6-part-by-part)).
+> ⚠ One of my claims corrected: under the shipped codec (`DiscardUnknown`) a renamed field silently reads as
+> ZERO rather than failing — in a money event, the worse outcome. Findings in code: two `protojson` decoders
+> that disagree (push.go strict, codec.go lenient), and `buf breaking` configured but never run in CI. No count
+> change.
+>
+> 🆕 **The owner's sender takes `*eventsv1.Event`** — recorded as
+> [the-sender-takes-a-pointer](technical/event_architecture/context_decision.md#the-sender-takes-a-pointer), part 6a of
+> event_architecture Q6. ⚠ The two handler types still take `Event` by value — a new contradiction in the
+> owner's doc. Q6 narrows to 6b–6e. No count change.
+>
+> 🆕 **event_architecture Q6 elaborated, not answered** — [the sender, spelled out](technical/event_architecture/context_clarify.md#proposed--the-sender-for-q6).
+> ⛔ One live finding in shipped code: the Pub/Sub client sends on its own background `ctx`, while
+> [sender.go](../backend/pkgs/event_source/sender.go#L70) waits on the caller's — so a client disconnect
+> returns an error, and a log line saying *not published*, for an event that IS sent. Q6 is now five parts:
+> pointer · what an error means · detached wait · one publisher per topic plus a cleanup · binary encoding.
+> No count change.
+>
+> ✅ **event_architecture Q5 decided, as recommended** — *"its clear for this question"*, confirmed as all of it
+> ([setup-ensures-safe-defaults-never-deletes](technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)). The two setup functions ENSURE: six defaults
+> built in, update what may change, refuse and never delete what cannot — plus `Redrive` for the DLQ. No guideline
+> rule is overridden: it already asks for a DLQ and 5 attempts. **−1.**
+>
+> 🆕 **The two setup functions are a developer's tool** — *"for developer to setup & ensure topic and subscriber
+> exists and configure properly"*, recorded as
+> [setup-functions-are-a-developer-tool](technical/event_architecture/context_decision.md#setup-functions-are-a-developer-tool).
+> ✅ No running service holds Pub/Sub admin. ⚠ One gap: a push route whose subscription nobody has created
+> receives nothing and reports nothing. ⛔ The owner declined a boot-time check for it —
+> [services-do-not-verify-setup-at-boot](technical/event_architecture/context_decision.md#services-do-not-verify-setup-at-boot) — so running the tool
+> is part of shipping a subscription. No count change.
+>
+> 🆕 **event_architecture Q5 walked through six situations** (now in [the decision](technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)) —
+> it found two more silent defaults: with no retry policy Pub/Sub redelivers *"as soon as possible"*, so a
+> 30-second database blip dead-letters good events · and a push subscription's 10 s ack deadline is also
+> its HTTP timeout, so a slow fold rolls back five times and lands in the DLQ. And nothing brings a
+> dead-lettered event back — `Redrive` proposed as a third function. No count change.
+>
+> 🆕 **The owner gave `EventSender` a `ctx`** — `func(ctx context.Context, event Event) error`, recorded as
+> [the-sender-takes-ctx](technical/event_architecture/context_decision.md#the-sender-takes-ctx). Half of
+> event_architecture Q6, as recommended — and the `ctx` Q14 fills `identity` from. Q6 narrows to the pointer,
+> the meaning of `nil`, the detach and the cleanup. No count change.
+>
+> 🆕 **The owner added `identity` to `Event`** — `role_base.v1.Identity identity`, *"its from rolebase"*. ✅ Reusing
+> the token's `Identity` is right: it is what `san_auth.GetIdentity(ctx)` already returns. ⛔ Three things it
+> leaves unsaid, each silent — who fills it (a worker or push handler has no identity in `ctx`), whether a
+> consumer may trust it (**every push route is open**, so it is forgeable), and the token's `expired_at`, which
+> makes a replayed event look expired. → **new event_architecture Q14**, which leans on Q6's `ctx`. The
+> guideline's `string actor = 5` becomes a seventeenth stale site. **+1.**
+>
+> 🆕 **event_architecture Q5 elaborated, not answered** —
+> the two setup functions, spelled out (now in [the decision](technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)):
+> `InitializeTopic` derives its topics from the proto, `InitializeSubscriber` takes one service's
+> declaration, both refuse an immutable mismatch and never delete. No count change.
+>
+> 🆕 **event_architecture Q2 decided — no outbox** — *"we assume publisher is always publish message properly,
+> and its pubsub responsbility"*, against my recommendation ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)).
+> The producer publishes after its commit, the Pub/Sub client retries for up to 60 s, and delivery from there
+> is Pub/Sub's. **Re-examined (RULE 11):** stock critique 3, ledger critique 5 and balance critique 4 all
+> recommended an outbox and now point at the decision · order Q14's event leg too — for a publish that
+> never happens, **its finder is now the only detector** (#1) · no guideline mentions an outbox. **−1.**
+>
+> 🆕 **The owner renamed the option's field** — `context.md` line 45 now reads `string topic`, recorded as
+> [the-option-field-is-topic](technical/event_architecture/context_decision.md#the-option-field-is-topic).
+> It closes the naming point the removal left open. ⚠ The doc's three examples (lines 59, 66, 85) still
+> write `topics:`, which `protoc` rejects — reported as a contradiction. No count change.
+>
+> ## Before this round
+>
+> 🆕 **`warehouse.event_base.v1` is removed** — *"remove warehouse.event_base.v1, its not used for further"*,
+> answering event_architecture Q9 against my recommendation
+> ([event-base-v1-is-removed](technical/event_architecture/context_decision.md#event-base-v1-is-removed)). The
+> topic option lives in `warehouse.events.v1`. ⚠ **Recorded, not yet deleted from the code**: selling's two
+> live events and `TopicName()` compile against it, so the delete lands in ONE change with the new option
+> and their move — the decision lists all five sites, `CLAUDE.md`'s options table among them. ✅ **No proto
+> question is left**: what stands between the design and the first event is now the library, not the contract.
+>
+> 🆕 **The owner cancelled multi-topic** — *"cancel multi topic"*: the global `Event` stays, and each
+> variant names ONE topic ([one-event-one-topic-per-variant](technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)).
+> The old entry is renamed
+> [superseded-one-event-many-topics](technical/event_architecture/context_decision.md#superseded-one-event-many-topics)
+> and every link to it re-pointed, across five files. ✅ **It removes two costs** — a non-atomic fan-out,
+> and the producer knowing its consumers (a second consumer is now a second subscription) — and **simplifies
+> event_architecture Q9**: the shipped `event_config` at 50001 already holds one `event_topic` string, so it
+> could be used as it is (⛔ answered the other way — above). The outbox (Q2) is back to closing the commit-to-publish gap only. ⚠ One new
+> contradiction in the owner's doc: item 5 still shows `topics: ["stock", "order"]`, a list a `string`
+> field cannot hold. No count change.
+>
+> ✅ **Six event decisions (2026-09-11), four as recommended** — five in one answer, *"for q7, yes, for q10
+> yes, for q11 no, for q12 yes, for q13 yes"*, then Q8 on its own: *"for now there is no order key, for race
+> condition, its service responsbility"*:
+>
+> | Q | decision |
+> | --- | --- |
+> | 8 | ⛔ [ordering-is-each-services-job](technical/event_architecture/context_decision.md#ordering-is-each-services-job) — **against my recommendation**: no ordering key for now; a race between events is the consuming service's |
+> | 7 | [typed-fields-for-what-the-library-reads](technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads) — `event_id`, `occurred_at`, `aggregate_id` typed on `Event`, beside the owner's `metadata` map |
+> | 10 | [one-contract-for-both-handler-types](technical/event_architecture/context_decision.md#one-contract-for-both-handler-types) — `nil` ACKs · an error retries · an unhandled variant returns `nil` · `Claim` in the handler's own transaction |
+> | 11 | ⛔ [push-routes-are-open-by-default](technical/event_architecture/context_decision.md#push-routes-are-open-by-default) — **against my recommendation**: no token check, for every adopter |
+> | 12 | [one-adopter-checklist-for-both-drivers](technical/event_architecture/context_decision.md#one-adopter-checklist-for-both-drivers) — seven steps: named type, provider, route or `Run(ctx)`, one declaration, own dedup table, a test per variant |
+> | 13 | [pull-worker-is-bounded-and-fails-loudly](technical/event_architecture/context_decision.md#pull-worker-is-bounded-and-fails-loudly) — returns only on cancel, and never the client's 1000 handlers at once |
+>
+> ⚠ **Re-examined for ripples (RULE 11) — three found.** `context.md` lags the decisions at six lines, a
+> checklist rather than a question · the guideline nests the metadata in `EventMetadata meta = 1`, so
+> [typed-fields-for-what-the-library-reads](technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads)
+> **overrides** `meta-at-one-payload-at-hundred` — four more stale guideline sites, plus one from the
+> one-package brief, eleven in all · and,
+> latent in code: liability's *"the ledger's write path has no wire surface"* holds only while liability
+> has no push route. Its lever under the decision is **pull**, which has no inbound route to forge.
+>
+> ⚠ **Q8's ripples.** ✅ Settlement already meets it — every write is a delta and the cascade shifts later
+> days, so any arrival order composes to the same report. ⛔ **Liability does not**: a cancel that arrives
+> first reverses nothing and ACKs, and the late placement then charges a cancelled order — permanently.
+> Latent while liability reads only the dev loopback, and now liability's to fix. And three more guideline
+> sites go stale (`topic-per-context`'s ordering rationale, the planned `ordering_key_field`, §6's
+> *"absent is an error"*) — fourteen in all.
+>
+> 🆕 **event_architecture Q2 now has a written proposal** —
+> the outbox (⛔ since declined — [no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)): two functions a producing
+> service opts into, `Enqueue(ctx, tx, event)` inside its own transaction and `RunRelay` after commit. ⚠ It
+> **revises my earlier decorator shape** — a decorator implementing `EventSender` cannot reach the caller's
+> transaction, since the owner's `EventSender` takes no `ctx` and no `tx`. No count change.
+>
+> 🆕 **`context.md` gained an adopter recipe per driver, a pull library, and a `metadata` map on `Event` —
+> re-examined as each landed.** Three halves are settled in the owner's doc itself, so three questions
+> narrowed in place:
+>
+> | settled by the doc | what is left |
+> | --- | --- |
+> | the metadata lives on `Event`, as a `map<string, string>` | event_architecture Q7 — typed fields for the three keys the library READS. A misspelt `event_id` in a map reads `""`, and every later event dedups as a duplicate, silently |
+> | push and pull get two handler types, one signature — Go converts a handler between them | Q10 — the four rules, written once above both |
+> | `ListenSubscriber(subid)` receives, so `InitializeSubscriber` only creates | Q5 — its defaults and its compare-refuse contract |
+>
+> ⛔ **Three new questions and a contradiction.** The push recipe makes settlement's open webhook
+> ([the-event-webhook-is-open](business/settlement/context_decision.md#the-event-webhook-is-open)) **every
+> adopter's default** — and liability, the only other consumer with logic, writes its LEDGER from the
+> event, on the path its own code says has *"NO WIRE SURFACE AT ALL"*. Settlement's decision rested on
+> *"the ledger is not reachable from here"*, and a recipe copies the code without the basis (Q11: verify by
+> default, settlement opts out by name). Both recipes stop at the handler — no dedup-table migration, no
+> subscription declaration, and no route convention while two already exist (Q12). `ListenSubscriber`
+> blocks with no stated lifecycle, and Pub/Sub's client runs **up to 1000 handlers at once** by default,
+> on a DB pool with no connection limit (Q13). And line 100's `PushHandler` is the SHIPPED raw-request
+> type, not the doc's `EventPushHandler` — reported as a contradiction.
+>
+> ⚠ **Ripple**: the settlement event spec moved to the owner's map plus the three typed fields
+> ([analytic_context_clarify](business/settlement/analytic_context_clarify.md#proposed-design--the-settlement-event)),
+> and so did **#6** below. ✅ Its three new questions, and two of the three it narrowed, were decided the
+> same day — above.
+>
+> 🆕 **Then `### Webhook` gained a consumer contract — `EventPushHandler func(ctx, event Event) error`.**
+> The library decodes and the handler gets the whole `Event`, which **removes a library contradiction**
+> (dispatching on the decoded type is right when that type is always `Event`) and makes a metadata block
+> on `Event` reach every handler for free — event_architecture Q7 now has a written proposal
+> (✅ since decided — [typed-fields-for-what-the-library-reads](technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads)). One new
+> question: make it the ONE handler for push and pull, with four rules beside it — the two that fail
+> silently are *return nil for a variant you do not handle* and *claim the id in your own transaction*.
+>
+> 🆕 **Re-examined twice more, and the owner's own doc edits closed a question and a half.**
+> `## How Ensure Event Setup Related Properly` now has `InitializeSubscriber` beside `InitializeTopic`, so
+> subscriptions are covered — what is left of event_architecture Q5 is the functions' contract, plus a
+> naming trap: Pub/Sub's client calls the RECEIVING side a `Subscriber`. And
+> `## How Event Received / Subscribed.` opened with two empty sub-sections — `### Webhook` and `### Pull`.
+> ✅ That closes *push or pull* in the doc itself: **both**, and the question is deleted. Both
+> sub-sections inherit a receive half **built twice and wired once**:
+> `san_event.Receiver` (dedup in the handler's transaction, rejection records, a repeated-failure layer) is
+> called by nothing, and the path that runs, `event_source.PushHandler`, has none of it. ⛔ **Two defects
+> would drop events silently the day a real subscription pushes**, both verified against Google's docs: a
+> push carries the FULL subscription path, which `liability_service` matches against short constants — so
+> every event falls to `default:` and is ACKed — and `deliveryAttempt` arrives at the top level, which
+> `PushRequest` never reads, and is `0` anyway without a dead-letter policy. The dev loopback passes short
+> names, which is why none of it has failed. A receive path is proposed for the empty section, and every
+> event_architecture question is rephrased so a bare *"yes"* accepts the recommendation.
+>
+> ✅ **Two event decisions, both against my recommendation, both taken the day they were asked.**
+>
+> | decision | what it settles | what it leaves |
+> | --- | --- | --- |
+> | [superseded-one-event-many-topics](technical/event_architecture/context_decision.md#superseded-one-event-many-topics) — one global `Event` in `warehouse.events.v1`, every variant naming its own topics (⛔ multi-topic cancelled later the same day) | **reverses** [superseded-no-global-event-envelope](technical/event_architecture/context_decision.md#superseded-no-global-event-envelope), a day old, by answering its one objection — one `Event`, one topic. Its other three reasons were accepted as costs | ⛔ **fan-out is now one publish per topic, so it is no longer atomic** — the outbox (event_architecture Q2) becomes the fix, not an option · the sketch has no home for the metadata (Q7), no per-topic ordering key (Q8) and a second `event_config` (Q9) · the guideline now disagrees at six sites |
+> | [initialize-topic-is-a-function-not-a-flow](technical/event_architecture/context_decision.md#initialize-topic-is-a-function-not-a-flow) — the library ships the function, callers build the flow | who runs provisioning, and when. My `san`-command-at-deploy recommendation is **withdrawn** as a library requirement | what the functions **guarantee** (Q5, narrowed twice) — ✅ the doc has since added `InitializeSubscriber`, so subscriptions are covered. Left: its safe defaults, compare-then-refuse, and whether *Subscriber* means the resource or the receiving client |
+>
+> ⚠ **Re-examined for ripples, as RULE 11 asks after a decision that touches a shared shape.** Four
+> agent-written sites assumed the old envelope and were updated: the settlement event spec
+> ([analytic_context_clarify](business/settlement/analytic_context_clarify.md#proposed-design--the-settlement-event) —
+> every settlement answer survives, only the wrapper moved), a settlement diagram, the FAQ's event-option
+> entry, and **#6** below. ⛔ **The guideline is the one site not updated** — six of its rules describe the
+> overridden shape, and it is not mine to edit without an ask.
+>
+> 🆕 **Found on the way, and still true**: a topic carries almost none of the config that fails — filter
+> and ordering are fixed when a subscription is created, a DLQ needs an IAM grant, and a subscription with
+> no activity is **deleted after 31 days**, which is exactly what a quiet DLQ triage subscription is · the
+> one consumer with logic has **no push route** · the shipped Pub/Sub sender creates a `Publisher` per event
+> and never stops one — ⚠ *since corrected*: not a goroutine leak in v2.6.1, but no batching and nothing to flush
+> at a deploy ([6d](technical/event_architecture/context_clarify.md#6d--one-publisher-per-topic-and-a-cleanup)).
+>
+> ⚠ **Two corrections of my own.** A publish handed the request's `ctx` does not *"die"* on a disconnect —
+> the send survives and the wait fails, so the caller reports a loss that did not happen. And *"a filter
+> change is a data gap"* is avoidable: topic retention lets the replacement subscription seek back.
+> → [event_architecture questions](technical/event_architecture/context_clarify.md#question)
+>
+> 🔧 **This file was repaired too**: the withdrawal line under *Off the display* was cut mid-sentence and
+> followed by a stray table row, eleven code links resolved against `docs/` instead of the repo root, and
+> one anchor pointed at a renamed section. All fixed.
+>
 > ✅ **The event package question was answered the same day it was ranked** —
-> [no-global-event-envelope](technical/event_architecture/context_decision.md#no-global-event-envelope):
-> **one envelope per context**, no shared `warehouse.events.v1`. It **ratifies** the guideline rather
-> than overriding it, so no override note is owed, and it is the first time the requirement tree and
-> `guidelines/` have been aligned on anything in this area.
+> [superseded-no-global-event-envelope](technical/event_architecture/context_decision.md#superseded-no-global-event-envelope)
+> (⛔ reversed a day later — above): **one envelope per context**, no shared `warehouse.events.v1`. It
+> **ratified** the guideline rather than overriding it, so no override note was owed, and it was the first
+> time the requirement tree and `guidelines/` had been aligned on anything in this area.
 >
 > ✅ **And the three-docs question went with it** —
 > [the-library-doc-is-absorbed](technical/event_architecture/context_decision.md#the-library-doc-is-absorbed):
@@ -45,7 +277,7 @@ stated 102. **Nothing was answered to cause the rise.**
 > tracked until it lands.
 >
 > ⚠ **One inbound link broke and it is the owner's to fix**: `ledger/mutation_and_ledger.md:154`
-> says *"we rely [event_library](../event/library.md) for processing event"* and now points at
+> says *"we rely `[event_library](../event/library.md)` for processing event"* and now points at
 > nothing. Reported in
 > [`mutation_and_ledger_clarify.md`](technical/ledger/mutation_and_ledger_clarify.md), never edited
 > (RULE 7b). My own two references were repointed.
@@ -72,7 +304,7 @@ stated 102. **Nothing was answered to cause the rise.**
 >
 > 🆕 **Settlement's event set is TWO IN and one out — and both inbound events already ship with no
 > consumer.** `selling_service` publishes `OrderPlacedEvent` and `OrderCancelledEvent` today, and
-> [`events.proto`](proto/warehouse/selling/v1/events.proto) says so in capitals: *"IT CURRENTLY HAS NO
+> [`events.proto`](../proto/warehouse/selling/v1/events.proto) says so in capitals: *"IT CURRENTLY HAS NO
 > CONSUMER, AND IS PUBLISHED ANYWAY … Do not stop publishing it because nothing listens."* Those are
 > exactly `initial_total` and `initial_total_cancel`, which `context.md` currently gets by a
 > **synchronous RPC from `order_service` whose failure is swallowed** — the seam **#1** is about.
@@ -344,7 +576,7 @@ stated 102. **Nothing was answered to cause the rise.**
 > ⚠ **And the composite unique is `(day, shop_id, team_id)` while both queries filter equality on
 > `shop_id, team_id` with a range on `day`** — the wrong column order for the only two queries in the
 > design. `(shop_id, team_id, day)` is free: `ON CONFLICT` infers its index by column *set*, not order.
-> → [analytic — what it broke](business/settlement/analytic_context_clarify.md#what-this-round-adopted-and-what-it-broke)
+> → [analytic — what it broke](business/settlement/analytic_context_clarify.md#what-the-previous-round-adopted-and-what-it-broke)
 >
 > ⛔ **What was NOT adopted is now the largest gap, precisely because the statements are correct.**
 > `### Flow` is unchanged: the dedup insert still runs **before** the compute, there is no transaction
@@ -391,7 +623,7 @@ stated 102. **Nothing was answered to cause the rise.**
 >
 > ✅ **The user-dimension blocker was answered — for the live fold only.** `### Events.` now carries
 > `order_created_by_user_id`, which is where that person comes from. ⛔ **But it is persisted nowhere** —
-> not on `settlement_logs`, not on `order_settlements`, and [`orders`](backend/services/selling_service/selling_service_models/order.go)
+> not on `settlement_logs`, not on `order_settlements`, and [`orders`](../backend/services/selling_service/selling_service_models/order.go)
 > still has no creator column (`AuthorUserID` is on `order_drafts`). So the user table can be folded and
 > never **rebuilt**, and every writer must supply it forever on a request that has no such field.
 > **→ `order_settlements.creator_user_id`, stamped once by the opening row** — the event may still carry
@@ -399,7 +631,7 @@ stated 102. **Nothing was answered to cause the rise.**
 > → [analytic Q3](business/settlement/analytic_context_clarify.md#question)
 >
 > ⛔ **And a security hole that is not settlement's alone.** The doc specifies a webhook at
-> `/event/[sub_id]/push`. [push.go:41](backend/pkgs/event_source/push.go#L41) reads the body, decodes and
+> `/event/[sub_id]/push`. [push.go:41](../backend/pkgs/event_source/push.go#L41) reads the body, decodes and
 > calls the handler — **no token, no signature, no check of any kind** — and the roling ACL cannot reach
 > it, because it reads `request_policy` off a Connect request message and a webhook is not one. Anyone
 > who can reach the port POSTs JSON and moves a shop's reported balance. This is the **one write path in
@@ -667,7 +899,7 @@ stated 102. **Nothing was answered to cause the rise.**
 > → [the record](business/analytic/context_clarify.md#the-report-table-this-repo-already-deleted)
 >
 > ⚠ **A correction to this file's own last round.** It repeated the clarify's claim that *"nothing on
-> that diagram has ever run"*. **Wrong** — [liability_service/push_handler.go](backend/services/liability_service/push_handler.go)
+> that diagram has ever run"*. **Wrong** — [liability_service/push_handler.go](../backend/services/liability_service/push_handler.go)
 > consumes both order events and charges real ledger fees, so **push is the deployed mode** and the
 > doc's "push *and* pull" really reads *"add pull"*. What genuinely does not exist: any **pull**
 > subscriber, and any **broker** in the dev server (`event_sender.go` is a synchronous in-process
@@ -756,7 +988,7 @@ stated 102. **Nothing was answered to cause the rise.**
 > | was ranked as | actually |
 > | --- | --- |
 > | the ledger vocabulary migration, #3 | ⛔ **not a question at all** — migration `00005` shipped the vocabulary, `actor_id` and `liability_logs`. Removed |
-> | *freight divides by the EXPECTED quantity*, half of #1 | ✅ **already correct in code** — [restock_request_fulfill.go:210](backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L210) divides by what arrived. The owner's DIAGRAM draws it the other way, so the question is about the diagram |
+> | *freight divides by the EXPECTED quantity*, half of #1 | ✅ **already correct in code** — [restock_request_fulfill.go:210](../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L210) divides by what arrived. The owner's DIAGRAM draws it the other way, so the question is about the diagram |
 > | *what moment consumes a FIFO layer*, #4 | ⚠ **built the way this file recommended**, unratified. Demoted to #7 as a ratification |
 > | *where is the DEFAULT row edited*, #7 | ✅ answered this round |
 >
@@ -794,12 +1026,12 @@ stated 102. **Nothing was answered to cause the rise.**
 
 | # | The question | Blocks | Asked in | My recommendation |
 | --- | --- | --- | --- | --- |
-| **1** | **How is a half-succeeded order FOUND afterwards?** 🔄 **REFRAMED, and the old framing was wrong on three counts.** This row said there is *"no outbox, no saga and no compensation anywhere in the repo"* and that settlement *"sits on the critical path"*. Opening the files: [team_create.go:21](backend/services/team_service/team_v1/team_create.go#L21) **is** an explicit saga (commit locally, grant remotely, soft-delete on failure) · [order_place.go:246](backend/services/selling_service/selling_v1/order_place.go#L246) **is** an explicit compensation (`stock.Return`, with `picked` set BEFORE the call because *"a Pick whose result never reached us may well have committed"*) · and settlement's leg is **decided** ([the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement)). ✅ **The PRE-COMMIT half is handled**: the pick runs INSIDE the order's transaction, so not enough stock rolls the order back and none exists. ⛔ **What is actually open is the POST-COMMIT half, and it is one gap at three sites** — the `OrderPlacedEvent` publish (liability never charges the order fee), `SettlementPost` (no account opens), and `catalog.Snapshots` (an unresolved owner rides as **0**, which liability reads as *nobody to pay*). All three end at *"logged loudly"*, and **nothing enumerates which orders are in that state**. ⚠ The third is the worst: it logs no failure an operator would act on, so a transient catalogue blip becomes a fee never charged and never surfaced. | ⛔ every order whose downstream row silently never appeared — fees uncharged, accounts unopened, with no list of them anywhere | [order Q14](business/order/context_clarify.md#question) — ➡ **re-routed there by the owner (2026-09-10)**, from architecture and settlement, neither of which can answer it | **A finder per leg** — a query listing committed orders with no downstream row. It needs no saga, no outbox and no new mechanism, and all three legs already assume it exists: [the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement) flags *⛔ how a missing account is FOUND* as its own undecided half. ⚠ **And record the premise clash**: `architecture/context_clarify.md` says *"the amount is only known AFTER the draw, so the gate cannot run before it — step 7 is the whole design"*, while the shipped code runs the gate FIRST on a `UnitCosts` read and states the trade (*"the staleness that allows is exactly the overshoot the `debt < limit` rule already permits"*). `draw → gate → commit → release` describes an ordering the code deliberately inverted. |
+| **1** | **How is a half-succeeded order FOUND afterwards?** 🔄 **REFRAMED, and the old framing was wrong on three counts.** This row said there is *"no outbox, no saga and no compensation anywhere in the repo"* and that settlement *"sits on the critical path"*. Opening the files: [team_create.go:21](../backend/services/team_service/team_v1/team_create.go#L21) **is** an explicit saga (commit locally, grant remotely, soft-delete on failure) · [order_place.go:246](../backend/services/selling_service/selling_v1/order_place.go#L246) **is** an explicit compensation (`stock.Return`, with `picked` set BEFORE the call because *"a Pick whose result never reached us may well have committed"*) · and settlement's leg is **decided** ([the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement)). ✅ **The PRE-COMMIT half is handled**: the pick runs INSIDE the order's transaction, so not enough stock rolls the order back and none exists. ⛔ **What is actually open is the POST-COMMIT half, and it is one gap at three sites** — the `OrderPlacedEvent` publish (liability never charges the order fee), `SettlementPost` (no account opens), and `catalog.Snapshots` (an unresolved owner rides as **0**, which liability reads as *nobody to pay*). All three end at *"logged loudly"*, and **nothing enumerates which orders are in that state**. 🆕 ⚠ And the event architecture now **assumes the publish succeeds** ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)), so for the event leg the finder is the only detector there is. ⚠ The third is the worst: it logs no failure an operator would act on, so a transient catalogue blip becomes a fee never charged and never surfaced. | ⛔ every order whose downstream row silently never appeared — fees uncharged, accounts unopened, with no list of them anywhere | [order Q14](business/order/context_clarify.md#question) — ➡ **re-routed there by the owner (2026-09-10)**, from architecture and settlement, neither of which can answer it | **A finder per leg** — a query listing committed orders with no downstream row. It needs no saga, no outbox and no new mechanism, and all three legs already assume it exists: [the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement) flags *⛔ how a missing account is FOUND* as its own undecided half. ⚠ **And record the premise clash**: `architecture/context_clarify.md` says *"the amount is only known AFTER the draw, so the gate cannot run before it — step 7 is the whole design"*, while the shipped code runs the gate FIRST on a `UnitCosts` read and states the trade (*"the staleness that allows is exactly the overshoot the `debt < limit` rule already permits"*). `draw → gate → commit → release` describes an ordering the code deliberately inverted. |
 | **2** | **Can the stored carry drift from its own definition without anything noticing?** 🆕 **Opened by the decision that closed the old #2.** [the-carry-materialises-the-day-boundary-position](business/settlement/context_decision.md#the-carry-materialises-the-day-boundary-position) reconciled the two balance decisions that looked like rivals: *"open balance is start balance of the day, close balance is end balance of the day"* is what the number **MEANS**, the stored carry is how it is **KEPT**, and the cascade is the bridge between them. ⛔ **That converts a definitional argument into a bug class.** Any path where the cascade does not run — a partial commit, a replay that skips a day, a genesis seeded wrong — leaves the stored copy unequal to its own definition, and **`close − open = change` still holds on every row**, so no invariant on the table detects it. ⚠ It was harmless while the columns were unread. With [a-past-date-position-is-a-real-screen](business/settlement/context_decision.md#a-past-date-position-is-a-real-screen) it is a wrong figure a person acts on. ⚠ **And a second reader-facing rule is unstated**: a day with no movement has **no row**, so a position query that does not fall back to the last row at or before the date returns "no data" for a day the shop plainly had a position. | ⛔ the correctness of every absolute figure on the one screen that reads them — silently, with the table's own invariant still satisfied | [analytic Q3](business/settlement/analytic_context_clarify.md#question) · [analytic Awaiting](business/settlement/analytic_context_clarify.md#awaiting) | **One reconcile RPC, checking a scope against the log it materialises**: `close_balance(D) = Σ change WHERE posted_on <= D`, same service, no HARD RULE 3 problem. On demand to start with rather than nightly — it is the only check the eager write path cannot perform on itself, and it is the same reconcile pass [mutation_and_ledger.md](technical/ledger/mutation_and_ledger.md) already promises elsewhere. **→ And state the gap-day fallback** (`WHERE day <= @as_of ORDER BY day DESC LIMIT 1`) in the doc rather than leaving it for whoever writes the screen. ⚠ **Also still open beside it**: does the past-date screen exist per **USER**? On `user_settlement_daily_reports` the same columns mean a person's lifetime running total of hidden cost, which only grows — so the newest CS always looks best. Recommend dropping the carry from the user table only, which also halves the cascade on the busier of the two tables. |
 | **3** | **How is drift repaired when the LOG is already right and only the FOLD was lost?** 🔄 **Reshaped — the ledger-or-report half was ANSWERED in a day.** `context.md` made `system_adjustment` an eighth `settlement_type`, so it is a **ledger row**, shop-addressed, reaching the report through the broker — against my recommendation, and my report-column proposal is **withdrawn**. ✅ **That also unblocked #2**: with the adjustment in the log, the reconcile stays `close_balance(D) = Σ change` and needs no second term. ⛔ **What survives is the case the design cannot express.** The adjustment moves the log and the report **together, by the same amount** — so it repairs damage where BOTH were wrong, and cannot repair damage where only the report was. ⚠ **And “only the report” is what every known drift cause produces**: a dead-lettered event, a cascade that did not run, a genesis seeded wrong, a replay that skipped a day — in all four the log already holds the truth. Posting an adjustment there overstates the log by exactly the amount it corrects the report by, so the two end up disagreeing permanently and the reconcile reports a difference forever — which is how a check gets switched off. | ⛔ out-of-window report drift, which the replay cannot reach by decision and the adjustment cannot express — and, through the reconcile, the credibility of the only drift detector | [settlement context clarify](business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | **A targeted DAY RE-FOLD from the log** — re-read one scope's rows for one day and rewrite that day. It reaches **any** date because the log has no retention limit, it needs no adjustment row, and it leaves the ledger true. ⚠ **It is a second reader of the log**, which [the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker) deliberately avoided — but that decision governed a RANGE replay through the webhook, and this is one day, on demand, for repair. Decide it on its own rather than inheriting that answer. ⚠ **Keep `system_adjustment` for what it is genuinely for**: a fact that was never recorded at all, where log and report are wrong together and move back together. |
-| **4** | **Does the courier's TIP belong inside the frozen unit cost?** ⚠ **HALVED by re-examination, and the surviving half is verified in code.** This row used to merge a denominator defect and a numerator one. **(a) The denominator is already right** — [restock_request_fulfill.go:210](backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L210) divides by `sellableTotal`, what actually arrived with damaged units excluded, and the line cost by `line.quantity`, the received one. The owner's flow diagram draws it the other way round, so [stock Q1](business/stock/context_clarify.md#question) is a question about the DIAGRAM, not a live defect. **(b) The numerator stands** — `freight := rr.ShippingCost + costLineTotal`, under the comment *"EVERY OUTLAY IS FREIGHT"*, capitalises the incidental fee that `balance_context.md` defines as a courier's *"coffe tip"* into a cost frozen for the life of the batch. ⚠ **And it compounds with a decision taken this round**: a breakage reimbursement pays at COGS, so the warehouse is repaid a tip it charged, and [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) lets it reverse that reimbursement unilaterally. | every batch's frozen unit cost — and therefore COGS, margin, the cross-charge (COGS × markup) and breakage payouts, for the life of the batch | [product Q6](business/product/context_clarify.md#question) · [stock Q1](business/stock/context_clarify.md#question) | **Take the tip OUT, leave `ShipmentFee` in** — freight is agreed before the journey and is genuinely part of what the goods cost; an unpredictable ask at the door is not. One line — `freight := rr.ShippingCost` — with `costLineTotal` still posting to the balance. ⚠ Note `freightPerUnit` is integer division and **floors**, so a small tip contributes **0 per unit** while being charged in full on the balance: it is already unreliable at exactly the sizes it is described as being. |
-| **5** | **🆕 Which markup does the LEDGER charge from?** ⛔ **A live billing discrepancy, found while acting on an owner decision.** The cross-product markup is stored TWICE and nothing keeps the copies equal: `products.cross_markup_bps` is what the product detail QUOTES a borrowing team, and `liability_terms.product_markup_bp` is what [`order_fees.go:144`](backend/services/liability_service/liability_v1/order_fees.go) actually CHARGES it. Set one to 20% and leave the other at 5% and the quote and the invoice disagree — in whichever direction was edited last, silently, with neither screen able to see the other. ✅ The OWNERSHIP is settled: the rate is `product_service`'s ([the-cross-markup-belongs-to-the-product](business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)), and the balance screens no longer show it. What is open is only which number the posting reads. | every cross-sold order's fee — the amount a team is quoted versus the amount it is billed | [technical balance Q10](technical/balance/team_balance_design_clarify.md#question) · [Contradiction](business/balance/context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones) | **`order_fees.go` reads the PRODUCT's rate when it freezes the fee, and `liability_terms.product_markup_bp` is dropped in the same migration.** Balance is then told the amount rather than asked to compute the rate — already true of every other cause. ⚠ **Three things land together or the fee breaks**: the read moves, the column goes, and the frontend's pass-through bridge is deleted. |
-| **6** | **How does the decided envelope get PUBLISHED at all?** 🔄 **Reshaped — the package half closed in a day, and what it left behind is worse.** ✅ [no-global-event-envelope](technical/event_architecture/context_decision.md#no-global-event-envelope) settled the shape: one envelope per context, no shared `warehouse.events.v1`, ratifying the guideline rather than overriding it. ✅ [the-library-doc-is-absorbed](technical/event_architecture/context_decision.md#the-library-doc-is-absorbed) retired `technical/event/library.md` into `event_architecture/context.md`, closing *which of three docs is authoritative*. ⛔ **Neither made the first event writable, and both halves of what remains are library work that does not exist.** **(a) The decided envelope does not compile**: the guideline specifies `EventMetadata meta = 1`, `san_event.Event` demands flat `GetEventId()` + `GetOccurredAtUnix()` ([event.go:33](backend/pkgs/san_event/event.go)), its snippet sets an `ordering_key_field` that `MessageEventConfig` does not have, and `EventMetadata` is not in `proto/` at all. **(b) `Register[T]` now dispatches on the wrong thing** — it keys on the concrete decoded type ([receive.go:113](backend/pkgs/san_event/receive.go)), and with an envelope per context that type is always `SettlementEvent`, so every handler registers for the envelope and switches on the `oneof` itself. That was a trade-off before the decision and is **unavoidable after it**. ⚠ **The two interact**: unwrapping the `oneof` changes the same handler signature `meta` does, so settling them separately rewrites the library twice. ⛔ **And the doc was DELETED before its content was moved**, so the push/pull flows, `EventSender` and the dead-letter design now exist only in git (`git show d54b182:…`) — a recovery step somebody has to take. ⚠ **The text carries a live hazard**: it declares `san_event = 50099` while `TopicName()` reads `event_config` at **50001**, so an event carrying only the doc's option reports **no topic**: present in the `.proto`, invisible to the code. Copied across, a stale sibling becomes the instruction. | ⛔ the first real event in the system — settlement's, which is how the fold that dominates this page is fed. It cannot be written today in any package | [event_architecture Contradiction](technical/event_architecture/context_clarify.md#contradiction) · [what the removed doc held](technical/event_architecture/context_clarify.md#-what-the-removed-doc-held-and-what-must-not-come-back-with-it) | **The guideline wins and the CODE moves — three changes in one package, together.** `EventMetadata` lands in `proto/warehouse/event_base/v1/metadata.proto` · `MessageEventConfig` gains `ordering_key_field = 2` · `san_event.Event` becomes `GetMeta() *EventMetadata`. `meta` is the better shape: one metadata block, and `aggregate_id` present, which flat 98/99 has nowhere to put and which the ordering key reads. **And the library unwraps the `oneof`**, dispatching on the set field so `Register[SettlementPostedEvent](…)` keeps working and the envelope stays confined to the wire — handler signature `func(ctx, tx, meta, []T)`. A one-package change today, a rewrite of every event later. ⚠ **Use `event_config` at 50001 in the merged doc**, never 50099. |
+| **4** | **Does the courier's TIP belong inside the frozen unit cost?** ⚠ **HALVED by re-examination, and the surviving half is verified in code.** This row used to merge a denominator defect and a numerator one. **(a) The denominator is already right** — [restock_request_fulfill.go:210](../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L210) divides by `sellableTotal`, what actually arrived with damaged units excluded, and the line cost by `line.quantity`, the received one. The owner's flow diagram draws it the other way round, so [stock Q1](business/stock/context_clarify.md#question) is a question about the DIAGRAM, not a live defect. **(b) The numerator stands** — `freight := rr.ShippingCost + costLineTotal`, under the comment *"EVERY OUTLAY IS FREIGHT"*, capitalises the incidental fee that `balance_context.md` defines as a courier's *"coffe tip"* into a cost frozen for the life of the batch. ⚠ **And it compounds with a decision taken this round**: a breakage reimbursement pays at COGS, so the warehouse is repaid a tip it charged, and [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) lets it reverse that reimbursement unilaterally. | every batch's frozen unit cost — and therefore COGS, margin, the cross-charge (COGS × markup) and breakage payouts, for the life of the batch | [product Q6](business/product/context_clarify.md#question) · [stock Q1](business/stock/context_clarify.md#question) | **Take the tip OUT, leave `ShipmentFee` in** — freight is agreed before the journey and is genuinely part of what the goods cost; an unpredictable ask at the door is not. One line — `freight := rr.ShippingCost` — with `costLineTotal` still posting to the balance. ⚠ Note `freightPerUnit` is integer division and **floors**, so a small tip contributes **0 per unit** while being charged in full on the balance: it is already unreliable at exactly the sizes it is described as being. |
+| **5** | **🆕 Which markup does the LEDGER charge from?** ⛔ **A live billing discrepancy, found while acting on an owner decision.** The cross-product markup is stored TWICE and nothing keeps the copies equal: `products.cross_markup_bps` is what the product detail QUOTES a borrowing team, and `liability_terms.product_markup_bp` is what [`order_fees.go:144`](../backend/services/liability_service/liability_v1/order_fees.go) actually CHARGES it. Set one to 20% and leave the other at 5% and the quote and the invoice disagree — in whichever direction was edited last, silently, with neither screen able to see the other. ✅ The OWNERSHIP is settled: the rate is `product_service`'s ([the-cross-markup-belongs-to-the-product](business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)), and the balance screens no longer show it. What is open is only which number the posting reads. | every cross-sold order's fee — the amount a team is quoted versus the amount it is billed | [technical balance Q10](technical/balance/team_balance_design_clarify.md#question) · [Contradiction](business/balance/context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones) | **`order_fees.go` reads the PRODUCT's rate when it freezes the fee, and `liability_terms.product_markup_bp` is dropped in the same migration.** Balance is then told the amount rather than asked to compute the rate — already true of every other cause. ⚠ **Three things land together or the fee breaks**: the read moves, the column goes, and the frontend's pass-through bridge is deleted. |
+| **6** | **How does the decided `Event` get PUBLISHED at all?** 🔄 **Re-decided twice** — one global `Event` in `warehouse.events.v1`, and now each variant names ONE topic ([one-event-one-topic-per-variant](technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)), the owner having cancelled the multi-topic half of [superseded-one-event-many-topics](technical/event_architecture/context_decision.md#superseded-one-event-many-topics), which had itself superseded [superseded-no-global-event-envelope](technical/event_architecture/context_decision.md#superseded-no-global-event-envelope). ✅ Provisioning is settled too, as a library function whose flow belongs to the caller ([initialize-topic-is-a-function-not-a-flow](technical/event_architecture/context_decision.md#initialize-topic-is-a-function-not-a-flow)). ⛔ **Neither makes the first event writable — the shipped library can publish none of the decided shape.** `TopicName()` reads one `event_topic` off the message PUBLISHED, and `Event` carries no option (the topic sits on the variant) · `san_event.Event` demands `GetEventId()` + `GetOccurredAtUnix()` (✅ the envelope now carries `event_id` itself — [typed-fields-for-what-the-library-reads](technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads)) · (✅ dispatch is not on this list — the owner's `EventPushHandler` takes the whole `Event`, so `Register[T]` keying on the decoded type is right with `T = Event`) · ✅ fan-out is no longer on this list — one topic per event is one publish. ✅ **No proto question blocks the first line any more** (🆕 Q14 — `identity`'s number and who fills it — shapes it without blocking it): the option lives in `warehouse.events.v1` and `event_base.v1` is removed ([event-base-v1-is-removed](technical/event_architecture/context_decision.md#event-base-v1-is-removed)), and the metadata's type and the ordering key (none, for now) are decided. ⛔ **And the removed doc's content is still only in git** (`git show d54b182:…`), carrying `san_event = 50099` — an option `TopicName()` would never see. 🆕 ⛔ **Nor can it be RECEIVED safely**: the wired push path has no dedup, a real push's full subscription path misses every short-name match, and the delivery attempt is never read — [the receive half](technical/event_architecture/context_clarify.md#the-receive-half-is-built-twice-and-wired-once) · ✅ what a consuming service implements is decided — [one-contract-for-both-handler-types](technical/event_architecture/context_decision.md#one-contract-for-both-handler-types) · [one-adopter-checklist-for-both-drivers](technical/event_architecture/context_decision.md#one-adopter-checklist-for-both-drivers) · [pull-worker-is-bounded-and-fails-loudly](technical/event_architecture/context_decision.md#pull-worker-is-bounded-and-fails-loudly) · ⛔ [push-routes-are-open-by-default](technical/event_architecture/context_decision.md#push-routes-are-open-by-default), against my recommendation. | ⛔ the first real event in the system — settlement's, which feeds the fold that dominates this page. It cannot be written today in any package | [event_architecture Contradiction](technical/event_architecture/context_clarify.md#contradiction) · [the costs](technical/event_architecture/context_clarify.md#what-one-global-event-costs-and-the-cheapest-answer-to-each) · [event_architecture Q6 · Q14](technical/event_architecture/context_clarify.md#question) | **The library moves, in three changes**: `TopicName(event)` unwraps the `oneof` and reads the SET VARIANT's topic, an empty one an error (§5 made executable, and a descriptor test catches it in CI) · `san_event.Event` reads the envelope's own typed fields (✅ decided) · the receive path follows the decided handler contract, one route through `san_event.Receiver` for both drivers. ✅ **No outbox** — the publish is trusted ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)). **The proto is decided** — and `event_base.v1`'s removal must land in the SAME change that adds the new option and moves selling's two events and `TopicName()` to it, or the build breaks. **Provisioning**: ✅ decided — [setup-ensures-safe-defaults-never-deletes](technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes), a developer's tool. **Receiving**: ✅ decided. Under open push routes, a consumer that writes a source of truth — liability's ledger — consumes by pull. |
 | **7** | **Is the analytic PATTERN robust — and do its 14 rules hold?** 🔄 **Reshaped by a decision about ORDER OF WORK.** The owner settled it: *"we decide later what service follow this, for now make this principle robust first"* ([the-pattern-comes-before-its-consumers](business/analytic/context_decision.md#the-pattern-comes-before-its-consumers)), on top of `## Responsbility` becoming **"Provide Analytical Design Pattern"** ([analytic-is-a-pattern-not-a-data-product](business/analytic/context_decision.md#analytic-is-a-pattern-not-a-data-product)). ✅ **Three questions closed across two rounds** — *which numbers, for whom* · *is "Admin Team" team 1* (re-routed to [settlement C5](business/settlement/context_clarify.md#critique)) · *which consumer proves it* (deferred). ⛔ **What is left is the contract itself, and it is now written rather than requested** — 14 rules, each checked against a table that exists. ⚠ **Three already fail:** `expense_records` breaks append-only (`ExpenseUpdate` rewrites amount, kind and month in place) and the immutable-bucket-date rule, and **no source anywhere has a cursor-paged `LogRead`** — the pattern's one real build cost. ⛔ And the doc still names three report tables (team, shop, **supplier**) against a stated responsibility of *a pattern*, with its likeliest consumer needing **user** and having no supplier column at all. 🆕 **And the doc gained its rationale this round** — `### Why We Need Analytical Design Pattern.`, *"separate the operational domain from the analytical domain"*. It is right and one level too abstract to choose a design with: separation has four strengths, and the section leans on the cheap ones (load — a read replica fixes that) while omitting the only one that makes the pattern **necessary rather than preferred** — **HARD RULE 3 forbids a cross-service join, so a report spanning services cannot be a query.** ⛔ It is also now the strongest argument against two things already drawn: `Preload If Needed` re-couples the domains it separates, and a *pattern* naming a `supplier` table has absorbed one consumer's vocabulary. ⚠ And it opens a structural question — **is `analytic` a LIBRARY or a SERVICE?** | ⏸ nothing is blocked *today* — the deferral was deliberate. ⚠ **But an unimplemented pattern is unfalsifiable**, and settlement has already written *"follow this"* into its own doc | [analytic Q1](business/analytic/context_clarify.md#question) · [analytic Q2](business/analytic/context_clarify.md#question) · [analytic Q3](business/analytic/context_clarify.md#question) | **Ratify or correct the contract** — [what-the-pattern-owes-an-implementer](business/analytic/context_clarify.md#what-the-pattern-owes-an-implementer). Its load-bearing move is that **the event is a DOORBELL, not a delivery**: two paths over one fold — a best-effort fast path, a convergent tick, and a claim keyed on the source row so they overlap safely. That is the reconcile pass [mutation_and_ledger.md](technical/ledger/mutation_and_ledger.md) already promises, it makes the broker **optional to correctness**, and it retires the thin-vs-fat event argument outright. **Then: a measure set is a TABLE, a dimension is a KEY, and only `day` is stored** — [a-grain-is-a-key-a-measure-set-is-a-table](business/analytic/context_clarify.md#a-grain-is-a-key-a-measure-set-is-a-table). The diagram split on the wrong axis: team and shop are two dimensions of one measure set, supplier is a different measure set in `inventory_service`. For settlement that is **one** table and **one** fold instead of three-to-twelve, and adding `user` is a value rather than a migration. ⚠ One rule it exposes is per-SOURCE, not per-pattern: *team = Σ shops* holds for `settlement_logs` and **fails** for `expense_records` (`shop_id` `0 = not attributed`), so the pattern must make an implementer state it rather than assume it. **Split library from service by one rule**: a report reading ONE service's log is that service's own, folded in-process with a shared library (`settlement_daily` belongs to `settlement_service`, HARD RULE 3 clean) — a report reading SEVERAL needs an owner, and that is what an analytic service is for. Seven of the nine known questions are single-source, so the library carries most of the value. ⚠ **This revises my own earlier recommendation** of one analytic service for everything. And `Preload If Needed` is renamed or removed — it is the one box that invites a fold to read mutable state, which makes a rebuild disagree with the live run and nothing detects it. |
 
 **⤵ Demoted, unanswered:** **which PRE-CHECKS does a draft run?** — promoted to #7 last round, pushed
@@ -820,12 +1052,14 @@ order — so it is none of settlement's seven types, and
 ([architecture Q7](technical/architecture/context_clarify.md#question) ·
 [settlement Q3](business/settlement/context_clarify.md#question)). **→ Answer it once, in the
 architecture clarify, and have settlement follow — `order_service`**, because the wallet is fed by that
-| [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | 🆕 counted for the first time |
+shop's orders and the withdrawal is reconciled against them. ⚠ Its premise has since moved: `order_id` is
+nullable now (recorded under *Before this round*), so the NOT NULL no longer forbids a settlement home —
+the question is which home, not whether one exists.
 
-## Where the other 104 are
+## Where the other 102 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **111**, the whole set, not to 104. Previous rounds left
+*from* these files, so the column sums to **109**, the whole set, not to 102. Previous rounds left
 that ambiguous and the sums never reconciled with the header.
 
 | File | Open | |
@@ -847,7 +1081,7 @@ that ambiguous and the sums never reconciled with the header.
 | [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 5 | ▼ was 6 — `system_adjustment` decided as a ledger row in a day. What is left of it is **#3**, reshaped |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 | 🆕 `settlement_service_metadata` — `analytic_status` is gone, `process_event_lock` replaced it — is this table CONFIG (human-set) or STATE (service-set)? |
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 3 | 🆕 counted for the first time |
-| [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 4 | ▼ was 5 — **two answered in a day** (the envelope shape, and which of three docs is authoritative), **one absorbed** from `library_clarify.md`. What is left: push or pull · **outbox or reconcile-as-recovery** · one broker or an abstraction · archive now or lose the history. ⛔ The blocker here is a **contradiction**, not a question — see **#6** |
+| [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 4 | ▼ was 12 — 🆕 ▲ Q14, `identity` on `Event` · ✅ **nine decided**: the setup functions ensure, with safe defaults (Q5) · ⛔ no outbox, the publish is trusted (Q2, against my recommendation) · typed metadata fields (Q7) · ⛔ no ordering key, races are each service's (Q8, against my recommendation) · ⛔ `event_base.v1` removed, the option in `events.v1` (Q9, against my recommendation) · one handler contract (Q10) · ⛔ open push routes, against my recommendation (Q11) · one adopter checklist (Q12) · a bounded pull worker (Q13). Still open: one broker, and which dev broker · archive now or lose the history · the sender contract · `identity`. ⛔ The blocker is still a **contradiction**, not a question — see **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
 | [business/product/systems_clarify.md](business/product/systems_clarify.md#question) | 1 | |
 
