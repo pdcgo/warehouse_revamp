@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package warehouse.common.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1;commonv1";
+
+// The shared building blocks for the guideline's list + by-ids RPC shape
+// (guidelines/service-guideline.md). Each governed list/by-ids RPC composes these with its own
+// per-domain data-type enum, "row" slice, and sort enum.
+//
+// SCOPE NOTE (deliberate deviation from the guideline drawing): the guideline draws the scoped
+// `team_id` INSIDE ListFilter/ByIdsFilter. This system's authorization interceptor
+// (backend/pkgs/san_auth) reads the `use_scope` field by reflection and refuses to boot on a
+// NESTED scope field (ValidateDescriptors), because a scope tag the interceptor cannot see leaves
+// the RPC silently unscoped. So `team_id [use_scope]` stays TOP-LEVEL on every request message, and
+// the ListFilter/ByIdsFilter sub-message carries only the NON-scope filters (q, ids, date ranges).
+
+// CommonPagination is the request-side page cursor for every guideline list RPC (the guideline's
+// `CommonPagination page`). Same bounds as the legacy PageFilter.
+message CommonPagination {
+  uint32 page = 1 [(buf.validate.field).uint32.gte = 1];
+  uint32 limit = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 200
+  }];
+}
+
+// CommonSortType is the direction paired with any *Sort field selection in a ListFilterSort. The
+// numbering matches the authoritative guideline (guidelines/service-guideline.md): DESC=1, ASC=2.
+enum CommonSortType {
+  COMMON_SORT_TYPE_UNSPECIFIED = 0;
+  COMMON_SORT_TYPE_DESC = 1;
+  COMMON_SORT_TYPE_ASC = 2;
+}
+
+// GeneralItem is the minimal shared slice — `id` + `name` — that any list/by-ids can expose under
+// the *_DATA_TYPE_GENERAL data type. Richer per-domain fields live in that domain's own "row" slice.
+message GeneralItem {
+  uint64 id = 1;
+  string name = 2;
+}
+
+// GeneralMapItem is the GENERAL slice's map payload: id -> GeneralItem. Paired with
+// <Domain>ListDataType.*_DATA_TYPE_GENERAL (and the by-ids equivalent).
+message GeneralMapItem {
+  map<uint64, GeneralItem> map_data = 1;
+}
+
+// GeneralSort is the sort selection paired with the GENERAL slice.
+enum GeneralSort {
+  GENERAL_SORT_UNSPECIFIED = 0;
+  GENERAL_SORT_NAME = 1;
+}

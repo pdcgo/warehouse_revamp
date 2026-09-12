@@ -1,0 +1,14 @@
+# Generation must be REPRODUCIBLE ACROSS PLATFORMS, and it was not.
+#
+# Without this, a Windows checkout gets .proto files with CRLF line endings. protoc hands the
+# comment text — carrying the \r — to protoc-gen-go, whose doc-comment formatter then lays out
+# lists differently than it does on LF. The generated .pb.go is byte-different depending on which
+# machine ran `buf generate`, so CI's generated-drift check fails against anything generated on
+# Windows and passes against anything generated on Linux. Same Go version, same pinned plugin.
+#
+# The .proto files are the INPUT to a byte-for-byte reproducibility check, so they are pinned to
+# LF everywhere. So is the generated output, for the same reason.
+*.proto text eol=lf
+
+backend/gen/** text eol=lf
+frontend/src/gen/** text eol=lf

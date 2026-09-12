@@ -1,0 +1,387 @@
+syntax = "proto3";
+
+package warehouse.settlement.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1;settlementv1";
+
+// SettlementService is the ledger of WHAT THE MARKETPLACE PAYS US for an order.
+//
+// ⚠ NOT to be confused with `liability_service`, which is what TEAMS OWE EACH OTHER. That service was
+// once called `settlement_service` and was renamed precisely so this one could take the name
+// (docs/business/settlement/context_decision.md#the-name-settlement-moves-to-the-payout).
+//
+// THE ONE IDEA THE WHOLE DESIGN RESTS ON. `initial_total` is a frozen copy of
+// `order.marketplace_total` — what the buyer ACTUALLY PAID, a fact and not a prediction
+// (#marketplace-total-is-a-fact-not-an-estimate). What is estimated is only the EXPECTATION that all
+// of it reaches us. So the running balance is not "drift from a guess", it is exactly:
+//
+//     how much of what the buyer paid never reached us
+//
+// which is the platform's take, literally. The platform does not itemise it
+// (#hidden-cost-is-left-in-the-balance), so this gap is the only measure of it we will ever have.
+//
+// ⚠ THE BALANCE NEVER REACHES ZERO, AND THAT IS CORRECT (#a-residual-balance-is-normal). There is no
+// `settled` flag, no "outstanding" figure and no queue to clear anywhere in this contract. A residual
+// is a VARIANCE — a fact about the order — never a receivable somebody should chase.
+//
+// Three things it deliberately is NOT:
+//
+//   - **Not an importer.** File import, per-marketplace parsing and the unmatched tray belong to a
+//     deferred `export_service` (#importing-is-not-settlements-job). This is a ledger with a write API.
+//   - **Not aware of order status.** Nothing is gated on `OrderStatus` (#settlement-ignores-our-order-status);
+//     a row may post at any time, including long after delivery.
+//   - **Not editable.** Append-only (#a-correction-is-a-new-row). A mistake is offset by a further row.
+service SettlementService {
+  // The list screen — one row per order, ranked by loss.
+  rpc OrderSettlementList(OrderSettlementListRequest) returns (OrderSettlementListResponse);
+  // The panel on the order detail page — one account plus its whole log, oldest first.
+  rpc OrderSettlementDetail(OrderSettlementDetailRequest) returns (OrderSettlementDetailResponse);
+}
+
+// The WRITE surface, split from the reads for the reason every split in this repo is made: a service
+// is mounted whole, so the reads could not ship before the writes existed if they shared one.
+//
+// ⚠ It is ONE RPC on purpose. All three writers — the exporter, a person, and `order_service` — post
+// the same shape and differ only in `source_type` (#the-third-source-is-order). A per-writer RPC would
+// be three copies of one idempotent upsert, and idempotency implemented three times is idempotency
+// implemented twice.
+service SettlementWriteService {
+  // Append one row. IDEMPOTENT on `unique_id` — see SettlementPostRequest.
+  rpc SettlementPost(SettlementPostRequest) returns (SettlementPostResponse);
+}
+
+// WHAT A ROW IS (#the-log-is-order-scoped-with-six-types, widened to seven by
+// #a-cancel-is-an-opposite-row).
+//
+// ⚠ THE SIGN CONVENTION, STATED ONCE: `change` is signed, and POSITIVE IS MONEY TOWARD US. So
+// `initial_total` is NEGATIVE — the platform owes us the sale, and the account opens in deficit — and
+// `fund` is POSITIVE as the money actually arrives. This is the opposite of how a person says it,
+// which is why `order_settlements.initial_total` stores the sale POSITIVE
+// (#initial-total-is-stored-positive) and the projection holds the only sign flip in the system.
+enum SettlementType {
+  SETTLEMENT_TYPE_UNSPECIFIED = 0;
+
+  // The sale, frozen from `order.marketplace_total` when the order is created. `change` is NEGATIVE.
+  // Written only by `order_service` (source `order`) or by hand
+  // (#initial-total-is-postable-by-cs-and-owners).
+  SETTLEMENT_TYPE_INITIAL_TOTAL = 1;
+
+  // What actually arrived from the platform. POSITIVE. Several may land for one order.
+  SETTLEMENT_TYPE_FUND = 2;
+
+  // An ads charge the platform billed against this order. Normally negative.
+  SETTLEMENT_TYPE_EXTERNAL_ADS_FEE = 3;
+
+  // An affiliate's cut. Normally negative.
+  SETTLEMENT_TYPE_AFFILIATE_FEE = 4;
+
+  // A platform adjustment — a claim paid, a penalty charged. Signed either way.
+  SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT = 5;
+
+  // Anything the five above do not name. Signed either way.
+  SETTLEMENT_TYPE_OTHER = 6;
+
+  // ⚠ THE SEVENTH (#a-cancel-is-an-opposite-row). The exact opposite of INITIAL_TOTAL, posted when
+  // the order is cancelled, and it ZEROES `order_settlements.initial_total` in the same write
+  // (#cancel-zeroes-the-live-sale). MACHINE ONLY — source must be `order`
+  // (#only-machines-post-the-cancel).
+  SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL = 7;
+
+  // ⚠ THE EIGHTH, and the only one that records no marketplace event
+  // (#system-adjustment-is-a-ledger-type). It repairs a report whose damage is older than the broker
+  // can replay, so it is SHOP-ADDRESSED: the error spans many orders and naming one would file the
+  // correction against an arbitrary sale.
+  //
+  // ⛔ IT CANNOT REPAIR EVERY KIND OF DRIFT. It moves the log AND the report by the same amount, so it
+  // restores agreement only where both were wrong together. Where the log is RIGHT and only the fold
+  // was lost — a dead-lettered event, a cascade that did not run — posting one overstates the log by
+  // exactly what it corrects the report by, and the two then disagree permanently.
+  SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT = 8;
+}
+
+// WHICH WRITE PATH a row came from (#entries-arrive-by-api-or-by-hand, widened to three by
+// #the-third-source-is-order).
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  // `export_service` — a parsed marketplace statement. Deferred, but the contract is settlement's.
+  SOURCE_TYPE_EXPORTER = 1;
+  // A person, on the order detail page. The only rows `manualEntries()` reviews.
+  SOURCE_TYPE_MANUAL = 2;
+  // `order_service`, on order create and on order cancel. The ONLY source that may post
+  // SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL.
+  SOURCE_TYPE_ORDER = 3;
+}
+
+// One row of the log. IMMUTABLE.
+message SettlementEntry {
+  uint64 id = 1;
+
+  // THE IDEMPOTENCY KEY, unique across the whole log, generated by the CALLER
+  // (#the-unique-id-is-generated-outside-settlement). Returned because it is the only thing that
+  // explains why a re-import wrote nothing.
+  string unique_id = 2;
+
+  // 0 means this row is SHOP-ADDRESSED — it names no order (#an-entry-names-an-order-or-a-shop).
+  uint64 order_id = 3;
+  uint64 shop_id = 4;
+  uint64 team_id = 5;
+
+  // Who is ANSWERABLE — the person in charge, not the session that wrote the row
+  // (#actor-id-is-the-pic). Set even on machine rows: a human owns every entry.
+  uint64 actor_id = 6;
+
+  SourceType source_type = 7;
+  SettlementType settlement_type = 8;
+
+  // Signed, whole rupiah. POSITIVE IS MONEY TOWARD US — see SettlementType.
+  int64 change = 9;
+
+  // The running position AFTER this row. Derived and kept for the panel; the log stays what it is
+  // derived from.
+  int64 balance = 10;
+
+  // TWO DATES, and they are not the same question. `occurred_on` is the day the platform says the
+  // money belongs to; `posted_on` is the day we learned it. Equal on a same-day row, apart on a late
+  // fee — and a screen that showed only one could not tell a late charge from a backdated one.
+  string occurred_on = 11;
+  string posted_on = 12;
+
+  // Set when this row undoes an earlier one — a compensating entry, never an edit.
+  uint64 reverses_id = 13;
+
+  string note = 14;
+
+  // Display only, resolved by the handler so the panel needs no second call.
+  string actor_name = 15;
+}
+
+// The state row — a PROJECTION of the log, recomputable from it alone.
+message OrderSettlement {
+  uint64 order_id = 1;
+
+  // What the buyer paid, stored POSITIVE (#initial-total-is-stored-positive). The LIVE sale: a cancel
+  // zeroes it (#cancel-zeroes-the-live-sale).
+  //
+  // ⚠ 0 MEANS NOT RECORDED, never "sold for nothing". A missing fact, not a zero one — so the screens
+  // refuse to compute against it rather than reporting a total loss.
+  int64 initial_total = 2;
+
+  // The current position. Negative means part of what the buyer paid never reached us.
+  int64 last_balance = 3;
+
+  uint64 team_id = 4;
+  uint64 shop_id = 5;
+
+  // ⚠ NO order_ref, shop_name, team_name OR cogs, and their absence is a DECISION rather than an
+  // omission to fill in later.
+  //
+  //   - `order_ref` — settlement keys on OUR order id and never sees the platform's reference
+  //     (#settlement-keys-on-our-order-id). It could not return one without learning something it was
+  //     deliberately kept from.
+  //   - names and `cogs` — they live in selling_service's tables, and a service does not read another
+  //     service's tables (HARD RULE 3). A join here would be the exact coupling the per-service
+  //     schema exists to prevent.
+  //
+  // The panel is mounted ON the order detail page, which already holds all four. The list screen
+  // shows the order id, which is what this ledger is keyed by anyway. `true margin` is therefore
+  // computed on the client, where the cogs is.
+}
+
+// ── the write ───────────────────────────────────────────────────────────────────────────────────
+
+// ⚠ THE KEY IS THE CALLER'S. Settlement enforces uniqueness on `unique_id` ALONE — global, not scoped
+// to the order, because `order_id` is nullable on a shop-addressed row and Postgres treats NULL as
+// distinct from NULL, which would have admitted the same key twice. A key already held by ANOTHER order
+// is refused rather than returned as an idempotent hit.
+// and invents nothing (#the-recipe-is-the-callers-problem). The one recipe it does prescribe is the
+// cancel's, because that is the one a retry would double-credit:
+// `unique_id = hash(order_id + act_date + "cancel")` (#the-cancel-key-is-order-plus-act-date).
+message SettlementPostRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // THE GRAIN. Non-zero addresses an ORDER; **0 addresses the SHOP**
+  // (#an-entry-names-an-order-or-a-shop) and is stored as SQL NULL.
+  //
+  // ⚠ A shop-addressed row has no account keyed by order, so it never appears on
+  // OrderSettlementDetail and SettlementPostResponse.settlement is unset for it. What it does have is
+  // `shop_settlements`, its own balance chain, and the same `shop_id`/`team_id` — so it folds into the
+  // daily report exactly as an order-addressed row does.
+  uint64 order_id = 2;
+
+  // ⚠ THE CALLER SUPPLIES IT, because settlement cannot look it up: the shop lives in
+  // selling_service's tables and a service does not read another's (HARD RULE 3). It is frozen onto
+  // both rows so every list filters by shop without a cross-service call — the same denormalisation
+  // `order.cogs` already is, and safe for the same reason: an order does not move between shops.
+  //
+  // On the FIRST post it establishes the account's shop. Later posts must agree — see the handler.
+  uint64 shop_id = 10 [(buf.validate.field).uint64.gt = 0];
+
+  string unique_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  SettlementType settlement_type = 4 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  SourceType source_type = 5 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Signed. May be 0 — a zero-value adjustment is a real thing a platform reports.
+  int64 change = 6;
+
+  // The day the money belongs to. Required: without it a late fee cannot be told from a backdated one.
+  string occurred_on = 7 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+
+  // The row this one undoes, or 0. A reversal is a NEW row (#a-correction-is-a-new-row).
+  uint64 reverses_id = 8;
+
+  string note = 9 [(buf.validate.field).string.max_len = 500];
+}
+
+message SettlementPostResponse {
+  SettlementEntry entry = 1;
+
+  // The account AFTER this write, so a caller never needs a follow-up read.
+  //
+  // ⚠ UNSET for a shop-addressed row (`order_id = 0`): there is no per-order account to return. The
+  // row's own running position is on `entry.balance`.
+  OrderSettlement settlement = 2;
+
+  // ⚠ WHETHER THIS CALL WROTE THE ROW, or found it already there and returned it unchanged.
+  //
+  // Without it an idempotent write is indistinguishable from a silent no-op, and a caller whose
+  // `unique_id` recipe is wrong gets no feedback from anywhere — it would simply stop recording and
+  // nothing would say so. That matters more now that `order_service` follows a PRESCRIBED recipe
+  // (#the-cancel-key-is-order-plus-act-date): a bug in it looks exactly like correct de-duplication.
+  bool created = 3;
+}
+
+// ── the reads ───────────────────────────────────────────────────────────────────────────────────
+
+message OrderSettlementListFilter {
+  // One shop, or 0 for every shop in the team. NOT the scope — `team_id` is (see the request).
+  uint64 shop_id = 1;
+
+  // The period the ACCOUNT was last moved in, inclusive, as YYYY-MM-DD. Both optional.
+  string from = 2;
+  string to = 3;
+
+  // Free text over the order reference.
+  string q = 4;
+}
+
+enum OrderSettlementSort {
+  ORDER_SETTLEMENT_SORT_UNSPECIFIED = 0;
+  // The default and the reason the screen exists: the orders that lost the most, first.
+  ORDER_SETTLEMENT_SORT_LOSS = 1;
+  ORDER_SETTLEMENT_SORT_ORDER_ID = 2;
+  ORDER_SETTLEMENT_SORT_INITIAL_TOTAL = 3;
+}
+
+message OrderSettlementListFilterSort {
+  OrderSettlementSort sort = 1;
+  warehouse.common.v1.CommonSortType sort_type = 2;
+}
+
+enum OrderSettlementListDataType {
+  ORDER_SETTLEMENT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_SETTLEMENT_LIST_DATA_TYPE_GENERAL = 1;
+  ORDER_SETTLEMENT_LIST_DATA_TYPE_SETTLEMENT = 2;
+}
+
+message OrderSettlementListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  OrderSettlementListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OrderSettlementListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+  OrderSettlementListFilterSort sort = 5;
+}
+
+message OrderSettlementMapItem {
+  map<uint64, OrderSettlement> map_data = 1;
+}
+
+message OrderSettlementListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OrderSettlementMapItem settlement = 2;
+  }
+}
+
+message OrderSettlementListResponse {
+  repeated OrderSettlementListResponseItem items = 1;
+  // Keyed by `order_id` — the accounts' identity IS the order (#the-grain-is-the-order).
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+
+  // The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
+  // A card that changed as you turned pages would be reporting the page, which nobody asked about.
+  int64 total_initial_total = 4;
+  int64 total_last_balance = 5;
+}
+
+// ⚠ THE LOG IS NOT PAGINATED, and that is a bounded choice rather than an oversight. Its length is
+// the number of times ONE order was settled — a handful, and the panel draws a running balance that a
+// page boundary would cut in half. HARD RULE 9 governs lists that grow with the DATA; this one grows
+// with a single order's activity.
+message OrderSettlementDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderSettlementDetailResponse {
+  OrderSettlement settlement = 1;
+  // Oldest first, so the running `balance` column reads downward the way it was built.
+  repeated SettlementEntry entries = 2;
+}

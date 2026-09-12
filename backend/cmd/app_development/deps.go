@@ -12,8 +12,20 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
+	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 )
+
+// NewDocumentConfig builds the document storage config from the app config. The service fills in
+// defaults (temp dir, size cap, URL TTL) for anything left unset.
+func NewDocumentConfig(cfg *Config) docstore.Config {
+	return docstore.Config{
+		Dir:         cfg.DocumentStorageDir,
+		BaseURL:     cfg.DocumentBaseURL,
+		TokenSecret: cfg.DocumentTokenSecret,
+	}
+}
 
 // NewDatabase opens the shared Postgres. GORM reads and writes rows; goose owns the schema.
 // There is deliberately no AutoMigrate.
@@ -35,6 +47,12 @@ func NewCache(cfg *Config) san_caches.CacheManager {
 
 func NewSigner(cfg *Config) *san_auth.Signer {
 	return san_auth.NewSigner(cfg.JWTSecret, cfg.TokenTTL)
+}
+
+// NewOtp is the OTP backend for the forgot-password flow: Twilio when configured, otherwise the
+// mock (which accepts a fixed dev code).
+func NewOtp(cfg *Config) san_verification.OtpVerification {
+	return san_verification.NewFromConfig(&cfg.Twilio)
 }
 
 // NewRoleResolver is the role lookup for EVERY service.

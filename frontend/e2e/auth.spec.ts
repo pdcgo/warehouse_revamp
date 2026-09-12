@@ -4,7 +4,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 async function login(page: import("@playwright/test").Page, username: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
@@ -13,6 +13,26 @@ test("an unauthenticated visitor is sent to login", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+
+  // The brand: a readable tab title and the wordmark on the login card.
+  await expect(page).toHaveTitle("PDC Warehouse");
+  await expect(page.getByText("PDC Warehouse")).toBeVisible();
+});
+
+test("the password field can be revealed and hidden", async ({ page }) => {
+  await page.goto("/login");
+
+  const password = page.getByLabel("Password", { exact: true });
+  await password.fill("hunter2");
+
+  // Masked by default; the toggle flips it to plain text and back.
+  await expect(password).toHaveAttribute("type", "password");
+
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "text");
+
+  await page.getByRole("button", { name: "Hide password" }).click();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
 });
 
 test("bad credentials are refused, and do not reveal whether the account exists", async ({ page }) => {
@@ -38,7 +58,7 @@ test("bad credentials are refused, and do not reveal whether the account exists"
 test("root logs in, lands in the app, and sees the root team", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  await expect(page).toHaveURL("http://localhost:5174/");
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("home-user")).toContainText("root");
 
   // The team NAME proves TeamAccessList resolved it from team_service over RPC (TeamByIds) —
@@ -55,7 +75,7 @@ test("the session survives a page reload (CheckAccess revalidates the stored tok
 
   // Still in. The token came from localStorage and CheckAccess said it was good — no flash of
   // the login page, because AuthGate blocks the first render until that settles.
-  await expect(page).toHaveURL("http://localhost:5174/");
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("home-user")).toContainText("root");
 });
 
@@ -92,10 +112,36 @@ test("sign out clears the session", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await expect(page.getByTestId("home-user")).toContainText("root");
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  // Sign out lives inside the user card at the foot of the sidebar: open it, then pick "Sign out".
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("sign-out").click();
 
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test("the user menu switches the theme, and the choice sticks across a reload (#214/#213)", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await expect(page.getByTestId("home-user")).toContainText("root");
+
+  const html = page.locator("html");
+
+  // Theme lives in the sidebar-foot user menu. Pick Dark → the `.dark` class Chakra reads goes on <html>.
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("theme-dark").click();
+  await expect(html).toHaveClass(/dark/);
+
+  // The choice is persisted (localStorage), so it survives a full reload rather than snapping back.
+  await page.reload();
+  await expect(page.getByTestId("home-user")).toContainText("root");
+  await expect(html).toHaveClass(/dark/);
+
+  // And back to Light removes it.
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("theme-light").click();
+  await expect(html).not.toHaveClass(/dark/);
 });

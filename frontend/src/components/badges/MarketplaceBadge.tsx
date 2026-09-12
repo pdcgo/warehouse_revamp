@@ -1,0 +1,46 @@
+import { Badge, type BadgeProps } from "@chakra-ui/react";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { marketplaceLabel } from "../pickers/MarketplaceSelect";
+
+// The STANDARD colour for each marketplace, so a marketplace always looks the same everywhere it is
+// shown (#84). One place owns the mapping; every view renders through MarketplaceBadge.
+function marketplaceColor(m: Marketplace): string {
+  switch (m) {
+    case Marketplace.SHOPEE:
+      return "orange";
+    case Marketplace.TOKOPEDIA:
+      return "green";
+    case Marketplace.LAZADA:
+      return "purple";
+    case Marketplace.TIKTOK:
+      return "pink";
+    case Marketplace.BLIBLI:
+      return "blue";
+    case Marketplace.BUKALAPAK:
+      return "red";
+    default:
+      return "gray";
+  }
+}
+
+// MarketplaceBadge renders a shop's marketplace as a Chakra Badge in its standard colour (#84).
+// This is THE way to show a marketplace type — never render the label as bare text.
+export const description = "A shop's marketplace as a standard-coloured Chakra Badge (Shopee=orange, Tokopedia=green, …).";
+
+export interface MarketplaceBadgeProps {
+  marketplace: Marketplace;
+  // Chakra Badge size — defaults to the theme default; pass "sm" for a compact table cell.
+  size?: BadgeProps["size"];
+}
+
+export function MarketplaceBadge({ marketplace, size }: MarketplaceBadgeProps) {
+  return (
+    <Badge
+      colorPalette={marketplaceColor(marketplace)}
+      size={size}
+      data-testid={`marketplace-badge-${marketplace}`}
+    >
+      {marketplaceLabel(marketplace)}
+    </Badge>
+  );
+}

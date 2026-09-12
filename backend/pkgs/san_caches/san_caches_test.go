@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	event_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/event_base/v1"
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 )
 
 // managers returns every implementation worth conformance-testing. Redis joins in only when
@@ -71,20 +71,20 @@ func TestConformance(t *testing.T) {
 			t.Run("proto roundtrip", func(t *testing.T) {
 				key := StringKey(name + ":proto")
 
-				err := manager.Set(ctx, key, &event_basev1.HelloExampleEvent{Name: "warehouse"}, time.Minute)
+				err := manager.Set(ctx, key, &eventsv1.OrderCancelled{OrderId: 7}, time.Minute)
 				if err != nil {
 					t.Fatalf("Set: %v", err)
 				}
 
-				got := &event_basev1.HelloExampleEvent{}
+				got := &eventsv1.OrderCancelled{}
 
 				err = manager.Get(ctx, key, got)
 				if err != nil {
 					t.Fatalf("Get: %v", err)
 				}
 
-				if got.GetName() != "warehouse" {
-					t.Errorf("got %q, want warehouse", got.GetName())
+				if got.GetOrderId() != 7 {
+					t.Errorf("got order %d, want 7", got.GetOrderId())
 				}
 			})
 

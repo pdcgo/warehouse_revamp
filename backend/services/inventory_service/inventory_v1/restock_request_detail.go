@@ -1,0 +1,54 @@
+package inventory_v1
+
+import (
+	"context"
+
+	"connectrpc.com/connect"
+	"gorm.io/gorm"
+
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
+)
+
+// RestockRequestDetail returns ONE request in full, with its lines (#125).
+//
+// Scoped exactly like List, and the scope IS the WHERE clause: a team may read a request it MADE
+// (requesting_team_id) or one TARGETING it as a warehouse (warehouse_id). Anything else reads as
+// NotFound rather than PermissionDenied — a permission error would confirm the id exists.
+func (s *Service) RestockRequestDetail(
+	ctx context.Context,
+	req *connect.Request[inventoryv1.RestockRequestDetailRequest],
+) (*connect.Response[inventoryv1.RestockRequestDetailResponse], error) {
+	teamID := req.Msg.GetTeamId()
+
+	var rr inventory_service_models.RestockRequest
+
+	err := s.db.
+		WithContext(ctx).
+		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		// Where each line went and what arrived broken (#154). The DETAIL carries them because this is
+		// the screen that shows them; the LIST deliberately does not — see restock_request_list.go.
+		Preload("Items.Placements", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		Preload("Items.Damaged", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		// THE HISTORY (00019), oldest first — this is the screen with a timeline on it, and the list is
+		// deliberately without one for the same reason it skips placements.
+		//
+		// Ordered by `at` and then `id`: `at` is the event's own moment (a backfilled row carries a date
+		// from months ago), and the id breaks the tie when two events share a second — an edit made in
+		// the same second as the create must still read second.
+		Preload("Events", func(db *gorm.DB) *gorm.DB { return db.Order("at ASC, id ASC") }).
+		// WHAT THE WAREHOUSE LAID OUT (00021), in the order it was typed. The detail carries them for
+		// the same reason it carries the timeline: this is the screen where the requesting team is told
+		// what it owes, and a total with no lines under it is a number nobody can question.
+		Preload("CostLines", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		Where("id = ? AND (requesting_team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
+		First(&rr).
+		Error
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
+	return connect.NewResponse(&inventoryv1.RestockRequestDetailResponse{
+		Request: restockRequestToProto(&rr),
+	}), nil
+}

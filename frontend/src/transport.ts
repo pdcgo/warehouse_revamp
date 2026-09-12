@@ -1,6 +1,6 @@
 import type { Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { getToken } from "./auth/tokenStorage";
+import { getToken } from "./features/auth/tokenStorage";
 
 const baseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
