@@ -247,11 +247,14 @@ mine. Answered points are **deleted**, so this is always the current open set.
 
 # Contradiction
 
-## The guideline still describes the shapes this pass replaced
+## ✅ RESOLVED — the guideline described the shapes this pass replaced
 
-[`event_library.md`](../../../guidelines/architectures/event_library.md) predates this pass's decisions,
-and [the-library-doc-is-absorbed](./context_decision.md#the-library-doc-is-absorbed) makes this doc the
-upstream one. One cause, nineteen sites:
+✅ **Fixed on 2026-09-12**, on the owner's word.
+[`event_library.md`](../../../guidelines/architectures/event_library.md) is rewritten against the
+decided architecture, and every superseded rule is
+[recorded rather than deleted](../../../guidelines/architectures/event_library.md#13-what-changed-and-what-it-was)
+with its anchor kept, so every link to it still lands. The table below is the record of what was stale —
+one cause, nineteen sites:
 
 | guideline | says | decided now |
 | --- | --- | --- |
@@ -287,10 +290,15 @@ flowchart LR
   G -.->|"still says per-context envelope, Terraform, a nested meta, a string actor, a key, sqlite, the old package and binary encoding"| X["nineteen stale sites"]
 ```
 
-**→ Recommend:** update the guideline in one pass, keeping its CI test with one phrase changed — *"the
-list the provisioning function derives"* — because derivation can still miss a context whose Go package
-the calling binary never imports. It is programmer-authoritative, so this is reported, not edited: **say
-the word and I will make that pass.**
+✅ **Done, in one pass.** Its CI test is now what the code actually does: the topic set is walked from the
+proto by `event_source.DeclaredTopics`, and `TestEveryVariantDeclaresATopic` fails when a variant
+declares none — so the *"list Terraform creates"* check has a real implementation rather than a phrase.
+
+⚠ **One thing the rewrite kept on a NARROWER argument rather than dropping**:
+[filter-subset-portable](../../../guidelines/architectures/event_library.md#filter-subset-portable). Its
+reason was a sqlite dev broker that was never built. The cap stays because a filter is IMMUTABLE — a
+clever one is a mistake you cannot take back — and every filter this design needs is a match on
+`event_type`.
 
 ## The decided envelope cannot be published by the shipped library
 

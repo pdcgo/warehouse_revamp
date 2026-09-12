@@ -24,6 +24,14 @@ Q2, which is a pointer to order Q14 rather than an open question. The per-file t
 
 > ## What changed this round
 >
+> ✅ **The event guideline is rewritten** — `guidelines/architectures/event_library.md`, on the owner's word.
+> Its nineteen stale sites are gone and the contradiction is **resolved**: the doc now describes one envelope,
+> a topic per variant, `protojson`, the required `oneof`, the mandatory `event_type` filter and the identity
+> rule. Every superseded rule is KEPT with its anchor and a record of what replaced it (HARD RULE 11), so the
+> thirteen links into it from other docs all still land. **Also implemented this round:** the whole event
+> architecture in code, and `san pubsub ensure` for provisioning. **No count change** — a contradiction is not
+> a question.
+>
 > ✅ **event_architecture — handlers take one event, not a batch** — *"we dont take batch"*, recorded as
 > [handlers-take-one-event-not-a-batch](technical/event_architecture/context_decision.md#handlers-take-one-event-not-a-batch). It closes the last gap between the
 > shipped receive path and the contract already decided: the slice goes, the generic goes with it (with one envelope
