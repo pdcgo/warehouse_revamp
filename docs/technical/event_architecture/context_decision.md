@@ -426,6 +426,7 @@ type's adopters never read — and the last two rules fail silently when unstate
 | 1 | returns `nil` | ACKs | — |
 | 2 | returns an error | NACKs — redelivered, and dead-lettered after 5 attempts once the subscription has its DLQ ([Q5](./context_clarify.md#question) — ✅ since decided, [setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes)) | — |
 | 3 | meets a variant it does not handle, and returns `nil` | ACKs | an error retries a message nothing here will ever handle — other producers' events, forever |
+| 🆕 5 | never authorises from `event.identity`, and never calls `WithIdentity(event.identity)` — added by [identity-is-a-record-never-a-credential](#identity-is-a-record-never-a-credential) | — | an open push route lets anyone POST any identity, and a handler that trusts it hands the forger an authenticated caller |
 | 4 | calls `Claim(event_id)` in its OWN transaction, beside its write | — | claimed apart from the write, a crash between them either suppresses work that never committed or repeats work that did |
 
 Rule 4 is [dedup-and-compute-share-one-transaction](../../business/settlement/context_decision.md#dedup-and-compute-share-one-transaction)
@@ -1181,7 +1182,7 @@ flowchart LR
 ### What this does NOT settle
 
 - ⚠ **the two handler types still take `event Event` by value** — lines 97 and 128. Reported in the clarify as
-  [the handlers still take Event by value](./context_clarify.md#the-handlers-still-take-event-by-value).
+  [a proto message written by value](./context_clarify.md#a-proto-message-written-by-value).
 - the rest of [Q6](./context_clarify.md#question) — 6b what an error means, 6c the detached wait, 6d one
   publisher per topic and a cleanup, 6e binary encoding. Line 25's `NewEventSender(...) EventSender` still
   returns no cleanup. ✅ 6b, 6c, 6d since decided — 6d as [publisher-and-client-shutdown-is-the-services](#publisher-and-client-shutdown-is-the-services).
@@ -1345,3 +1346,703 @@ flowchart LR
 - who fills it — recommended the sender, from `ctx`, with `IDENTITY_TYPE_SYSTEM` when there is none
 - `expired_at` — the token's, and meaningless on a fact kept for good; recommended cleared
 - whether a consumer may trust it — recommended a record, never a credential, since every push route is open
+
+---
+
+## dev-runs-the-emulator
+
+**Development runs against the Pub/Sub EMULATOR. Production is Google Pub/Sub, and there is no second
+broker.** (owner, 2026-09-12 — *"for q3 we use pubsub emulator"*, answering [Q3](./context_clarify.md#question))
+
+✅ As recommended, and it settles the third option too: the sqlite dev broker the guideline's
+[filter-subset-portable](../../../guidelines/architectures/event_library.md#filter-subset-portable) assumes is
+not built, and the in-process loopback the dev binary ships is retired.
+
+### The spec
+
+| | |
+| --- | --- |
+| production | Google Pub/Sub — `context.md` §General Brief 1. No broker abstraction, no RabbitMQ sender |
+| development | the emulator — `docker compose --profile pubsub up -d`, `:8085`, honoured through `PUBSUB_EMULATOR_HOST` |
+| retired | [`cmd/app_development/event_sender.go`](../../../backend/cmd/app_development/event_sender.go)'s loopback — the in-process fan-out that stands in for a broker today |
+| never built | the sqlite broker |
+| tests | `EmptySender` still validates and drops, for unit tests that want no broker at all |
+
+```mermaid
+flowchart LR
+  subgraph before ["today"]
+    P1["publish"] --> L["the loopback — in-process, synchronous"] --> H1["the push handler"]
+  end
+  subgraph after ["decided"]
+    P2["publish"] --> E[("emulator :8085")] --> H2["the push route or the pull worker"]
+  end
+```
+
+### What it costs, and what a developer now has to do
+
+| | |
+| --- | --- |
+| `docker compose up -d` is no longer enough | the `pubsub` profile has to be up before an order can be placed |
+| the emulator keeps nothing across a restart | every restart drops its topics and subscriptions, so the setup tool runs again — nothing checks at boot ([services-do-not-verify-setup-at-boot](#services-do-not-verify-setup-at-boot)) |
+| a PUSH subscription in dev cannot reach `localhost:8080` | the emulator is in a container, so its push endpoint is `host.docker.internal:8080` — or the developer consumes by pull, which needs no route |
+| no IAM | the DLQ grants are skipped there ([setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes)) |
+
+⚠ **Worth one check before relying on it:** which of the six built-in defaults the emulator actually honours —
+expiry, retention, the dead-letter policy and the filter grammar are the ones that matter. What it does not
+enforce, dev cannot prove.
+
+### The guideline site it overrides
+
+| guideline | says | now |
+| --- | --- | --- |
+| [filter-subset-portable](../../../guidelines/architectures/event_library.md#filter-subset-portable) | the filter grammar is capped *"because the **sqlite dev broker** must implement the same filter"* | there is no sqlite broker. The cap may still be worth keeping, but its reason is gone — the emulator either implements Pub/Sub's grammar or does not |
+
+---
+
+## no-archive-events-live-31-days
+
+**No archive. No BigQuery subscription, no Cloud Storage dump — an event lives as long as Pub/Sub keeps it,
+31 days, and then it is gone.** (owner, 2026-09-12 — *"for now we dont use bigquery or dump event to cloud
+storage"*, answering [Q4](./context_clarify.md#question))
+
+✅ Consistent with what is already decided: nothing reads an archive. Every rebuild folds from a producer's own
+table, and [the-replay-seeks-the-broker](../../business/settlement/context_decision.md#the-replay-seeks-the-broker)
+reads the broker, whose reach
+[the-replay-reaches-31-days-and-that-is-accepted](../../business/settlement/context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)
+already accepted.
+
+```mermaid
+flowchart LR
+  E["an event"] --> T[("topic — 31 days")]
+  T --> C["consumers"]
+  T -.->|"day 32"| G["gone"]
+  R["a rebuild"] -->|"reads"| DB[("the producer's own table")]
+```
+
+### What it accepts, stated once
+
+⛔ **A field an event CARRIES that no table holds is unrecoverable after 31 days.** There is one today:
+settlement's variant carries `order_created_by_user_id`, and the analytic clarify says it is *"on no settlement
+table, which is why a replay cannot reproduce `user_settlement_daily_reports` rows today"*.
+
+| | |
+| --- | --- |
+| the protection | [the-creator-is-stamped-on-the-state-row](../../business/settlement/context_decision.md#the-creator-is-stamped-on-the-state-row) — decided in settlement, **not yet built** |
+| until it is built | every day that passes puts another day's creator beyond recovery, silently |
+| an archive turned on later | starts at *now* — the months before it never existed |
+
+⚠ The general rule this argues for, and this doc should state:
+**an event carries nothing its producer cannot re-derive from its own tables.**
+
+### What it does not touch
+
+The DLQ and its triage subscription stay — they are not an archive
+([setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes)) — and so does topic
+retention at 31 days, which is what lets a replacement subscription seek back.
+
+---
+
+## events-are-encoded-with-protojson
+
+**An `Event` goes on the wire as `protojson`, and comes back the same way.** (owner, 2026-09-12 —
+`context.md` §How Event Encode and Decode: *"encode with `protojson`"* and *"we just decode
+`*eventsv1.Event` field data with `protojson`"*, answering part 6e of [Q6](./context_clarify.md#question))
+
+⛔ **Against my recommendation** of binary protobuf. What it trades is not the size — it is below.
+
+### The spec
+
+| | |
+| --- | --- |
+| encode | `protojson.Marshal(event)` → `pubsub.Message.Data` |
+| decode | `protojson.Unmarshal(data, &eventsv1.Event{})` — the body only |
+| the wire identity of a field | its **JSON name**, never its number |
+| a format tag on the payload | none — [`codec.go`](../../../backend/pkgs/san_event/codec.go) says so, and it makes the choice permanent |
+| the shipped code | already protojson in both `Marshal` and the sender — no change |
+
+```mermaid
+flowchart LR
+  E["*eventsv1.Event"] -->|"protojson.Marshal"| D["bytes"]
+  D --> M["pubsub.Message.Data"]
+  M --> R["a human — console, dead-letter, log line"]
+  R -->|"readable with no tool and no message type"| Y["the reason it won"]
+```
+
+### What it accepts, stated once
+
+The wire identity is the field NAME, so **a rename is a breaking change** where binary would not have
+noticed one. Renaming a `oneof` ARM is the severe case, and the global `Event` is all `oneof`:
+
+| the change | binary | protojson, as decided |
+| --- | --- | --- |
+| rename a scalar (`change` → `amount`) | safe — read by number | reads as **zero** under `DiscardUnknown` — a money report folds 0 |
+| rename a `oneof` arm (`order_created` → `order_placed`) | safe | the arm is unknown → **the oneof is unset**: the entire body is gone, and the `Event` still decodes |
+| size | 3–5× smaller, by `codec.go`'s own measure | the cost — and the cheaper of the two |
+
+⚠ **Nothing catches a rename today.** [`proto/buf.yaml`](../../../proto/buf.yaml) sets `breaking: FILE`,
+which does catch one, and CI never runs `buf breaking` — it runs `buf lint` and a generate-drift check only.
+
+```mermaid
+flowchart LR
+  P["producer renames a oneof arm"] --> T[("topic — 31 days of messages still name the old arm")]
+  T --> C["consumer — protojson decode"]
+  C -->|"DiscardUnknown drops the unknown arm"| Z["a VALID Event with an unset oneof — no error anywhere"]
+```
+
+What it buys is real and was argued for in the code before this doc: a message is readable where it sits —
+the Pub/Sub console, the dead-letter topic, a log line — with no tooling and no message type to hand. Under
+[no-outbox-the-publish-is-trusted](#no-outbox-the-publish-is-trusted) and
+[no-archive-events-live-31-days](#no-archive-events-live-31-days), reading the message where it sits IS the
+diagnostic story.
+
+### What this does NOT settle
+
+- **Which decode options.** The repo has two protojson decoders that disagree —
+  [`codec.go`](../../../backend/pkgs/san_event/codec.go) with `DiscardUnknown: true`, and
+  [`push.go`](../../../backend/pkgs/event_source/push.go#L27) strict. One of them has to go
+  ([contradiction](./context_clarify.md#the-repo-has-two-protojson-decoders-that-disagree)).
+- **What an unset `oneof` means.** Under `DiscardUnknown` a renamed arm and an event type the consumer has
+  not regenerated both arrive as a valid `Event` with nothing set — silently ACKed unless something rejects
+  it. → new [Q15](./context_clarify.md#question).
+- **`buf breaking` in CI.** Configured, never run. → the same question.
+
+---
+
+## meta-rides-in-the-body-and-the-attributes
+
+**The meta attributes are written TWICE on every message — into `Event.metadata` in the body AND into
+`pubsub.Message.Attributes` on the envelope. The identity is written once, into the body. The decode reads
+the body only.** (owner, 2026-09-12 — `context.md` §How Event Encode and Decode, the encode diagram)
+
+### The spec
+
+| what | written to | read back by the decode |
+| --- | --- | --- |
+| meta attributes | `Event.metadata` (your line 73) **and** `pubsub.Message.Attributes` | the body copy only |
+| the caller's identity | `Event.identity` (line 74) — [event-carries-the-callers-identity](#event-carries-the-callers-identity) | the body |
+| the variant | the `oneof` in `Event` | the body |
+
+```mermaid
+flowchart LR
+  META["meta attributes"] --> B["Event.metadata — in the body"]
+  META --> A["pubsub.Message.Attributes — on the envelope"]
+  IDEN["identity"] --> EV["Event.identity"]
+  B --> EV
+  EV -->|"protojson"| DATA["Message.Data"]
+  DATA -->|"decode reads THIS"| H["the handler"]
+  A -->|"read by the broker and the transport, never decoded back"| H
+```
+
+### Why two copies is not redundant — what only the attributes can do
+
+| | |
+| --- | --- |
+| **a subscription filter** | matches attributes and never the payload — it is the only server-side filter Pub/Sub has (*"This can be used to filter messages on the subscription"*, the client's own field doc) |
+| **the trace** | the shipped push handler extracts it from attributes *before* anything is decoded ([push.go](../../../backend/pkgs/event_source/push.go)), so a message that fails to decode still lands in the right trace |
+
+### What this does NOT settle
+
+- **Where the meta attributes come from.** Line 20 is `func(ctx, *eventsv1.Event) error` — two parameters,
+  and the encode diagram has three inputs. So meta and identity ride on `ctx`, which is what
+  [Q6](./context_clarify.md#question) 6f asks, and the doc does not say it.
+- **Whether the library OVERWRITES a caller's `Event.metadata`.** A caller may set the map itself — it is a
+  plain proto field. Assign it and the caller's keys vanish, merge it and a key collision is silent.
+- **The attribute quota, which the body does not have.** Pub/Sub caps attributes at **100 per message, a
+  256-byte key and a 1024-byte value**, where `map<string, string>` in the body is capped only by the 10 MB
+  message. So a metadata value that is legal in the body **rejects the publish** — and per
+  [sender-returns-the-client-error-as-is](#sender-returns-the-client-error-as-is) the caller gets that error raw.
+- **What happens when the two copies disagree.** Nothing reconciles them: a filter reads one, a handler the
+  other.
+- **A replayed event's trace.** If the traceparent is one of the copied keys, a replay carries a dead one.
+
+---
+
+## superseded-the-sender-reads-identity-from-ctx
+
+> ⛔ **SUPERSEDED (2026-09-12, the same day) by [identity-is-a-sender-parameter](#identity-is-a-sender-parameter).**
+> `context.md` line 20 makes the identity an explicit PARAMETER, so the CALL SITE reads `ctx` and the library
+> does not. The value still comes from `ctx` — what moved is who reaches in. Everything below about `Identity`
+> being the right type, `GetIdentity` erroring outside a request, and the edges it leaves open still stands.
+> Kept as the record, per the header.
+
+**`Event.identity` is filled by the SENDER, reading the caller's identity out of `ctx`. Never set at a call
+site.** (owner, 2026-09-12 — *"identity is from ctx"*, elaborating [Q6](./context_clarify.md#question) 6f and
+half of Q14)
+
+✅ **As recommended**, and it costs one line: the value already in `ctx` is the exact type your line 74 puts
+on `Event`.
+
+### The spec
+
+| | |
+| --- | --- |
+| the read | [`san_auth.GetIdentity(ctx)`](../../../backend/pkgs/san_auth/identity.go#L166) → `(*role_basev1.Identity, error)` |
+| the write | `event.Identity = identity`, inside the sender, before the marshal |
+| when | at call time, on the caller's own `ctx` — before the detached wait of [sender-ctx-carries-values-not-cancel](#sender-ctx-carries-values-not-cancel) (which keeps values anyway) |
+| what puts it there | exactly ONE place: [`access_interceptors/interceptor.go:105`](../../../backend/services/user_service/access_interceptors/interceptor.go#L105), after the token verifies |
+| precedent | twelve handlers already read it this way — `team_create.go`, `order_mapper.go`, `payment_record.go`, … |
+
+```mermaid
+flowchart LR
+  T["bearer token"] --> I["access interceptor — the ONLY WithIdentity in the repo"]
+  I -->|"san_auth.WithIdentity"| C["ctx"]
+  C -->|"san_auth.GetIdentity"| S["EventSender"]
+  S -->|"sets"| E["Event.identity — line 74"]
+  H["a call site"] -.->|"never"| E
+```
+
+### Why the sender and not the caller
+
+A field a call site fills is a field a call site forgets, and a forgotten `identity` is indistinguishable
+from a system-published one. Reading it in one place also means the rule *"who caused this"* has exactly one
+implementation to be right.
+
+### What this does NOT settle
+
+- ⚠ **`GetIdentity` ERRORS when nothing set it — it does not return `nil`.** And nothing sets it outside an
+  HTTP request: not the pull worker ([pull-worker-is-bounded-and-fails-loudly](#pull-worker-is-bounded-and-fails-loudly)), not
+  `tools/san`, not a test, not a backfill. So the sender must decide what a missing identity means, and
+  propagating the error would make every event published outside a request fail. → [Q14](./context_clarify.md#question).
+- **The field number** on `Event` — 5 is free ([typed-fields-for-what-the-library-reads](#typed-fields-for-what-the-library-reads) reserves 5–99).
+- **`expired_at`.** The identity carries a TOKEN expiry (`Identity` field 6). Copied onto a retained event it
+  says the event expired. → [Q14](./context_clarify.md#question).
+- **Whether a consumer may trust it.** Push routes are open by decision
+  ([push-routes-are-open-by-default](#push-routes-are-open-by-default)), so anyone who can reach the route can POST any
+  identity they like. → [Q14](./context_clarify.md#question).
+- **The other input.** The encode diagram's meta attributes still have no source — the open half of
+  [Q6](./context_clarify.md#question) 6f.
+
+---
+
+## event-metadata-is-copied-into-the-attributes
+
+**ONE map, written to both places. `Event.metadata` and `pubsub.Message.Attributes` hold the SAME keys and
+values after a send — the caller's keys plus whatever the sender adds.** (owner, 2026-09-12 — *"i choose one
+map"*, closing part 6f and therefore all of [Q6](./context_clarify.md#question))
+
+⛔ **Against my recommendation** of two maps with no overlap. What it accepts is below, and the first item is
+not the size cap.
+
+### The spec
+
+| | |
+| --- | --- |
+| the map | `Event.metadata` — your line 73, the caller's to fill |
+| the sender adds | the derived keys it needs on the wire — `event_type` off the `oneof`, the trace off `ctx` |
+| the invariant | after a send, `Event.metadata` == `Message.Attributes`. That equality IS the decision, and it is testable |
+| the identity | NOT in the map — a typed field, [identity-is-a-sender-parameter](#identity-is-a-sender-parameter) |
+| the caps, from Pub/Sub | **100 attributes** per message · a key **≤ 256 bytes** and **not starting with `goog`** · a value **≤ 1024 bytes** |
+
+```mermaid
+flowchart LR
+  C["the caller — its own keys, on Event.metadata"] --> M["ONE map"]
+  S["the sender — event_type, the trace"] --> M
+  M --> B["Event.metadata, in the protojson body"]
+  M --> A["Message.Attributes, on the envelope"]
+  A --> F["a subscription filter, and the trace before any decode"]
+```
+
+### What it accepts, stated once
+
+**1. The caller and the library now share one key namespace.** A producer writing
+`metadata["event_type"] = "…"` either breaks the subscription filter or is silently overwritten, depending on
+which write lands last. Under two maps this was impossible. **The library must therefore NAME the keys it
+sets, and a producer must not use them** — a rule, in `context.md`, beside the sender contract.
+
+**2. A legal body value can lose the event.** The map has no cap in the body and four in the attributes, so a
+2 KB annotation, a 101st key, or a key starting with `goog` **rejects the publish** — and per
+[sender-returns-the-client-error-as-is](#sender-returns-the-client-error-as-is) the caller gets the broker's raw
+error, which does not name the offending key.
+
+**3. Some values now exist three times** — `event_id` as a typed field at tag 1, again in the map, again in
+the attributes. That is the price of a filter being able to read it without decoding.
+
+**4. A replayed event carries a dead traceparent**, because the trace is in the body too.
+
+### The one guard, and it is free
+
+Mirror Pub/Sub's caps as `buf.validate` rules on the map field, so the failure is caught at publish with a
+message that names the field instead of at the broker with one that does not:
+
+```proto
+map<string, string> metadata = 4 [(buf.validate.field).map = {
+  max_pairs: 100,
+  keys:   {string: {max_bytes: 256}},
+  values: {string: {max_bytes: 1024}}
+}];
+```
+
+⚠ [`codec.go`](../../../backend/pkgs/san_event/codec.go) warns that validation rules *"may only ever LOOSEN"*,
+because it validates on every READ — tighten one and a stored event becomes unreadable. **These rules are exempt
+by construction:** they are the broker's own limits, so nothing the broker ever accepted can fail them. And they
+are free only while nothing has been published — the same window the encoding had.
+
+The `goog` prefix needs a CEL predicate rather than a map rule — check its exact form against protovalidate
+v1.2.0 when it is written.
+
+### What this does NOT settle
+
+- **Whether the sender MUTATES the caller's event.** Line 20 takes a pointer
+  ([the-sender-takes-a-pointer](#the-sender-takes-a-pointer)), so adding derived keys writes into the caller's own
+  `Event`, which comes back carrying keys it never set. Copy-then-send avoids it and costs one allocation.
+- **Which keys the library reserves.** Recommended: `event_type`, `event_id`, `aggregate_id`, `traceparent` —
+  named in the library's doc so a producer can avoid them.
+
+---
+
+## identity-is-a-sender-parameter
+
+**The identity is an explicit PARAMETER of `EventSender`, not something the library reads out of `ctx`.**
+(owner, 2026-09-12 — `context.md` line 20:
+`type EventSender func(ctx context.Context, identity role_basev1.Identity, event *eventsv1.Event) error`)
+
+⛔ **This reverses [superseded-the-sender-reads-identity-from-ctx](#superseded-the-sender-reads-identity-from-ctx)**, recorded earlier the same day from
+*"identity is from ctx"*. Both are true of the VALUE — the caller still gets it from `ctx`. What moved is
+**who reaches in**, from the library to the call site, and that was the part recorded.
+
+### The spec
+
+| | |
+| --- | --- |
+| the signature | `func(ctx context.Context, identity *role_basev1.Identity, event *eventsv1.Event) error` |
+| who reads `ctx` | the **caller** — `san_auth.GetIdentity(ctx)` at each call site |
+| what `ctx` still carries for the sender | the trace, and nothing else |
+| the sender | copies the parameter onto `Event.identity` before the marshal |
+
+⚠ **A POINTER, not a value.** `go vet` refuses the value form — see the contradiction in the clarify
+([a proto message written by value](./context_clarify.md#a-proto-message-written-by-value)).
+
+```mermaid
+flowchart LR
+  I["access interceptor"] -->|"WithIdentity"| C["ctx"]
+  C -->|"the CALLER reads it — GetIdentity"| H["the call site"]
+  H -->|"passes it — the compiler requires it"| S["EventSender(ctx, identity, event)"]
+  S -->|"copies onto"| E["Event.identity"]
+  C -->|"the trace, and only the trace"| S
+```
+
+### What it buys, and it is real
+
+**The compiler now enforces it.** A `ctx` value is invisible in a signature: a call site whose `ctx` lost the
+identity compiles fine and publishes an event that says nobody caused it. **A parameter cannot be omitted** —
+`go build` refuses. That is a better guard against the exact failure the library-reads-it version was meant to
+prevent.
+
+It also makes the causation chain **visible in the code**: a consumer publishing a downstream event writes
+`send(ctx, in.GetIdentity(), out)`, and a reviewer can see whether it did — where a `ctx` read would have
+silently produced `SYSTEM` ([Q14](./context_clarify.md#question) 14b).
+
+### What it accepts, stated once
+
+| | |
+| --- | --- |
+| **every call site repeats the read** | `identity, err := san_auth.GetIdentity(ctx)` before each send. Twelve handlers already do this for other reasons, so the idiom exists |
+| **the compiler forces a value, not a CORRECT one** | it cannot be forgotten, but `nil` or a zero `Identity` can be passed and reads as *"nobody"* |
+| **the no-identity case is now per call site** | `GetIdentity` **errors** outside a request, so every pull worker, push handler, `tools/san` command and backfill decides individually what to pass — the library no longer decides once → [Q14](./context_clarify.md#question) 14b |
+
+### What this does NOT settle
+
+- **the pointer** — the value form does not compile under `go vet`.
+- **what a caller with no identity passes** → [Q14](./context_clarify.md#question) 14b, whose answer moves from the
+  library to the adopter checklist.
+- **who clears `expired_at`** — the sender still can, and should → [Q14](./context_clarify.md#question) 14c.
+
+---
+
+## the-event-oneof-is-required
+
+**`Event`'s `oneof` is REQUIRED: an envelope with no variant set fails validation, and is recorded and ACKed
+rather than silently accepted.** (owner, 2026-09-12 — *"yes one of is required"*, answering part 15a of
+[Q15](./context_clarify.md#question))
+
+✅ As recommended. One line in the proto, verified against the protovalidate protos this repo pins:
+
+```proto
+oneof message {
+  option (buf.validate.oneof).required = true;
+  OrderCreated order_created = 100;
+  OrderCancel  order_cancel  = 101;
+}
+```
+
+> *"If `required` is true, exactly one field of the oneof must be set. A validation error is returned if no
+> fields in the oneof are set."* — protovalidate's own documentation.
+
+### The spec — it fires at BOTH ends
+
+| | what happens | why it matters |
+| --- | --- | --- |
+| **publishing** | the sender validates before it marshals, so a producer that forgot to set an arm gets an error instead of sending an empty envelope | the empty envelope never enters the system |
+| **consuming** | [`codec.go`](../../../backend/pkgs/san_event/codec.go) validates on every decode → `ErrValidate` → [reject-never-nacks](../../../guidelines/architectures/event_library.md#reject-never-nacks) records it and ACKs | a row a human can read, and no message retrying forever |
+
+```mermaid
+flowchart LR
+  R["a renamed arm, or one this consumer has not regenerated"] --> D["protojson decode, DiscardUnknown"]
+  D --> Z["oneof unset"]
+  Z --> V["validation FAILS — ErrValidate"]
+  V --> REC["recorded, then ACKed"]
+  Z -.->|"without this decision"| S["a valid Event with no body, silently ACKed"]
+```
+
+**This is what makes `DiscardUnknown` safe to keep** ([Q15](./context_clarify.md#question) 15b): a field a
+producer ADDS is still dropped harmlessly, while a missing ARM now fails loudly. The two are a pair.
+
+### ⚠ What it makes load-bearing — the subscription filter, and it is IMMUTABLE
+
+Its one cost: a consumer that has not regenerated records a rejection for every instance of a NEW variant on a
+shared topic — `order` carries two variants today, and a third would be rejected by every existing `order`
+consumer until it redeploys.
+
+The `event_type` filter removes that cost entirely: filtered to the variants it handles, a consumer never
+receives an unknown one. **But a filter cannot be added later** —
+[setup-ensures-safe-defaults-never-deletes](#setup-ensures-safe-defaults-never-deletes) records that a subscription's
+`filter` is one of the three fields Pub/Sub cannot change, and the setup tool **refuses** rather than deleting
+and recreating.
+
+```mermaid
+flowchart TD
+  A["a consumer creates its subscription"] --> B{"filtered on event_type?"}
+  B -->|"yes"| OK["a new variant never arrives — no noise, ever"]
+  B -->|"no"| N["every new variant is a recorded rejection"]
+  N --> F["add a filter?"]
+  F -->|"immutable — setup REFUSES"| X["delete and recreate the subscription, by hand"]
+```
+
+**→ Recommend** the `event_type` filter becomes a REQUIRED step of
+[one-adopter-checklist-for-both-drivers](#one-adopter-checklist-for-both-drivers), not an optional field on the declaration —
+it is the one setting whose omission cannot be repaired by the tool.
+
+### Free today, impossible later
+
+`codec.go` warns that validation rules *"may only ever LOOSEN"*, because it validates on every READ — and this
+is a TIGHTENING. It is safe only because **nothing has been published yet**, and because the sender validates
+too, so no stored event can ever lack an arm. The same window the encoding had.
+
+### Re-examined for contradictions (RULE 11): none
+
+Handler rule 4… rule **3** of [one-contract-for-both-handler-types](#one-contract-for-both-handler-types) —
+*"a variant the handler does not handle returns `nil`"* — still holds and does not conflict. It covers a variant
+the handler CAN name and chooses to skip. An unset `oneof` is a variant nobody can name, and never reaches the
+handler now. **→ Recommend** `context.md` states both, side by side, because they read alike and are not.
+
+### What this does NOT settle
+
+- **15b** — one decoder. `codec.go`'s lenient one and `push.go`'s strict one still disagree.
+- **15c** — `buf breaking` in CI, and the fact that CI never runs on `dev`.
+
+---
+
+## the-library-has-one-decoder
+
+**ONE decoder, in the new `san_event` library: `protojson` with `DiscardUnknown: true`, followed by
+`protovalidate`. `event_source`'s `DecodeEvent` goes.** (owner, 2026-09-12 — *"for 15b, yes, we have new"*,
+answering part 15b of [Q15](./context_clarify.md#question))
+
+✅ As recommended. Read as: the library being written new is where the one decoder lives, so the question is not
+which of the two shipped ones to keep but which BEHAVIOUR survives into the new one. That behaviour is
+`DiscardUnknown` + validate — ⚠ **if "new" meant new OPTIONS as well, this entry is the part to correct.**
+
+### The spec
+
+| | |
+| --- | --- |
+| the decoder | `protojson.UnmarshalOptions{DiscardUnknown: true}`, then `protovalidate` — one function, in `san_event` |
+| deleted | [`event_source.DecodeEvent`](../../../backend/pkgs/event_source/push.go#L27) — strict, and it never validated |
+| why it can go at all | the envelope: your line 98 hands the handler a whole decoded `Event`, so no caller needs a raw-bytes decoder |
+
+```mermaid
+flowchart LR
+  B["Message.Data — protojson"] --> U["san_event: DiscardUnknown, then validate"]
+  U -->|"a field this consumer has not regenerated"| OK["dropped — the decode succeeds"]
+  U -->|"no variant set"| REJ["ErrValidate — recorded, then ACKed"]
+  U -->|"valid"| H["the handler — a whole Event"]
+```
+
+### Why `DiscardUnknown` and not strict
+
+Strict decoding turns a field a producer merely **ADDED** into a 400, a redelivery and eventually a dead-letter —
+punishing every consumer that has not redeployed for a change that was meant to be compatible. That is the one
+thing `DiscardUnknown` exists to prevent.
+
+**Its danger is now covered.** [the-event-oneof-is-required](#the-event-oneof-is-required) is what makes the leniency
+safe: a dropped FIELD is harmless, and a dropped ARM — which used to be a valid `Event` with no body — now fails
+validation and is recorded. The two decisions are a pair and should be read together.
+
+### What this does NOT settle
+
+- **the rejection record itself** — where a recorded rejection is written, and who reads it, is the receive
+  path's shape ([the receive half](./context_clarify.md#the-receive-half-is-built-twice-and-wired-once)), a
+  programmer's call.
+- **15c** — `buf breaking` in CI, and the fact that CI never runs on `dev`.
+
+---
+
+## breaking-the-old-protos-is-accepted
+
+**No compatibility is owed to the shipped event shape. The new design is followed, and the old protos, topics
+and messages are broken outright rather than bridged.** (owner, 2026-09-12 — *"its okay breaking old, we follow
+this new design"*, answering my objection to [Q15](./context_clarify.md#question) 15c)
+
+### What it settles
+
+| | |
+| --- | --- |
+| [event-base-v1-is-removed](#event-base-v1-is-removed) | proceeds — `warehouse/event_base/v1/event.proto` is deleted, and `buf breaking` reporting *"Previously present file … was deleted"* is expected, not a problem to solve |
+| `selling/v1`'s two events | move to `Event` variants in the same change, with `TopicName()` |
+| `liability_service`, the only live consumer | moves with them |
+| a bridge — dual-publishing, a compatibility shim, a version tag | **none.** ⛔ This withdraws my standing recommendation of dual-publishing old and new topics until liability switched |
+
+```mermaid
+flowchart LR
+  OLD["order-placed · order-cancelled — the shipped shape"] -.->|"no bridge, no dual-publish"| X["retired"]
+  NEW["the Event envelope, one topic per variant"] --> L["liability, moved in the same change"]
+```
+
+### What it accepts, stated once
+
+**Messages in flight at the cutover have no consumer.** An order placed in the window between the producer
+switching and the old subscription being drained sits on a retired topic for 31 days and is never read — so its
+fee is never charged, and nothing lists it. That is the same silent post-commit gap
+[#1 in the rollup](../../biggest_question.md) already names, arriving once, deliberately.
+
+**→ Recommend a consumer-first cutover, which costs less than the bridge it replaces:** deploy liability
+reading BOTH the old topics and the new ones, then switch the producer, then delete the old subscriptions once
+they are empty. No dual-publishing, no shim, no orphaned window — the consumer simply overlaps.
+
+### The `buf breaking` ordering falls out of this
+
+There is no per-change waiver in `buf.yaml` worth adding. **Land the removal first, then add the CI step** — the
+baseline is a clean one from that point and the check never has to be overridden. That is a commit ordering, not
+a policy. ⚠ Note it does not fire until `dev` is added to CI's triggers ([15c](./context_clarify.md#15c--buf-breaking-in-ci-and-why)).
+
+### What this does NOT settle
+
+- **whether `buf breaking` is added at all**, and whether `dev` joins the CI triggers → [Q15](./context_clarify.md#question) 15c,
+  which is now only that.
+- **when the cutover happens** relative to settlement adopting the library.
+
+---
+
+## identity-is-a-record-never-a-credential
+
+**`Event.identity` is settled in four parts: it sits at field 5 · a caller with none passes a shared
+`SystemIdentity()` · the sender clears `expired_at` · and no consumer ever authorises from it.** (owner,
+2026-09-12 — *"yes"* to all four parts of [Q14](./context_clarify.md#question), confirmed)
+
+✅ As recommended. It builds on [event-carries-the-callers-identity](#event-carries-the-callers-identity) (the field)
+and [identity-is-a-sender-parameter](#identity-is-a-sender-parameter) (who supplies it).
+
+### The spec
+
+| | decided | |
+| --- | --- | --- |
+| **14a** the number | `role_base.v1.Identity identity = 5` | the first free number, and the one the guideline already gave `string actor`. ⚠ Under [events-are-encoded-with-protojson](#events-are-encoded-with-protojson) the number is NOT on the wire — **the permanent choice is the word `identity`** |
+| **14b** no identity | a caller with none passes `san_event.SystemIdentity(agent string)` — `IDENTITY_TYPE_SYSTEM`, the agent named | `san_auth.GetIdentity` **errors** outside a request. A shared helper so twelve call sites cannot each invent a zero value. A function, not policy |
+| **14c** `expired_at` | the sender clears it | a token's expiry stamped on a fact that outlives it makes every replayed event look expired. `agent`, `agent_version` and `username` stay — `username` is deliberately a SNAPSHOT of who they were then |
+| **14d** trust | **a record, never a credential** — no handler authorises from it, and `san_auth.WithIdentity(event.Identity)` is forbidden | push routes are open ([push-routes-are-open-by-default](#push-routes-are-open-by-default)), so anyone who reaches one can POST any identity. ✅ The proto already says it: *"It carries NO role: roles are read from the database on every request"* |
+
+```mermaid
+flowchart LR
+  R["a request — the caller reads GetIdentity(ctx)"] -->|"passes it"| S["the sender"]
+  W["a worker, a push handler, tools/san — GetIdentity errors"] -->|"SystemIdentity(agent)"| S
+  S -->|"clears expired_at"| E["Event.identity = 5"]
+  E --> C["a consumer — records it, shows it, stores it"]
+  E -.->|"never"| X["an authorization check, or WithIdentity"]
+```
+
+### Three things this adds elsewhere, and they belong in one place each
+
+| where | what it gains |
+| --- | --- |
+| [one-contract-for-both-handler-types](#one-contract-for-both-handler-types) | a **fifth rule**: *"`event.identity` is a record. No handler authorises from it, and `WithIdentity(event.identity)` is forbidden."* |
+| [one-adopter-checklist-for-both-drivers](#one-adopter-checklist-for-both-drivers) | a handler publishing a downstream event **passes the incoming identity** — `send(ctx, in.GetIdentity(), out)` — so causation survives more than one hop |
+| `tools/san` | sets its own identity before calling a handler (HARD RULE 3b), with `agent = "san"`, so an operator's action is not indistinguishable from a cron's |
+
+⚠ **The adopter checklist has now grown by three this session** — the required `event_type` filter
+([the-event-oneof-is-required](#the-event-oneof-is-required)), the `SystemIdentity()` default, and passing the incoming
+identity onward. It is still seven steps in the recorded decision. **→ Recommend one pass to restate it, rather
+than three footnotes.**
+
+### What it accepts, stated once
+
+The compiler forces a caller to pass SOMETHING, and `SystemIdentity()` is the easy thing to reach for. A call
+site inside a real request that reaches for it anyway loses the user, and nothing detects that — the event is
+well-formed and says the system did it. **→ Recommend** the helper takes a required `agent` argument, so
+`SystemIdentity("settlement-backfill")` reads as a deliberate statement rather than a default.
+
+### Re-examined for contradictions (RULE 11): one stale site, already tracked
+
+The guideline's `string actor = 5` ([§3](../../../guidelines/architectures/event_library.md#3-shared-metadata)) is
+the seventeenth site in the [guideline
+contradiction](./context_clarify.md#the-guideline-still-describes-the-shapes-this-pass-replaced) — the NUMBER
+survives, the type and the home change. No new contradiction.
+
+### What this does NOT settle
+
+- **`Identity` has no field 2** in `role.proto`, and nothing says why. Not this doc's business, but a reader of
+  the proto will wonder.
+- [Q15](./context_clarify.md#question) 15c — the two CI lines.
+
+---
+
+## ci-runs-on-dev-and-checks-breaking
+
+**CI runs on every push to `dev`, not only at a merge to `main`, and the fast job now includes
+`buf breaking` against the previous commit.** (owner, 2026-09-12 — *"yes"* to both parts of
+[Q15](./context_clarify.md#question) 15c, having seen the exact change)
+
+✅ As recommended. **Applied** — [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml).
+
+### The spec
+
+| | |
+| --- | --- |
+| triggers | `push: branches: [main, dev]` + `pull_request` |
+| the `test` job | `if: github.ref == 'refs/heads/main' \|\| github.event_name == 'pull_request'` — it pulls Postgres, Redis and a Playwright browser, and `dev` is committed to constantly |
+| the `build` job | runs on every `dev` commit: `buf lint` · 🆕 `buf breaking` · generate-drift · `go build + vet` · frontend typecheck + build |
+| the new step | `buf breaking proto --against '.git#ref=HEAD~1,subdir=proto'`, from the **repo root** |
+| the checkout | `fetch-depth: 2` — the default shallow clone has no `HEAD~1` |
+
+```mermaid
+flowchart LR
+  C["a commit on dev"] --> B["build — lint, BREAKING, drift, build+vet, frontend"]
+  C -.->|"skipped by if:"| T["test — Postgres, Redis, Playwright"]
+  M["main, or a PR"] --> B
+  M --> T
+  B -->|"a renamed field"| F["fails on THAT commit, and names the json_name change"]
+```
+
+### Why `HEAD~1` and not `main`
+
+Verified against this repo before choosing: **`--against '.git#branch=main'` is already RED**, and not because
+of events — `TeamListRequest.q` → `filter` and `team_type` → `sort`, the RPC guideline migration, which is on
+`dev` and not on `main`. On a workflow where work goes straight to `dev` and `main` lags, a `main` baseline is
+red for the whole gap between a change landing and a promotion, which is the normal state.
+
+`HEAD~1` was clean at the moment it was added, and is a per-commit tripwire: it trips on the commit that renames
+something and clears on the next. That also removes the ordering worry — a deliberate break like
+[breaking-the-old-protos-is-accepted](#breaking-the-old-protos-is-accepted) trips once and clears, so the
+`event_base.v1` removal does not have to land before the step.
+
+### What it catches that nothing else does
+
+Under [events-are-encoded-with-protojson](#events-are-encoded-with-protojson) the field NAME is the wire identity. On a
+rename: `buf lint` passes · the generate-drift check passes, because proto and generated code move together ·
+`go test` passes · and `go build` fails only until the Go is updated, **which goes green while every message
+already published still carries the old name**. `buf breaking` is the only step that compares the proto to its
+previous self, and it names the exact thing —
+*"changed option `json_name` from `eventId` to `evtId`"*.
+
+### What it accepts, stated once
+
+**A deliberate rename now turns one commit red**, with no waiver mechanism — the fix is a follow-up commit or a
+temporary skip, both visible. That is the intended cost: the check exists to make a wire change a decision
+rather than a side effect.
+
+**And the `test` job still does not run on `dev`.** Its `if:` was added so the trigger change would not pull
+containers on every commit — so a test that breaks on `dev` is still discovered at the merge. Running it on
+`dev` is a separate call, on cost.
+
+### What this does NOT settle
+
+- **whether the `test` job should also run on `dev`** — deliberately left as it was.

@@ -17,7 +17,7 @@
 ## Event Sender Contract.
 1. Send event contract.
     ```go
-    type EventSender func(ctx context.Context, event *eventsv1.Event) error
+    type EventSender func(ctx context.Context, identity role_basev1.Identity, event *eventsv1.Event) error
     ```
 2. `Event` is from proto definition.
 3. event function in produced by 
@@ -89,6 +89,27 @@ func InitializeSubscriber(...) error
         ... 
     }
     ```
+
+## How Event Encode and Decode.
+### How Encode to PubSub Event.
+```mermaid
+stateDiagram-v2
+    state "Meta Attributes" as meta
+    state "*eventsv1.Event" as protoevt
+    state "Identity" as iden
+    state "Byte Message" as byte
+    state "pubsub.Message" as pub
+
+    meta-->protoevt: set meta attributes to metadata
+    meta-->pub: set to `attributes`
+
+    iden-->protoevt: set to identity
+    protoevt-->byte: encode with `protojson`
+    byte-->pub: set to `data`
+
+```
+### How Decode to PubSub Event.
+1. we just decode `*eventsv1.Event` field data with `protojson`
 
 ## How Event Received / Subscribed.
 ### Webhook (Google PubSub Push Subscriber).

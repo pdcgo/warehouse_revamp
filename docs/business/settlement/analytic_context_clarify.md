@@ -1876,6 +1876,10 @@ what the decision claimed: *no new fact can enter a closed day*, which is true a
   [the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)
   put it on `order_settlements`; the model has no user column, so `user_settlement_daily_reports` cannot
   be folded at all. It is a migration in this service, not a question.
+  🆕 ⛔ **And it is now the ONLY protection**: the event architecture keeps no archive
+  ([no-archive-events-live-31-days](../../technical/event_architecture/context_decision.md#no-archive-events-live-31-days)), so the published event —
+  the one place this user id exists — is gone 31 days after it is sent. Every day unbuilt puts another day's
+  creator beyond recovery.
 - ⚠ **`posted_on` is not indexed, and `occurred_on` is** — `settlement_logs_team_occurred_idx` and
   `settlement_logs_shop_occurred_idx` are both on the date that
   [posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report) made *"read by no
