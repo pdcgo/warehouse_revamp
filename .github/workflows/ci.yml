@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 permissions:
@@ -13,7 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 2 is for `buf breaking` below — the default shallow clone has no HEAD~1.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-go@v5
         with:
@@ -41,6 +44,23 @@ jobs:
       - name: buf lint
         working-directory: proto
         run: buf lint
+
+      # A rename is a WIRE change no other check can see: lint passes, the drift check passes
+      # (proto and generated code move together), and `go build` fails only until the Go is
+      # updated — which goes green while every message already published still carries the old
+      # name. Events are encoded as protojson, so the field NAME is the wire identity.
+      #
+      # ⚠ Two things this step needs, both easy to get wrong:
+      #   - it runs from the REPO ROOT, not `working-directory: proto` — `.git` resolves against
+      #     the working directory, and proto/.git does not exist.
+      #   - the checkout above must be `fetch-depth: 2`, or HEAD~1 is not in the clone.
+      #
+      # The baseline is HEAD~1, not main: work goes straight to dev and main lags, so a main
+      # baseline stays red for the whole gap between a change landing and a promotion. HEAD~1 is
+      # a per-commit tripwire — it trips on the commit that renames something and clears on the
+      # next, which is exactly the question being asked.
+      - name: buf breaking
+        run: buf breaking proto --against '.git#ref=HEAD~1,subdir=proto'
 
       # Drift check: regenerate and fail if the committed output differs. Generated code is
       # committed but never hand-edited — this proves it matches the .proto.
@@ -72,7 +92,12 @@ jobs:
           npm run build
 
   # Go tests + Playwright e2e against real Postgres and Redis.
+  #
+  # NOT on every push to dev: this job pulls Postgres, Redis and a Playwright browser, and dev is
+  # committed to constantly. The fast `build` job above is what runs per dev commit — main and
+  # pull requests still get the full suite.
   test:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     services:
