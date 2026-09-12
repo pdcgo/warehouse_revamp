@@ -549,7 +549,7 @@ type LiabilityLog struct {
 	// ⚠ IT IS CAPTURED AT THE ORIGIN AND WAS BEING DROPPED AT EVERY BOUNDARY. Both services that
 	// cause postings already compute an actor for their own records — `restock_request_fulfill.go` and
 	// `order_place.go` — and neither passed it on: the poster interface had no parameter for it, and
-	// `OrderPlacedEvent` / `OrderCancelledEvent` had no field. Both now carry it. It is passed in,
+	// `OrderPlaced` / `OrderCancelled` had no field. Both now carry it. It is passed in,
 	// never inferred here.
 	//
 	// ⚠ 0 IS RESERVED FOR A GENUINELY UNATTENDED POSTING — a scheduled job. Nothing writes it today,
@@ -1532,10 +1532,10 @@ func (x *LiabilityLogListResponse) GetBalance() int64 {
 // `by_source` and the caller decides which of them it is willing to call earnings, because they are not
 // the same kind of thing:
 //
-//   HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
-//   COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
-//   PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
-//   PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
+//	HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
+//	COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
+//	PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
+//	PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
 //
 // Summing all four and calling it income would double-count: the fee is earned when it is charged and
 // the payment that settles it would be counted again. Naming that judgement here would bake one screen's
@@ -2786,7 +2786,7 @@ type LiabilityTerms struct {
 	// 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while
 	// buyer-paid+markup owes 20.000, and the owner loses 40.000 on their own goods.
 	//
-	//   product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
+	//	product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
 	//
 	// ⚠ `unit_cost = 0` means UNKNOWN, not free — a product received straight into stock has no
 	// recorded cost, and computes a fee of zero. The decision is to POST THE ZERO and let the

@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 )
 
 // IncomingMessage is the normalised inbound form a driver produces. Push and pull differ in how they
@@ -45,9 +47,6 @@ const (
 	// Handled — the handler took it. Ack.
 	Handled
 
-	// Duplicate — Claim said no, so it was already done. Ack.
-	Duplicate
-
 	// Rejected — it will never succeed. Recorded via RejectHandler, and ACKED: a retry fails
 	// identically, so a nack buys nothing and costs a redelivery storm.
 	Rejected
@@ -57,8 +56,6 @@ func (r Result) String() string {
 	switch r {
 	case Handled:
 		return "handled"
-	case Duplicate:
-		return "duplicate"
 	case Rejected:
 		return "rejected"
 	default:
@@ -66,16 +63,16 @@ func (r Result) String() string {
 	}
 }
 
-// Handler processes events a service has not seen before.
+// Handler processes ONE event (handlers-take-one-event-not-a-batch).
 //
-// It is handed the SAME transaction the dedup claim was made in — commit them together or a crash
-// between them leaves an event claimed but unprocessed, permanently, because the claim suppresses the
-// redelivery that would have fixed it.
+// ⚠ NO TRANSACTION IS HANDED OVER. The handler opens its own and claims event_id inside it, beside its
+// write — rule 4 of the handler contract (one-contract-for-both-handler-types). Claimed apart from the
+// write, a crash between them either suppresses work that never committed or repeats work that did.
+// The library ships Claim (see EventDedup) and the handler builds the flow.
 //
-// The slice is a slice because a driver may deliver one message or many. WHETHER A HANDLER TREATS THAT
-// AS A BATCH OR AS A STREAM OF ONE IS THE SERVICE'S DECISION — the library has no opinion, and the delta
-// rule (guidelines/event-guideline.md #3) is what makes that a free choice rather than a trap.
-type Handler[T Event] func(ctx context.Context, tx *gorm.DB, events []T) error
+// Returning an error means TRY AGAIN, and the driver nacks. A variant the handler does not handle
+// returns nil — redelivering a message nothing here will ever handle is a loop, not a retry (rule 3).
+type Handler func(ctx context.Context, event *eventsv1.Event) error
 
 // Receiver is the library's inbound edge. Drivers in pkgs/event_source call it.
 //
@@ -84,57 +81,34 @@ type Receiver interface {
 	Receive(ctx context.Context, msg IncomingMessage) (Result, error)
 }
 
-// registration is one subscription's decode+dispatch pair, with T erased.
-//
-// The type parameter cannot survive into the map, but it does not need to: both closures are built by
-// Register, where T is still known. So the concrete type is resolved at registration time and nothing
-// ever looks a message type up through protoregistry — dynamicpb never appears.
-type registration struct {
-	decode func(data []byte) (Event, error)
-	handle func(ctx context.Context, tx *gorm.DB, events []Event) error
-}
-
 // Registry maps a subscription to the handler registered for it.
 //
 // It is passed explicitly rather than kept as a package global so a test can register its own handlers
 // without leaking them into the next test.
 type Registry struct {
-	bySubscription map[string]registration
+	bySubscription map[string]Handler
 }
 
 func NewRegistry() *Registry {
-	return &Registry{bySubscription: map[string]registration{}}
+	return &Registry{bySubscription: map[string]Handler{}}
 }
 
-// Register binds a typed handler to a subscription.
+// Register binds a handler to a subscription.
 //
-// It is a function rather than a method because Go has no generic methods — the type parameter has to
-// live on a free function. That is the only reason the registry is an argument.
-func Register[T Event](registry *Registry, subscription string, handler Handler[T]) error {
+// It was generic over an event type once. With one envelope there is nothing to be generic over: every
+// message on every subscription decodes to *eventsv1.Event, so the decode is the same function for all
+// of them and the type-erasure it needed is gone with it.
+func Register(registry *Registry, subscription string, handler Handler) error {
+	if handler == nil {
+		return fmt.Errorf("san_event: subscription %q was registered with a nil handler", subscription)
+	}
+
 	_, exists := registry.bySubscription[subscription]
 	if exists {
 		return fmt.Errorf("san_event: subscription %q already has a handler", subscription)
 	}
 
-	registry.bySubscription[subscription] = registration{
-		decode: func(data []byte) (Event, error) {
-			return Unmarshal[T](data)
-		},
-		handle: func(ctx context.Context, tx *gorm.DB, events []Event) error {
-			typed := make([]T, 0, len(events))
-
-			for _, event := range events {
-				one, ok := event.(T)
-				if !ok {
-					return fmt.Errorf("san_event: %T is not the type registered for %q", event, subscription)
-				}
-
-				typed = append(typed, one)
-			}
-
-			return handler(ctx, tx, typed)
-		},
-	}
+	registry.bySubscription[subscription] = handler
 
 	return nil
 }
@@ -142,7 +116,6 @@ func Register[T Event](registry *Registry, subscription string, handler Handler[
 type receiver struct {
 	db          *gorm.DB
 	registry    *Registry
-	dedup       EventDedup
 	reject      RejectHandler
 	maxAttempts int
 }
@@ -156,15 +129,18 @@ type receiver struct {
 //
 // reject is required, not optional. Without it a rejection would be silently dropped, and the payload is
 // unrecoverable once acked.
+//
+// It takes no EventDedup: the CLAIM is the handler's, made in the handler's own transaction beside its
+// write (rule 4). The db here is the receiver's own, and it is used for one thing — recording a
+// rejection, which happens before the ACK and outside any handler transaction.
 func NewReceiver(
 	db *gorm.DB,
 	registry *Registry,
-	dedup EventDedup,
 	reject RejectHandler,
 	maxAttempts int,
 ) (Receiver, error) {
-	if db == nil || registry == nil || dedup == nil {
-		return nil, errors.New("san_event: NewReceiver needs a db, a registry and a dedup")
+	if db == nil || registry == nil {
+		return nil, errors.New("san_event: NewReceiver needs a db and a registry")
 	}
 
 	if reject == nil {
@@ -178,7 +154,6 @@ func NewReceiver(
 	return &receiver{
 		db:          db,
 		registry:    registry,
-		dedup:       dedup,
 		reject:      reject,
 		maxAttempts: maxAttempts,
 	}, nil
@@ -186,7 +161,7 @@ func NewReceiver(
 
 // Receive implements [Receiver].
 func (r *receiver) Receive(ctx context.Context, msg IncomingMessage) (Result, error) {
-	entry, registered := r.registry.bySubscription[msg.Subscription]
+	handle, registered := r.registry.bySubscription[msg.Subscription]
 	if !registered {
 		// NOT a rejection. This is a configuration bug, and a rejection would ACK — discarding a
 		// perfectly good event because a wiring line is missing. Nacking keeps the message alive
@@ -206,7 +181,7 @@ func (r *receiver) Receive(ctx context.Context, msg IncomingMessage) (Result, er
 		})
 	}
 
-	event, err := entry.decode(msg.Data)
+	event, err := Unmarshal(msg.Data)
 	if err != nil {
 		reason := Undecodable
 		if errors.Is(err, ErrValidate) {
@@ -224,32 +199,16 @@ func (r *receiver) Receive(ctx context.Context, msg IncomingMessage) (Result, er
 		})
 	}
 
-	claimed := false
-
-	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		isNew, claimErr := r.dedup.Claim(ctx, tx, event)
-		if claimErr != nil {
-			return claimErr
-		}
-
-		if !isNew {
-			return nil
-		}
-
-		claimed = true
-
-		return entry.handle(ctx, tx, []Event{event})
-	})
+	err = handle(ctx, event)
 	if err != nil {
-		// Transient by assumption — the handler and the claim share this transaction, so both rolled
-		// back and a redelivery re-runs cleanly.
+		// Transient by assumption. The handler's claim and its write share the handler's own
+		// transaction, so both rolled back and a redelivery re-runs cleanly.
 		return resultUnknown, fmt.Errorf("san_event: cannot handle %q on %q: %w", event.GetEventId(), msg.Subscription, err)
 	}
 
-	if !claimed {
-		return Duplicate, nil
-	}
-
+	// Handled covers "the handler did the work" and "the handler found it already claimed and did
+	// nothing" alike. The receiver cannot tell them apart any more, and does not need to: both ACK,
+	// and the handler is the only thing that knows whether its claim was new.
 	return Handled, nil
 }
 

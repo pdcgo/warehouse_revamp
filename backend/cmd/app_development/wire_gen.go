@@ -53,7 +53,11 @@ func InitializeApp() (*App, error) {
 	inventory_v1ExpensePoster := NewExpensePoster(expense_v1Service)
 	inventory_v1Service := inventory_v1.NewService(db, inventory_v1LiabilityPoster, inventory_v1ExpensePoster)
 	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
-	eventSender := NewEventSender(liability_v1Service)
+	client, err := NewPubsubClient()
+	if err != nil {
+		return nil, err
+	}
+	eventSender := NewEventSender(client)
 	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
 	selling_v1CreditChecker := NewCreditChecker(liability_v1Service)
 	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker)

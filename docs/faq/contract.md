@@ -93,26 +93,34 @@ so the contract is readable from the `.proto` alone.
 
 | Option | Extends | Declares |
 | --- | --- | --- |
-| `warehouse.event_base.v1.event_config` | `MessageOptions` | which Pub/Sub topic an event belongs to |
+| `warehouse.events.v1.event_config` | `MessageOptions` | which Pub/Sub topic an event VARIANT belongs to |
 | `warehouse.role_base.v1.request_policy` | `MessageOptions` | who may call an RPC |
 
 An event names its own topic; a publisher never does:
 
 ```proto
 message OrderCreatedEvent {
-  option (warehouse.event_base.v1.event_config).event_topic = "order-created";
+  option (warehouse.events.v1.event_config).topic = "order-placed";
 }
 ```
 
-⚠ **Decided 2026-09-11, not built yet:** new events are variants of ONE global `warehouse.events.v1.Event`,
-and each variant names ONE topic — `option (event_config) = { topics: "order" }`
+✅ **Built 2026-09-12.** Every event is a variant of ONE global `warehouse.events.v1.Event`, and each
+variant names ONE topic
 ([one-event-one-topic-per-variant](../technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)).
-A second consumer is a second subscription on that topic, not a second topic on the event. The
-`warehouse.event_base.v1` option above is what ships today, on selling's two order events — and it is
-**decided to go** ([event-base-v1-is-removed](../technical/event_architecture/context_decision.md#event-base-v1-is-removed)):
-the option moves to `warehouse.events.v1`, in the same change that moves those two events. Until that change
-lands, the example above is still how the code works. The event guideline still describes the per-context
-envelope these decisions overrode.
+A second consumer is a second subscription on that topic, not a second topic on the event.
+`warehouse.event_base.v1` is **gone**
+([event-base-v1-is-removed](../technical/event_architecture/context_decision.md#event-base-v1-is-removed)) —
+the option moved to `warehouse.events.v1` in the same change that moved selling's two order events onto the
+envelope.
+
+⚠ **The envelope's `oneof` is REQUIRED**
+([the-event-oneof-is-required](../technical/event_architecture/context_decision.md#the-event-oneof-is-required)),
+and that is not decoration. Events are encoded as `protojson`, so a field's wire identity is its NAME:
+rename a `oneof` arm and every message already published decodes with the arm dropped — a valid-looking
+envelope with **no body**. The required rule turns that into a recorded rejection instead of a silent ACK, and
+`buf breaking` in CI is what catches the rename itself.
+
+⚠ The event guideline still describes the per-context envelope these decisions overrode.
 
 ⚠ **The generated option package must be linked into the binary**, or `proto.HasExtension` silently
 returns false and the option appears absent.

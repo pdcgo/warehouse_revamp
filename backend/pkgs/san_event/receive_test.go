@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
@@ -32,11 +32,16 @@ func (c *capturedReject) Reject(_ context.Context, _ *gorm.DB, r san_event.Rejec
 type harness struct {
 	receiver san_event.Receiver
 	rejects  *capturedReject
-	seen     *[]*sellingv1.OrderPlacedEvent
+	worked   *[]*eventsv1.Event
 }
 
-// newHarness wires a receiver over a real dedup table, with a handler that records what it was given.
-// handlerErr, when set, is what the handler returns — used to prove a handler failure NACKs.
+// newHarness wires a receiver over a real dedup table, with a handler written the way the contract
+// says one is written: it opens its OWN transaction, claims event_id inside it, and does its work in
+// the same transaction (rule 4 of one-contract-for-both-handler-types). The receiver hands over no
+// transaction and does no claiming — the library ships Claim, the handler builds the flow.
+//
+// handlerErr, when set, is what the work returns — used to prove a handler failure NACKs AND rolls the
+// claim back with it.
 func newHarness(t *testing.T, db *gorm.DB, table string, handlerErr error) harness {
 	t.Helper()
 
@@ -47,35 +52,46 @@ func newHarness(t *testing.T, db *gorm.DB, table string, handlerErr error) harne
 		t.Fatalf("new dedup: %v", err)
 	}
 
-	seen := []*sellingv1.OrderPlacedEvent{}
+	worked := []*eventsv1.Event{}
 
 	registry := san_event.NewRegistry()
 
-	err = san_event.Register(registry, testSubscription,
-		func(_ context.Context, _ *gorm.DB, events []*sellingv1.OrderPlacedEvent) error {
+	err = san_event.Register(registry, testSubscription, func(ctx context.Context, event *eventsv1.Event) error {
+		return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			isNew, claimErr := dedup.Claim(ctx, tx, event)
+			if claimErr != nil {
+				return claimErr
+			}
+
+			// Already done. Returning nil ACKs it — a redelivery is normal, not an error.
+			if !isNew {
+				return nil
+			}
+
 			if handlerErr != nil {
 				return handlerErr
 			}
 
-			seen = append(seen, events...)
+			worked = append(worked, event)
 
 			return nil
 		})
+	})
 	if err != nil {
 		t.Fatalf("register: %v", err)
 	}
 
 	rejects := &capturedReject{}
 
-	receiver, err := san_event.NewReceiver(db, registry, dedup, rejects, 5)
+	receiver, err := san_event.NewReceiver(db, registry, rejects, 5)
 	if err != nil {
 		t.Fatalf("new receiver: %v", err)
 	}
 
-	return harness{receiver: receiver, rejects: rejects, seen: &seen}
+	return harness{receiver: receiver, rejects: rejects, worked: &worked}
 }
 
-func message(t *testing.T, event *sellingv1.OrderPlacedEvent) san_event.IncomingMessage {
+func message(t *testing.T, event *eventsv1.Event) san_event.IncomingMessage {
 	t.Helper()
 
 	data, err := san_event.Marshal(event)
@@ -118,12 +134,14 @@ func TestReceiveHandlesAndThenDeduplicates(t *testing.T) {
 		t.Fatalf("redelivery: %v", err)
 	}
 
-	if result != san_event.Duplicate {
-		t.Fatalf("want Duplicate, got %s", result)
+	// Handled either way: the receiver cannot see the claim any more, and does not need to. Both ACK.
+	if result != san_event.Handled {
+		t.Fatalf("want Handled, got %s", result)
 	}
 
-	if len(*h.seen) != 1 {
-		t.Fatalf("the handler must run exactly once, ran %d times", len(*h.seen))
+	// What matters is that the WORK ran once — which is the handler's claim doing its job.
+	if len(*h.worked) != 1 {
+		t.Fatalf("the work must run exactly once, ran %d times", len(*h.worked))
 	}
 }
 
@@ -133,7 +151,7 @@ func TestReceiveRejectsAnInvalidPayloadAndRecordsIt(t *testing.T) {
 
 	msg := san_event.IncomingMessage{
 		Subscription:    testSubscription,
-		Data:            []byte(`{"teamId":"3"}`), // decodes, but carries neither contract field
+		Data:            []byte(`{"aggregateId":"order:1"}`), // decodes, but has no id, time or variant
 		MessageID:       "transport-bad",
 		DeliveryAttempt: 1,
 	}
@@ -160,6 +178,33 @@ func TestReceiveRejectsAnInvalidPayloadAndRecordsIt(t *testing.T) {
 	// The only surviving copy: once acked, the broker is finished with this event forever.
 	if string(rejection.Message.Data) != string(msg.Data) {
 		t.Fatal("the rejection must carry the raw payload — it is the only copy left")
+	}
+}
+
+// the-event-oneof-is-required, at the receiver: an arm this build does not know is dropped by
+// DiscardUnknown, so the envelope arrives valid-looking with no body. It must be RECORDED and acked,
+// not handed to a handler with nothing to dispatch on.
+func TestReceiveRejectsAnEnvelopeWhoseVariantIsUnknown(t *testing.T) {
+	db := san_testdb.DB(t)
+	h := newHarness(t, db, "recv_unknownvariant_test", nil)
+
+	result, err := h.receiver.Receive(context.Background(), san_event.IncomingMessage{
+		Subscription: testSubscription,
+		Data: []byte(`{"eventId":"x:1","occurredAt":"2025-07-31T00:00:00Z",` +
+			`"aggregateId":"x:1","stockMovedInSomeFutureBuild":{"id":1}}`),
+		MessageID:       "transport-future",
+		DeliveryAttempt: 1,
+	})
+	if err != nil {
+		t.Fatalf("a rejection ACKs: %v", err)
+	}
+
+	if result != san_event.Rejected {
+		t.Fatalf("want Rejected, got %s", result)
+	}
+
+	if len(*h.worked) != 0 {
+		t.Fatal("an envelope with no variant must never reach the handler")
 	}
 }
 
@@ -214,7 +259,7 @@ func TestReceiveRejectsOnceTheDeliveryAttemptThresholdIsPassed(t *testing.T) {
 		t.Fatalf("want RepeatedFailure, got %s", h.rejects.rejections[0].Reason)
 	}
 
-	if len(*h.seen) != 0 {
+	if len(*h.worked) != 0 {
 		t.Fatal("the handler must not run for a message past the threshold")
 	}
 }
@@ -240,8 +285,9 @@ func TestReceiveNacksWhenTheRejectionCannotBeRecorded(t *testing.T) {
 }
 
 // err means TRY AGAIN. A handler failure is transient by assumption, so it must NACK — and the claim
-// shares the handler's transaction, so it must roll back with it or the redelivery would be swallowed
-// as a duplicate.
+// shares the handler's own transaction, so it must roll back with it or the redelivery would be
+// swallowed as a duplicate. This is rule 4 proved end to end, now that the transaction is the
+// handler's rather than the library's.
 func TestReceiveNacksAndUnclaimsWhenTheHandlerFails(t *testing.T) {
 	db := san_testdb.DB(t)
 	h := newHarness(t, db, "recv_handlerfail_test", errors.New("the projection table is locked"))
@@ -288,7 +334,7 @@ func TestReceiveNacksAnUnregisteredSubscription(t *testing.T) {
 func TestRegisterRefusesASecondHandlerForOneSubscription(t *testing.T) {
 	registry := san_event.NewRegistry()
 
-	handler := func(_ context.Context, _ *gorm.DB, _ []*sellingv1.OrderPlacedEvent) error { return nil }
+	handler := func(_ context.Context, _ *eventsv1.Event) error { return nil }
 
 	err := san_event.Register(registry, testSubscription, handler)
 	if err != nil {
@@ -306,12 +352,7 @@ func TestRegisterRefusesASecondHandlerForOneSubscription(t *testing.T) {
 func TestNewReceiverRequiresARejectHandler(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	dedup, err := san_event.NewDedup("recv_norejects_test")
-	if err != nil {
-		t.Fatalf("new dedup: %v", err)
-	}
-
-	_, err = san_event.NewReceiver(db, san_event.NewRegistry(), dedup, nil, 5)
+	_, err := san_event.NewReceiver(db, san_event.NewRegistry(), nil, 5)
 	if err == nil {
 		t.Fatal("a receiver with no RejectHandler would drop rejections silently")
 	}

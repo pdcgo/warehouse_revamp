@@ -18,6 +18,15 @@ mine. Answered points are **deleted**, so this is always the current open set.
 > can never reject what the broker accepted, because they ARE the broker's limits. **−1: two questions left, Q14 and
 > Q15.**
 >
+> ✅ 🆕 **No batch** — *"we dont take batch"*, recorded as [handlers-take-one-event-not-a-batch](./context_decision.md#handlers-take-one-event-not-a-batch). It closes the last gap
+> between the shipped receive path and the contract you had already decided: the slice goes, the **generic goes with
+> it** (with one envelope `T` was always `Event`), and the **`tx` goes** too, because rule 4 says the handler opens
+> its own. The signature is line 98's exactly. ✅ It is also better, not just smaller — a failing batch redelivers
+> every message in it, and a push delivers one per request anyway, so batching was only ever available on the pull
+> side. ⚠ What it accepts: N transactions where a batch had one. **→ Recommend one line in `context.md`** — the event
+> is a DOORBELL, not a delivery, so a bulk fold is a separate pass over the producer's own table. No question opened
+> or closed.
+>
 > ✅ 🆕 **Q15 IS CLOSED, and the change is APPLIED** — [ci-runs-on-dev-and-checks-breaking](./context_decision.md#ci-runs-on-dev-and-checks-breaking): CI now runs on
 > every push to `dev`, with the expensive `test` job held to `main` and PRs, and `buf breaking` added to the fast
 > job against `HEAD~1`. **This doc now has NO open questions.** ⛔ What still blocks the first event is a
@@ -632,6 +641,7 @@ flowchart LR
 | --- | --- | --- |
 | **two receive paths** | the library's receive design protects no event today, and the path that runs protects nothing | one path: a push driver and a pull worker that both build `IncomingMessage` and call `Receiver.Receive`. The bare `PushHandler` retires |
 | **the subscription name** | a real push carries *"subscription": "projects/…/subscriptions/…"* — the full path. `liability_service` matches short constants, so every event falls to `default:` and is **ACKed and dropped**. `san_event`'s registry finds no handler and NACKs forever. The dev loopback passes the short name, which is why nothing has failed yet — and it is retired now that dev runs the emulator ([dev-runs-the-emulator](./context_decision.md#dev-runs-the-emulator)), so a real full path is what dev delivers | ✅ decided — the route carries the short id, `/event/<sub_id>/push` ([one-adopter-checklist-for-both-drivers](./context_decision.md#one-adopter-checklist-for-both-drivers)). Left: a test that feeds a full path |
+| 🆕 **the handler took a BATCH** | `Handler[T] func(ctx, tx, events []T) error` — a slice, a generic and a `tx`, none of which line 98 has. A failing batch redelivers every message in it, including the ones that succeeded | ✅ **decided — [handlers-take-one-event-not-a-batch](./context_decision.md#handlers-take-one-event-not-a-batch)**: one event, no generic, no `tx`. The receiver keeps its own `*gorm.DB` for the rejection record, which is written before the ACK and outside any handler transaction |
 | **the delivery attempt** | a push sends `deliveryAttempt` at the top level, and `PushRequest` has no field for it. Pub/Sub sets it only on a subscription with a dead-letter policy — *"If a DeadLetterPolicy is not set on the subscription, this will be 0"* — so the repeated-failure layer can never fire | the push driver reads it · the subscription function always sets the DLQ policy (✅ [setup-ensures-safe-defaults-never-deletes](./context_decision.md#setup-ensures-safe-defaults-never-deletes)) — the receiver's detector depends on it |
 
 ## `EventSender` — the doc's contract and the shipped one each get one thing right
@@ -925,7 +935,7 @@ flowchart LR
 | numbering | variants in a **block per context** — settlement `100–199`, selling `200–299`, stock `300–399` |
 | broker | ✅ Google Pub/Sub in production, the emulator in dev, no second broker and no loopback — [dev-runs-the-emulator](./context_decision.md#dev-runs-the-emulator) |
 | library | `backend/pkgs/san_event` — ✅ your §General Brief. Sends, receives, dedups and provisions; the shipped sender moves in from `event_source` |
-| handler contract | ✅ four rules, written once above both handler types — [one-contract-for-both-handler-types](./context_decision.md#one-contract-for-both-handler-types) |
+| handler contract | ✅ `func(ctx context.Context, event *eventsv1.Event) error` — your line 98, one event and no `tx`: [handlers-take-one-event-not-a-batch](./context_decision.md#handlers-take-one-event-not-a-batch) · ✅ five rules, written once above both handler types — [one-contract-for-both-handler-types](./context_decision.md#one-contract-for-both-handler-types) |
 | adopting service | ✅ seven steps, whichever driver — [one-adopter-checklist-for-both-drivers](./context_decision.md#one-adopter-checklist-for-both-drivers) |
 | push route | ✅ `/event/<sub_id>/push` in the service's `register.go`, open — [push-routes-are-open-by-default](./context_decision.md#push-routes-are-open-by-default). A consumer that writes a source of truth uses pull |
 | pull worker | ✅ the service's `Run(ctx)` · returns only when cancelled · concurrency sized to the pool — [pull-worker-is-bounded-and-fails-loudly](./context_decision.md#pull-worker-is-bounded-and-fails-loudly) |

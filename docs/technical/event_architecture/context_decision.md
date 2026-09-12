@@ -429,6 +429,8 @@ type's adopters never read — and the last two rules fail silently when unstate
 | 🆕 5 | never authorises from `event.identity`, and never calls `WithIdentity(event.identity)` — added by [identity-is-a-record-never-a-credential](#identity-is-a-record-never-a-credential) | — | an open push route lets anyone POST any identity, and a handler that trusts it hands the forger an authenticated caller |
 | 4 | calls `Claim(event_id)` in its OWN transaction, beside its write | — | claimed apart from the write, a crash between them either suppresses work that never committed or repeats work that did |
 
+🆕 The signature these five rules attach to is one event, not a slice — [handlers-take-one-event-not-a-batch](#handlers-take-one-event-not-a-batch).
+
 Rule 4 is [dedup-and-compute-share-one-transaction](../../business/settlement/context_decision.md#dedup-and-compute-share-one-transaction)
 made general: the library ships `Claim`, the handler builds the flow. Rules 2–4 agree with the guideline's
 [reject-never-nacks](../../../guidelines/architectures/event_library.md#reject-never-nacks) — this ratifies it.
@@ -2046,3 +2048,57 @@ containers on every commit — so a test that breaks on `dev` is still discovere
 ### What this does NOT settle
 
 - **whether the `test` job should also run on `dev`** — deliberately left as it was.
+
+---
+
+## handlers-take-one-event-not-a-batch
+
+**A handler is handed ONE event, not a slice. The shipped `Handler[T] func(ctx, tx, events []T) error`
+goes, and the signature is `context.md` line 98's: `func(ctx context.Context, event *eventsv1.Event) error`.**
+(owner, 2026-09-12 — *"for now, we dont take batch, no need `Handler[T]` and `func(ctx, tx, events []T)`"*)
+
+✅ It closes the last gap between the shipped receive path and
+[one-contract-for-both-handler-types](#one-contract-for-both-handler-types), which the doc had already decided and the
+code had not followed.
+
+### The spec — three things go, and one stays
+
+| | |
+| --- | --- |
+| the **slice** goes | one event per call |
+| the **generic** goes with it | `Register[T Event]` existed so the library could decode into a concrete `T`. With one envelope `T` is always `Event`, so it was already carrying no weight — and `registration`'s type-erasure dance disappears with it |
+| the **`tx`** goes | rule 4 of the handler contract says the handler claims `event_id` in its OWN transaction, so it opens one. Line 98 already has no `tx`, and the library has none to hand over |
+| the library still needs a **`*gorm.DB` of its own** | the rejection record is written *before* the ACK and outside any handler transaction — that is the receiver's, not the handler's |
+
+```mermaid
+flowchart LR
+  D["a driver — push request, or one pulled message"] --> RCV["Receiver.Receive — decode, validate, reject or dispatch"]
+  RCV -->|"one event"| H["handler(ctx, *eventsv1.Event) error"]
+  H --> TX["its OWN transaction — Claim(event_id), then the write"]
+  RCV -->|"undecodable or invalid"| REJ["recorded on the receiver's own db, then ACK"]
+```
+
+### Why this is better than the batch, not just simpler
+
+**Failure isolation.** A batch that fails redelivers *every* message in it, including the ones that would
+have succeeded — and each redelivery re-runs them, so one poison message drags its neighbours through the
+retry count with it. One event is one transaction and one retry.
+
+**Both drivers are now the same shape.** A push delivers exactly one message per request, so batching was
+only ever available on the pull side. The shipped slice made the two contracts differ in the one place
+[one-contract-for-both-handler-types](#one-contract-for-both-handler-types) said they must not.
+
+### What it accepts, stated once
+
+**N transactions where a batch had one.** Draining a backlog is N round-trips, and a fold that is cheaper in
+bulk pays for it. ⚠ **The design already answers this and it is worth stating in `context.md`**: the event is a
+DOORBELL, not a delivery — a handler records that something happened, and a bulk fold is a separate pass over
+the producer's own table. A handler that needs to be the bulk path is a handler doing the fold's job.
+
+### What this does NOT settle
+
+- **concurrency** — how many events a pull worker handles at once is already decided
+  ([pull-worker-is-bounded-and-fails-loudly](#pull-worker-is-bounded-and-fails-loudly)), and one-at-a-time per
+  handler call is not one-at-a-time per worker.
+- **the receive path's shape otherwise** — the rejection record and the repeated-failure layer are unchanged
+  ([the receive half](./context_clarify.md#the-receive-half-is-built-twice-and-wired-once)).

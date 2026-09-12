@@ -694,7 +694,7 @@ reflection at runtime**, so the contract is readable from the `.proto` alone.
 
 | Option | Extends | Field | Declares |
 | --- | --- | --- | --- |
-| `warehouse.event_base.v1.event_config` | `MessageOptions` | 50001 | which Pub/Sub topic an event belongs to |
+| `warehouse.events.v1.event_config` | `MessageOptions` | 50001 | which Pub/Sub topic an event VARIANT belongs to |
 | `warehouse.role_base.v1.request_policy` *(planned)* | `MessageOptions` | 50002 | who may call an RPC (see the roling section above) |
 
 **The generated option package must be linked into the binary**, or `proto.HasExtension`
@@ -706,8 +706,8 @@ bug.
 An event names its own topic; a publisher never does:
 
 ```proto
-message OrderCreatedEvent {
-  option (warehouse.event_base.v1.event_config).event_topic = "order-created";
+message OrderPlaced {
+  option (warehouse.events.v1.event_config).topic = "order-placed";
 }
 ```
 

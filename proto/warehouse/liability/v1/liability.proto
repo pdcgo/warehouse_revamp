@@ -208,7 +208,7 @@ message LiabilityLog {
   // ⚠ IT IS CAPTURED AT THE ORIGIN AND WAS BEING DROPPED AT EVERY BOUNDARY. Both services that
   // cause postings already compute an actor for their own records — `restock_request_fulfill.go` and
   // `order_place.go` — and neither passed it on: the poster interface had no parameter for it, and
-  // `OrderPlacedEvent` / `OrderCancelledEvent` had no field. Both now carry it. It is passed in,
+  // `OrderPlaced` / `OrderCancelled` had no field. Both now carry it. It is passed in,
   // never inferred here.
   //
   // ⚠ 0 IS RESERVED FOR A GENUINELY UNATTENDED POSTING — a scheduled job. Nothing writes it today,

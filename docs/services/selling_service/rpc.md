@@ -238,14 +238,19 @@ so it reads as the route the system already planned.
 
 ## Placing an order announces it (#153)
 
-After `OrderCreate` commits, selling_service publishes an **`OrderPlacedEvent`** carrying the frozen
-money. `revenue_service` consumes it and writes the order's expected-margin row.
+After `OrderCreate` commits, selling_service publishes an **`Event` carrying the `OrderPlaced` variant**
+with the frozen money. `liability_service` consumes it and charges the order's fees.
 
 Published **after** the commit and **never inside** it, and a publish failure does **not** fail the
 order — revenue is downstream, and a shop must keep selling while it is down.
 
-selling_service does not know revenue is listening. It names no topic either: the event declares its
-own (`warehouse.event_base.v1.event_config`), so a publisher cannot send it to the wrong one.
+selling_service does not know who is listening. It names no topic either: the VARIANT declares its own
+(`warehouse.events.v1.event_config`), and the sender unwraps the `oneof` to read it — so a publisher
+cannot send it to the wrong one.
+
+The envelope carries `event_id` (derived from the order, so a redelivery and a replay collide),
+`occurred_at`, `aggregate_id` and the caller's `identity` — which the sender takes as a PARAMETER and
+which is a record of who published, never something a consumer authorises from.
 
 > The full flow, the delivery trade-off, and why the event carries the money rather than just an order
 > id are in [revenue_service/rpc.md](../revenue_service/rpc.md).
@@ -385,7 +390,7 @@ sequenceDiagram
         D->>D: DELETE the draft
         D->>I: StockPick — the order's lines leave the warehouse
     end
-    D->>R: OrderPlacedEvent, after the commit
+    D->>R: Event with OrderPlaced, after the commit
     D-->>CS: the order
 ```
 
@@ -420,6 +425,6 @@ check falls out of `placeOrder`'s existing shop lookup.
 > surfaces as the stock pick failing, which is late and reads as a stock problem. Worth fixing when
 > something else needs that lookup.
 
-**This is where `OrderPlacedEvent` fires, and the only place a draft ever reaches revenue.** Pushing
+**This is where the `OrderPlaced` event fires, and the only place a draft ever reaches a consumer.** Pushing
 and editing publish nothing at all — there is a test asserting exactly that, because "a draft must
 never publish" is the kind of rule that is only ever violated by accident.

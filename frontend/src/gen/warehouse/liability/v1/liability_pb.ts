@@ -52,7 +52,7 @@ export type LiabilityLog = Message<"warehouse.liability.v1.LiabilityLog"> & {
    * POSITIVE and a PAYABLE is NEGATIVE. Whole rupiah, int64 — never a float. Float cannot represent
    * 0.1 exactly, sums drift, and equality decays into "within epsilon", at which point "are we
    * square?" has no yes/no answer.
-   * 
+   *
    * The API must never also return an `abs()` of this under another name. Two fields called
    * "payable" that disagree in sign is a bug that reaches the screen. Direction is rendered as WORDS
    * by the UI ("They owe you…" / "You owe them…"), from this one signed number.
@@ -77,7 +77,7 @@ export type LiabilityLog = Message<"warehouse.liability.v1.LiabilityLog"> & {
    * ⚠ WHETHER THIS LEG UNDOES AN EARLIER ONE. A cancelled order's fee is reversed by an
    * equal-and-opposite entry: the original stays, the balance nets to zero, and the history shows the
    * fee was charged and then returned. "The fee briefly existed" is exactly what an audit needs.
-   * 
+   *
    * It is part of the IDEMPOTENCY KEY — `(source_type, source_id, counterparty_id, reversal)` — not
    * merely a display flag. Without it a reversal would collide with the entry it reverses, and a
    * double cancel would have to be prevented by something less reliable than a unique index.
@@ -108,13 +108,13 @@ export type LiabilityLog = Message<"warehouse.liability.v1.LiabilityLog"> & {
    * WHO CAUSED THIS — a user id, opaque to this service (every-entry-names-who-posted-it). Not the
    * service and not the event: the human whose act produced the movement, which is what a team
    * disputing a charge has to be able to see.
-   * 
+   *
    * ⚠ IT IS CAPTURED AT THE ORIGIN AND WAS BEING DROPPED AT EVERY BOUNDARY. Both services that
    * cause postings already compute an actor for their own records — `restock_request_fulfill.go` and
    * `order_place.go` — and neither passed it on: the poster interface had no parameter for it, and
-   * `OrderPlacedEvent` / `OrderCancelledEvent` had no field. Both now carry it. It is passed in,
+   * `OrderPlaced` / `OrderCancelled` had no field. Both now carry it. It is passed in,
    * never inferred here.
-   * 
+   *
    * ⚠ 0 IS RESERVED FOR A GENUINELY UNATTENDED POSTING — a scheduled job. Nothing writes it today,
    * and it must not become a shrug: a row that cannot name a person is a row that cannot answer the
    * question this field exists for.
@@ -157,10 +157,10 @@ export type LiabilityPosition = Message<"warehouse.liability.v1.LiabilityPositio
 
   /**
    * WHEN THE OLDEST STILL-UNSETTLED ENTRY WAS POSTED, or 0 when the pair is square.
-   * 
+   *
    * ⚠ AGEING IS THE POINT OF THIS SCREEN, not the total. "Rp 2.4m, oldest unsettled 47 days" is
    * actionable in a way a balance alone is not — a manager chases the old ones.
-   * 
+   *
    * A TIMESTAMP rather than a day count, on purpose: a day count is a rollup, and a rollup has to
    * name its timezone or it shifts when the server moves (§4.13). The screen renders "47 days" in the
    * reader's own timezone, which is the only one that means anything to them.
@@ -171,7 +171,7 @@ export type LiabilityPosition = Message<"warehouse.liability.v1.LiabilityPositio
 
   /**
    * How many payments this counterparty has recorded that the requesting team has NOT yet confirmed.
-   * 
+   *
    * It rides on the position row because a creditor must learn a payment is waiting WITHOUT hunting
    * for it — a payment nobody notices is a debt that stays open for no reason. It is the row-level
    * half of the nav badge.
@@ -538,32 +538,32 @@ export const LiabilityLogListResponseSchema: GenMessage<LiabilityLogListResponse
 
 /**
  * ── The DAILY STATEMENT's income half, for a WAREHOUSE ────────────────────────────────────────────
- * 
+ *
  * A selling team's income was the margin on its orders (revenue_service, since removed). A WAREHOUSE
  * has no orders and
  * therefore no revenue rows at all — what it earns is the FEES it charges the teams it fulfils for, and
  * those live here. Without this RPC a warehouse's daily statement would show margin 0 against real
  * expenses and report every single day as a pure loss (owner, 2026-08-14).
- * 
+ *
  * ⚠ IT REPORTS THE LEDGER, NOT "INCOME" — the split is deliberate. Every source type is returned in
  * `by_source` and the caller decides which of them it is willing to call earnings, because they are not
  * the same kind of thing:
- * 
+ *
  *   HANDLING_FEE  the warehouse fulfilled an order and is owed for the work  → genuinely earned
  *   COD_FEE       it paid a courier for goods it does not own                → a REIMBURSEMENT, not income
  *   PRODUCT_FEE   one selling team owes another for its product              → not a warehouse's at all
  *   PAYMENT       a confirmed payment settling an existing balance           → cash moving, already earned
- * 
+ *
  * Summing all four and calling it income would double-count: the fee is earned when it is charged and
  * the payment that settles it would be counted again. Naming that judgement here would bake one screen's
  * opinion into the ledger's contract, so the enum is returned whole and the statement documents its
  * choice (it takes HANDLING_FEE).
- * 
+ *
  * ⚠ NOT PAGINATED, exactly as RevenueDaily and ExpenseDaily are not: the response length is `to − from`,
  * which the caller states, and the span is CAPPED AT 366 DAYS. The cap must equal theirs — the three
  * series are read side by side on one screen, and a cap that differed would let the statement load part
  * of a period and still look complete.
- * 
+ *
  * ⚠ SPARSE: a day the ledger did not move is ABSENT, not a zero row. The client owns the date spine.
  *
  * @generated from message warehouse.liability.v1.LiabilityDailyFilter
@@ -626,7 +626,7 @@ export const LiabilityDailyRequestSchema: GenMessage<LiabilityDailyRequest> = /*
 export type LiabilityDayItem = Message<"warehouse.liability.v1.LiabilityDayItem"> & {
   /**
    * The day this row sums, as YYYY-MM-DD.
-   * 
+   *
    * ⚠ Bucketed in UTC from `created_at`, the same cast RevenueDaily uses and carrying the same caveat:
    * the business is UTC+7, so an entry posted before 07:00 local lands on the previous day. Consistency
    * with the period bounds is why — see docs/services/expense_service/rpc.md, which states the same cap.
@@ -789,7 +789,7 @@ export type LiabilityPayment = Message<"warehouse.liability.v1.LiabilityPayment"
    * PROOF THAT THE MONEY LEFT A BANK (a-payment-must-carry-proof) — document_service ids, opaque
    * here. The payer uploads them and shares each with the creditor before recording the payment, so
    * `GetDownloadUrl` answers for both sides.
-   * 
+   *
    * ⚠ THE CREDITOR'S CONFIRMATION IS A MANUAL CHECK, and this is what they check. A payment with
    * nothing attached asks them to accept on the payer's word — which is exactly what the two-phase
    * design declines to trust.
@@ -802,7 +802,7 @@ export type LiabilityPayment = Message<"warehouse.liability.v1.LiabilityPayment"
    * WHY a creditor refused or undid this payment. Empty while the payment is RECORDED or CONFIRMED —
    * the status says which act filled it, which is why REJECTED and REVERSED share one column rather
    * than owning two that are each always null for the other.
-   * 
+   *
    * ⚠ IT IS SHOWN TO THE PAYER. A refusal a debtor cannot read is a debt they cannot fix — they would
    * see a claim marked wrong with no way to learn whether to re-send the slip or the money.
    *
@@ -849,11 +849,11 @@ export type LiabilityPaymentRecordRequest = Message<"warehouse.liability.v1.Liab
    * AT LEAST ONE, always (a-payment-must-carry-proof). `balance_context.md` §Payment Flow has the
    * payer *bring* proof of the bank transfer and the creditor *check it manually* — a rule the system
    * enforces, not a habit it hopes for.
-   * 
+   *
    * ⚠ EACH MUST ALREADY BE SHARED WITH THE CREDITOR. The payer calls `ShareDocument` first, as
    * themselves: this service does not — and must not — reach into document_service to grant it, which
    * would need an internal path that skips the document scope check.
-   * 
+   *
    * ⚠ A BANK TRANSFER IS THE ONLY PAYMENT KIND THAT HAS A SLIP. If `offset` is ever allowed, or cash
    * changes hands in the building, this constraint has to be relaxed for that kind — relaxing a
    * validation later is a compatible change, which is why no `kind` enum was added now for a feature
@@ -1165,7 +1165,7 @@ export const LiabilityPaymentListResponseSchema: GenMessage<LiabilityPaymentList
 
 /**
  * A CREDITOR'S TERMS toward one debtor — what it charges and how far it will let them run (#189).
- * 
+ *
  * One row covers both fees and the limit because they are one relationship: the warehouse that
  * charges you 12k an order is the warehouse that caps you at 50m. Splitting them would mean two
  * screens and two chances to configure half of it.
@@ -1200,14 +1200,14 @@ export type LiabilityTerms = Message<"warehouse.liability.v1.LiabilityTerms"> & 
    * The markup this team takes when another team sells ITS product, in BASIS POINTS over the cost
    * (2000 = 20%). Basis points rather than a float, for the same reason money is int64: a percentage
    * that cannot be represented exactly is a fee that drifts.
-   * 
+   *
    * The anchor is the order line's frozen `unit_cost` (HPP), NOT the buyer-paid price. A markup on
    * what the buyer paid is a commission model wearing a sale's clothes — on a product that cost
    * 60.000 and sold for 100.000 at 20%, cost+markup owes the owner 72.000 while
    * buyer-paid+markup owes 20.000, and the owner loses 40.000 on their own goods.
-   * 
+   *
    *   product fee (per owning team) = Σ over that team's lines (unit_cost × quantity) × (1 + markup)
-   * 
+   *
    * ⚠ `unit_cost = 0` means UNKNOWN, not free — a product received straight into stock has no
    * recorded cost, and computes a fee of zero. The decision is to POST THE ZERO and let the
    * reconciliation report name it (#187), rather than refuse a real sale over a bookkeeping gap.
@@ -1218,11 +1218,11 @@ export type LiabilityTerms = Message<"warehouse.liability.v1.LiabilityTerms"> & 
 
   /**
    * How much this debtor may owe before their next order is refused.
-   * 
+   *
    * ⚠ ABSENT MEANS UNLIMITED. `0` MEANS NO CREDIT AT ALL. They are opposites, and encoding unlimited
    * as 0 is the trap: the day somebody genuinely wants to freeze a team they will type 0 and grant
    * infinite credit instead. Removing a limit means DELETING the terms row, never zeroing this field.
-   * 
+   *
    * The rule is CURRENT debt < limit, so exposure can reach the limit plus one order's fees and the
    * NEXT order is blocked. Friendlier than a hard ceiling — a person is cut off next time rather than
    * rejected mid-order for an amount they cannot see — and it agrees with the eventual-consistency
@@ -1380,7 +1380,7 @@ export type LiabilityTermsSetRequest = Message<"warehouse.liability.v1.Liability
    * WHY the change — required when the actor is not one of the creditor team's own people, optional
    * when they are. A creditor setting its own terms owes nobody an explanation; somebody else
    * changing them does, and that difference is the entire definition of an override here.
-   * 
+   *
    * ⚠ The ACTOR is not a field. It comes from the token, because a write that names its own author
    * is a write that can lie about it. The server stamps it onto the change log.
    *
@@ -1461,7 +1461,7 @@ export const LiabilityTermsDeleteResponseSchema: GenMessage<LiabilityTermsDelete
 
 /**
  * LiabilityTermsChange is one recorded change to a creditor's terms toward one debtor.
- * 
+ *
  * A log rather than columns on the terms row, for two reasons that both come from decisions already
  * made. First, the limit IS the chase instrument: with no settlement cycle a creditor's only lever
  * is raising and lowering it, so the current value alone is not a record of that negotiation.
@@ -1684,7 +1684,7 @@ export const LiabilityTermsHistoryListResponseSchema: GenMessage<LiabilityTermsH
  * "why do I owe this?" is the first question anyone asks a balance, and a note cannot be joined,
  * filtered or counted. It is also what lets an order's fee and its reversal read as one story, and
  * what keeps this service out of selling_service's tables.
- * 
+ *
  * APPEND ONLY, like every enum here.
  *
  * @generated from enum warehouse.liability.v1.LiabilitySourceType
@@ -1698,7 +1698,7 @@ export enum LiabilitySourceType {
   /**
    * The warehouse fulfilled an order, so the selling team owes it a flat fee (#186). `source_id` is
    * the order.
-   * 
+   *
    * The business word says WHEN it is charged — at order creation — where `handling_fee`, the name
    * this had, said only that some handling happened.
    *
@@ -1725,12 +1725,12 @@ export enum LiabilitySourceType {
    * EVERYTHING THE WAREHOUSE LAID OUT to receive one delivery — the COD fee at the door and whatever
    * else it paid to get the goods in. `source_id` is the restock request, and the amount is the sum
    * of that request's cost lines.
-   * 
+   *
    * ONE ENTRY PER DELIVERY, not per line: what the requesting team owes is a single debt for a
    * single delivery, and the breakdown of why lives on the restock beside the goods it belongs to.
    * Posting per line would also make `source_id` ambiguous — it would have to name a cost line while
    * every other source type names the business object.
-   * 
+   *
    * ⚠ IT WAS `RESTOCK_OUTLAY`, and before that `COD_FEE`. The money is the courier's unplanned ask on
    * arrival plus whatever else the warehouse had to pay to get the delivery in — incidental by
    * nature, which is why no closed list of kinds can enumerate it.
@@ -1742,19 +1742,19 @@ export enum LiabilitySourceType {
   /**
    * STOCK THE WAREHOUSE BROKE OR LOST while holding it, valued at the batch's frozen cost.
    * `source_id` is the ADJUST MOVEMENT that recorded it.
-   * 
+   *
    * The warehouse owes the OWNING TEAM, because the goods were never the warehouse's: it holds them,
    * the selling team owns them (business_level §Warehouse 4/5). Recording only the write-off would say
    * the warehouse lost value and leave the owner's goods simply gone.
-   * 
+   *
    * ⚠ THIS IS NOT THE SAME RECORD AS THE EXPENSE. `EXPENSE_KIND_STOCK_WRITE_OFF` is the warehouse's
    * own P&L view of the same event; this is who it now owes. Both are correct and neither replaces
    * the other — one answers "what did our losses cost us", the other "who do we have to pay".
-   * 
+   *
    * ⚠ Damage at RECEIVING, and on returned orders, is NOT this (business_level §Warehouse 6). Those
    * never enter the warehouse's custody, and they travel a different path — a restock damage line,
    * not an adjust.
-   * 
+   *
    * ⚠ 6 WAS `STOCK_DAMAGE`, one type carrying three business movements
    * (the-ledger-speaks-the-business-words). "How much went to breakage versus shrinkage" was
    * unanswerable, and `StockAdjustReason` was already capturing the distinction and throwing it away.
@@ -1774,7 +1774,7 @@ export enum LiabilitySourceType {
   /**
    * Goods reimbursed as broken or lost and then FOUND AGAIN. Posted with `reversal = true` against
    * the find's own movement, so the history reads as one story: reimbursed, then given back.
-   * 
+   *
    * ⚠ The TYPE carries the cause and the FLAG carries the direction — they are not redundant, and
    * both stay in the idempotency key.
    *
@@ -1904,12 +1904,12 @@ export enum LiabilityPaymentStatus {
   /**
    * THE CREDITOR LOOKED AND THE MONEY WAS NOT THERE. `balance_context.md` §Payment Flow ends its
    * *"Is Payment Correct?"* branch here, and the lifecycle diagram makes it terminal.
-   * 
+   *
    * ⚠ IT POSTS NOTHING, and that is the entire point of the state. Before it existed a creditor faced
    * with a claim that never landed could only leave it at RECORDED forever, or CONFIRM and then
    * REVERSE — which writes two real ledger movements for money that never moved and leaves the pair's
    * history telling a story that did not happen.
-   * 
+   *
    * ⚠ NOT THE SAME AS REVERSED. Rejecting refuses a CLAIM (nothing was ever posted); reversing undoes
    * a CONFIRMATION (a posting is compensated). Two different failures, and they must not share a path.
    *
@@ -1999,40 +1999,40 @@ export const LiabilityTermsHistoryListDataTypeSchema: GenEnum<LiabilityTermsHist
 
 /**
  * LiabilityService is the ledger of WHAT TEAMS OWE EACH OTHER (#180).
- * 
+ *
  * It exists because an obligation already happens today and nothing records it: when a restock
  * arrives COD, the WAREHOUSE pays the courier at the door for goods it does not own (#155). That
  * number reaches the order's COGS — correct for costing, silent on liability. Nothing says the
  * warehouse is owed it, or whether it was ever repaid.
- * 
+ *
  * Three things it deliberately is NOT:
- * 
+ *
  *   - **Not a goods ledger.** Money only. "Borrowing another team's product" is a cross-team SALE,
  *     charged as money at order time — the goods leave and do not come back.
  *   - **Not an allocation engine.** `expense_service` records what a team spent and liability NEVER
  *     reads it. What reaches a selling team is a PRICE the warehouse set, never a share of its spend.
  *   - **Not open to outsiders.** Counterparties are TEAMS ONLY, because liability is two-phase: the
  *     creditor confirms a payment, and a party that cannot log in can never confirm anything.
- * 
+ *
  * ⚠ TWO AUTHORIZATION TRAPS LIVE IN THIS SERVICE, and both are easy to walk into.
- * 
+ *
  *  1. Every request needs `use_scope` on `team_id`. These are team-level roles, and a team-level role
  *     on an unscoped message is evaluated against the ROOT team — the policy becomes a dead letter
  *     and the proto claims something the system does not do.
  *  2. A balance has TWO SIDES and only one can be the scope. A request scoped to `team_id` proves the
  *     caller belongs to THAT team and says nothing about the counterparty. A handler must never treat
  *     a caller-supplied `counterparty_id` as if it were the scope.
- * 
+ *
  * The contract was derived from the screens first (#182, HARD RULE 6) and is SPLIT INTO THREE
  * SERVICES — reads, payments, terms — served by one Go implementation, exactly as ShopService,
  * OrderService and OrderDraftService share selling_service's.
- * 
+ *
  * ⚠ THE SPLIT IS ABOUT WHEN EACH CAN BE MOUNTED, not about taste. A service is mounted whole: the
  * generated handler interface demands every RPC, and mounting also puts it in reflection. One service
  * covering all nine RPCs could not be served until the last of them existed — so the screens (#185)
  * would have had to ship alongside stubs returning Unimplemented, which is a contract that lies about
  * what the system does. Three services land with their three issues instead.
- * 
+ *
  * Two later issues bring their own RPCs rather than crowding these: the reconciliation report (#187)
  * and the pre-order credit check (#189).
  *

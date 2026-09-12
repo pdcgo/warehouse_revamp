@@ -48,7 +48,9 @@ func InitializeApp() (*App, error) {
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.
 		NewStockPicker,
 		NewProductCatalog,
-		// Where OrderPlacedEvent goes (#153) — see event_sender.go.
+		// Where the order events go (#153) — see event_sender.go. Dev publishes to the local
+		// EMULATOR, not an in-process loopback (dev-runs-the-emulator).
+		NewPubsubClient,
 		NewEventSender,
 		category_v1.NewService,
 		document_v1.NewService,

@@ -6,7 +6,9 @@ import (
 
 	"gorm.io/gorm"
 
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
@@ -128,6 +130,27 @@ func eventActor(ctx context.Context) uint64 {
 	}
 
 	return identity.GetIdentityId()
+}
+
+// eventIdentity is what the sender's identity PARAMETER takes (identity-is-a-sender-parameter): the
+// caller's identity when the access interceptor put one on the ctx, and an explicit SYSTEM identity
+// when it did not.
+//
+// san_auth.GetIdentity ERRORS rather than returning nil outside a request, so passing its error
+// through would fail every event published by a worker, a backfill or tools/san. SystemIdentity names
+// the agent on purpose — "the system did it" with no agent is indistinguishable from a call site that
+// simply lost the user.
+//
+// ⚠ It is NOT the same thing as eventActor above. This says who caused the PUBLISH — an operator
+// running a backfill six hours later. actor_id on the variant says who placed the ORDER, read from the
+// stored row, and a consumer folding the fact reads that one.
+func eventIdentity(ctx context.Context) *role_basev1.Identity {
+	identity, err := san_auth.GetIdentity(ctx)
+	if err != nil {
+		return event_source.SystemIdentity("selling_service")
+	}
+
+	return identity
 }
 
 func orderToProto(o *selling_service_models.Order) *sellingv1.Order {

@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
+	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -17,30 +18,34 @@ import (
 // recorder captures what was published, so a test can assert on the event rather than on a mock's
 // call count.
 type recorder struct {
-	events []proto.Message
-	fail   error
+	events     []*eventsv1.Event
+	identities []*role_basev1.Identity
+	fail       error
 }
 
-func (r *recorder) send(_ context.Context, event proto.Message) (string, error) {
+func (r *recorder) send(_ context.Context, identity *role_basev1.Identity, event *eventsv1.Event) error {
 	if r.fail != nil {
-		return "", r.fail
+		return r.fail
 	}
 
 	r.events = append(r.events, event)
+	r.identities = append(r.identities, identity)
 
-	return "msg-1", nil
+	return nil
 }
 
-func (r *recorder) placed(t *testing.T) *sellingv1.OrderPlacedEvent {
+// placed unwraps the envelope to the variant, so a test asserts on the fact rather than on the
+// wrapper. The envelope's own fields are asserted separately, where they are the subject.
+func (r *recorder) placed(t *testing.T) *eventsv1.OrderPlaced {
 	t.Helper()
 
 	if len(r.events) != 1 {
 		t.Fatalf("published %d events, want exactly 1: %v", len(r.events), r.events)
 	}
 
-	got, ok := r.events[0].(*sellingv1.OrderPlacedEvent)
-	if !ok {
-		t.Fatalf("published %T, want an OrderPlacedEvent", r.events[0])
+	got := r.events[0].GetOrderPlaced()
+	if got == nil {
+		t.Fatalf("published %v, want the OrderPlaced variant", r.events[0].GetMessage())
 	}
 
 	return got
@@ -143,7 +148,9 @@ func TestOrderCreate_SurvivesAPublishFailure(t *testing.T) {
 
 // #153 — the event declares its own topic, so a publisher never names one.
 func TestOrderPlacedEvent_DeclaresItsTopic(t *testing.T) {
-	topic, err := event_source.TopicName(&sellingv1.OrderPlacedEvent{})
+	topic, err := event_source.TopicName(&eventsv1.Event{
+		Message: &eventsv1.Event_OrderPlaced{OrderPlaced: &eventsv1.OrderPlaced{}},
+	})
 	if err != nil {
 		t.Fatalf("TopicName: %v — the generated option package may not be linked in", err)
 	}
@@ -180,9 +187,9 @@ func TestOrderCancel_PublishesTheCancellation(t *testing.T) {
 		t.Fatalf("published %d events, want 2 (placed, then cancelled): %v", len(rec.events), rec.events)
 	}
 
-	cancelled, ok := rec.events[1].(*sellingv1.OrderCancelledEvent)
-	if !ok {
-		t.Fatalf("second event is %T, want an OrderCancelledEvent", rec.events[1])
+	cancelled := rec.events[1].GetOrderCancelled()
+	if cancelled == nil {
+		t.Fatalf("second event is %v, want the OrderCancelled variant", rec.events[1].GetMessage())
 	}
 
 	if cancelled.GetOrderId() != id || cancelled.GetTeamId() != 2 {
@@ -203,12 +210,12 @@ func TestOrderCancel_SurvivesAPublishFailure(t *testing.T) {
 
 	// Placement must succeed, so the sender only starts failing once the order exists.
 	rec := &recorder{}
-	svc := newServiceWithEvents(t, db, func(c context.Context, e proto.Message) (string, error) {
-		if _, isCancel := e.(*sellingv1.OrderCancelledEvent); isCancel {
-			return "", errors.New("broker unavailable")
+	svc := newServiceWithEvents(t, db, func(c context.Context, id *role_basev1.Identity, e *eventsv1.Event) error {
+		if e.GetOrderCancelled() != nil {
+			return errors.New("broker unavailable")
 		}
 
-		return rec.send(c, e)
+		return rec.send(c, id, e)
 	})
 
 	created, err := svc.OrderCreate(ctx, connect.NewRequest(orderReq(shop)))
@@ -245,7 +252,9 @@ func TestOrderCreate_PublishesTheEventContractFields(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	event := rec.placed(t)
+	rec.placed(t) // the variant must be the placed one
+
+	event := rec.events[0]
 
 	// DERIVED from the order, so a redelivery and a replay are the same logical fact and collide.
 	want := "order-placed:" + strconv.FormatUint(created.Msg.GetOrder().GetId(), 10)
@@ -253,13 +262,17 @@ func TestOrderCreate_PublishesTheEventContractFields(t *testing.T) {
 		t.Fatalf("event_id = %q, want %q — it must be derived from the order, never a fresh UUID", event.GetEventId(), want)
 	}
 
-	if event.GetOccurredAtUnix() <= 0 {
-		t.Fatal("occurred_at_unix must be filled — a consumer buckets by it")
+	if event.GetOccurredAt().AsTime().Unix() <= 0 {
+		t.Fatal("occurred_at must be filled — a consumer buckets by it")
+	}
+
+	if event.GetAggregateId() == "" {
+		t.Fatal("aggregate_id must be filled — it is required, and it is the ordering key if one is ever turned on")
 	}
 
 	// The sender validates before publishing, so an unpopulated contract field would make the publish
 	// fail rather than the assertion above. Prove the event passes the validation a real sender runs.
-	_, err = event_source.EmptySender(context.Background(), event)
+	err = event_source.EmptySender(context.Background(), event_source.SystemIdentity("test"), event)
 	if err != nil {
 		t.Fatalf("the published event must pass validation, or every real sender would drop it: %v", err)
 	}
@@ -292,9 +305,10 @@ func TestOrderCancel_PublishesTheEventContractFields(t *testing.T) {
 		t.Fatalf("published %d events, want the placed and the cancelled", len(rec.events))
 	}
 
-	event, ok := rec.events[1].(*sellingv1.OrderCancelledEvent)
-	if !ok {
-		t.Fatalf("published %T, want an OrderCancelledEvent", rec.events[1])
+	event := rec.events[1]
+
+	if event.GetOrderCancelled() == nil {
+		t.Fatalf("published %v, want the OrderCancelled variant", event.GetMessage())
 	}
 
 	want := "order-cancelled:" + strconv.FormatUint(orderID, 10)
@@ -302,11 +316,11 @@ func TestOrderCancel_PublishesTheEventContractFields(t *testing.T) {
 		t.Fatalf("event_id = %q, want %q", event.GetEventId(), want)
 	}
 
-	if event.GetOccurredAtUnix() <= 0 {
-		t.Fatal("occurred_at_unix must be filled from the order's updated_at")
+	if event.GetOccurredAt().AsTime().Unix() <= 0 {
+		t.Fatal("occurred_at must be filled from the order's updated_at")
 	}
 
-	_, err = event_source.EmptySender(context.Background(), event)
+	err = event_source.EmptySender(context.Background(), event_source.SystemIdentity("test"), event)
 	if err != nil {
 		t.Fatalf("the published event must pass validation: %v", err)
 	}

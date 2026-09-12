@@ -24,6 +24,13 @@ Q2, which is a pointer to order Q14 rather than an open question. The per-file t
 
 > ## What changed this round
 >
+> ✅ **event_architecture — handlers take one event, not a batch** — *"we dont take batch"*, recorded as
+> [handlers-take-one-event-not-a-batch](technical/event_architecture/context_decision.md#handlers-take-one-event-not-a-batch). It closes the last gap between the
+> shipped receive path and the contract already decided: the slice goes, the generic goes with it (with one envelope
+> `T` was always `Event`), and the `tx` goes too, since rule 4 says the handler opens its own. ✅ Better, not just
+> smaller — a failing batch redelivers every message in it, and a push delivers one per request anyway. ⚠ Accepts N
+> transactions where a batch had one, which the doorbell-not-delivery rule already answers. **No count change.**
+>
 > ✅ **event_architecture Q15 is CLOSED and the change is APPLIED** — recorded as [ci-runs-on-dev-and-checks-breaking](technical/event_architecture/context_decision.md#ci-runs-on-dev-and-checks-breaking) and
 > written into [ci.yml](../.github/workflows/ci.yml): CI now runs on every push to `dev` (the expensive `test` job
 > held to `main` and PRs by an `if:`, since it pulls Postgres, Redis and a Playwright browser), and `buf breaking`

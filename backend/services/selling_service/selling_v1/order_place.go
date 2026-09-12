@@ -8,8 +8,10 @@ import (
 	"strconv"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
@@ -291,25 +293,31 @@ func (s *Service) placeOrder(
 	// order's own CreatedAt — the moment the order came into being — not time.Now() here, so a
 	// backfill run next month still files it in the day it happened
 	// (guidelines/event-guideline.md #1, #2).
-	_, publishErr := s.events(ctx, &sellingv1.OrderPlacedEvent{
-		EventId:        "order-placed:" + strconv.FormatUint(order.ID, 10),
-		OccurredAtUnix: order.CreatedAt.Unix(),
+	orderRef := strconv.FormatUint(order.ID, 10)
 
-		TeamId:       order.TeamID,
-		OrderId:      order.ID,
-		Revenue:      order.Total,
-		Cogs:         order.COGS,
-		ShippingCost: order.ShippingCost,
-		CostKnown:    costKnown(order.Items, costs),
-		WarehouseId:  order.WarehouseID,
-		Lines:        s.placedLines(ctx, order.TeamID, order.Items),
-		// WHO PLACED IT. The ledger records a person behind every movement, and the two fees this
-		// event causes are posted by a consumer with no request context to read one from
-		// (every-entry-names-who-posted-it).
-		ActorId: eventActor(ctx),
+	publishErr := s.events(ctx, eventIdentity(ctx), &eventsv1.Event{
+		EventId:     "order-placed:" + orderRef,
+		OccurredAt:  timestamppb.New(order.CreatedAt),
+		AggregateId: "order:" + orderRef,
+		Message: &eventsv1.Event_OrderPlaced{
+			OrderPlaced: &eventsv1.OrderPlaced{
+				TeamId:       order.TeamID,
+				OrderId:      order.ID,
+				Revenue:      order.Total,
+				Cogs:         order.COGS,
+				ShippingCost: order.ShippingCost,
+				CostKnown:    costKnown(order.Items, costs),
+				WarehouseId:  order.WarehouseID,
+				Lines:        s.placedLines(ctx, order.TeamID, order.Items),
+				// WHO PLACED IT. The ledger records a person behind every movement, and the two fees
+				// this event causes are posted by a consumer with no request context to read one from
+				// (every-entry-names-who-posted-it).
+				ActorId: eventActor(ctx),
+			},
+		},
 	})
 	if publishErr != nil {
-		slog.ErrorContext(ctx, "order placed but OrderPlacedEvent was not published — "+
+		slog.ErrorContext(ctx, "order placed but its OrderPlaced event was not published — "+
 			"its revenue row must be backfilled",
 			"order_id", order.ID,
 			"team_id", order.TeamID,
@@ -357,7 +365,7 @@ func (s *Service) placedLines(
 	ctx context.Context,
 	teamID uint64,
 	items []selling_service_models.OrderItem,
-) []*sellingv1.OrderPlacedLine {
+) []*eventsv1.OrderPlacedLine {
 	ids := make([]uint64, 0, len(items))
 	seen := map[uint64]bool{}
 
@@ -387,10 +395,10 @@ func (s *Service) placedLines(
 		}
 	}
 
-	lines := make([]*sellingv1.OrderPlacedLine, 0, len(items))
+	lines := make([]*eventsv1.OrderPlacedLine, 0, len(items))
 
 	for i := range items {
-		lines = append(lines, &sellingv1.OrderPlacedLine{
+		lines = append(lines, &eventsv1.OrderPlacedLine{
 			ProductId: items[i].ProductID,
 			// 0 when unresolved, which liability reads as "nobody to pay".
 			OwningTeamId: owners[items[i].ProductID].TeamID,

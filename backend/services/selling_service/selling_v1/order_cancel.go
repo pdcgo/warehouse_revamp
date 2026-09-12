@@ -6,8 +6,10 @@ import (
 	"strconv"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
@@ -90,18 +92,25 @@ func (s *Service) OrderCancel(
 	// OccurredAtUnix is the moment the transition was written — taken from the ORDER, which
 	// setOrderStatus updated in memory as well as in the row, rather than a second time.Now() here
 	// (guidelines/event-guideline.md #1, #2).
-	_, publishErr := s.events(ctx, &sellingv1.OrderCancelledEvent{
-		EventId:        "order-cancelled:" + strconv.FormatUint(order.ID, 10),
-		OccurredAtUnix: order.UpdatedAt.Unix(),
+	orderRef := strconv.FormatUint(order.ID, 10)
 
-		TeamId:  order.TeamID,
-		OrderId: order.ID,
-		// WHO CANCELLED IT — a different act from the placement it undoes, and often a different
-		// person, so the reversal entries name this one (every-entry-names-who-posted-it).
-		ActorId: eventActor(ctx),
+	publishErr := s.events(ctx, eventIdentity(ctx), &eventsv1.Event{
+		EventId:     "order-cancelled:" + orderRef,
+		OccurredAt:  timestamppb.New(order.UpdatedAt),
+		AggregateId: "order:" + orderRef,
+		Message: &eventsv1.Event_OrderCancelled{
+			OrderCancelled: &eventsv1.OrderCancelled{
+				TeamId:  order.TeamID,
+				OrderId: order.ID,
+				// WHO CANCELLED IT — a different act from the placement it undoes, and often a
+				// different person, so the reversal entries name this one
+				// (every-entry-names-who-posted-it).
+				ActorId: eventActor(ctx),
+			},
+		},
 	})
 	if publishErr != nil {
-		slog.ErrorContext(ctx, "order cancelled but OrderCancelledEvent was not published — "+
+		slog.ErrorContext(ctx, "order cancelled but its OrderCancelled event was not published — "+
 			"its revenue row is still counting and must be voided by hand",
 			"order_id", order.ID,
 			"team_id", order.TeamID,

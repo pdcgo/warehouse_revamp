@@ -6,6 +6,8 @@ import (
 	"regexp"
 
 	"gorm.io/gorm"
+
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 )
 
 // EventDedup decides whether this service has already seen an event.
@@ -22,7 +24,7 @@ type EventDedup interface {
 	//
 	// It MUST run in the same transaction as the handler's work, or a crash between them leaves an
 	// event claimed but unprocessed — permanently, since the claim suppresses the redelivery.
-	Claim(ctx context.Context, tx *gorm.DB, e Event) (isNew bool, err error)
+	Claim(ctx context.Context, tx *gorm.DB, event *eventsv1.Event) (isNew bool, err error)
 }
 
 // A table name is bound from code, never from a request, but it is interpolated into SQL because
@@ -56,7 +58,7 @@ type defaultDedup struct {
 }
 
 // Claim implements [EventDedup].
-func (d *defaultDedup) Claim(ctx context.Context, tx *gorm.DB, e Event) (bool, error) {
+func (d *defaultDedup) Claim(ctx context.Context, tx *gorm.DB, event *eventsv1.Event) (bool, error) {
 	// received_at is left to the column DEFAULT rather than written here, on purpose. GORM's
 	// autoCreateTime silently OVERRIDES a DEFAULT now(), which is how a table ends up with two clocks;
 	// raw SQL that never names the column cannot do that.
@@ -65,11 +67,14 @@ func (d *defaultDedup) Claim(ctx context.Context, tx *gorm.DB, e Event) (bool, e
 		d.table,
 	)
 
-	result := tx.WithContext(ctx).Exec(statement, e.GetEventId(), e.GetOccurredAtUnix())
+	// The column stays a unix second even though the envelope carries a Timestamp: it is an index on
+	// a retention sweep, not a field anyone reads back, and an integer sorts and prunes without a
+	// timezone anywhere near it.
+	result := tx.WithContext(ctx).Exec(statement, event.GetEventId(), event.GetOccurredAt().AsTime().Unix())
 
 	err := result.Error
 	if err != nil {
-		return false, fmt.Errorf("san_event: cannot claim %q in %s: %w", e.GetEventId(), d.table, err)
+		return false, fmt.Errorf("san_event: cannot claim %q in %s: %w", event.GetEventId(), d.table, err)
 	}
 
 	return result.RowsAffected == 1, nil
