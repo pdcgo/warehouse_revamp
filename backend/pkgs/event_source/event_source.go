@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
@@ -81,8 +82,14 @@ func TopicName(event *eventsv1.Event) (string, error) {
 // exported for the provisioning tool, which walks every variant to derive the set of topics to
 // create without holding an envelope.
 func VariantTopic(variant proto.Message) (string, error) {
-	descriptor := variant.ProtoReflect().Descriptor()
+	return TopicOfDescriptor(variant.ProtoReflect().Descriptor())
+}
 
+// TopicOfDescriptor reads the topic straight off a message DESCRIPTOR, with no instance to hand.
+//
+// That is what lets the provisioning tool walk every variant of the envelope and derive the set of
+// topics to create, rather than being handed a list a caller could get wrong.
+func TopicOfDescriptor(descriptor protoreflect.MessageDescriptor) (string, error) {
 	opts, ok := descriptor.Options().(*descriptorpb.MessageOptions)
 	if !ok || opts == nil {
 		return "", fmt.Errorf("event_source: %s declares no topic", descriptor.FullName())

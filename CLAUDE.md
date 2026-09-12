@@ -617,6 +617,7 @@ it once a real domain service replaces it.
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
+| Create the event topics + subscriptions | `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` — **nothing else creates them** |
 | Serve this checkout to a coding agent | `go run ./tools/san remote` — Connect RPC **and** MCP at `/mcp`; prints a token kept in `.san/remote-token.json` and REUSED across restarts (`--no-persist-token` for one run only); loopback by default |
 | Serve it to a hosted agent (Claude Web) | `go run ./tools/san remote mcp --public-url https://<tunnel>` + a tunnel to `:8099` — MCP only. **Without `--public-url` it answers 403 to everything** |
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
@@ -711,9 +712,14 @@ message OrderPlaced {
 }
 ```
 
-`TopicName(event)` reads it, `NewPubsubEventSender(client)` publishes there, and
-`NewMuxPushHandler` receives on an HTTP push subscription (trace context rides in the message
+`TopicName(event)` unwraps the envelope's `oneof` and reads the SET VARIANT's topic,
+`NewPubsubEventSender(client)` publishes there, and `NewMuxPushHandler` receives on an HTTP push
+subscription, handing the handler a DECODED `*eventsv1.Event` (trace context rides in the message
 attributes both ways). `EmptySender` validates and drops — use it in tests instead of a broker.
+
+The sender takes the caller's identity as a PARAMETER, never from `ctx`; `SystemIdentity(agent)` is
+what a caller with no user passes. Topics and subscriptions are created by
+`go run ./tools/san pubsub ensure` and by nothing else — no service checks its setup at boot.
 
 Local broker: `docker compose --profile pubsub up -d` (emulator on `:8085`, honours
 `PUBSUB_EMULATOR_HOST`).

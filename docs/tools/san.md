@@ -75,6 +75,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`db`](#db) | Create, reset and drop the **test** database (`warehouse_test`) |
 | [`region`](#region) | Build and load region_service's reference data |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
+| [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
+| [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
 | [`remote mcp`](#remote-mcp) | Serve this checkout as **MCP tools** — the command for Claude Web and any other client we did not write, behind a tunnel |
 | [`remote refresh-token`](#remote-refresh-token) | Push the stored token's deadline out — same token, so nothing has to be re-pasted |
@@ -83,9 +85,9 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote` is the odd one out** and deliberately so: it is the only command that touches no
-database, so it never asks Local/Production and needs no Postgres running. `--dsn` is meaningless
-to it.
+**`remote` and `pubsub` touch no database**, so they never ask Local/Production and need no Postgres
+running. `--dsn` is meaningless to both. `pubsub` has its own target flags instead — `--project`, and
+`--emulator` for the local broker.
 
 ---
 
@@ -339,6 +341,94 @@ The database label is always in the line, so the record of what happened says **
 | `no user matches username ani` | Typo, or the account is on another database |
 | `more than one user matches … — select by --user-id` | Ambiguous data — select by id |
 | `validation error: new_password: must be at least 8 characters` | The **proto's** rule, applied by the CLI |
+
+---
+
+## `pubsub ensure`
+
+```sh
+# dev, against the local emulator (docker compose --profile pubsub up -d)
+go run ./tools/san pubsub ensure --project warehouse-dev --emulator
+
+# production: the grants need the NUMERIC project id, and push needs the base URL
+go run ./tools/san pubsub ensure --project warehouse-prod --project-number 123456789012   --push-base-url https://api.example.com
+```
+
+**Nothing creates topics or subscriptions except this command.** No service checks its setup at
+startup ([services-do-not-verify-setup-at-boot](../technical/event_architecture/context_decision.md#services-do-not-verify-setup-at-boot)),
+which is what keeps admin permissions out of the server — and the trade it accepts: a push route whose
+subscription nobody created receives nothing and says nothing.
+
+**It ENSURES, so run it as often as you like** — creating what is missing, updating what may change, and
+REFUSING what Pub/Sub cannot change. It never deletes
+([setup-ensures-safe-defaults-never-deletes](../technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)).
+
+**The topics come from the PROTO**, not from a list here: every variant of `warehouse.events.v1.Event`
+declares its own topic, and the command walks the descriptor. Add a variant, re-run, and its topic
+exists — there is no list to forget.
+
+| flag | |
+| --- | --- |
+| `--project` | required — the GCP project id, or any stable id against the emulator |
+| `--emulator` | talk to the local emulator (`PUBSUB_EMULATOR_HOST`, default `localhost:8085`) |
+| `--push-base-url` | base URL for PUSH subscriptions. Omit for pull |
+| `--project-number` | the NUMERIC project id, which names the Pub/Sub service agent the dead-letter grants go to. Omit against the emulator, which has no IAM |
+| `--topics-only` | stop after the topics, their DLQs and the triage subscriptions |
+
+```mermaid
+sequenceDiagram
+    participant P as the proto
+    participant S as san pubsub ensure
+    participant G as Pub/Sub
+    S->>P: walk every Event variant
+    P-->>S: order-placed, order-cancelled
+    S->>G: topic + 31-day retention
+    S->>G: topic.dlq
+    S->>G: topic.dlq.triage — never expires
+    S->>G: each declared subscription, every default
+    G-->>S: one already exists and its filter differs
+    S-->>S: REFUSE, naming the subscription and the field
+```
+
+**What every subscription gets, and why each one matters:**
+
+| default | what its absence does, silently |
+| --- | --- |
+| dead-letter policy → `<topic>.dlq`, 5 attempts | a failing message redelivers forever, and every delivery attempt reads 0 |
+| the two IAM grants | without them nothing dead-letters and no error says so |
+| `expiration_policy` with no TTL | deleted after 31 idle days — quiet exactly when things are healthy |
+| `enable_message_ordering` on | fixed at creation. Off, adding an ordering key later means recreating every subscription |
+| retry backoff 10s → 600s | unset, Pub/Sub retries "as soon as possible": a 30-second outage burns all five attempts |
+| push ack deadline 60s | it is also the HTTP timeout, and the default is 10 — a slower fold is cancelled and dead-lettered |
+| a filter on `event_type` | a variant this consumer has not regenerated arrives as a recorded rejection. ⚠ IMMUTABLE — it cannot be added later |
+
+**Errors it can return:**
+
+| | |
+| --- | --- |
+| `subscription %q names topic %q, which no event variant declares` | a typo. Creating it would be silence that looks like health |
+| `... Pub/Sub cannot change it, and this tool never deletes` | the topic, filter or ordering of an existing subscription moved. Declare a NEW id and retire the old one once it is drained |
+| `⚠ not declared here, left alone: ...` | not an error. A subscription nobody here declares — usually someone else's consumer, or a rename mid-flight |
+
+---
+
+## `pubsub redrive`
+
+```sh
+go run ./tools/san pubsub redrive --project warehouse-dev --topic order-placed --emulator
+```
+
+Pulls everything from `<topic>.dlq.triage`, re-publishes it to `<topic>` unchanged, and acks it. It
+stops after 15 seconds of quiet — Pub/Sub has no "is it empty".
+
+**Run it once the cause is FIXED, and never on a schedule.** A message that still fails would loop back
+into the DLQ and out again forever. Running it twice is safe: every consumer claims on `event_id`, so
+anything that did get through the first time is a duplicate the second.
+
+⚠ **What reaches a DLQ is a message whose HANDLER kept failing** — five attempts. A message that could
+not be decoded never gets there: the receiver records it and acks
+([reject-never-nacks](../../guidelines/architectures/event_library.md#reject-never-nacks)), so redrive
+is not where you look for those.
 
 ---
 

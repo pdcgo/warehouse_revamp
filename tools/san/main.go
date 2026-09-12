@@ -75,6 +75,7 @@ func main() {
 
 			// Operations on real data, and the workspace server.
 			userCommand(),
+			pubsubCommand(),
 			remoteCommand(),
 		},
 	}
