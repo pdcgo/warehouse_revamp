@@ -1,4 +1,32 @@
-# Product Context
+# Product Contexts.
+
+## General.
+1. Product can only haved by Selling Team.
+
+
+## Responsbility.
+1. provide product service that can manage the team products.
+
+
+## Attribute / Field That Product Must Have
+1. `name`
+2. `images`
+3. `product_code`, its string
+4. `categories`
+5. `cross_markup_percent`, its cross/shared fee markup
+6. `description`
+7. `reserved_stock`
+8. `is_private`
+9. `is_deleted`
+
+### Whats is `product_code`
+1. its unique code for product
+2. its globally unique
+3. when the product deleted, the code is updated to `[code]_deleted_ts`
+
+
+
+
 
 
 ## Business Problems.
@@ -71,10 +99,6 @@ this is explanation how pricing behavior decided.
     ```
 
 
-
-
-## System Requirements.
-for system requirements it live in [this](./systems.md)
 
 
 

@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**105 open questions across 20 files.** The seven below are shown; **98 are not** — they are not
+**111 open questions across 20 files.** The seven below are shown; **104 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 ⚠ **−3 this round** — event_architecture **Q6, Q14 and Q15 are all closed**, every part of each decided, so **that file now has none open**. Net −2 across the session: Q15 opened when the encoding was decided and closed when its last part was applied. Recounted mechanically: 6e
@@ -23,6 +23,106 @@ numbered item under a `# Question` or `## Question` heading, fenced code skipped
 Q2, which is a pointer to order Q14 rather than an open question. The per-file table sums to the header.
 
 > ## What changed this round
+>
+> ✅ **product — a product cannot be deleted while it still has stock** — *"no"*, recorded as
+> [deleting-a-product-requires-zero-stock](business/product/context_decision.md#deleting-a-product-requires-zero-stock), as recommended. `ProductDelete`
+> checks nothing today, so this is a new guard. ✅ **It RESOLVES the contradiction** between *a deleted product cannot
+> be searched anywhere* and `ProductByIds` returning soft-deleted rows *because stock outlives a catalogue entry* —
+> with no shelf holding one, the two stop competing. ✅ **And it retires my own argument for burning a code**: a
+> re-typed code can no longer make an old sticker scan as a new product, because no such sticker survives. Reuse is
+> safe, and only the mechanism is left — the partial index, not the `[code]_deleted_ts` rename, which mutates a
+> printed string and self-collides when one code is created and deleted twice in a tick.
+>
+> ⚠ **Two things the guard costs, recorded with it.** It makes delete **blockable** — a product with units nobody can
+> find can never be archived until they are written off, so that path has to exist and be reachable — and the refusal
+> must **name** the warehouses and quantities holding the stock, or an operator is told no with nowhere to go.
+> **−1 closed, +2 successors**: does *zero stock* mean zero on hand or no references at all, and does *unfindable
+> anywhere* reach a known-id lookup for HISTORY, where a closed order line still names an archived product
+> ([product Q11, Q12](business/product/context_clarify.md#question)). **+1.**
+>
+> ✅ **product — a deleted product is unfindable** — *"deleted product is cannot search anywhere"*, recorded as
+> [a-deleted-product-is-unfindable](business/product/context_decision.md#a-deleted-product-is-unfindable). ⛔ **And it surfaced the question the
+> whole code discussion turned out to be a proxy for: `ProductDelete` checks NOTHING about stock**, so a product with
+> four hundred labelled units on a rack can be soft-deleted in one call — and the only thing that then names those
+> units is `ProductByIds`, the lookup this decision removes (*"stock outlives a catalogue entry"*, its own comment).
+> **→ Recommend requiring ZERO stock to delete**, which collapses three questions at once: nothing can be mis-scanned,
+> the code can be freed safely, and *unfindable anywhere* becomes true instead of nearly-true.
+> [Contradiction](business/product/context_clarify.md#a-deleted-product-is-unfindable-and-a-shelf-of-its-units-still-needs-its-name) ·
+> [product Q11](business/product/context_clarify.md#question), reshaped rather than added. **No count change.**
+>
+> ⚠ **The pattern behind it, recorded per HARD RULE 11**: these rules are written about a *catalogue* and land on a
+> *warehouse*. `deleted`, `is_private` and the code namespace each have a second audience — the person holding the
+> physical unit — and none of the three says what it means on a shelf.
+>
+> ✅ **product — the code is composed from the team's code** — *"composed"*, recorded as
+> [the-code-is-composed-from-the-team-code](business/product/context_decision.md#the-code-is-composed-from-the-team-code). `<team_code>-<the team's own
+> part>`, so global uniqueness stops being a namespace two teams compete for: no create is refused because of another
+> team's row, and no refusal leaks that one exists. ⚠ **It needs `teams.team_code` and the ownership rule needs
+> `teams.type` — the same cross-service read, so build ONE** ([product Q8](business/product/context_clarify.md#question)). ⚠ And the
+> prefix must be **frozen at write**, not recomputed: teams can be renamed, and a recomputed prefix would rewrite every
+> label a team ever printed. **−1.**
+>
+> 🔄 **And I reversed my own delete recommendation, on evidence rather than argument.** I had recommended a partial
+> unique index so a deleted code could be reused. ⛔ **Reuse is exactly what makes a printed sticker lie**:
+> `RestockRequestLabels` prints the code *"so a picker can find and scan what it just shelved"*, so a re-typed code
+> makes every old unit still on a shelf scan as a **different product**. **→ Recommend BURNING the code** — one unique
+> index, no `WHERE`, no rename — which composition makes nearly free, since the namespace is the team's own. The
+> owner's `[code]_deleted_ts` has the same reuse defect *plus* mutation, and collides with itself when two deletes of
+> one code land in the same tick, failing the DELETE. Still open as
+> [product Q11](business/product/context_clarify.md#question). **No count change.**
+>
+> 🆕 **product gained `### Whats is `product_code`` — and `globally unique` is the most consequential line added to that
+> doc so far.** It collides with the doc's own rule that a product is one selling team's catalogue entry: two teams
+> selling the same supplier's item are two rows, so the second **cannot use the supplier's code**, and its refusal
+> tells it somebody else holds that code — a probe of another team's catalogue that `is_private` does not stop.
+> **→ Recommend keeping global and composing the string** as `<team_code>-<code>`: the warehouse argument for global is
+> strong (a scan at a rack resolves without asking *whose*), and composition makes uniqueness a property rather than a
+> constraint two teams compete for. ⚠ **The `[code]_deleted_ts` rename should not ship**: the live partial index
+> `WHERE deleted = FALSE` already frees the code, and the rename breaks a lookup the code depends on — `ProductByIds`
+> returns soft-deleted products *because stock outlives a catalogue entry*. Two deletes of one code in the same tick
+> also produce the same mangled string, so the **delete** is what fails. **+3**
+> ([product Q10, Q11, Q12](business/product/context_clarify.md#question)).
+>
+> 🔄 **And it reversed my own naming recommendation, for a reason worth keeping**: I argued to keep the shipped `sku`.
+> A globally unique code is not a *stock-keeping unit* — that is a seller's own code by definition — so `sku` would now
+> name the opposite of the rule. **Rename to `product_code`.** ✅ The attribute list also gained `reserved_stock`,
+> `is_private` and `is_deleted`, leaving only the **owning team** missing from it. ⚠ `is_private` looks like a third
+> name for the shared lock, shipped as `cross_locked`. **No count change.**
+>
+> ✅ **product — a product files under MANY categories** — *"categories is plural"*, recorded as
+> [a-product-files-under-many-categories](business/product/context_decision.md#a-product-files-under-many-categories). `products.category_id` becomes a
+> `product_categories` link table and four proto sites go `repeated`. 🔄 **It reverses my recommendation, and my
+> reasoning was wrong in a way worth recording**: I argued one → many is additive later — true of the schema, false of
+> the contract, because `buf breaking` makes the proto change equally breaking whenever it happens. ✅ **Cheaper than
+> it looks**: nothing filters by category today, so there is no `WHERE` to rewrite — the id is carried on the row and
+> read by nobody. ⚠ **Two things not to get wrong**: the list read is one `IN` per page and not a lookup per row, and
+> `CategorySelect` is NOT made multi — three of its four callers pick a *parent node*, so the multi control is a chips
+> wrapper that composes it. **−1, +1 successor** ([product Q9](business/product/context_clarify.md#question) — which one is primary,
+> and how many). **Net 0.**
+>
+> ✅ **product — a warehouse team may not own a catalogue** — *"warehouse cannot have own product"*, recorded as
+> [only-a-selling-team-owns-a-catalogue](business/product/context_decision.md#only-a-selling-team-owns-a-catalogue), and it is the FIRST entry in a
+> `product/context_decision.md` that did not exist — that folder's decisions had been living inside the prunable open
+> set. ✅ It makes §Pricing Behavior total: every product now has an owner that can also be a buyer, so the
+> own-line/cross-line split has no third case. ⛔ **But the ACL does not enforce it.** Narrowing the four write
+> policies (`ProductCreate|Update|Delete|Restore` lose `ROLE_WAREHOUSE_OWNER`/`ADMIN`) leaves `ROLE_TEAM_OWNER`
+> grantable *inside* a warehouse team — no grant path checks `teams.type` — so the handler must read the team's TYPE,
+> which product_service has no path to and HARD RULE 3 makes an RPC. **+1** ([product Q9](business/product/context_clarify.md#question)).
+>
+> 🆕 **product gained `## General.`, `## Responsbility.` and an `## Attribute` field list, and the list disagrees
+> with the shipped row in three places.** `categories` is plural against a single `products.category_id`
+> ([product Q7](business/product/context_clarify.md#question)) · `product_code` and `cross_markup_percent` are shipped as `sku` and
+> `cross_markup_bps` ([product Q8](business/product/context_clarify.md#question)) · and the list omits the owning team,
+> `reserved_stock` and `cross_locked`, the last two mandated by §Cross/Shared Products Rule in the same file.
+> ⚠ **The naming one is time-sensitive now that `buf breaking` runs in CI** — a rename is free this week and a wire
+> break after. **+2.**
+>
+> ⚠ **Verified against the code while ranking, and it narrows an existing row:** the shared LOCK is enforced in exactly
+> one place — `cross_locked = false` in [product_discover.go:32](../backend/services/product_service/product_v1/product_discover.go#L32) — so it hides a
+> product from BROWSE while `ProductByIds` filters on ids alone. A team that already holds the id can still build an
+> order around a locked product. And `reserved_stock` is stored and editable with **no reader anywhere** — the reserve
+> is a rule the system does not apply. Neither is a new question: both are the unanswered halves of
+> [product Q3 and Q4](business/product/context_clarify.md#question). **No count change.**
 >
 > ✅ **The event guideline is rewritten** — `guidelines/architectures/event_library.md`, on the owner's word.
 > Its nineteen stale sites are gone and the contradiction is **resolved**: the doc now describes one envelope,
@@ -1217,7 +1317,7 @@ that ambiguous and the sums never reconciled with the header.
 | [business/stock/context_clarify.md](business/stock/context_clarify.md#question) | 7 | |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
-| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 6 | |
+| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
