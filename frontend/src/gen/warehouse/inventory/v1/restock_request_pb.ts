@@ -55,12 +55,12 @@ export type RestockRequestItem = Message<"warehouse.inventory.v1.RestockRequestI
 
   /**
    * Whole rupiah, THE LINE TOTAL (#140, owner) — what the whole line cost, not what one piece cost.
-   * 
+   *
    * People buying stock think in totals: "that box of 12 cost 240.000". Asking for a per-unit figure
    * makes them divide in their head, and what they type back is a rounded number whose product no
    * longer equals the sum they actually paid. So the TOTAL is the stored truth, and a per-unit figure
    * is DERIVED where one is needed (StockCost) and known to be a rounding.
-   * 
+   *
    * Zero is legitimate (a transfer, a sample), so it is gte 0, not gt 0.
    *
    * @generated from field: int64 total_price = 6;
@@ -71,11 +71,11 @@ export type RestockRequestItem = Message<"warehouse.inventory.v1.RestockRequestI
    * What actually ARRIVED, counted by the warehouse as it accepted (#133). A request is a promise;
    * this is the delivery. Stock receives THIS number, not `quantity` — the warehouse opens the box
    * and counts, and 9 of the 10 asked for is an ordinary Tuesday.
-   * 
+   *
    * Both numbers are kept forever rather than the asked-for being overwritten: the gap between them
    * is the whole point — it is what someone chases the supplier about, and a record that quietly
    * said 9 was asked for would erase the discrepancy it exists to show.
-   * 
+   *
    * 0 until the request is accepted. It stays 0 for a line that never turned up at all, which is why
    * reading this only makes sense once status is FULFILLED.
    *
@@ -85,11 +85,11 @@ export type RestockRequestItem = Message<"warehouse.inventory.v1.RestockRequestI
 
   /**
    * WHERE the goods were put when the warehouse accepted them (#137/#154), and WHAT ARRIVED BROKEN.
-   * 
+   *
    * Both are read-only here, exactly like received_quantity: only the warehouse writes them, and only
    * by counting and shelving as it accepts. A requesting team that could set either would be declaring
    * where a delivery it never made had been put away, or writing off goods it never handled.
-   * 
+   *
    * Empty until the request is accepted, and empty forever for a line that never turned up.
    *
    * @generated from field: repeated warehouse.inventory.v1.RestockPlacement placements = 9;
@@ -224,12 +224,12 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
 
   /**
    * WHAT THE WAREHOUSE LAID OUT to receive this delivery, entered when it accepts.
-   * 
+   *
    * Distinct from shipping_cost above, and the difference is WHO IS OUT OF POCKET: shipping_cost is
    * the requesting team's own freight, typed on create. These are the accepting warehouse's — money
    * it spends on goods it does not own, which is why they do two things at once (see cost_lines on
    * the fulfill request).
-   * 
+   *
    * Empty is the ordinary case: most deliveries cost the warehouse nothing at the door.
    *
    * @generated from field: repeated warehouse.inventory.v1.RestockCostLine cost_lines = 26;
@@ -253,13 +253,13 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
   /**
    * WHO DID WHAT, AND WHEN (owner). A restock is handled by two teams and at least two people, and
    * until now the record said neither: a short delivery had no one to ask about it on either side.
-   * 
+   *
    * Both are opaque user_service ids — no FK, like every cross-service id here — and both are 0 when
    * nobody has acted yet or when the row predates this. The caller resolves names through
    * UserByIDs; they are deliberately NOT snapshotted onto the row, because unlike a product's
    * sku/name (which must keep reading as it was ordered) a person's name is not part of what was
    * agreed, and a renamed user should read with their current name everywhere.
-   * 
+   *
    * Taken from the CALLER'S IDENTITY, never from the request body: a client that could nominate its
    * own `created_by` could file somebody else's name against a delivery that never arrived.
    *
@@ -284,16 +284,16 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
 
   /**
    * THE RESTOCK'S HISTORY, oldest first (owner) — one entry per thing that happened to it.
-   * 
+   *
    * ⚠ DETAIL ONLY. Loaded by RestockRequestDetail and left EMPTY by RestockRequestList, exactly like a
    * line's placements: a page of twenty restocks would pull every event of each to render a table that
    * shows none of them.
-   * 
+   *
    * It exists because two columns cannot record REPEATED editing. `updated_at`/`updated_by` would have
    * remembered only the most recent edit, and a request edited five times would read as one edited
    * once — so the events are rows, and the timeline reads THIS rather than assembling itself from
    * three separate column pairs.
-   * 
+   *
    * The columns are NOT superseded: `created_by_user_id` and the three timestamps stay, because the
    * list filters and sorts on them and a filter cannot reach into a child table cheaply. The events
    * are how the history is read IN ORDER; the columns are how the current state is queried.
@@ -305,7 +305,7 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
   /**
    * WHEN it was accepted / cancelled, unix seconds; 0 if it has not been. `created_at_unix` above is
    * the third of the set.
-   * 
+   *
    * These are stored rather than derived because the status alone cannot say when it changed, and
    * "everything that landed last week" is the question a buyer reconciling invoices actually asks.
    *
@@ -462,7 +462,7 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
   /**
    * Only restocks going to THIS warehouse; 0 = every warehouse (owner). A selling team ships to
    * several, and "what is going to Jakarta" is a different question from "what is going anywhere".
-   * 
+   *
    * Meaningless on the warehouse side, where it could only ever equal the caller's own team — that
    * screen does not offer it.
    *
@@ -472,16 +472,16 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
 
   /**
    * THE PERIOD, and WHICH DATE it is about (owner). Both bounds 0 = every restock ever.
-   * 
+   *
    * The field selector is the point: a restock has three dates that answer three different
    * questions — when it was raised, when it landed, when it was called off — and a range with no
    * named field would silently pick one and mislabel the other two. UNSPECIFIED reads as CREATED,
    * which is the only date every row has.
-   * 
+   *
    * Rows with no such date are EXCLUDED rather than kept: "accepted last week" cannot be true of a
    * request nobody has accepted, and letting the pending ones through would answer a different
    * question than the one asked.
-   * 
+   *
    * Server-side, like every filter here — the list is paginated, so a client-side range would narrow
    * the loaded page only and leave `total_items` counting the unfiltered set.
    *
@@ -513,7 +513,7 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
    * Only restocks raised BY THIS TEAM; 0 = every team. The mirror image of `warehouse_id`, and it
    * exists for the mirror reason (owner): a warehouse receives from several selling teams, and "what
    * is coming from Bandung" is a different question from "what is coming at all".
-   * 
+   *
    * Meaningless on the SELLING side, where it could only ever equal the caller's own team — that
    * screen does not offer it, exactly as this one does not offer `warehouse_id`.
    *
@@ -523,23 +523,23 @@ export type RestockRequestListFilter = Message<"warehouse.inventory.v1.RestockRe
 
   /**
    * BY PERSON: who raised the restock, and who accepted the delivery (owner). 0 = anybody.
-   * 
+   *
    * Two filters rather than one "involved this person", because the two questions are asked by
    * different people for different reasons: a manager reviewing purchasing asks whose orders these
    * are, while somebody chasing a bad delivery asks who was at the door. Merged into one field, an
    * answer could not say which side of the restock the person was on.
-   * 
+   *
    * They also COMBINE: both set means "raised by A and accepted by B", not "either" — an AND is the
    * only reading under which each filter keeps meaning what it means alone.
-   * 
+   *
    * `accepted_by_user_id` implies an accepted restock, so it excludes every pending and cancelled one
    * by construction (their column is 0) — the same rule the ACCEPTED date field follows, and for the
    * same reason: "accepted by Rina" cannot be true of a delivery nobody accepted.
-   * 
+   *
    * ⚠ These are the ACTOR ids, and a restock predating them carries 0 — such a row can therefore never
    * match a filter. That is correct: the record does not say who raised it, and returning it under
    * somebody's name would be inventing the one fact being filtered on.
-   * 
+   *
    * Server-side, like every filter here — see `date_field` for why a paginated list cannot filter in
    * the client.
    *
@@ -677,11 +677,11 @@ export const RestockRequestListResponseSchema: GenMessage<RestockRequestListResp
 /**
  * RestockInboundPreview — WHAT IS STILL WAITING AT THE DOOR, over every PENDING restock targeting
  * this warehouse (owner).
- * 
+ *
  * PENDING ONLY, and that is the whole meaning of the tiles. A fulfilled delivery has been counted and
  * is now stock — it is reported by the stock screens, and counting it here would make the queue look
  * like it never drains. A cancelled one never arrives at all.
- * 
+ *
  * Every figure is a SERVER-SIDE total over the whole queue, not over the visible page: a headline
  * that silently described page 1 of 6 would be worse than no headline, because it looks authoritative.
  *
@@ -690,7 +690,7 @@ export const RestockRequestListResponseSchema: GenMessage<RestockRequestListResp
 export type RestockInboundPreview = Message<"warehouse.inventory.v1.RestockInboundPreview"> & {
   /**
    * How many RESTOCKS are in the queue — deliveries, not products and not pieces (owner).
-   * 
+   *
    * The coarsest of the counts and the one the crew plans a shift by: 3 deliveries of 400 pieces and
    * 30 deliveries of 400 pieces are the same stock and completely different amounts of door-opening,
    * paperwork and label-printing. Counted over the REQUESTS, so a request whose lines were all
@@ -720,7 +720,7 @@ export type RestockInboundPreview = Message<"warehouse.inventory.v1.RestockInbou
 
   /**
    * What the queue is WORTH, in whole rupiah: the line totals as typed off the invoice.
-   * 
+   *
    * Freight is deliberately NOT in it. `shipping_cost` is what the buying team paid to get the goods
    * moving and `cod_shipping_fee` is 0 until someone accepts, so adding either would answer a
    * question about somebody else's spending rather than about the goods on the pallet.
@@ -731,7 +731,7 @@ export type RestockInboundPreview = Message<"warehouse.inventory.v1.RestockInbou
 
   /**
    * When the LONGEST-WAITING pending restock was raised (unix seconds), or 0 when nothing is pending.
-   * 
+   *
    * A count of 7 hides the box that has sat for five days behind six that arrived this morning, so
    * the age is reported rather than left to be inferred. It is the CREATED date because that is the
    * only date a pending restock has — accepted_at and cancelled_at are by definition null here.
@@ -926,7 +926,7 @@ export type RestockRequestFulfillRequest = Message<"warehouse.inventory.v1.Resto
    * What ACTUALLY arrived, one entry per line (#133). Accepting IS the count, so this is required:
    * there is no "accept it as asked" shortcut, because that shortcut is precisely how a warehouse
    * ends up holding stock it never actually received.
-   * 
+   *
    * It must name EVERY line of the request, exactly once. A line left out would have to mean either
    * "all of it came" or "none of it did", and a system that guesses which is a system whose stock
    * drifts — so an incomplete count is refused rather than interpreted.
@@ -939,14 +939,14 @@ export type RestockRequestFulfillRequest = Message<"warehouse.inventory.v1.Resto
    * WHAT THIS DELIVERY COST THE WAREHOUSE, one line per outlay. Entered here rather than on the
    * request because the warehouse is the side that pays these, and none of them exist until the
    * goods actually turn up.
-   * 
+   *
    * Each line does TWO things, and that is the point of collecting them here:
    *   1. it joins shipping_cost in the freight spread across the units that arrived sellable, so it
    *      reaches the HPP that becomes an order's COGS — what it cost to get the goods here;
    *   2. it raises what the requesting team owes this warehouse, because the warehouse is out of
    *      pocket for goods it does not own.
    * The same rupiah answers both questions; neither reading may drop it.
-   * 
+   *
    * Empty is the ordinary case — most deliveries cost the warehouse nothing.
    *
    * @generated from field: repeated warehouse.inventory.v1.RestockCostLine cost_lines = 5;
@@ -963,7 +963,7 @@ export const RestockRequestFulfillRequestSchema: GenMessage<RestockRequestFulfil
 
 /**
  * RestockCostLine — one thing the accepting warehouse paid for this delivery.
- * 
+ *
  * IMMUTABLE once the delivery is accepted, because the debt it creates is frozen with it: editing a
  * line after the fact would silently rewrite what another team owes.
  *
@@ -992,7 +992,7 @@ export type RestockCostLine = Message<"warehouse.inventory.v1.RestockCostLine"> 
 
   /**
    * WHY — REQUIRED (an-incidental-line-must-say-what-it-was-for).
-   * 
+   *
    * ⚠ IT USED TO BE A PAIR RULE, optional for COD_SHIPPING because the kind said what the money was
    * and required for OTHER, enforced in the handler because a constraint across two fields cannot be
    * written here. Collapsing the kinds took away the thing it keyed on: every line is now the OTHER
@@ -1013,7 +1013,7 @@ export const RestockCostLineSchema: GenMessage<RestockCostLine> = /*@__PURE__*/
 
 /**
  * RestockPlacement — how many of a received line's units went to ONE place (#154).
- * 
+ *
  * A delivery of 100 does not go on one shelf, so a line carries a LIST of these. The quantities must
  * add up to the line's received_quantity: the person counting says how many are sellable and then says
  * where they put them, and a mismatch means one of the two is wrong. It is refused rather than
@@ -1064,7 +1064,7 @@ export const RestockPlacementSchema: GenMessage<RestockPlacement> = /*@__PURE__*
 
 /**
  * RestockDamagedUnits — units that arrived broken, or did not arrive at all (#154).
- * 
+ *
  * They NEVER ENTER STOCK (owner, 2026-07-20). Received counts what is sellable; this counts what is
  * not, so nobody can pick a box that is already crushed. It is deliberately not a StockAdjust after
  * the fact: the goods never became stock, and adjusting them out would claim they sat on a shelf for
@@ -1115,10 +1115,10 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
   /**
    * How many are SELLABLE and enter stock. Zero is legitimate and means nothing usable turned up — it
    * is a COUNT, not a quantity to move, so it has no lower bound beyond being non-negative.
-   * 
+   *
    * There is deliberately no upper bound either: over-delivery is real (11 arrive against 10 asked),
    * and a cap would only force the person counting to write down a number they can see is wrong.
-   * 
+   *
    * ⚠ It EXCLUDES damaged units (#154, owner). What physically arrived is
    * `received_quantity + Σ damaged.quantity`; what the warehouse can sell — and the only thing stock
    * ever hears about — is this number.
@@ -1130,15 +1130,15 @@ export type RestockRequestReceivedLine = Message<"warehouse.inventory.v1.Restock
   /**
    * WHERE the goods were put (#137/#154). Counting and shelving are ONE act: the warehouse says how
    * many turned up and where they went in the same breath, so nothing routinely sits unplaced.
-   * 
+   *
    * A LIST, because a delivery of 100 does not go on one shelf. The quantities must sum to
    * `received_quantity` exactly, and the handler refuses anything else rather than interpreting it:
-   * 
+   *
    *   received_quantity > 0  → placements are REQUIRED and must total it. Goods that arrived are
    *                            somewhere, and the system is told rather than left to guess.
    *   received_quantity == 0 → placements must be EMPTY. Nothing usable turned up, so there is
    *                            nothing to put anywhere.
-   * 
+   *
    * `unplaced` stays available for a warehouse that has not shelved yet — a legal place, not an
    * absence (#135), and #136 is how that pile gets shelved later.
    *
@@ -1242,7 +1242,7 @@ export const RestockRequestLabelsRequestSchema: GenMessage<RestockRequestLabelsR
 
 /**
  * One printable label = one PLACEMENT of stock that entered the warehouse (#207).
- * 
+ *
  * A product line split across two shelves is TWO labels sharing one batch_id — location is separate
  * from batch. Broken/lost units never entered stock, so they never appear here (the query joins
  * placements, and damaged units produce none).
@@ -1459,10 +1459,10 @@ export enum RestockRequestEventKind {
    * different money: one says goods landed, the other says the warehouse is out of pocket for them and
    * the requesting team now owes it (#184). Folded into ACCEPTED, the payment is invisible on the only
    * screen that shows the requesting team what happened — and it is the half they have to settle.
-   * 
+   *
    * Only written when the fee is > 0. Most deliveries are not COD, and a step saying "paid nothing at
    * the door" is a claim about an event that did not occur.
-   * 
+   *
    * ⚠ SUPERSEDED BY COST_RECORDED (00021), and kept because history is not rewritten: rows written
    * when a delivery could only cost the warehouse a COD fee still read as what they were. Nothing is
    * written under it any more.
@@ -1475,7 +1475,7 @@ export enum RestockRequestEventKind {
    * The warehouse recorded what this delivery cost IT (00021) — the fee at the door, and anything else
    * it paid to get the goods in. Same step as COD_FEE above and same reasoning, widened to the kinds
    * that had nowhere to go while the fee was a single column.
-   * 
+   *
    * Written only when there is at least one cost line: most deliveries cost the warehouse nothing, and
    * a step saying "paid nothing" is a claim about an event that did not occur.
    *
@@ -1556,7 +1556,7 @@ export const RestockRequestListDataTypeSchema: GenEnum<RestockRequestListDataTyp
 
 /**
  * What kind of outlay a RestockCostLine is. APPEND ONLY, like every enum here.
- * 
+ *
  * ⚠ THERE IS EXACTLY ONE KIND, and that is the answer rather than a stub
  * (the-ledger-speaks-the-business-words). It held two — COD_SHIPPING and OTHER — and they described
  * the same money: what the warehouse had to pay to get one delivery in. The distinction bought a
@@ -1573,7 +1573,7 @@ export enum RestockCostKind {
   /**
    * WHAT THE WAREHOUSE PAID TO GET THIS DELIVERY IN — the courier's ask at the door, a porter, a
    * toll. The requesting team cannot know it in advance, which is why it is typed at acceptance.
-   * 
+   *
    * It is INCIDENTAL by nature — `balance_context.md` §Why `cod_fee` Exists calls it the courier's
    * accidental ask — so no closed list of kinds could ever enumerate it, and the note is what says
    * what a given line was.

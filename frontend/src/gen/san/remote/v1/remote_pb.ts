@@ -109,7 +109,7 @@ export type ExecRequest = Message<"san.remote.v1.ExecRequest"> & {
 
   /**
    * Where to run, RELATIVE to the workspace root. Empty = the root itself.
-   * 
+   *
    * An absolute path, or one that climbs out of the root with .., is refused. This stops a
    * wrong path, not a hostile caller — the command itself can `cd` anywhere the operator can.
    *
@@ -156,7 +156,7 @@ export type ExecResponse = Message<"san.remote.v1.ExecResponse"> & {
    * The text of this frame. Named `message` because the long-running-task guideline requires
    * every streaming response to carry one — it is what a caller can print without understanding
    * anything else in this file.
-   * 
+   *
    * ⚠ Sanitised to valid UTF-8 before sending. proto3 strings must be valid UTF-8 and command
    * output is not obliged to be, so a stray byte is replaced rather than being allowed to fail
    * the marshal and kill an otherwise healthy run.
@@ -370,12 +370,12 @@ export const ExecStreamSchema: GenEnum<ExecStream> = /*@__PURE__*/
 /**
  * RemoteService lets an agent working on this project run shell commands in the operator's
  * checkout and watch the output arrive.
- * 
+ *
  * ⚠ IT IS NOT A SANDBOX. A caller holding the token can run anything the operator can run, and
  * the workspace root is a guard against a mistyped path, not against a determined caller. The
  * protection is the token: `san remote serve` mints a fresh one per run, prints it once, and
  * binds to loopback unless told otherwise.
- * 
+ *
  * Authorization is a per-run bearer token in the Authorization header — NOT the warehouse
  * identity system. Two reasons: the caller is a program, not a person with a role in a team;
  * and the roling interceptor refuses streaming RPCs outright, because it reads its team scope
@@ -410,7 +410,7 @@ export const RemoteService: GenService<{
   },
   /**
    * FileRead and FileWrite move EXACT BYTES, which the shell cannot.
-   * 
+   *
    * Everything an agent does to a file could in principle go through Exec — but writing source
    * through a heredoc means the content passes through a shell parser, and PowerShell in
    * particular will interpolate a `$` and mangle a backtick in code it was only supposed to

@@ -37,7 +37,7 @@ const (
 	// worked on right now is visibly different from one nobody has touched — which is the whole reason
 	// "just record it shipped" was rejected.
 	//
-	//   CONFIRMED → PICKING → PACKED → SHIPPED
+	//	CONFIRMED → PICKING → PACKED → SHIPPED
 	//
 	// Forward only, one step at a time: you cannot pack what was never picked, and a skipped state means
 	// somebody is guessing at what happened.
@@ -743,7 +743,7 @@ type Order struct {
 	// wants to show margin would otherwise have to load every order's items. It is frozen exactly like
 	// `subtotal` and `total` beside it, so it cannot drift — the lines it was computed from are frozen too.
 	//
-	//   margin = total − cogs − shipping_cost
+	//	margin = total − cogs − shipping_cost
 	//
 	// 0 means the goods' cost is unknown (nothing was ever restocked), not that they were free.
 	Cogs int64 `protobuf:"varint,16,opt,name=cogs,proto3" json:"cogs,omitempty"`
