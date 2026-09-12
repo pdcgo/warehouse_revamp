@@ -59,7 +59,12 @@ jobs:
       # baseline stays red for the whole gap between a change landing and a promotion. HEAD~1 is
       # a per-commit tripwire — it trips on the commit that renames something and clears on the
       # next, which is exactly the question being asked.
+      #
+      # ⚠ PUSH ONLY. On a pull_request event the checkout is a MERGE commit whose HEAD~1 is the
+      # BASE branch — so HEAD~1 silently means "main" there, which is the baseline this step was
+      # written to avoid. It is red on every PR run for as long as main lags dev.
       - name: buf breaking
+        if: github.event_name == 'push'
         run: buf breaking proto --against '.git#ref=HEAD~1,subdir=proto'
 
       # Drift check: regenerate and fail if the committed output differs. Generated code is
