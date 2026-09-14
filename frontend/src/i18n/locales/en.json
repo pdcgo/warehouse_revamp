@@ -28,7 +28,8 @@
     "picking": "Picking",
     "more": "More",
     "liability": "Liability",
-    "settlement": "Settlement"
+    "settlement": "Settlement",
+    "settlementReport": "Settlement Report"
   },
   "menu": {
     "theme": "Theme",
@@ -1953,6 +1954,39 @@
     "day": "Daily",
     "month": "Monthly",
     "year": "Yearly"
+  },
+  "settlementReport": {
+    "title": "Settlement Report",
+    "subtitle": "What buyers paid against what the marketplace actually moved, period by period. A gap is normal — the platform keeps costs it never itemises.",
+    "openReport": "Report",
+    "selectTeam": "Select a team to view its settlement report.",
+    "rangeInvalid": "Pick a start and an end date — a report needs both ends.",
+    "sales": "Sold for",
+    "salesHint": "What buyers paid, cancels netted",
+    "received": "Received",
+    "receivedHint": "What the marketplace moved, named fees included",
+    "gap": "Gap",
+    "gapHint": "Of this window's sales, never reached us",
+    "takeRate": "Take rate",
+    "takeRateValue": "{{rate}}% of sales",
+    "hiddenCost": "Hidden cost to date",
+    "hiddenCostHint": "Everything never received, up to the window's end — nobody will collect it",
+    "overTime": "Over time",
+    "ranking": "Who carries it",
+    "byShop": "By shop",
+    "byUser": "By person",
+    "unattributed": "Not recorded",
+    "empty": "Nothing was settled in this window.",
+    "col": {
+      "period": "Period",
+      "shop": "Shop",
+      "user": "Person",
+      "sales": "Sold for",
+      "received": "Received",
+      "gap": "Gap",
+      "takeRate": "Take rate",
+      "hiddenCost": "Hidden cost to date"
+    }
   },
   "orderSettlement": {
     "tab": "Settlement",

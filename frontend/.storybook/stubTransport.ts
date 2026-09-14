@@ -37,7 +37,11 @@ import { ShippingService } from "../src/gen/warehouse/shipping/v1/shipping_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
+import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import {
+  AnalyticGroupType,
+  AnalyticTimeframe,
+  SettlementAnalyticService,
   SettlementService,
   SettlementType as WireSettlementType,
   SourceType as WireSourceType,
@@ -66,6 +70,8 @@ import {
   categories,
   couriers,
   dayKey,
+  settlementReportDays,
+  settlementReportGroups,
   expenseDays,
   orderDetailFor,
   orderDrafts,
@@ -928,4 +934,169 @@ export const transport = createRouterTransport(({ service }) => {
       };
     },
   });
+
+  // THE SETTLEMENT REPORTS, folded from one consistent book (fixtures: settlementReportDays). The stub
+  // does the server's arithmetic — every bucket in the window including the quiet ones, movements
+  // summed, the position carried — so a story checks the screen against the same rules the RPC keeps.
+  service(SettlementAnalyticService, {
+    analyticTimeSearch: (req) => {
+      const start = req.filter?.dateRange?.startDate ?? "";
+      const end = req.filter?.dateRange?.endDate ?? "";
+      const width =
+        req.timeframe === AnalyticTimeframe.MONTHLY ? 7 : req.timeframe === AnalyticTimeframe.YEARLY ? 4 : 10;
+
+      const book = reportBook(req.teamId);
+
+      const points = reportBuckets(start, end, width).map((bucket) => ({
+        at: width === 10 ? bucket : width === 7 ? `${bucket}-01` : `${bucket}-01-01`,
+        metric: reportMetric(
+          book.filter((d) => d.date >= start && d.date <= end && d.date.slice(0, width) === bucket),
+          book.filter((d) => d.date <= end && d.date.slice(0, width) <= bucket),
+        ),
+      }));
+
+      if (req.sortType === CommonSortType.DESC) points.reverse();
+
+      const limit = req.page?.limit ?? 20;
+      const page = req.page?.page ?? 1;
+
+      return {
+        datas: points.slice((page - 1) * limit, page * limit),
+        pageInfo: {
+          currentPage: page,
+          totalPage: Math.ceil(points.length / limit),
+          totalItems: BigInt(points.length),
+        },
+      };
+    },
+
+    analyticGroupSearch: (req) => {
+      const rows = reportGroups(req.filter?.groupType);
+      const limit = req.page?.limit ?? 20;
+      const page = req.page?.page ?? 1;
+
+      return {
+        // Ranked by the shortfall carried — the most negative position first.
+        ids: rows.slice((page - 1) * limit, page * limit).map((g) => g.id),
+        pageInfo: {
+          currentPage: page,
+          totalPage: Math.ceil(rows.length / limit),
+          totalItems: BigInt(rows.length),
+        },
+      };
+    },
+
+    analyticGroupMetric: (req) => {
+      const start = req.filter?.dateRange?.startDate ?? "";
+      const end = req.filter?.dateRange?.endDate ?? "";
+
+      if (req.filter?.groupType === AnalyticGroupType.TEAM) {
+        const book = reportBook(req.teamId);
+
+        return {
+          metrics: {
+            [req.teamId.toString()]: reportMetric(
+              book.filter((d) => d.date >= start && d.date <= end),
+              book.filter((d) => d.date <= end),
+            ),
+          },
+        };
+      }
+
+      const rows = reportGroups(req.filter?.groupType);
+
+      return {
+        metrics: Object.fromEntries(
+          req.ids.map((id) => {
+            const group = rows.find((g) => g.id === id);
+
+            return [id.toString(), group ? groupMetric(group) : reportMetric([], [])];
+          }),
+        ),
+      };
+    },
+  });
 });
+
+// ── The settlement reports' arithmetic ──────────────────────────────────────────────────────────
+
+type ReportDay = (typeof settlementReportDays)[number] & { date: string };
+
+function reportBook(teamId: bigint): ReportDay[] {
+  return settlementReportDays
+    .filter((d) => d.teamId === teamId)
+    .map((d) => ({ ...d, date: dayKey(d.ago) }));
+}
+
+const changeOf = (d: ReportDay) =>
+  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment;
+
+const sumOf = (rows: ReportDay[], pick: (d: ReportDay) => bigint) =>
+  rows.reduce((total, d) => total + pick(d), 0n);
+
+// One SettlementMetric: the movements in the bucket, and the position carried up to its end.
+function reportMetric(movements: ReportDay[], upToEnd: ReportDay[]) {
+  const change = sumOf(movements, changeOf);
+  const close = sumOf(upToEnd, changeOf);
+
+  return {
+    initialTotal: sumOf(movements, (d) => d.initialTotal),
+    initialTotalCancel: sumOf(movements, (d) => d.initialTotalCancel),
+    other: 0n,
+    fund: sumOf(movements, (d) => d.fund),
+    externalAdsFee: sumOf(movements, (d) => d.externalAdsFee),
+    affiliateFee: 0n,
+    marketplaceAdjustment: sumOf(movements, (d) => d.marketplaceAdjustment),
+    systemAdjustment: 0n,
+    change,
+    openBalance: close - change,
+    closeBalance: close,
+  };
+}
+
+// Every bucket label from start to end, ascending — `yyyy-mm-dd`, `yyyy-mm` or `yyyy` by width.
+function reportBuckets(start: string, end: string, width: number): string[] {
+  const first = Date.parse(`${start}T00:00:00Z`);
+  const last = Date.parse(`${end}T00:00:00Z`);
+
+  if (Number.isNaN(first) || Number.isNaN(last)) return [];
+
+  const out: string[] = [];
+
+  for (let at = first; at <= last && out.length < 800; at += 86_400_000) {
+    const label = new Date(at).toISOString().slice(0, width);
+    if (out[out.length - 1] !== label) out.push(label);
+  }
+
+  return out;
+}
+
+function reportGroups(groupType: AnalyticGroupType | undefined) {
+  const rows = groupType === AnalyticGroupType.USER ? settlementReportGroups.user : settlementReportGroups.shop;
+
+  return [...rows].sort((a, b) => {
+    const shortfallA = a.received - a.sales;
+    const shortfallB = b.received - b.sales;
+
+    return shortfallA < shortfallB ? -1 : shortfallA > shortfallB ? 1 : 0;
+  });
+}
+
+// A group's whole-window metric: a sale with no cancel, what arrived, and the shortfall that leaves.
+function groupMetric(group: { sales: bigint; received: bigint }) {
+  const change = group.received - group.sales;
+
+  return {
+    initialTotal: -group.sales,
+    initialTotalCancel: 0n,
+    other: 0n,
+    fund: group.received,
+    externalAdsFee: 0n,
+    affiliateFee: 0n,
+    marketplaceAdjustment: 0n,
+    systemAdjustment: 0n,
+    change,
+    openBalance: 0n,
+    closeBalance: change,
+  };
+}

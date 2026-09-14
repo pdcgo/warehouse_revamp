@@ -28,6 +28,12 @@ What I read out of [meta_context.md](./meta_context.md). **That doc is yours —
    `updated_at` on every row, and that anything the service writes about *itself* (a run's progress, a
    watermark) gets its own typed table rather than a string in here.
 
+> 🔨 **Built (2026-09-14)**, following the doc and the uncontroversial half of the critique:
+> `value` stays TEXT holding `{"lock":true|false}`, an unparseable or missing value is an **error** the
+> webhook surfaces (never "unlocked"), and the row carries `updated_at`. `locked_by` and a stated maximum
+> window are **not** built. The replay takes the lock by compare-and-set and releases it after its seek.
+> Q1 is unchanged.
+
 ## Awaiting
 
 - **`key` is unique and scoped to nothing.** Fine while every key is service-global. Worth saying so

@@ -1530,9 +1530,26 @@ replay are fully specified against a message that is never sent. Who publishes i
 
 ---
 
+## 🔨 Built (2026-09-14) — how the open questions were handled in code
+
+The fold, the five tables, the dedup layer, the lock, the replay, the maintenance run and the three
+report RPCs are **built** (`dabc331`). Where a question below is still open, the code follows **your
+doc** and the recommendation stays on the table.
+
+| open question | what the code does |
+| --- | --- |
+| **Q1** — the lock and the DLQ | `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
+| **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
+| **Q3** — the carry on the USER table | kept, as the doc lists it |
+| **Q4** — the reconcile | **not built** — it is not in the doc |
+| **Q5** — grain on the wire | `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
+| 🆕 TEAM grouping across teams | only when the scope is the ROOT team — the one scope ROOT and ADMIN hold. Any other scope reads its own team |
+| 🆕 the dedup key | the EVENT id, not the broker message id — see [Contradiction](#idempotency-layer-keys-on-the-message-id-and-the-event-architecture-keys-on-the-event-id) |
+| 🆕 the replay's reach | read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's — see [Q6](#question) |
+
 ## Question
 
-**Five open.** ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**Six open.** 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1637,6 +1654,31 @@ built**.
    ⚠ **Beside it, one confirmation**: `Team Grouped` crosses team scope, which only ROOT/ADMIN in team 1
    can do. **→ Declare it an admin screen** — no new mechanism needed, and it is the cheapest of the three
    options.
+
+6. **Is the TOPIC's retention an acceptable way to make the replay's seek work — instead of
+   `retain_acked_messages` on the subscription?** 🆕 from the build.
+   [the-replay-seeks-the-broker](./context_decision.md#the-replay-seeks-the-broker) says
+   `retain_acked_messages` *must be TRUE*, because a seek backwards over acknowledged messages otherwise
+   delivers nothing. ✅ **That is true of the subscription alone** — but Pub/Sub also lets a subscription
+   seek to any time within its **topic's** retention, acked or not, and `san pubsub ensure` already sets
+   every topic to the 31-day maximum.
+   ```mermaid
+   flowchart LR
+     S["seek to a time"] --> T{"topic retention covers it?"}
+     T -->|"yes — 31 days, set by san pubsub ensure"| R["redelivered, acked or not"]
+     T -->|"no"| A{"subscription retains acked?"}
+     A -->|"yes — 7 days at most"| R
+     A -->|"no"| X["nothing redelivered — the replay refuses"]
+   ```
+   | | `retain_acked_messages` on the subscription | topic retention (built) |
+   | --- | --- | --- |
+   | reach | **7 days** — the subscription maximum | **31 days** |
+   | extra storage | every acked message, per subscription | already paid — the topic retains anyway |
+   | what the replay reads | the subscription's retention | the larger of the two, from `GetSubscription` |
+   **→ I recommend topic retention** — it reaches four times further and costs nothing already not paid.
+   The replay reads the window from Pub/Sub, so if a topic is ever made without retention the replay
+   shortens or refuses instead of deleting days it cannot rebuild. ⚠ If yes, the decision's *"must be
+   TRUE"* line is the one to amend.
 
 ⚠ **The order seam is no longer open here** — it was answered in full
 ([the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) ·
@@ -1843,6 +1885,34 @@ Add `folded_through` so a row states whether it is complete (Critique 8), and **
 (Critique 4) so catching up on a late event changes exactly the day it belongs to. Finality then means
 what the decision claimed: *no new fact can enter a closed day*, which is true and enforced by
 `posted_on` being stamped at commit.
+
+## idempotency layer keys on the message id and the event architecture keys on the event id
+
+> `analytic_context.md` §Idempotency Layer — *"`id` string, its primary key, **its message id from
+> message broker**"*.
+>
+> [typed-fields-for-what-the-library-reads](../../technical/event_architecture/context_decision.md#typed-fields-for-what-the-library-reads)
+> and `san_event.IncomingMessage` — *"MessageID … NEVER the dedup key: it is new on every republish"*.
+
+**The doc's line is the stale one.** A publish that times out is RETRIED, and the retry mints a **new
+message id for the same fact** — so a dedup keyed on it folds the same movement twice. The event id is
+derived from the row (`settlement-log:<log_id>`), so every copy of one fact collides.
+
+```mermaid
+flowchart LR
+  R["one settlement_logs row"] --> P1["publish — message id A"]
+  R --> P2["retried publish — message id B"]
+  P1 --> M{"dedup on message id"}
+  P2 --> M
+  M --> D["folded TWICE"]
+  P1 --> E{"dedup on event id"}
+  P2 --> E
+  E --> O["folded once"]
+```
+
+**→ Recommend** §Idempotency Layer say *"the event's id"*. **Built that way** — `settlement_event_logs.id`
+holds `settlement-log:<log_id>`. What stops it recurring: the event architecture now owns the dedup key,
+so a context doc names it by linking there rather than restating it.
 
 ---
 

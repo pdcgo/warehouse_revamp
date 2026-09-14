@@ -21,6 +21,7 @@ import {
   LiabilityTermsService,
 } from "../gen/warehouse/liability/v1/liability_pb";
 import {
+  SettlementAnalyticService,
   SettlementService,
   SettlementWriteService,
 } from "../gen/warehouse/settlement/v1/settlement_pb";
@@ -59,6 +60,9 @@ export const liabilityTermsClient = createClient(LiabilityTermsService, transpor
 // writes are separate proto services, so the reads could ship before the write path existed.
 export const settlementClient = createClient(SettlementService, transport);
 export const settlementWriteClient = createClient(SettlementWriteService, transport);
+// The REPORTS folded from that ledger. Its maintenance service (replay, prune) is a developer's tool
+// with a [ROOT, ADMIN] policy and no screen, so it has no client here.
+export const settlementAnalyticClient = createClient(SettlementAnalyticService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

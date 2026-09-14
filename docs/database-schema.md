@@ -273,6 +273,7 @@ erDiagram
         bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
         text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none (a phone order). NOT unique — uniqueness is still open"
         text        note                "free text for the people handling the order; nothing reads it, '' = none"
+        bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
         text        receipt_filename    "snapshot of what the receipt was called when attached"
         text        receipt_mime_type   "image/* or application/pdf — how to render it without fetching it"
@@ -1325,6 +1326,7 @@ erDiagram
     bigint last_balance "the current position"
     bigint team_id
     bigint shop_id
+    bigint created_by_user_id "who created the order — stamped ONCE by the opening post (00004)"
     timestamptz created_at
     timestamptz updated_at
   }
@@ -1391,11 +1393,97 @@ sale's, so the running sum returns to zero on its own.
 | `order_settlements_team_balance_idx` (team_id, last_balance) | the list screen, ranked by loss |
 | `order_settlements_shop_idx` (shop_id, last_balance) | the same, narrowed to one shop |
 
+### The reports — folded from the log, never written by the ledger (`00005`)
+
+The daily tables are built by settlement's own webhook consuming `SettlementLogPosted`
+([the-fold-owns-the-report-not-the-writer](business/settlement/context_decision.md#the-fold-owns-the-report-not-the-writer)).
+**Every table below is DERIVED** — `AnalyticReplayCompute` can rebuild it — and nothing on the ledger's
+write path reads or writes one.
+
+```mermaid
+erDiagram
+  settlement_event_logs {
+    text id PK "the EVENT id settlement-log:N — never the broker message id"
+    bytea raw "the event as received"
+    date day "the folded row's posted_on — what a replay deletes on"
+    timestamptz created_at "when RECEIVED — what retention prunes on"
+  }
+
+  shop_settlement_daily_reports {
+    bigserial id PK
+    date day "UNIQUE with shop_id and team_id"
+    bigint shop_id
+    bigint team_id
+    bigint initial_total "one column per settlement_type, the log's sign"
+    bigint fund "and six more tracked movements"
+    bigint change "the day's net movement"
+    bigint open_balance "STORED carry — the position before the day"
+    bigint close_balance "the position after it"
+    timestamptz last_updated
+  }
+
+  user_settlement_daily_reports {
+    bigserial id PK
+    date day "UNIQUE with user_id and team_id"
+    bigint user_id "the ORDER creator, or the actor of a shop row. 0 = not recorded"
+    bigint team_id
+    bigint change "same tracked columns as the shop grain"
+    bigint open_balance
+    bigint close_balance
+    timestamptz last_updated
+  }
+
+  shop_settlement_reports {
+    bigserial id PK
+    bigint shop_id "UNIQUE with team_id"
+    bigint team_id
+    bigint close_balance "the NEWEST daily close — derived, never incremented"
+    timestamptz last_updated
+  }
+
+  user_settlement_reports {
+    bigserial id PK
+    bigint user_id "UNIQUE with team_id"
+    bigint team_id
+    bigint close_balance
+    timestamptz last_updated
+  }
+
+  settlement_service_metadata {
+    bigserial id PK
+    text key "UNIQUE — process_event_lock"
+    text value "lock is true or false, as JSON. Unparseable is an ERROR, never unlocked"
+    timestamptz updated_at
+  }
+
+  settlement_event_logs ||--o{ shop_settlement_daily_reports : "claims the fold of"
+  settlement_event_logs ||--o{ user_settlement_daily_reports : "claims the fold of"
+  shop_settlement_daily_reports ||--|| shop_settlement_reports : "newest day is"
+  user_settlement_daily_reports ||--|| user_settlement_reports : "newest day is"
+```
+
+| | |
+| --- | --- |
+| **the tracked columns** | `initial_total`, `initial_total_cancel`, `other`, `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `system_adjustment` — the settlement_type TEXT is the column name — plus `change` |
+| **the carry** | `open(D) = Σ change before D`, `close(D) = Σ change up to D` ([the-carry-materialises-the-day-boundary-position](business/settlement/context_decision.md#the-carry-materialises-the-day-boundary-position)). Maintained by increment: a late event shifts every later day |
+| **a quiet day has NO row** | a position read falls back to the last row at or before the date |
+| **the dedup and the fold share ONE transaction** | a failure rolls the claim back with the compute, so the redelivery is really reprocessed |
+| **no genesis row** | the fold opens a new scope at 0, true for a log with nothing older ([genesis-is-not-needed-when-the-log-starts-empty](business/settlement/context_decision.md#genesis-is-not-needed-when-the-log-starts-empty)) |
+| **retention** | `settlement_event_logs` is pruned at **45 days** from receipt by `AnalyticMaintenanceRun` — longer than the broker's 31, or a redelivery would fold twice |
+
+| index | answers |
+| --- | --- |
+| `*_daily_reports_scope_day_idx` (scope, team_id, day) UNIQUE | the fold's upsert target, its `prev` lookup and its later-day shift — equality on the scope, a range on day |
+| `*_daily_reports_team_day_idx` (team_id, day) | a team's series and its ranking over a window |
+| `*_daily_reports_day_idx` / `settlement_event_logs_day_idx` | the replay's delete — three tables, one predicate |
+| `settlement_event_logs_created_idx` | the retention prune |
+
 ### Two things the schema deliberately does NOT hold
 
-- **`order_id` is NOT NULL** ([superseded-every-entry-names-an-order](business/settlement/context_decision.md#superseded-every-entry-names-an-order)).
-  A cost that cannot name an order never reaches settlement. ⚠ This is also why a platform
-  **withdrawal** — wallet to bank, naming no order — has no home here and is still an open question.
+- **A non-null `order_id`.** It WAS `NOT NULL` until
+  [an-entry-names-an-order-or-a-shop](business/settlement/context_decision.md#an-entry-names-an-order-or-a-shop)
+  made it nullable (`00003`), which is what gives a platform **withdrawal** or a `system_adjustment` a
+  shop-addressed home.
 - **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
   marketplace's reference; the names and the cost live in `selling_service`, and a service does not
   read another's tables. The screens supply all four from where they already are.

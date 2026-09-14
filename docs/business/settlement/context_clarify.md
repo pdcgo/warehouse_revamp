@@ -24,6 +24,32 @@ always the current open set.
 > | [superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order) | *"`order_id` is **NOT NULL** on both settlement tables"* | nullable on the log |
 > | [superseded-the-grain-is-the-order](./context_decision.md#superseded-the-grain-is-the-order) | the grain is *"the order, **absolutely**"* | two grains, order and shop |
 
+## 🔨 Built (2026-09-14) — what the code chose where the decisions stopped
+
+The order seam, the event and the reports are **built** (`dabc331`). Every decided rule went in as
+written. Three places needed a choice the decisions did not make — each is flagged here and asked in
+[Question](#question) rather than settled.
+
+```mermaid
+flowchart LR
+  P["order placed"] -->|"marketplace_total above 0"| O["initial_total — key order-placed:ID"]
+  P -->|"marketplace_total is 0"| N["no account — Q4"]
+  C["order cancelled"] --> L["read the LIVE sale under the lock — Q5"]
+  L -->|"a live sale"| X["initial_total_cancel of exactly that"]
+  L -->|"nothing live"| Z["no row — ErrNothingToCancel"]
+  O --> E["SettlementLogPosted after commit — Q3"]
+  X --> E
+```
+
+| | what the code does | → Recommend |
+| --- | --- | --- |
+| **Q3** — who publishes | `SettlementPost` publishes `SettlementLogPosted` after commit, the whole row, `event_id = settlement-log:<id>`, never failing the post | ✅ built as recommended — **say if another publisher was meant** |
+| **Q4** — `marketplace_total = 0` | the order commits and **no account opens** | keep: 0 means NOT RECORDED, and an account at 0 is one nothing can compute against |
+| **Q5** — which sale a cancel undoes | the **live** sale on the account, read under its lock; a cancel above it is refused | keep: it is the only reading under which a hand-corrected sale is cancelled correctly |
+
+⚠ **Owed and now enforced, not a question**: a second live `initial_total` is refused unless it reverses
+the first ([a-missing-account-is-fixed-by-hand](./context_decision.md#a-missing-account-is-fixed-by-hand)).
+
 ## ✅ SETTLED — the idempotency key is GLOBAL
 
 [the-idempotency-key-is-global](./context_decision.md#the-idempotency-key-is-global) (owner,
@@ -1024,6 +1050,28 @@ narrative point at the numbers they had then, and every answer lives in
    publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
    is what makes the reconcile pass ([analytic Q5](./analytic_context_clarify.md#question)) necessary
    rather than optional: a dropped publish is a movement the report never sees.
+   🔨 **BUILT as recommended (2026-09-14)** — kept open only for your yes, because the answer is now in
+   the code: re-posting the same `unique_id` republishes, which is the repair for a lost publish.
+
+4. **An order with `marketplace_total = 0` opens NO account — is that right?** 🆕 from the build.
+   `order.proto` says 0 is *not recorded* — a phone order has no marketplace sale — and the screens
+   already refuse to compute against an `initial_total` of 0. So `OrderPlace` posts nothing for it, and a
+   person can still open the account by hand from the order page.
+   ⚠ **The cost**: if a marketplace total is ever typed in AFTER placement, nothing opens the account
+   automatically. No order edit path exists today, so this is latent.
+   **→ I recommend keeping it** — an account opened at 0 would be permanently "not recorded" and would
+   block nothing, while cluttering the list with rows that can never compute.
+
+5. **A cancel undoes the LIVE sale, whatever it now is — is that the reading you meant?** 🆕 from the
+   build. [a-cancel-is-an-opposite-row](./context_decision.md#a-cancel-is-an-opposite-row) says *"the
+   exact opposite of `initial_total`"*, which has two readings the moment a person corrects the sale by
+   reverse-then-repost: the opposite of the **original** row, or of the **live** sale.
+   | a 120.000 sale corrected to 110.000, then cancelled | cancel by the original | cancel by the live sale |
+   | --- | --- | --- |
+   | the cancel row | +120.000 | +110.000 |
+   | live sale after | **−10.000** ⛔ | 0 ✅ |
+   **→ I recommend the live sale** — built that way: `CancelSale` reads the amount under the account's
+   lock, a cancel above the live sale is refused, and a cancel with nothing live writes no row.
 
 
 # Contradiction

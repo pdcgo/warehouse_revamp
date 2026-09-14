@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Stack } from "@chakra-ui/react";
+import { useTranslation } from "react-i18next";
+import { Box, Button, Flex, Icon, Stack } from "@chakra-ui/react";
+import { TrendingDown } from "lucide-react";
 
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -19,6 +21,7 @@ const PAGE_SIZE = 25;
 export function SettlementListRoute() {
   const { current } = useTeam();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   const teamId = current?.teamId;
@@ -26,6 +29,19 @@ export function SettlementListRoute() {
 
   return (
     <Stack gap="section">
+      {/* The way from one order at a time to the period view. Here rather than inside the accepted
+          component, for the reason above. */}
+      <Flex justify="flex-end">
+        <Button
+          variant="outline"
+          onClick={() => navigate("/settlement/report")}
+          data-testid="open-settlement-report"
+        >
+          <Icon as={TrendingDown} boxSize="4" />
+          {t("settlementReport.openReport")}
+        </Button>
+      </Flex>
+
       {/*
         The pair from HARD RULE 10: always-fresh reads, and the PREVIOUS rows kept on screen while
         the next ones load. `isPending` is excluded — a genuine first load has no rows to keep, and

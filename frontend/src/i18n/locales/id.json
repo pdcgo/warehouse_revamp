@@ -28,7 +28,8 @@
     "picking": "Pengambilan",
     "more": "Lainnya",
     "liability": "Kewajiban",
-    "settlement": "Penyelesaian"
+    "settlement": "Penyelesaian",
+    "settlementReport": "Laporan Penyelesaian"
   },
   "menu": {
     "theme": "Tema",
@@ -1943,6 +1944,39 @@
     "day": "Harian",
     "month": "Bulanan",
     "year": "Tahunan"
+  },
+  "settlementReport": {
+    "title": "Laporan Penyelesaian",
+    "subtitle": "Yang dibayar pembeli dibandingkan dengan yang benar-benar dipindahkan marketplace, per periode. Selisih itu wajar — platform menahan biaya yang tidak pernah dirinci.",
+    "openReport": "Laporan",
+    "selectTeam": "Pilih tim untuk melihat laporan penyelesaiannya.",
+    "rangeInvalid": "Pilih tanggal awal dan akhir — laporan membutuhkan keduanya.",
+    "sales": "Terjual",
+    "salesHint": "Yang dibayar pembeli, setelah pembatalan",
+    "received": "Diterima",
+    "receivedHint": "Yang dipindahkan marketplace, termasuk biaya yang tercatat",
+    "gap": "Selisih",
+    "gapHint": "Dari penjualan periode ini, tidak pernah sampai",
+    "takeRate": "Potongan",
+    "takeRateValue": "{{rate}}% dari penjualan",
+    "hiddenCost": "Biaya tersembunyi s.d. kini",
+    "hiddenCostHint": "Semua yang tidak pernah diterima hingga akhir periode — tidak akan ditagih siapa pun",
+    "overTime": "Dari waktu ke waktu",
+    "ranking": "Siapa yang menanggung",
+    "byShop": "Per toko",
+    "byUser": "Per orang",
+    "unattributed": "Tidak tercatat",
+    "empty": "Tidak ada penyelesaian pada periode ini.",
+    "col": {
+      "period": "Periode",
+      "shop": "Toko",
+      "user": "Orang",
+      "sales": "Terjual",
+      "received": "Diterima",
+      "gap": "Selisih",
+      "takeRate": "Potongan",
+      "hiddenCost": "Biaya tersembunyi s.d. kini"
+    }
   },
   "orderSettlement": {
     "tab": "Settlement",

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canManageUsers, isTeamManager } from "../lib/roles";
@@ -137,6 +137,12 @@ const LIABILITY: MenuItem = { to: "/liability", label: "nav.liability", icon: Ha
 // SELLING ONLY: a warehouse has no marketplace relationship and no orders of its own, so the screen
 // would be permanently empty for it. Same role set as Liability — this is money, not operations.
 const SETTLEMENT: MenuItem = { to: "/settlement", label: "nav.settlement", icon: Scale };
+// The reports folded from that ledger. Same audience as the list it summarises.
+const SETTLEMENT_REPORT: MenuItem = {
+  to: "/settlement/report",
+  label: "nav.settlementReport",
+  icon: TrendingDown,
+};
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -294,6 +300,7 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
 
   if (teamType === TeamType.SELLING && isTeamManager(role)) {
     menu.push(SETTLEMENT);
+    menu.push(SETTLEMENT_REPORT);
   }
 
   // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team

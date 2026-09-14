@@ -381,7 +381,7 @@ sequenceDiagram
     participant S as san pubsub ensure
     participant G as Pub/Sub
     S->>P: walk every Event variant
-    P-->>S: order-placed, order-cancelled
+    P-->>S: order-placed, order-cancelled, settlement-log-posted
     S->>G: topic + 31-day retention
     S->>G: topic.dlq
     S->>G: topic.dlq.triage — never expires
@@ -389,6 +389,19 @@ sequenceDiagram
     G-->>S: one already exists and its filter differs
     S-->>S: REFUSE, naming the subscription and the field
 ```
+
+**The subscriptions it declares** (`declaredSubscriptions` in `tools/san/pubsub.go`, each mirroring a
+constant beside the handler that serves it):
+
+| id | topic | consumer |
+| --- | --- | --- |
+| `liability-order-placed` | `order-placed` | liability charges an order's fees |
+| `liability-order-cancelled` | `order-cancelled` | liability reverses them |
+| `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
+
+⚠ **`settlement-fold` is SEEKED by `AnalyticReplayCompute`**, which reaches back as far as the topic's
+31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other
+than this command — with a shorter retention — shortens the replay rather than breaking it.
 
 **What every subscription gets, and why each one matters:**
 

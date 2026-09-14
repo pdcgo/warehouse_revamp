@@ -62,6 +62,10 @@ const SettlementListRoute = lazy(() =>
     default: m.SettlementListRoute,
   })),
 );
+// The reports folded from that ledger — sales against what arrived, over time and by shop or person.
+const SettlementReportPage = lazy(() =>
+  import("./pages/settlement-report").then((m) => ({ default: m.SettlementReportPage })),
+);
 const LiabilityDetailPage = lazy(() =>
   import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
 );
@@ -273,6 +277,7 @@ export const router = createBrowserRouter([
       // `/settlement`, not `/order-settlement`: the directory is named for the GRAIN (one account
       // per order), the route for what the screen is to the person opening it.
       { path: "settlement", element: <SettlementListRoute /> },
+      { path: "settlement/report", element: <SettlementReportPage /> },
       // ⚠ BEFORE the :counterpartyId route. React Router ranks a static segment above a dynamic
       // one so the order is not load-bearing today — but reading it in this order is, because
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.
