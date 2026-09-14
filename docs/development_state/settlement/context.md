@@ -18,7 +18,8 @@ maintenance RPCs, the report screen.
 
 ```sh
 go test ./backend/services/settlement_service/... ./backend/services/selling_service/...
-go test -tags raceaudit -run TestRace_Settlement ./backend/services/settlement_service/settlement_v1/
+go test -tags raceaudit -run 'TestRace_Settlement|TestRace_Fold' ./backend/services/settlement_service/settlement_v1/   # 5 pass — the fold's carry and redelivery storm included
+go test -tags perfaudit -run TestPerf_Settlement -v ./backend/services/settlement_service/settlement_v1/
 cd frontend && npx vitest run --project=storybook src/pages/settlement-report   # see the port trap below
 go run ./tools/san migrate up-all --dsn "…"      # the dev DB is migrated to settlement 00005 / selling 00013
 ```
@@ -69,7 +70,7 @@ flowchart LR
 | a day re-fold from the log | [context clarify](../../business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) — open |
 | a screen reading a shop's OWN direct rows | shop-addressed rows fold into the report but no RPC lists them |
 | Jakarta time on the DSN | [decided, deferred](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time) — `posted_on` is the session's `CURRENT_DATE`, UTC today. Nothing in settlement converts, so the DSN fix carries it |
-| perf / concurrency audit write-ups for the analytic RPCs and the fold | not run this pass — **the next pass** (`audit-rpc-performance`, `audit-sql`; the fold is a write path and needs a `san_race` test) |
+| the fixes the performance audit proposes | 🔴 **three reads are HEAVY** — [AnalyticTimeSearch](../../../audits/services/settlement_service/performances/AnalyticTimeSearch.md) (261 ms @ 20 daily buckets, 1.65 s @ 200), [AnalyticGroupSearch](../../../audits/services/settlement_service/performances/AnalyticGroupSearch.md) (261 ms), [AnalyticGroupMetric](../../../audits/services/settlement_service/performances/AnalyticGroupMetric.md) (185 ms). One cause: the position is found per scope by `DISTINCT ON` over the whole history, where `Σ change` gives it in one pass. **Not applied** — handler change, awaiting the owner. `SettlementPost` is 5 statements (+ a test-only SAVEPOINT), 1.8 ms — not heavy |
 | an e2e spec for `/settlement/report` | stories only |
 
 ## ⚠ Traps this pass walked into
