@@ -12,6 +12,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
 import "warehouse/role_base/v1/role.proto";
+import "warehouse/settlement/v1/settlement.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1;eventsv1";
 
@@ -93,7 +94,60 @@ message Event {
     // Variants are numbered in a block per context: selling 200–299, settlement 300–399.
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
+
+    SettlementLogPosted settlement_log_posted = 300;
   }
+}
+
+// SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
+// §General Brief 2 — "Settlement Log … publish to the broker").
+//
+// Published by settlement_service after the posting's transaction commits. ONE variant for every
+// settlement_type, because every settlement fact has one shape — a new row — and the fold runs the same
+// statement for all of them; the type is a FIELD, so a ninth type is an enum value rather than a new
+// variant and a new handler arm in every consumer.
+//
+// IT CARRIES THE WHOLE ROW, not an id. `settlement_logs` is append-only, so the values cannot go stale —
+// and the Financial Ledger is another service, which cannot read the row back at all (HARD RULE 3).
+//
+// event_id is "settlement-log:<log_id>", so a retried publish of the same row collides in every
+// consumer's dedup instead of folding the movement twice.
+message SettlementLogPosted {
+  option (event_config).topic = "settlement-log-posted";
+
+  // settlement_logs.id
+  uint64 log_id = 1;
+  // The caller's idempotency key, unique across the whole log.
+  string unique_id = 2;
+
+  // 0 = the row is SHOP-ADDRESSED and names no order (#an-entry-names-an-order-or-a-shop).
+  uint64 order_id = 3;
+  uint64 shop_id = 4;
+  uint64 team_id = 5;
+  // Who is answerable for the row (#actor-id-is-the-pic).
+  uint64 actor_id = 6;
+
+  // WHO CREATED THE ORDER — `order_settlements.created_by_user_id`, 0 on a shop-addressed row or an
+  // account opened without one. The per-user report attributes an order row to this person and a shop
+  // row to `actor_id` (#a-shop-addressed-row-is-attributed-to-its-actor).
+  uint64 order_created_by_user_id = 7;
+
+  warehouse.settlement.v1.SettlementType settlement_type = 8;
+  warehouse.settlement.v1.SourceType source_type = 9;
+
+  // Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
+  int64 change = 10;
+  // The account's position after this row. Audit only — no report folds it.
+  int64 balance = 11;
+
+  // YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
+  // consumer re-derives a day from an instant in some other timezone.
+  string posted_on = 12;
+  // YYYY-MM-DD. The day the money belongs to — carried, never bucketed.
+  string occurred_on = 13;
+
+  uint64 reverses_id = 14;
+  string note = 15;
 }
 
 // OrderPlaced announces that an order was placed and COMMITTED (#153).

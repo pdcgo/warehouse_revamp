@@ -28,6 +28,10 @@ type OrderSettlement struct {
 	TeamID uint64
 	ShopID uint64
 
+	// WHO CREATED THE ORDER (00004), stamped by the post that OPENS the account and never changed. The
+	// per-user report attributes this order's movements to it. 0 = not recorded.
+	CreatedByUserID uint64
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

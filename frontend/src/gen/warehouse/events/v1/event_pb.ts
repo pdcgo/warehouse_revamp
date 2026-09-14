@@ -16,13 +16,15 @@ import type { MessageOptions, Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_descriptor, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Identity } from "../../role_base/v1/role_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
+import type { SettlementType, SourceType } from "../../settlement/v1/settlement_pb";
+import { file_warehouse_settlement_v1_settlement } from "../../settlement/v1/settlement_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIsEDCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjkKDG9yZGVyX3BsYWNlZBjIASABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkSAASPwoPb3JkZXJfY2FuY2VsbGVkGMkBIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJDYW5jZWxsZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEi6wEKC09yZGVyUGxhY2VkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSDwoHcmV2ZW51ZRgDIAEoAxIMCgRjb2dzGAQgASgDEhUKDXNoaXBwaW5nX2Nvc3QYBSABKAMSEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSMwoFbGluZXMYCCADKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkTGluZRIQCghhY3Rvcl9pZBgJIAEoBDoSirUYDgoMb3JkZXItcGxhY2VkImIKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoAyJcCg5PcmRlckNhbmNlbGxlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhAKCGFjdG9yX2lkGAMgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWQ6ZgoMZXZlbnRfY29uZmlnEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNGGAyABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Q29uZmlnUgtldmVudENvbmZpZ0JMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V2ZW50cy92MTtldmVudHN2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIo0ECgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjkKDG9yZGVyX3BsYWNlZBjIASABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkSAASPwoPb3JkZXJfY2FuY2VsbGVkGMkBIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJDYW5jZWxsZWRIABJKChVzZXR0bGVtZW50X2xvZ19wb3N0ZWQYrAIgASgLMigud2FyZWhvdXNlLmV2ZW50cy52MS5TZXR0bGVtZW50TG9nUG9zdGVkSAAaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQhAKB21lc3NhZ2USBbpIAggBIqUDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAk6G4q1GBcKFXNldHRsZW1lbnQtbG9nLXBvc3RlZCLrAQoLT3JkZXJQbGFjZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIPCgdyZXZlbnVlGAMgASgDEgwKBGNvZ3MYBCABKAMSFQoNc2hpcHBpbmdfY29zdBgFIAEoAxISCgpjb3N0X2tub3duGAYgASgIEhQKDHdhcmVob3VzZV9pZBgHIAEoBBIzCgVsaW5lcxgIIAMoCzIkLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRMaW5lEhAKCGFjdG9yX2lkGAkgASgEOhKKtRgOCgxvcmRlci1wbGFjZWQiYgoPT3JkZXJQbGFjZWRMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSFgoOb3duaW5nX3RlYW1faWQYAiABKAQSEAoIcXVhbnRpdHkYAyABKA0SEQoJdW5pdF9jb3N0GAQgASgDIlwKDk9yZGVyQ2FuY2VsbGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FYq1GBEKD29yZGVyLWNhbmNlbGxlZDpmCgxldmVudF9jb25maWcSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMY0YYDIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuRXZlbnRDb25maWdSC2V2ZW50Q29uZmlnQkxaSmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvZXZlbnRzL3YxO2V2ZW50c3YxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -134,6 +136,12 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
      */
     value: OrderCancelled;
     case: "orderCancelled";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.SettlementLogPosted settlement_log_posted = 300;
+     */
+    value: SettlementLogPosted;
+    case: "settlementLogPosted";
   } | { case: undefined; value?: undefined };
 };
 
@@ -143,6 +151,128 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
   messageDesc(file_warehouse_events_v1_event, 1);
+
+/**
+ * SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
+ * §General Brief 2 — "Settlement Log … publish to the broker").
+ *
+ * Published by settlement_service after the posting's transaction commits. ONE variant for every
+ * settlement_type, because every settlement fact has one shape — a new row — and the fold runs the same
+ * statement for all of them; the type is a FIELD, so a ninth type is an enum value rather than a new
+ * variant and a new handler arm in every consumer.
+ *
+ * IT CARRIES THE WHOLE ROW, not an id. `settlement_logs` is append-only, so the values cannot go stale —
+ * and the Financial Ledger is another service, which cannot read the row back at all (HARD RULE 3).
+ *
+ * event_id is "settlement-log:<log_id>", so a retried publish of the same row collides in every
+ * consumer's dedup instead of folding the movement twice.
+ *
+ * @generated from message warehouse.events.v1.SettlementLogPosted
+ */
+export type SettlementLogPosted = Message<"warehouse.events.v1.SettlementLogPosted"> & {
+  /**
+   * settlement_logs.id
+   *
+   * @generated from field: uint64 log_id = 1;
+   */
+  logId: bigint;
+
+  /**
+   * The caller's idempotency key, unique across the whole log.
+   *
+   * @generated from field: string unique_id = 2;
+   */
+  uniqueId: string;
+
+  /**
+   * 0 = the row is SHOP-ADDRESSED and names no order (#an-entry-names-an-order-or-a-shop).
+   *
+   * @generated from field: uint64 order_id = 3;
+   */
+  orderId: bigint;
+
+  /**
+   * @generated from field: uint64 shop_id = 4;
+   */
+  shopId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 5;
+   */
+  teamId: bigint;
+
+  /**
+   * Who is answerable for the row (#actor-id-is-the-pic).
+   *
+   * @generated from field: uint64 actor_id = 6;
+   */
+  actorId: bigint;
+
+  /**
+   * WHO CREATED THE ORDER — `order_settlements.created_by_user_id`, 0 on a shop-addressed row or an
+   * account opened without one. The per-user report attributes an order row to this person and a shop
+   * row to `actor_id` (#a-shop-addressed-row-is-attributed-to-its-actor).
+   *
+   * @generated from field: uint64 order_created_by_user_id = 7;
+   */
+  orderCreatedByUserId: bigint;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SettlementType settlement_type = 8;
+   */
+  settlementType: SettlementType;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SourceType source_type = 9;
+   */
+  sourceType: SourceType;
+
+  /**
+   * Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
+   *
+   * @generated from field: int64 change = 10;
+   */
+  change: bigint;
+
+  /**
+   * The account's position after this row. Audit only — no report folds it.
+   *
+   * @generated from field: int64 balance = 11;
+   */
+  balance: bigint;
+
+  /**
+   * YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
+   * consumer re-derives a day from an instant in some other timezone.
+   *
+   * @generated from field: string posted_on = 12;
+   */
+  postedOn: string;
+
+  /**
+   * YYYY-MM-DD. The day the money belongs to — carried, never bucketed.
+   *
+   * @generated from field: string occurred_on = 13;
+   */
+  occurredOn: string;
+
+  /**
+   * @generated from field: uint64 reverses_id = 14;
+   */
+  reversesId: bigint;
+
+  /**
+   * @generated from field: string note = 15;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message warehouse.events.v1.SettlementLogPosted.
+ * Use `create(SettlementLogPostedSchema)` to create a new message.
+ */
+export const SettlementLogPostedSchema: GenMessage<SettlementLogPosted> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 2);
 
 /**
  * OrderPlaced announces that an order was placed and COMMITTED (#153).
@@ -239,7 +369,7 @@ export type OrderPlaced = Message<"warehouse.events.v1.OrderPlaced"> & {
  * Use `create(OrderPlacedSchema)` to create a new message.
  */
 export const OrderPlacedSchema: GenMessage<OrderPlaced> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 2);
+  messageDesc(file_warehouse_events_v1_event, 3);
 
 /**
  * One line of a placed order, as liability_service needs it (#186).
@@ -290,7 +420,7 @@ export type OrderPlacedLine = Message<"warehouse.events.v1.OrderPlacedLine"> & {
  * Use `create(OrderPlacedLineSchema)` to create a new message.
  */
 export const OrderPlacedLineSchema: GenMessage<OrderPlacedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 3);
+  messageDesc(file_warehouse_events_v1_event, 4);
 
 /**
  * OrderCancelled announces that an order was cancelled (#164).
@@ -330,7 +460,7 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
  * Use `create(OrderCancelledSchema)` to create a new message.
  */
 export const OrderCancelledSchema: GenMessage<OrderCancelled> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 4);
+  messageDesc(file_warehouse_events_v1_event, 5);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

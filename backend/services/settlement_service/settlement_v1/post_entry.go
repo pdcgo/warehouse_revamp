@@ -2,7 +2,7 @@ package settlement_v1
 
 import (
 	"context"
-	"time"
+	"errors"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -26,18 +26,19 @@ func (s *Service) SettlementPost(
 	msg := req.Msg
 
 	result, err := s.postEntry(ctx, PostInput{
-		TeamID:         msg.GetTeamId(),
-		OrderID:        msg.GetOrderId(),
-		ShopID:         msg.GetShopId(),
-		UniqueID:       msg.GetUniqueId(),
-		SettlementType: msg.GetSettlementType(),
-		SourceType:     msg.GetSourceType(),
-		Change:         msg.GetChange(),
-		OccurredOn:     msg.GetOccurredOn(),
-		ReversesID:     msg.GetReversesId(),
-		Note:           msg.GetNote(),
-		ActorID:        actorFrom(ctx),
-	})
+		TeamID:          msg.GetTeamId(),
+		OrderID:         msg.GetOrderId(),
+		ShopID:          msg.GetShopId(),
+		UniqueID:        msg.GetUniqueId(),
+		SettlementType:  msg.GetSettlementType(),
+		SourceType:      msg.GetSourceType(),
+		Change:          msg.GetChange(),
+		OccurredOn:      msg.GetOccurredOn(),
+		ReversesID:      msg.GetReversesId(),
+		Note:            msg.GetNote(),
+		ActorID:         actorFrom(ctx),
+		CreatedByUserID: msg.GetCreatedByUserId(),
+	}, postOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,42 @@ type PostInput struct {
 	ReversesID     uint64
 	Note           string
 	ActorID        uint64
+
+	// Who created the order. Stamped onto the account ONLY by the post that opens it, and ignored by
+	// every later one (#the-creator-is-stamped-on-the-state-row).
+	CreatedByUserID uint64
 }
+
+// CancelInput is an order cancel, as `order_service` posts it.
+//
+// It carries NO amount, on purpose. A cancel undoes the LIVE sale (#cancel-zeroes-the-live-sale), and
+// the live sale is what the account holds right now — not what the order said at placement. If a person
+// reversed a wrong sale and reposted the right one, an amount taken from the order would cancel the
+// wrong figure. So the amount is read from the account, under its lock.
+type CancelInput struct {
+	TeamID  uint64
+	ShopID  uint64
+	OrderID uint64
+
+	// Derived by the caller from the order and the ACT's date (#the-cancel-key-is-order-plus-act-date).
+	UniqueID string
+
+	// YYYY-MM-DD — the day the cancel happened.
+	OccurredOn string
+
+	ActorID uint64
+	Note    string
+}
+
+// ErrNothingToCancel is a cancel against an account with no live sale — one that never opened (an
+// order with no marketplace total, a failed opening post) or was already zeroed by hand.
+//
+// Exported because it is a NORMAL answer for the one caller that posts cancels: there is nothing to
+// undo, and the order's own cancel has already committed.
+var ErrNothingToCancel = connect.NewError(
+	connect.CodeFailedPrecondition,
+	errors.New("this order has no live sale to cancel"),
+)
 
 type PostResult struct {
 	Entry settlement_service_models.SettlementLog
@@ -86,6 +122,12 @@ type PostResult struct {
 	ShopState *settlement_service_models.ShopSettlement
 
 	Created bool
+}
+
+// postOptions carries what only an in-process caller may ask for, so the wire request cannot.
+type postOptions struct {
+	// Take the cancel's amount from the account's LIVE sale rather than from the input. See CancelInput.
+	changeFromLiveSale bool
 }
 
 // setState attaches whichever account the write actually touched. Taken by value and stored as a
@@ -119,10 +161,27 @@ func derefOrder(id *uint64) uint64 {
 
 // PostEntry is the in-process write path. See PostInput.
 func (s *Service) PostEntry(ctx context.Context, in PostInput) (PostResult, error) {
-	return s.postEntry(ctx, in)
+	return s.postEntry(ctx, in, postOptions{})
 }
 
-func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, error) {
+// CancelSale posts an order's `initial_total_cancel`, taking the amount from the live sale. See
+// CancelInput. Returns ErrNothingToCancel when the account holds no live sale.
+func (s *Service) CancelSale(ctx context.Context, in CancelInput) (PostResult, error) {
+	return s.postEntry(ctx, PostInput{
+		TeamID:         in.TeamID,
+		OrderID:        in.OrderID,
+		ShopID:         in.ShopID,
+		UniqueID:       in.UniqueID,
+		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL,
+		// ⚠ The ONLY source a cancel is accepted from (#only-machines-post-the-cancel).
+		SourceType: settlementv1.SourceType_SOURCE_TYPE_ORDER,
+		OccurredOn: in.OccurredOn,
+		ActorID:    in.ActorID,
+		Note:       in.Note,
+	}, postOptions{changeFromLiveSale: true})
+}
+
+func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions) (PostResult, error) {
 	var out PostResult
 
 	typeText, ok := settlementTypeText[in.SettlementType]
@@ -181,6 +240,9 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 				OrderID: in.OrderID,
 				TeamID:  in.TeamID,
 				ShopID:  in.ShopID,
+				// ⚠ STAMPED HERE AND NOWHERE ELSE. DO NOTHING leaves an existing account untouched, so
+				// only the post that OPENS the account names the creator — set once, as decided.
+				CreatedByUserID: in.CreatedByUserID,
 			}
 
 			err := tx.
@@ -255,6 +317,9 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 		// ⚠ Keyed on `unique_id` ALONE (#00002). The index it mirrors is global rather than scoped to
 		// the order, because `order_id` is nullable — a shop-addressed row has no order to scope by,
 		// and Postgres would have let `(NULL, key)` insert twice.
+		//
+		// ⚠ BEFORE THE LIVE-SALE RULES BELOW, deliberately: a retried cancel finds its own row here and
+		// returns it, where the rules would otherwise see the zeroed sale and refuse the retry.
 		var existing settlement_service_models.SettlementLog
 
 		err = tx.
@@ -308,6 +373,30 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 			}
 		}
 
+		// THE LIVE SALE'S RULES — read under the account's lock, so two concurrent posts cannot both see
+		// "no live sale" and both open one.
+		if in.OrderID != 0 {
+			if opts.changeFromLiveSale {
+				if orderState.InitialTotal == 0 {
+					return ErrNothingToCancel
+				}
+
+				// The exact opposite of the live sale: `initial_total` is NEGATIVE on the log and the
+				// state stores it POSITIVE, so the cancel's positive change is the state's own figure.
+				in.Change = orderState.InitialTotal
+			}
+
+			// A reversal (reverses_id set) is how a live sale is taken DOWN, so it is exempt — it is the
+			// first half of reverse-then-repost.
+			if typeText == typeInitialTotal && in.ReversesID == 0 && orderState.InitialTotal != 0 {
+				return errSaleAlreadyOpen
+			}
+
+			if typeText == typeInitialTotalCancel && in.Change > orderState.InitialTotal {
+				return errCancelExceedsSale
+			}
+		}
+
 		entry := settlement_service_models.SettlementLog{
 			ShopID:         in.ShopID,
 			TeamID:         in.TeamID,
@@ -318,8 +407,9 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 			Balance:        prevBalance + in.Change,
 			UniqueID:       in.UniqueID,
 			OccurredOn:     occurred,
-			PostedOn:       time.Now(),
-			Note:           in.Note,
+			// `posted_on` is left to the column's DEFAULT CURRENT_DATE and read back by the insert, so
+			// the day the event announces is the day the database stored — one calendar, the session's.
+			Note: in.Note,
 		}
 
 		if in.OrderID != 0 {
@@ -344,8 +434,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 		//	initial_total = −SUM(change) over the two initial types   (order accounts only)
 		//
 		// The second line is why a cancel needs no special case. Its `change` is the exact opposite of
-		// the sale's, so the running sum returns to zero on its own — and if a second sale was ever
-		// posted by hand, one cancel correctly does NOT zero it, because two sales are on the account.
+		// the sale's, so the running sum returns to zero on its own.
 		if in.OrderID != 0 {
 			orderState.LastBalance = entry.Balance
 
@@ -359,7 +448,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 				Updates(map[string]any{
 					"initial_total": orderState.InitialTotal,
 					"last_balance":  orderState.LastBalance,
-					"updated_at":    time.Now(),
+					"updated_at":    gorm.Expr("NOW()"),
 				}).
 				Error
 		} else {
@@ -372,7 +461,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 				Where("shop_id = ?", in.ShopID).
 				Updates(map[string]any{
 					"last_balance": shopState.LastBalance,
-					"updated_at":   time.Now(),
+					"updated_at":   gorm.Expr("NOW()"),
 				}).
 				Error
 		}
@@ -389,6 +478,11 @@ func (s *Service) postEntry(ctx context.Context, in PostInput) (PostResult, erro
 	if err != nil {
 		return PostResult{}, err
 	}
+
+	// ANNOUNCED AFTER THE COMMIT, and never fatal — the row is the truth and the event is how its
+	// readers learn of it. Published on an idempotent hit too: that is how a publish that failed the
+	// first time is repaired by simply retrying the post, and every consumer dedups on the derived id.
+	s.publishPosted(ctx, out)
 
 	return out, nil
 }

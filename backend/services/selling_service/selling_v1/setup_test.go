@@ -94,21 +94,21 @@ func newService(t *testing.T, db *gorm.DB) *selling_v1.Service {
 	t.Helper()
 
 	// nil sender — NewService substitutes EmptySender, which still validates the event (#153).
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{})
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, nil)
 }
 
 // newServiceWithEvents is for the tests that care WHICH EVENT was published (#153).
 func newServiceWithEvents(t *testing.T, db *gorm.DB, events event_source.EventSender) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{})
+	return selling_v1.NewService(db, &fakePicker{}, events, &fakeCatalog{}, &fakeCredit{}, nil)
 }
 
 // newServiceWithPicker is for the tests that care what the picker did, or need it to refuse.
 func newServiceWithPicker(t *testing.T, db *gorm.DB, picker selling_v1.StockPicker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{})
+	return selling_v1.NewService(db, picker, nil, &fakeCatalog{}, &fakeCredit{}, nil)
 }
 
 // newServiceWithCatalog is for the tests where a product died underneath a draft (#194).
@@ -119,7 +119,7 @@ func newServiceWithCatalog(
 ) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{})
+	return selling_v1.NewService(db, &fakePicker{}, nil, catalog, &fakeCredit{}, nil)
 }
 
 // insertShop seeds an active shop directly and returns its id.
@@ -199,5 +199,5 @@ func (f *fakeCredit) Check(
 func newServiceWithCredit(t *testing.T, db *gorm.DB, credit selling_v1.CreditChecker) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, credit, nil)
 }

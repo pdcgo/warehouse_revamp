@@ -16,6 +16,7 @@ package eventsv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	v11 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
@@ -127,6 +128,7 @@ type Event struct {
 	//
 	//	*Event_OrderPlaced
 	//	*Event_OrderCancelled
+	//	*Event_SettlementLogPosted
 	Message       isEvent_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -222,6 +224,15 @@ func (x *Event) GetOrderCancelled() *OrderCancelled {
 	return nil
 }
 
+func (x *Event) GetSettlementLogPosted() *SettlementLogPosted {
+	if x != nil {
+		if x, ok := x.Message.(*Event_SettlementLogPosted); ok {
+			return x.SettlementLogPosted
+		}
+	}
+	return nil
+}
+
 type isEvent_Message interface {
 	isEvent_Message()
 }
@@ -235,9 +246,196 @@ type Event_OrderCancelled struct {
 	OrderCancelled *OrderCancelled `protobuf:"bytes,201,opt,name=order_cancelled,json=orderCancelled,proto3,oneof"`
 }
 
+type Event_SettlementLogPosted struct {
+	SettlementLogPosted *SettlementLogPosted `protobuf:"bytes,300,opt,name=settlement_log_posted,json=settlementLogPosted,proto3,oneof"`
+}
+
 func (*Event_OrderPlaced) isEvent_Message() {}
 
 func (*Event_OrderCancelled) isEvent_Message() {}
+
+func (*Event_SettlementLogPosted) isEvent_Message() {}
+
+// SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
+// §General Brief 2 — "Settlement Log … publish to the broker").
+//
+// Published by settlement_service after the posting's transaction commits. ONE variant for every
+// settlement_type, because every settlement fact has one shape — a new row — and the fold runs the same
+// statement for all of them; the type is a FIELD, so a ninth type is an enum value rather than a new
+// variant and a new handler arm in every consumer.
+//
+// IT CARRIES THE WHOLE ROW, not an id. `settlement_logs` is append-only, so the values cannot go stale —
+// and the Financial Ledger is another service, which cannot read the row back at all (HARD RULE 3).
+//
+// event_id is "settlement-log:<log_id>", so a retried publish of the same row collides in every
+// consumer's dedup instead of folding the movement twice.
+type SettlementLogPosted struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// settlement_logs.id
+	LogId uint64 `protobuf:"varint,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
+	// The caller's idempotency key, unique across the whole log.
+	UniqueId string `protobuf:"bytes,2,opt,name=unique_id,json=uniqueId,proto3" json:"unique_id,omitempty"`
+	// 0 = the row is SHOP-ADDRESSED and names no order (#an-entry-names-an-order-or-a-shop).
+	OrderId uint64 `protobuf:"varint,3,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	ShopId  uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	TeamId  uint64 `protobuf:"varint,5,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// Who is answerable for the row (#actor-id-is-the-pic).
+	ActorId uint64 `protobuf:"varint,6,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	// WHO CREATED THE ORDER — `order_settlements.created_by_user_id`, 0 on a shop-addressed row or an
+	// account opened without one. The per-user report attributes an order row to this person and a shop
+	// row to `actor_id` (#a-shop-addressed-row-is-attributed-to-its-actor).
+	OrderCreatedByUserId uint64             `protobuf:"varint,7,opt,name=order_created_by_user_id,json=orderCreatedByUserId,proto3" json:"order_created_by_user_id,omitempty"`
+	SettlementType       v11.SettlementType `protobuf:"varint,8,opt,name=settlement_type,json=settlementType,proto3,enum=warehouse.settlement.v1.SettlementType" json:"settlement_type,omitempty"`
+	SourceType           v11.SourceType     `protobuf:"varint,9,opt,name=source_type,json=sourceType,proto3,enum=warehouse.settlement.v1.SourceType" json:"source_type,omitempty"`
+	// Signed, whole rupiah. POSITIVE IS MONEY TOWARD US.
+	Change int64 `protobuf:"varint,10,opt,name=change,proto3" json:"change,omitempty"`
+	// The account's position after this row. Audit only — no report folds it.
+	Balance int64 `protobuf:"varint,11,opt,name=balance,proto3" json:"balance,omitempty"`
+	// YYYY-MM-DD. The day the report BUCKETS on (#posted-on-buckets-the-report) — a string, so no
+	// consumer re-derives a day from an instant in some other timezone.
+	PostedOn string `protobuf:"bytes,12,opt,name=posted_on,json=postedOn,proto3" json:"posted_on,omitempty"`
+	// YYYY-MM-DD. The day the money belongs to — carried, never bucketed.
+	OccurredOn    string `protobuf:"bytes,13,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	ReversesId    uint64 `protobuf:"varint,14,opt,name=reverses_id,json=reversesId,proto3" json:"reverses_id,omitempty"`
+	Note          string `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettlementLogPosted) Reset() {
+	*x = SettlementLogPosted{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettlementLogPosted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettlementLogPosted) ProtoMessage() {}
+
+func (x *SettlementLogPosted) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettlementLogPosted.ProtoReflect.Descriptor instead.
+func (*SettlementLogPosted) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SettlementLogPosted) GetLogId() uint64 {
+	if x != nil {
+		return x.LogId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetUniqueId() string {
+	if x != nil {
+		return x.UniqueId
+	}
+	return ""
+}
+
+func (x *SettlementLogPosted) GetOrderId() uint64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetOrderCreatedByUserId() uint64 {
+	if x != nil {
+		return x.OrderCreatedByUserId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetSettlementType() v11.SettlementType {
+	if x != nil {
+		return x.SettlementType
+	}
+	return v11.SettlementType(0)
+}
+
+func (x *SettlementLogPosted) GetSourceType() v11.SourceType {
+	if x != nil {
+		return x.SourceType
+	}
+	return v11.SourceType(0)
+}
+
+func (x *SettlementLogPosted) GetChange() int64 {
+	if x != nil {
+		return x.Change
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetPostedOn() string {
+	if x != nil {
+		return x.PostedOn
+	}
+	return ""
+}
+
+func (x *SettlementLogPosted) GetOccurredOn() string {
+	if x != nil {
+		return x.OccurredOn
+	}
+	return ""
+}
+
+func (x *SettlementLogPosted) GetReversesId() uint64 {
+	if x != nil {
+		return x.ReversesId
+	}
+	return 0
+}
+
+func (x *SettlementLogPosted) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
 
 // OrderPlaced announces that an order was placed and COMMITTED (#153).
 //
@@ -289,7 +487,7 @@ type OrderPlaced struct {
 
 func (x *OrderPlaced) Reset() {
 	*x = OrderPlaced{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -301,7 +499,7 @@ func (x *OrderPlaced) String() string {
 func (*OrderPlaced) ProtoMessage() {}
 
 func (x *OrderPlaced) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -314,7 +512,7 @@ func (x *OrderPlaced) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderPlaced.ProtoReflect.Descriptor instead.
 func (*OrderPlaced) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OrderPlaced) GetTeamId() uint64 {
@@ -408,7 +606,7 @@ type OrderPlacedLine struct {
 
 func (x *OrderPlacedLine) Reset() {
 	*x = OrderPlacedLine{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -420,7 +618,7 @@ func (x *OrderPlacedLine) String() string {
 func (*OrderPlacedLine) ProtoMessage() {}
 
 func (x *OrderPlacedLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -433,7 +631,7 @@ func (x *OrderPlacedLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderPlacedLine.ProtoReflect.Descriptor instead.
 func (*OrderPlacedLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OrderPlacedLine) GetProductId() uint64 {
@@ -486,7 +684,7 @@ type OrderCancelled struct {
 
 func (x *OrderCancelled) Reset() {
 	*x = OrderCancelled{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -498,7 +696,7 @@ func (x *OrderCancelled) String() string {
 func (*OrderCancelled) ProtoMessage() {}
 
 func (x *OrderCancelled) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -511,7 +709,7 @@ func (x *OrderCancelled) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCancelled.ProtoReflect.Descriptor instead.
 func (*OrderCancelled) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OrderCancelled) GetTeamId() uint64 {
@@ -560,9 +758,9 @@ var File_warehouse_events_v1_event_proto protoreflect.FileDescriptor
 
 const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\"#\n" +
+	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xa0\x04\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x81\x05\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -571,11 +769,33 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bmetadata\x18\x04 \x03(\v2(.warehouse.events.v1.Event.MetadataEntryB\x16\xbaH\x13\x9a\x01\x10\x10d\"\x05r\x03(\x80\x02*\x05r\x03(\x80\bR\bmetadata\x12<\n" +
 	"\bidentity\x18\x05 \x01(\v2 .warehouse.role_base.v1.IdentityR\bidentity\x12F\n" +
 	"\forder_placed\x18\xc8\x01 \x01(\v2 .warehouse.events.v1.OrderPlacedH\x00R\vorderPlaced\x12O\n" +
-	"\x0forder_cancelled\x18\xc9\x01 \x01(\v2#.warehouse.events.v1.OrderCancelledH\x00R\x0eorderCancelled\x1a;\n" +
+	"\x0forder_cancelled\x18\xc9\x01 \x01(\v2#.warehouse.events.v1.OrderCancelledH\x00R\x0eorderCancelled\x12_\n" +
+	"\x15settlement_log_posted\x18\xac\x02 \x01(\v2(.warehouse.events.v1.SettlementLogPostedH\x00R\x13settlementLogPosted\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
-	"\amessage\x12\x05\xbaH\x02\b\x01\"\xc1\x02\n" +
+	"\amessage\x12\x05\xbaH\x02\b\x01\"\xc3\x04\n" +
+	"\x13SettlementLogPosted\x12\x15\n" +
+	"\x06log_id\x18\x01 \x01(\x04R\x05logId\x12\x1b\n" +
+	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
+	"\border_id\x18\x03 \x01(\x04R\aorderId\x12\x17\n" +
+	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\x12\x17\n" +
+	"\ateam_id\x18\x05 \x01(\x04R\x06teamId\x12\x19\n" +
+	"\bactor_id\x18\x06 \x01(\x04R\aactorId\x126\n" +
+	"\x18order_created_by_user_id\x18\a \x01(\x04R\x14orderCreatedByUserId\x12P\n" +
+	"\x0fsettlement_type\x18\b \x01(\x0e2'.warehouse.settlement.v1.SettlementTypeR\x0esettlementType\x12D\n" +
+	"\vsource_type\x18\t \x01(\x0e2#.warehouse.settlement.v1.SourceTypeR\n" +
+	"sourceType\x12\x16\n" +
+	"\x06change\x18\n" +
+	" \x01(\x03R\x06change\x12\x18\n" +
+	"\abalance\x18\v \x01(\x03R\abalance\x12\x1b\n" +
+	"\tposted_on\x18\f \x01(\tR\bpostedOn\x12\x1f\n" +
+	"\voccurred_on\x18\r \x01(\tR\n" +
+	"occurredOn\x12\x1f\n" +
+	"\vreverses_id\x18\x0e \x01(\x04R\n" +
+	"reversesId\x12\x12\n" +
+	"\x04note\x18\x0f \x01(\tR\x04note:\x1b\x8a\xb5\x18\x17\n" +
+	"\x15settlement-log-posted\"\xc1\x02\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\x04R\aorderId\x12\x18\n" +
@@ -613,32 +833,38 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*EventConfig)(nil),                 // 0: warehouse.events.v1.EventConfig
 	(*Event)(nil),                       // 1: warehouse.events.v1.Event
-	(*OrderPlaced)(nil),                 // 2: warehouse.events.v1.OrderPlaced
-	(*OrderPlacedLine)(nil),             // 3: warehouse.events.v1.OrderPlacedLine
-	(*OrderCancelled)(nil),              // 4: warehouse.events.v1.OrderCancelled
-	nil,                                 // 5: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),       // 6: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                 // 7: warehouse.role_base.v1.Identity
-	(*descriptorpb.MessageOptions)(nil), // 8: google.protobuf.MessageOptions
+	(*SettlementLogPosted)(nil),         // 2: warehouse.events.v1.SettlementLogPosted
+	(*OrderPlaced)(nil),                 // 3: warehouse.events.v1.OrderPlaced
+	(*OrderPlacedLine)(nil),             // 4: warehouse.events.v1.OrderPlacedLine
+	(*OrderCancelled)(nil),              // 5: warehouse.events.v1.OrderCancelled
+	nil,                                 // 6: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),       // 7: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                 // 8: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),             // 9: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                 // 10: warehouse.settlement.v1.SourceType
+	(*descriptorpb.MessageOptions)(nil), // 11: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	6, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	5, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	7, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
-	2, // 3: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
-	4, // 4: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
-	3, // 5: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	8, // 6: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0, // 7: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	7, // [7:8] is the sub-list for extension type_name
-	6, // [6:7] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	7,  // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	6,  // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	8,  // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	3,  // 3: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
+	5,  // 4: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
+	2,  // 5: warehouse.events.v1.Event.settlement_log_posted:type_name -> warehouse.events.v1.SettlementLogPosted
+	9,  // 6: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	10, // 7: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	4,  // 8: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	11, // 9: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 10: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	10, // [10:11] is the sub-list for extension type_name
+	9,  // [9:10] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -649,6 +875,7 @@ func file_warehouse_events_v1_event_proto_init() {
 	file_warehouse_events_v1_event_proto_msgTypes[1].OneofWrappers = []any{
 		(*Event_OrderPlaced)(nil),
 		(*Event_OrderCancelled)(nil),
+		(*Event_SettlementLogPosted)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -656,7 +883,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

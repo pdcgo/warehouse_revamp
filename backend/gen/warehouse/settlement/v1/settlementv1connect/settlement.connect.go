@@ -25,6 +25,12 @@ const (
 	SettlementServiceName = "warehouse.settlement.v1.SettlementService"
 	// SettlementWriteServiceName is the fully-qualified name of the SettlementWriteService service.
 	SettlementWriteServiceName = "warehouse.settlement.v1.SettlementWriteService"
+	// SettlementAnalyticServiceName is the fully-qualified name of the SettlementAnalyticService
+	// service.
+	SettlementAnalyticServiceName = "warehouse.settlement.v1.SettlementAnalyticService"
+	// SettlementAnalyticMaintenanceServiceName is the fully-qualified name of the
+	// SettlementAnalyticMaintenanceService service.
+	SettlementAnalyticMaintenanceServiceName = "warehouse.settlement.v1.SettlementAnalyticMaintenanceService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -44,6 +50,21 @@ const (
 	// SettlementWriteServiceSettlementPostProcedure is the fully-qualified name of the
 	// SettlementWriteService's SettlementPost RPC.
 	SettlementWriteServiceSettlementPostProcedure = "/warehouse.settlement.v1.SettlementWriteService/SettlementPost"
+	// SettlementAnalyticServiceAnalyticTimeSearchProcedure is the fully-qualified name of the
+	// SettlementAnalyticService's AnalyticTimeSearch RPC.
+	SettlementAnalyticServiceAnalyticTimeSearchProcedure = "/warehouse.settlement.v1.SettlementAnalyticService/AnalyticTimeSearch"
+	// SettlementAnalyticServiceAnalyticGroupSearchProcedure is the fully-qualified name of the
+	// SettlementAnalyticService's AnalyticGroupSearch RPC.
+	SettlementAnalyticServiceAnalyticGroupSearchProcedure = "/warehouse.settlement.v1.SettlementAnalyticService/AnalyticGroupSearch"
+	// SettlementAnalyticServiceAnalyticGroupMetricProcedure is the fully-qualified name of the
+	// SettlementAnalyticService's AnalyticGroupMetric RPC.
+	SettlementAnalyticServiceAnalyticGroupMetricProcedure = "/warehouse.settlement.v1.SettlementAnalyticService/AnalyticGroupMetric"
+	// SettlementAnalyticMaintenanceServiceAnalyticReplayComputeProcedure is the fully-qualified name of
+	// the SettlementAnalyticMaintenanceService's AnalyticReplayCompute RPC.
+	SettlementAnalyticMaintenanceServiceAnalyticReplayComputeProcedure = "/warehouse.settlement.v1.SettlementAnalyticMaintenanceService/AnalyticReplayCompute"
+	// SettlementAnalyticMaintenanceServiceAnalyticMaintenanceRunProcedure is the fully-qualified name
+	// of the SettlementAnalyticMaintenanceService's AnalyticMaintenanceRun RPC.
+	SettlementAnalyticMaintenanceServiceAnalyticMaintenanceRunProcedure = "/warehouse.settlement.v1.SettlementAnalyticMaintenanceService/AnalyticMaintenanceRun"
 )
 
 // SettlementServiceClient is a client for the warehouse.settlement.v1.SettlementService service.
@@ -220,4 +241,245 @@ type UnimplementedSettlementWriteServiceHandler struct{}
 
 func (UnimplementedSettlementWriteServiceHandler) SettlementPost(context.Context, *connect.Request[v1.SettlementPostRequest]) (*connect.Response[v1.SettlementPostResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementWriteService.SettlementPost is not implemented"))
+}
+
+// SettlementAnalyticServiceClient is a client for the
+// warehouse.settlement.v1.SettlementAnalyticService service.
+type SettlementAnalyticServiceClient interface {
+	// A metric series over time — daily, monthly or yearly — for a team, one shop, or one user.
+	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
+	// The RANKING of groups (teams, shops or users) over a window — ids only, sorted.
+	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
+	// The metrics for a set of groups the caller already ranked.
+	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
+}
+
+// NewSettlementAnalyticServiceClient constructs a client for the
+// warehouse.settlement.v1.SettlementAnalyticService service. By default, it uses the Connect
+// protocol with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed
+// requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSettlementAnalyticServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettlementAnalyticServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	settlementAnalyticServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementAnalyticService").Methods()
+	return &settlementAnalyticServiceClient{
+		analyticTimeSearch: connect.NewClient[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse](
+			httpClient,
+			baseURL+SettlementAnalyticServiceAnalyticTimeSearchProcedure,
+			connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+			connect.WithClientOptions(opts...),
+		),
+		analyticGroupSearch: connect.NewClient[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse](
+			httpClient,
+			baseURL+SettlementAnalyticServiceAnalyticGroupSearchProcedure,
+			connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
+			connect.WithClientOptions(opts...),
+		),
+		analyticGroupMetric: connect.NewClient[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse](
+			httpClient,
+			baseURL+SettlementAnalyticServiceAnalyticGroupMetricProcedure,
+			connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// settlementAnalyticServiceClient implements SettlementAnalyticServiceClient.
+type settlementAnalyticServiceClient struct {
+	analyticTimeSearch  *connect.Client[v1.AnalyticTimeSearchRequest, v1.AnalyticTimeSearchResponse]
+	analyticGroupSearch *connect.Client[v1.AnalyticGroupSearchRequest, v1.AnalyticGroupSearchResponse]
+	analyticGroupMetric *connect.Client[v1.AnalyticGroupMetricRequest, v1.AnalyticGroupMetricResponse]
+}
+
+// AnalyticTimeSearch calls warehouse.settlement.v1.SettlementAnalyticService.AnalyticTimeSearch.
+func (c *settlementAnalyticServiceClient) AnalyticTimeSearch(ctx context.Context, req *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
+	return c.analyticTimeSearch.CallUnary(ctx, req)
+}
+
+// AnalyticGroupSearch calls warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupSearch.
+func (c *settlementAnalyticServiceClient) AnalyticGroupSearch(ctx context.Context, req *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
+	return c.analyticGroupSearch.CallUnary(ctx, req)
+}
+
+// AnalyticGroupMetric calls warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupMetric.
+func (c *settlementAnalyticServiceClient) AnalyticGroupMetric(ctx context.Context, req *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
+	return c.analyticGroupMetric.CallUnary(ctx, req)
+}
+
+// SettlementAnalyticServiceHandler is an implementation of the
+// warehouse.settlement.v1.SettlementAnalyticService service.
+type SettlementAnalyticServiceHandler interface {
+	// A metric series over time — daily, monthly or yearly — for a team, one shop, or one user.
+	AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error)
+	// The RANKING of groups (teams, shops or users) over a window — ids only, sorted.
+	AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error)
+	// The metrics for a set of groups the caller already ranked.
+	AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error)
+}
+
+// NewSettlementAnalyticServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSettlementAnalyticServiceHandler(svc SettlementAnalyticServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settlementAnalyticServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementAnalyticService").Methods()
+	settlementAnalyticServiceAnalyticTimeSearchHandler := connect.NewUnaryHandler(
+		SettlementAnalyticServiceAnalyticTimeSearchProcedure,
+		svc.AnalyticTimeSearch,
+		connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticTimeSearch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementAnalyticServiceAnalyticGroupSearchHandler := connect.NewUnaryHandler(
+		SettlementAnalyticServiceAnalyticGroupSearchProcedure,
+		svc.AnalyticGroupSearch,
+		connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticGroupSearch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementAnalyticServiceAnalyticGroupMetricHandler := connect.NewUnaryHandler(
+		SettlementAnalyticServiceAnalyticGroupMetricProcedure,
+		svc.AnalyticGroupMetric,
+		connect.WithSchema(settlementAnalyticServiceMethods.ByName("AnalyticGroupMetric")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/warehouse.settlement.v1.SettlementAnalyticService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SettlementAnalyticServiceAnalyticTimeSearchProcedure:
+			settlementAnalyticServiceAnalyticTimeSearchHandler.ServeHTTP(w, r)
+		case SettlementAnalyticServiceAnalyticGroupSearchProcedure:
+			settlementAnalyticServiceAnalyticGroupSearchHandler.ServeHTTP(w, r)
+		case SettlementAnalyticServiceAnalyticGroupMetricProcedure:
+			settlementAnalyticServiceAnalyticGroupMetricHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSettlementAnalyticServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSettlementAnalyticServiceHandler struct{}
+
+func (UnimplementedSettlementAnalyticServiceHandler) AnalyticTimeSearch(context.Context, *connect.Request[v1.AnalyticTimeSearchRequest]) (*connect.Response[v1.AnalyticTimeSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticService.AnalyticTimeSearch is not implemented"))
+}
+
+func (UnimplementedSettlementAnalyticServiceHandler) AnalyticGroupSearch(context.Context, *connect.Request[v1.AnalyticGroupSearchRequest]) (*connect.Response[v1.AnalyticGroupSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupSearch is not implemented"))
+}
+
+func (UnimplementedSettlementAnalyticServiceHandler) AnalyticGroupMetric(context.Context, *connect.Request[v1.AnalyticGroupMetricRequest]) (*connect.Response[v1.AnalyticGroupMetricResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupMetric is not implemented"))
+}
+
+// SettlementAnalyticMaintenanceServiceClient is a client for the
+// warehouse.settlement.v1.SettlementAnalyticMaintenanceService service.
+type SettlementAnalyticMaintenanceServiceClient interface {
+	// Rebuild the reports from `start_date` by seeking settlement's own subscription
+	// (#the-replay-seeks-the-broker). Bounded by the subscription's retention
+	// (#the-replay-is-bounded-by-the-subscription-retention).
+	AnalyticReplayCompute(context.Context, *connect.Request[v1.AnalyticReplayComputeRequest]) (*connect.Response[v1.AnalyticReplayComputeResponse], error)
+	// Prune the dedup table (analytic_context.md §Idempotency Layer).
+	AnalyticMaintenanceRun(context.Context, *connect.Request[v1.AnalyticMaintenanceRunRequest]) (*connect.Response[v1.AnalyticMaintenanceRunResponse], error)
+}
+
+// NewSettlementAnalyticMaintenanceServiceClient constructs a client for the
+// warehouse.settlement.v1.SettlementAnalyticMaintenanceService service. By default, it uses the
+// Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSettlementAnalyticMaintenanceServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettlementAnalyticMaintenanceServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	settlementAnalyticMaintenanceServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementAnalyticMaintenanceService").Methods()
+	return &settlementAnalyticMaintenanceServiceClient{
+		analyticReplayCompute: connect.NewClient[v1.AnalyticReplayComputeRequest, v1.AnalyticReplayComputeResponse](
+			httpClient,
+			baseURL+SettlementAnalyticMaintenanceServiceAnalyticReplayComputeProcedure,
+			connect.WithSchema(settlementAnalyticMaintenanceServiceMethods.ByName("AnalyticReplayCompute")),
+			connect.WithClientOptions(opts...),
+		),
+		analyticMaintenanceRun: connect.NewClient[v1.AnalyticMaintenanceRunRequest, v1.AnalyticMaintenanceRunResponse](
+			httpClient,
+			baseURL+SettlementAnalyticMaintenanceServiceAnalyticMaintenanceRunProcedure,
+			connect.WithSchema(settlementAnalyticMaintenanceServiceMethods.ByName("AnalyticMaintenanceRun")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// settlementAnalyticMaintenanceServiceClient implements SettlementAnalyticMaintenanceServiceClient.
+type settlementAnalyticMaintenanceServiceClient struct {
+	analyticReplayCompute  *connect.Client[v1.AnalyticReplayComputeRequest, v1.AnalyticReplayComputeResponse]
+	analyticMaintenanceRun *connect.Client[v1.AnalyticMaintenanceRunRequest, v1.AnalyticMaintenanceRunResponse]
+}
+
+// AnalyticReplayCompute calls
+// warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticReplayCompute.
+func (c *settlementAnalyticMaintenanceServiceClient) AnalyticReplayCompute(ctx context.Context, req *connect.Request[v1.AnalyticReplayComputeRequest]) (*connect.Response[v1.AnalyticReplayComputeResponse], error) {
+	return c.analyticReplayCompute.CallUnary(ctx, req)
+}
+
+// AnalyticMaintenanceRun calls
+// warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticMaintenanceRun.
+func (c *settlementAnalyticMaintenanceServiceClient) AnalyticMaintenanceRun(ctx context.Context, req *connect.Request[v1.AnalyticMaintenanceRunRequest]) (*connect.Response[v1.AnalyticMaintenanceRunResponse], error) {
+	return c.analyticMaintenanceRun.CallUnary(ctx, req)
+}
+
+// SettlementAnalyticMaintenanceServiceHandler is an implementation of the
+// warehouse.settlement.v1.SettlementAnalyticMaintenanceService service.
+type SettlementAnalyticMaintenanceServiceHandler interface {
+	// Rebuild the reports from `start_date` by seeking settlement's own subscription
+	// (#the-replay-seeks-the-broker). Bounded by the subscription's retention
+	// (#the-replay-is-bounded-by-the-subscription-retention).
+	AnalyticReplayCompute(context.Context, *connect.Request[v1.AnalyticReplayComputeRequest]) (*connect.Response[v1.AnalyticReplayComputeResponse], error)
+	// Prune the dedup table (analytic_context.md §Idempotency Layer).
+	AnalyticMaintenanceRun(context.Context, *connect.Request[v1.AnalyticMaintenanceRunRequest]) (*connect.Response[v1.AnalyticMaintenanceRunResponse], error)
+}
+
+// NewSettlementAnalyticMaintenanceServiceHandler builds an HTTP handler from the service
+// implementation. It returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSettlementAnalyticMaintenanceServiceHandler(svc SettlementAnalyticMaintenanceServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settlementAnalyticMaintenanceServiceMethods := v1.File_warehouse_settlement_v1_settlement_proto.Services().ByName("SettlementAnalyticMaintenanceService").Methods()
+	settlementAnalyticMaintenanceServiceAnalyticReplayComputeHandler := connect.NewUnaryHandler(
+		SettlementAnalyticMaintenanceServiceAnalyticReplayComputeProcedure,
+		svc.AnalyticReplayCompute,
+		connect.WithSchema(settlementAnalyticMaintenanceServiceMethods.ByName("AnalyticReplayCompute")),
+		connect.WithHandlerOptions(opts...),
+	)
+	settlementAnalyticMaintenanceServiceAnalyticMaintenanceRunHandler := connect.NewUnaryHandler(
+		SettlementAnalyticMaintenanceServiceAnalyticMaintenanceRunProcedure,
+		svc.AnalyticMaintenanceRun,
+		connect.WithSchema(settlementAnalyticMaintenanceServiceMethods.ByName("AnalyticMaintenanceRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/warehouse.settlement.v1.SettlementAnalyticMaintenanceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SettlementAnalyticMaintenanceServiceAnalyticReplayComputeProcedure:
+			settlementAnalyticMaintenanceServiceAnalyticReplayComputeHandler.ServeHTTP(w, r)
+		case SettlementAnalyticMaintenanceServiceAnalyticMaintenanceRunProcedure:
+			settlementAnalyticMaintenanceServiceAnalyticMaintenanceRunHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSettlementAnalyticMaintenanceServiceHandler returns CodeUnimplemented from all
+// methods.
+type UnimplementedSettlementAnalyticMaintenanceServiceHandler struct{}
+
+func (UnimplementedSettlementAnalyticMaintenanceServiceHandler) AnalyticReplayCompute(context.Context, *connect.Request[v1.AnalyticReplayComputeRequest]) (*connect.Response[v1.AnalyticReplayComputeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticReplayCompute is not implemented"))
+}
+
+func (UnimplementedSettlementAnalyticMaintenanceServiceHandler) AnalyticMaintenanceRun(context.Context, *connect.Request[v1.AnalyticMaintenanceRunRequest]) (*connect.Response[v1.AnalyticMaintenanceRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticMaintenanceRun is not implemented"))
 }

@@ -196,7 +196,11 @@ func (s *Service) placeOrder(
 			// Verbatim, exactly as the person read it off the storefront — never trimmed into a
 			// shape, never parsed.
 			OrderExternalRefID: p.orderExternalRefID,
-			Items:              orderItemModels(p.items),
+			// WHO CREATED IT, from the TOKEN and never from the request
+			// (settlement #the-creator-is-read-from-the-token-at-placement): a client-supplied creator is
+			// a client that can attribute somebody else's sales. 0 when the caller is unidentifiable.
+			CreatedByUserID: eventActor(ctx),
+			Items:           orderItemModels(p.items),
 		}
 
 		// Stamp each line's cost and total it onto the header (#74). Done here rather than in
@@ -325,7 +329,46 @@ func (s *Service) placeOrder(
 		)
 	}
 
+	// THE SETTLEMENT ACCOUNT OPENS (settlement #order-service-calls-settlement) — a CALL, not a
+	// subscription, so the account exists the moment the order does.
+	//
+	// After the commit and NEVER FATAL (#the-order-commits-without-settlement): the buyer has already
+	// paid on the marketplace, and refusing the order would lose the only record of that sale. A missing
+	// account is repaired by hand from the order page (#a-missing-account-is-fixed-by-hand), and the
+	// adapter keys the post on the order id, so a repeat cannot open it twice.
+	//
+	// ⚠ SKIPPED WHEN marketplace_total IS 0, because 0 means NOT RECORDED — an order taken over the phone
+	// has no marketplace sale to settle, and an account opened at 0 is an account nothing can compute
+	// against.
+	s.openSettlement(ctx, &order)
+
 	return &order, nil
+}
+
+// openSettlement asks settlement_service to open this order's account, and logs rather than returns a
+// failure — see the call site for why an order is never failed by its ledger.
+func (s *Service) openSettlement(ctx context.Context, order *selling_service_models.Order) {
+	if order.MarketplaceTotal <= 0 {
+		return
+	}
+
+	err := s.settlement.OpenSale(ctx, SaleOpening{
+		TeamID:           order.TeamID,
+		ShopID:           order.ShopID,
+		OrderID:          order.ID,
+		MarketplaceTotal: order.MarketplaceTotal,
+		CreatedByUserID:  order.CreatedByUserID,
+		PlacedAt:         order.CreatedAt,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "order placed but its settlement account did not open — "+
+			"post its initial_total by hand from the order page",
+			"order_id", order.ID,
+			"team_id", order.TeamID,
+			"marketplace_total", order.MarketplaceTotal,
+			"error", err,
+		)
+	}
 }
 
 // costKnown reports whether EVERY line's cost was actually known (#74/#153).

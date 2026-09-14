@@ -52,7 +52,7 @@ func shopOther(uniqueID string, change int64) settlement_v1.PostInput {
 // — because there is none. An empty OrderSettlement would read as an account whose every figure is 0.
 func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	result, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -99,7 +99,7 @@ func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 // movements only, and the order rows are a different chain entirely.
 func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -133,7 +133,7 @@ func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 // A shop-addressed row is idempotent on the same key, exactly as an order-addressed one is.
 func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	first, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -163,7 +163,7 @@ func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 // there is no account to open, and the row would never reach the detail panel that explains it.
 func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	_, err := postShop(t, svc, settlement_v1.PostInput{
 		UniqueID:       "shop-30-sale",
@@ -184,7 +184,7 @@ func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 // where it would move that order's balance for something the marketplace never did.
 func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	_, err := post(t, svc, settlement_v1.PostInput{
 		UniqueID:       "repair-aug",
@@ -205,7 +205,7 @@ func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 // is: the scope proves the caller's team, never the account's.
 func TestSettlementPost_RefusesAnotherTeamsShopAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 
 	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {

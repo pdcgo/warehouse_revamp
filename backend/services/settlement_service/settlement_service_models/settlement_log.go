@@ -43,7 +43,11 @@ type SettlementLog struct {
 
 	// The day the money belongs to, and the day we learned it. Apart on a late fee.
 	OccurredOn time.Time `gorm:"type:date"`
-	PostedOn   time.Time `gorm:"type:date"`
+
+	// ⚠ LEFT TO THE COLUMN DEFAULT (`CURRENT_DATE`) and read back by the insert, never stamped from Go.
+	// The day this row buckets into is the database session's date, and the event announcing the row
+	// carries the same value — a Go-side date would be the host's calendar, a second clock for one fact.
+	PostedOn time.Time `gorm:"type:date;default:CURRENT_DATE"`
 
 	// Points backwards at the row this one undoes, or nil. Nothing ever points forwards.
 	ReversesID *uint64

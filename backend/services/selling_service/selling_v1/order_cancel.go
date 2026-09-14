@@ -118,5 +118,27 @@ func (s *Service) OrderCancel(
 		)
 	}
 
+	// THE SALE IS UNDONE ON THE SETTLEMENT ACCOUNT (settlement #a-cancel-is-an-opposite-row), after the
+	// commit and never fatal, for the same reasons the opening call is.
+	//
+	// `CancelledAt` is the instant setOrderStatus WROTE onto the row — the act's own date, not the clock
+	// at this call — because the cancel's key is derived from it (#the-cancel-key-is-order-plus-act-date).
+	// A retry that crosses midnight must produce the same key, or it credits the account twice.
+	cancelErr := s.settlement.CancelSale(ctx, SaleCancel{
+		TeamID:      order.TeamID,
+		ShopID:      order.ShopID,
+		OrderID:     order.ID,
+		ActorID:     eventActor(ctx),
+		CancelledAt: order.UpdatedAt,
+	})
+	if cancelErr != nil {
+		slog.ErrorContext(ctx, "order cancelled but its settlement sale was not cancelled — "+
+			"the account still carries a live sale and must be corrected by hand",
+			"order_id", order.ID,
+			"team_id", order.TeamID,
+			"error", cancelErr,
+		)
+	}
+
 	return connect.NewResponse(&sellingv1.OrderCancelResponse{Order: orderToProto(&order)}), nil
 }

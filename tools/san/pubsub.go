@@ -197,6 +197,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "order-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.OrderCancelled"`,
 		},
+		// settlement_service's fold — mirrors settlement_service.FoldSubscription. Its replay SEEKS this
+		// subscription, reaching back as far as the topic's 31-day retention.
+		{
+			ID:     "settlement-fold",
+			Topic:  "settlement-log-posted",
+			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
+		},
 	}
 }
 

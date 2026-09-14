@@ -129,7 +129,7 @@ func TestOrderCreate_CreditBlockTakesNoStock(t *testing.T) {
 	credit := &fakeCredit{
 		block: &selling_v1.CreditBlock{CreditorTeamID: 900, Debt: 1, Limit: 0},
 	}
-	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, credit)
+	svc := selling_v1.NewService(db, picker, nil, &fakeCatalog{}, credit, nil)
 	shop := insertShop(t, db, 2, "Toko A", "TOKO-A", "shopee")
 
 	_, err := svc.OrderCreate(context.Background(), connect.NewRequest(orderReq(shop)))

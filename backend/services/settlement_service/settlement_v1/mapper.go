@@ -12,14 +12,14 @@ import (
 // one of these strings rewrites history, because rows already carry the old spelling.
 
 const (
-	typeInitialTotal         = "initial_total"
-	typeInitialTotalCancel   = "initial_total_cancel"
-	typeFund                 = "fund"
-	typeExternalAdsFee       = "external_ads_fee"
-	typeAffiliateFee         = "affiliate_fee"
-	typeMarketplaceAdjust    = "marketplace_adjustment"
-	typeOther                = "other"
-	typeSystemAdjustment     = "system_adjustment"
+	typeInitialTotal       = "initial_total"
+	typeInitialTotalCancel = "initial_total_cancel"
+	typeFund               = "fund"
+	typeExternalAdsFee     = "external_ads_fee"
+	typeAffiliateFee       = "affiliate_fee"
+	typeMarketplaceAdjust  = "marketplace_adjustment"
+	typeOther              = "other"
+	typeSystemAdjustment   = "system_adjustment"
 
 	sourceExporter = "exporter"
 	sourceManual   = "manual"
@@ -95,10 +95,11 @@ func settlementToProto(
 	state *settlement_service_models.OrderSettlement,
 ) *settlementv1.OrderSettlement {
 	return &settlementv1.OrderSettlement{
-		OrderId:      state.OrderID,
-		InitialTotal: state.InitialTotal,
-		LastBalance:  state.LastBalance,
-		TeamId:       state.TeamID,
-		ShopId:       state.ShopID,
+		OrderId:         state.OrderID,
+		InitialTotal:    state.InitialTotal,
+		LastBalance:     state.LastBalance,
+		TeamId:          state.TeamID,
+		ShopId:          state.ShopID,
+		CreatedByUserId: state.CreatedByUserID,
 	}
 }

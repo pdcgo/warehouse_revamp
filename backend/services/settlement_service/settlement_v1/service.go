@@ -23,22 +23,43 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1/settlementv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 )
 
 type Service struct {
 	db *gorm.DB
+
+	// Where a committed log row is announced (`SettlementLogPosted`). Settlement does not know who
+	// listens — its own fold does, and the Financial Ledger will.
+	events event_source.EventSender
+
+	// What AnalyticReplayCompute seeks and reads the retention of.
+	broker ReplayBroker
 }
 
-// compile-time proof Service serves both proto services. One implementation behind two, exactly as
-// liability_v1 and selling_v1 do — the split is about WHEN each can be mounted, not about taste.
+// compile-time proof Service serves every proto service. One implementation behind four, exactly as
+// liability_v1 and selling_v1 do — the split is about WHEN each can be mounted and who may call it.
 var (
-	_ settlementv1connect.SettlementServiceHandler      = (*Service)(nil)
-	_ settlementv1connect.SettlementWriteServiceHandler = (*Service)(nil)
+	_ settlementv1connect.SettlementServiceHandler                    = (*Service)(nil)
+	_ settlementv1connect.SettlementWriteServiceHandler               = (*Service)(nil)
+	_ settlementv1connect.SettlementAnalyticServiceHandler            = (*Service)(nil)
+	_ settlementv1connect.SettlementAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroker) *Service {
+	// A nil sender would panic on the first post. EmptySender still VALIDATES the event, so a malformed
+	// one is caught with no broker in sight — the right default for tests and a local run.
+	if events == nil {
+		events = event_source.EmptySender
+	}
+
+	// With no broker every replay is REFUSED, never faked.
+	if broker == nil {
+		broker = noReplayBroker{}
+	}
+
+	return &Service{db: db, events: events, broker: broker}
 }
 
 const dateLayout = "2006-01-02"
@@ -104,6 +125,22 @@ var (
 	errAdjustmentIsShopWide = connect.NewError(
 		connect.CodeInvalidArgument,
 		errors.New("system_adjustment is shop-addressed and must not name an order"),
+	)
+
+	// ⚠ A SECOND LIVE SALE ADDS RATHER THAN REPLACES (#initial-total-is-postable-by-cs-and-owners). The
+	// form hides the option once a sale is live, but that is a convenience — manual posting is the REPAIR
+	// path (#a-missing-account-is-fixed-by-hand), so the account itself must refuse. Reverse the live
+	// sale first, then post the corrected one.
+	errSaleAlreadyOpen = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("this order already has a live initial_total — reverse it before posting another"),
+	)
+
+	// A cancel undoes the LIVE sale and can never undo more than it, or the live sale goes negative and
+	// every screen reads the order as having sold for less than nothing.
+	errCancelExceedsSale = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("initial_total_cancel exceeds this order's live sale"),
 	)
 
 	errUnknownType   = errors.New("unknown settlement_type")

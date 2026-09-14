@@ -88,6 +88,11 @@ type Order struct {
 	// a column of its own.
 	Note string
 
+	// WHO CREATED THE ORDER (00013) — read from the authenticated caller at placement, never from the
+	// request, and never updated. settlement_service stamps it onto the order's account. 0 = not
+	// recorded.
+	CreatedByUserID uint64
+
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 

@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/settlement/v1/settlement.proto.
  */
 export const file_warehouse_settlement_v1_settlement: GenFile = /*@__PURE__*/
-  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSLyAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSOAoLc291cmNlX3R5cGUYByABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEg4KBmNoYW5nZRgJIAEoAxIPCgdiYWxhbmNlGAogASgDEhMKC29jY3VycmVkX29uGAsgASgJEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtyZXZlcnNlc19pZBgNIAEoBBIMCgRub3RlGA4gASgJEhIKCmFjdG9yX25hbWUYDyABKAkicgoPT3JkZXJTZXR0bGVtZW50EhAKCG9yZGVyX2lkGAEgASgEEhUKDWluaXRpYWxfdG90YWwYAiABKAMSFAoMbGFzdF9iYWxhbmNlGAMgASgDEg8KB3RlYW1faWQYBCABKAQSDwoHc2hvcF9pZBgFIAEoBCKYAwoVU2V0dGxlbWVudFBvc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhAKCG9yZGVyX2lkGAIgASgEEhgKB3Nob3BfaWQYCiABKARCB7pIBDICIAASHQoJdW5pcXVlX2lkGAMgASgJQgq6SAdyBRABGIABEkwKD3NldHRsZW1lbnRfdHlwZRgEIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlQgq6SAeCAQQQASAAEkQKC3NvdXJjZV90eXBlGAUgASgOMiMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU291cmNlVHlwZUIKukgHggEEEAEgABIOCgZjaGFuZ2UYBiABKAMSOAoLb2NjdXJyZWRfb24YByABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEhMKC3JldmVyc2VzX2lkGAggASgEEhYKBG5vdGUYCSABKAlCCLpIBXIDGPQDOguStRgHCgUBAgMEBSKgAQoWU2V0dGxlbWVudFBvc3RSZXNwb25zZRI3CgVlbnRyeRgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeRI8CgpzZXR0bGVtZW50GAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50Eg8KB2NyZWF0ZWQYAyABKAgiUQoZT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlchIPCgdzaG9wX2lkGAEgASgEEgwKBGZyb20YAiABKAkSCgoCdG8YAyABKAkSCQoBcRgEIAEoCSKTAQodT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlclNvcnQSOgoEc29ydBgBIAEoDjIsLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudFNvcnQSNgoJc29ydF90eXBlGAIgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZSLiAgoaT3JkZXJTZXR0bGVtZW50TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESSgoGZmlsdGVyGAIgASgLMjIud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlckIGukgDyAEBEkoKDGRhdGFfcmVxdWVzdBgDIAMoDjI0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3REYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQESRAoEc29ydBgFIAEoCzI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RGaWx0ZXJTb3J0OguStRgHCgUBAgMEBSLCAQoWT3JkZXJTZXR0bGVtZW50TWFwSXRlbRJOCghtYXBfZGF0YRgBIAMoCzI8LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW0uTWFwRGF0YUVudHJ5GlgKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnQ6AjgBIqUBCh9PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRQoKc2V0dGxlbWVudBgCIAEoCzIvLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW1IAEIDCgFkIt4BChtPcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2USRwoFaXRlbXMYASADKAsyOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEhsKE3RvdGFsX2luaXRpYWxfdG90YWwYBCABKAMSGgoSdG90YWxfbGFzdF9iYWxhbmNlGAUgASgDImQKHE9yZGVyU2V0dGxlbWVudERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIpgBCh1PcmRlclNldHRsZW1lbnREZXRhaWxSZXNwb25zZRI8CgpzZXR0bGVtZW50GAEgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50EjkKB2VudHJpZXMYAiADKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnkqzwIKDlNldHRsZW1lbnRUeXBlEh8KG1NFVFRMRU1FTlRfVFlQRV9VTlNQRUNJRklFRBAAEiEKHVNFVFRMRU1FTlRfVFlQRV9JTklUSUFMX1RPVEFMEAESGAoUU0VUVExFTUVOVF9UWVBFX0ZVTkQQAhIkCiBTRVRUTEVNRU5UX1RZUEVfRVhURVJOQUxfQURTX0ZFRRADEiEKHVNFVFRMRU1FTlRfVFlQRV9BRkZJTElBVEVfRkVFEAQSKgomU0VUVExFTUVOVF9UWVBFX01BUktFVFBMQUNFX0FESlVTVE1FTlQQBRIZChVTRVRUTEVNRU5UX1RZUEVfT1RIRVIQBhIoCiRTRVRUTEVNRU5UX1RZUEVfSU5JVElBTF9UT1RBTF9DQU5DRUwQBxIlCiFTRVRUTEVNRU5UX1RZUEVfU1lTVEVNX0FESlVTVE1FTlQQCCpyCgpTb3VyY2VUeXBlEhsKF1NPVVJDRV9UWVBFX1VOU1BFQ0lGSUVEEAASGAoUU09VUkNFX1RZUEVfRVhQT1JURVIQARIWChJTT1VSQ0VfVFlQRV9NQU5VQUwQAhIVChFTT1VSQ0VfVFlQRV9PUkRFUhADKqkBChNPcmRlclNldHRsZW1lbnRTb3J0EiUKIU9SREVSX1NFVFRMRU1FTlRfU09SVF9VTlNQRUNJRklFRBAAEh4KGk9SREVSX1NFVFRMRU1FTlRfU09SVF9MT1NTEAESIgoeT1JERVJfU0VUVExFTUVOVF9TT1JUX09SREVSX0lEEAISJwojT1JERVJfU0VUVExFTUVOVF9TT1JUX0lOSVRJQUxfVE9UQUwQAyqrAQobT3JkZXJTZXR0bGVtZW50TGlzdERhdGFUeXBlEi8KK09SREVSX1NFVFRMRU1FTlRfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIrCidPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIuCipPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX1NFVFRMRU1FTlQQAjKfAgoRU2V0dGxlbWVudFNlcnZpY2USgAEKE09yZGVyU2V0dGxlbWVudExpc3QSMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVxdWVzdBo0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RSZXNwb25zZRKGAQoVT3JkZXJTZXR0bGVtZW50RGV0YWlsEjUud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50RGV0YWlsUmVxdWVzdBo2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudERldGFpbFJlc3BvbnNlMosBChZTZXR0bGVtZW50V3JpdGVTZXJ2aWNlEnEKDlNldHRsZW1lbnRQb3N0Ei4ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXF1ZXN0Gi8ud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFBvc3RSZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cih3YXJlaG91c2Uvc2V0dGxlbWVudC92MS9zZXR0bGVtZW50LnByb3RvEhd3YXJlaG91c2Uuc2V0dGxlbWVudC52MSLyAgoPU2V0dGxlbWVudEVudHJ5EgoKAmlkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSOAoLc291cmNlX3R5cGUYByABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEg4KBmNoYW5nZRgJIAEoAxIPCgdiYWxhbmNlGAogASgDEhMKC29jY3VycmVkX29uGAsgASgJEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtyZXZlcnNlc19pZBgNIAEoBBIMCgRub3RlGA4gASgJEhIKCmFjdG9yX25hbWUYDyABKAkijgEKD09yZGVyU2V0dGxlbWVudBIQCghvcmRlcl9pZBgBIAEoBBIVCg1pbml0aWFsX3RvdGFsGAIgASgDEhQKDGxhc3RfYmFsYW5jZRgDIAEoAxIPCgd0ZWFtX2lkGAQgASgEEg8KB3Nob3BfaWQYBSABKAQSGgoSY3JlYXRlZF9ieV91c2VyX2lkGAYgASgEIrQDChVTZXR0bGVtZW50UG9zdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESEAoIb3JkZXJfaWQYAiABKAQSGAoHc2hvcF9pZBgKIAEoBEIHukgEMgIgABIdCgl1bmlxdWVfaWQYAyABKAlCCrpIB3IFEAEYgAESTAoPc2V0dGxlbWVudF90eXBlGAQgASgOMicud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFR5cGVCCrpIB4IBBBABIAASRAoLc291cmNlX3R5cGUYBSABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlQgq6SAeCAQQQASAAEg4KBmNoYW5nZRgGIAEoAxI4CgtvY2N1cnJlZF9vbhgHIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSEwoLcmV2ZXJzZXNfaWQYCCABKAQSFgoEbm90ZRgJIAEoCUIIukgFcgMY9AMSGgoSY3JlYXRlZF9ieV91c2VyX2lkGAsgASgEOguStRgHCgUBAgMEBSKgAQoWU2V0dGxlbWVudFBvc3RSZXNwb25zZRI3CgVlbnRyeRgBIAEoCzIoLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRFbnRyeRI8CgpzZXR0bGVtZW50GAIgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50Eg8KB2NyZWF0ZWQYAyABKAgiUQoZT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlchIPCgdzaG9wX2lkGAEgASgEEgwKBGZyb20YAiABKAkSCgoCdG8YAyABKAkSCQoBcRgEIAEoCSKTAQodT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlclNvcnQSOgoEc29ydBgBIAEoDjIsLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudFNvcnQSNgoJc29ydF90eXBlGAIgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZSLiAgoaT3JkZXJTZXR0bGVtZW50TGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESSgoGZmlsdGVyGAIgASgLMjIud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdEZpbHRlckIGukgDyAEBEkoKDGRhdGFfcmVxdWVzdBgDIAMoDjI0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3REYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQESRAoEc29ydBgFIAEoCzI2LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudExpc3RGaWx0ZXJTb3J0OguStRgHCgUBAgMEBSLCAQoWT3JkZXJTZXR0bGVtZW50TWFwSXRlbRJOCghtYXBfZGF0YRgBIAMoCzI8LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW0uTWFwRGF0YUVudHJ5GlgKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnQ6AjgBIqUBCh9PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASRQoKc2V0dGxlbWVudBgCIAEoCzIvLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudE1hcEl0ZW1IAEIDCgFkIt4BChtPcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2USRwoFaXRlbXMYASADKAsyOC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEhsKE3RvdGFsX2luaXRpYWxfdG90YWwYBCABKAMSGgoSdG90YWxfbGFzdF9iYWxhbmNlGAUgASgDImQKHE9yZGVyU2V0dGxlbWVudERldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGQoIb3JkZXJfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECAwQFIpgBCh1PcmRlclNldHRsZW1lbnREZXRhaWxSZXNwb25zZRI8CgpzZXR0bGVtZW50GAEgASgLMigud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50EjkKB2VudHJpZXMYAiADKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50RW50cnkijQIKEFNldHRsZW1lbnRNZXRyaWMSFQoNaW5pdGlhbF90b3RhbBgBIAEoAxIcChRpbml0aWFsX3RvdGFsX2NhbmNlbBgCIAEoAxINCgVvdGhlchgDIAEoAxIMCgRmdW5kGAQgASgDEhgKEGV4dGVybmFsX2Fkc19mZWUYBSABKAMSFQoNYWZmaWxpYXRlX2ZlZRgGIAEoAxIeChZtYXJrZXRwbGFjZV9hZGp1c3RtZW50GAcgASgDEhkKEXN5c3RlbV9hZGp1c3RtZW50GAggASgDEg4KBmNoYW5nZRgJIAEoAxIUCgxvcGVuX2JhbGFuY2UYCiABKAMSFQoNY2xvc2VfYmFsYW5jZRgLIAEoAyKDAQoRQW5hbHl0aWNEYXRlUmFuZ2USNwoKc3RhcnRfZGF0ZRgBIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSNQoIZW5kX2RhdGUYAiABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kIoQBChhBbmFseXRpY1RpbWVTZWFyY2hGaWx0ZXISRgoKZGF0ZV9yYW5nZRgBIAEoCzIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljRGF0ZVJhbmdlQga6SAPIAQESDwoHdXNlcl9pZBgCIAEoBBIPCgdzaG9wX2lkGAMgASgEItECChlBbmFseXRpY1RpbWVTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkkKCXRpbWVmcmFtZRgCIAEoDjIqLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljVGltZWZyYW1lQgq6SAeCAQQQASAAEkkKBmZpbHRlchgDIAEoCzIxLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljVGltZVNlYXJjaEZpbHRlckIGukgDyAEBEjYKCXNvcnRfdHlwZRgEIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgMEBSJYCg9UaW1lZnJhbWVNZXRyaWMSCgoCYXQYASABKAkSOQoGbWV0cmljGAIgASgLMikud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudE1ldHJpYyKHAQoaQW5hbHl0aWNUaW1lU2VhcmNoUmVzcG9uc2USNwoFZGF0YXMYASADKAsyKC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5UaW1lZnJhbWVNZXRyaWMSMAoJcGFnZV9pbmZvGAIgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyKpAQoTQW5hbHl0aWNHcm91cEZpbHRlchJGCgpkYXRlX3JhbmdlGAEgASgLMioud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNEYXRlUmFuZ2VCBrpIA8gBARJKCgpncm91cF90eXBlGAIgASgOMioud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNHcm91cFR5cGVCCrpIB4IBBBABIAAixwIKGkFuYWx5dGljR3JvdXBTZWFyY2hSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkQKBmZpbHRlchgCIAEoCzIsLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljR3JvdXBGaWx0ZXJCBrpIA8gBARJDCgRzb3J0GAMgASgOMisud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNNZXRyaWNTb3J0Qgi6SAWCAQIQARI2Cglzb3J0X3R5cGUYBCABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIDBAUiXAobQW5hbHl0aWNHcm91cFNlYXJjaFJlc3BvbnNlEgsKA2lkcxgBIAMoBBIwCglwYWdlX2luZm8YAiABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIqcBChpBbmFseXRpY0dyb3VwTWV0cmljUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJECgZmaWx0ZXIYAiABKAsyLC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY0dyb3VwRmlsdGVyQga6SAPIAQESGAoDaWRzGAMgAygEQgu6SAiSAQUIARDIAToLkrUYBwoFAQIDBAUizAEKG0FuYWx5dGljR3JvdXBNZXRyaWNSZXNwb25zZRJSCgdtZXRyaWNzGAEgAygLMkEud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNHcm91cE1ldHJpY1Jlc3BvbnNlLk1ldHJpY3NFbnRyeRpZCgxNZXRyaWNzRW50cnkSCwoDa2V5GAEgASgEEjgKBXZhbHVlGAIgASgLMikud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudE1ldHJpYzoCOAEiYQocQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVxdWVzdBI3CgpzdGFydF9kYXRlGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JDoIkrUYBAoCAQIingEKHUFuYWx5dGljUmVwbGF5Q29tcHV0ZVJlc3BvbnNlEg4KBnN0YXR1cxgBIAEoCRIZChFkZWxldGVkX3Nob3BfZGF5cxgCIAEoAxIZChFkZWxldGVkX3VzZXJfZGF5cxgDIAEoAxIaChJkZWxldGVkX2V2ZW50X2xvZ3MYBCABKAMSGwoTZWFybGllc3Rfc3RhcnRfZGF0ZRgFIAEoCSIpCh1BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdDoIkrUYBAoCAQIiTAoeQW5hbHl0aWNNYWludGVuYW5jZVJ1blJlc3BvbnNlEhoKEmRlbGV0ZWRfZXZlbnRfbG9ncxgBIAEoAxIOCgZjdXRvZmYYAiABKAkqzwIKDlNldHRsZW1lbnRUeXBlEh8KG1NFVFRMRU1FTlRfVFlQRV9VTlNQRUNJRklFRBAAEiEKHVNFVFRMRU1FTlRfVFlQRV9JTklUSUFMX1RPVEFMEAESGAoUU0VUVExFTUVOVF9UWVBFX0ZVTkQQAhIkCiBTRVRUTEVNRU5UX1RZUEVfRVhURVJOQUxfQURTX0ZFRRADEiEKHVNFVFRMRU1FTlRfVFlQRV9BRkZJTElBVEVfRkVFEAQSKgomU0VUVExFTUVOVF9UWVBFX01BUktFVFBMQUNFX0FESlVTVE1FTlQQBRIZChVTRVRUTEVNRU5UX1RZUEVfT1RIRVIQBhIoCiRTRVRUTEVNRU5UX1RZUEVfSU5JVElBTF9UT1RBTF9DQU5DRUwQBxIlCiFTRVRUTEVNRU5UX1RZUEVfU1lTVEVNX0FESlVTVE1FTlQQCCpyCgpTb3VyY2VUeXBlEhsKF1NPVVJDRV9UWVBFX1VOU1BFQ0lGSUVEEAASGAoUU09VUkNFX1RZUEVfRVhQT1JURVIQARIWChJTT1VSQ0VfVFlQRV9NQU5VQUwQAhIVChFTT1VSQ0VfVFlQRV9PUkRFUhADKqkBChNPcmRlclNldHRsZW1lbnRTb3J0EiUKIU9SREVSX1NFVFRMRU1FTlRfU09SVF9VTlNQRUNJRklFRBAAEh4KGk9SREVSX1NFVFRMRU1FTlRfU09SVF9MT1NTEAESIgoeT1JERVJfU0VUVExFTUVOVF9TT1JUX09SREVSX0lEEAISJwojT1JERVJfU0VUVExFTUVOVF9TT1JUX0lOSVRJQUxfVE9UQUwQAyqrAQobT3JkZXJTZXR0bGVtZW50TGlzdERhdGFUeXBlEi8KK09SREVSX1NFVFRMRU1FTlRfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIrCidPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIuCipPUkRFUl9TRVRUTEVNRU5UX0xJU1RfREFUQV9UWVBFX1NFVFRMRU1FTlQQAiqUAQoRQW5hbHl0aWNUaW1lZnJhbWUSIgoeQU5BTFlUSUNfVElNRUZSQU1FX1VOU1BFQ0lGSUVEEAASHAoYQU5BTFlUSUNfVElNRUZSQU1FX0RBSUxZEAESHgoaQU5BTFlUSUNfVElNRUZSQU1FX01PTlRITFkQAhIdChlBTkFMWVRJQ19USU1FRlJBTUVfWUVBUkxZEAMqkgEKEUFuYWx5dGljR3JvdXBUeXBlEiMKH0FOQUxZVElDX0dST1VQX1RZUEVfVU5TUEVDSUZJRUQQABIcChhBTkFMWVRJQ19HUk9VUF9UWVBFX1RFQU0QARIcChhBTkFMWVRJQ19HUk9VUF9UWVBFX1NIT1AQAhIcChhBTkFMWVRJQ19HUk9VUF9UWVBFX1VTRVIQAyrwAwoSQW5hbHl0aWNNZXRyaWNTb3J0EiQKIEFOQUxZVElDX01FVFJJQ19TT1JUX1VOU1BFQ0lGSUVEEAASJgoiQU5BTFlUSUNfTUVUUklDX1NPUlRfSU5JVElBTF9UT1RBTBABEi0KKUFOQUxZVElDX01FVFJJQ19TT1JUX0lOSVRJQUxfVE9UQUxfQ0FOQ0VMEAISHgoaQU5BTFlUSUNfTUVUUklDX1NPUlRfT1RIRVIQAxIdChlBTkFMWVRJQ19NRVRSSUNfU09SVF9GVU5EEAQSKQolQU5BTFlUSUNfTUVUUklDX1NPUlRfRVhURVJOQUxfQURTX0ZFRRAFEiYKIkFOQUxZVElDX01FVFJJQ19TT1JUX0FGRklMSUFURV9GRUUQBhIvCitBTkFMWVRJQ19NRVRSSUNfU09SVF9NQVJLRVRQTEFDRV9BREpVU1RNRU5UEAcSKgomQU5BTFlUSUNfTUVUUklDX1NPUlRfU1lTVEVNX0FESlVTVE1FTlQQCBIfChtBTkFMWVRJQ19NRVRSSUNfU09SVF9DSEFOR0UQCRIlCiFBTkFMWVRJQ19NRVRSSUNfU09SVF9PUEVOX0JBTEFOQ0UQChImCiJBTkFMWVRJQ19NRVRSSUNfU09SVF9DTE9TRV9CQUxBTkNFEAsynwIKEVNldHRsZW1lbnRTZXJ2aWNlEoABChNPcmRlclNldHRsZW1lbnRMaXN0EjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuT3JkZXJTZXR0bGVtZW50TGlzdFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnRMaXN0UmVzcG9uc2UShgEKFU9yZGVyU2V0dGxlbWVudERldGFpbBI1LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLk9yZGVyU2V0dGxlbWVudERldGFpbFJlcXVlc3QaNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5PcmRlclNldHRsZW1lbnREZXRhaWxSZXNwb25zZTKLAQoWU2V0dGxlbWVudFdyaXRlU2VydmljZRJxCg5TZXR0bGVtZW50UG9zdBIuLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3N0UmVxdWVzdBovLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRQb3N0UmVzcG9uc2UyoAMKGVNldHRsZW1lbnRBbmFseXRpY1NlcnZpY2USfQoSQW5hbHl0aWNUaW1lU2VhcmNoEjIud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNUaW1lU2VhcmNoUmVxdWVzdBozLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljVGltZVNlYXJjaFJlc3BvbnNlEoABChNBbmFseXRpY0dyb3VwU2VhcmNoEjMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNHcm91cFNlYXJjaFJlcXVlc3QaNC53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY0dyb3VwU2VhcmNoUmVzcG9uc2USgAEKE0FuYWx5dGljR3JvdXBNZXRyaWMSMy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY0dyb3VwTWV0cmljUmVxdWVzdBo0LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljR3JvdXBNZXRyaWNSZXNwb25zZTK7AgokU2V0dGxlbWVudEFuYWx5dGljTWFpbnRlbmFuY2VTZXJ2aWNlEoYBChVBbmFseXRpY1JlcGxheUNvbXB1dGUSNS53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY1JlcGxheUNvbXB1dGVSZXF1ZXN0GjYud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuQW5hbHl0aWNSZXBsYXlDb21wdXRlUmVzcG9uc2USiQEKFkFuYWx5dGljTWFpbnRlbmFuY2VSdW4SNi53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5BbmFseXRpY01haW50ZW5hbmNlUnVuUmVxdWVzdBo3LndhcmVob3VzZS5zZXR0bGVtZW50LnYxLkFuYWx5dGljTWFpbnRlbmFuY2VSdW5SZXNwb25zZUJUWlJnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3NldHRsZW1lbnQvdjE7c2V0dGxlbWVudHYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One row of the log. IMMUTABLE.
@@ -167,6 +167,14 @@ export type OrderSettlement = Message<"warehouse.settlement.v1.OrderSettlement">
    * @generated from field: uint64 shop_id = 5;
    */
   shopId: bigint;
+
+  /**
+   * Who created the order, frozen when the account opened (#the-creator-is-stamped-on-the-state-row).
+   * 0 = not recorded — an account opened by anything other than the order's own opening post.
+   *
+   * @generated from field: uint64 created_by_user_id = 6;
+   */
+  createdByUserId: bigint;
 };
 
 /**
@@ -258,6 +266,18 @@ export type SettlementPostRequest = Message<"warehouse.settlement.v1.SettlementP
    * @generated from field: string note = 9;
    */
   note: string;
+
+  /**
+   * WHO CREATED THE ORDER, stamped onto `order_settlements.created_by_user_id` by the post that OPENS
+   * the account and never changed afterwards (#the-creator-is-stamped-on-the-state-row). It is what the
+   * per-user report attributes an order's movements to.
+   *
+   * ⚠ READ ONLY WHEN THIS POST OPENS THE ACCOUNT. Every later post ignores it, so a caller cannot
+   * re-attribute an order's sales by naming someone else on a fee. 0 = not recorded.
+   *
+   * @generated from field: uint64 created_by_user_id = 11;
+   */
+  createdByUserId: bigint;
 };
 
 /**
@@ -543,6 +563,469 @@ export const OrderSettlementDetailResponseSchema: GenMessage<OrderSettlementDeta
   messageDesc(file_warehouse_settlement_v1_settlement, 11);
 
 /**
+ * SettlementMetric is analytic_context.md §Field that tracked — ONE list, read by every report RPC, so a
+ * tracked field is added in one place.
+ *
+ * ⚠ SIGN CONVENTION IS THE LOG's: positive is money toward us, so `initial_total` is NEGATIVE and
+ * `initial_total_cancel` positive. The screen derives `sales = −(initial_total + initial_total_cancel)`.
+ *
+ * ⚠ `open_balance` / `close_balance` are the CUMULATIVE SHORTFALL at the window's edges
+ * (#the-position-is-the-shortfall-not-the-wallet) — never a wallet, never a receivable. Label them
+ * "hidden cost", not "outstanding" (#hidden-cost-is-left-in-the-balance).
+ *
+ * @generated from message warehouse.settlement.v1.SettlementMetric
+ */
+export type SettlementMetric = Message<"warehouse.settlement.v1.SettlementMetric"> & {
+  /**
+   * @generated from field: int64 initial_total = 1;
+   */
+  initialTotal: bigint;
+
+  /**
+   * @generated from field: int64 initial_total_cancel = 2;
+   */
+  initialTotalCancel: bigint;
+
+  /**
+   * @generated from field: int64 other = 3;
+   */
+  other: bigint;
+
+  /**
+   * @generated from field: int64 fund = 4;
+   */
+  fund: bigint;
+
+  /**
+   * @generated from field: int64 external_ads_fee = 5;
+   */
+  externalAdsFee: bigint;
+
+  /**
+   * @generated from field: int64 affiliate_fee = 6;
+   */
+  affiliateFee: bigint;
+
+  /**
+   * @generated from field: int64 marketplace_adjustment = 7;
+   */
+  marketplaceAdjustment: bigint;
+
+  /**
+   * @generated from field: int64 system_adjustment = 8;
+   */
+  systemAdjustment: bigint;
+
+  /**
+   * The window's net movement — the sum of the eight above. `close_balance − open_balance` equals it.
+   *
+   * @generated from field: int64 change = 9;
+   */
+  change: bigint;
+
+  /**
+   * The position at the START of the window, and at its END. Both carried across days with no movement.
+   *
+   * @generated from field: int64 open_balance = 10;
+   */
+  openBalance: bigint;
+
+  /**
+   * @generated from field: int64 close_balance = 11;
+   */
+  closeBalance: bigint;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.SettlementMetric.
+ * Use `create(SettlementMetricSchema)` to create a new message.
+ */
+export const SettlementMetricSchema: GenMessage<SettlementMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 12);
+
+/**
+ * A window over `posted_on` (#posted-on-buckets-the-report), inclusive at both ends, as YYYY-MM-DD.
+ *
+ * @generated from message warehouse.settlement.v1.AnalyticDateRange
+ */
+export type AnalyticDateRange = Message<"warehouse.settlement.v1.AnalyticDateRange"> & {
+  /**
+   * @generated from field: string start_date = 1;
+   */
+  startDate: string;
+
+  /**
+   * @generated from field: string end_date = 2;
+   */
+  endDate: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticDateRange.
+ * Use `create(AnalyticDateRangeSchema)` to create a new message.
+ */
+export const AnalyticDateRangeSchema: GenMessage<AnalyticDateRange> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 13);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticTimeSearchFilter
+ */
+export type AnalyticTimeSearchFilter = Message<"warehouse.settlement.v1.AnalyticTimeSearchFilter"> & {
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticDateRange date_range = 1;
+   */
+  dateRange?: AnalyticDateRange | undefined;
+
+  /**
+   * One user, or 0. A user reads the USER grain — who created the order, or who posted a shop row
+   * (#a-shop-addressed-row-is-attributed-to-its-actor) — and cannot be combined with a shop, because the
+   * user table has no shop dimension.
+   *
+   * @generated from field: uint64 user_id = 2;
+   */
+  userId: bigint;
+
+  /**
+   * One shop, or 0 for every shop in the team.
+   *
+   * @generated from field: uint64 shop_id = 3;
+   */
+  shopId: bigint;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticTimeSearchFilter.
+ * Use `create(AnalyticTimeSearchFilterSchema)` to create a new message.
+ */
+export const AnalyticTimeSearchFilterSchema: GenMessage<AnalyticTimeSearchFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 14);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticTimeSearchRequest
+ */
+export type AnalyticTimeSearchRequest = Message<"warehouse.settlement.v1.AnalyticTimeSearchRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticTimeframe timeframe = 2;
+   */
+  timeframe: AnalyticTimeframe;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticTimeSearchFilter filter = 3;
+   */
+  filter?: AnalyticTimeSearchFilter | undefined;
+
+  /**
+   * Over the bucket's date. Unspecified reads ASCENDING, oldest first.
+   *
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 4;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * Pages over BUCKETS, not rows — every bucket in the window is a point, including one with no movement,
+   * which carries the position forward.
+   *
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticTimeSearchRequest.
+ * Use `create(AnalyticTimeSearchRequestSchema)` to create a new message.
+ */
+export const AnalyticTimeSearchRequestSchema: GenMessage<AnalyticTimeSearchRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 15);
+
+/**
+ * @generated from message warehouse.settlement.v1.TimeframeMetric
+ */
+export type TimeframeMetric = Message<"warehouse.settlement.v1.TimeframeMetric"> & {
+  /**
+   * The bucket's first day, YYYY-MM-DD — the 1st of a month, 1 January of a year.
+   *
+   * @generated from field: string at = 1;
+   */
+  at: string;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.SettlementMetric metric = 2;
+   */
+  metric?: SettlementMetric | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.TimeframeMetric.
+ * Use `create(TimeframeMetricSchema)` to create a new message.
+ */
+export const TimeframeMetricSchema: GenMessage<TimeframeMetric> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 16);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticTimeSearchResponse
+ */
+export type AnalyticTimeSearchResponse = Message<"warehouse.settlement.v1.AnalyticTimeSearchResponse"> & {
+  /**
+   * @generated from field: repeated warehouse.settlement.v1.TimeframeMetric datas = 1;
+   */
+  datas: TimeframeMetric[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticTimeSearchResponse.
+ * Use `create(AnalyticTimeSearchResponseSchema)` to create a new message.
+ */
+export const AnalyticTimeSearchResponseSchema: GenMessage<AnalyticTimeSearchResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 17);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticGroupFilter
+ */
+export type AnalyticGroupFilter = Message<"warehouse.settlement.v1.AnalyticGroupFilter"> & {
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticDateRange date_range = 1;
+   */
+  dateRange?: AnalyticDateRange | undefined;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticGroupType group_type = 2;
+   */
+  groupType: AnalyticGroupType;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticGroupFilter.
+ * Use `create(AnalyticGroupFilterSchema)` to create a new message.
+ */
+export const AnalyticGroupFilterSchema: GenMessage<AnalyticGroupFilter> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 18);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticGroupSearchRequest
+ */
+export type AnalyticGroupSearchRequest = Message<"warehouse.settlement.v1.AnalyticGroupSearchRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticGroupFilter filter = 2;
+   */
+  filter?: AnalyticGroupFilter | undefined;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticMetricSort sort = 3;
+   */
+  sort: AnalyticMetricSort;
+
+  /**
+   * Unspecified with CLOSE_BALANCE reads ASCENDING — most negative, the largest shortfall, first.
+   *
+   * @generated from field: warehouse.common.v1.CommonSortType sort_type = 4;
+   */
+  sortType: CommonSortType;
+
+  /**
+   * @generated from field: warehouse.common.v1.CommonPagination page = 5;
+   */
+  page?: CommonPagination | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticGroupSearchRequest.
+ * Use `create(AnalyticGroupSearchRequestSchema)` to create a new message.
+ */
+export const AnalyticGroupSearchRequestSchema: GenMessage<AnalyticGroupSearchRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 19);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticGroupSearchResponse
+ */
+export type AnalyticGroupSearchResponse = Message<"warehouse.settlement.v1.AnalyticGroupSearchResponse"> & {
+  /**
+   * The groups, RANKED. A shop id, a user id or a team id, per the filter's group_type.
+   *
+   * @generated from field: repeated uint64 ids = 1;
+   */
+  ids: bigint[];
+
+  /**
+   * @generated from field: warehouse.common.v1.PageInfo page_info = 2;
+   */
+  pageInfo?: PageInfo | undefined;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticGroupSearchResponse.
+ * Use `create(AnalyticGroupSearchResponseSchema)` to create a new message.
+ */
+export const AnalyticGroupSearchResponseSchema: GenMessage<AnalyticGroupSearchResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 20);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticGroupMetricRequest
+ */
+export type AnalyticGroupMetricRequest = Message<"warehouse.settlement.v1.AnalyticGroupMetricRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: warehouse.settlement.v1.AnalyticGroupFilter filter = 2;
+   */
+  filter?: AnalyticGroupFilter | undefined;
+
+  /**
+   * The page AnalyticGroupSearch returned. Capped like a page, because it is one.
+   *
+   * @generated from field: repeated uint64 ids = 3;
+   */
+  ids: bigint[];
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticGroupMetricRequest.
+ * Use `create(AnalyticGroupMetricRequestSchema)` to create a new message.
+ */
+export const AnalyticGroupMetricRequestSchema: GenMessage<AnalyticGroupMetricRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 21);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticGroupMetricResponse
+ */
+export type AnalyticGroupMetricResponse = Message<"warehouse.settlement.v1.AnalyticGroupMetricResponse"> & {
+  /**
+   * Keyed by the group's id. An id with no movement in the window still gets a metric — its position
+   * carried in from before the window.
+   *
+   * @generated from field: map<uint64, warehouse.settlement.v1.SettlementMetric> metrics = 1;
+   */
+  metrics: { [key: string]: SettlementMetric };
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticGroupMetricResponse.
+ * Use `create(AnalyticGroupMetricResponseSchema)` to create a new message.
+ */
+export const AnalyticGroupMetricResponseSchema: GenMessage<AnalyticGroupMetricResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 22);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticReplayComputeRequest
+ */
+export type AnalyticReplayComputeRequest = Message<"warehouse.settlement.v1.AnalyticReplayComputeRequest"> & {
+  /**
+   * The first Jakarta day to rebuild, YYYY-MM-DD. Every report row on or after it is deleted and rebuilt
+   * from what the subscription redelivers.
+   *
+   * @generated from field: string start_date = 1;
+   */
+  startDate: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticReplayComputeRequest.
+ * Use `create(AnalyticReplayComputeRequestSchema)` to create a new message.
+ */
+export const AnalyticReplayComputeRequestSchema: GenMessage<AnalyticReplayComputeRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 23);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticReplayComputeResponse
+ */
+export type AnalyticReplayComputeResponse = Message<"warehouse.settlement.v1.AnalyticReplayComputeResponse"> & {
+  /**
+   * ⚠ "started", NEVER "done". A seek is asynchronous — the messages arrive over the following minutes —
+   * so the RPC cannot know when the rebuild has finished and must not claim it has.
+   *
+   * @generated from field: string status = 1;
+   */
+  status: string;
+
+  /**
+   * What the delete removed, so an operator can see the range actually held something.
+   *
+   * @generated from field: int64 deleted_shop_days = 2;
+   */
+  deletedShopDays: bigint;
+
+  /**
+   * @generated from field: int64 deleted_user_days = 3;
+   */
+  deletedUserDays: bigint;
+
+  /**
+   * @generated from field: int64 deleted_event_logs = 4;
+   */
+  deletedEventLogs: bigint;
+
+  /**
+   * The earliest start_date the subscription could still serve, as YYYY-MM-DD.
+   *
+   * @generated from field: string earliest_start_date = 5;
+   */
+  earliestStartDate: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticReplayComputeResponse.
+ * Use `create(AnalyticReplayComputeResponseSchema)` to create a new message.
+ */
+export const AnalyticReplayComputeResponseSchema: GenMessage<AnalyticReplayComputeResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 24);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticMaintenanceRunRequest
+ */
+export type AnalyticMaintenanceRunRequest = Message<"warehouse.settlement.v1.AnalyticMaintenanceRunRequest"> & {
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticMaintenanceRunRequest.
+ * Use `create(AnalyticMaintenanceRunRequestSchema)` to create a new message.
+ */
+export const AnalyticMaintenanceRunRequestSchema: GenMessage<AnalyticMaintenanceRunRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 25);
+
+/**
+ * @generated from message warehouse.settlement.v1.AnalyticMaintenanceRunResponse
+ */
+export type AnalyticMaintenanceRunResponse = Message<"warehouse.settlement.v1.AnalyticMaintenanceRunResponse"> & {
+  /**
+   * Dedup rows removed — those received before `cutoff`.
+   *
+   * @generated from field: int64 deleted_event_logs = 1;
+   */
+  deletedEventLogs: bigint;
+
+  /**
+   * The receive instant the prune cut at, RFC 3339.
+   *
+   * @generated from field: string cutoff = 2;
+   */
+  cutoff: string;
+};
+
+/**
+ * Describes the message warehouse.settlement.v1.AnalyticMaintenanceRunResponse.
+ * Use `create(AnalyticMaintenanceRunResponseSchema)` to create a new message.
+ */
+export const AnalyticMaintenanceRunResponseSchema: GenMessage<AnalyticMaintenanceRunResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_settlement_v1_settlement, 26);
+
+/**
  * WHAT A ROW IS (#the-log-is-order-scoped-with-six-types, widened to seven by
  * #a-cancel-is-an-opposite-row).
  *
@@ -737,6 +1220,156 @@ export const OrderSettlementListDataTypeSchema: GenEnum<OrderSettlementListDataT
   enumDesc(file_warehouse_settlement_v1_settlement, 3);
 
 /**
+ * The grain a time series is read at.
+ *
+ * @generated from enum warehouse.settlement.v1.AnalyticTimeframe
+ */
+export enum AnalyticTimeframe {
+  /**
+   * @generated from enum value: ANALYTIC_TIMEFRAME_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * One point per day. SPAN capped at 366 days.
+   *
+   * @generated from enum value: ANALYTIC_TIMEFRAME_DAILY = 1;
+   */
+  DAILY = 1,
+
+  /**
+   * One point per calendar month, rolled up from the daily rows. SPAN capped at 60 months.
+   *
+   * @generated from enum value: ANALYTIC_TIMEFRAME_MONTHLY = 2;
+   */
+  MONTHLY = 2,
+
+  /**
+   * One point per calendar year, rolled up from the daily rows. SPAN capped at 20 years.
+   *
+   * @generated from enum value: ANALYTIC_TIMEFRAME_YEARLY = 3;
+   */
+  YEARLY = 3,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.AnalyticTimeframe.
+ */
+export const AnalyticTimeframeSchema: GenEnum<AnalyticTimeframe> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 4);
+
+/**
+ * What a grouped report groups by.
+ *
+ * @generated from enum warehouse.settlement.v1.AnalyticGroupType
+ */
+export enum AnalyticGroupType {
+  /**
+   * @generated from enum value: ANALYTIC_GROUP_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * ⚠ ACROSS TEAMS only when the scope is the ROOT team — the one scope ROOT/ADMIN hold. Any other scope
+   * yields its own team alone, because a team user is never authorised past it.
+   *
+   * @generated from enum value: ANALYTIC_GROUP_TYPE_TEAM = 1;
+   */
+  TEAM = 1,
+
+  /**
+   * @generated from enum value: ANALYTIC_GROUP_TYPE_SHOP = 2;
+   */
+  SHOP = 2,
+
+  /**
+   * @generated from enum value: ANALYTIC_GROUP_TYPE_USER = 3;
+   */
+  USER = 3,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.AnalyticGroupType.
+ */
+export const AnalyticGroupTypeSchema: GenEnum<AnalyticGroupType> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 5);
+
+/**
+ * Which tracked field ranks the groups — one value per SettlementMetric field.
+ *
+ * @generated from enum warehouse.settlement.v1.AnalyticMetricSort
+ */
+export enum AnalyticMetricSort {
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_INITIAL_TOTAL = 1;
+   */
+  INITIAL_TOTAL = 1,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_INITIAL_TOTAL_CANCEL = 2;
+   */
+  INITIAL_TOTAL_CANCEL = 2,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_OTHER = 3;
+   */
+  OTHER = 3,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_FUND = 4;
+   */
+  FUND = 4,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_EXTERNAL_ADS_FEE = 5;
+   */
+  EXTERNAL_ADS_FEE = 5,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_AFFILIATE_FEE = 6;
+   */
+  AFFILIATE_FEE = 6,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_MARKETPLACE_ADJUSTMENT = 7;
+   */
+  MARKETPLACE_ADJUSTMENT = 7,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_SYSTEM_ADJUSTMENT = 8;
+   */
+  SYSTEM_ADJUSTMENT = 8,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_CHANGE = 9;
+   */
+  CHANGE = 9,
+
+  /**
+   * @generated from enum value: ANALYTIC_METRIC_SORT_OPEN_BALANCE = 10;
+   */
+  OPEN_BALANCE = 10,
+
+  /**
+   * The default: the groups holding the largest shortfall first.
+   *
+   * @generated from enum value: ANALYTIC_METRIC_SORT_CLOSE_BALANCE = 11;
+   */
+  CLOSE_BALANCE = 11,
+}
+
+/**
+ * Describes the enum warehouse.settlement.v1.AnalyticMetricSort.
+ */
+export const AnalyticMetricSortSchema: GenEnum<AnalyticMetricSort> = /*@__PURE__*/
+  enumDesc(file_warehouse_settlement_v1_settlement, 6);
+
+/**
  * SettlementService is the ledger of WHAT THE MARKETPLACE PAYS US for an order.
  *
  * ⚠ NOT to be confused with `liability_service`, which is what TEAMS OWE EACH OTHER. That service was
@@ -815,4 +1448,80 @@ export const SettlementWriteService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_settlement_v1_settlement, 1);
+
+/**
+ * The REPORTS folded from the ledger (docs/business/settlement/analytic_context.md).
+ *
+ * ⚠ EVERY NUMBER HERE IS READ FROM A FOLDED TABLE, never summed from `settlement_logs` at request time
+ * (#the-report-is-the-pipeline-from-day-one). The tables are built by settlement's own webhook consuming
+ * `SettlementLogPosted` (#the-fold-owns-the-report-not-the-writer), so a report can lag the ledger by the
+ * broker's delivery time — and never by more than that.
+ *
+ * @generated from service warehouse.settlement.v1.SettlementAnalyticService
+ */
+export const SettlementAnalyticService: GenService<{
+  /**
+   * A metric series over time — daily, monthly or yearly — for a team, one shop, or one user.
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementAnalyticService.AnalyticTimeSearch
+   */
+  analyticTimeSearch: {
+    methodKind: "unary";
+    input: typeof AnalyticTimeSearchRequestSchema;
+    output: typeof AnalyticTimeSearchResponseSchema;
+  },
+  /**
+   * The RANKING of groups (teams, shops or users) over a window — ids only, sorted.
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupSearch
+   */
+  analyticGroupSearch: {
+    methodKind: "unary";
+    input: typeof AnalyticGroupSearchRequestSchema;
+    output: typeof AnalyticGroupSearchResponseSchema;
+  },
+  /**
+   * The metrics for a set of groups the caller already ranked.
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementAnalyticService.AnalyticGroupMetric
+   */
+  analyticGroupMetric: {
+    methodKind: "unary";
+    input: typeof AnalyticGroupMetricRequestSchema;
+    output: typeof AnalyticGroupMetricResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_warehouse_settlement_v1_settlement, 2);
+
+/**
+ * The two operations a DEVELOPER runs on the fold. Split from the reads because the policy is different
+ * and total — [ROOT, ADMIN] only — and a service is mounted whole.
+ *
+ * @generated from service warehouse.settlement.v1.SettlementAnalyticMaintenanceService
+ */
+export const SettlementAnalyticMaintenanceService: GenService<{
+  /**
+   * Rebuild the reports from `start_date` by seeking settlement's own subscription
+   * (#the-replay-seeks-the-broker). Bounded by the subscription's retention
+   * (#the-replay-is-bounded-by-the-subscription-retention).
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticReplayCompute
+   */
+  analyticReplayCompute: {
+    methodKind: "unary";
+    input: typeof AnalyticReplayComputeRequestSchema;
+    output: typeof AnalyticReplayComputeResponseSchema;
+  },
+  /**
+   * Prune the dedup table (analytic_context.md §Idempotency Layer).
+   *
+   * @generated from rpc warehouse.settlement.v1.SettlementAnalyticMaintenanceService.AnalyticMaintenanceRun
+   */
+  analyticMaintenanceRun: {
+    methodKind: "unary";
+    input: typeof AnalyticMaintenanceRunRequestSchema;
+    output: typeof AnalyticMaintenanceRunResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_warehouse_settlement_v1_settlement, 3);
 

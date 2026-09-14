@@ -34,6 +34,10 @@ type Service struct {
 	// order line freezes the sku and name — see product_catalog.go for why they cannot come from the
 	// request the way OrderCreate's do.
 	catalog ProductCatalog
+	// Opens and cancels an order's marketplace settlement account, AFTER the order commits
+	// (settlement #order-service-calls-settlement). An interface this service owns, so selling_service
+	// never imports settlement_service — see settlement_poster.go.
+	settlement SettlementPoster
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -50,6 +54,7 @@ func NewService(
 	events event_source.EventSender,
 	catalog ProductCatalog,
 	credit CreditChecker,
+	settlement SettlementPoster,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -65,7 +70,19 @@ func NewService(
 		credit = noCredit{}
 	}
 
-	return &Service{db: db, stock: stock, events: events, catalog: catalog, credit: credit}
+	// Same reasoning as the checker: an order must not depend on a downstream ledger being wired up.
+	if settlement == nil {
+		settlement = noSettlement{}
+	}
+
+	return &Service{
+		db:         db,
+		stock:      stock,
+		events:     events,
+		catalog:    catalog,
+		credit:     credit,
+		settlement: settlement,
+	}
 }
 
 var errShopMissing = errors.New("shop not found")

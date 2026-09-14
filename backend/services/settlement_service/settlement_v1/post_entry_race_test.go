@@ -44,7 +44,7 @@ var settlementTables = []string{
 func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 	ctx := context.Background()
 
 	const posters = 8
@@ -112,10 +112,26 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 	ctx := context.Background()
 
 	const retries = 8
+
+	// The sale the cancel undoes. A cancel can never exceed the LIVE sale, so without one every retry
+	// would be refused and the race would prove nothing about the key.
+	_, err := svc.PostEntry(ctx, settlement_v1.PostInput{
+		TeamID:         team,
+		ShopID:         shop,
+		OrderID:        order,
+		UniqueID:       "order-5001-initial",
+		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_INITIAL_TOTAL,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_ORDER,
+		Change:         -sale,
+		OccurredOn:     "2026-08-28",
+	})
+	if err != nil {
+		t.Fatalf("open the sale: %v", err)
+	}
 
 	res := h.Race(t, retries, func(int) error {
 		_, err := svc.PostEntry(ctx, settlement_v1.PostInput{
@@ -138,7 +154,7 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 	// count that matters is rows written, not callers refused.
 	var rows int64
 
-	err := db.Raw(`SELECT COUNT(*) FROM settlement_logs WHERE order_id = ? AND unique_id = ?`,
+	err = db.Raw(`SELECT COUNT(*) FROM settlement_logs WHERE order_id = ? AND unique_id = ?`,
 		order, "order-5001-cancel").
 		Scan(&rows).
 		Error
@@ -160,9 +176,10 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 		t.Fatalf("read the account: %v", err)
 	}
 
-	if balance != sale {
-		t.Fatalf("last_balance = %d after %d retries of one cancel, want %d — the retries were not "+
-			"absorbed", balance, retries, sale)
+	// The sale (−120.000) and ONE cancel (+120.000). A second credit would read +120.000.
+	if balance != 0 {
+		t.Fatalf("last_balance = %d after %d retries of one cancel, want 0 — the retries were not "+
+			"absorbed", balance, retries)
 	}
 }
 
@@ -179,7 +196,7 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db)
+	svc := settlement_v1.NewService(db, nil, nil)
 	ctx := context.Background()
 
 	const posters = 8

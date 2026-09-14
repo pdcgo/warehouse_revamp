@@ -57,6 +57,11 @@ func InitializeApp() (*App, error) {
 		inventory_v1.NewService,
 		liability_v1.NewService,
 		settlement_v1.NewService,
+		// Joins selling to settlement — an order opens and cancels its marketplace account. See
+		// settlement_poster.go.
+		NewSettlementPoster,
+		// The subscription settlement's replay seeks — see replay_broker.go.
+		NewReplayBroker,
 		// Joins inventory to liability (#184) — see liability_poster.go.
 		NewLiabilityPoster,
 		NewCreditChecker,
